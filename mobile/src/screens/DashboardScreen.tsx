@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { NativeBadge, NativeButton, NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
+import { AnalyticsCard } from '../components/ux/AnalyticsCard';
 import { useAuth } from '../contexts/AuthContext';
 import { servicesApi, userApi } from '../services/api';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -506,6 +507,41 @@ const DashboardScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* ✅ NOUVEAU: Analytics Cards visuels */}
+        <View style={styles.analyticsGrid}>
+          <AnalyticsCard
+            title="Vues totales"
+            value={formatNumber(Number(dashboardData.totalViews) || 0)}
+            change={12.5}
+            trend="up"
+            icon="eye"
+            color="#3B82F6"
+          />
+          <AnalyticsCard
+            title="Interactions"
+            value={formatNumber(Number(dashboardData.totalInteractions) || 0)}
+            change={8.3}
+            trend="up"
+            icon="message-circle"
+            color="#10B981"
+          />
+          <AnalyticsCard
+            title="Services actifs"
+            value={dashboardData.activeServices.toString()}
+            change={5.2}
+            trend="up"
+            icon="briefcase"
+            color="#8B5CF6"
+          />
+          <AnalyticsCard
+            title="Note moyenne"
+            value={dashboardData.averageRating.toFixed(1)}
+            change={0}
+            trend="neutral"
+            icon="star"
+            color="#F59E0B"
+          />
+        </View>
 
         {/* Cartes de statistiques modernes */}
         <View style={styles.statsContainer}>
@@ -590,6 +626,14 @@ const DashboardScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  analyticsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
   container: {
     flex: 1,
     backgroundColor: modernColors.background,

@@ -40,7 +40,7 @@ async fn ensure_table_exists(state: &Arc<AppState>) -> AppResult<()> {
             top_services JSONB NOT NULL,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
-        "#
+        "#,
     )
     .execute(&state.pg)
     .await
@@ -66,7 +66,7 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
         FROM media
         WHERE type = 'video'
           AND uploaded_at BETWEEN $1 AND $2
-        "#
+        "#,
     )
     .bind(week_start)
     .bind(week_end)
@@ -86,7 +86,7 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
         FROM media_engagement
         WHERE event_type = 'view'
           AND occurred_at BETWEEN $1 AND $2
-        "#
+        "#,
     )
     .bind(week_start)
     .bind(week_end)
@@ -106,7 +106,7 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
         FROM media_engagement
         WHERE event_type = 'quality_score'
           AND occurred_at BETWEEN $1 AND $2
-        "#
+        "#,
     )
     .bind(week_start)
     .bind(week_end)
@@ -135,7 +135,7 @@ async fn compute_summary(state: &Arc<AppState>) -> AppResult<WeeklyVideoSummary>
         GROUP BY m.service_id
         ORDER BY COUNT(*) DESC
         LIMIT 5
-        "#
+        "#,
     )
     .bind(week_start)
     .bind(week_end)
@@ -176,7 +176,7 @@ async fn store_summary(state: &Arc<AppState>, summary: &WeeklyVideoSummary) -> A
             top_services
         )
         VALUES ($1, $2, $3, $4, $5, $6)
-        "#
+        "#,
     )
     .bind(summary.week_start)
     .bind(summary.week_end)

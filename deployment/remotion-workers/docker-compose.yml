@@ -1,0 +1,64 @@
+# ✅ Phase 3: Workers Remotion distribués pour rendu vidéo
+
+version: '3.8'
+
+services:
+  remotion-worker-1:
+    image: yukpomnang/remotion-worker:latest
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - QUEUE_NAME=video_render
+      - GPU_ENABLED=true
+      - MAX_CONCURRENT_RENDERS=10
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    networks:
+      - yukpomnang-network
+
+  remotion-worker-2:
+    image: yukpomnang/remotion-worker:latest
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - QUEUE_NAME=video_render
+      - GPU_ENABLED=true
+      - MAX_CONCURRENT_RENDERS=10
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    networks:
+      - yukpomnang-network
+
+  remotion-worker-3:
+    image: yukpomnang/remotion-worker:latest
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - QUEUE_NAME=video_render
+      - GPU_ENABLED=false
+      - MAX_CONCURRENT_RENDERS=5
+    networks:
+      - yukpomnang-network
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - yukpomnang-network
+
+volumes:
+  redis-data:
+
+
+networks:
+  yukpomnang-network:
+    driver: bridge

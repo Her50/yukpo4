@@ -17,7 +17,7 @@ pub struct MobileMoneyConfig {
     pub orange_api_key: Option<String>,
     pub orange_api_secret: Option<String>,
     pub orange_merchant_id: Option<String>,
-    pub orange_environment: String, // "sandbox" ou "production"
+    pub orange_environment: String,     // "sandbox" ou "production"
     pub webhook_secret: Option<String>, // Secret pour vérifier les webhooks
 }
 
@@ -76,9 +76,9 @@ pub enum MobileMoneyProvider {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MobileMoneyPaymentRequest {
     pub provider: MobileMoneyProvider,
-    pub phone_number: String, // Format: +237612345678
-    pub amount: f64,          // Montant en FCFA
-    pub currency: String,     // "XAF" ou "XOF"
+    pub phone_number: String,          // Format: +237612345678
+    pub amount: f64,                   // Montant en FCFA
+    pub currency: String,              // "XAF" ou "XOF"
     pub transaction_reference: String, // Référence unique de transaction
     pub description: Option<String>,
     pub callback_url: Option<String>, // URL de callback pour webhook
@@ -213,10 +213,9 @@ impl MobileMoneyService {
         match response {
             Ok(resp) => {
                 if resp.status().is_success() {
-                    let response_json: serde_json::Value = resp
-                        .json()
-                        .await
-                        .map_err(|e| AppError::Internal(format!("Erreur parsing réponse MTN: {}", e)))?;
+                    let response_json: serde_json::Value = resp.json().await.map_err(|e| {
+                        AppError::Internal(format!("Erreur parsing réponse MTN: {}", e))
+                    })?;
 
                     let provider_transaction_id = response_json
                         .get("transactionId")
@@ -246,10 +245,7 @@ impl MobileMoneyService {
                         .await
                         .unwrap_or_else(|_| "Erreur inconnue".to_string());
 
-                    log::error!(
-                        "[MobileMoney] ❌ Erreur API MTN: {}",
-                        error_text
-                    );
+                    log::error!("[MobileMoney] ❌ Erreur API MTN: {}", error_text);
 
                     Ok(MobileMoneyPaymentResponse {
                         success: false,
@@ -263,10 +259,7 @@ impl MobileMoneyService {
                 }
             }
             Err(e) => {
-                log::error!(
-                    "[MobileMoney] ❌ Erreur requête MTN: {}",
-                    e
-                );
+                log::error!("[MobileMoney] ❌ Erreur requête MTN: {}", e);
 
                 // Fallback: instructions manuelles
                 let transaction_ref = request.transaction_reference.clone();
@@ -304,8 +297,7 @@ impl MobileMoneyService {
                 message: "Orange Money non configuré".to_string(),
                 instructions: Some(format!(
                     "Composez #144*4*4*{}*{}# et suivez les instructions",
-                    request.amount,
-                    request.phone_number
+                    request.amount, request.phone_number
                 )),
                 error: Some("Orange Money non configuré".to_string()),
             });
@@ -357,10 +349,9 @@ impl MobileMoneyService {
         match response {
             Ok(resp) => {
                 if resp.status().is_success() {
-                    let response_json: serde_json::Value = resp
-                        .json()
-                        .await
-                        .map_err(|e| AppError::Internal(format!("Erreur parsing réponse Orange: {}", e)))?;
+                    let response_json: serde_json::Value = resp.json().await.map_err(|e| {
+                        AppError::Internal(format!("Erreur parsing réponse Orange: {}", e))
+                    })?;
 
                     let provider_transaction_id = response_json
                         .get("pay_token")
@@ -383,11 +374,12 @@ impl MobileMoneyService {
                         provider_transaction_id,
                         status: PaymentStatus::Pending,
                         message: "Paiement initié avec succès".to_string(),
-                        instructions: payment_url.map(|url| format!(
-                            "Visitez {} pour compléter le paiement de {} FCFA",
-                            url,
-                            request.amount
-                        )),
+                        instructions: payment_url.map(|url| {
+                            format!(
+                                "Visitez {} pour compléter le paiement de {} FCFA",
+                                url, request.amount
+                            )
+                        }),
                         error: None,
                     })
                 } else {
@@ -396,10 +388,7 @@ impl MobileMoneyService {
                         .await
                         .unwrap_or_else(|_| "Erreur inconnue".to_string());
 
-                    log::error!(
-                        "[MobileMoney] ❌ Erreur API Orange Money: {}",
-                        error_text
-                    );
+                    log::error!("[MobileMoney] ❌ Erreur API Orange Money: {}", error_text);
 
                     Ok(MobileMoneyPaymentResponse {
                         success: false,
@@ -413,10 +402,7 @@ impl MobileMoneyService {
                 }
             }
             Err(e) => {
-                log::error!(
-                    "[MobileMoney] ❌ Erreur requête Orange Money: {}",
-                    e
-                );
+                log::error!("[MobileMoney] ❌ Erreur requête Orange Money: {}", e);
 
                 // Fallback: instructions manuelles
                 let transaction_ref = request.transaction_reference.clone();
@@ -428,9 +414,7 @@ impl MobileMoneyService {
                     message: "Mode manuel activé".to_string(),
                     instructions: Some(format!(
                         "Composez #144*4*4*{}*{}# et suivez les instructions\n\nRéférence: {}",
-                        request.amount,
-                        request.phone_number,
-                        transaction_ref
+                        request.amount, request.phone_number, transaction_ref
                     )),
                     error: Some(format!("Erreur API: {}", e)),
                 })
@@ -450,10 +434,7 @@ impl MobileMoneyService {
     }
 
     /// Traite un webhook de confirmation de paiement
-    pub async fn process_webhook(
-        &self,
-        webhook: MobileMoneyWebhook,
-    ) -> AppResult<bool> {
+    pub async fn process_webhook(&self, webhook: MobileMoneyWebhook) -> AppResult<bool> {
         // TODO: Vérifier la signature du webhook
         // TODO: Mettre à jour le statut du paiement en base de données
 
@@ -481,4 +462,3 @@ impl Default for MobileMoneyService {
         Self::new()
     }
 }
-

@@ -136,7 +136,7 @@ pub struct GlobalPromoCatalogBadges {
     pub event_is_imminent: bool,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GlobalPromoCatalogPage {
     pub items: Vec<GlobalPromoCatalogItem>,
     pub page: i64,
@@ -145,7 +145,7 @@ pub struct GlobalPromoCatalogPage {
     pub has_more: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Hash, PartialEq, Eq)]
 pub struct GlobalPromoCatalogQuery {
     #[serde(default)]
     pub page: Option<i64>,

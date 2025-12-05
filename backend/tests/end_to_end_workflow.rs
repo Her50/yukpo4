@@ -1,11 +1,11 @@
 mod end_to_end_workflow {
-    use std::sync::{Arc, OnceLock};
     use chrono::{Duration, Utc};
     use mongodb::Client as MongoClient;
     use redis::Client as RedisClient;
+    use rust_decimal::prelude::FromPrimitive;
     use serde_json::json;
     use sqlx::{postgres::PgPoolOptions, PgPool, Row};
-    use rust_decimal::prelude::FromPrimitive;
+    use std::sync::{Arc, OnceLock};
     use tokio::sync::Mutex;
     use yukpomnang_backend::{
         middlewares::jwt::AuthenticatedUser,
@@ -46,7 +46,9 @@ mod end_to_end_workflow {
         {
             Ok(pool) => pool,
             Err(err) => {
-                eprintln!("[e2e] ❌ Impossible de se connecter à PostgreSQL ({database_url}): {err:?}");
+                eprintln!(
+                    "[e2e] ❌ Impossible de se connecter à PostgreSQL ({database_url}): {err:?}"
+                );
                 return None;
             }
         };
@@ -160,9 +162,8 @@ mod end_to_end_workflow {
             ),
         );
 
-        let cost_service = Arc::new(
-            yukpomnang_backend::services::cost_service::CostEstimator::new(pool.clone()),
-        );
+        let cost_service =
+            Arc::new(yukpomnang_backend::services::cost_service::CostEstimator::new(pool.clone()));
 
         let media_storage = Arc::new(
             yukpomnang_backend::services::media_storage_service::MediaStorageService::new(
@@ -481,5 +482,3 @@ mod end_to_end_workflow {
         );
     }
 }
-
-

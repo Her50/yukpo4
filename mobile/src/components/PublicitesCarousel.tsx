@@ -298,6 +298,15 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
             if (userId) {
                 params.append('user_id', userId);
             }
+            // ✅ NOUVEAU: Ajouter placement (par défaut: "feed")
+            params.append('placement', 'feed');
+
+            // ✅ NOUVEAU: Ajouter localisation si disponible
+            // TODO: Récupérer depuis GPS ou profil utilisateur
+            // if (userLocation) {
+            //     params.append('latitude', userLocation.latitude.toString());
+            //     params.append('longitude', userLocation.longitude.toString());
+            // }
 
             const response = await apiGet(`/api/publicites/actives?${params.toString()}`);
 

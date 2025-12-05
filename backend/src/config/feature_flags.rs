@@ -95,4 +95,3 @@ impl FeatureFlagService {
         self.is_enabled_key(flag.as_key())
     }
 }
-

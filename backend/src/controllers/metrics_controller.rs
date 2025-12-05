@@ -10,8 +10,7 @@ use crate::{
     core::types::AppResult,
     services::{
         delivery_service::get_delivery_metrics_snapshot,
-        pipeline_health_service::compute_pipeline_health,
-        preview_monitoring::PreviewMonitoring,
+        pipeline_health_service::compute_pipeline_health, preview_monitoring::PreviewMonitoring,
         video_generation_service::get_video_latency_snapshot,
     },
     state::AppState,
@@ -120,10 +119,7 @@ pub async fn pipeline_metrics(State(state): State<Arc<AppState>>) -> AppResult<R
         let avg_ms = latency.total_ms as f64 / latency.count as f64;
         metrics.push_str("# HELP video_generation_duration_ms_avg Durée moyenne de génération vidéo (approximation, toutes étapes confondues)\n");
         metrics.push_str("# TYPE video_generation_duration_ms_avg gauge\n");
-        metrics.push_str(&format!(
-            "video_generation_duration_ms_avg {:.2}\n",
-            avg_ms
-        ));
+        metrics.push_str(&format!("video_generation_duration_ms_avg {:.2}\n", avg_ms));
     }
 
     Ok((
@@ -164,18 +160,14 @@ pub async fn global_metrics(State(state): State<Arc<AppState>>) -> AppResult<Res
     let mut metrics = String::new();
 
     // 🔹 Bloc pipeline vidéo (identique à /internal/metrics/pipeline)
-    metrics.push_str(
-        "# HELP pipeline_status Status du pipeline vidéo (0=ok,1=degraded,2=critical)\n",
-    );
+    metrics
+        .push_str("# HELP pipeline_status Status du pipeline vidéo (0=ok,1=degraded,2=critical)\n");
     metrics.push_str("# TYPE pipeline_status gauge\n");
     metrics.push_str(&format!("pipeline_status {}\n", status_value));
 
     metrics.push_str("# HELP video_jobs_queued Jobs en file d'attente\n");
     metrics.push_str("# TYPE video_jobs_queued gauge\n");
-    metrics.push_str(&format!(
-        "video_jobs_queued {}\n",
-        health.job_queue.queued
-    ));
+    metrics.push_str(&format!("video_jobs_queued {}\n", health.job_queue.queued));
 
     metrics.push_str("# HELP video_jobs_running Jobs en cours\n");
     metrics.push_str("# TYPE video_jobs_running gauge\n");
@@ -310,15 +302,41 @@ pub async fn global_metrics(State(state): State<Arc<AppState>>) -> AppResult<Res
         let avg_ms = latency.total_ms as f64 / latency.count as f64;
         metrics.push_str("# HELP video_generation_duration_ms_avg Durée moyenne de génération vidéo (approximation, toutes étapes confondues)\n");
         metrics.push_str("# TYPE video_generation_duration_ms_avg gauge\n");
-        metrics.push_str(&format!(
-            "video_generation_duration_ms_avg {:.2}\n",
-            avg_ms
-        ));
+        metrics.push_str(&format!("video_generation_duration_ms_avg {:.2}\n", avg_ms));
     }
 
-    // 🔹 Métriques additionnelles (Promotions, Carrousels, Chat, Navigation)
+    // 🔹 Métriques additionnelles (Promotions, Carrousels, Chat, Navigation, Product Creation)
     metrics.push_str("\n# === Additional Metrics ===\n");
     metrics.push_str(&crate::metrics::format_all_additional_metrics());
+
+    // ✅ NOUVEAU 2025-01-27 : Métriques création de produits
+    if let Ok(product_metrics) =
+        crate::metrics::product_creation_metrics::ProductCreationMetrics::new()
+    {
+        metrics.push_str("\n# === Product Creation Metrics ===\n");
+        metrics.push_str(&format!(
+            "# HELP products_created_total Total number of product creation attempts\n\
+             # TYPE products_created_total counter\n\
+             products_created_total {}\n\
+             # HELP products_created_success_total Total number of successful product creations\n\
+             # TYPE products_created_success_total counter\n\
+             products_created_success_total {}\n\
+             # HELP products_created_failed_total Total number of failed product creations\n\
+             # TYPE products_created_failed_total counter\n\
+             products_created_failed_total {}\n\
+             # HELP products_validation_failed_total Total number of product validation failures\n\
+             # TYPE products_validation_failed_total counter\n\
+             products_validation_failed_total {}\n\
+             # HELP products_creation_in_progress Number of product creations currently in progress\n\
+             # TYPE products_creation_in_progress gauge\n\
+             products_creation_in_progress {}\n",
+            product_metrics.products_created_total.get(),
+            product_metrics.products_created_success.get(),
+            product_metrics.products_created_failed.get(),
+            product_metrics.products_validation_failed.get(),
+            product_metrics.products_creation_in_progress.get(),
+        ));
+    }
 
     Ok((
         StatusCode::OK,

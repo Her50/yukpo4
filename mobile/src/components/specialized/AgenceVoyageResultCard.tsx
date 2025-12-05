@@ -48,8 +48,9 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({
         if (onPress) {
             onPress();
         } else {
-            (navigation as any).navigate('ServiceDetail', {
+            (navigation as any).navigate('ServiceDetailSpecialized', {
                 serviceId: agency.service_id,
+                serviceType: 'agence_voyage',
             });
         }
     };

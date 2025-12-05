@@ -144,6 +144,17 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                             ));
                             break;
 
+                        case 'reaction_added':
+                            // ✅ NOUVEAU: Gérer l'ajout de réaction
+                            // Cette logique sera gérée dans ChatModalMobile via un callback
+                            console.log('✅ [useWebSocketChat] Réaction ajoutée:', data);
+                            break;
+
+                        case 'reaction_removed':
+                            // ✅ NOUVEAU: Gérer la suppression de réaction
+                            console.log('✅ [useWebSocketChat] Réaction supprimée:', data);
+                            break;
+
                         case 'error':
                             console.error('❌ [useWebSocketChat] Erreur serveur:', data.message);
                             break;

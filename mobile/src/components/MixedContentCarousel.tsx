@@ -6,7 +6,6 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     Dimensions,
     ScrollView,
@@ -18,11 +17,18 @@ import {
 import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { apiGet, apiPost } from '../services/api';
+import { imagePrefetchService } from '../services/imagePrefetchService';
+import { mlRecommendationService } from '../services/mlRecommendationService';
 import { modernColors } from '../theme/modernTheme';
+import { hapticPress, hapticSelect } from '../utils/hapticFeedback';
 import ChatModalMobile from './ChatModalMobile';
 import ProductCard from './ProductCard';
+import ProductCardSkeleton from './ProductCardSkeleton';
 import SafeIcon from './SafeIcon';
+import { EmptyState } from './ux/EmptyState';
+import { SwipeableCard } from './ux/SwipeableCard';
 
 const { width } = Dimensions.get('window');
 const SCREEN_PADDING = 16; // ✅ Marge au bord de l'écran (cohérent avec paddingHorizontal)
@@ -30,10 +36,19 @@ const CARD_WIDTH = width * 0.85;
 const CARD_MARGIN = 12;
 const SNAP_INTERVAL = CARD_WIDTH + CARD_MARGIN; // ✅ Intervalle de snap constant
 
+type CarouselMode = 'recommended' | 'search';
+
 interface MixedContentCarouselProps {
     userId?: string;
     userBehavior?: string[]; // Catégories préférées
     publiciteFrequency?: number; // 1 pub toutes les X cartes
+    // ✅ NOUVEAU: Props pour mode recherche hybride
+    mode?: CarouselMode; // Mode du carousel (recommandé ou recherche)
+    searchResults?: any[]; // Résultats de recherche à afficher
+    searchQuery?: string; // Query de recherche
+    totalSearchResults?: number; // Total de résultats (pour "Voir tous")
+    onShowAllResults?: () => void; // Callback pour voir tous les résultats
+    onClearSearch?: () => void; // Callback pour revenir au mode recommandé
 }
 
 interface ContentItem {
@@ -44,14 +59,21 @@ interface ContentItem {
     frequency_ratio?: number;
 }
 
-const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
+const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
     userId,
     userBehavior = [],
-    publiciteFrequency = 3
+    publiciteFrequency = 3,
+    mode = 'recommended', // ✅ NOUVEAU: Mode par défaut = recommandé
+    searchResults = [], // ✅ NOUVEAU: Résultats de recherche
+    searchQuery = '', // ✅ NOUVEAU: Query de recherche
+    totalSearchResults = 0, // ✅ NOUVEAU: Total de résultats
+    onShowAllResults, // ✅ NOUVEAU: Callback voir tous
+    onClearSearch, // ✅ NOUVEAU: Callback clear recherche
 }) => {
     const navigation = useNavigation();
     const { user } = useAuth();
     const { t } = useLanguageSafe();
+    const { colors } = useTheme(); // ✅ NOUVEAU: Support thème
     const scrollViewRef = useRef<ScrollView>(null);
     const autoScrollTimerRef = useRef<NodeJS.Timeout | null>(null);
     const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -67,6 +89,12 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     const [selectedService, setSelectedService] = useState<any>(null);
     const [selectedPrestataire, setSelectedPrestataire] = useState<any>(null);
     const [scrollViewMounted, setScrollViewMounted] = useState(false);
+    // ✅ NOUVEAU: Tracker si tous les médias de la carte actuelle ont été vus
+    const [allMediaViewed, setAllMediaViewed] = useState<Map<number, boolean>>(new Map());
+    const [mediaViewStartTime, setMediaViewStartTime] = useState<Map<number, number>>(new Map());
+    // ✅ NOUVEAU: Filtres rapides
+    const [selectedFilter, setSelectedFilter] = useState<'all' | 'popular' | 'nearby' | 'new'>('all');
+    const [scrollIndicatorVisible, setScrollIndicatorVisible] = useState(true);
 
     const clearAutoScrollTimer = () => {
         if (autoScrollTimerRef.current) {
@@ -133,10 +161,82 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         };
     }, [scrollViewMounted]);
 
-    // Charger le contenu mixte
+    // ✅ NOUVEAU: Charger le contenu mixte avec recommandations ML activement utilisées
     useEffect(() => {
-        loadMixedContent();
+        const loadContentWithML = async () => {
+            // Charger le contenu de base
+            await loadMixedContent();
+
+            // ✅ NOUVEAU: Charger et MÉLANGER les recommandations ML avec le contenu
+            if (userId && userBehavior.length > 0) {
+                try {
+                    const recommendations = await mlRecommendationService.getPersonalizedContent(
+                        userId,
+                        userBehavior,
+                        null // location sera ajoutée si disponible
+                    );
+
+                    if (recommendations.length > 0) {
+                        console.log('[MixedContentCarousel] ✅ Recommandations ML chargées:', recommendations.length);
+
+                        // ✅ NOUVEAU: Mélanger les recommandations ML avec le contenu existant
+                        setContent(prevContent => {
+                            const mlItems: ContentItem[] = recommendations.map((rec: any) => ({
+                                type: 'organic',
+                                is_paid: false,
+                                data: rec,
+                            }));
+
+                            // Mélanger: 30% recommandations ML au début, 70% contenu organique
+                            const mixed = [
+                                ...mlItems.slice(0, Math.min(3, mlItems.length)), // 3 premières recommandations ML
+                                ...prevContent,
+                                ...mlItems.slice(3), // Reste des recommandations ML
+                            ];
+
+                            return mixed;
+                        });
+                    }
+                } catch (err) {
+                    console.warn('[MixedContentCarousel] Erreur recommandations ML:', err);
+                }
+            }
+        };
+
+        loadContentWithML();
     }, [userId, userBehavior]);
+
+    // ✅ NOUVEAU: Initialiser le tracking des médias pour toutes les cartes
+    useEffect(() => {
+        const safeContent = Array.isArray(content) ? content : [];
+        if (safeContent.length === 0) return;
+
+        setAllMediaViewed(prev => {
+            const newMap = new Map(prev);
+            safeContent.forEach((item, index) => {
+                if (!newMap.has(index)) {
+                    const hasMedia = (Array.isArray(item.data?.images) && item.data.images.length > 0) ||
+                        (Array.isArray(item.data?.videos) && item.data.videos.length > 0);
+                    newMap.set(index, !hasMedia); // Si pas de médias, considéré comme "vu"
+                }
+            });
+            return newMap;
+        });
+
+        setMediaViewStartTime(prev => {
+            const newMap = new Map(prev);
+            safeContent.forEach((item, index) => {
+                if (!newMap.has(index)) {
+                    const hasMedia = (Array.isArray(item.data?.images) && item.data.images.length > 0) ||
+                        (Array.isArray(item.data?.videos) && item.data.videos.length > 0);
+                    if (hasMedia) {
+                        newMap.set(index, Date.now());
+                    }
+                }
+            });
+            return newMap;
+        });
+    }, [content.length]);
 
     // ✅ Réinitialiser l'index et la pause quand le contenu change
     useEffect(() => {
@@ -585,24 +685,64 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         }
     };
 
-    // ✅ Calculer le délai selon le type de contenu
-    const calculateDelay = (item: ContentItem): number => {
+    // ✅ CORRIGÉ: Déclarer safeContent une seule fois au niveau du composant
+    const safeContent = Array.isArray(content) ? content : [];
+
+    // ✅ AMÉLIORÉ: Précharger 3 items à l'avance pour performance optimale
+    useEffect(() => {
+        if (safeContent.length > 0 && currentIndex < safeContent.length - 1) {
+            const prefetchCount = 3; // ✅ Précharger 3 items à l'avance
+            const imageUrls: string[] = [];
+
+            // Précharger les 3 prochains items
+            for (let i = 1; i <= prefetchCount && currentIndex + i < safeContent.length; i++) {
+                const nextItem = safeContent[currentIndex + i];
+                if (nextItem?.data?.images?.[0]) {
+                    imageUrls.push(nextItem.data.images[0]);
+                }
+                // Précharger aussi les vidéos si présentes
+                if (nextItem?.data?.videos?.[0]) {
+                    imageUrls.push(nextItem.data.videos[0]);
+                }
+            }
+
+            if (imageUrls.length > 0) {
+                imagePrefetchService.prefetchBatch(imageUrls).catch(err => {
+                    console.warn('[MixedContentCarousel] Erreur préchargement batch:', err);
+                });
+            }
+        }
+    }, [currentIndex, safeContent]);
+
+    // ✅ NOUVEAU: Calculer le délai selon le type de contenu et si tous les médias ont été vus
+    const calculateDelay = (item: ContentItem, cardIndex: number): number => {
         if (isPaused) return 0;
 
-        // Vidéo ?
-        const hasVideo = item.data?.videos && item.data.videos.length > 0;
-        if (hasVideo) {
-            return 15000; // 15s pour vidéo
+        // ✅ NOUVEAU: Si tous les médias n'ont pas été vus, attendre plus longtemps
+        const mediaViewed = allMediaViewed.get(cardIndex);
+        if (mediaViewed === false) {
+            // Attendre jusqu'à ce que tous les médias soient vus (vérifié toutes les 2 secondes)
+            return 2000;
         }
 
-        // Plusieurs images ?
-        const imageCount = item.data?.images?.length || 1;
-        if (imageCount > 1) {
-            return Math.max(imageCount * 3000, 6000); // 3s par image
+        // Compter tous les médias (images + vidéos)
+        const imageCount = Array.isArray(item.data?.images) ? item.data.images.length : (item.data?.images ? 1 : 0);
+        const videoCount = Array.isArray(item.data?.videos) ? item.data.videos.length : (item.data?.videos ? 1 : 0);
+        const totalMedia = imageCount + videoCount;
+
+        // Si pas de médias, délai standard
+        if (totalMedia === 0) {
+            return item.is_paid ? 7000 : 5000;
         }
 
-        // Image simple ou publicité
-        return item.is_paid ? 7000 : 5000; // Pub: 7s, Organique: 5s
+        // ✅ NOUVEAU: Calculer le délai basé sur le nombre total de médias
+        // 3s par image + 5s par vidéo, minimum 5s
+        const delay = Math.max(
+            imageCount * 3000 + videoCount * 5000,
+            5000
+        );
+
+        return delay;
     };
 
     // ✅ Auto-scroll intelligent - timer consolidé
@@ -642,7 +782,14 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             return;
         }
 
-        const delay = Math.max(calculateDelay(currentItem), 3000);
+        // ✅ NOUVEAU: Vérifier si tous les médias ont été vus
+        const mediaViewed = allMediaViewed.get(currentIndex);
+        if (mediaViewed === false) {
+            // Si pas encore tous vus, attendre 2 secondes et revérifier
+            console.log('[MixedContentCarousel] ⏳ [DIAGNOSTIC] Attente que tous les médias soient vus pour la carte', currentIndex);
+        }
+
+        const delay = Math.max(calculateDelay(currentItem, currentIndex), 3000);
         console.log('[MixedContentCarousel] ⏱️ [DIAGNOSTIC] Programmation autoscroll', {
             delay,
             currentIndex,
@@ -730,7 +877,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 content_type: item.is_paid ? 'paid' : 'organic',
                 position_in_feed: position,
                 viewed: true,
-                view_duration_ms: calculateDelay(item)
+                view_duration_ms: calculateDelay(item, position) // ✅ CORRIGÉ: Passer les deux arguments
             });
         } catch (error) {
             console.error('[MixedContentCarousel] Erreur tracking:', error);
@@ -775,10 +922,54 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         if (index >= 0 && index < content.length && index !== currentIndex) {
             setCurrentIndex(index);
         }
+
+        // ✅ NOUVEAU: Masquer l'indicateur de scroll après le premier scroll
+        if (offsetX > 10 && scrollIndicatorVisible) {
+            setScrollIndicatorVisible(false);
+        }
     };
+
+    // ✅ NOUVEAU: Handler pour quand tous les médias d'une carte ont été vus
+    const handleAllMediaViewed = (cardIndex: number) => {
+        console.log('[MixedContentCarousel] ✅ Tous les médias vus pour la carte', cardIndex);
+        setAllMediaViewed(prev => {
+            const newMap = new Map(prev);
+            newMap.set(cardIndex, true);
+            return newMap;
+        });
+    };
+
+    // ✅ NOUVEAU: Filtrer le contenu selon le filtre sélectionné
+    const filteredContent = React.useMemo(() => {
+        if (selectedFilter === 'all') return safeContent;
+
+        return safeContent.filter((item) => {
+            switch (selectedFilter) {
+                case 'popular':
+                    // Produits avec beaucoup de vues ou interactions
+                    return (item.data?.views || 0) > 10 || (item.data?.reactions_count || 0) > 5;
+                case 'nearby':
+                    // Produits avec GPS proche (si disponible)
+                    return !!item.data?.distance || !!item.data?.gps_fixe;
+                case 'new':
+                    // Produits créés dans les 7 derniers jours
+                    const createdAt = item.data?.created_at || item.data?.createdAt;
+                    if (!createdAt) return false;
+                    const createdDate = new Date(createdAt);
+                    const daysSinceCreation = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+                    return daysSinceCreation <= 7;
+                default:
+                    return true;
+            }
+        });
+    }, [safeContent, selectedFilter]);
+
+    // ✅ NOUVEAU: Créer les styles dynamiquement avec le thème (UNE SEULE FOIS)
+    const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
 
     // ✅ Gérer le clic sur une carte
     const handleCardClick = async (item: ContentItem, index: number) => {
+        hapticPress(); // ✅ NOUVEAU: Feedback haptique
         // Tracker le clic
         try {
             await apiPost('/api/visibility/track', {
@@ -793,17 +984,31 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             console.error('[MixedContentCarousel] Erreur tracking clic:', error);
         }
 
+        // ✅ CORRIGÉ: Extraire serviceId depuis plusieurs sources possibles
         const serviceId = item?.data?.service_id
             ?? item?.data?.serviceId
             ?? item?.data?.service?.id
+            ?? item?.data?.service?.service_id
             ?? item?.data?.id;
 
         if (!serviceId) {
-            console.warn('[MixedContentCarousel] ⚠️ Impossible d’identifier le service pour cette carte', item);
+            console.error('[MixedContentCarousel] ❌ Impossible d\'identifier le service pour cette carte:', {
+                itemData: {
+                    service_id: item?.data?.service_id,
+                    serviceId: item?.data?.serviceId,
+                    id: item?.data?.id,
+                    service: item?.data?.service ? {
+                        id: item?.data?.service?.id,
+                        service_id: item?.data?.service?.service_id
+                    } : null
+                },
+                itemKeys: item?.data ? Object.keys(item.data).slice(0, 20) : []
+            });
             Alert.alert('Contenu indisponible', 'Nous ne parvenons pas à ouvrir cette annonce pour le moment.');
             return;
         }
 
+        console.log('[MixedContentCarousel] ✅ Navigation vers ServiceDetail avec serviceId:', serviceId);
         (navigation as any).navigate('ServiceDetail', {
             serviceId: String(serviceId),
             fromCarousel: true,
@@ -811,34 +1016,144 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         });
     };
 
-    // Loading state
+    // Loading state avec skeleton
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
+            <View style={dynamicStyles.container}>
+                {/* ✅ NOUVEAU: Filtres rapides même en loading */}
+                <View style={dynamicStyles.filtersContainer}>
+                    {(['all', 'popular', 'nearby', 'new'] as const).map((filter) => (
+                        <TouchableOpacity
+                            key={filter}
+                            style={[
+                                dynamicStyles.filterButton,
+                                selectedFilter === filter && dynamicStyles.filterButtonActive
+                            ]}
+                            onPress={() => {
+                                setSelectedFilter(filter);
+                                hapticSelect();
+                            }}
+                            disabled={loading}
+                        >
+                            <Text style={[
+                                dynamicStyles.filterButtonText,
+                                selectedFilter === filter && dynamicStyles.filterButtonTextActive
+                            ]}>
+                                {filter === 'all' ? 'Tous' :
+                                    filter === 'popular' ? 'Populaires' :
+                                        filter === 'nearby' ? 'Proches' : 'Nouveaux'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+                {/* ✅ NOUVEAU: Skeleton loading */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.scrollView}>
+                    {[1, 2, 3].map((i) => (
+                        <ProductCardSkeleton key={i} />
+                    ))}
+                </ScrollView>
             </View>
         );
     }
 
-    // ✅ CORRIGÉ: S'assurer que content est toujours un tableau
-    const safeContent = Array.isArray(content) ? content : [];
-
-    // Empty state
+    // ✅ NOUVEAU: Empty state amélioré avec EmptyState
     if (safeContent.length === 0) {
         return (
-            <View style={styles.emptyContainer}>
-                <SafeIcon name="package" size={48} color="#D1D5DB" />
-                <Text style={styles.emptyText}>Aucun contenu disponible</Text>
+            <View style={dynamicStyles.emptyContainer}>
+                <EmptyState
+                    variant="empty"
+                    title="Aucun contenu disponible"
+                    description="Essayez de rafraîchir ou de modifier vos filtres"
+                    icon="package"
+                />
             </View>
         );
     }
 
     return (
-        <View style={styles.container}>
+        <View style={dynamicStyles.container}>
+            {/* ✅ NOUVEAU: Header de recherche ou filtres selon le mode */}
+            {mode === 'search' ? (
+                <View style={dynamicStyles.searchHeader}>
+                    <View style={dynamicStyles.searchHeaderTop}>
+                        <View style={dynamicStyles.searchHeaderLeft}>
+                            <SafeIcon name="search" size={18} color={colors.primary} />
+                            <Text style={dynamicStyles.searchHeaderTitle}>
+                                Résultats pour "{searchQuery}"
+                            </Text>
+                        </View>
+                        <TouchableOpacity
+                            style={dynamicStyles.clearSearchButton}
+                            onPress={onClearSearch}
+                            accessibilityLabel="Nouvelle recherche"
+                            accessibilityRole="button"
+                        >
+                            <SafeIcon name="x" size={16} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={dynamicStyles.searchHeaderBottom}>
+                        <Text style={dynamicStyles.searchHeaderCount}>
+                            {searchResults.length} résultat(s) affiché(s)
+                            {totalSearchResults > searchResults.length && ` sur ${totalSearchResults}`}
+                        </Text>
+                        {totalSearchResults > searchResults.length && onShowAllResults && (
+                            <TouchableOpacity
+                                style={dynamicStyles.showAllButton}
+                                onPress={onShowAllResults}
+                                accessibilityLabel={`Voir tous les ${totalSearchResults} résultats`}
+                                accessibilityRole="button"
+                            >
+                                <Text style={dynamicStyles.showAllButtonText}>
+                                    Voir tous ({totalSearchResults})
+                                </Text>
+                                <SafeIcon name="chevron-right" size={16} color={colors.primary} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+            ) : (
+                /* ✅ NOUVEAU: Filtres rapides (mode recommandé) */
+                <View style={dynamicStyles.filtersContainer}>
+                    {(['all', 'popular', 'nearby', 'new'] as const).map((filter) => (
+                        <TouchableOpacity
+                            key={filter}
+                            style={[
+                                dynamicStyles.filterButton,
+                                selectedFilter === filter && dynamicStyles.filterButtonActive
+                            ]}
+                            onPress={() => {
+                                setSelectedFilter(filter);
+                                hapticSelect();
+                            }}
+                            accessibilityLabel={`Filtre ${filter === 'all' ? 'Tous' : filter === 'popular' ? 'Populaires' : filter === 'nearby' ? 'Proches' : 'Nouveaux'}`}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: selectedFilter === filter }}
+                        >
+                            <Text style={[
+                                dynamicStyles.filterButtonText,
+                                selectedFilter === filter && dynamicStyles.filterButtonTextActive
+                            ]}>
+                                {filter === 'all' ? 'Tous' :
+                                    filter === 'popular' ? 'Populaires' :
+                                        filter === 'nearby' ? 'Proches' : 'Nouveaux'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
+
+            {/* ✅ NOUVEAU: Indicateur de scroll horizontal */}
+            {scrollIndicatorVisible && safeContent.length > 1 && (
+                <View style={dynamicStyles.scrollIndicator}>
+                    <SafeIcon name="chevron-left" size={16} color={colors.primary} />
+                    <Text style={dynamicStyles.scrollIndicatorText}>Glissez pour voir plus</Text>
+                    <SafeIcon name="chevron-right" size={16} color={colors.primary} />
+                </View>
+            )}
+
             {/* ✅ CORRIGÉ: Conteneur avec hauteur fixe pour éviter le débordement */}
             {/* ✅ Barres de progression (comme Instagram Stories) */}
-            <View style={styles.progressBars}>
+            <View style={dynamicStyles.progressBars}>
                 {safeContent.map((_, index) => (
                     <View key={index} style={styles.progressBar}>
                         <View
@@ -872,9 +1187,9 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 onMomentumScrollEnd={handleScroll}
                 onScroll={handleScrollEvent}
                 scrollEventThrottle={16}
-                style={styles.scrollView}
+                style={dynamicStyles.scrollView}
                 contentContainerStyle={[
-                    styles.scrollContent,
+                    dynamicStyles.scrollContent,
                     { paddingRight: SCREEN_PADDING } // ✅ CORRIGÉ: Ajouter padding à droite pour le dernier élément
                 ]}
                 nestedScrollEnabled={true}
@@ -887,7 +1202,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                     }
                 }}
             >
-                {safeContent.map((item, index) => {
+                {filteredContent.map((item, index) => {
                     // ✅ DIAGNOSTIC: Log pour comprendre les données
                     if (__DEV__ && index === 0) {
                         console.log('[MixedContentCarousel] 🔍 [DIAGNOSTIC] Données première carte:', {
@@ -899,78 +1214,132 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                             productKeys: item.data ? Object.keys(item.data).slice(0, 10) : []
                         });
                     }
+
+                    // ✅ NOUVEAU: Initialiser le tracking des médias pour cette carte si pas déjà fait
+                    const hasMedia = (Array.isArray(item.data?.images) && item.data.images.length > 0) ||
+                        (Array.isArray(item.data?.videos) && item.data.videos.length > 0);
+                    if (!allMediaViewed.has(index)) {
+                        // Initialiser dans un useEffect séparé (appelé une fois par carte)
+                        // Note: Cette initialisation se fait via useEffect dans le composant parent
+                    }
+
                     return (
-                        <TouchableOpacity
+                        <SwipeableCard
                             key={`${item.type}-${item.data.id || item.data.serviceId || index}-${index}`}
-                            style={[styles.card, { width: CARD_WIDTH, marginRight: CARD_MARGIN }]}
-                            activeOpacity={0.9}
-                            onPress={() => handleCardClick(item, index)}
+                            onSwipeLeft={() => {
+                                // Action swipe left (ex: partager)
+                                console.log('[MixedContentCarousel] Swipe left sur:', item.data?.nom);
+                            }}
+                            rightAction={{
+                                icon: 'share-2',
+                                label: 'Partager',
+                                color: modernColors.primary,
+                                onPress: () => {
+                                    // TODO: Implémenter partage
+                                    console.log('[MixedContentCarousel] Partager:', item.data?.nom);
+                                }
+                            }}
                         >
-                            {/* ✅ Badge Sponsorisé ou Recommandé */}
-                            <View style={[
-                                styles.badge,
-                                item.is_paid ? styles.badgePaid : styles.badgeOrganic
-                            ]}>
-                                <SafeIcon
-                                    name={item.is_paid ? 'star' : 'sparkles'}
-                                    size={12}
-                                    color="#FFFFFF"
-                                />
-                                <Text style={styles.badgeText}>
-                                    {item.is_paid ? 'Sponsorisé' : 'Pour vous'}
-                                </Text>
-                                {item.is_paid && item.boost_level && (
-                                    <Text style={styles.boostLevel}>
-                                        {item.boost_level.toUpperCase()}
-                                    </Text>
-                                )}
-                            </View>
-
-                            {/* ✅ Badge durée vidéo si présent */}
-                            {item.data?.videos && item.data.videos.length > 0 && (
-                                <View style={styles.videoBadge}>
-                                    <SafeIcon name="video" size={14} color="#FFFFFF" />
-                                    <Text style={styles.videoDuration}>0:15</Text>
-                                </View>
-                            )}
-
-                            {/* Contenu de la carte */}
-                            <ProductCard
-                                product={item.data}
-                                service={item.data.service || {
-                                    id: item.data.serviceId || item.data.service_id,
-                                    data: item.data.service?.data || {
-                                        titre_service: item.data.nom ? { valeur: item.data.nom } : undefined,
-                                        nom_produit: item.data.nom ? { valeur: item.data.nom } : undefined,
-                                        description: item.data.description ? { valeur: item.data.description } : undefined,
-                                        prix_produit: item.data.prix ? { valeur: item.data.prix } : undefined,
-                                    }
-                                }}
-                                prestataire={item.data.prestataire}
+                            <TouchableOpacity
+                                style={[dynamicStyles.card, { width: CARD_WIDTH, marginRight: CARD_MARGIN }]}
+                                activeOpacity={0.9}
                                 onPress={() => handleCardClick(item, index)}
-                                onChatPress={() => {
-                                    setSelectedService(item.data.service || {
-                                        id: item.data.serviceId || item.data.service_id,
-                                        data: item.data.service?.data || {}
-                                    });
-                                    setSelectedPrestataire(item.data.prestataire || null);
-                                    setShowChatModal(true);
-                                }}
-                            />
-                        </TouchableOpacity>
+                                accessibilityLabel={`${item.is_paid ? 'Annonce sponsorisée' : 'Produit recommandé'}: ${item.data?.nom || 'Produit'}`}
+                                accessibilityRole="button"
+                                accessibilityHint="Appuyez deux fois pour voir les détails du produit"
+                            >
+                                {/* ✅ Badge Sponsorisé ou Recommandé */}
+                                <View style={[
+                                    dynamicStyles.badge,
+                                    item.is_paid ? dynamicStyles.badgePaid : dynamicStyles.badgeOrganic
+                                ]}>
+                                    <SafeIcon
+                                        name={item.is_paid ? 'star' : 'sparkles'}
+                                        size={12}
+                                        color="#FFFFFF"
+                                    />
+                                    <Text style={styles.badgeText}>
+                                        {item.is_paid ? 'Sponsorisé' : 'Pour vous'}
+                                    </Text>
+                                    {item.is_paid && item.boost_level && (
+                                        <Text style={styles.boostLevel}>
+                                            {item.boost_level.toUpperCase()}
+                                        </Text>
+                                    )}
+                                </View>
+
+                                {/* ✅ NOUVEAU: Badge "Nouveau" pour les produits récents */}
+                                {(() => {
+                                    const createdAt = item.data?.created_at || item.data?.createdAt;
+                                    if (!createdAt) return null;
+                                    const createdDate = new Date(createdAt);
+                                    const daysSinceCreation = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+                                    if (daysSinceCreation <= 7) {
+                                        return (
+                                            <View style={styles.newBadge}>
+                                                <Text style={styles.newBadgeText}>✨ Nouveau</Text>
+                                            </View>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+
+                                {/* ✅ Badge durée vidéo si présent */}
+                                {item.data?.videos && item.data.videos.length > 0 && (
+                                    <View style={styles.videoBadge}>
+                                        <SafeIcon name="video" size={14} color="#FFFFFF" />
+                                        <Text style={styles.videoDuration}>0:15</Text>
+                                    </View>
+                                )}
+
+                                {/* Contenu de la carte */}
+                                <ProductCard
+                                    product={{
+                                        ...item.data,
+                                        // ✅ CORRIGÉ: S'assurer que serviceId est toujours présent dans product
+                                        service_id: item.data.service_id || item.data.serviceId || item.data.service?.id || item.data.service?.service_id,
+                                        serviceId: item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id,
+                                    }}
+                                    service={item.data.service || {
+                                        id: item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id,
+                                        service_id: item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id,
+                                        data: item.data.service?.data || {
+                                            titre_service: item.data.nom ? { valeur: item.data.nom } : undefined,
+                                            nom_produit: item.data.nom ? { valeur: item.data.nom } : undefined,
+                                            description: item.data.description ? { valeur: item.data.description } : undefined,
+                                            prix_produit: item.data.prix ? { valeur: item.data.prix } : undefined,
+                                        }
+                                    }}
+                                    prestataire={item.data.prestataire}
+                                    onPress={() => handleCardClick(item, index)}
+                                    onChatPress={() => {
+                                        const resolvedServiceId = item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id;
+                                        setSelectedService(item.data.service || {
+                                            id: resolvedServiceId,
+                                            service_id: resolvedServiceId,
+                                            data: item.data.service?.data || {}
+                                        });
+                                        setSelectedPrestataire(item.data.prestataire || null);
+                                        setShowChatModal(true);
+                                    }}
+                                    // ✅ NOUVEAU: Passer les callbacks pour tracker les médias
+                                    onAllMediaViewed={() => handleAllMediaViewed(index)}
+                                />
+                            </TouchableOpacity>
+                        </SwipeableCard>
                     );
                 })}
             </ScrollView>
 
             {/* ✅ Pagination dots */}
-            {safeContent.length > 1 && (
-                <View style={styles.pagination}>
-                    {safeContent.map((_, index) => (
+            {filteredContent.length > 1 && (
+                <View style={dynamicStyles.pagination}>
+                    {filteredContent.map((_, index) => (
                         <View
                             key={index}
                             style={[
-                                styles.paginationDot,
-                                index === currentIndex && styles.paginationDotActive
+                                dynamicStyles.paginationDot,
+                                index === currentIndex && dynamicStyles.paginationDotActive
                             ]}
                         />
                     ))}
@@ -980,7 +1349,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             {/* ✅ Contrôles manuels */}
             {!isAutoScrollDisabled && !isPaused && (
                 <TouchableOpacity
-                    style={styles.pauseButton}
+                    style={dynamicStyles.pauseButton}
                     onPress={() => setIsPaused(true)}
                 >
                     <SafeIcon name="pause" size={16} color="#FFFFFF" />
@@ -988,7 +1357,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             )}
             {!isAutoScrollDisabled && isPaused && (
                 <TouchableOpacity
-                    style={styles.playButton}
+                    style={dynamicStyles.playButton}
                     onPress={() => setIsPaused(false)}
                 >
                     <SafeIcon name="play" size={16} color="#FFFFFF" />
@@ -1009,15 +1378,17 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             />
         </View>
     );
-};
+});
 
-const styles = StyleSheet.create({
+// ✅ NOUVEAU: Fonction pour créer les styles avec support thème
+const createStyles = (colors: any) => StyleSheet.create({
     container: {
-        marginVertical: 0, // ✅ RÉDUIT: 8 → 0 car les marges sont gérées par le wrapper dans HomeScreen
-        marginTop: 0, // ✅ RÉDUIT: 4 → 0 car les marges sont gérées par le wrapper dans HomeScreen
-        height: 320, // ✅ AJOUTÉ: Hauteur fixe pour le conteneur (280px cartes + 40px pour progress bars et pagination)
-        maxHeight: 320, // ✅ AJOUTÉ: Hauteur maximale stricte
-        overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
+        marginVertical: 0,
+        marginTop: 0,
+        height: 420, // ✅ AUGMENTÉ: 360 → 420 (320px cartes + 40px progress + 60px filtres)
+        maxHeight: 420,
+        overflow: 'hidden',
+        backgroundColor: 'transparent', // Transparent pour laisser passer le fond
     },
     loadingContainer: {
         padding: 40,
@@ -1037,7 +1408,7 @@ const styles = StyleSheet.create({
     emptyText: {
         marginTop: 12,
         fontSize: 14,
-        color: '#6B7280',
+        color: colors.textSecondary, // ✅ NOUVEAU: Support thème
     },
     progressBars: {
         flexDirection: 'row',
@@ -1048,29 +1419,29 @@ const styles = StyleSheet.create({
     progressBar: {
         flex: 1,
         height: 3,
-        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        backgroundColor: colors.borderLight, // ✅ NOUVEAU: Support thème
         borderRadius: 2,
         overflow: 'hidden',
     },
     progressFill: {
         height: '100%',
-        backgroundColor: modernColors.primary,
+        backgroundColor: colors.primary, // ✅ NOUVEAU: Support thème
         borderRadius: 2,
     },
     scrollView: {
         marginBottom: 8,
-        height: 280, // ✅ CORRIGÉ: Hauteur fixe pour contenir les cartes (au lieu de minHeight)
-        maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
-        overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
+        height: 320, // ✅ AUGMENTÉ: 240 → 320 pour donner plus d'espace vertical aux cartes
+        maxHeight: 320, // ✅ AUGMENTÉ: 240 → 320
+        overflow: 'hidden',
     },
     scrollContent: {
-        paddingLeft: SCREEN_PADDING, // ✅ CORRIGÉ: Padding à gauche seulement (paddingRight dans style inline)
-        alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement les cartes
-        paddingVertical: 0, // ✅ CORRIGÉ: Pas de padding vertical pour éviter le débordement
-        height: 280, // ✅ AJOUTÉ: Hauteur fixe pour le contenu
+        paddingLeft: SCREEN_PADDING,
+        alignItems: 'center',
+        paddingVertical: 0,
+        height: 320, // ✅ AUGMENTÉ: 240 → 320 pour correspondre à la nouvelle hauteur
     },
     card: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface, // ✅ NOUVEAU: Support thème
         borderRadius: 16,
         overflow: 'hidden',
         shadowColor: '#000',
@@ -1078,8 +1449,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 5,
-        height: 280, // ✅ CORRIGÉ: Hauteur fixe (au lieu de maxHeight) pour éviter le débordement
-        maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
+        height: 320, // ✅ AUGMENTÉ: 240 → 320 pour donner plus d'espace aux cartes
+        maxHeight: 320, // ✅ AUGMENTÉ: 240 → 320
     },
     badge: {
         position: 'absolute',
@@ -1097,7 +1468,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFD700', // Or pour sponsorisé
     },
     badgeOrganic: {
-        backgroundColor: modernColors.primary, // Bleu pour recommandé
+        backgroundColor: colors.primary, // ✅ NOUVEAU: Support thème - Bleu pour recommandé
     },
     badgeText: {
         color: '#FFFFFF',
@@ -1141,11 +1512,11 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        backgroundColor: colors.borderLight, // ✅ NOUVEAU: Support thème
     },
     paginationDotActive: {
         width: 20,
-        backgroundColor: modernColors.primary,
+        backgroundColor: colors.primary, // ✅ NOUVEAU: Support thème
     },
     pauseButton: {
         position: 'absolute',
@@ -1160,11 +1531,132 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 60,
         right: 20,
-        backgroundColor: modernColors.primary,
+        backgroundColor: colors.primary, // ✅ NOUVEAU: Support thème
         borderRadius: 25,
         padding: 12,
         zIndex: 20,
     },
+    // ✅ NOUVEAU: Styles pour les filtres rapides
+    filtersContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        gap: 8,
+        marginBottom: 4,
+    },
+    filterButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: colors.surfaceVariant, // ✅ NOUVEAU: Support thème
+        borderWidth: 1,
+        borderColor: colors.border, // ✅ NOUVEAU: Support thème
+    },
+    filterButtonActive: {
+        backgroundColor: colors.primary, // ✅ NOUVEAU: Support thème
+        borderColor: colors.primary, // ✅ NOUVEAU: Support thème
+    },
+    filterButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: colors.textSecondary, // ✅ NOUVEAU: Support thème
+    },
+    filterButtonTextActive: {
+        color: '#FFFFFF',
+    },
+    // ✅ NOUVEAU: Indicateur de scroll horizontal
+    scrollIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 4,
+        gap: 8,
+        backgroundColor: colors.surfaceVariant, // ✅ NOUVEAU: Support thème
+        marginBottom: 4,
+    },
+    scrollIndicatorText: {
+        fontSize: 11,
+        color: colors.primary, // ✅ NOUVEAU: Support thème
+        fontWeight: '500',
+    },
+    // ✅ NOUVEAU: Badge "Nouveau"
+    newBadge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        backgroundColor: '#10B981',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        zIndex: 10,
+    },
+    newBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: '700',
+    },
+    // ✅ NOUVEAU: Styles pour header de recherche
+    searchHeader: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: colors.surfaceVariant,
+        borderRadius: 12,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    searchHeaderTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    searchHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
+    },
+    searchHeaderTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: colors.text,
+        flex: 1,
+    },
+    clearSearchButton: {
+        padding: 4,
+        borderRadius: 12,
+        backgroundColor: colors.surface,
+    },
+    searchHeaderBottom: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    searchHeaderCount: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        fontWeight: '500',
+    },
+    showAllButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: colors.primary,
+    },
+    showAllButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
 });
+
+// ✅ Styles par défaut (pour compatibilité)
+const styles = createStyles(modernColors);
+
+MixedContentCarousel.displayName = 'MixedContentCarousel';
 
 export default MixedContentCarousel;

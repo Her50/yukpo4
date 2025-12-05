@@ -72,7 +72,7 @@ impl VideoGenerationJobService {
             INSERT INTO video_generation_jobs (user_id, service_id, product_index, status)
             VALUES ($1, $2, $3, 'queued')
             RETURNING job_id
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(service_id)
@@ -90,7 +90,7 @@ impl VideoGenerationJobService {
             SET status = 'running',
                 updated_at = NOW()
             WHERE job_id = $1
-            "#
+            "#,
         )
         .bind(job_id)
         .execute(&self.pool)
@@ -113,7 +113,7 @@ impl VideoGenerationJobService {
                 progress_steps = $3,
                 updated_at = NOW()
             WHERE job_id = $1
-            "#
+            "#,
         )
         .bind(job_id)
         .bind(status)
@@ -141,7 +141,7 @@ impl VideoGenerationJobService {
                 result_payload = $4,
                 updated_at = NOW()
             WHERE job_id = $1
-            "#
+            "#,
         )
         .bind(job_id)
         .bind(media_id)
@@ -173,7 +173,7 @@ impl VideoGenerationJobService {
                 result_payload = NULL,
                 updated_at = NOW()
             WHERE job_id = $1
-            "#
+            "#,
         )
         .bind(job_id)
         .bind(error_message)
@@ -201,7 +201,7 @@ impl VideoGenerationJobService {
                 updated_at
             FROM video_generation_jobs
             WHERE job_id = $1
-            "#
+            "#,
         )
         .bind(job_id)
         .fetch_optional(&self.pool)

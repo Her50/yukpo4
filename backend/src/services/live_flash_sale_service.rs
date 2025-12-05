@@ -1,7 +1,8 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use chrono::{DateTime, Duration, Utc};
+use redis::Client as RedisClient;
 use serde_json::{json, Value};
 use sqlx::{postgres::PgRow, PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
@@ -48,7 +49,7 @@ impl LiveFlashSaleService {
             ));
         }
 
-        let primary_service_id: Option<i32> = session_row.try_get("service_id").ok();
+        let primary_service_id: Option<i32> = session_row.get::<Option<i32>, _>("service_id");
         let metadata: Value = session_row.try_get("metadata")?;
         let session_title: String = session_row.try_get("title")?;
 
@@ -83,8 +84,8 @@ impl LiveFlashSaleService {
                 ));
             }
 
-            let price_decimal = BigDecimal::from_f64(item.promo_price_cfa)
-                .ok_or_else(|| AppError::BadRequest("Le prix promotionnel est invalide".into()))?;
+            let price_decimal = BigDecimal::from_str(&item.promo_price_cfa.to_string())
+                .map_err(|_| AppError::BadRequest("Le prix promotionnel est invalide".into()))?;
 
             let metadata_value = if item.metadata.is_null() {
                 json!({})
@@ -278,6 +279,44 @@ impl LiveFlashSaleService {
         Self::get_flash_sale_summary(pool, flash_sale_id).await
     }
 
+    /// ✅ NOUVEAU: Diffuse une mise à jour de stock via Redis pub/sub
+    pub async fn broadcast_stock_update(
+        redis_client: &redis::Client,
+        flash_sale_id: Uuid,
+        available_stock: i32,
+        reserved_quantity: i64,
+    ) {
+        use crate::utils::redis_helper;
+        use redis::AsyncCommands;
+
+        let mut conn = match redis_helper::get_redis_connection(redis_client, 1, 0).await {
+            Ok(conn) => conn,
+            Err(_) => {
+                // Redis non disponible, ignorer silencieusement
+                return;
+            }
+        };
+
+        let channel = format!("flash_sale:{}:stock", flash_sale_id);
+        let message = serde_json::json!({
+            "flash_sale_id": flash_sale_id,
+            "available_stock": available_stock,
+            "reserved_quantity": reserved_quantity,
+            "timestamp": chrono::Utc::now(),
+        });
+
+        if let Err(e) = conn
+            .publish::<_, _, ()>(&channel, message.to_string())
+            .await
+        {
+            log::debug!(
+                "⚠️ Impossible de publier mise à jour stock flash_sale {}: {:?}",
+                flash_sale_id,
+                e
+            );
+        }
+    }
+
     pub async fn list_reservations_for_host(
         pool: &PgPool,
         flash_sale_id: Uuid,
@@ -331,9 +370,9 @@ impl LiveFlashSaleService {
             let quantity: i32 = row.try_get("quantity")?;
             let reserved_at: DateTime<Utc> = row.try_get("reserved_at")?;
 
-            let name: Option<String> = row.try_get("name").ok();
-            let prenom: Option<String> = row.try_get("prenom").ok();
-            let nom: Option<String> = row.try_get("nom").ok();
+            let name: Option<String> = row.get::<Option<String>, _>("name");
+            let prenom: Option<String> = row.get::<Option<String>, _>("prenom");
+            let nom: Option<String> = row.get::<Option<String>, _>("nom");
             let user_name = name.or_else(|| match (prenom, nom) {
                 (Some(p), Some(n)) if !p.is_empty() || !n.is_empty() => {
                     Some(format!("{} {}", p, n).trim().to_string())
@@ -357,6 +396,44 @@ impl LiveFlashSaleService {
     pub async fn process_timers(state: Arc<AppState>) {
         if let Err(err) = Self::process_timers_inner(state.clone()).await {
             log::error!("process_timers live flash sales failed: {:?}", err);
+        }
+    }
+
+    /// ✅ NOUVEAU: Diffuse une mise à jour de stock via Redis pub/sub
+    pub async fn broadcast_stock_update(
+        redis_client: &redis::Client,
+        flash_sale_id: Uuid,
+        available_stock: i32,
+        reserved_quantity: i64,
+    ) {
+        use crate::utils::redis_helper;
+        use redis::AsyncCommands;
+
+        let mut conn = match redis_helper::get_redis_connection(redis_client, 1, 0).await {
+            Ok(conn) => conn,
+            Err(_) => {
+                // Redis non disponible, ignorer silencieusement
+                return;
+            }
+        };
+
+        let channel = format!("flash_sale:{}:stock", flash_sale_id);
+        let message = serde_json::json!({
+            "flash_sale_id": flash_sale_id,
+            "available_stock": available_stock,
+            "reserved_quantity": reserved_quantity,
+            "timestamp": chrono::Utc::now(),
+        });
+
+        if let Err(e) = conn
+            .publish::<_, _, ()>(&channel, message.to_string())
+            .await
+        {
+            log::debug!(
+                "⚠️ Impossible de publier mise à jour stock flash_sale {}: {:?}",
+                flash_sale_id,
+                e
+            );
         }
     }
 
@@ -896,20 +973,18 @@ impl LiveFlashSaleService {
                 service_id: row.try_get("service_id")?,
                 promo_price_cfa,
                 stock_target: row.try_get("stock_target")?,
-                reserved_quantity: row.try_get::<i64, _>("reserved_quantity")?,
+                reserved_quantity: row.get::<i64, _>("reserved_quantity"),
                 start_at: row.try_get("start_at")?,
                 end_at: row.try_get("end_at")?,
-                status: row.try_get::<String, _>("status")?,
+                status: row.get::<String, _>("status"),
                 commentary_mode: row.try_get("commentary_mode")?,
                 commentary_interval_seconds: row.try_get("commentary_interval_seconds")?,
                 ai_voice_profile: row.try_get("ai_voice_profile")?,
                 last_commentary_sent_at: row.try_get("last_commentary_sent_at")?,
                 metadata: row.try_get("metadata")?,
-                linked_service: linked_map
-                    .get(&row.try_get::<i32, _>("service_id")?)
-                    .cloned(),
+                linked_service: linked_map.get(&row.get::<i32, _>("service_id")).cloned(),
                 recent_commentaries: commentary_map
-                    .get(&row.try_get::<Uuid, _>("id")?)
+                    .get(&row.get::<Uuid, _>("id"))
                     .cloned()
                     .unwrap_or_default(),
             };
@@ -960,7 +1035,7 @@ impl LiveFlashSaleService {
             entry.push(LiveFlashSaleCommentary {
                 id: row.try_get("id")?,
                 flash_sale_id,
-                created_by: row.try_get::<String, _>("created_by")?,
+                created_by: row.get::<String, _>("created_by"),
                 message: row.try_get("message")?,
                 metadata: row.try_get("metadata")?,
                 created_at: row.try_get("created_at")?,

@@ -12,6 +12,18 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# 🎨 Installer Blender pour rendu 3D AR (production)
+RUN apt-get update && apt-get install -y \
+    wget \
+    xz-utils \
+    && wget https://download.blender.org/release/Blender4.0/blender-4.0.0-linux-x64.tar.xz \
+    && tar -xf blender-4.0.0-linux-x64.tar.xz \
+    && mv blender-4.0.0-linux-x64 /opt/blender \
+    && rm blender-4.0.0-linux-x64.tar.xz \
+    && ln -s /opt/blender/blender /usr/local/bin/blender \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && blender --version
+
 # Copier les fichiers de configuration
 COPY Cargo.toml Cargo.lock ./
 

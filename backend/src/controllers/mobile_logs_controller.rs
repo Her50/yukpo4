@@ -61,23 +61,43 @@ pub async fn receive_mobile_logs(
     // ✅ AMÉLIORÉ : Logger tous les logs mobiles avec un format distinctif
     for log in &payload.logs {
         let component = log.component.as_deref().unwrap_or("unknown");
-        let user_info = log.user_id.as_ref().map(|u| format!("User:{}", u)).unwrap_or_default();
-        let device_info = log.device_info.as_ref().map(|d| {
-            let platform = d.platform.as_deref()
-                .or_else(|| d.os_name.as_deref())
-                .unwrap_or("unknown");
-            let version = d.version.as_deref()
-                .or_else(|| d.os_version.as_deref())
-                .unwrap_or("unknown");
-            format!("Device:{}/{}", platform, version)
-        }).unwrap_or_default();
-        
+        let user_info = log
+            .user_id
+            .as_ref()
+            .map(|u| format!("User:{}", u))
+            .unwrap_or_default();
+        let device_info = log
+            .device_info
+            .as_ref()
+            .map(|d| {
+                let platform = d
+                    .platform
+                    .as_deref()
+                    .or_else(|| d.os_name.as_deref())
+                    .unwrap_or("unknown");
+                let version = d
+                    .version
+                    .as_deref()
+                    .or_else(|| d.os_version.as_deref())
+                    .unwrap_or("unknown");
+                format!("Device:{}/{}", platform, version)
+            })
+            .unwrap_or_default();
+
         let log_prefix = format!(
             "📱[MOBILE] [{}] {}{}{}",
             log.level.to_uppercase(),
             component,
-            if !user_info.is_empty() { format!(" | {}", user_info) } else { String::new() },
-            if !device_info.is_empty() { format!(" | {}", device_info) } else { String::new() }
+            if !user_info.is_empty() {
+                format!(" | {}", user_info)
+            } else {
+                String::new()
+            },
+            if !device_info.is_empty() {
+                format!(" | {}", device_info)
+            } else {
+                String::new()
+            }
         );
 
         match log.level.as_str() {
@@ -138,4 +158,3 @@ pub async fn receive_mobile_logs(
         batch_id,
     }))
 }
-

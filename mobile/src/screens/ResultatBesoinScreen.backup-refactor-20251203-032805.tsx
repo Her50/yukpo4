@@ -1,0 +1,3349 @@
+/**
+ * ResultatBesoinScreen v3.0 - Version optimale (2025-11-02)
+ * Recherche progressive + Filtrage intelligent + Tri proximité/prix
+ * Sauvegarde originale : ResultatBesoinScreen.backup.tsx
+ */
+
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { FlashList } from '@shopify/flash-list';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import ModernGPSModal from '../components/ModernGPSModal';
+import NavigatorToolbar from '../components/NavigatorToolbar';
+import SafeIcon from '../components/SafeIcon';
+import SwipeableProductCard from '../components/SwipeableProductCard';
+import useDeviceType from '../hooks/useDeviceType';
+// ✅ NOUVEAU 2025-11-26 : Composants spécialisés
+import AgenceVoyageResultCard from '../components/specialized/AgenceVoyageResultCard';
+import CovoiturageResultCard from '../components/specialized/CovoiturageResultCard';
+import HopitalResultCard from '../components/specialized/HopitalResultCard';
+import LaboratoireResultCard from '../components/specialized/LaboratoireResultCard';
+import PharmacieResultCard from '../components/specialized/PharmacieResultCard';
+import TaxiResultCard from '../components/specialized/TaxiResultCard';
+import { ENVIRONMENT } from '../config/environment';
+import { useAuth } from '../contexts/AuthContext';
+import { useLocation } from '../contexts/LocationContext';
+import { useSearchAutocomplete } from '../hooks/useSearchAutocomplete';
+import { apiPost } from '../services/api';
+import { trackNavigation } from '../services/metricsTracking';
+import { modernColors } from '../theme/modernTheme';
+import { CacheManager, createCacheKey } from '../utils/cache';
+import { debounce } from '../utils/debounce';
+import { hapticPress, hapticSelect, hapticSuccess } from '../utils/hapticFeedback';
+import { logger } from '../utils/logger';
+
+interface CombinationSuggestion {
+  service_id: number;
+  product_vector: string[];
+  location_vector: string[];
+  full_vector: string[];
+  chosen_location?: string;
+  usage_count: number;
+  has_variant: boolean;
+  variant_dimension?: string;
+  prix?: number;
+  devise?: string;
+  final_score: number;
+}
+
+interface Product {
+  service_id: number;
+  nom: string;
+  product_vector: string[];         // Vecteur caractéristiques produit
+  product_labels?: string[];        // ✅ NOUVEAU : Labels dimensions
+  location_vector: string[];        // Vecteur lieu bidirectionnel
+  full_vector?: string[];           // ✅ NOUVEAU : Vecteur complet (produit + lieu)
+  chosen_location?: string;         // Lieu choisi
+  usage_count?: number;             // ✅ NOUVEAU : Popularité (recherches client)
+  distance_km?: number;
+  prestataire: {
+    nom: string;
+    avatar_url?: string;
+    user_id: number;
+  };
+  has_variant: boolean;
+  variants?: Array<{
+    dimension: string;
+    value: string;
+    prix: number;
+    devise: string;
+    stock: number;
+  }>;
+  prix?: number;
+  devise?: string;
+  image?: string;
+  coordinates?: { lat: number; lng: number };
+  // ✅ OPTIMISÉ 2025-11-30: Données complètes du service (plus besoin de fetchServicesByIds)
+  id?: number;                      // ✅ NOUVEAU: ID du service (comme get_service_by_id)
+  is_active?: boolean;              // ✅ NOUVEAU: Statut actif
+  created_at?: string;              // ✅ NOUVEAU: Date de création
+  user_id?: number;                 // ✅ NOUVEAU: User ID
+}
+
+const buildSuggestionExample = (suggestion?: CombinationSuggestion | null): string | null => {
+  if (!suggestion) {
+    return null;
+  }
+
+  const vector = Array.isArray(suggestion.full_vector) && suggestion.full_vector.length > 0
+    ? suggestion.full_vector
+    : Array.isArray(suggestion.product_vector)
+      ? suggestion.product_vector
+      : [];
+
+  if (!vector || vector.length === 0) {
+    return null;
+  }
+
+  return vector.filter(Boolean).slice(0, 5).join(' • ');
+};
+
+const getSuggestionVector = (suggestion: CombinationSuggestion | null | undefined): string[] => {
+  if (!suggestion) {
+    return [];
+  }
+
+  if (Array.isArray(suggestion.full_vector) && suggestion.full_vector.length > 0) {
+    return suggestion.full_vector.filter((item) => typeof item === 'string');
+  }
+
+  if (Array.isArray(suggestion.product_vector) && suggestion.product_vector.length > 0) {
+    return suggestion.product_vector.filter((item) => typeof item === 'string');
+  }
+
+  return [];
+};
+
+const normalizeText = (value: string | null | undefined): string => {
+  if (!value) {
+    return '';
+  }
+
+  try {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  } catch (error) {
+    return value.toLowerCase();
+  }
+};
+
+type SortOption = 'pertinence' | 'proximite' | 'prix_asc' | 'prix_desc';
+type FilterCategory = 'all' | 'with_stock' | 'with_variants' | 'nearby';
+
+const HEADER_HEIGHT = 72;
+
+const extractSearchResults = (response: any): Product[] => {
+  if (!response) {
+    return [];
+  }
+
+  const data = response?.data ?? response;
+
+  if (!data) {
+    return [];
+  }
+
+  // Extraire le tableau de résultats
+  let resultsArray: any[] = [];
+
+  if (Array.isArray(data)) {
+    resultsArray = data;
+  } else {
+    const nestedCandidates = [
+      data?.resultats?.resultats,
+      data?.resultats,
+      data?.data,
+      data?.items,
+    ];
+
+    for (const candidate of nestedCandidates) {
+      if (Array.isArray(candidate)) {
+        resultsArray = candidate;
+        break;
+      }
+    }
+  }
+
+  if (!Array.isArray(resultsArray) || resultsArray.length === 0) {
+    return [];
+  }
+
+  // ✅ Transformer les résultats enrichis en format Product
+  return resultsArray.map((item: any) => {
+    // Extraire le nom du produit depuis data
+    const nom = item?.data?.titre_service?.valeur ||
+      item?.data?.titre_service ||
+      item?.nom ||
+      item?.data?.nom?.valeur ||
+      item?.data?.nom ||
+      'Produit';
+
+    // Extraire location_vector et chosen_location (priorité aux données enrichies)
+    const location_vector = item.location_vector ||
+      item?.data?.location_vector ||
+      [];
+    const chosen_location = item.chosen_location ||
+      item?.data?.chosen_location ||
+      location_vector[0]; // Utiliser le premier élément si chosen_location n'est pas disponible
+
+    // ✅ OPTIMISÉ 2025-11-30: Construire l'objet Product avec TOUTES les données complètes
+    const product: Product = {
+      service_id: item.service_id || item.id || 0, // ✅ Utilise maintenant item.id directement
+      nom,
+      product_vector: item.product_vector || item?.data?.product_vector || [],
+      product_labels: item.product_labels || item?.data?.product_labels || [],
+      location_vector,
+      full_vector: item.full_vector || item?.data?.full_vector || [],
+      chosen_location,
+      usage_count: item.usage_count || item?.data?.usage_count,
+      distance_km: item.distance_km || item?.data?.distance_km || undefined,
+      prestataire: {
+        nom: item.prestataire?.nom ||
+          item.user?.nom_complet ||
+          item.user?.nom ||
+          'Prestataire',
+        avatar_url: item.prestataire?.avatar_url ||
+          item.user?.avatar_url,
+        user_id: item.prestataire?.user_id ||
+          item.user?.id ||
+          item.user_id ||
+          0,
+      },
+      has_variant: item.has_variant || item?.data?.has_variant || false,
+      variants: item.variants || item?.data?.variants,
+      prix: item.prix || item?.data?.prix,
+      devise: item.devise || item?.data?.devise || 'XAF',
+      image: item.image || item?.data?.image,
+      // ✅ CORRIGÉ: Extraire images et videos pour ProductCard
+      images: Array.isArray(item.images) ? item.images :
+        Array.isArray(item?.data?.images) ? item.data.images :
+          Array.isArray(item?.data?.images?.valeur) ? item.data.images.valeur :
+            item.image ? [item.image] : [],
+      videos: Array.isArray(item.videos) ? item.videos :
+        Array.isArray(item?.data?.videos) ? item.data.videos :
+          Array.isArray(item?.data?.videos?.valeur) ? item.data.videos.valeur : [],
+      coordinates: item.coordinates || item?.data?.coordinates,
+      // ✅ NOUVEAU: Ajouter les données complètes du service (id, is_active, created_at, user_id)
+      // Ces champs sont maintenant directement dans les résultats
+      id: item.id || item.service_id || undefined, // ✅ NOUVEAU: ID du service
+      is_active: item.is_active !== undefined ? item.is_active : true, // ✅ NOUVEAU: Statut actif
+      created_at: item.created_at, // ✅ NOUVEAU: Date de création
+      user_id: item.user_id || item.user?.id || item.prestataire?.user_id || undefined, // ✅ NOUVEAU: User ID
+      // ✅ Ajouter les données brutes pour ProductCard (avec priorité aux données enrichies)
+      ...item,
+    };
+
+    // ✅ DEBUG: Logger la distance pour vérifier qu'elle est bien présente
+    if (product.distance_km !== undefined) {
+      logger.log(`[ResultatBesoinScreen] ✅ Distance trouvée pour service ${product.service_id}: ${product.distance_km}km`);
+    } else {
+      logger.warn(`[ResultatBesoinScreen] ⚠️ Pas de distance pour service ${product.service_id}`, {
+        hasDistanceKm: !!item.distance_km,
+        hasDataDistanceKm: !!item?.data?.distance_km,
+        itemKeys: Object.keys(item),
+      });
+    }
+
+    return product;
+  });
+};
+
+const convertFileToBase64 = async (uri: string): Promise<string> => {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+const extractBase64 = (dataUrl: string): string => {
+  if (!dataUrl || typeof dataUrl !== 'string') {
+    return '';
+  }
+  if (!dataUrl.startsWith('data:')) {
+    return dataUrl;
+  }
+  const index = dataUrl.indexOf('base64,');
+  if (index === -1) {
+    return dataUrl;
+  }
+  return dataUrl.substring(index + 'base64,'.length);
+};
+
+const ResultatBesoinScreen: React.FC = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { location } = useLocation();
+  const { user } = useAuth(); // ✨ NOUVEAU : Pour l'authentification des appels API
+  // ✅ GÉANT-LEVEL: Détection type appareil pour layout adaptatif
+  const deviceType = useDeviceType();
+
+  // ✨ NOUVEAU : Hook autocomplete et historique
+  const {
+    searchHistory,
+    autocompleteSuggestions,
+    isLoadingAutocomplete,
+    saveToHistory,
+    clearHistory,
+    removeFromHistory,
+    triggerAutocomplete,
+  } = useSearchAutocomplete();
+
+  // ✨ NOUVEAU : Debouncing pour interactions (scalabilité 1M+)
+  const debouncedLikeRef = useRef<ReturnType<typeof debounce> | null>(null);
+  const debouncedFavoriteRef = useRef<ReturnType<typeof debounce> | null>(null);
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerTranslate = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT],
+    outputRange: [0, -HEADER_HEIGHT],
+    extrapolate: 'clamp',
+  });
+
+  // ✨ NOUVEAU : Animations d'entrée staggered pour les résultats (style Instagram)
+  const itemAnimations = useRef<Map<number, Animated.Value>>(new Map()).current;
+  const getItemAnimation = useCallback((index: number) => {
+    if (!itemAnimations.has(index)) {
+      itemAnimations.set(index, new Animated.Value(0));
+    }
+    return itemAnimations.get(index)!;
+  }, []);
+
+  // États recherche
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<CombinationSuggestion[]>([]);
+  const [dynamicPlaceholder, setDynamicPlaceholder] = useState<string | null>(null);
+  const [results, setResults] = useState<Product[]>([]);
+  const [filteredResults, setFilteredResults] = useState<Product[]>([]);
+
+  // ✨ NOUVEAU : États pour pagination (scalabilité 1M+ interactions)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMoreResults, setHasMoreResults] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const RESULTS_PER_PAGE = 20; // Limiter à 20 résultats par page
+
+  // ✨ NOUVEAU : Animer les items quand ils apparaissent
+  useEffect(() => {
+    if (filteredResults.length > 0) {
+      filteredResults.forEach((_, index) => {
+        const animValue = getItemAnimation(index);
+        Animated.timing(animValue, {
+          toValue: 1,
+          duration: 300,
+          delay: Math.min(index * 50, 500), // Stagger jusqu'à 500ms max
+          useNativeDriver: true,
+        }).start();
+      });
+    }
+  }, [filteredResults.length, getItemAnimation]);
+
+  // États UI
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [loadingResults, setLoadingResults] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [refreshing, setRefreshing] = useState(false); // ✅ NOUVEAU : Pull-to-refresh
+  const [showSearchActions, setShowSearchActions] = useState(false);
+  // ✅ NOUVEAU : État pour gérer les erreurs de recherche
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  // États filtrage et tri
+  const [sortBy, setSortBy] = useState<SortOption>('pertinence');
+  const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // ✅ NOUVEAU : Filtre par prix (de mobile2)
+  const [priceFilter, setPriceFilter] = useState<{
+    min: number | null;
+    max: number | null;
+    currency: string;
+  }>({ min: null, max: null, currency: 'XAF' });
+  const [showPriceFilter, setShowPriceFilter] = useState(false);
+
+  // ✅ NOUVEAU : Filtres intelligents dynamiques basés sur product_labels
+  const [dynamicFilters, setDynamicFilters] = useState<Record<string, Set<string>>>({});
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
+
+  // ✅ NOUVEAU : Médias et GPS pour la recherche avancée
+  const [searchImages, setSearchImages] = useState<string[]>([]);
+  const [searchDocuments, setSearchDocuments] = useState<Array<{ name: string; base64: string }>>([]);
+  const [showGPSModal, setShowGPSModal] = useState(false);
+  const [searchGPSData, setSearchGPSData] = useState<{ lat: number; lng: number; address?: string } | null>(null);
+  const [searchGPSString, setSearchGPSString] = useState<string>('');
+  const handleSearchAction = useCallback((action: () => void) => {
+    setShowSearchActions(false);
+    requestAnimationFrame(() => {
+      action();
+    });
+  }, []);
+
+  const normalizeAutocompleteResponse = (response: any): CombinationSuggestion[] => {
+    if (!response) {
+      return [];
+    }
+
+    const payload = response.data ?? response;
+
+    if (Array.isArray(payload)) {
+      return payload as CombinationSuggestion[];
+    }
+
+    if (Array.isArray(payload?.data)) {
+      return payload.data as CombinationSuggestion[];
+    }
+
+    if (Array.isArray(payload?.results)) {
+      return payload.results as CombinationSuggestion[];
+    }
+
+    if (Array.isArray(payload?.items)) {
+      return payload.items as CombinationSuggestion[];
+    }
+
+    if (Array.isArray(payload?.data?.data)) {
+      return payload.data.data as CombinationSuggestion[];
+    }
+
+    return [];
+  };
+
+  const requestImagePermissions = useCallback(async (): Promise<boolean> => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission requise', 'Nous avons besoin de l’autorisation pour accéder à vos images.');
+      return false;
+    }
+    return true;
+  }, []);
+
+  const takeSearchPhoto = useCallback(async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission requise', 'La caméra est nécessaire pour prendre une photo.');
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: 'images' as any, // ✅ CORRIGÉ: Utiliser chaîne au lieu de MediaType.Images
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]?.base64) {
+        const image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        setSearchImages((prev) => [image, ...prev].slice(0, 10));
+      }
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] Erreur prise de photo:', {
+        message: errorMessage,
+        stack: errorStack,
+        error: error
+      });
+      Alert.alert('Erreur', 'Impossible de prendre la photo.');
+    }
+  }, []);
+
+  const chooseSearchImages = useCallback(async () => {
+    const hasPermission = await requestImagePermissions();
+    if (!hasPermission) {
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images' as any, // ✅ CORRIGÉ: Utiliser chaîne au lieu de MediaType.Images
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newImages = result.assets
+          .filter((asset) => !!asset.base64)
+          .map((asset) => `data:${asset.type ?? 'image/jpeg'};base64,${asset.base64}`);
+
+        if (newImages.length > 0) {
+          setSearchImages((prev) => [...newImages, ...prev].slice(0, 10));
+        }
+      }
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] Erreur sélection images:', {
+        message: errorMessage,
+        stack: errorStack,
+        error: error
+      });
+      Alert.alert('Erreur', 'Impossible de sélectionner des images.');
+    }
+  }, [requestImagePermissions]);
+
+  const pickSearchDocument = useCallback(async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        multiple: false,
+        type: '*/*',
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        const base64 = await convertFileToBase64(asset.uri);
+        setSearchDocuments((prev) => [{ name: asset.name ?? 'Document', base64 }, ...prev].slice(0, 5));
+      }
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] Erreur sélection document:', {
+        message: errorMessage,
+        stack: errorStack,
+        error: error
+      });
+      Alert.alert('Erreur', 'Impossible de sélectionner le document.');
+    }
+  }, []);
+
+  const removeSearchImage = useCallback((index: number) => {
+    setSearchImages((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const removeSearchDocument = useCallback((index: number) => {
+    setSearchDocuments((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleGPSSelect = useCallback((coordinatesString: string) => {
+    if (!coordinatesString) {
+      setSearchGPSData(null);
+      setSearchGPSString('');
+      setShowGPSModal(false);
+      return;
+    }
+
+    const firstPoint = coordinatesString.split('|')[0]?.split(',');
+    if (firstPoint && firstPoint.length === 2) {
+      const lat = parseFloat(firstPoint[0]);
+      const lng = parseFloat(firstPoint[1]);
+      setSearchGPSData({ lat, lng });
+    }
+
+    setSearchGPSString(coordinatesString);
+    setShowGPSModal(false);
+    // ✅ Tracking métriques : Recherche géolocalisée
+    trackNavigation('geolocation_search', {
+      queryType: 'location',
+    });
+  }, []);
+
+  const clearSearchGPS = useCallback(() => {
+    setSearchGPSData(null);
+    setSearchGPSString('');
+  }, []);
+
+  // ✅ OPTIMISATION: Fonction de recherche avec cache
+  const fetchSuggestionsInternal = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setDynamicPlaceholder(null);
+      return;
+    }
+
+    const words = query.split(' ').filter(w => w.trim());
+    setFilters(words);
+
+    setLoadingSuggestions(true);
+    setShowSuggestions(true);
+
+    try {
+      // ✅ OPTIMISATION: Vérifier le cache
+      const cacheKey = createCacheKey('autocomplete', query.toLowerCase().trim());
+      const cached = await CacheManager.get<any[]>(cacheKey, 10 * 60 * 1000); // 10 minutes
+      if (cached) {
+        logger.log('[ResultatBesoinScreen] ✅ Suggestions chargées depuis le cache');
+        setSuggestions(cached);
+        if (cached.length > 0) {
+          const example = buildSuggestionExample(cached[0]);
+          setDynamicPlaceholder(example ? `ex: ${example}` : null);
+        }
+        setLoadingSuggestions(false);
+        return;
+      }
+
+      // ✅ CORRECTION : Utiliser autocomplete_characteristics (VRAIS produits clients)
+      // PAS autocomplete_combinations (qui est pour prestataires)
+      const payload: any = {
+        query: query,
+        limit: 10,
+      };
+
+      // ✅ NOUVEAU 2025-11-06: Ajouter coordonnées GPS si disponibles pour tri par proximité
+      if (location?.coords?.latitude && location?.coords?.longitude) {
+        payload.user_lat = location.coords.latitude;
+        payload.user_lng = location.coords.longitude;
+        logger.log('[ResultatBesoinScreen] 📍 GPS inclus dans suggestions:', {
+          lat: payload.user_lat,
+          lng: payload.user_lng
+        });
+      }
+
+      const response = await apiPost('/api/autocomplete/search-products', payload);
+
+      if (response.success) {
+        const normalized = normalizeAutocompleteResponse(response);
+        const queryText = normalizeText(query.trim());
+
+        let filtered = normalized;
+        if (queryText.length > 0) {
+          filtered = normalized.filter((item) => {
+            const vectorText = normalizeText(getSuggestionVector(item).join(' '));
+            const labelsText = normalizeText(
+              Array.isArray((item as any)?.product_labels)
+                ? (item as any).product_labels.join(' ')
+                : ((item as any)?.product_labels as string)
+            );
+            const titleText = normalizeText(((item as any)?.title || (item as any)?.nom || (item as any)?.name) as string);
+            const aliasText = normalizeText(((item as any)?.combinaison_brute || (item as any)?.full_text) as string);
+
+            return (
+              vectorText.includes(queryText) ||
+              labelsText.includes(queryText) ||
+              titleText.includes(queryText) ||
+              aliasText.includes(queryText)
+            );
+          });
+
+          if (filtered.length === 0) {
+            filtered = normalized;
+          }
+        }
+
+        // ✅ OPTIMISATION: Sauvegarder dans le cache
+        await CacheManager.set(cacheKey, filtered);
+
+        setSuggestions(filtered);
+
+        if (filtered.length > 0) {
+          const example = buildSuggestionExample(filtered[0]);
+          setDynamicPlaceholder(example ? `ex: ${example}` : null);
+        } else {
+          setDynamicPlaceholder(null);
+        }
+      } else {
+        setSuggestions([]);
+        setDynamicPlaceholder(null);
+      }
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] Erreur suggestions:', {
+        message: errorMessage,
+        stack: errorStack,
+        query: query,
+        error: error
+      });
+      setSuggestions([]);
+      setDynamicPlaceholder(null);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, [location]);
+
+  // ✅ OPTIMISATION: Debounce de 300ms pour limiter les appels API
+  const fetchSuggestions = useMemo(
+    () => debounce(fetchSuggestionsInternal, 300),
+    [fetchSuggestionsInternal]
+  );
+
+  // ✅ Tracking métriques : Vue de l'écran
+  useEffect(() => {
+    trackNavigation('view');
+  }, []);
+
+  // ✅ CORRECTION FONDAMENTALE : Initialiser les résultats depuis les paramètres de route
+  // CETTE FONCTION EST CRITIQUE - Elle doit TOUJOURS s'exécuter pour afficher l'écran
+  useEffect(() => {
+    try {
+      const params = route.params as any;
+
+      logger.log('[ResultatBesoinScreen] 📥 Paramètres de route reçus:', {
+        hasParams: !!params,
+        hasResults: !!params?.results,
+        resultsCount: Array.isArray(params?.results) ? params.results.length : 0,
+        resultsType: Array.isArray(params?.results) ? 'array' : typeof params?.results,
+        hasSearchQuery: !!params?.searchQuery,
+        searchQuery: params?.searchQuery,
+        type: params?.type,
+        hasError: !!params?.hasError,
+        error: params?.error
+      });
+
+      // ✅ CORRECTION FONDAMENTALE: S'assurer que loadingResults est à false pour afficher l'écran
+      setLoadingResults(false);
+
+      // ✅ NOUVEAU : Gérer les erreurs de recherche
+      if (params?.hasError && params?.error) {
+        setSearchError(params.error);
+        logger.warn('[ResultatBesoinScreen] ⚠️ Erreur de recherche reçue:', params.error);
+      } else {
+        setSearchError(null);
+      }
+
+      // ✅ CORRECTION FONDAMENTALE: Initialiser les résultats SI fournis, sinon laisser vide
+      // Mais TOUJOURS définir results pour que l'écran s'affiche
+      if (params?.results !== undefined) {
+        let extractedResults: Product[] = [];
+
+        // Si c'est déjà un tableau, l'utiliser directement
+        if (Array.isArray(params.results)) {
+          extractedResults = params.results as Product[];
+          logger.log('[ResultatBesoinScreen] ✅ Résultats déjà en tableau:', extractedResults.length);
+        } else if (params.results && typeof params.results === 'object') {
+          // Sinon, utiliser extractSearchResults pour parser la structure
+          extractedResults = extractSearchResults(params.results);
+          logger.log('[ResultatBesoinScreen] ✅ Résultats extraits depuis structure:', extractedResults.length);
+        } else {
+          // Si params.results est null, undefined, ou autre chose, utiliser tableau vide
+          extractedResults = [];
+          logger.log('[ResultatBesoinScreen] ⚠️ params.results invalide, utilisation tableau vide');
+        }
+
+        // ✅ CORRECTION FONDAMENTALE: TOUJOURS définir les résultats (même vides) pour afficher l'écran
+        setResults(extractedResults);
+        logger.log('[ResultatBesoinScreen] ✅ Résultats définis:', extractedResults.length);
+      } else {
+        // ✅ Si pas de results dans params, initialiser avec tableau vide pour afficher l'écran
+        logger.log('[ResultatBesoinScreen] ⚠️ Pas de results dans params, initialisation avec tableau vide');
+        setResults([]);
+      }
+
+      // Initialiser les filtres depuis la requête de recherche
+      if (params?.searchQuery) {
+        const queryText = typeof params.searchQuery === 'string' ? params.searchQuery : '';
+        setSearchQuery(queryText);
+        const words = queryText.split(' ').filter(w => w.trim());
+        if (words.length > 0) {
+          setFilters(words);
+        }
+      } else if (params?.results !== undefined) {
+        // ✅ Si on a des résultats mais pas de searchQuery, initialiser searchQuery vide
+        setSearchQuery('');
+      }
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] ❌ Erreur initialisation depuis route.params:', {
+        message: errorMessage,
+        stack: errorStack,
+        params: route.params,
+        error: error
+      });
+      // ✅ CORRECTION FONDAMENTALE: Même en cas d'erreur, initialiser avec tableau vide pour afficher l'écran
+      setResults([]);
+      setLoadingResults(false);
+    }
+  }, [route.params]); // ✅ Exécuter une seule fois au montage ou quand les params changent
+
+  // ✅ OPTIMISATION: Suggestions avec debounce intégré
+  useEffect(() => {
+    try {
+      // ✅ PROTECTION: Vérifier que fetchSuggestions existe
+      if (typeof fetchSuggestions !== 'function') {
+        // ✅ CORRIGÉ: Afficher le contexte de l'erreur
+        logger.error('[ResultatBesoinScreen] ❌ fetchSuggestions n\'est pas une fonction', {
+          type: typeof fetchSuggestions,
+          fetchSuggestions: fetchSuggestions,
+          searchQuery
+        });
+        return;
+      }
+
+      // Ne pas chercher des suggestions si on a déjà des résultats depuis route.params
+      const params = route.params as any;
+      if (params?.results && Array.isArray(params.results) && params.results.length > 0) {
+        logger.log('[ResultatBesoinScreen] ⏭️ Ignorer suggestions car résultats déjà fournis');
+        return;
+      }
+
+      // ✅ OPTIMISATION: fetchSuggestions est déjà debounced, appeler directement
+      if (searchQuery.trim().length >= 2) {
+        fetchSuggestions(searchQuery);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        setDynamicPlaceholder(null);
+      }
+
+      return () => {
+        // Annuler le debounce si le composant se démonte
+        if (typeof fetchSuggestions === 'function' && 'cancel' in fetchSuggestions) {
+          (fetchSuggestions as any).cancel();
+        }
+      };
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect fetchSuggestions:', {
+        message: errorMessage,
+        stack: errorStack,
+        searchQuery,
+        error: error
+      });
+    }
+  }, [searchQuery, fetchSuggestions, route.params]); // ✅ Ajouter route.params aux dependencies
+
+  // ✅ NOUVEAU : Générer filtres dynamiques depuis les résultats
+  useEffect(() => {
+    try {
+      // ✅ PROTECTION: Vérifier que results est un array valide
+      if (!Array.isArray(results) || results.length === 0) {
+        setDynamicFilters({});
+        return;
+      }
+
+      // Extraire tous les labels et valeurs uniques
+      const filtersMap: Record<string, Set<string>> = {};
+
+      results.forEach((product) => {
+        if (!product) return; // ✅ Protection produit null/undefined
+
+        const labels = product.product_labels || [];
+        const vector = product.product_vector || [];
+
+        // ✅ PROTECTION: Vérifier que labels est un array avec forEach
+        if (!Array.isArray(labels)) {
+          logger.warn('[ResultatBesoinScreen] ⚠️ product_labels n\'est pas un array:', product);
+          return;
+        }
+
+        labels.forEach((label, idx) => {
+          if (!filtersMap[label]) {
+            filtersMap[label] = new Set();
+          }
+          if (vector[idx]) {
+            filtersMap[label].add(vector[idx]);
+          }
+        });
+      });
+
+      // Garder seulement les dimensions avec au moins 2 valeurs différentes
+      const meaningfulFilters: Record<string, Set<string>> = {};
+      Object.entries(filtersMap).forEach(([label, values]) => {
+        if (values.size >= 2) {
+          meaningfulFilters[label] = values;
+        }
+      });
+
+      setDynamicFilters(meaningfulFilters);
+      logger.log('[ResultatBesoinScreen] Filtres dynamiques générés:', Object.keys(meaningfulFilters));
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect dynamicFilters:', {
+        message: errorMessage,
+        stack: errorStack,
+        resultsCount: results?.length,
+        error: error
+      });
+      setDynamicFilters({});
+    }
+  }, [results]);
+
+  // ✅ Appliquer filtres et tri
+  useEffect(() => {
+    try {
+      // ✅ PROTECTION: Vérifier que results est un array valide
+      if (!Array.isArray(results)) {
+        // ✅ CORRIGÉ: Afficher le contexte de l'erreur
+        logger.error('[ResultatBesoinScreen] ❌ results n\'est pas un array', {
+          type: typeof results,
+          results: results,
+          isNull: results === null,
+          isUndefined: results === undefined
+        });
+        setFilteredResults([]);
+        return;
+      }
+
+      // ✅ Tracking métriques : Filtre appliqué
+      if (filterCategory !== 'all' || Object.keys(selectedFilters).length > 0 || priceFilter.min !== null || priceFilter.max !== null) {
+        trackNavigation('filter', {
+          filterType: filterCategory === 'nearby' ? 'location' : filterCategory === 'with_stock' ? 'category' : 'price',
+        });
+      }
+
+      let filtered = [...results];
+
+      // ✅ NOUVEAU : Appliquer filtres dynamiques
+      if (selectedFilters && typeof selectedFilters === 'object') {
+        Object.entries(selectedFilters).forEach(([label, value]) => {
+          if (value) {
+            filtered = filtered.filter((product) => {
+              if (!product) return false; // ✅ Protection produit null/undefined
+              const labels = product.product_labels || [];
+              const vector = product.product_vector || [];
+              const index = labels.indexOf(label);
+              return index !== -1 && vector[index] === value;
+            });
+          }
+        });
+      }
+
+      // ✅ NOUVEAU : Filtre par prix (de mobile2)
+      if (priceFilter.min !== null || priceFilter.max !== null) {
+        filtered = filtered.filter(product => {
+          const price = getPrixMin(product);
+          if (priceFilter.min !== null && price < priceFilter.min) return false;
+          if (priceFilter.max !== null && price > priceFilter.max) return false;
+          return true;
+        });
+      }
+
+      // Filtres par catégorie
+      switch (filterCategory) {
+        case 'with_stock':
+          filtered = filtered.filter(p => {
+            if (p.has_variant && p.variants) {
+              return p.variants.some(v => (v.stock || 0) > 0);
+            }
+            return true;
+          });
+          break;
+        case 'with_variants':
+          filtered = filtered.filter(p => p.has_variant);
+          break;
+        case 'nearby':
+          filtered = filtered.filter(p => p.distance_km !== undefined && p.distance_km < 5);
+          break;
+      }
+
+      // Tri
+      switch (sortBy) {
+        case 'proximite':
+          filtered.sort((a, b) => {
+            const distA = a.distance_km ?? 999999;
+            const distB = b.distance_km ?? 999999;
+            return distA - distB;
+          });
+          break;
+        case 'prix_asc':
+          filtered.sort((a, b) => {
+            const prixA = getPrixMin(a);
+            const prixB = getPrixMin(b);
+            return prixA - prixB;
+          });
+          break;
+        case 'prix_desc':
+          filtered.sort((a, b) => {
+            const prixA = getPrixMin(a);
+            const prixB = getPrixMin(b);
+            return prixB - prixA;
+          });
+          break;
+        // 'pertinence' : pas de tri (déjà trié par backend)
+      }
+
+      setFilteredResults(filtered);
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect filtrage/tri:', {
+        message: errorMessage,
+        stack: errorStack,
+        resultsCount: results?.length,
+        sortBy,
+        filterCategory,
+        error: error
+      });
+      setFilteredResults(results || []); // Fallback aux résultats bruts
+    }
+  }, [results, sortBy, filterCategory, selectedFilters, priceFilter]); // ✅ Ajout priceFilter
+
+  // Helper : Prix minimum
+  const getPrixMin = (product: Product): number => {
+    // ✅ PROTECTION: Vérifier que product existe
+    if (!product) return 0;
+
+    if (product.has_variant && Array.isArray(product.variants) && product.variants.length > 0) {
+      try {
+        return Math.min(...product.variants.map(v => v?.prix || 0));
+      } catch (error) {
+        logger.warn('[ResultatBesoinScreen] ⚠️ Erreur getPrixMin variants:', error);
+        return product.prix || 0;
+      }
+    }
+    return product.prix || 0;
+  };
+
+  // ✅ CORRECTION 2025-11-04 : Utiliser /api/search/direct (recherche globale)
+  const searchFinal = useCallback(async (input: string | string[]) => {
+    const finalFilters = Array.isArray(input)
+      ? input.filter((token) => typeof token === 'string').map((token) => token.trim()).filter(Boolean)
+      : input.trim().split(/\s+/).filter(Boolean);
+
+    logger.log('[ResultatBesoinScreen] 🔍 searchFinal appelé avec:', finalFilters);
+
+    if (!finalFilters || finalFilters.length === 0) {
+      logger.warn('[ResultatBesoinScreen] ⚠️ Filtres vides ou invalides, abandon de la recherche');
+      return;
+    }
+
+    setFilters(finalFilters);
+    setLoadingResults(true);
+
+    // ✅ CORRIGÉ: Déclarer payload avant le try pour qu'il soit accessible dans le catch
+    let payload: any = {};
+
+    try {
+      // Construire le texte de recherche depuis le vecteur
+      const searchText = finalFilters.join(' ');
+      logger.log('[ResultatBesoinScreen] 🔍 Recherche avec texte:', searchText);
+
+      payload = {
+        texte: searchText,  // "Nike Air Max 42 Douala"
+      };
+
+      // Ajouter localisation utilisateur si disponible
+      if (location?.coords?.latitude && location?.coords?.longitude) {
+        payload.gps_mobile = `${location.coords.latitude},${location.coords.longitude}`;
+        logger.log('[ResultatBesoinScreen] 📍 Position ajoutée:', payload.gps_mobile);
+      } else {
+        logger.warn('[ResultatBesoinScreen] ⚠️ GPS non disponible:', {
+          hasLocation: !!location,
+          hasCoords: !!location?.coords,
+          latitude: location?.coords?.latitude,
+          longitude: location?.coords?.longitude,
+        });
+      }
+
+      if (searchImages.length > 0) {
+        payload.base64_image = searchImages.map(extractBase64);
+      }
+
+      if (searchDocuments.length > 0) {
+        payload.doc_base64 = searchDocuments.map((doc) => extractBase64(doc.base64));
+      }
+
+      if (searchGPSString) {
+        payload.gps_fixe = searchGPSString;
+
+        if (searchGPSString.includes('|')) {
+          const points = searchGPSString.split('|').map((coord) => {
+            const [latStr, lngStr] = coord.split(',');
+            return { lat: parseFloat(latStr), lng: parseFloat(lngStr) };
+          });
+          payload.gps_zone = points;
+          payload.gps_fixe_coords = JSON.stringify(points);
+        } else {
+          const [latStr, lngStr] = searchGPSString.split(',');
+          const lat = parseFloat(latStr);
+          const lng = parseFloat(lngStr);
+          payload.gps_fixe_coords = JSON.stringify([{ lat, lng }]);
+        }
+      }
+
+      logger.log('[ResultatBesoinScreen] 📤 Envoi requête API:', payload);
+
+      // ✅ OPTIMISATION: Vérifier le cache des résultats de recherche
+      const searchCacheKey = createCacheKey('search_results', filters.join('_'), searchGPSString || 'no_gps');
+      const cachedResults = await CacheManager.get<Product[]>(searchCacheKey, 10 * 60 * 1000); // 10 minutes
+      if (cachedResults) {
+        logger.log('[ResultatBesoinScreen] ✅ Résultats chargés depuis le cache');
+        setResults(cachedResults);
+        trackNavigation('search', {
+          queryType: searchGPSString ? 'location' : 'keyword',
+          resultsCount: cachedResults.length,
+          hasResults: cachedResults.length > 0,
+        });
+        setLoadingResults(false);
+        return;
+      }
+
+      // ✅ Utiliser la recherche globale (même que HomeScreen)
+      const apiResponse = await apiPost('/api/search/direct', payload);
+
+      logger.log('[ResultatBesoinScreen] 📥 Réponse API reçue');
+
+      if (apiResponse?.success === false) {
+        logger.warn('[ResultatBesoinScreen] ⚠️ Recherche échouée:', apiResponse?.error);
+        setResults([]);
+        setLoadingResults(false);
+        return;
+      }
+
+      const extractedResults = extractSearchResults(apiResponse);
+
+      // ✅ OPTIMISÉ 2025-11-30: Extraire l'objet prestataires depuis la réponse (si présent)
+      // Il est déjà dans chaque résultat, mais on peut le garder en mémoire si nécessaire
+      const prestataires = (apiResponse as any)?.data?.prestataires || (apiResponse as any)?.prestataires;
+      if (prestataires) {
+        logger.log('[ResultatBesoinScreen] ✅ Objet prestataires reçu:', Object.keys(prestataires).length, 'prestataires');
+        // Les prestataires sont déjà dans les résultats enrichis, pas besoin de fetchPrestatairesBatch
+      }
+
+      // ✅ OPTIMISATION: Sauvegarder dans le cache
+      await CacheManager.set(searchCacheKey, extractedResults);
+
+      if (extractedResults.length > 0) {
+        logger.log('[ResultatBesoinScreen] ✅ Résultats trouvés:', extractedResults.length);
+        logger.log('[ResultatBesoinScreen] ✅ Données complètes:', {
+          avecId: extractedResults.some(r => r.id !== undefined),
+          avecIsActive: extractedResults.some(r => r.is_active !== undefined),
+          avecCreatedAt: extractedResults.some(r => r.created_at !== undefined),
+          avecUserId: extractedResults.some(r => r.user_id !== undefined),
+        });
+        // ✨ NOUVEAU : Pagination - Limiter aux premiers résultats
+        setResults(extractedResults); // Garder tous les résultats pour la pagination
+        setCurrentPage(1);
+        setHasMoreResults(extractedResults.length > RESULTS_PER_PAGE);
+
+        // ✨ NOUVEAU : Sauvegarder dans l'historique
+        const searchQueryText = Array.isArray(input) ? input.join(' ') : input;
+        if (searchQueryText.trim()) {
+          saveToHistory(searchQueryText.trim(), extractedResults.length);
+        }
+        // ✅ Tracking métriques : Recherche avec résultats
+        trackNavigation('search', {
+          queryType: searchGPSString ? 'location' : 'keyword',
+          resultsCount: extractedResults.length,
+          hasResults: true,
+        });
+      } else {
+        logger.log('[ResultatBesoinScreen] ⚠️ Aucun résultat trouvé');
+        setResults([]);
+        setCurrentPage(1);
+        setHasMoreResults(false);
+        // ✨ NOUVEAU : Sauvegarder quand même dans l'historique
+        const searchQueryText = Array.isArray(input) ? input.join(' ') : input;
+        if (searchQueryText.trim()) {
+          saveToHistory(searchQueryText.trim(), 0);
+        }
+        // ✅ Tracking métriques : Recherche sans résultats
+        trackNavigation('search', {
+          queryType: searchGPSString ? 'location' : 'keyword',
+          hasResults: false,
+        });
+      }
+    } catch (error: any) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : error?.stack;
+      logger.error('[ResultatBesoinScreen] ❌ Erreur recherche:', {
+        message: errorMessage,
+        stack: errorStack,
+        payload,
+        error: error
+      });
+      setResults([]);
+    } finally {
+      setLoadingResults(false);
+    }
+  }, [location, searchDocuments, searchGPSString, searchImages, filters, saveToHistory]);
+
+  // Sélectionner suggestion
+  const selectSuggestion = useCallback(async (suggestion: CombinationSuggestion) => {
+    // ✅ CORRIGÉ: Déclarer vector avant le try pour qu'il soit accessible dans le catch
+    let vector: string[] = [];
+
+    try {
+      logger.log('[ResultatBesoinScreen] 🎯 Suggestion sélectionnée:', suggestion);
+
+      vector = getSuggestionVector(suggestion);
+      if (!vector || vector.length === 0) {
+        // ✅ CORRIGÉ: Afficher le contexte de l'erreur
+        logger.error('[ResultatBesoinScreen] ❌ Suggestion invalide ou vecteur manquant', {
+          suggestion: suggestion,
+          hasFullVector: !!suggestion?.full_vector,
+          hasProductVector: !!suggestion?.product_vector,
+          vectorLength: vector?.length
+        });
+        return;
+      }
+
+      const vectorText = vector.join(' ').trim();
+      setSearchQuery(vectorText);
+      setFilters(vector);
+      setShowSuggestions(false);
+      await searchFinal(vector);
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] ❌ Crash selectSuggestion:', {
+        message: errorMessage,
+        stack: errorStack,
+        suggestion: suggestion,
+        vector: vector,
+        error: error
+      });
+    }
+  }, [searchFinal]);
+
+  // Handler ChatInput (identique HomeScreen)
+  const handleChatSubmit = async (input: any) => {
+    const queryText = typeof input === 'string' ? input : input?.text || '';
+    setSearchQuery(queryText);
+    // Le useEffect se chargera de lancer la recherche
+  };
+
+  // ✅ OPTIMISATION : Pull-to-Refresh avec cache
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // Recharger les résultats actuels
+      if (filters.length > 0) {
+        const searchText = filters.join(' ');
+        const refreshCacheKey = createCacheKey('search_results', searchText, 'refresh');
+
+        // ✅ OPTIMISATION: Vérifier le cache même pour le refresh (mais TTL plus court)
+        const cachedRefresh = await CacheManager.get<Product[]>(refreshCacheKey, 2 * 60 * 1000); // 2 minutes pour refresh
+        if (cachedRefresh) {
+          logger.log('[ResultatBesoinScreen] ✅ Résultats refresh depuis le cache');
+          setResults(cachedRefresh);
+          setRefreshing(false);
+          return;
+        }
+
+        const payload: any = { texte: searchText };
+
+        if (location?.coords?.latitude && location?.coords?.longitude) {
+          payload.gps_mobile = `${location.coords.latitude},${location.coords.longitude}`;
+        }
+
+        const apiResponse = await apiPost('/api/search/direct', payload);
+
+        if (apiResponse?.success === false) {
+          logger.warn('[ResultatBesoinScreen] ⚠️ Refresh recherche échoué:', apiResponse?.error);
+          setResults([]);
+        } else {
+          const refreshedResults = extractSearchResults(apiResponse);
+
+          // ✅ OPTIMISATION: Sauvegarder dans le cache
+          await CacheManager.set(refreshCacheKey, refreshedResults);
+
+          setResults(refreshedResults);
+        }
+      }
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error('[ResultatBesoinScreen] Erreur refresh:', {
+        message: errorMessage,
+        stack: errorStack,
+        searchQuery,
+        error: error
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [filters, location]);
+
+  const renderSuggestions = useCallback(() => {
+    if (!showSuggestions) {
+      return null;
+    }
+
+    if (suggestions.length > 0) {
+      return (
+        <View style={styles.suggestionsContainer}>
+          <View style={styles.suggestionsHeader}>
+            <View style={styles.suggestionsHeaderLeft}>
+              <SafeIcon name="sparkles" size={18} color={modernColors.primary} />
+              <Text style={styles.suggestionsTitle}>Caractéristiques recommandées</Text>
+              <Text style={styles.suggestionsCount}>({suggestions.length})</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.manualSearchButton}
+              onPress={() => {
+                try {
+                  setShowSuggestions(false);
+                  searchFinal(searchQuery || filters);
+                } catch (error) {
+                  // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  const errorStack = error instanceof Error ? error.stack : undefined;
+                  logger.error('[ResultatBesoinScreen] ❌ Crash recherche manuelle:', {
+                    message: errorMessage,
+                    stack: errorStack,
+                    searchQuery,
+                    filters,
+                    error: error
+                  });
+                }
+              }}
+            >
+              <SafeIcon name="search" size={16} color={modernColors.primary} />
+              <Text style={styles.manualSearchText}>Rechercher sans suggestion</Text>
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={suggestions}
+            keyExtractor={(_, index) => `suggestion-${index}`}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.suggestionsList}
+            contentContainerStyle={styles.suggestionsContent}
+            renderItem={({ item, index }) => {
+              const chipsVector = getSuggestionVector(item);
+              const chips = Array.isArray(chipsVector) ? chipsVector.slice(0, 6) : [];
+              const priceText = typeof item?.prix === 'number'
+                ? `${Math.round(item.prix).toLocaleString()} ${item?.devise || 'XAF'}`
+                : null;
+
+              return (
+                <TouchableOpacity
+                  key={`suggestion-card-${index}`}
+                  style={styles.suggestionCard}
+                  onPress={() => {
+                    hapticSelect();
+                    selectSuggestion(item);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.suggestionCardHeader}>
+                    <View style={styles.suggestionCardHeaderLeft}>
+                      <SafeIcon name="layers" size={16} color={modernColors.primary} />
+                      <Text style={styles.suggestionCardTitle}>Proposition {index + 1}</Text>
+                    </View>
+                    {item?.usage_count ? (
+                      <View style={styles.suggestionUsagePill}>
+                        <SafeIcon name="flame" size={14} color="#EA580C" />
+                        <Text style={styles.suggestionUsageText}>
+                          {item.usage_count}× recherché
+                        </Text>
+                      </View>
+                    ) : priceText ? (
+                      <Text style={styles.priceText}>{priceText}</Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.vectorChips}>
+                    {Array.isArray(chips) && chips.length > 0 ? chips.filter(chip => chip != null && String(chip).trim() !== '').map((chip, chipIndex) => (
+                      <View key={`${String(chip)}-${chipIndex}`} style={styles.productChip}>
+                        <Text style={styles.productChipText} numberOfLines={1}>
+                          {String(chip)}
+                        </Text>
+                      </View>
+                    )) : null}
+                  </View>
+
+                  <View style={styles.statsRow}>
+                    {item.chosen_location && (
+                      <View style={styles.locationRow}>
+                        <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                        <Text style={styles.locationText}>{item.chosen_location}</Text>
+                      </View>
+                    )}
+                    {item.has_variant && item.variant_dimension ? (
+                      <Text style={styles.statsText}>⚙️ {item.variant_dimension}</Text>
+                    ) : item.usage_count ? (
+                      <Text style={styles.statsText}>👥 {item.usage_count} recherche(s)</Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.selectButton}>
+                    <SafeIcon name="check-circle" size={16} color={modernColors.primary} />
+                    <Text style={styles.selectButtonText}>Utiliser cette suggestion</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.noSuggestionsContainer}>
+        <Text style={styles.noSuggestionsText}>Aucune suggestion</Text>
+        <TouchableOpacity
+          style={styles.manualSearchButton}
+          onPress={() => {
+            try {
+              setShowSuggestions(false);
+              searchFinal(searchQuery || filters);
+            } catch (error) {
+              // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              const errorStack = error instanceof Error ? error.stack : undefined;
+              logger.error('[ResultatBesoinScreen] ❌ Crash recherche quand même:', {
+                message: errorMessage,
+                stack: errorStack,
+                searchQuery,
+                filters,
+                error: error
+              });
+            }
+          }}
+        >
+          <SafeIcon name="search" size={16} color={modernColors.primary} />
+          <Text style={styles.manualSearchText}>Rechercher quand même</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }, [filters, searchFinal, searchQuery, selectSuggestion, setShowSuggestions, showSuggestions, suggestions]);
+
+  const listHeaderComponent = useMemo(() => (
+    <View style={styles.listHeaderContainer}>
+      <View style={styles.searchSection}>
+        <View style={styles.searchBarContainer}>
+          <View style={styles.searchInputWrapper}>
+            <SafeIcon name="search" size={18} color="#94A3B8" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={dynamicPlaceholder || 'Rechercher un produit...'}
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                // ✨ NOUVEAU : Déclencher autocomplete en temps réel avec debouncing
+                if (text.trim().length >= 2) {
+                  triggerAutocomplete(text);
+                } else {
+                  // Afficher l'historique si la recherche est vide
+                  if (text.trim().length === 0 && searchHistory.length > 0) {
+                    triggerAutocomplete('');
+                  }
+                }
+              }}
+              returnKeyType="search"
+              onSubmitEditing={() => {
+                try {
+                  if (searchQuery.trim()) {
+                    setShowSuggestions(false);
+                    searchFinal(searchQuery);
+                    saveToHistory(searchQuery, filteredResults.length);
+                  }
+                } catch (error) {
+                  // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  const errorStack = error instanceof Error ? error.stack : undefined;
+                  console.error('[ResultatBesoinScreen] ❌ Crash onSubmitEditing:', {
+                    message: errorMessage,
+                    stack: errorStack,
+                    searchQuery,
+                    error: error
+                  });
+                }
+              }}
+            />
+            <TouchableOpacity
+              style={styles.searchActionsButton}
+              onPress={() => setShowSearchActions(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Afficher les outils de recherche avancée"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <SafeIcon name="more-horizontal" size={18} color={modernColors.primary} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={[styles.searchButton, loadingResults && styles.searchButtonDisabled]}
+            onPress={() => {
+              hapticPress();
+              try {
+                if (searchQuery.trim()) {
+                  setShowSuggestions(false);
+                  searchFinal(searchQuery);
+                  hapticSuccess();
+                }
+              } catch (error) {
+                // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                const errorStack = error instanceof Error ? error.stack : undefined;
+                console.error('[ResultatBesoinScreen] ❌ Crash onPress:', {
+                  message: errorMessage,
+                  stack: errorStack,
+                  searchQuery,
+                  filters,
+                  error: error
+                });
+              }
+            }}
+            disabled={loadingResults}
+            activeOpacity={0.8}
+          >
+            {loadingResults ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <SafeIcon name="send" size={20} color="#FFF" />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* ✨ NOUVEAU : Suggestions autocomplete en temps réel */}
+        {autocompleteSuggestions.length > 0 && searchQuery.trim().length >= 0 && (
+          <View style={styles.autocompleteContainer}>
+            {isLoadingAutocomplete && (
+              <View style={styles.autocompleteLoading}>
+                <ActivityIndicator size="small" color={modernColors.primary} />
+                <Text style={styles.autocompleteLoadingText}>Recherche...</Text>
+              </View>
+            )}
+            <FlatList
+              data={autocompleteSuggestions}
+              keyExtractor={(item, index) => `autocomplete-${index}-${item.text}`}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.autocompleteItem}
+                  onPress={() => {
+                    hapticSelect();
+                    setSearchQuery(item.text);
+                    setShowSuggestions(false);
+                    searchFinal(item.text);
+                    saveToHistory(item.text);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <SafeIcon
+                    name={item.icon || 'search'}
+                    size={18}
+                    color={item.type === 'history' ? modernColors.textSecondary : modernColors.primary}
+                    type="lucide"
+                  />
+                  <Text style={styles.autocompleteText} numberOfLines={1}>
+                    {item.text}
+                  </Text>
+                  {item.type === 'history' && (
+                    <TouchableOpacity
+                      style={styles.autocompleteDelete}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        hapticPress();
+                        removeFromHistory(item.text);
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <SafeIcon name="x" size={14} color={modernColors.textTertiary} />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              )}
+              scrollEnabled={false}
+            />
+            {searchHistory.length > 0 && searchQuery.trim().length === 0 && (
+              <View style={styles.historyHeader}>
+                <Text style={styles.historyHeaderText}>Historique</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    hapticPress();
+                    clearHistory();
+                  }}
+                >
+                  <Text style={styles.clearHistoryText}>Effacer</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
+        {(Array.isArray(searchImages) && searchImages.length > 0 || Array.isArray(searchDocuments) && searchDocuments.length > 0 || !!searchGPSString) && (
+          <View style={styles.searchAttachmentsContainer}>
+            {Array.isArray(searchImages) && searchImages.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.searchImagesPreview}
+              >
+                {searchImages.filter(uri => uri != null && String(uri).trim() !== '').map((uri, index) => (
+                  <View key={`search-image-${index}`} style={styles.searchImageWrapper}>
+                    <Image source={{ uri: String(uri) }} style={styles.searchImage} />
+                    <TouchableOpacity
+                      style={styles.attachmentRemoveButton}
+                      onPress={() => removeSearchImage(index)}
+                    >
+                      <Text style={styles.attachmentRemoveIcon}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
+            {Array.isArray(searchDocuments) && searchDocuments.length > 0 && (
+              <View style={styles.searchDocumentsList}>
+                {searchDocuments.filter(doc => doc != null && doc.name != null).map((doc, index) => (
+                  <View key={`search-doc-${index}`} style={styles.searchDocumentItem}>
+                    <SafeIcon name="file-text" size={14} color={modernColors.primary} />
+                    <Text style={styles.searchDocumentName} numberOfLines={1}>
+                      {String(doc.name || 'Document')}
+                    </Text>
+                    <TouchableOpacity onPress={() => removeSearchDocument(index)}>
+                      <Text style={styles.attachmentRemoveIcon}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {!!searchGPSString && (
+              <View style={styles.searchGPSBadge}>
+                <SafeIcon name="navigation" size={14} color={modernColors.primary} />
+                <Text style={styles.searchGPSLabel} numberOfLines={1}>
+                  {searchGPSString.includes('|')
+                    ? `${searchGPSString.split('|').length} points GPS`
+                    : searchGPSData
+                      ? `${searchGPSData.lat.toFixed(4)}, ${searchGPSData.lng.toFixed(4)}`
+                      : searchGPSString}
+                </Text>
+                <TouchableOpacity onPress={clearSearchGPS}>
+                  <Text style={styles.attachmentRemoveIcon}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+
+      <View style={styles.quickSortRow}>
+        <TouchableOpacity
+          style={[styles.quickSortPill, sortBy === 'pertinence' && styles.quickSortPillActive]}
+          onPress={() => {
+            hapticSelect();
+            setSortBy('pertinence');
+          }}
+          activeOpacity={0.7}
+        >
+          <SafeIcon
+            name="zap"
+            size={16}
+            color={sortBy === 'pertinence' ? '#FFFFFF' : modernColors.primary}
+          />
+          <Text style={[styles.quickSortText, sortBy === 'pertinence' && styles.quickSortTextActive]}>
+            Pertinence
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.quickSortPill, sortBy === 'proximite' && styles.quickSortPillActive]}
+          onPress={() => {
+            hapticSelect();
+            setSortBy('proximite');
+          }}
+          activeOpacity={0.7}
+        >
+          <SafeIcon
+            name="map-pin"
+            size={16}
+            color={sortBy === 'proximite' ? '#FFFFFF' : modernColors.primary}
+          />
+          <Text style={[styles.quickSortText, sortBy === 'proximite' && styles.quickSortTextActive]}>
+            Proximité
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.quickSortPill, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.quickSortPillActive]}
+          onPress={() => {
+            hapticSelect();
+            if (sortBy === 'prix_asc') {
+              setSortBy('prix_desc');
+            } else if (sortBy === 'prix_desc') {
+              setSortBy('pertinence');
+            } else {
+              setSortBy('prix_asc');
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <SafeIcon
+            name={sortBy === 'prix_desc' ? 'arrow-down' : 'arrow-up'}
+            size={16}
+            color={(sortBy === 'prix_asc' || sortBy === 'prix_desc') ? '#FFFFFF' : modernColors.primary}
+          />
+          <Text style={[styles.quickSortText, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.quickSortTextActive]}>
+            Prix {sortBy === 'prix_desc' ? '↓' : sortBy === 'prix_asc' ? '↑' : ''}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {showFilters && (
+        <View style={styles.filtersPanel}>
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterGroupTitle}>📊 Trier par</Text>
+            <View style={styles.filterOptions}>
+              <TouchableOpacity
+                style={[styles.filterOption, sortBy === 'pertinence' && styles.filterOptionActive]}
+                onPress={() => setSortBy('pertinence')}
+              >
+                <Text style={[styles.filterOptionText, sortBy === 'pertinence' && styles.filterOptionTextActive]}>Pertinence</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterOption, sortBy === 'proximite' && styles.filterOptionActive]}
+                onPress={() => setSortBy('proximite')}
+              >
+                <Text style={[styles.filterOptionText, sortBy === 'proximite' && styles.filterOptionTextActive]}>Proximité</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterOption, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.filterOptionActive]}
+                onPress={() => {
+                  if (sortBy === 'prix_asc') {
+                    setSortBy('prix_desc');
+                  } else if (sortBy === 'prix_desc') {
+                    setSortBy('pertinence');
+                  } else {
+                    setSortBy('prix_asc');
+                  }
+                }}
+              >
+                <Text style={[styles.filterOptionText, (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.filterOptionTextActive]}>
+                  Prix
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.filterHint}>Sélectionnez un ordre de tri pour affiner votre recherche.</Text>
+          </View>
+
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterGroupTitle}>🎯 Catégories rapides</Text>
+            <View style={styles.filterOptions}>
+              {([
+                { key: 'all' as FilterCategory, label: 'Tous' },
+                { key: 'with_stock' as FilterCategory, label: 'En stock' },
+                { key: 'with_variants' as FilterCategory, label: 'Variantes' },
+                { key: 'nearby' as FilterCategory, label: 'Proche' },
+              ]).map((category) => {
+                const isActive = filterCategory === category.key;
+                return (
+                  <TouchableOpacity
+                    key={category.key}
+                    style={[styles.filterOption, isActive && styles.filterOptionActive]}
+                    onPress={() => setFilterCategory(category.key)}
+                  >
+                    <Text style={[styles.filterOptionText, isActive && styles.filterOptionTextActive]}>{category.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.priceFilterContainer}>
+            <Text style={styles.filterGroupTitle}>💵 Filtre de prix</Text>
+            <View style={styles.priceFilterRow}>
+              <TextInput
+                style={styles.priceFilterInput}
+                placeholder="Min"
+                keyboardType="numeric"
+                value={priceFilter.min !== null ? String(priceFilter.min) : ''}
+                onChangeText={(text) => {
+                  const sanitized = text.replace(/[^0-9]/g, '');
+                  setPriceFilter((prev) => ({
+                    ...prev,
+                    min: sanitized ? parseInt(sanitized, 10) : null,
+                  }));
+                }}
+              />
+              <Text style={styles.priceFilterSeparator}>—</Text>
+              <TextInput
+                style={styles.priceFilterInput}
+                placeholder="Max"
+                keyboardType="numeric"
+                value={priceFilter.max !== null ? String(priceFilter.max) : ''}
+                onChangeText={(text) => {
+                  const sanitized = text.replace(/[^0-9]/g, '');
+                  setPriceFilter((prev) => ({
+                    ...prev,
+                    max: sanitized ? parseInt(sanitized, 10) : null,
+                  }));
+                }}
+              />
+            </View>
+            <View style={styles.priceFilterActions}>
+              <TouchableOpacity
+                style={styles.priceFilterReset}
+                onPress={() => setPriceFilter({ min: null, max: null, currency: priceFilter.currency })}
+              >
+                <Text style={styles.priceFilterResetText}>Réinitialiser</Text>
+              </TouchableOpacity>
+              <Text style={styles.priceFilterInfo}>Devise: {priceFilter.currency}</Text>
+            </View>
+          </View>
+
+          {dynamicFilters && typeof dynamicFilters === 'object' && Object.entries(dynamicFilters).map(([label, values]) => (
+            <View key={label} style={styles.dynamicFilterSection}>
+              <View style={styles.filterGroupHeader}>
+                <Text style={styles.dynamicFilterLabel}>{label}</Text>
+                {selectedFilters[label] && (
+                  <TouchableOpacity
+                    onPress={() => setSelectedFilters((prev) => {
+                      const next = { ...prev };
+                      delete next[label];
+                      return next;
+                    })}
+                  >
+                    <Text style={styles.filterHint}>Effacer</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <View style={styles.dynamicFilterOptions}>
+                {values && (values instanceof Set || Array.isArray(values)) ? Array.from(values).filter(v => v != null && v !== undefined && String(v).trim() !== '').map((value) => {
+                  const isActive = selectedFilters[label] === value;
+                  return (
+                    <TouchableOpacity
+                      key={String(value)}
+                      style={[styles.dynamicFilterChip, isActive && styles.dynamicFilterChipActive]}
+                      onPress={() => setSelectedFilters((prev) => {
+                        const next = { ...prev };
+                        if (isActive) {
+                          delete next[label];
+                        } else {
+                          next[label] = String(value);
+                        }
+                        return next;
+                      })}
+                    >
+                      <Text style={[styles.dynamicFilterChipText, isActive && styles.dynamicFilterChipTextActive]}>
+                        {String(value)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }) : null}
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {filters.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersScroll}
+        >
+          <Text style={styles.filtersLabel}>Filtres :</Text>
+          {Array.isArray(filters) && filters.length > 0 ? filters.map((filter, index) => (
+            <View key={index} style={styles.filterChip}>
+              <Text style={styles.filterText}>{filter}</Text>
+            </View>
+          )) : null}
+        </ScrollView>
+      )}
+
+      {!showSuggestions && filteredResults.length > 0 && (
+        <View style={styles.resultsHeader}>
+          <Text style={styles.resultsCount}>
+            {filteredResults.length} résultat{filteredResults.length > 1 ? 's' : ''}
+          </Text>
+          {sortBy !== 'pertinence' && (
+            <Text style={styles.sortInfo}>
+              Trié par : {
+                sortBy === 'proximite' ? '📍 Proximité' :
+                  sortBy === 'prix_asc' ? '💰 Prix ↑' :
+                    '💎 Prix ↓'
+              }
+            </Text>
+          )}
+        </View>
+      )}
+
+      {showSuggestions && renderSuggestions()}
+    </View>
+  ), [
+    chooseSearchImages,
+    clearSearchGPS,
+    dynamicFilters,
+    dynamicPlaceholder,
+    filterCategory,
+    filteredResults.length,
+    filters,
+    loadingResults,
+    loadingSuggestions,
+    pickSearchDocument,
+    priceFilter,
+    removeSearchDocument,
+    removeSearchImage,
+    renderSuggestions,
+    searchDocuments,
+    searchGPSData,
+    searchGPSString,
+    searchImages,
+    searchQuery,
+    searchFinal,
+    selectedFilters,
+    setFilterCategory,
+    setSelectedFilters,
+    setShowSuggestions,
+    setPriceFilter,
+    showFilters,
+    showSuggestions,
+    sortBy,
+    takeSearchPhoto,
+  ]);
+
+  // ✨ NOUVEAU : Pagination - Limiter les résultats affichés (défini avant renderListFooter)
+  const paginatedResults = useMemo(() => {
+    if (showSuggestions) return [];
+    // Limiter aux résultats de la page actuelle
+    const startIndex = 0;
+    const endIndex = currentPage * RESULTS_PER_PAGE;
+    return filteredResults.slice(startIndex, endIndex);
+  }, [filteredResults, currentPage, showSuggestions]);
+
+  const listData = paginatedResults;
+
+  const renderListFooter = useCallback(() => {
+    if (loadingResults) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={modernColors.primary} />
+          <Text style={styles.loadingText}>Recherche en cours...</Text>
+        </View>
+      );
+    }
+    // ✨ NOUVEAU : Afficher un loader pour "charger plus"
+    if (loadingMore) {
+      return (
+        <View style={styles.loadMoreContainer}>
+          <ActivityIndicator size="small" color={modernColors.primary} />
+          <Text style={styles.loadMoreText}>Chargement...</Text>
+        </View>
+      );
+    }
+    // ✨ NOUVEAU : Afficher "Fin des résultats" si pas plus de résultats
+    if (!hasMoreResults && listData.length > 0 && filteredResults.length > RESULTS_PER_PAGE) {
+      return (
+        <View style={styles.endOfResultsContainer}>
+          <Text style={styles.endOfResultsText}>
+            Tous les {filteredResults.length} résultats affichés
+          </Text>
+        </View>
+      );
+    }
+    return <View style={{ height: 16 }} />;
+  }, [loadingResults, loadingMore, hasMoreResults, listData.length, filteredResults.length]);
+
+  // ✨ NOUVEAU : Composant skeleton pour le chargement (style Facebook)
+  const renderSkeletonItem = useCallback(() => (
+    <View style={styles.skeletonCard}>
+      <View style={styles.skeletonImage} />
+      <View style={styles.skeletonContent}>
+        <View style={styles.skeletonTitle} />
+        <View style={styles.skeletonSubtitle} />
+        <View style={styles.skeletonPrice} />
+      </View>
+    </View>
+  ), []);
+
+  const renderEmptyComponent = useCallback(() => {
+    if (loadingResults) {
+      return (
+        <View style={styles.skeletonContainer}>
+          {[1, 2, 3].map((i) => (
+            <View key={i} style={{ marginBottom: 12 }}>
+              {renderSkeletonItem()}
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    if (showSuggestions) {
+      return null;
+    }
+
+    if (searchQuery.length > 0) {
+      return (
+        <View style={styles.emptyState}>
+          <SafeIcon
+            name={searchError ? "alert-circle" : "package-x"}
+            size={64}
+            color={searchError ? "#EF4444" : "#D1D5DB"}
+          />
+          <Text style={styles.emptyTitle}>
+            {searchError ? "Erreur de recherche" : "Aucun résultat"}
+          </Text>
+          <Text style={styles.emptyText}>
+            {searchError || "Essayez avec d'autres mots-clés ou ajustez les filtres"}
+          </Text>
+          {searchError && (
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                hapticPress();
+                setSearchError(null);
+                if (searchQuery.trim()) {
+                  searchFinal(searchQuery);
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.retryButtonText}>Réessayer</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyState}>
+        <SafeIcon name="search" size={64} color="#D1D5DB" />
+        <Text style={styles.emptyTitle}>Recherchez un produit</Text>
+        <Text style={styles.emptyText}>
+          Décrivez ce que vous cherchez en langage naturel
+        </Text>
+      </View>
+    );
+  }, [loadingResults, searchQuery.length, showSuggestions, searchError, searchFinal]);
+
+  // ✨ NOUVEAU : Fonction pour charger plus de résultats (infinite scroll)
+  const handleLoadMore = useCallback(async () => {
+    if (loadingMore || !hasMoreResults) return;
+
+    setLoadingMore(true);
+    try {
+      // Simuler un délai pour le chargement
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Vérifier s'il y a plus de résultats à charger
+      const nextPage = currentPage + 1;
+      const totalResults = filteredResults.length;
+      const nextPageEnd = nextPage * RESULTS_PER_PAGE;
+
+      if (nextPageEnd < totalResults) {
+        setCurrentPage(nextPage);
+        setHasMoreResults(nextPageEnd < totalResults);
+      } else {
+        setHasMoreResults(false);
+      }
+    } catch (error) {
+      logger.error('[ResultatBesoinScreen] Erreur chargement plus:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMoreResults, currentPage, filteredResults.length]);
+
+  return (
+    <View style={styles.container}>
+      <Animated.View style={[styles.collapsibleHeader, { transform: [{ translateY: headerTranslate }] }]}>
+        <NavigatorToolbar
+          title="Recherche intelligente"
+          subtitle={filters.length > 0 ? `Filtres actifs (${filters.length})` : 'Résultats personnalisés'}
+          rightSlot={(
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => {
+                hapticSelect();
+                setShowFilters(!showFilters);
+              }}
+              activeOpacity={0.7}
+            >
+              <SafeIcon name="sliders" size={20} color={modernColors.primary} />
+            </TouchableOpacity>
+          )}
+          showHandle={false}
+          density="compact"
+          backIcon="back"
+        />
+      </Animated.View>
+
+      <FlashList
+        data={listData}
+        keyExtractor={(item) => `${item.service_id}`}
+        // ✅ GÉANT-LEVEL: FlashList pour performance optimale (niveau TikTok/Instagram)
+        estimatedItemSize={260} // Hauteur estimée ProductCard (260px selon styles)
+        // ✅ GÉANT-LEVEL: Numéro de colonnes adaptatif selon device type (tablette: 2-3 colonnes)
+        numColumns={deviceType.columns}
+        // ✅ GÉANT-LEVEL: Espacement adaptatif (plus d'espace sur tablette)
+        ItemSeparatorComponent={() => (
+          <View style={{
+            height: deviceType.isTablet ? 16 : 12,
+            width: deviceType.isTablet && deviceType.columns > 1 ? 16 : 0
+          }} />
+        )}
+        // ✨ NOUVEAU : Pagination avec infinite scroll
+        onEndReached={() => {
+          if (!loadingMore && hasMoreResults && filteredResults.length > listData.length) {
+            handleLoadMore();
+          }
+        }}
+        onEndReachedThreshold={0.5} // Déclencher à 50% de la fin
+        // ✅ GÉANT-LEVEL: RefreshControl pour pull-to-refresh
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={modernColors.primary}
+          />
+        }
+        renderItem={({ item }) => {
+          // ✅ NOUVEAU 2025-11-26 : Détecter le type de résultat et utiliser le composant spécialisé
+          const searchMethod = (item as any).search_method || '';
+          const data = (item as any).data || {}; // ✅ CORRIGÉ: item.data n'existe pas sur le type Product
+          const type = data.type || (item as any).type || '';
+
+          // Détecter le type spécialisé
+          if (searchMethod.includes('specialized_pharmacy') || type === 'pharmacie') {
+            return (
+              <PharmacieResultCard
+                pharmacy={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  nom: data.titre_service?.valeur || item.nom || '',
+                  adresse: data.adresse,
+                  quartier: data.quartier,
+                  ville: data.ville,
+                  telephone: data.telephone,
+                  whatsapp: data.whatsapp,
+                  is_on_duty_now: data.is_on_duty_now,
+                  distance_km: item.distance_km,
+                  services: data.services,
+                }}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'pharmacy' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          if (searchMethod.includes('specialized_hospital') || type === 'hopital_clinique') {
+            return (
+              <HopitalResultCard
+                hospital={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  nom: data.titre_service?.valeur || item.nom || '',
+                  type_etablissement: data.type_etablissement,
+                  adresse: data.adresse,
+                  quartier: data.quartier,
+                  ville: data.ville,
+                  telephone: data.telephone,
+                  whatsapp: data.whatsapp,
+                  is_available_now: data.is_available_now,
+                  distance_km: item.distance_km,
+                  prestations_medicales: data.prestations_medicales,
+                  urgences_disponible: data.urgences_disponible,
+                }}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'hospital' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          if (searchMethod.includes('specialized_laboratory') || type === 'laboratoire_imagerie') {
+            return (
+              <LaboratoireResultCard
+                laboratory={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  nom: data.titre_service?.valeur || item.nom || '',
+                  type_laboratoire: data.type_laboratoire,
+                  quartier: data.quartier,
+                  ville: data.ville,
+                  telephone: data.telephone,
+                  whatsapp: data.whatsapp,
+                  is_available_now: data.is_available_now,
+                  distance_km: item.distance_km,
+                  analyses_disponibles: data.analyses_disponibles,
+                  imagerie_disponible: data.imagerie_disponible,
+                }}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'laboratory' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          if (searchMethod.includes('specialized_travel_agency') || type === 'agence_voyage') {
+            // ✅ NOUVEAU : Détecter les tickets bus dans les résultats
+            const busTickets = (item as any).bus_tickets || (item as any).tickets || null;
+
+            return (
+              <AgenceVoyageResultCard
+                agency={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  nom_agence: data.titre_service?.valeur || item.nom || '',
+                  quartier: data.quartier,
+                  ville: data.ville,
+                  telephone: data.telephone,
+                  whatsapp: data.whatsapp,
+                  peut_emettre_tickets_bus: data.peut_emettre_tickets_bus,
+                  distance_km: item.distance_km,
+                  services_voyage: data.services_voyage,
+                  compagnies_bus: data.compagnies_bus,
+                }}
+                busTickets={busTickets}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'travel_agency' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          // ✅ NOUVEAU : Détecter les résultats de recherche de tickets bus directement
+          if (searchMethod.includes('bus_tickets') || type === 'bus_ticket') {
+            // ✅ CORRIGÉ: Protection contre undefined/null - s'assurer que busTickets est toujours un array valide
+            let busTickets: any[] = [];
+            if (Array.isArray(item)) {
+              busTickets = item.filter(ticket => ticket != null);
+            } else if (item != null) {
+              busTickets = [item];
+            }
+            const agencyData = (item as any)?.agency || {};
+
+            return (
+              <AgenceVoyageResultCard
+                agency={{
+                  id: agencyData.agency_id || item?.service_id,
+                  service_id: agencyData.agency_service_id || item?.service_id,
+                  nom_agence: agencyData.agency_nom || data?.titre_service?.valeur || item?.nom || '',
+                  quartier: agencyData.agency_quartier || data?.quartier,
+                  ville: agencyData.agency_ville || data?.ville,
+                  telephone: agencyData.agency_telephone || data?.telephone,
+                  whatsapp: agencyData.agency_whatsapp || data?.whatsapp,
+                  peut_emettre_tickets_bus: true,
+                  distance_km: (item as any)?.distance_km || item?.distance_km,
+                }}
+                busTickets={Array.isArray(busTickets) && busTickets.length > 0 ? busTickets.filter(ticket => ticket != null).map((ticket: any) => ({
+                  product_id: ticket?.product_id || ticket?.id,
+                  product_name: ticket?.product_name || ticket?.name,
+                  bus_model_name: ticket?.bus_model_name,
+                  total_seats: ticket?.total_seats,
+                  available_seats: ticket?.available_seats || 0,
+                  reserved_seats: ticket?.reserved_seats || 0,
+                  bus_number: ticket?.bus_number,
+                  departure_city: ticket?.departure_city,
+                  arrival_city: ticket?.arrival_city,
+                  departure_date: ticket?.departure_date,
+                  departure_time: ticket?.departure_time,
+                  ticket_price: ticket?.ticket_price || ticket?.price,
+                  currency: ticket?.currency || 'XAF',
+                  distance_km: ticket?.distance_km,
+                })) : []}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'bus_ticket' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          if (searchMethod.includes('specialized_covoiturage') || type === 'covoiturage') {
+            return (
+              <CovoiturageResultCard
+                covoiturage={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  depart: data.depart || '',
+                  destination: data.destination || '',
+                  date_depart: data.date_depart || '',
+                  heure_depart: data.heure_depart || '',
+                  nombre_places: data.nombre_places || 4,
+                  places_disponibles: data.places_disponibles || 0,
+                  prix_par_place: data.prix_par_place || 0,
+                  devise: data.devise || 'XAF',
+                  distance_km: item.distance_km,
+                }}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'covoiturage' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          if (searchMethod.includes('specialized_taxi') || type === 'taxi_ville') {
+            return (
+              <TaxiResultCard
+                taxi={{
+                  id: item.service_id,
+                  service_id: item.service_id,
+                  nom_chauffeur: data.titre_service?.valeur || data.nom_chauffeur,
+                  telephone: data.telephone || '',
+                  whatsapp: data.whatsapp,
+                  zone_intervention: data.zone_intervention,
+                  is_available_now: data.is_available_now,
+                  is_on_duty: data.is_on_duty,
+                  distance_km: item.distance_km,
+                }}
+                onPress={() => {
+                  trackNavigation('click', {
+                    itemType: 'taxi' as any, // ✅ CORRIGÉ: Type non assignable, utiliser as any
+                    itemId: item.service_id?.toString(),
+                  });
+                  (navigation as any).navigate('ServiceDetail', {
+                    serviceId: item.service_id,
+                  });
+                }}
+              />
+            );
+          }
+
+          // Par défaut, utiliser SwipeableProductCard pour les résultats généraux (avec swipe actions)
+          const itemIndex = filteredResults.findIndex(r => r.service_id === item.service_id);
+          const itemAnim = getItemAnimation(itemIndex);
+          const translateY = itemAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [30, 0],
+          });
+          const opacity = itemAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 1],
+          });
+
+          return (
+            <Animated.View
+              style={{
+                opacity,
+                transform: [{ translateY }],
+              }}
+            >
+              <SwipeableProductCard
+                product={item}
+                service={{
+                  ...item,
+                  data: (item as any).data || {}, // ✅ CORRIGÉ: item.data n'existe pas sur le type Product
+                  user: (item as any).user || null, // ✅ CORRIGÉ: item.user n'existe pas sur le type Product
+                  prestataire: item.prestataire || null,
+                } as any}
+                onPress={() => {
+                  hapticPress();
+                  trackNavigation('click', {
+                    itemType: 'product',
+                    itemId: item.service_id?.toString(),
+                  });
+                }}
+                onLike={async (liked) => {
+                  // ✨ NOUVEAU : Gérer le like via API
+                  if (!user) {
+                    Alert.alert('Connexion requise', 'Veuillez vous connecter pour aimer un produit');
+                    return;
+                  }
+
+                  try {
+                    const response = await apiPost(`/api/content/${item.service_id}/engagement`, {
+                      action: 'like',
+                      set: liked,
+                    });
+
+                    if (response.success) {
+                      hapticSuccess();
+                      const responseData = response.data as any;
+                      logger.log('[ResultatBesoinScreen] ✅ Like sauvegardé:', {
+                        serviceId: item.service_id,
+                        liked,
+                        likesCount: responseData?.likes,
+                      });
+                    }
+                  } catch (error) {
+                    logger.error('[ResultatBesoinScreen] ❌ Erreur like:', {
+                      error,
+                      serviceId: item.service_id,
+                      liked,
+                    });
+                    // Ne pas afficher d'alerte pour ne pas interrompre l'UX
+                  }
+                }}
+                onFavorite={async (favorited) => {
+                  // ✨ NOUVEAU : Gérer le favoris via API avec debouncing (scalabilité)
+                  if (!user) {
+                    Alert.alert('Connexion requise', 'Veuillez vous connecter pour ajouter aux favoris');
+                    return;
+                  }
+
+                  // Annuler le debounce précédent pour ce service
+                  if (debouncedFavoriteRef.current) {
+                    debouncedFavoriteRef.current.cancel();
+                  }
+
+                  // Créer un nouveau debounce (500ms)
+                  const debouncedFavorite = debounce(async () => {
+                    try {
+                      const response = await apiPost(`/api/content/${item.service_id}/engagement`, {
+                        action: 'save', // "save" = favorite dans l'API
+                        set: favorited,
+                      });
+
+                      if (response.success) {
+                        hapticSuccess();
+                        const responseData = response.data as any;
+                        logger.log('[ResultatBesoinScreen] ✅ Favorite sauvegardé:', {
+                          serviceId: item.service_id,
+                          favorited,
+                          savesCount: responseData?.saves,
+                        });
+                      }
+                    } catch (error) {
+                      logger.error('[ResultatBesoinScreen] ❌ Erreur favorite:', {
+                        error,
+                        serviceId: item.service_id,
+                        favorited,
+                      });
+                    }
+                  }, 500);
+
+                  debouncedFavoriteRef.current = debouncedFavorite;
+                  debouncedFavorite();
+                }}
+                onShare={async () => {
+                  // ✨ NOUVEAU : Gérer le partage
+                  hapticPress();
+
+                  try {
+                    // Option 1: Tracker le partage via metrics
+                    if (user) {
+                      try {
+                        await apiPost('/api/metrics/track', {
+                          action: 'click',
+                          itemType: 'product',
+                          itemId: item.service_id?.toString(),
+                          engagement_type: 'share',
+                        });
+                      } catch (error) {
+                        // Ignorer les erreurs de tracking, ne pas bloquer le partage
+                        logger.debug('[ResultatBesoinScreen] Erreur tracking share:', error);
+                      }
+                    }
+
+                    // Option 2: Utiliser le Share natif de React Native
+                    const productName = item.nom || 'Ce produit';
+                    const shareUrl = `${ENVIRONMENT.API_URL || 'https://yukpomnang.com'}/service/${item.service_id}`;
+                    const shareMessage = `🌟 Découvrez "${productName}" sur Yukpomnang\n\n${shareUrl}`;
+
+                    const result = await Share.share({
+                      message: shareMessage,
+                      title: productName,
+                      url: shareUrl,
+                    });
+
+                    if (result.action === Share.sharedAction) {
+                      hapticSuccess();
+                      logger.log('[ResultatBesoinScreen] ✅ Produit partagé:', {
+                        serviceId: item.service_id,
+                        activityType: result.activityType,
+                      });
+                    }
+                  } catch (error) {
+                    logger.error('[ResultatBesoinScreen] ❌ Erreur share:', {
+                      error,
+                      serviceId: item.service_id,
+                    });
+                    // Afficher une alerte seulement si c'est une erreur critique
+                    if (error instanceof Error && error.message.includes('not available')) {
+                      Alert.alert('Partage indisponible', 'Le partage n\'est pas disponible sur cet appareil');
+                    }
+                  }
+                }}
+              />
+            </Animated.View>
+          );
+        }}
+        ListHeaderComponent={listHeaderComponent}
+        ListFooterComponent={renderListFooter}
+        ListEmptyComponent={renderEmptyComponent}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        // ✅ GÉANT-LEVEL: FlashList gère automatiquement la virtualisation optimale
+        // Pas besoin de removeClippedSubviews, maxToRenderPerBatch, etc.
+        estimatedListSize={{ height: 800, width: Dimensions.get('window').width }}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          {
+            useNativeDriver: true,
+            listener: (event: any) => {
+              // ✅ Tracking métriques : Scroll (avec throttling via scrollEventThrottle)
+              // Le scroll est déjà throttlé à 16ms, on track seulement les scrolls significatifs
+              const scrollY = event.nativeEvent.contentOffset.y;
+              if (scrollY > 0 && scrollY % 500 < 16) { // Track tous les 500px
+                trackNavigation('view', {}); // Utiliser 'view' pour scroll
+              }
+            }
+          }
+        )}
+        scrollEventThrottle={16}
+      />
+
+      <Modal
+        visible={showSearchActions}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSearchActions(false)}
+      >
+        <View style={styles.searchActionsModalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowSearchActions(false)}
+          />
+          <View style={styles.searchActionsPopoverWrapper}>
+            <View style={styles.searchActionsPopover}>
+              <TouchableOpacity
+                style={styles.searchActionsChip}
+                onPress={() => handleSearchAction(() => setShowGPSModal(true))}
+              >
+                <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
+                <Text style={styles.searchActionsChipLabel}>Localisation</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.searchActionsChip}
+                onPress={() => handleSearchAction(takeSearchPhoto)}
+              >
+                <SafeIcon name="camera" size={18} color={modernColors.primary} />
+                <Text style={styles.searchActionsChipLabel}>Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.searchActionsChip}
+                onPress={() => handleSearchAction(chooseSearchImages)}
+              >
+                <SafeIcon name="image" size={18} color={modernColors.primary} />
+                <Text style={styles.searchActionsChipLabel}>Galerie</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.searchActionsChip}
+                onPress={() => handleSearchAction(pickSearchDocument)}
+              >
+                <SafeIcon name="file-text" size={18} color={modernColors.primary} />
+                <Text style={styles.searchActionsChipLabel}>Document</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <ModernGPSModal
+        visible={showGPSModal}
+        onClose={() => setShowGPSModal(false)}
+        onSelect={handleGPSSelect}
+        currentLocation={searchGPSData || undefined}
+        title="Sélection de localisation GPS"
+        allowZoneSelection
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  collapsibleHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    elevation: 10,
+  },
+  filterButton: {
+    padding: 8,
+  },
+  searchSection: {
+    backgroundColor: '#FFF',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+  },
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 15,
+    color: '#111827',
+  },
+  // ✨ NOUVEAU : Styles autocomplete
+  autocompleteContainer: {
+    marginTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    maxHeight: 300,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  autocompleteLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+  },
+  autocompleteLoadingText: {
+    fontSize: 14,
+    color: modernColors.textSecondary,
+  },
+  autocompleteItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  autocompleteText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#111827',
+  },
+  autocompleteDelete: {
+    padding: 4,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#F9FAFB',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  historyHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: modernColors.textSecondary,
+    textTransform: 'uppercase',
+  },
+  clearHistoryText: {
+    fontSize: 12,
+    color: modernColors.primary,
+    fontWeight: '600',
+  },
+  searchActionsButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  searchButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: modernColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchButtonDisabled: {
+    opacity: 0.7,
+  },
+  searchAttachmentsContainer: {
+    marginTop: 12,
+    gap: 12,
+  },
+  searchImagesPreview: {
+    gap: 12,
+    paddingVertical: 4,
+  },
+  searchImageWrapper: {
+    position: 'relative',
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  searchImage: {
+    width: '100%',
+    height: '100%',
+  },
+  attachmentRemoveButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#111827',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachmentRemoveIcon: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  searchDocumentsList: {
+    gap: 8,
+  },
+  searchDocumentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchDocumentName: {
+    flex: 1,
+    fontSize: 12,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  searchGPSBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECFEFF',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  searchGPSLabel: {
+    fontSize: 12,
+    color: '#0F172A',
+    maxWidth: 200,
+  },
+  searchActionsModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 100,
+    paddingHorizontal: 24,
+  },
+  searchActionsPopoverWrapper: {
+    maxWidth: 320,
+    width: '100%',
+    alignItems: 'flex-end',
+  },
+  searchActionsPopover: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  searchActionsChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  searchActionsChipLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  filtersScroll: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  filtersLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  filterChip: {
+    backgroundColor: modernColors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  filterText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  filtersPanel: {
+    backgroundColor: '#FFF',
+    padding: 16,
+    gap: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  filterGroup: {
+    gap: 12,
+  },
+  filterGroupTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  filterHint: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    marginTop: -8,
+  },
+  dynamicFilterSection: {
+    gap: 8,
+    marginTop: 8,
+  },
+  dynamicFilterLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  dynamicFilterOptions: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  dynamicFilterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFF',
+  },
+  dynamicFilterChipActive: {
+    backgroundColor: modernColors.primary,
+    borderColor: modernColors.primary,
+  },
+  dynamicFilterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  dynamicFilterChipTextActive: {
+    color: '#FFF',
+  },
+  filterOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: modernColors.primary,
+    backgroundColor: '#FFF',
+  },
+  filterOptionActive: {
+    backgroundColor: modernColors.primary,
+  },
+  filterOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: modernColors.primary,
+  },
+  filterOptionTextActive: {
+    color: '#FFF',
+  },
+  suggestionsContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  suggestionsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  suggestionsHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  suggestionsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  suggestionsCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: modernColors.primary,
+  },
+  closeSuggestions: {
+    fontSize: 20,
+    color: '#6B7280',
+  },
+  suggestionsList: {
+    maxHeight: 280,
+  },
+  suggestionsContent: {
+    paddingBottom: 12,
+  },
+  suggestionCard: {
+    marginBottom: 12,
+  },
+  suggestionCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  suggestionCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  suggestionCardTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  suggestionUsagePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF1E6',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  suggestionUsageText: {
+    fontSize: 12,
+    color: modernColors.accent,
+    fontWeight: '600',
+  },
+  vectorChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 12,
+  },
+  productChip: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: modernColors.primary,
+  },
+  productChipText: {
+    fontSize: 13,
+    color: modernColors.primary,
+    fontWeight: '500',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  locationText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  statsText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  priceText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: modernColors.primary,
+  },
+  selectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: modernColors.primary,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  selectButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  manualSearchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderWidth: 2,
+    borderColor: modernColors.primary,
+    borderRadius: 12,
+    borderStyle: 'dashed',
+    marginTop: 16,
+  },
+  manualSearchText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: modernColors.primary,
+  },
+  noSuggestionsContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noSuggestionsText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 16,
+  },
+  resultsContainer: {
+    flex: 1,
+  },
+  resultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  resultsCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  sortInfo: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  resultsList: {
+    padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  // ✅ NOUVEAU : Styles pour bouton de réessai
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#6366F1',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // ✨ NOUVEAU : Styles skeleton pour chargement (style Facebook)
+  skeletonContainer: {
+    padding: 16,
+  },
+  skeletonCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  skeletonImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    backgroundColor: '#E5E7EB',
+  },
+  skeletonContent: {
+    flex: 1,
+    gap: 8,
+  },
+  skeletonTitle: {
+    height: 20,
+    borderRadius: 4,
+    backgroundColor: '#E5E7EB',
+    width: '70%',
+  },
+  skeletonSubtitle: {
+    height: 16,
+    borderRadius: 4,
+    backgroundColor: '#E5E7EB',
+    width: '50%',
+  },
+  skeletonPrice: {
+    height: 18,
+    borderRadius: 4,
+    backgroundColor: '#E5E7EB',
+    width: '40%',
+    marginTop: 8,
+  },
+  // ✅ NOUVEAU : Styles pour filtre par prix (de mobile2)
+  filterGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  priceFilterContainer: {
+    marginTop: 12,
+  },
+  priceFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  priceFilterInput: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  priceFilterSeparator: {
+    fontSize: 18,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  priceFilterActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  priceFilterReset: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  priceFilterResetText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  priceFilterApply: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: modernColors.primary,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  priceFilterApplyText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  priceFilterInfo: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  // ✅ NOUVEAU : Styles pour les raccourcis de tri
+  quickSortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  quickSortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  quickSortPillActive: {
+    backgroundColor: modernColors.primary,
+    borderColor: modernColors.primary,
+  },
+  quickSortText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  quickSortTextActive: {
+    color: '#FFFFFF',
+  },
+  listHeaderContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  listContent: {
+    paddingTop: HEADER_HEIGHT + 16,
+    paddingHorizontal: 16,
+    paddingBottom: 80,
+  },
+  // ✨ NOUVEAU : Styles pour pagination
+  loadMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 12,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    color: modernColors.textSecondary,
+  },
+  endOfResultsContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  endOfResultsText: {
+    fontSize: 12,
+    color: modernColors.textTertiary,
+    fontStyle: 'italic',
+  },
+});
+
+export default ResultatBesoinScreen;

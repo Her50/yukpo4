@@ -1,6 +1,6 @@
 use crate::{
     controllers::content_engagement_controller::{
-        get_content_analytics, get_content_engagement, toggle_content_engagement,
+        get_content_analytics, get_content_engagement, toggle_content_engagement, track_watch_time,
     },
     middlewares::jwt::{jwt_auth, optional_jwt_auth},
     state::AppState,
@@ -25,6 +25,10 @@ pub fn content_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/content/{content_id}/engagement",
             post(toggle_content_engagement).layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/content/{content_id}/track-watch",
+            post(track_watch_time).layer(middleware::from_fn(jwt_auth)),
         )
         .with_state(state)
 }

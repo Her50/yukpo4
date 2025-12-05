@@ -4,6 +4,7 @@ use serde_json::Value;
 use sqlx::PgPool;
 
 use crate::core::types::AppResult;
+use crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS;
 use crate::services::global_promo_service::GlobalPromoService;
 use crate::services::negotiated_price_service::NegotiatedPriceService;
 
@@ -15,7 +16,7 @@ impl ProductPriceService {
     /// 1. Prix négocié (si conversation_id fourni)
     /// 2. Promotions produit (dans le JSON du produit/service)
     /// 3. Promotions globales (global_promo_entries)
-    /// 
+    ///
     /// Priorité : Prix négocié > Promotion produit > Promotion globale > Prix de base
     pub async fn get_real_product_price(
         pool: &PgPool,
@@ -26,10 +27,7 @@ impl ProductPriceService {
         client_user_id: Option<i32>,
     ) -> AppResult<f64> {
         // 1. Récupérer le prix de base
-        let base_price = product
-            .get("price")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
+        let base_price = product.get("price").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
         if base_price <= 0.0 {
             return Ok(0.0);
@@ -47,6 +45,14 @@ impl ProductPriceService {
                     "[ProductPriceService] Prix négocié trouvé pour conversation {}: {} FCFA (base: {} FCFA)",
                     conv_id, negotiated_price, base_price
                 );
+
+                // ✅ Monitoring : Enregistrer prix négocié appliqué
+                if let Ok(metrics) =
+                    &*crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS
+                {
+                    metrics.negotiated_price_applied_total.inc();
+                }
+
                 return Ok(negotiated_price);
             }
         }
@@ -57,17 +63,27 @@ impl ProductPriceService {
                 "[ProductPriceService] Promotion produit trouvée pour service {}: {} FCFA (base: {} FCFA)",
                 service_id, product_promo_price, base_price
             );
+
+            // ✅ Monitoring : Enregistrer promotion appliquée
+            if let Ok(metrics) =
+                &*crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS
+            {
+                metrics.product_promotion_applied_total.inc();
+                let discount_cents = ((base_price - product_promo_price) * 100.0) as i64;
+                if discount_cents > 0 {
+                    metrics
+                        .product_promotion_discount_cents_total
+                        .inc_by(discount_cents);
+                }
+            }
+
             return Ok(product_promo_price);
         }
 
         // 3. Vérifier les promotions globales (global_promo_entries)
-        if let Ok(global_promo_price) = GlobalPromoService::get_real_product_price(
-            pool,
-            service_id,
-            product_index,
-            base_price,
-        )
-        .await
+        if let Ok(global_promo_price) =
+            GlobalPromoService::get_real_product_price(pool, service_id, product_index, base_price)
+                .await
         {
             if (global_promo_price - base_price).abs() > 0.01 {
                 debug!(
@@ -134,27 +150,22 @@ impl ProductPriceService {
         }
 
         // Récupérer le prix de base
-        let base_price = product
-            .get("price")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
+        let base_price = product.get("price").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
         if base_price <= 0.0 {
             return None;
         }
 
         // Récupérer la valeur de promotion
-        let promotion_valeur_str = product
-            .get("promotionValeur")
-            .and_then(|v| {
-                if let Some(s) = v.as_str() {
-                    Some(s.to_string())
-                } else if let Some(f) = v.as_f64() {
-                    Some(f.to_string())
-                } else {
-                    None
-                }
-            });
+        let promotion_valeur_str = product.get("promotionValeur").and_then(|v| {
+            if let Some(s) = v.as_str() {
+                Some(s.to_string())
+            } else if let Some(f) = v.as_f64() {
+                Some(f.to_string())
+            } else {
+                None
+            }
+        });
 
         if let Some(valeur_str) = promotion_valeur_str {
             // Parser la valeur de promotion
@@ -162,11 +173,7 @@ impl ProductPriceService {
 
             // Cas 1 : Pourcentage (ex: "20%", "20 %")
             if valeur_str.ends_with('%') {
-                if let Ok(percentage) = valeur_str
-                    .trim_end_matches('%')
-                    .trim()
-                    .parse::<f64>()
-                {
+                if let Ok(percentage) = valeur_str.trim_end_matches('%').trim().parse::<f64>() {
                     let discounted = base_price * (1.0 - percentage / 100.0);
                     return Some(discounted.max(0.0));
                 }
@@ -228,10 +235,7 @@ impl ProductPriceService {
         }
 
         // Vérifier promotion globale
-        let base_price = product
-            .get("price")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
+        let base_price = product.get("price").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
         if base_price <= 0.0 {
             return Ok(false);
@@ -250,4 +254,3 @@ impl ProductPriceService {
         }
     }
 }
-

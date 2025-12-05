@@ -331,19 +331,19 @@ pub async fn get_conversation_participants(
     let participants: Vec<ParticipantInfo> = rows
         .iter()
         .map(|row| ParticipantInfo {
-            user_id: row.get("user_id"),
+            user_id: row.get::<i32, _>("user_id"),
             user_name: row
                 .get::<Option<String>, _>("user_name")
                 .unwrap_or_else(|| format!("User {}", row.get::<i32, _>("user_id"))),
             user_email: row
                 .get::<Option<String>, _>("user_email")
                 .unwrap_or_default(),
-            user_avatar: row.get("user_avatar"),
-            role: row.get("role"),
-            invited_by: row.get("invited_by"),
-            invited_by_name: row.get("invited_by_name"),
-            joined_at: row.get("joined_at"),
-            can_remove: row.get("can_remove"),
+            user_avatar: row.get::<Option<String>, _>("user_avatar"),
+            role: row.get::<String, _>("role"),
+            invited_by: row.get::<Option<i32>, _>("invited_by"),
+            invited_by_name: row.get::<Option<String>, _>("invited_by_name"),
+            joined_at: row.get::<chrono::DateTime<chrono::Utc>, _>("joined_at"),
+            can_remove: row.get::<bool, _>("can_remove"),
         })
         .collect();
 
@@ -461,14 +461,16 @@ pub async fn get_tag_history(
     let results: Vec<TagHistoryItem> = rows
         .iter()
         .map(|row| TagHistoryItem {
-            user_id: row.get("user_id"),
+            user_id: row.get::<i32, _>("user_id"),
             user_name: row
                 .get::<Option<String>, _>("user_name")
                 .unwrap_or_else(|| format!("User {}", row.get::<i32, _>("user_id"))),
-            user_avatar: row.get("user_avatar"),
-            tag_count: row.get("tag_count"),
-            last_tagged: row.get("last_tagged"),
-            context: row.get("context"),
+            user_avatar: row.get::<Option<String>, _>("user_avatar"),
+            tag_count: row.get::<i64, _>("tag_count"),
+            last_tagged: row
+                .get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_tagged")
+                .unwrap_or_else(|| chrono::Utc::now()),
+            context: row.get::<Option<String>, _>("context"),
         })
         .collect();
 

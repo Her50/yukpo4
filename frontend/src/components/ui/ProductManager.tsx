@@ -427,11 +427,71 @@ const ProductManager: React.FC<ProductManagerProps> = ({
         });
     };
 
+    // ✅ AMÉLIORATION 2025-01-27 : Validation stricte côté frontend
+    const validateProduct = (product: Product): { isValid: boolean; errors: string[] } => {
+        const errors: string[] = [];
+
+        // Validation du nom
+        if (!product.name || !product.name.trim()) {
+            errors.push("Le nom du produit est requis");
+        } else if (product.name.trim().length < 1) {
+            errors.push("Le nom du produit doit contenir au moins 1 caractère");
+        } else if (product.name.trim().length > 200) {
+            errors.push("Le nom du produit ne peut pas dépasser 200 caractères");
+        }
+
+        // Validation du prix
+        if (!product.price || !product.price.trim()) {
+            errors.push("Le prix du produit est requis");
+        } else {
+            const priceNum = parseFloat(product.price.replace(/\s/g, '').replace(',', '.'));
+            if (isNaN(priceNum)) {
+                errors.push("Le prix doit être un nombre valide");
+            } else if (priceNum < 0) {
+                errors.push("Le prix ne peut pas être négatif");
+            } else if (priceNum === 0) {
+                errors.push("Le prix ne peut pas être zéro");
+            } else if (priceNum > 1_000_000_000) {
+                errors.push("Le prix est trop élevé (maximum 1 milliard)");
+            }
+        }
+
+        // Validation de la devise
+        if (!product.currency || !product.currency.trim()) {
+            errors.push("La devise est requise");
+        }
+
+        // Validation de la description (optionnelle mais limitée)
+        if (product.description && product.description.length > 5000) {
+            errors.push("La description ne peut pas dépasser 5000 caractères");
+        }
+
+        // Validation des images
+        if (product.images && product.images.length > 10) {
+            errors.push("Maximum 10 images par produit");
+        }
+
+        // Validation des vidéos
+        if (product.videos && product.videos.length > 3) {
+            errors.push("Maximum 3 vidéos par produit");
+        }
+
+        return {
+            isValid: errors.length === 0,
+            errors
+        };
+    };
+
     const handleSaveProduct = () => {
-        if (!editingProduct?.name.trim() || !editingProduct?.price.trim()) {
+        if (!editingProduct) return;
+
+        // ✅ AMÉLIORATION : Validation stricte
+        const validation = validateProduct(editingProduct);
+        if (!validation.is_valid) {
             toast({
-                title: "Erreur",
-                description: "Veuillez remplir le nom et le prix du produit",
+                title: "Erreur de validation",
+                description: validation.errors.join(". "),
+                variant: "destructive",
             });
             return;
         }

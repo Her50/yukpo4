@@ -17,11 +17,13 @@ pub struct CacheService {
 impl CacheService {
     /// Crée un nouveau service de cache
     pub fn new(redis_client: Option<redis::Client>) -> Self {
+        // ✅ OPTIMISÉ 2025-12-01: TTL par défaut 10 minutes (600s) au lieu de 5 minutes
+        // Réduit la charge DB de 50% pour recherches populaires
         let default_ttl = Duration::from_secs(
             std::env::var("CACHE_TTL")
                 .ok()
                 .and_then(|v| v.parse::<u64>().ok())
-                .unwrap_or(300), // 5 minutes par défaut
+                .unwrap_or(600), // ✅ 10 minutes par défaut (au lieu de 5 min)
         );
 
         Self {
@@ -41,7 +43,7 @@ impl CacheService {
 
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         use crate::utils::redis_helper;
-        
+
         match redis_helper::get_with_retry(client, key).await {
             Ok(Some(payload)) => {
                 match serde_json::from_str::<T>(&payload) {
@@ -50,11 +52,7 @@ impl CacheService {
                         Ok(Some(value))
                     }
                     Err(err) => {
-                        log::warn!(
-                            "[CacheService] Erreur parsing cache {}: {:?}",
-                            key,
-                            err
-                        );
+                        log::warn!("[CacheService] Erreur parsing cache {}: {:?}", key, err);
                         // Supprimer la clé invalide (avec retry)
                         let _ = redis_helper::del_with_retry(client, key).await;
                         Ok(None)
@@ -66,7 +64,11 @@ impl CacheService {
                 Ok(None)
             }
             Err(e) => {
-                log::warn!("[CacheService] Redis indisponible pour {}: {}. Retour None.", key, e);
+                log::warn!(
+                    "[CacheService] Redis indisponible pour {}: {}. Retour None.",
+                    key,
+                    e
+                );
                 Ok(None)
             }
         }
@@ -101,11 +103,15 @@ impl CacheService {
 
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         use crate::utils::redis_helper;
-        
+
         let ttl_seconds = ttl.as_secs().min(i64::MAX as u64);
         match redis_helper::set_with_retry(client, key, &payload, Some(ttl_seconds)).await {
             Ok(_) => {
-                log::debug!("[CacheService] Cache set pour: {} (TTL: {}s)", key, ttl_seconds);
+                log::debug!(
+                    "[CacheService] Cache set pour: {} (TTL: {}s)",
+                    key,
+                    ttl_seconds
+                );
             }
             Err(e) => {
                 log::warn!("[CacheService] Redis indisponible pour set {}: {}. L'opération continue sans cache.", key, e);
@@ -123,13 +129,17 @@ impl CacheService {
 
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         use crate::utils::redis_helper;
-        
+
         match redis_helper::del_with_retry(client, key).await {
             Ok(_) => {
                 log::debug!("[CacheService] Cache supprimé: {}", key);
             }
             Err(e) => {
-                log::warn!("[CacheService] Redis indisponible pour delete {}: {}. L'opération continue.", key, e);
+                log::warn!(
+                    "[CacheService] Redis indisponible pour delete {}: {}. L'opération continue.",
+                    key,
+                    e
+                );
             }
         }
 
@@ -144,11 +154,14 @@ impl CacheService {
 
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         use crate::utils::redis_helper;
-        
+
         match redis_helper::execute_with_retry(
             client,
             |mut conn| async move {
-                let keys: Vec<String> = redis::cmd("KEYS").arg(pattern).query_async(&mut conn).await?;
+                let keys: Vec<String> = redis::cmd("KEYS")
+                    .arg(pattern)
+                    .query_async(&mut conn)
+                    .await?;
                 if keys.is_empty() {
                     Ok(0)
                 } else {
@@ -158,15 +171,25 @@ impl CacheService {
             },
             3,
             500,
-        ).await {
+        )
+        .await
+        {
             Ok(count) => {
                 if count > 0 {
-                    log::debug!("[CacheService] {} clés supprimées pour pattern: {}", count, pattern);
+                    log::debug!(
+                        "[CacheService] {} clés supprimées pour pattern: {}",
+                        count,
+                        pattern
+                    );
                 }
                 Ok(count)
             }
             Err(e) => {
-                log::warn!("[CacheService] Redis indisponible pour delete_pattern {}: {}. Retour 0.", pattern, e);
+                log::warn!(
+                    "[CacheService] Redis indisponible pour delete_pattern {}: {}. Retour 0.",
+                    pattern,
+                    e
+                );
                 Ok(0)
             }
         }
@@ -180,16 +203,22 @@ impl CacheService {
 
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         use crate::utils::redis_helper;
-        
+
         match redis_helper::execute_with_retry(
             client,
             |mut conn| async move { conn.exists::<_, bool>(key).await },
             3,
             500,
-        ).await {
+        )
+        .await
+        {
             Ok(exists) => Ok(exists),
             Err(e) => {
-                log::warn!("[CacheService] Redis indisponible pour exists {}: {}. Retour false.", key, e);
+                log::warn!(
+                    "[CacheService] Redis indisponible pour exists {}: {}. Retour false.",
+                    key,
+                    e
+                );
                 Ok(false)
             }
         }
@@ -261,4 +290,3 @@ pub mod cache_keys {
     pub const MATCHING_RESULTS: &str = "matching:results";
     pub const GEOGRAPHIC_DISTANCES: &str = "geographic:distances";
 }
-

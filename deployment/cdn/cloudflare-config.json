@@ -1,0 +1,44 @@
+{
+    "name": "Yukpomnang CDN Configuration",
+    "description": "✅ Phase 3: Configuration CDN CloudFlare pour assets vidéo",
+    "cache_rules": [
+        {
+            "path": "/api/media/videos/*",
+            "cache_ttl": 86400,
+            "cache_level": "cache_everything",
+            "edge_cache_ttl": 604800
+        },
+        {
+            "path": "/api/media/images/*",
+            "cache_ttl": 3600,
+            "cache_level": "cache_everything",
+            "edge_cache_ttl": 86400
+        },
+        {
+            "path": "/api/studio/previews/*",
+            "cache_ttl": 300,
+            "cache_level": "cache_everything",
+            "edge_cache_ttl": 600
+        }
+    ],
+    "compression": {
+        "enabled": true,
+        "algorithms": [
+            "gzip",
+            "brotli"
+        ]
+    },
+    "minification": {
+        "css": true,
+        "html": true,
+        "js": true
+    },
+    "image_optimization": {
+        "enabled": true,
+        "formats": [
+            "webp",
+            "avif"
+        ],
+        "quality": 85
+    }
+}

@@ -1,231 +1,271 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+// ✅ NOUVEAU Phase 10: Modal de progression détaillée pour génération vidéo
+// Affiche la progression étape par étape avec estimation temps
+
+import React from 'react';
+import {
+    ActivityIndicator,
+    Modal,
+    StyleSheet,
+    Text,
+    View
+} from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
+} from 'react-native-reanimated';
 import { modernColors } from '../theme/modernTheme';
-import type { ProgressStep } from '../types/VideoGeneration';
-import { NativeCard } from './NativeDesign';
+import { NativeButton, NativeCard } from './NativeDesign';
 import SafeIcon from './SafeIcon';
+
+export type GenerationStep =
+    | 'storyboard'
+    | 'clips'
+    | 'audio'
+    | 'rendering'
+    | 'complete'
+    | 'error';
+
+export interface GenerationProgress {
+    step: GenerationStep;
+    progress: number; // 0-100
+    estimatedTimeRemaining: number; // secondes
+    currentScene?: number;
+    totalScenes?: number;
+    message?: string;
+    error?: string;
+}
 
 interface VideoProgressModalProps {
     visible: boolean;
-    steps: ProgressStep[];
-    startTime?: number; // Timestamp de début
+    progress: GenerationProgress | null;
+    onCancel?: () => void;
+    onDismiss?: () => void;
 }
 
-const VideoProgressModal: React.FC<VideoProgressModalProps> = ({
+const getStepLabel = (step: GenerationStep): string => {
+    switch (step) {
+        case 'storyboard':
+            return 'Génération du storyboard';
+        case 'clips':
+            return 'Génération des clips vidéo';
+        case 'audio':
+            return 'Synchronisation audio';
+        case 'rendering':
+            return 'Rendu final';
+        case 'complete':
+            return 'Vidéo générée!';
+        case 'error':
+            return 'Erreur de génération';
+        default:
+            return 'Génération en cours...';
+    }
+};
+
+const getStepIcon = (step: GenerationStep): string => {
+    switch (step) {
+        case 'storyboard':
+            return 'file-text';
+        case 'clips':
+            return 'video';
+        case 'audio':
+            return 'music';
+        case 'rendering':
+            return 'film';
+        case 'complete':
+            return 'check-circle';
+        case 'error':
+            return 'alert-circle';
+        default:
+            return 'loader';
+    }
+};
+
+const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    if (mins > 0) {
+        return `${mins}m ${secs}s`;
+    }
+    return `${secs}s`;
+};
+
+export const VideoProgressModal: React.FC<VideoProgressModalProps> = ({
     visible,
-    steps,
-    startTime,
+    progress,
+    onCancel,
+    onDismiss,
 }) => {
-    const [elapsedTime, setElapsedTime] = useState(0);
-    const pulseAnim = useRef(new Animated.Value(0)).current;
+    const progressAnim = useSharedValue(0);
 
-    // Calculer le pourcentage de progression
-    const progress = useMemo(() => {
-        const completed = steps.filter(s => s.status === 'completed').length;
-        const total = steps.length;
-        return total > 0 ? Math.round((completed / total) * 100) : 0;
-    }, [steps]);
-
-    // Calculer le temps estimé restant
-    const estimatedTimeRemaining = useMemo(() => {
-        if (!startTime || progress === 0) {
-            return null;
+    React.useEffect(() => {
+        if (progress) {
+            progressAnim.value = withTiming(progress.progress, { duration: 300 });
         }
+    }, [progress?.progress]);
 
-        const elapsed = (Date.now() - startTime) / 1000; // en secondes
-        const avgTimePerStep = elapsed / (progress / 100);
-        const remainingSteps = (100 - progress) / 100;
-        const estimated = Math.round(avgTimePerStep * remainingSteps);
-
-        if (estimated < 60) {
-            return `${estimated}s`;
-        } else if (estimated < 3600) {
-            return `${Math.round(estimated / 60)}min`;
-        } else {
-            return `${Math.round(estimated / 3600)}h`;
-        }
-    }, [startTime, progress]);
-
-    // Animation pulse pour l'étape en cours
-    useEffect(() => {
-        if (visible) {
-            const pulseAnimation = Animated.loop(
-                Animated.sequence([
-                    Animated.timing(pulseAnim, {
-                        toValue: 1,
-                        duration: 1000,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(pulseAnim, {
-                        toValue: 0,
-                        duration: 1000,
-                        useNativeDriver: true,
-                    }),
-                ])
-            );
-            pulseAnimation.start();
-            return () => pulseAnimation.stop();
-        }
-    }, [visible, pulseAnim]);
-
-    // Mettre à jour le temps écoulé
-    useEffect(() => {
-        if (!visible || !startTime) return;
-
-        const interval = setInterval(() => {
-            setElapsedTime(Math.round((Date.now() - startTime) / 1000));
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [visible, startTime]);
-
-    const formatTime = (seconds: number): string => {
-        if (seconds < 60) {
-            return `${seconds}s`;
-        } else if (seconds < 3600) {
-            return `${Math.round(seconds / 60)}min`;
-        } else {
-            return `${Math.round(seconds / 3600)}h`;
-        }
-    };
-
-    const runningStep = steps.find(s => s.status === 'running');
-    const pulseOpacity = pulseAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0.3, 0.7],
+    const animatedProgressStyle = useAnimatedStyle(() => {
+        return {
+            width: `${progressAnim.value}%`,
+        };
     });
 
+    if (!progress) {
+        return null;
+    }
+
+    const isComplete = progress.step === 'complete';
+    const isError = progress.step === 'error';
+
     return (
-        <View style={styles.container}>
-            <NativeCard style={styles.card}>
-                <View style={styles.header}>
-                    <SafeIcon name="loader" size={24} color={modernColors.primary} />
-                    <Text style={styles.title}>Génération en cours</Text>
-                </View>
-
-                {/* ✅ PHASE 2: Barre de progression */}
-                <View style={styles.progressContainer}>
-                    <View style={styles.progressBarBackground}>
-                        <Animated.View
-                            style={[
-                                styles.progressBarFill,
-                                {
-                                    width: `${progress}%`,
-                                },
-                            ]}
+        <Modal
+            visible={visible}
+            transparent
+            animationType="fade"
+            onRequestClose={onDismiss}
+        >
+            <View style={styles.overlay}>
+                <NativeCard style={styles.modalCard}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <SafeIcon
+                            name={getStepIcon(progress.step)}
+                            size={32}
+                            color={
+                                isError
+                                    ? modernColors.danger
+                                    : isComplete
+                                        ? modernColors.success
+                                        : modernColors.primary
+                            }
                         />
+                        <Text style={styles.title}>{getStepLabel(progress.step)}</Text>
                     </View>
-                    <Text style={styles.progressText}>{progress}%</Text>
-                </View>
 
-                {/* ✅ PHASE 2: Informations de temps */}
-                <View style={styles.timeInfo}>
-                    {elapsedTime > 0 && (
-                        <View style={styles.timeItem}>
-                            <SafeIcon name="clock" size={16} color={modernColors.textSecondary} />
-                            <Text style={styles.timeText}>Temps écoulé: {formatTime(elapsedTime)}</Text>
+                    {/* Progress Bar */}
+                    {!isComplete && !isError && (
+                        <View style={styles.progressContainer}>
+                            <View style={styles.progressBarBackground}>
+                                <Animated.View
+                                    style={[
+                                        styles.progressBarFill,
+                                        animatedProgressStyle,
+                                        {
+                                            backgroundColor:
+                                                progress.progress < 30
+                                                    ? modernColors.danger
+                                                    : progress.progress < 70
+                                                        ? modernColors.warning
+                                                        : modernColors.primary,
+                                        },
+                                    ]}
+                                />
+                            </View>
+                            <Text style={styles.progressText}>
+                                {Math.round(progress.progress)}%
+                            </Text>
                         </View>
                     )}
-                    {estimatedTimeRemaining && (
-                        <View style={styles.timeItem}>
-                            <SafeIcon name="timer" size={16} color={modernColors.primary} />
-                            <Text style={styles.timeText}>Temps estimé: {estimatedTimeRemaining}</Text>
+
+                    {/* Scene Progress */}
+                    {progress.step === 'clips' &&
+                        progress.currentScene !== undefined &&
+                        progress.totalScenes !== undefined && (
+                            <View style={styles.sceneProgress}>
+                                <Text style={styles.sceneText}>
+                                    Scène {progress.currentScene} / {progress.totalScenes}
+                                </Text>
+                            </View>
+                        )}
+
+                    {/* Message */}
+                    {progress.message && (
+                        <Text style={styles.message}>{progress.message}</Text>
+                    )}
+
+                    {/* Error */}
+                    {isError && progress.error && (
+                        <View style={styles.errorContainer}>
+                            <Text style={styles.errorText}>{progress.error}</Text>
                         </View>
                     )}
-                </View>
 
-                {/* Étapes détaillées */}
-                <View style={styles.stepsContainer}>
-                    {steps.map((step, index) => {
-                        const isRunning = step.status === 'running';
-                        const isCompleted = step.status === 'completed';
-                        const isPending = step.status === 'pending';
+                    {/* Time Remaining */}
+                    {!isComplete && !isError && progress.estimatedTimeRemaining > 0 && (
+                        <View style={styles.timeContainer}>
+                            <SafeIcon
+                                name="clock"
+                                size={16}
+                                color={modernColors.textSecondary}
+                            />
+                            <Text style={styles.timeText}>
+                                Temps restant: {formatTime(progress.estimatedTimeRemaining)}
+                            </Text>
+                        </View>
+                    )}
 
-                        return (
-                            <Animated.View
-                                key={step.key}
-                                style={[
-                                    styles.stepRow,
-                                    isRunning && {
-                                        opacity: pulseAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [1, 0.6],
-                                        }),
-                                    },
-                                ]}
-                            >
-                                <View style={styles.stepIconContainer}>
-                                    {isCompleted ? (
-                                        <SafeIcon name="check-circle" size={20} color={modernColors.success} />
-                                    ) : isRunning ? (
-                                        <Animated.View style={{ opacity: pulseOpacity }}>
-                                            <SafeIcon name="loader" size={20} color={modernColors.primary} />
-                                        </Animated.View>
-                                    ) : (
-                                        <SafeIcon name="circle" size={20} color={modernColors.textSecondary} />
-                                    )}
-                                </View>
-                                <View style={styles.stepContent}>
-                                    <Text
-                                        style={[
-                                            styles.stepLabel,
-                                            isRunning && styles.stepLabelRunning,
-                                            isCompleted && styles.stepLabelCompleted,
-                                        ]}
-                                    >
-                                        {step.label}
-                                    </Text>
-                                    {step.detail && (
-                                        <Text style={styles.stepDetail}>{step.detail}</Text>
-                                    )}
-                                </View>
-                            </Animated.View>
-                        );
-                    })}
-                </View>
+                    {/* Loading Indicator */}
+                    {!isComplete && !isError && (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator
+                                size="large"
+                                color={modernColors.primary}
+                            />
+                        </View>
+                    )}
 
-                {/* ✅ PHASE 2: Étape actuelle en surbrillance */}
-                {runningStep && (
-                    <View style={styles.currentStepHighlight}>
-                        <Text style={styles.currentStepText}>
-                            En cours: {runningStep.label}
-                        </Text>
+                    {/* Actions */}
+                    <View style={styles.actions}>
+                        {!isComplete && !isError && onCancel && (
+                            <NativeButton
+                                title="Annuler"
+                                variant="secondary"
+                                size="medium"
+                                onPress={onCancel}
+                                style={styles.cancelButton}
+                            />
+                        )}
+                        {(isComplete || isError) && onDismiss && (
+                            <NativeButton
+                                title={isError ? 'Fermer' : 'OK'}
+                                variant={isError ? 'secondary' : 'primary'}
+                                size="medium"
+                                onPress={onDismiss}
+                                style={styles.dismissButton}
+                            />
+                        )}
                     </View>
-                )}
-            </NativeCard>
-        </View>
+                </NativeCard>
+            </View>
+        </Modal>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+    overlay: {
+        flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
     },
-    card: {
+    modalCard: {
         width: '100%',
         maxWidth: 400,
-        backgroundColor: modernColors.background,
+        padding: 24,
         borderRadius: 16,
-        padding: 20,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
         marginBottom: 20,
+        gap: 12,
     },
     title: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 20,
+        fontWeight: 'bold',
         color: modernColors.text,
+        flex: 1,
     },
     progressContainer: {
         marginBottom: 16,
@@ -239,80 +279,68 @@ const styles = StyleSheet.create({
     },
     progressBarFill: {
         height: '100%',
-        backgroundColor: modernColors.primary,
         borderRadius: 4,
     },
     progressText: {
         fontSize: 14,
         fontWeight: '600',
-        color: modernColors.primary,
+        color: modernColors.textSecondary,
         textAlign: 'center',
     },
-    timeInfo: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        marginBottom: 20,
-        paddingVertical: 12,
-        backgroundColor: modernColors.background,
+    sceneProgress: {
+        marginBottom: 16,
+        padding: 12,
+        backgroundColor: modernColors.border + '40',
         borderRadius: 8,
     },
-    timeItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
+    sceneText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        textAlign: 'center',
     },
-    timeText: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-    },
-    stepsContainer: {
-        gap: 12,
-        marginBottom: 16,
-    },
-    stepRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
-    },
-    stepIconContainer: {
-        width: 24,
-        alignItems: 'center',
-        marginTop: 2,
-    },
-    stepContent: {
-        flex: 1,
-    },
-    stepLabel: {
+    message: {
         fontSize: 14,
         color: modernColors.textSecondary,
-        fontWeight: '500',
+        textAlign: 'center',
+        marginBottom: 16,
     },
-    stepLabelRunning: {
-        color: modernColors.primary,
-        fontWeight: '600',
-    },
-    stepLabelCompleted: {
-        color: modernColors.success,
-    },
-    stepDetail: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        marginTop: 4,
-        fontStyle: 'italic',
-    },
-    currentStepHighlight: {
-        backgroundColor: modernColors.primary + '10',
+    errorContainer: {
+        marginBottom: 16,
         padding: 12,
+        backgroundColor: modernColors.danger + '20',
         borderRadius: 8,
-        borderLeftWidth: 3,
-        borderLeftColor: modernColors.primary,
     },
-    currentStepText: {
-        fontSize: 13,
-        color: modernColors.primary,
-        fontWeight: '600',
+    errorText: {
+        fontSize: 14,
+        color: modernColors.danger,
+        textAlign: 'center',
+    },
+    timeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+        gap: 8,
+    },
+    timeText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+    },
+    loadingContainer: {
+        alignItems: 'center',
+        marginVertical: 16,
+    },
+    actions: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 12,
+        marginTop: 8,
+    },
+    cancelButton: {
+        minWidth: 120,
+    },
+    dismissButton: {
+        minWidth: 120,
     },
 });
-
-export default VideoProgressModal;
-

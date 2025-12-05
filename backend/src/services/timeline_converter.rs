@@ -1,16 +1,16 @@
 // ✅ NOUVEAU: Module de conversion entre VideoTimeline (IA) et ImmersiveTimeline (Remotion)
 
-use serde_json::Value;
+use crate::core::types::{AppError, AppResult};
 use crate::services::{
     app_ia::{TimelineScene, VideoTimeline},
     immersive_timeline::{
-        ImmersiveTimeline, ImmersiveScene, ImmersiveSceneAssets, ImmersiveSceneTransition,
-        ImmersiveTemplate, TransitionType, ColorGradeStyle, ImmersiveSceneColorGrade,
-        ImmersiveAudioCue, AudioCueKind,
+        AudioCueKind, ColorGradeStyle, ImmersiveAudioCue, ImmersiveScene, ImmersiveSceneAssets,
+        ImmersiveSceneColorGrade, ImmersiveSceneTransition, ImmersiveTemplate, ImmersiveTimeline,
+        TransitionType,
     },
 };
-use crate::core::types::{AppError, AppResult};
 use log::{info, warn};
+use serde_json::Value;
 
 /// Convertit une VideoTimeline (générée par l'IA) en ImmersiveTimeline (pour Remotion)
 pub fn convert_video_timeline_to_immersive(
@@ -28,10 +28,10 @@ pub fn convert_video_timeline_to_immersive(
 
     for (idx, scene) in video_timeline.scenes.iter().enumerate() {
         let duration_frames = (scene.duration * fps as f64).round() as u32;
-        
+
         // Déterminer le template selon le type de scène
         let template = infer_template_from_scene(scene, idx, video_timeline.scenes.len());
-        
+
         // Construire les assets
         let assets = ImmersiveSceneAssets {
             headline: scene.text.clone(),
@@ -39,9 +39,12 @@ pub fn convert_video_timeline_to_immersive(
             body: None,
             product_image_url: scene.media_url.clone(),
             background_url: None,
-            video_url: if scene.media_url.as_ref()
+            video_url: if scene
+                .media_url
+                .as_ref()
                 .map(|url| url.contains(".mp4") || url.contains(".mov"))
-                .unwrap_or(false) {
+                .unwrap_or(false)
+            {
                 scene.media_url.clone()
             } else {
                 None
@@ -185,9 +188,9 @@ fn convert_transition(transition_str: Option<&str>) -> ImmersiveSceneTransition 
 
 /// Convertit les effets en ColorGradeStyle
 fn convert_effects_to_color_grade(effects: &[String]) -> ImmersiveSceneColorGrade {
-    let has_glow = effects.iter().any(|e| {
-        e.to_lowercase().contains("glow") || e.to_lowercase().contains("lumière")
-    });
+    let has_glow = effects
+        .iter()
+        .any(|e| e.to_lowercase().contains("glow") || e.to_lowercase().contains("lumière"));
     let has_cinematic = effects.iter().any(|e| {
         e.to_lowercase().contains("cinematic")
             || e.to_lowercase().contains("cinéma")
@@ -238,4 +241,3 @@ fn infer_audio_cue_type(effects: &[String]) -> AudioCueKind {
     // Par défaut = Impact
     AudioCueKind::Impact
 }
-

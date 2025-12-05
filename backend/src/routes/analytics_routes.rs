@@ -8,60 +8,53 @@ use axum::{
 use serde::Deserialize;
 use std::sync::Arc;
 
-use crate::middlewares::jwt::{AuthenticatedUser, jwt_auth};
-use axum::Extension;
+use crate::middlewares::jwt::{jwt_auth, AuthenticatedUser};
 use crate::services::analytics_service::AnalyticsService;
 use crate::state::AppState;
+use axum::Extension;
 
 pub fn analytics_routes(state: Arc<AppState>) -> axum::Router<Arc<AppState>> {
     axum::Router::new()
         .route(
             "/api/analytics/provider",
-            axum::routing::get(get_provider_analytics)
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    jwt_auth,
-                )),
+            axum::routing::get(get_provider_analytics).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                jwt_auth,
+            )),
         )
         .route(
             "/api/analytics/provider/deliveries",
-            axum::routing::get(get_delivery_stats)
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    jwt_auth,
-                )),
+            axum::routing::get(get_delivery_stats).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                jwt_auth,
+            )),
         )
         .route(
             "/api/analytics/provider/revenue",
-            axum::routing::get(get_revenue_stats)
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    jwt_auth,
-                )),
+            axum::routing::get(get_revenue_stats).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                jwt_auth,
+            )),
         )
         .route(
             "/api/analytics/provider/top-products",
-            axum::routing::get(get_top_products)
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    jwt_auth,
-                )),
+            axum::routing::get(get_top_products).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                jwt_auth,
+            )),
         )
         .route(
             "/api/analytics/provider/top-zones",
-            axum::routing::get(get_top_zones)
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    jwt_auth,
-                )),
+            axum::routing::get(get_top_zones).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                jwt_auth,
+            )),
         )
         .route(
             "/api/analytics/provider/performance",
-            axum::routing::get(get_performance_over_time)
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    jwt_auth,
-                )),
+            axum::routing::get(get_performance_over_time).layer(
+                axum::middleware::from_fn_with_state(state.clone(), jwt_auth),
+            ),
         )
         .with_state(state)
 }
@@ -94,7 +87,11 @@ async fn get_provider_analytics(
                 "success": false,
                 "error": format!("Erreur récupération analytics: {}", e)
             });
-            (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(error_response)).into_response()
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(error_response),
+            )
+                .into_response()
         }
     }
 }
@@ -105,8 +102,8 @@ async fn get_delivery_stats(
     Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<AnalyticsQuery>,
 ) -> impl IntoResponse {
-    use chrono::{Duration, Utc};
     use crate::services::analytics_service::AnalyticsService;
+    use chrono::{Duration, Utc};
 
     let days = params.days.unwrap_or(30);
     let period_start = Utc::now() - Duration::days(days as i64);
@@ -128,7 +125,11 @@ async fn get_delivery_stats(
                 "success": false,
                 "error": format!("Erreur récupération stats livraisons: {}", e)
             });
-            (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(error_response)).into_response()
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(error_response),
+            )
+                .into_response()
         }
     }
 }
@@ -139,8 +140,8 @@ async fn get_revenue_stats(
     Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<AnalyticsQuery>,
 ) -> impl IntoResponse {
-    use chrono::{Duration, Utc};
     use crate::services::analytics_service::AnalyticsService;
+    use chrono::{Duration, Utc};
 
     let days = params.days.unwrap_or(30);
     let period_start = Utc::now() - Duration::days(days as i64);
@@ -162,7 +163,11 @@ async fn get_revenue_stats(
                 "success": false,
                 "error": format!("Erreur récupération stats revenus: {}", e)
             });
-            (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(error_response)).into_response()
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(error_response),
+            )
+                .into_response()
         }
     }
 }
@@ -173,8 +178,8 @@ async fn get_top_products(
     Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<AnalyticsQuery>,
 ) -> impl IntoResponse {
-    use chrono::{Duration, Utc};
     use crate::services::analytics_service::AnalyticsService;
+    use chrono::{Duration, Utc};
 
     let days = params.days.unwrap_or(30);
     let limit = params.limit.unwrap_or(10);
@@ -197,7 +202,11 @@ async fn get_top_products(
                 "success": false,
                 "error": format!("Erreur récupération top produits: {}", e)
             });
-            (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(error_response)).into_response()
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(error_response),
+            )
+                .into_response()
         }
     }
 }
@@ -208,8 +217,8 @@ async fn get_top_zones(
     Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<AnalyticsQuery>,
 ) -> impl IntoResponse {
-    use chrono::{Duration, Utc};
     use crate::services::analytics_service::AnalyticsService;
+    use chrono::{Duration, Utc};
 
     let days = params.days.unwrap_or(30);
     let limit = params.limit.unwrap_or(10);
@@ -232,7 +241,11 @@ async fn get_top_zones(
                 "success": false,
                 "error": format!("Erreur récupération top zones: {}", e)
             });
-            (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(error_response)).into_response()
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(error_response),
+            )
+                .into_response()
         }
     }
 }
@@ -243,8 +256,8 @@ async fn get_performance_over_time(
     Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<AnalyticsQuery>,
 ) -> impl IntoResponse {
-    use chrono::{Duration, Utc};
     use crate::services::analytics_service::AnalyticsService;
+    use chrono::{Duration, Utc};
 
     let days = params.days.unwrap_or(30);
     let period_start = Utc::now() - Duration::days(days as i64);
@@ -266,8 +279,11 @@ async fn get_performance_over_time(
                 "success": false,
                 "error": format!("Erreur récupération performance: {}", e)
             });
-            (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(error_response)).into_response()
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(error_response),
+            )
+                .into_response()
         }
     }
 }
-

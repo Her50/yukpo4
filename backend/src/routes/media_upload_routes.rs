@@ -26,15 +26,19 @@ async fn upload_to_s3_wasabi(
 ) -> Result<String, String> {
     // Utiliser le MediaStorageService existant via AppState
     let storage_key = key.trim_start_matches('/');
-    
-    match state.media_storage.store_bytes(data, storage_key, content_type).await {
+
+    match state
+        .media_storage
+        .store_bytes(data, storage_key, content_type)
+        .await
+    {
         Ok(location) => Ok(location.public_url),
         Err(e) => Err(format!("Erreur upload S3/Wasabi: {}", e)),
     }
 }
 
 /// ✅ Phase 9 - Amélioration : Upload d'un fichier média (image ou vidéo) pour preuve de livraison
-/// 
+///
 /// Endpoint: POST /api/media/upload-proof
 /// Body: multipart/form-data avec:
 ///   - file: le fichier image/vidéo
@@ -54,7 +58,9 @@ pub async fn upload_proof_media_file(
     let mut metadata: Option<Value> = None;
 
     // Parser le multipart form data
-    while let Some(field) = multipart.next_field().await
+    while let Some(field) = multipart
+        .next_field()
+        .await
         .map_err(|e| AppError::BadRequest(format!("Erreur parsing multipart: {}", e)))?
     {
         let field_name = field.name().unwrap_or("").to_string();
@@ -63,22 +69,28 @@ pub async fn upload_proof_media_file(
             "file" => {
                 file_name = field.file_name().map(|s| s.to_string());
                 content_type = field.content_type().map(|s| s.to_string());
-                let data = field.bytes().await
+                let data = field
+                    .bytes()
+                    .await
                     .map_err(|e| AppError::BadRequest(format!("Erreur lecture fichier: {}", e)))?;
                 file_data = Some(data.to_vec());
             }
             "delivery_id" => {
-                let value = field.text().await
-                    .map_err(|e| AppError::BadRequest(format!("Erreur lecture delivery_id: {}", e)))?;
+                let value = field.text().await.map_err(|e| {
+                    AppError::BadRequest(format!("Erreur lecture delivery_id: {}", e))
+                })?;
                 delivery_id = Some(value);
             }
             "proof_type" => {
-                let value = field.text().await
-                    .map_err(|e| AppError::BadRequest(format!("Erreur lecture proof_type: {}", e)))?;
+                let value = field.text().await.map_err(|e| {
+                    AppError::BadRequest(format!("Erreur lecture proof_type: {}", e))
+                })?;
                 proof_type = Some(value);
             }
             "metadata" => {
-                let value = field.text().await
+                let value = field
+                    .text()
+                    .await
                     .map_err(|e| AppError::BadRequest(format!("Erreur lecture metadata: {}", e)))?;
                 metadata = serde_json::from_str(&value).ok();
             }
@@ -87,14 +99,17 @@ pub async fn upload_proof_media_file(
     }
 
     // Valider les champs requis
-    let delivery_id = delivery_id.ok_or_else(|| AppError::BadRequest("delivery_id requis".into()))?;
+    let delivery_id =
+        delivery_id.ok_or_else(|| AppError::BadRequest("delivery_id requis".into()))?;
     let proof_type = proof_type.ok_or_else(|| AppError::BadRequest("proof_type requis".into()))?;
     let file_data = file_data.ok_or_else(|| AppError::BadRequest("fichier requis".into()))?;
     let file_name = file_name.unwrap_or_else(|| format!("proof_{}.bin", Utc::now().timestamp()));
 
     // Valider le proof_type
     if proof_type != "pickup" && proof_type != "delivery" {
-        return Err(AppError::BadRequest("proof_type doit être 'pickup' ou 'delivery'".into()));
+        return Err(AppError::BadRequest(
+            "proof_type doit être 'pickup' ou 'delivery'".into(),
+        ));
     }
 
     // Valider le type de fichier
@@ -104,7 +119,9 @@ pub async fn upload_proof_media_file(
         } else if ct.starts_with("video/") {
             "video"
         } else {
-            return Err(AppError::BadRequest("Type de fichier non supporté. Utilisez une image ou une vidéo".into()));
+            return Err(AppError::BadRequest(
+                "Type de fichier non supporté. Utilisez une image ou une vidéo".into(),
+            ));
         }
     } else {
         // Essayer de deviner depuis l'extension
@@ -113,16 +130,24 @@ pub async fn upload_proof_media_file(
             .and_then(|e| e.to_str())
             .unwrap_or("")
             .to_lowercase();
-        
+
         match ext.as_str() {
             "jpg" | "jpeg" | "png" | "gif" | "webp" | "heic" => "image",
             "mp4" | "mov" | "avi" | "mkv" | "webm" => "video",
-            _ => return Err(AppError::BadRequest("Extension de fichier non reconnue. Utilisez une image ou une vidéo".into())),
+            _ => {
+                return Err(AppError::BadRequest(
+                    "Extension de fichier non reconnue. Utilisez une image ou une vidéo".into(),
+                ))
+            }
         }
     };
 
     // Valider la taille du fichier (max 50MB pour vidéos, 10MB pour images)
-    let max_size = if media_type == "video" { 50 * 1024 * 1024 } else { 10 * 1024 * 1024 };
+    let max_size = if media_type == "video" {
+        50 * 1024 * 1024
+    } else {
+        10 * 1024 * 1024
+    };
     if file_data.len() > max_size {
         return Err(AppError::BadRequest(format!(
             "Fichier trop volumineux. Taille max: {}MB",
@@ -136,14 +161,12 @@ pub async fn upload_proof_media_file(
 
     // Vérifier les permissions
     let service = state.delivery_service.clone();
-    let summary = service
-        .get_delivery_summary(delivery_uuid)
-        .await?;
-    
+    let summary = service.get_delivery_summary(delivery_uuid).await?;
+
     // Vérifier que l'utilisateur est le coursier assigné
     let courier = service.repository().find_courier_by_user(user.id).await?;
     let courier_id = courier.map(|c| c.id);
-    
+
     if summary.courier_id.is_none() || summary.courier_id != courier_id {
         return Err(AppError::Forbidden(
             "Seul le coursier assigné peut ajouter des médias de preuve".into(),
@@ -175,7 +198,7 @@ pub async fn upload_proof_media_file(
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or(if media_type == "image" { "jpg" } else { "mp4" });
-    
+
     let unique_filename = format!(
         "delivery_proof/{}/{}_{}_{}.{}",
         delivery_uuid,
@@ -187,27 +210,41 @@ pub async fn upload_proof_media_file(
 
     // ✅ Utiliser le service S3/Wasabi existant (même que pour les vidéos)
     // Chercher le service d'upload dans les services existants
-    let media_url = match upload_to_s3_wasabi(&state, &unique_filename, &file_data, content_type.as_deref()).await {
+    let media_url = match upload_to_s3_wasabi(
+        &state,
+        &unique_filename,
+        &file_data,
+        content_type.as_deref(),
+    )
+    .await
+    {
         Ok(url) => url,
         Err(e) => {
             // Fallback: stocker localement si S3 échoue
-            warn!("Erreur upload S3/Wasabi: {}. Fallback vers stockage local.", e);
-            
+            warn!(
+                "Erreur upload S3/Wasabi: {}. Fallback vers stockage local.",
+                e
+            );
+
             let upload_dir = std::env::var("MEDIA_UPLOAD_DIR")
                 .unwrap_or_else(|_| "./uploads/proof_media".to_string());
-            
-            std::fs::create_dir_all(&upload_dir)
-                .map_err(|e| AppError::Internal(format!("Erreur création dossier upload: {}", e)))?;
-            
+
+            std::fs::create_dir_all(&upload_dir).map_err(|e| {
+                AppError::Internal(format!("Erreur création dossier upload: {}", e))
+            })?;
+
             let file_path = StdPath::new(&upload_dir).join(&unique_filename);
             std::fs::create_dir_all(file_path.parent().unwrap())
                 .map_err(|e| AppError::Internal(format!("Erreur création dossier: {}", e)))?;
-            
+
             std::fs::write(&file_path, &file_data)
                 .map_err(|e| AppError::Internal(format!("Erreur écriture fichier: {}", e)))?;
-            
+
             // URL locale
-            format!("/api/media/proof/{}", unique_filename.replace("delivery_proof/", ""))
+            format!(
+                "/api/media/proof/{}",
+                unique_filename.replace("delivery_proof/", "")
+            )
         }
     };
 
@@ -237,7 +274,7 @@ pub async fn upload_proof_media_file(
 }
 
 /// ✅ Phase 9 - Amélioration : Servir les fichiers média uploadés
-/// 
+///
 /// Endpoint: GET /api/media/proof/{filename}
 /// Note: Si les fichiers sont sur S3/Wasabi, cette route peut rediriger vers l'URL publique
 /// ou servir depuis le cache local si nécessaire
@@ -248,7 +285,7 @@ pub async fn serve_proof_media_file(
     // ✅ Si les fichiers sont sur S3/Wasabi, on peut soit:
     // 1. Rediriger vers l'URL publique S3/Wasabi (recommandé)
     // 2. Servir depuis le cache local si disponible
-    
+
     // Pour l'instant, on vérifie si c'est une URL S3/Wasabi (commence par http/https)
     if filename.starts_with("http://") || filename.starts_with("https://") {
         // C'est déjà une URL publique, rediriger
@@ -258,23 +295,23 @@ pub async fn serve_proof_media_file(
             .body(Body::empty())
             .map_err(|e| AppError::Internal(format!("Erreur création réponse: {}", e)))?);
     }
-    
+
     // Sinon, servir depuis le stockage local (fallback)
     let safe_filename = filename
         .chars()
         .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '_' || *c == '-' || *c == '/')
         .collect::<String>();
-    
+
     // Sécurité: empêcher les path traversal
     if safe_filename.contains("..") || safe_filename.starts_with('/') {
         return Err(AppError::BadRequest("Nom de fichier invalide".into()));
     }
 
-    let upload_dir = std::env::var("MEDIA_UPLOAD_DIR")
-        .unwrap_or_else(|_| "./uploads/proof_media".to_string());
-    
+    let upload_dir =
+        std::env::var("MEDIA_UPLOAD_DIR").unwrap_or_else(|_| "./uploads/proof_media".to_string());
+
     let file_path = StdPath::new(&upload_dir).join(&safe_filename);
-    
+
     // Vérifier que le fichier existe
     if !file_path.exists() {
         return Err(AppError::NotFound("Fichier introuvable".into()));
@@ -310,4 +347,3 @@ pub async fn serve_proof_media_file(
         .body(Body::from(file_data))
         .map_err(|e| AppError::Internal(format!("Erreur création réponse: {}", e)))?)
 }
-

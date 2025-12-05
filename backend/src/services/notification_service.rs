@@ -122,7 +122,7 @@ pub async fn create_notification(
     .fetch_one(pool)
     .await?;
 
-    let id: i32 = row.get("id");
+    let id: i32 = row.get::<i32, _>("id");
     log::info!("[NotificationService] ✅ Notification créée: {}", id);
 
     Ok(id)
@@ -185,7 +185,7 @@ pub async fn count_unread_notifications(pool: &PgPool, user_id: i32) -> Result<i
     .fetch_one(pool)
     .await?;
 
-    let count: i64 = row.get("count");
+    let count: i64 = row.get::<i64, _>("count");
     Ok(count)
 }
 

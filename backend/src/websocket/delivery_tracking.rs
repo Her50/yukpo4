@@ -10,8 +10,10 @@ use std::{
         atomic::{AtomicI64, AtomicU64, Ordering},
         Arc,
     },
+    time::Duration,
 };
 use tokio::sync::{broadcast, Mutex};
+use tokio::time::Instant;
 use uuid::Uuid;
 
 // Métriques WebSocket delivery (globales, en mémoire).
@@ -117,11 +119,23 @@ pub enum DeliveryWsEvent {
     },
 }
 
+/// ✅ Phase 2: Batch de messages pour optimiser l'envoi
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeliveryWsBatch {
+    pub messages: Vec<DeliveryWsMessage>,
+    pub batch_id: Uuid,
+    pub timestamp: DateTime<Utc>,
+}
+
 #[derive(Clone)]
 pub struct DeliveryTrackingManager {
     channels: Arc<Mutex<HashMap<Uuid, broadcast::Sender<DeliveryWsMessage>>>>,
     buffer: usize,
     redis_client: Option<redis::Client>,
+    // ✅ Phase 2: Batching pour réduire le nombre de messages
+    message_batches: Arc<Mutex<HashMap<Uuid, Vec<DeliveryWsMessage>>>>,
+    batch_flush_interval: Duration,
+    batch_size_threshold: usize,
 }
 
 impl DeliveryTrackingManager {
@@ -130,11 +144,17 @@ impl DeliveryTrackingManager {
             channels: Arc::new(Mutex::new(HashMap::new())),
             buffer,
             redis_client,
+            message_batches: Arc::new(Mutex::new(HashMap::new())),
+            batch_flush_interval: Duration::from_millis(100), // Flush toutes les 100ms
+            batch_size_threshold: 10,                         // Flush si 10 messages en attente
         };
 
         if manager.redis_client.is_some() {
             manager.spawn_redis_listener();
         }
+
+        // ✅ Phase 2: Démarrer le task de flush périodique
+        manager.spawn_batch_flusher();
 
         manager
     }
@@ -155,23 +175,175 @@ impl DeliveryTrackingManager {
         sender.subscribe()
     }
 
+    /// ✅ Phase 2: Broadcast avec batching automatique
     pub async fn broadcast_event(&self, delivery_id: Uuid, event: DeliveryWsEvent) {
-        let sender = self.get_sender(delivery_id).await;
         let message = DeliveryWsMessage {
             delivery_id,
             timestamp: Utc::now(),
             event,
         };
 
+        // Ajouter au batch
+        let should_flush = {
+            let mut batches = self.message_batches.lock().await;
+            let batch = batches.entry(delivery_id).or_insert_with(Vec::new);
+            batch.push(message.clone());
+
+            // Flush si le batch atteint le seuil
+            batch.len() >= self.batch_size_threshold
+        };
+
+        // Flush immédiat si nécessaire
+        if should_flush {
+            self.flush_batch(delivery_id).await;
+        }
+
+        // Envoi immédiat pour messages critiques (status changes)
+        if matches!(message.event, DeliveryWsEvent::Status { .. }) {
+            self.send_message_immediate(&message).await;
+        }
+    }
+
+    /// Envoi immédiat d'un message (sans batching)
+    async fn send_message_immediate(&self, message: &DeliveryWsMessage) {
+        let sender = self.get_sender(message.delivery_id).await;
+
         if let Some(client) = &self.redis_client {
-            if let Err(err) = Self::publish_redis_event(client.clone(), &message).await {
+            if let Err(err) = Self::publish_redis_event(client.clone(), message).await {
                 log::warn!("[DeliveryWS] Publication Redis impossible: {err:?}");
             }
         }
 
         if sender.receiver_count() > 0 {
-            let _ = sender.send(message);
+            let _ = sender.send(message.clone());
+            record_ws_message_sent();
         }
+    }
+
+    /// ✅ Phase 2: Flush un batch de messages
+    async fn flush_batch(&self, delivery_id: Uuid) {
+        let messages = {
+            let mut batches = self.message_batches.lock().await;
+            batches.remove(&delivery_id).unwrap_or_default()
+        };
+
+        if messages.is_empty() {
+            return;
+        }
+
+        // Si un seul message, envoyer directement
+        if messages.len() == 1 {
+            self.send_message_immediate(&messages[0]).await;
+            return;
+        }
+
+        // Créer un batch
+        let batch = DeliveryWsBatch {
+            messages: messages.clone(),
+            batch_id: Uuid::new_v4(),
+            timestamp: Utc::now(),
+        };
+
+        // Sérialiser le batch
+        let batch_json = match serde_json::to_string(&batch) {
+            Ok(json) => json,
+            Err(err) => {
+                log::warn!("[DeliveryWS] Erreur sérialisation batch: {err:?}");
+                // Fallback: envoyer les messages individuellement
+                for msg in messages {
+                    self.send_message_immediate(&msg).await;
+                }
+                return;
+            }
+        };
+
+        // ✅ Phase 2: Compression si message > 1KB
+        let payload = if batch_json.len() > 1024 {
+            match Self::compress_message(&batch_json) {
+                Ok(compressed) => {
+                    log::debug!(
+                        "[DeliveryWS] Message compressé: {} -> {} bytes",
+                        batch_json.len(),
+                        compressed.len()
+                    );
+                    compressed
+                }
+                Err(err) => {
+                    log::warn!("[DeliveryWS] Erreur compression: {err:?}, envoi non compressé");
+                    batch_json.into_bytes()
+                }
+            }
+        } else {
+            batch_json.into_bytes()
+        };
+
+        // Envoyer via Redis si disponible
+        if let Some(client) = &self.redis_client {
+            let channel = format!("delivery.events.{}", delivery_id);
+            let mut conn = match client.get_multiplexed_async_connection().await {
+                Ok(conn) => conn,
+                Err(err) => {
+                    log::warn!("[DeliveryWS] Erreur connexion Redis: {err:?}");
+                    // Fallback: envoyer individuellement
+                    for msg in messages {
+                        self.send_message_immediate(&msg).await;
+                    }
+                    return;
+                }
+            };
+
+            use redis::AsyncCommands;
+            if let Err(err) = conn.publish::<_, _, i32>(&channel, payload).await {
+                log::warn!("[DeliveryWS] Erreur publication Redis batch: {err:?}");
+            }
+        }
+
+        // Envoyer via broadcast local (envoyer les messages individuellement pour compatibilité)
+        let sender = self.get_sender(delivery_id).await;
+        if sender.receiver_count() > 0 {
+            // Envoyer chaque message du batch individuellement
+            // Note: Le batching est principalement pour réduire la charge réseau,
+            // mais pour la compatibilité client, on envoie toujours individuellement
+            for msg in messages {
+                let _ = sender.send(msg);
+                record_ws_message_sent();
+            }
+        }
+    }
+
+    /// ✅ Phase 2: Compresse un message avec gzip
+    fn compress_message(data: &str) -> Result<Vec<u8>, std::io::Error> {
+        use flate2::write::GzEncoder;
+        use flate2::Compression;
+        use std::io::Write;
+
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+        encoder.write_all(data.as_bytes())?;
+        encoder.finish()
+    }
+
+    /// ✅ Phase 2: Task périodique pour flush des batches
+    fn spawn_batch_flusher(&self) {
+        let batches = self.message_batches.clone();
+        let flush_interval = self.batch_flush_interval;
+        let manager = self.clone();
+
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(flush_interval);
+            loop {
+                interval.tick().await;
+
+                // Flush tous les batches en attente
+                let delivery_ids: Vec<Uuid> = {
+                    let batches_guard = batches.lock().await;
+                    batches_guard.keys().cloned().collect()
+                };
+
+                for delivery_id in delivery_ids {
+                    manager.flush_batch(delivery_id).await;
+                }
+            }
+        });
     }
 
     pub async fn cleanup(&self, delivery_id: Uuid) {

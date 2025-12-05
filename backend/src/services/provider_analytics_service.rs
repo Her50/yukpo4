@@ -147,7 +147,7 @@ impl ProviderAnalyticsService {
             ready_orders: i64,
             delivered_orders: i64,
         }
-        
+
         let stats: StatsRow = sqlx::query(
             r#"
             SELECT 
@@ -205,7 +205,7 @@ impl ProviderAnalyticsService {
             max_preparation_minutes: Option<i32>,
             total_orders_with_preparation: i64,
         }
-        
+
         let stats: PrepTimeStatsRow = sqlx::query(
             r#"
             SELECT 
@@ -226,10 +226,10 @@ impl ProviderAnalyticsService {
         .bind(period_start)
         .bind(period_end)
         .map(|row: sqlx::postgres::PgRow| PrepTimeStatsRow {
-            avg_preparation_minutes: row.try_get("avg_preparation_minutes").ok(),
-            median_preparation_minutes: row.try_get("median_preparation_minutes").ok(),
-            min_preparation_minutes: row.try_get("min_preparation_minutes").ok(),
-            max_preparation_minutes: row.try_get("max_preparation_minutes").ok(),
+            avg_preparation_minutes: row.get::<Option<_>, _>("avg_preparation_minutes"),
+            median_preparation_minutes: row.get::<Option<_>, _>("median_preparation_minutes"),
+            min_preparation_minutes: row.get::<Option<_>, _>("min_preparation_minutes"),
+            max_preparation_minutes: row.get::<Option<_>, _>("max_preparation_minutes"),
             total_orders_with_preparation: row.get::<i64, _>("total_orders_with_preparation"),
         })
         .fetch_one(&self.pool)
@@ -295,7 +295,7 @@ impl ProviderAnalyticsService {
             reason: Option<String>,
             count: i64,
         }
-        
+
         let common_reasons: Vec<RejectionReasonCount> = sqlx::query(
             r#"
             SELECT 
@@ -316,7 +316,7 @@ impl ProviderAnalyticsService {
         .bind(period_start)
         .bind(period_end)
         .map(|row: sqlx::postgres::PgRow| RejectionReasonCount {
-            reason: row.try_get::<String, _>("reason").unwrap_or_default(),
+            reason: row.get::<String, _>("reason"),
             count: row.get::<i64, _>("count"),
         })
         .fetch_all(&self.pool)
@@ -359,7 +359,7 @@ impl ProviderAnalyticsService {
             provider_cancelled: i64,
             courier_unavailable: i64,
         }
-        
+
         let stats: CancellationStatsRow = sqlx::query(
             r#"
             SELECT 
@@ -510,4 +510,3 @@ pub struct ProductCancellationStats {
     pub timeout_cancellations: i32,
     pub rejected_cancellations: i32,
 }
-

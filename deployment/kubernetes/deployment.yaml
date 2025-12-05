@@ -1,0 +1,111 @@
+# ✅ Phase 2: Deployment Kubernetes pour backend
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yukpomnang-backend
+  namespace: yukpomnang
+  labels:
+    app: yukpomnang-backend
+spec:
+  replicas: 2  # ✅ Minimum 2 instances
+  selector:
+    matchLabels:
+      app: yukpomnang-backend
+  template:
+    metadata:
+      labels:
+        app: yukpomnang-backend
+    spec:
+      containers:
+      - name: backend
+        image: yukpomnang/backend:latest
+        ports:
+        - containerPort: 3000
+          name: http
+        envFrom:
+        - configMapRef:
+            name: yukpomnang-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: yukpomnang-secrets
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: yukpomnang-secrets
+              key: REDIS_URL
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: yukpomnang-secrets
+              key: REDIS_PASSWORD
+              optional: true
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: yukpomnang-secrets
+              key: JWT_SECRET
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health/ready
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+      # ✅ Affinity pour distribution sur nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - yukpomnang-backend
+              topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yukpomnang-backend
+  namespace: yukpomnang
+spec:
+  type: ClusterIP
+  selector:
+    app: yukpomnang-backend
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+    name: http
+

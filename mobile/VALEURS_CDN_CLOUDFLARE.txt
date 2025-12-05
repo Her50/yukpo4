@@ -1,0 +1,36 @@
+Valeurs des variables CDN pour mobile/.env
+
+1. URL Cloudflare CDN :
+EXPO_PUBLIC_CDN_CLOUDFLARE_URL=https://cdn.yukpomnang.com
+
+2. URL Wasabi Direct (fallback) :
+EXPO_PUBLIC_WASABI_DIRECT_URL=https://yukpo-video-prod.s3.eu-central-1.wasabisys.com
+
+---
+
+Où trouver ces valeurs dans Cloudflare :
+
+1. URL Cloudflare CDN :
+   - Connectez-vous à Cloudflare Dashboard
+   - Sélectionnez votre domaine : yukpomnang.com
+   - Allez dans l'onglet "DNS"
+   - Cherchez l'enregistrement CNAME avec "Name: cdn"
+   - L'URL complète sera : https://cdn.yukpomnang.com
+   
+   Si l'enregistrement n'existe pas :
+   - Créez un CNAME : Type=CNAME, Name=cdn, Target=votre-domaine.com (ou Wasabi)
+   - Activez le proxy (cloud orange)
+
+2. URL Wasabi :
+   - Dashboard Wasabi > Bucket "yukpo-video-prod"
+   - URL du bucket : https://yukpo-video-prod.s3.eu-central-1.wasabisys.com
+
+---
+
+Test rapide pour vérifier :
+1. Ouvrez : https://cdn.yukpomnang.com dans votre navigateur
+2. Si ça fonctionne, vous verrez une réponse Cloudflare
+3. Sinon, vérifiez la configuration DNS dans Cloudflare
+
+
+

@@ -3,12 +3,12 @@
 
 use crate::core::types::{AppError, AppResult};
 use axum::extract::Multipart;
+use log::{info, warn};
 use sqlx::PgPool;
 use std::path::PathBuf;
 use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
-use log::{info, warn};
 
 #[derive(Debug, serde::Serialize)]
 pub struct UploadedFileResponse {
@@ -28,7 +28,7 @@ pub async fn store_uploaded_file(
 ) -> AppResult<UploadedFileResponse> {
     // Déterminer le type de média
     let media_type = infer_media_type(field_name, filename);
-    
+
     // Valider la taille (20 MB max par fichier)
     const MAX_FILE_SIZE: usize = 20_000_000; // 20 MB
     if bytes.len() > MAX_FILE_SIZE {
@@ -59,40 +59,18 @@ pub async fn store_uploaded_file(
     file.sync_all().await?;
 
     // Créer l'URL relative (sera servie par le serveur)
-    let relative_path = format!(
-        "uploads/temp/{}/{}",
-        user_id,
-        unique_name
+    let relative_path = format!("uploads/temp/{}/{}", user_id, unique_name);
+    let url = format!(
+        "/api/media/temp/{}",
+        relative_path.replace("uploads/temp/", "")
     );
-    let url = format!("/api/media/temp/{}", relative_path.replace("uploads/temp/", ""));
 
-    // Optionnel: Enregistrer en DB pour tracking
-    // Note: user_id n'existe pas dans la table media, on utilise seulement service_id
-    let media_id = match sqlx::query_scalar!(
-        r#"
-        INSERT INTO media (service_id, type, path, uploaded_at)
-        VALUES (NULL, $1, $2, NOW())
-        RETURNING id
-        "#,
-        media_type,
-        relative_path
-    )
-    .fetch_optional(pool)
-    .await
-    {
-        Ok(Some(id)) => {
-            info!("[upload_service] Fichier enregistré en DB: media_id={}", id);
-            Some(id)
-        }
-        Ok(None) => {
-            warn!("[upload_service] Impossible d'enregistrer en DB, mais fichier sauvegardé");
-            None
-        }
-        Err(e) => {
-            warn!("[upload_service] Erreur DB (non bloquante): {}", e);
-            None
-        }
-    };
+    // ✅ CORRIGÉ: Ne pas enregistrer en DB si service_id est NULL
+    // La table media requiert service_id NOT NULL, donc on skip l'insertion pour les fichiers temporaires
+    // Ces fichiers seront associés à un service lors de la création/modification du service
+    let media_id: Option<i32> = None; // Fichiers temporaires non enregistrés en DB
+
+    info!("[upload_service] Fichier temporaire uploadé (sera associé à un service lors de la création)");
 
     info!(
         "[upload_service] ✅ Fichier uploadé: {} ({} bytes, type: {})",
@@ -131,10 +109,7 @@ pub async fn handle_multipart_upload(
         match result {
             Ok(file_response) => uploaded_files.push(file_response),
             Err(e) => {
-                warn!(
-                    "[upload_service] Erreur upload fichier {}: {}",
-                    filename, e
-                );
+                warn!("[upload_service] Erreur upload fichier {}: {}", filename, e);
                 // Continuer avec les autres fichiers
             }
         }
@@ -155,7 +130,10 @@ fn infer_media_type(field_name: &str, filename: &str) -> String {
     let filename_lower = filename.to_lowercase();
 
     // Vérifier d'abord le nom du champ
-    if field_lower.contains("image") || field_lower.contains("photo") || field_lower.contains("picture") {
+    if field_lower.contains("image")
+        || field_lower.contains("photo")
+        || field_lower.contains("picture")
+    {
         return "image".to_string();
     }
     if field_lower.contains("video") {
@@ -164,7 +142,10 @@ fn infer_media_type(field_name: &str, filename: &str) -> String {
     if field_lower.contains("audio") || field_lower.contains("sound") {
         return "audio".to_string();
     }
-    if field_lower.contains("document") || field_lower.contains("doc") || field_lower.contains("pdf") {
+    if field_lower.contains("document")
+        || field_lower.contains("doc")
+        || field_lower.contains("pdf")
+    {
         return "document".to_string();
     }
 
@@ -190,7 +171,7 @@ fn upload_storage_root() -> PathBuf {
 pub async fn cleanup_temp_files(pool: &PgPool, older_than_hours: i32) -> AppResult<usize> {
     let storage_root = upload_storage_root();
     let temp_dir = storage_root.join("temp");
-    
+
     if !temp_dir.exists() {
         return Ok(0);
     }
@@ -215,7 +196,10 @@ pub async fn cleanup_temp_files(pool: &PgPool, older_than_hours: i32) -> AppResu
             if path.starts_with(&storage_root) {
                 // Sécurité: s'assurer qu'on supprime seulement dans uploads/
                 if let Err(e) = fs::remove_file(&path).await {
-                    warn!("[upload_service] Impossible de supprimer {}: {}", row.path, e);
+                    warn!(
+                        "[upload_service] Impossible de supprimer {}: {}",
+                        row.path, e
+                    );
                 } else {
                     deleted_files += 1;
                 }
@@ -225,4 +209,3 @@ pub async fn cleanup_temp_files(pool: &PgPool, older_than_hours: i32) -> AppResu
 
     Ok(deleted_files)
 }
-

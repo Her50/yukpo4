@@ -8,7 +8,9 @@ import {
     fetchFlashSaleCommentaries,
     fetchJoinInformation,
     fetchLiveSession,
+    getFlashSaleTicketStatus,
     reserveFlashSaleSlot,
+    type FlashSaleReservationTicket,
 } from '@/services/liveApi';
 import type {
     LiveFlashSale,
@@ -53,6 +55,7 @@ const LiveViewerPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
     const [reservingSaleId, setReservingSaleId] = useState<string | null>(null);
+    const [activeTickets, setActiveTickets] = useState<Record<string, FlashSaleReservationTicket>>({});
     const [nowMs, setNowMs] = useState(() => Date.now());
     const [flashSaleCommentaries, setFlashSaleCommentaries] = useState<
         Record<string, LiveFlashSaleCommentary[]>
@@ -308,35 +311,62 @@ const LiveViewerPage: React.FC = () => {
 
         setReservingSaleId(sale.id);
         try {
-            const updated = await reserveFlashSaleSlot(sale.id);
-            setDetails((prev) =>
-                prev
-                    ? {
-                          ...prev,
-                          flash_sales: replaceSale(prev.flash_sales, updated),
-                      }
-                    : prev,
-            );
-            setJoinInfo((prev) =>
-                prev
-                    ? {
-                          ...prev,
-                          flash_sales: replaceSale(prev.flash_sales, updated),
-                      }
-                    : prev,
-            );
+            const ticket = await reserveFlashSaleSlot(sale.id);
+            setActiveTickets((prev) => ({
+                ...prev,
+                [sale.id]: ticket,
+            }));
 
-            if (updated.recent_commentaries) {
-                const sorted = [...updated.recent_commentaries].sort(
-                    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+            if (ticket.status === 'pending') {
+                toast.success('Réservation en cours de traitement...');
+                // Polling pour vérifier le statut
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const updatedTicket = await getFlashSaleTicketStatus(ticket.ticket_id);
+                        setActiveTickets((prev) => ({
+                            ...prev,
+                            [sale.id]: updatedTicket,
+                        }));
+
+                        if (updatedTicket.status !== 'pending') {
+                            clearInterval(pollInterval);
+                            if (updatedTicket.status === 'confirmed') {
+                                toast.success('Réservation confirmée !');
+                                // Recharger les détails du live pour mettre à jour le stock
+                                const response = await fetchLiveSession(sessionId);
+                                setDetails(response);
+                                const viewerId = user ? parseInt(user.id, 10) : undefined;
+                                const info = await fetchJoinInformation(
+                                    sessionId,
+                                    Number.isNaN(viewerId || NaN) ? undefined : viewerId,
+                                );
+                                setJoinInfo(info);
+                            } else if (updatedTicket.status === 'failed' || updatedTicket.status === 'out_of_stock') {
+                                toast.error(updatedTicket.message || 'Réservation échouée');
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[LiveViewer] Erreur vérification ticket', err);
+                        clearInterval(pollInterval);
+                    }
+                }, 2000); // Vérifier toutes les 2 secondes
+
+                // Arrêter le polling après 30 secondes
+                setTimeout(() => clearInterval(pollInterval), 30000);
+            } else if (ticket.status === 'confirmed') {
+                toast.success('Réservation confirmée !');
+                // Recharger les détails
+                const response = await fetchLiveSession(sessionId);
+                setDetails(response);
+                const viewerId = user ? parseInt(user.id, 10) : undefined;
+                const info = await fetchJoinInformation(
+                    sessionId,
+                    Number.isNaN(viewerId || NaN) ? undefined : viewerId,
                 );
-                setFlashSaleCommentaries((prev) => ({
-                    ...prev,
-                    [updated.id]: sorted,
-                }));
+                setJoinInfo(info);
+            } else {
+                toast.error(ticket.message || 'Réservation échouée');
             }
-
-            toast.success('Réservation enregistrée !');
         } catch (error: any) {
             console.error('[LiveViewer] Réservation flash sale impossible', error);
             const message =
@@ -481,26 +511,37 @@ const LiveViewerPage: React.FC = () => {
                             const statusLabel = isEnded
                                 ? 'Terminé'
                                 : isUpcoming
-                                ? `Débute dans ${formatRelativeTime(timeDiff)}`
-                                : `En cours · fin dans ${formatRelativeTime(timeDiff)}`;
+                                    ? `Débute dans ${formatRelativeTime(timeDiff)}`
+                                    : `En cours · fin dans ${formatRelativeTime(timeDiff)}`;
                             const isSoldOut = sale.reserved_quantity >= sale.stock_target;
                             const ratio =
                                 sale.stock_target > 0
                                     ? Math.min(100, Math.round((sale.reserved_quantity / sale.stock_target) * 100))
                                     : 0;
+                            const ticket = activeTickets[sale.id];
+                            const ticketStatus = ticket?.status;
                             const canReserve =
-                                !isEnded && !isUpcoming && !isSoldOut && reservingSaleId !== sale.id;
+                                !isEnded &&
+                                !isUpcoming &&
+                                !isSoldOut &&
+                                reservingSaleId !== sale.id &&
+                                ticketStatus !== 'pending' &&
+                                ticketStatus !== 'confirmed';
                             const buttonLabel = isEnded
                                 ? 'Terminé'
                                 : isUpcoming
-                                ? 'Bientôt disponible'
-                                : isSoldOut
-                                ? 'Stock épuisé'
-                                : reservingSaleId === sale.id
-                                ? 'Réservation…'
-                                : user
-                                ? 'Réserver'
-                                : 'Se connecter pour réserver';
+                                    ? 'Bientôt disponible'
+                                    : isSoldOut
+                                        ? 'Stock épuisé'
+                                        : ticketStatus === 'pending'
+                                            ? 'Traitement en cours...'
+                                            : ticketStatus === 'confirmed'
+                                                ? '✅ Réservé'
+                                                : reservingSaleId === sale.id
+                                                    ? 'Réservation…'
+                                                    : user
+                                                        ? 'Réserver'
+                                                        : 'Se connecter pour réserver';
                             const commentaries =
                                 flashSaleCommentaries[sale.id] ?? sale.recent_commentaries ?? [];
                             const recentCommentaries =

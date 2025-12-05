@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
@@ -18,7 +18,8 @@ struct LiveSessionUpdateRow {
 }
 
 use crate::{
-    config::live_streaming::LiveStreamingConfig, state::AppState,
+    config::live_streaming::LiveStreamingConfig,
+    state::AppState,
     utils::livekit::{diagnose_livekit_connection, generate_server_access_token},
 };
 
@@ -32,13 +33,13 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
         // Attendre 10 secondes avant la première tentative
         log::info!("⏳ LiveKit Analytics: Attente de 10 secondes avant la première tentative de connexion...");
         tokio::time::sleep(Duration::from_secs(10)).await;
-        
+
         let mut ticker = tokio::time::interval(Duration::from_secs(SYNC_INTERVAL_SECS));
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        
+
         // Flag partagé pour limiter la verbosité des logs de connexion
         let connection_error_logged = Arc::new(AtomicBool::new(false));
-        
+
         // ✅ AMÉLIORATION: Compteur pour réessayer périodiquement même après erreur
         let mut consecutive_failures = 0u32;
         const MAX_CONSECUTIVE_FAILURES: u32 = 20; // Réessayer le diagnostic après 20 échecs (20 minutes)
@@ -47,18 +48,21 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
             ticker.tick().await;
             if let Err(err) = sync_live_analytics(worker_state.clone()).await {
                 consecutive_failures += 1;
-                
+
                 // Logger une seule fois si c'est une erreur de connexion (service non disponible)
                 let err_str = format!("{err:?}").to_lowercase();
-                if err_str.contains("connection refused") 
+                if err_str.contains("connection refused")
                     || err_str.contains("connexion refusée")
                     || err_str.contains("tcp connect error")
                     || err_str.contains("service non disponible")
-                    || err_str.contains("manquant") {
+                    || err_str.contains("manquant")
+                {
                     // Réessayer le diagnostic après plusieurs échecs consécutifs
-                    if !connection_error_logged.swap(true, Ordering::Relaxed) || consecutive_failures >= MAX_CONSECUTIVE_FAILURES {
+                    if !connection_error_logged.swap(true, Ordering::Relaxed)
+                        || consecutive_failures >= MAX_CONSECUTIVE_FAILURES
+                    {
                         let config = worker_state.live_streaming.clone();
-                        
+
                         // ✅ DIAGNOSTIC COMPLET LiveKit
                         if let (Some(api_url), Some(api_key), Some(api_secret)) = (
                             config.livekit_api_url.as_ref(),
@@ -66,19 +70,48 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
                             config.livekit_api_secret.as_ref(),
                         ) {
                             log::warn!("🔍 Exécution du diagnostic LiveKit complet...");
-                            let diagnostic = diagnose_livekit_connection(api_url, Some(api_key), Some(api_secret)).await;
-                            
+                            let diagnostic = diagnose_livekit_connection(
+                                api_url,
+                                Some(api_key),
+                                Some(api_secret),
+                            )
+                            .await;
+
                             log::warn!("📊 Résultat du diagnostic LiveKit:");
-                            log::warn!("   - Serveur accessible: {}", if diagnostic.server_reachable { "✅" } else { "❌" });
-                            log::warn!("   - Endpoint API accessible: {}", if diagnostic.api_endpoint_accessible { "✅" } else { "❌" });
-                            log::warn!("   - Authentification: {}", if diagnostic.authentication_working { "✅" } else { "❌" });
-                            
+                            log::warn!(
+                                "   - Serveur accessible: {}",
+                                if diagnostic.server_reachable {
+                                    "✅"
+                                } else {
+                                    "❌"
+                                }
+                            );
+                            log::warn!(
+                                "   - Endpoint API accessible: {}",
+                                if diagnostic.api_endpoint_accessible {
+                                    "✅"
+                                } else {
+                                    "❌"
+                                }
+                            );
+                            log::warn!(
+                                "   - Authentification: {}",
+                                if diagnostic.authentication_working {
+                                    "✅"
+                                } else {
+                                    "❌"
+                                }
+                            );
+
                             // ✅ NOUVEAU: Afficher les vérifications automatiques
                             if let Some(ref ip) = diagnostic.ip_address {
                                 log::warn!("   - IP: {}", ip);
                             }
                             if let Some(is_public) = diagnostic.ip_is_public {
-                                log::warn!("   - IP publique: {}", if is_public { "✅" } else { "❌ (privée)" });
+                                log::warn!(
+                                    "   - IP publique: {}",
+                                    if is_public { "✅" } else { "❌ (privée)" }
+                                );
                             }
                             if let Some(ref status) = diagnostic.server_status {
                                 log::warn!("   - Statut serveur: {}", status);
@@ -86,18 +119,18 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
                             if let Some(ref firewall) = diagnostic.firewall_check {
                                 log::warn!("   - Firewall: {}", firewall);
                             }
-                            
+
                             if let Some(ref err_msg) = diagnostic.error_message {
                                 log::warn!("   - Erreur: {}", err_msg);
                             }
-                            
+
                             if !diagnostic.suggestions.is_empty() {
                                 log::warn!("   💡 Suggestions:");
                                 for suggestion in &diagnostic.suggestions {
                                     log::warn!("      {}", suggestion);
                                 }
                             }
-                            
+
                             if diagnostic.server_reachable && diagnostic.authentication_working {
                                 log::info!("✅ LiveKit: Serveur maintenant accessible ! Réinitialisation du compteur.");
                                 consecutive_failures = 0;
@@ -119,7 +152,9 @@ pub fn start_live_analytics_task(state: Arc<AppState>) {
                 }
             } else {
                 // Si la connexion réussit après une erreur, réinitialiser le flag
-                if connection_error_logged.swap(false, Ordering::Relaxed) || consecutive_failures > 0 {
+                if connection_error_logged.swap(false, Ordering::Relaxed)
+                    || consecutive_failures > 0
+                {
                     log::info!("✅ LiveKit disponible. Synchronisation analytics activée.");
                     consecutive_failures = 0;
                 }
@@ -261,7 +296,7 @@ async fn update_session_metrics(
             updated_at = NOW()
         WHERE livekit_room_name = $1
         RETURNING id, peak_viewers, total_watch_time_seconds
-        "#
+        "#,
     )
     .bind(room_name)
     .bind(viewers)
@@ -333,7 +368,7 @@ async fn upsert_analytics(
             conversions = EXCLUDED.conversions,
             revenue_cfa = EXCLUDED.revenue_cfa,
             last_synced_at = NOW()
-        "#
+        "#,
     )
     .bind(session_id)
     .bind(webrtc_viewers)

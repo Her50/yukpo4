@@ -94,7 +94,8 @@ pub async fn record_search(
                 serde_json::to_string(&serde_json::json!({
                     "success": false,
                     "error": format!("Erreur enregistrement: {}", e)
-                })).unwrap_or_else(|_| format!("Erreur enregistrement: {}", e)),
+                }))
+                .unwrap_or_else(|_| format!("Erreur enregistrement: {}", e)),
             ))
         }
     }

@@ -7,18 +7,18 @@ use crate::utils::embedding_client::AddEmbeddingPineconeRequest;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;
 use log::{info, warn};
-use sqlx::{FromRow, PgPool, Row};
 use reqwest::Client;
+use sqlx::{FromRow, PgPool, Row};
 
 #[derive(FromRow)]
 struct UserGpsRow {
     gps: Option<String>,
 }
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use uuid::Uuid;
-use futures::stream::FuturesUnordered;
-use futures::StreamExt;
 
 // ✅ NOUVEAU 2025-11-01 : Configuration des coûts de création de services et produits
 mod service_costs {
@@ -93,30 +93,32 @@ fn is_probable_base64(data: &str) -> bool {
     if data.starts_with("data:") {
         return true;
     }
-    
+
     // 2. URL HTTP/HTTPS - ne pas traiter comme base64
     if data.starts_with("http://") || data.starts_with("https://") {
         return false;
     }
-    
+
     // 3. Base64 pur (minimum 80 caractères pour être valide)
     if data.len() < 80 {
         return false;
     }
-    
+
     // 4. Vérifier que tous les caractères sont valides pour base64
-    let valid_chars = data.chars()
+    let valid_chars = data
+        .chars()
         .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '=' | '\n' | '\r' | ' '));
-    
+
     // 5. Vérifier qu'il y a au moins quelques caractères base64 typiques
     let has_base64_chars = data.contains('+') || data.contains('/') || data.contains('=');
-    
+
     // 6. Vérifier le ratio de caractères base64 (au moins 80% de caractères valides)
-    let base64_char_count = data.chars()
+    let base64_char_count = data
+        .chars()
         .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '='))
         .count();
     let base64_ratio = base64_char_count as f64 / data.len() as f64;
-    
+
     valid_chars && has_base64_chars && base64_ratio >= 0.8
 }
 
@@ -152,14 +154,23 @@ async fn process_single_image_for_product(
 
     log::info!(
         "[process_single_image_for_product] 🖼️ Traitement image {} de produit {} (main: {})",
-        image_index, product_index, is_main
+        image_index,
+        product_index,
+        is_main
     );
 
     // Sauvegarder l'image (opération I/O lourde - peut être parallélisée)
     let stored = if is_url(image_data) {
         download_and_save_image(storage_root.as_path(), service_id, image_data, "images").await
     } else if is_probable_base64(image_data) {
-        persist_base64_media(storage_root.as_path(), service_id, "images", image_data, "jpg").await
+        persist_base64_media(
+            storage_root.as_path(),
+            service_id,
+            "images",
+            image_data,
+            "jpg",
+        )
+        .await
     } else {
         log::warn!(
             "[process_single_image_for_product] Image ignorée (format non supporté) pour produit {}",
@@ -173,7 +184,8 @@ async fn process_single_image_for_product(
         Err(err) => {
             log::error!(
                 "[process_single_image_for_product] Erreur sauvegarde image produit {}: {}",
-                product_index, err
+                product_index,
+                err
             );
             return Err(err);
         }
@@ -181,16 +193,56 @@ async fn process_single_image_for_product(
 
     let StoredMedia {
         path: file_path,
-        bytes: image_bytes,
+        bytes: mut image_bytes,
     } = stored;
 
     #[cfg(not(feature = "image_search"))]
     let _ = &image_bytes;
 
-    // Générer signature d'image si disponible (opération CPU lourde - peut être parallélisée)
+    // ✅ NOUVEAU 2025-01-27 : Compression automatique des images
+    #[cfg(feature = "image")]
+    {
+        if !image_bytes.is_empty() {
+            match crate::services::image_compression_service::compress_image(
+                &image_bytes,
+                crate::services::image_compression_service::CompressionConfig::default(),
+            )
+            .await
+            {
+                Ok(compressed) => {
+                    if compressed.len() < image_bytes.len() {
+                        log::info!(
+                            "[process_single_image_for_product] ✅ Image compressée: {} -> {} bytes ({}% réduction)",
+                            image_bytes.len(),
+                            compressed.len(),
+                            ((image_bytes.len() - compressed.len()) * 100) / image_bytes.len()
+                        );
+                        // Sauvegarder la version compressée
+                        if let Err(e) = tokio::fs::write(&file_path, &compressed).await {
+                            log::warn!("[process_single_image_for_product] Erreur sauvegarde image compressée: {}, utilisation originale", e);
+                        } else {
+                            image_bytes = compressed;
+                        }
+                    } else {
+                        log::debug!("[process_single_image_for_product] Compression n'a pas réduit la taille, utilisation originale");
+                    }
+                }
+                Err(e) => {
+                    log::warn!("[process_single_image_for_product] Erreur compression image: {}, utilisation originale", e);
+                }
+            }
+        }
+    }
+
+    // ✅ OPTIMISÉ: Générer signature d'image seulement si bytes disponibles et < 10 MB (skip pour fichiers volumineux)
     #[cfg(feature = "image_search")]
-    let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
-        match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
+    let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty()
+        && image_bytes.len() < 10_000_000
+    {
+        // ✅ Skip signature pour fichiers > 10 MB (trop coûteux en CPU et mémoire)
+        match crate::services::image_search_service::ImageSearchService::generate_image_signature(
+            &image_bytes,
+        ) {
             Ok(signature) => {
                 let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| {
                     serde_json::json!({
@@ -214,11 +266,26 @@ async fn process_single_image_for_product(
             }
             Err(e) => {
                 log::warn!("[process_single_image_for_product] Erreur signature: {}", e);
-                (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                (
+                    serde_json::Value::Null,
+                    String::new(),
+                    serde_json::Value::Null,
+                )
             }
         }
+    } else if image_bytes.is_empty() {
+        log::debug!("[process_single_image_for_product] Fichier volumineux, skip signature (économie CPU/RAM)");
+        (
+            serde_json::Value::Null,
+            String::new(),
+            serde_json::Value::Null,
+        )
     } else {
-        (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+        (
+            serde_json::Value::Null,
+            String::new(),
+            serde_json::Value::Null,
+        )
     };
 
     #[cfg(not(feature = "image_search"))]
@@ -248,6 +315,8 @@ fn produits_array_mut(data_obj: &mut serde_json::Value) -> Option<&mut Vec<serde
     }
 }
 
+/// ✅ OPTIMISÉ 2025-12-01: Sauvegarde streaming pour médias volumineux
+/// Utilise un buffer chunked pour éviter de charger tout en mémoire
 async fn persist_base64_media(
     storage_root: &Path,
     service_id: i32,
@@ -257,9 +326,10 @@ async fn persist_base64_media(
 ) -> AppResult<StoredMedia> {
     let payload = strip_base64_prefix(base64_data);
     let cleaned_payload: String = payload.chars().filter(|c| !c.is_whitespace()).collect();
-    let bytes = STANDARD
-        .decode(cleaned_payload.as_bytes())
-        .map_err(|e| AppError::BadRequest(format!("Décodage base64 invalide: {}", e)))?;
+
+    // ✅ OPTIMISATION: Pour les fichiers volumineux (> 5 MB), utiliser streaming
+    let estimated_size = (cleaned_payload.len() * 3) / 4; // Estimation taille décodée
+    const LARGE_FILE_THRESHOLD: usize = 5 * 1024 * 1024; // 5 MB
 
     let extension = infer_extension_from_data(base64_data, default_ext);
     let service_dir = storage_root
@@ -275,7 +345,59 @@ async fn persist_base64_media(
         extension
     );
     let disk_path = service_dir.join(&file_name);
-    fs::write(&disk_path, &bytes).await?;
+
+    let bytes = if estimated_size > LARGE_FILE_THRESHOLD {
+        // ✅ Streaming pour fichiers volumineux - NE PAS garder tous les bytes en mémoire
+        log::info!(
+            "[persist_base64_media] 📦 Fichier volumineux détecté (~{} MB), utilisation streaming (sans chargement mémoire complet)",
+            estimated_size / 1024 / 1024
+        );
+
+        // Décoder par chunks et écrire directement sur disque
+        let mut file = tokio::fs::File::create(&disk_path).await?;
+        use tokio::io::AsyncWriteExt;
+
+        // Décoder et écrire par chunks de 1 MB (sans accumuler en mémoire)
+        const CHUNK_SIZE: usize = 1024 * 1024; // 1 MB base64 = ~768 KB décodé
+
+        // Pour base64, on doit décoder par multiples de 4 caractères
+        let base64_chunk_size = (CHUNK_SIZE / 3 * 4).max(4); // Taille chunk base64
+
+        // Décoder et écrire directement sans accumuler
+        let mut total_written = 0;
+        for chunk in cleaned_payload.as_bytes().chunks(base64_chunk_size) {
+            let chunk_str = std::str::from_utf8(chunk)
+                .map_err(|e| AppError::BadRequest(format!("Erreur UTF-8: {}", e)))?;
+
+            // Décoder le chunk
+            let chunk_decoded = STANDARD
+                .decode(chunk_str)
+                .map_err(|e| AppError::BadRequest(format!("Décodage base64 invalide: {}", e)))?;
+
+            // Écrire directement sur disque
+            file.write_all(&chunk_decoded).await?;
+            total_written += chunk_decoded.len();
+        }
+
+        file.flush().await?;
+
+        // ✅ OPTIMISATION: Pour fichiers volumineux, ne pas charger en mémoire
+        // Retourner un vecteur vide (les bytes ne sont pas nécessaires pour les signatures d'images volumineuses)
+        log::info!(
+            "[persist_base64_media] ✅ Fichier volumineux écrit sur disque ({} bytes), pas de chargement mémoire",
+            total_written
+        );
+        Vec::new() // Ne pas charger en mémoire pour économiser la RAM
+    } else {
+        // ✅ Méthode standard pour petits fichiers (< 5 MB)
+        let decoded = STANDARD
+            .decode(cleaned_payload.as_bytes())
+            .map_err(|e| AppError::BadRequest(format!("Décodage base64 invalide: {}", e)))?;
+
+        // Écrire en une fois (plus rapide pour petits fichiers)
+        fs::write(&disk_path, &decoded).await?;
+        decoded
+    };
 
     let relative_path = Path::new("uploads")
         .join("services")
@@ -309,11 +431,12 @@ async fn download_and_save_image(
         .map_err(|e| AppError::Internal(format!("Erreur création client HTTP: {}", e)))?;
 
     // Télécharger l'image
-    let response = client
-        .get(image_url)
-        .send()
-        .await
-        .map_err(|e| AppError::BadRequest(format!("Erreur téléchargement image depuis {}: {}", image_url, e)))?;
+    let response = client.get(image_url).send().await.map_err(|e| {
+        AppError::BadRequest(format!(
+            "Erreur téléchargement image depuis {}: {}",
+            image_url, e
+        ))
+    })?;
 
     if !response.status().is_success() {
         return Err(AppError::BadRequest(format!(
@@ -559,11 +682,11 @@ fn parse_lat_lng_from_str(input: &str) -> Option<(f64, f64)> {
 /// Fonction utilitaire pour détecter si une string est du base64 (média)
 fn is_base64_media(s: &str) -> bool {
     // Détecter les strings base64 de médias (très longues, commençant par data:)
-    (s.starts_with("data:image/") || 
-     s.starts_with("data:video/") || 
-     s.starts_with("data:audio/") ||
-     s.starts_with("data:application/")) && 
-    s.len() > 1000 // Les médias base64 sont toujours très longs
+    (s.starts_with("data:image/")
+        || s.starts_with("data:video/")
+        || s.starts_with("data:audio/")
+        || s.starts_with("data:application/"))
+        && s.len() > 1000 // Les médias base64 sont toujours très longs
 }
 
 /// Fonction récursive pour nettoyer tous les médias base64 dans une structure JSON
@@ -582,27 +705,38 @@ fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mu
                 "image_base64",
                 "pdf_base64",
             ];
-            
+
             // Supprimer les clés médias directes
             for key in &media_keys {
                 if obj.remove(*key).is_some() {
                     *removed_count += 1;
                 }
             }
-            
+
             // Nettoyer les objets avec type_donnee médias (media, image, video, audio, document, file, excel)
             let keys_to_check: Vec<String> = obj.keys().cloned().collect();
             for key in keys_to_check {
                 if let Some(v) = obj.get_mut(&key) {
                     // Si c'est un objet avec type_donnee médias, supprimer tout l'objet
                     if let Some(media_obj) = v.as_object_mut() {
-                        let should_remove = media_obj.get("type_donnee")
+                        let should_remove = media_obj
+                            .get("type_donnee")
                             .and_then(|t| t.as_str())
                             .map(|s| {
-                                matches!(s, "media" | "image" | "video" | "audio" | "document" | "file" | "excel" | "pdf")
+                                matches!(
+                                    s,
+                                    "media"
+                                        | "image"
+                                        | "video"
+                                        | "audio"
+                                        | "document"
+                                        | "file"
+                                        | "excel"
+                                        | "pdf"
+                                )
                             })
                             .unwrap_or(false);
-                        
+
                         if should_remove {
                             // Supprimer tout l'objet média (il sera sauvegardé dans la table media)
                             if obj.remove(&key).is_some() {
@@ -610,7 +744,7 @@ fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mu
                             }
                             continue;
                         }
-                        
+
                         // Vérifier aussi si la valeur contient du base64
                         if let Some(val) = media_obj.get("valeur") {
                             match val {
@@ -622,7 +756,9 @@ fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mu
                                 serde_json::Value::Array(_) => {
                                     // Nettoyer les tableaux de base64
                                     let mut cleaned = false;
-                                    if let Some(arr) = media_obj.get_mut("valeur").and_then(|v| v.as_array_mut()) {
+                                    if let Some(arr) =
+                                        media_obj.get_mut("valeur").and_then(|v| v.as_array_mut())
+                                    {
                                         for item in arr.iter_mut() {
                                             if let serde_json::Value::String(s) = item {
                                                 if is_base64_media(s) {
@@ -644,7 +780,7 @@ fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mu
                                 _ => {}
                             }
                         }
-                        
+
                         // Nettoyer récursivement dans les sous-objets
                         clean_media_recursive_final(v, removed_count);
                     } else if let Some(s) = v.as_str() {
@@ -713,11 +849,11 @@ async fn enrich_service_with_google(
 
     let titre = extract_string_field(map, "titre_service");
     let nom_produit = extract_string_field(map, "nom_produit");
-    
+
     // ✅ NOUVEAU: Récupérer le nom du prestataire depuis le JSON OU depuis la table users
     let mut nom_prestataire = extract_string_field(map, "nom_prestataire")
         .or_else(|| extract_string_field(map, "prestataire_nom"));
-    
+
     // Fallback: Récupérer depuis la table users si pas dans le JSON
     if nom_prestataire.is_none() {
         match sqlx::query_scalar::<_, Option<String>>(
@@ -761,7 +897,7 @@ async fn enrich_service_with_google(
             nom_prestataire.as_ref().unwrap()
         );
     }
-    
+
     let categorie = extract_string_field(map, "categorie_produit")
         .or_else(|| extract_string_field(map, "category"));
 
@@ -816,12 +952,12 @@ async fn enrich_service_with_google(
     };
 
     let places_service = GooglePlacesService::new();
-    
+
     // ✅ NOUVEAU: Utiliser search_and_select_best_match avec validation distance et comparaison multiple
     let nom_prestataire_str = nom_prestataire.as_deref();
     // ✅ AMÉLIORATION: Réduire la distance maximale à 1 km pour plus de précision (au lieu de 10 km)
     let max_distance_km = 1.0; // Distance maximale acceptée : 1 km (précision maximale pour matching)
-    
+
     match places_service
         .search_and_select_best_match(
             &final_query,
@@ -849,7 +985,7 @@ async fn enrich_service_with_google(
                 );
                 map.insert("location_vector".to_string(), vector_value);
             }
-            
+
             log::info!(
                 "[creer_service] ✅ Google Places match sélectionné: {} (place_id: {})",
                 google_place.display_name,
@@ -979,17 +1115,18 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
             if key == "produits" || key == "gps_fixe" || key == "gps" || key == "gps_coords" {
                 continue;
             }
-            
+
             if let Some(value) = map.get(&key) {
                 // Vérifier si c'est déjà un objet structuré (avec type_donnee et valeur)
-                let is_already_structured = value.as_object()
+                let is_already_structured = value
+                    .as_object()
                     .map(|obj| obj.contains_key("type_donnee") && obj.contains_key("valeur"))
                     .unwrap_or(false);
-                
+
                 if is_already_structured {
                     continue; // Déjà structuré, ne pas normaliser
                 }
-                
+
                 // Si c'est une string simple, convertir en objet structuré
                 if value.is_string() {
                     let string_value = value.as_str().unwrap_or("");
@@ -1055,10 +1192,15 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
                 );
             } else if let Some(produits_obj) = produits.as_object() {
                 // ✅ CORRECTION : Gérer le cas où produits.type_donnee = "string" et produits.valeur est un objet autocomplete
-                if let Some(type_donnee) = produits_obj.get("type_donnee").and_then(|v| v.as_str()) {
+                if let Some(type_donnee) = produits_obj.get("type_donnee").and_then(|v| v.as_str())
+                {
                     if type_donnee == "string" {
-                        if let Some(valeur_obj) = produits_obj.get("valeur").and_then(|v| v.as_object()) {
-                            if let Some(valeur_type_donnee) = valeur_obj.get("type_donnee").and_then(|v| v.as_str()) {
+                        if let Some(valeur_obj) =
+                            produits_obj.get("valeur").and_then(|v| v.as_object())
+                        {
+                            if let Some(valeur_type_donnee) =
+                                valeur_obj.get("type_donnee").and_then(|v| v.as_str())
+                            {
                                 if valeur_type_donnee == "autocomplete" {
                                     // Structure incorrecte : produits.type_donnee="string" avec produits.valeur.type_donnee="autocomplete"
                                     // Normaliser en listeproduit
@@ -1067,14 +1209,14 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
                                         .and_then(|v| v.as_str())
                                         .unwrap_or("formulaire")
                                         .to_string();
-                                    
+
                                     // Extraire les valeurs de l'autocomplete
                                     let autocomplete_valeurs = valeur_obj
                                         .get("valeur")
                                         .and_then(|v| v.as_array())
                                         .cloned()
                                         .unwrap_or_default();
-                                    
+
                                     // Construire un produit basique à partir de l'autocomplete
                                     let produit_obj = serde_json::json!({
                                         "nom": autocomplete_valeurs.get(0).and_then(|v| v.as_str()).unwrap_or(""),
@@ -1087,13 +1229,13 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
                                         "sous_caracteristiques": valeur_obj.get("sous_caracteristiques").cloned().unwrap_or(serde_json::json!({})),
                                         "origine_champs": origine_champs.clone()
                                     });
-                                    
+
                                     let produits_normalized = serde_json::json!({
                                         "type_donnee": "listeproduit",
                                         "valeur": vec![produit_obj],
                                         "origine_champs": origine_champs
                                     });
-                                    
+
                                     map.insert("produits".to_string(), produits_normalized);
                                     log::info!(
                                         "[valider_service_json] ✅ Normalisation produits: type_donnee='string' avec valeur autocomplete -> listeproduit"
@@ -1387,12 +1529,27 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
 }
 
 /// ? Crée un service et active l'utilisateur en tant que provider, avec validation et caching
+/// ✅ AMÉLIORATION 2025-01-27 : Transaction globale + Validation stricte + Compression + Métriques
 pub async fn creer_service(
     pool: &PgPool,
     user_id: i32,
     data: &serde_json::Value,
     _redis_client: &redis::Client, // Ajout de Redis pour le caching (désactivé)
+    scalability_service: Option<
+        std::sync::Arc<crate::services::scalability_service::ScalabilityService>,
+    >, // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour contrôle du parallélisme
 ) -> Result<(serde_json::Value, u32), AppError> {
+    use crate::services::product_validation_service::validate_product_data_strict;
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+
+    // ✅ NOUVEAU 2025-01-27 : Métriques - Incrémenter compteur total
+    if let Ok(metrics) = crate::metrics::product_creation_metrics::ProductCreationMetrics::new() {
+        metrics.products_created_total.inc();
+        metrics.products_creation_in_progress.inc();
+    }
+
     // Initialiser le tracking des tokens
     let token_tracker = ServiceCreationTokens::new();
 
@@ -1419,6 +1576,34 @@ pub async fn creer_service(
     // ✅ CRITIQUE 2025-11-02 : VALIDER D'ABORD AVANT DE DÉBITER (éviter perte argent)
     let mut data_obj = valider_service_json(&data_processed)?;
     log::info!("[creer_service] ✅ Validation JSON réussie AVANT débit");
+
+    // ✅ NOUVEAU 2025-01-27 : Validation stricte des produits si présents
+    if let Some(produits_array) = data_obj.get("produits").and_then(|v| v.as_array()) {
+        for (index, produit) in produits_array.iter().enumerate() {
+            if let Err(e) = validate_product_data_strict(produit) {
+                // ✅ NOUVEAU 2025-01-27 : Métriques - Erreur validation
+                if let Ok(metrics) =
+                    crate::metrics::product_creation_metrics::ProductCreationMetrics::new()
+                {
+                    metrics.products_created_failed.inc();
+                    metrics.products_creation_in_progress.dec();
+                }
+                log::error!(
+                    "[creer_service] ❌ Validation stricte échouée pour produit {}: {}",
+                    index,
+                    e
+                );
+                return Err(AppError::BadRequest(format!(
+                    "Données produit {} invalides: {}",
+                    index, e
+                )));
+            }
+        }
+        log::info!(
+            "[creer_service] ✅ Validation stricte de {} produits réussie",
+            produits_array.len()
+        );
+    }
 
     // ✅ NOUVEAU 2025-11-01 : Déterminer si c'est le premier produit ou un produit dupliqué
     // Si tokens_ia_externe > 0 : c'est le premier produit (analysé par IA)
@@ -1459,6 +1644,12 @@ pub async fn creer_service(
 
     // Vérifier solde suffisant
     if current_balance < cout_reel_xaf {
+        // ✅ NOUVEAU 2025-01-27 : Métriques - Erreur solde insuffisant
+        if let Ok(metrics) = crate::metrics::product_creation_metrics::ProductCreationMetrics::new()
+        {
+            metrics.products_created_failed.inc();
+            metrics.products_creation_in_progress.dec();
+        }
         log::error!(
             "[creer_service] ❌ Solde insuffisant pour user {}: {} FCFA < {} FCFA requis",
             user_id,
@@ -1509,7 +1700,7 @@ pub async fn creer_service(
     // Les images seront sauvegardées dans la table media plus tard
     let mut removed_count_initial = 0;
     clean_media_recursive_final(&mut data_obj, &mut removed_count_initial);
-    
+
     if removed_count_initial > 0 {
         log::info!(
             "[creer_service] ✅ Nettoyage initial des médias base64 ({} médias supprimés)",
@@ -1567,6 +1758,66 @@ pub async fn creer_service(
         .get("is_tarissable")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+
+    // ✅ NOUVEAU 2025-01-28: Validation obligatoire quantité > 0 pour les produits uniquement
+    if is_tarissable {
+        if let Some(produits) = data_obj.get("produits") {
+            if let Some(produits_obj) = produits.as_object() {
+                if let Some(produits_array) = produits_obj.get("valeur").and_then(|v| v.as_array())
+                {
+                    for (index, produit) in produits_array.iter().enumerate() {
+                        if let Some(prod_obj) = produit.as_object() {
+                            // Vérifier stock global
+                            let has_stock = prod_obj
+                                .get("stock")
+                                .and_then(|s| s.as_i64())
+                                .map(|s| s > 0)
+                                .unwrap_or(false);
+
+                            // Vérifier quantite_disponible
+                            let has_qty = prod_obj
+                                .get("quantite_disponible")
+                                .and_then(|q| q.as_i64())
+                                .map(|q| q > 0)
+                                .unwrap_or(false);
+
+                            // Vérifier stock dans variants
+                            let has_variant_stock = prod_obj
+                                .get("variants")
+                                .and_then(|v| v.as_array())
+                                .map(|variants| {
+                                    variants.iter().any(|variant| {
+                                        variant
+                                            .as_object()
+                                            .and_then(|v| v.get("stock"))
+                                            .and_then(|s| s.as_i64())
+                                            .map(|s| s > 0)
+                                            .unwrap_or(false)
+                                    })
+                                })
+                                .unwrap_or(false);
+
+                            if !has_stock && !has_qty && !has_variant_stock {
+                                let product_name = prod_obj
+                                    .get("nom")
+                                    .and_then(|n| n.as_str())
+                                    .unwrap_or(&format!("Produit #{}", index + 1));
+
+                                return Err(AppError::BadRequest(format!(
+                                    "⚠️ Quantité obligatoire pour les produits\n\n\
+                                    Le produit \"{}\" doit avoir une quantité disponible strictement supérieure à 0.\n\n\
+                                    Pourquoi ? La gestion du stock permet d'éviter les ventes de produits épuisés et \
+                                    d'améliorer l'expérience de vos clients.\n\n\
+                                    Veuillez renseigner la quantité disponible dans le champ dédié.",
+                                    product_name
+                                )));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     let gps = data_obj.get("gps").and_then(|v| v.as_bool());
     // Correction?: la colonne gps est TEXT en base, il faut passer "true"/"false" (string)
     let gps_str = gps
@@ -1617,45 +1868,50 @@ pub async fn creer_service(
 
     // ✅ NETTOYAGE FINAL AVANT INSERTION : Supprimer TOUTES les données volumineuses
     // Ce nettoyage est critique pour éviter l'erreur "index row requires X bytes, maximum size is 8191"
-    
+
     // ✅ NOUVEAU: Extraire les données Google Places COMPLÈTES avant nettoyage
     // Elles seront sauvegardées dans la table google_places_data séparément
     let google_place_full_data = data_obj.get("google_place").cloned();
-    
+
     let mut removed_count = 0;
     clean_media_recursive_final(&mut data_obj, &mut removed_count);
-    
+
     if removed_count > 0 {
         log::info!(
             "[creer_service] ✅ Nettoyage final avant insertion ({} médias supprimés)",
             removed_count
         );
     }
-    
+
     // ✅ NOUVEAU: Remplacer google_place par seulement place_id dans services.data
     // Les données complètes seront dans la table google_places_data
     if let Some(google_place) = data_obj.get_mut("google_place") {
         if let Some(gp_obj) = google_place.as_object_mut() {
             // Extraire seulement place_id pour garder la référence
-            let place_id = gp_obj.get("place_id")
+            let place_id = gp_obj
+                .get("place_id")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
-            
+
             // Remplacer l'objet complet par seulement place_id
             if let Some(pid) = place_id {
                 *google_place = serde_json::json!({ "place_id": pid });
                 log::info!("[creer_service] ✅ Google Places réduit à place_id seulement dans services.data");
             } else {
                 // Si pas de place_id, supprimer complètement
-                data_obj.as_object_mut().and_then(|m| m.remove("google_place"));
-                log::warn!("[creer_service] ⚠️ Google Places sans place_id, supprimé de services.data");
+                data_obj
+                    .as_object_mut()
+                    .and_then(|m| m.remove("google_place"));
+                log::warn!(
+                    "[creer_service] ⚠️ Google Places sans place_id, supprimé de services.data"
+                );
             }
         }
     }
-    
+
     // ✅ SUPPRIMÉ: Plus de troncature des descriptions
     // Les descriptions complètes sont maintenant conservées dans services.data
-    
+
     // Vérifier la taille du JSON après nettoyage
     let json_size = serde_json::to_string(&data_obj)
         .map(|s| s.len())
@@ -1664,7 +1920,7 @@ pub async fn creer_service(
         "[creer_service] 📊 Taille du JSON après nettoyage: {} bytes (max recommandé: ~8000 bytes)",
         json_size
     );
-    
+
     // ✅ CRITIQUE: Vérifier que le JSON n'est pas trop volumineux pour PostgreSQL (limite index: 8191 bytes)
     // Limite à 8000 bytes pour laisser une marge de sécurité
     if json_size > 8000 {
@@ -1678,7 +1934,7 @@ pub async fn creer_service(
             json_size
         )));
     }
-    
+
     if json_size > 5000 {
         log::warn!(
             "[creer_service] ⚠️ JSON volumineux après nettoyage ({} bytes). Proche de la limite.",
@@ -1686,21 +1942,67 @@ pub async fn creer_service(
         );
     }
 
-    // ✅ CRITIQUE 2025-11-25 : Débiter le solde MAINTENANT, APRÈS toutes les validations
-    // Cela évite de débiter si la création échoue à cause de la taille du JSON
+    // ✅ NOUVEAU 2025-01-27 : Démarrer une transaction globale AVANT le débit
+    // Cela garantit l'atomicité de toutes les opérations (débit, insertion service, médias)
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| AppError::Internal(format!("Échec début transaction: {}", e)))?;
+
+    // ✅ AMÉLIORATION 2025-01-27 : Utiliser SELECT FOR UPDATE pour éviter les race conditions
+    // Vérifier le solde dans la transaction avec FOR UPDATE pour éviter les débits simultanés
+    let balance_check_result =
+        sqlx::query("SELECT tokens_balance FROM users WHERE id = $1 FOR UPDATE")
+            .bind(user_id)
+            .fetch_one(&mut *tx)
+            .await;
+
+    let verified_balance = match balance_check_result {
+        Ok(row) => row.get::<i64, _>("tokens_balance"),
+        Err(e) => {
+            let _ = tx.rollback().await;
+            log::error!(
+                "[creer_service] ❌ Erreur récupération solde dans transaction: {}",
+                e
+            );
+            return Err(AppError::Internal(format!(
+                "Erreur récupération solde: {}",
+                e
+            )));
+        }
+    };
+
+    // Vérifier à nouveau le solde dans la transaction (peut avoir changé)
+    if verified_balance < cout_reel_xaf {
+        let _ = tx.rollback().await;
+        log::error!(
+            "[creer_service] ❌ Solde insuffisant dans transaction pour user {}: {} FCFA < {} FCFA requis",
+            user_id,
+            verified_balance,
+            cout_reel_xaf
+        );
+        return Err(AppError::BadRequest(format!(
+            "Solde insuffisant: {} FCFA disponible, {} FCFA requis",
+            verified_balance, cout_reel_xaf
+        )));
+    }
+
+    // ✅ CRITIQUE 2025-01-27 : Débiter le solde DANS la transaction
+    // Cela garantit que le débit et l'insertion sont atomiques
     let debit_result = sqlx::query(
         "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
     )
-    .bind(cout_reel_xaf)
-    .bind(user_id)
-    .fetch_one(pool)
-    .await;
+        .bind(cout_reel_xaf)
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await;
 
     let new_balance = match debit_result {
         Ok(row) => row.get::<i64, _>("tokens_balance"),
         Err(e) => {
+            let _ = tx.rollback().await;
             log::error!(
-                "[creer_service] ❌ Échec débit solde pour user {}: {}",
+                "[creer_service] ❌ Échec débit solde dans transaction pour user {}: {}",
                 user_id,
                 e
             );
@@ -1709,20 +2011,15 @@ pub async fn creer_service(
     };
 
     log::info!(
-        "[creer_service] ✅ Solde débité : {} FCFA (ancien: {}, nouveau: {})",
+        "[creer_service] ✅ Solde débité dans transaction : {} FCFA (ancien: {}, nouveau: {})",
         cout_reel_xaf,
-        current_balance,
+        verified_balance,
         new_balance
     );
 
-    let mut tx = pool
-        .begin()
-        .await
-        .map_err(|e| AppError::Internal(format!("Échec début transaction: {}", e)))?;
-
     // Ajout des champs dans la transaction SQL
     // Étape 1 : INSERT dans services et récupérer l'id
-    let row = sqlx::query(
+    let row_result = sqlx::query(
         r#"
         INSERT INTO services (user_id, data, is_tarissable, gps, auto_deactivate_at)
         VALUES ($1, $2, $3, $4, $5)
@@ -1735,60 +2032,39 @@ pub async fn creer_service(
     .bind(gps_str)
     .bind(auto_deactivate_at)
     .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| {
-        // Log détaillé pour diagnostiquer l'erreur
-        let json_size = serde_json::to_string(&data_obj)
-            .map(|s| s.len())
-            .unwrap_or(0);
-        let has_base64_image = data_obj
-            .as_object()
-            .and_then(|m| m.get("base64_image"))
-            .is_some();
-        
-        log::error!(
-            "[creer_service] Erreur SQL lors de l'insertion: {} | user_id={} | json_size={} bytes | has_base64_image={}",
-            e,
-            user_id,
-            json_size,
-            has_base64_image
-        );
-        
-        // ✅ CRITIQUE 2025-11-25 : Rembourser le solde si l'insertion échoue
-        // Le débit a été fait avant, donc on doit rembourser en cas d'échec
-        // Note: On lance le remboursement en arrière-plan pour ne pas bloquer
-        let pool_clone = pool.clone();
-        let user_id_clone = user_id;
-        let cout_reel_xaf_clone = cout_reel_xaf;
-        tokio::spawn(async move {
-            match sqlx::query(
-                "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2 RETURNING tokens_balance"
-            )
-            .bind(cout_reel_xaf_clone)
-            .bind(user_id_clone)
-            .fetch_one(&pool_clone)
-            .await {
-                Ok(refund_row) => {
-                    let refunded_balance = refund_row.get::<i64, _>("tokens_balance");
-                    log::info!(
-                        "[creer_service] ✅ Solde remboursé : {} FCFA (nouveau solde: {})",
-                        cout_reel_xaf_clone,
-                        refunded_balance
-                    );
-                }
-                Err(refund_err) => {
-                    log::error!(
-                        "[creer_service] ❌ Échec remboursement solde pour user {} (montant: {} FCFA): {}",
-                        user_id_clone,
-                        cout_reel_xaf_clone,
-                        refund_err
-                    );
-                }
-            }
-        });
-        
-        AppError::Internal(format!("Échec insertion service: {}", e))
-    })?;
+    .await;
+
+    let row = match row_result {
+        Ok(row) => row,
+        Err(e) => {
+            // Log détaillé pour diagnostiquer l'erreur
+            let json_size = serde_json::to_string(&data_obj)
+                .map(|s| s.len())
+                .unwrap_or(0);
+            let has_base64_image = data_obj
+                .as_object()
+                .and_then(|m| m.get("base64_image"))
+                .is_some();
+
+            log::error!(
+                "[creer_service] Erreur SQL lors de l'insertion: {} | user_id={} | json_size={} bytes | has_base64_image={}",
+                e,
+                user_id,
+                json_size,
+                has_base64_image
+            );
+
+            // ✅ AMÉLIORATION 2025-01-27 : Rollback automatique de la transaction
+            // Le débit est dans la transaction, donc le rollback annule automatiquement le débit
+            let _ = tx.rollback().await;
+            log::error!("[creer_service] ❌ Transaction rollback - débit annulé automatiquement");
+
+            return Err(AppError::Internal(format!(
+                "Échec insertion service: {}",
+                e
+            )));
+        }
+    };
 
     let service_id: i32 = row.get::<i32, _>("service_id");
 
@@ -1827,7 +2103,7 @@ pub async fn creer_service(
     // - Médias globaux du service (logo/bannière/audio/vidéo/doc/excel) : product_id = NULL, product_index = NULL (liés au service)
     // - GPS : Au niveau service (services.gps ou services.data->'location'), pas dans media
     // - Localisation produit : Dans service.data->'produits'[index]->'lieu_produit' (quartier, ville, pays)
-    
+
     // ✅ NOUVEAU 2025-11-26: Sauvegarder le logo et la bannière AVANT le nettoyage
     // Extraire le logo
     if let Some(logo_value) = data_processed.get("logo") {
@@ -1836,20 +2112,33 @@ pub async fn creer_service(
         } else {
             Some(logo_value)
         };
-        
+
         if let Some(logo_str) = logo_data.and_then(|v| v.as_str()) {
             if !logo_str.is_empty() && is_probable_base64(logo_str) {
-                log::info!("[creer_service] 🖼️ Sauvegarde du logo pour le service {}", service_id);
-                match persist_base64_media(storage_root.as_path(), service_id, "images", logo_str, "png").await {
+                log::info!(
+                    "[creer_service] 🖼️ Sauvegarde du logo pour le service {}",
+                    service_id
+                );
+                match persist_base64_media(
+                    storage_root.as_path(),
+                    service_id,
+                    "images",
+                    logo_str,
+                    "png",
+                )
+                .await
+                {
                     Ok(stored) => {
                         let file_path = stored.path;
                         #[cfg(feature = "image_search")]
                         let image_bytes = stored.bytes;
                         #[cfg(not(feature = "image_search"))]
                         let _image_bytes = stored.bytes;
-                        
+
                         #[cfg(feature = "image_search")]
-                        let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+                        let (image_signature, image_hash, image_metadata) = if !image_bytes
+                            .is_empty()
+                        {
                             match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
                                 Ok(sig) => {
                                     let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| serde_json::json!({}));
@@ -1859,12 +2148,20 @@ pub async fn creer_service(
                                 Err(_) => (serde_json::Value::Null, String::new(), serde_json::Value::Null)
                             }
                         } else {
-                            (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                            (
+                                serde_json::Value::Null,
+                                String::new(),
+                                serde_json::Value::Null,
+                            )
                         };
-                        
+
                         #[cfg(not(feature = "image_search"))]
-                        let (image_signature, image_hash, image_metadata) = (serde_json::Value::Null, String::new(), serde_json::Value::Null);
-                        
+                        let (image_signature, image_hash, image_metadata) = (
+                            serde_json::Value::Null,
+                            String::new(),
+                            serde_json::Value::Null,
+                        );
+
                         if let Err(e) = sqlx::query(
                             r#"
                             INSERT INTO media (service_id, type, path, service_media_type, uploaded_at, image_signature, image_hash, image_metadata)
@@ -1899,16 +2196,26 @@ pub async fn creer_service(
             if let Some(first_logo) = logo_array.first().and_then(|v| v.as_str()) {
                 if !first_logo.is_empty() && is_probable_base64(first_logo) {
                     log::info!("[creer_service] 🖼️ Sauvegarde du logo (premier élément du tableau) pour le service {}", service_id);
-                    match persist_base64_media(storage_root.as_path(), service_id, "images", first_logo, "png").await {
+                    match persist_base64_media(
+                        storage_root.as_path(),
+                        service_id,
+                        "images",
+                        first_logo,
+                        "png",
+                    )
+                    .await
+                    {
                         Ok(stored) => {
                             let file_path = stored.path;
                             #[cfg(feature = "image_search")]
                             let image_bytes = stored.bytes;
                             #[cfg(not(feature = "image_search"))]
                             let _image_bytes = stored.bytes;
-                            
+
                             #[cfg(feature = "image_search")]
-                            let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+                            let (image_signature, image_hash, image_metadata) = if !image_bytes
+                                .is_empty()
+                            {
                                 match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
                                     Ok(sig) => {
                                         let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| serde_json::json!({}));
@@ -1918,12 +2225,20 @@ pub async fn creer_service(
                                     Err(_) => (serde_json::Value::Null, String::new(), serde_json::Value::Null)
                                 }
                             } else {
-                                (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                                (
+                                    serde_json::Value::Null,
+                                    String::new(),
+                                    serde_json::Value::Null,
+                                )
                             };
-                            
+
                             #[cfg(not(feature = "image_search"))]
-                            let (image_signature, image_hash, image_metadata) = (serde_json::Value::Null, String::new(), serde_json::Value::Null);
-                            
+                            let (image_signature, image_hash, image_metadata) = (
+                                serde_json::Value::Null,
+                                String::new(),
+                                serde_json::Value::Null,
+                            );
+
                             if let Err(e) = sqlx::query(
                                 r#"
                                 INSERT INTO media (service_id, type, path, service_media_type, uploaded_at, image_signature, image_hash, image_metadata)
@@ -1955,28 +2270,44 @@ pub async fn creer_service(
             }
         }
     }
-    
+
     // Extraire la bannière
-    if let Some(banner_value) = data_processed.get("banner").or_else(|| data_processed.get("banniere")) {
+    if let Some(banner_value) = data_processed
+        .get("banner")
+        .or_else(|| data_processed.get("banniere"))
+    {
         let banner_data = if let Some(banner_obj) = banner_value.as_object() {
             banner_obj.get("valeur")
         } else {
             Some(banner_value)
         };
-        
+
         if let Some(banner_str) = banner_data.and_then(|v| v.as_str()) {
             if !banner_str.is_empty() && is_probable_base64(banner_str) {
-                log::info!("[creer_service] 🖼️ Sauvegarde de la bannière pour le service {}", service_id);
-                match persist_base64_media(storage_root.as_path(), service_id, "images", banner_str, "jpg").await {
+                log::info!(
+                    "[creer_service] 🖼️ Sauvegarde de la bannière pour le service {}",
+                    service_id
+                );
+                match persist_base64_media(
+                    storage_root.as_path(),
+                    service_id,
+                    "images",
+                    banner_str,
+                    "jpg",
+                )
+                .await
+                {
                     Ok(stored) => {
                         let file_path = stored.path;
                         #[cfg(feature = "image_search")]
                         let image_bytes = stored.bytes;
                         #[cfg(not(feature = "image_search"))]
                         let _image_bytes = stored.bytes;
-                        
+
                         #[cfg(feature = "image_search")]
-                        let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+                        let (image_signature, image_hash, image_metadata) = if !image_bytes
+                            .is_empty()
+                        {
                             match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
                                 Ok(sig) => {
                                     let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| serde_json::json!({}));
@@ -1986,12 +2317,20 @@ pub async fn creer_service(
                                 Err(_) => (serde_json::Value::Null, String::new(), serde_json::Value::Null)
                             }
                         } else {
-                            (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                            (
+                                serde_json::Value::Null,
+                                String::new(),
+                                serde_json::Value::Null,
+                            )
                         };
-                        
+
                         #[cfg(not(feature = "image_search"))]
-                        let (image_signature, image_hash, image_metadata) = (serde_json::Value::Null, String::new(), serde_json::Value::Null);
-                        
+                        let (image_signature, image_hash, image_metadata) = (
+                            serde_json::Value::Null,
+                            String::new(),
+                            serde_json::Value::Null,
+                        );
+
                         if let Err(e) = sqlx::query(
                             r#"
                             INSERT INTO media (service_id, type, path, service_media_type, uploaded_at, image_signature, image_hash, image_metadata)
@@ -2026,16 +2365,26 @@ pub async fn creer_service(
             if let Some(first_banner) = banner_array.first().and_then(|v| v.as_str()) {
                 if !first_banner.is_empty() && is_probable_base64(first_banner) {
                     log::info!("[creer_service] 🖼️ Sauvegarde de la bannière (premier élément du tableau) pour le service {}", service_id);
-                    match persist_base64_media(storage_root.as_path(), service_id, "images", first_banner, "jpg").await {
+                    match persist_base64_media(
+                        storage_root.as_path(),
+                        service_id,
+                        "images",
+                        first_banner,
+                        "jpg",
+                    )
+                    .await
+                    {
                         Ok(stored) => {
                             let file_path = stored.path;
                             #[cfg(feature = "image_search")]
                             let image_bytes = stored.bytes;
                             #[cfg(not(feature = "image_search"))]
                             let _image_bytes = stored.bytes;
-                            
+
                             #[cfg(feature = "image_search")]
-                            let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+                            let (image_signature, image_hash, image_metadata) = if !image_bytes
+                                .is_empty()
+                            {
                                 match crate::services::image_search_service::ImageSearchService::generate_image_signature(&image_bytes) {
                                     Ok(sig) => {
                                         let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| serde_json::json!({}));
@@ -2045,12 +2394,20 @@ pub async fn creer_service(
                                     Err(_) => (serde_json::Value::Null, String::new(), serde_json::Value::Null)
                                 }
                             } else {
-                                (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                                (
+                                    serde_json::Value::Null,
+                                    String::new(),
+                                    serde_json::Value::Null,
+                                )
                             };
-                            
+
                             #[cfg(not(feature = "image_search"))]
-                            let (image_signature, image_hash, image_metadata) = (serde_json::Value::Null, String::new(), serde_json::Value::Null);
-                            
+                            let (image_signature, image_hash, image_metadata) = (
+                                serde_json::Value::Null,
+                                String::new(),
+                                serde_json::Value::Null,
+                            );
+
                             if let Err(e) = sqlx::query(
                                 r#"
                                 INSERT INTO media (service_id, type, path, service_media_type, uploaded_at, image_signature, image_hash, image_metadata)
@@ -2082,15 +2439,14 @@ pub async fn creer_service(
             }
         }
     }
-    
+
     // ✅ NOUVEAU: Support explicite des URLs (imageUrls, videoUrls, etc.)
     // Priorité: imageUrls (upload préalable) > base64_image (rétrocompatibilité)
     let service_images: Vec<String> = {
         // Chercher d'abord dans imageUrls (upload préalable)
-        if let Some(image_urls) = data_processed.get("imageUrls")
-            .and_then(|v| v.as_array())
-        {
-            image_urls.iter()
+        if let Some(image_urls) = data_processed.get("imageUrls").and_then(|v| v.as_array()) {
+            image_urls
+                .iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect()
         }
@@ -2107,27 +2463,31 @@ pub async fn creer_service(
                 .unwrap_or_default()
         }
     };
-    
+
     log::info!(
         "[creer_service] 💾 Début sauvegarde médias pour service {} ({} images globales trouvées dans data_processed)",
         service_id,
         service_images.len()
     );
-    
+
     // ✅ DIAGNOSTIC: Log détaillé pour comprendre pourquoi les médias ne sont pas sauvegardés
     log::debug!(
         "[creer_service] 🔍 DIAGNOSTIC MÉDIAS - service_id={}, data_processed keys: {:?}",
         service_id,
-        data_processed.as_object().map(|o| o.keys().collect::<Vec<_>>()).unwrap_or_default()
+        data_processed
+            .as_object()
+            .map(|o| o.keys().collect::<Vec<_>>())
+            .unwrap_or_default()
     );
-    
+
     // Vérifier la présence de différents champs de médias dans data_processed
     let has_base64_image = data_processed.get("base64_image").is_some();
     let has_images_realisations = data_processed.get("images_realisations").is_some();
-    let has_videos = data_processed.get("videos_base64").is_some() || data_processed.get("videos").is_some();
+    let has_videos =
+        data_processed.get("videos_base64").is_some() || data_processed.get("videos").is_some();
     let has_audio = data_processed.get("audio_base64").is_some();
     let has_produits = data_processed.get("produits").is_some();
-    
+
     log::info!(
         "[creer_service] 🔍 DIAGNOSTIC MÉDIAS - service_id={} - Présence médias: base64_image={}, images_realisations={}, videos={}, audio={}, produits={}",
         service_id, has_base64_image, has_images_realisations, has_videos, has_audio, has_produits
@@ -2200,9 +2560,10 @@ pub async fn creer_service(
                     product_index,
                     prod_processed.keys().collect::<Vec<_>>()
                 );
-                
+
                 // ✅ NOUVEAU: Chercher d'abord dans "imageUrls" (upload préalable)
-                if let Some(image_urls) = prod_processed.get("imageUrls").and_then(|v| v.as_array()) {
+                if let Some(image_urls) = prod_processed.get("imageUrls").and_then(|v| v.as_array())
+                {
                     let count = image_urls.len();
                     images_to_process.extend(
                         image_urls
@@ -2218,7 +2579,9 @@ pub async fn creer_service(
                     }
                 }
                 // Chercher dans "images" (URLs ou base64)
-                if let Some(product_images) = prod_processed.get("images").and_then(|v| v.as_array()) {
+                if let Some(product_images) =
+                    prod_processed.get("images").and_then(|v| v.as_array())
+                {
                     let count = product_images.len();
                     images_to_process.extend(
                         product_images
@@ -2258,7 +2621,10 @@ pub async fn creer_service(
                     }
                 }
                 // Chercher dans "images_base64" ou "image_base64" (base64)
-                if let Some(images_base64) = prod_processed.get("images_base64").and_then(|v| v.as_array()) {
+                if let Some(images_base64) = prod_processed
+                    .get("images_base64")
+                    .and_then(|v| v.as_array())
+                {
                     let count = images_base64.len();
                     images_to_process.extend(
                         images_base64
@@ -2273,14 +2639,16 @@ pub async fn creer_service(
                         );
                     }
                 }
-                if let Some(image_base64) = prod_processed.get("image_base64").and_then(|v| v.as_str()) {
+                if let Some(image_base64) =
+                    prod_processed.get("image_base64").and_then(|v| v.as_str())
+                {
                     images_to_process.push(image_base64.to_string());
                     log::info!(
                         "[creer_service] ✅ Trouvé 1 image dans champ 'image_base64' (string) pour produit {}",
                         product_id
                     );
                 }
-                
+
                 log::info!(
                     "[creer_service] 📊 Total images à traiter pour produit {}: {}",
                     product_id,
@@ -2301,257 +2669,227 @@ pub async fn creer_service(
             produit_obj.remove("image_base64");
 
             let mut saved_paths_for_product: Vec<String> = Vec::new();
+            let service_image_count = if product_index == 0 {
+                service_images.len()
+            } else {
+                0
+            };
 
             if !images_to_process.is_empty() {
-                let service_image_count = if product_index == 0 {
-                    service_images.len()
-                } else {
-                    0
-                };
-
                 log::info!(
                     "[creer_service] 🚀 Traitement parallèle de {} images pour produit {}",
                     images_to_process.len(),
                     product_index
                 );
 
-                // ✅ OPTIMISÉ: Traiter les images en PARALLÈLE (sauvegarde disque + signatures)
-                let mut futures = FuturesUnordered::new();
+                // ✅ OPTIMISÉ 2025-01-27 : Utiliser OptimizedMediaProcessor pour traitement batch
+                use crate::services::optimized_media_processor::{
+                    MediaItem, OptimizedMediaProcessor, OptimizedMediaProcessorConfig,
+                };
 
-                for (image_index, image_data) in images_to_process.iter().enumerate() {
+                let config = OptimizedMediaProcessorConfig {
+                    max_concurrent: 10,
+                    db_batch_size: 20,
+                    generate_thumbnails: true,
+                    adaptive_compression: true,
+                    use_signature_cache: true,
+                };
+
+                let processor =
+                    OptimizedMediaProcessor::new(pool.clone(), storage_root.clone(), config);
+
+                // Convertir les images en MediaItem
+                let mut media_items: Vec<MediaItem> = Vec::new();
+                for image_data in &images_to_process {
                     if image_data.is_empty() {
                         continue;
                     }
-
-                    let image_data = image_data.clone();
-                    let storage_root_clone = storage_root.clone();
-                    let product_id_clone = product_id.clone();
-
-                    futures.push(tokio::spawn(async move {
-                        process_single_image_for_product(
-                            &storage_root_clone,
-                            service_id,
-                            &product_id_clone,
-                            product_index,
-                            image_index,
-                            &image_data,
-                        ).await
-                    }));
+                    let is_base64 = !is_url(image_data) && is_probable_base64(image_data);
+                    media_items.push(MediaItem::new_image(image_data.clone(), is_base64));
                 }
 
-                // Collecter les résultats au fur et à mesure qu'ils arrivent
-                let mut processed_images: Vec<(usize, ProcessedImageResult)> = Vec::new();
-                while let Some(result) = futures.next().await {
-                    match result {
-                        Ok(Ok(Some(processed))) => {
-                            processed_images.push((processed.image_index, processed));
-                        }
-                        Ok(Ok(None)) => {
-                            // Image ignorée (format non supporté)
-                        }
-                        Ok(Err(e)) => {
-                            log::error!(
-                                "[creer_service] ❌ Erreur traitement image du produit {}: {}",
-                                product_index,
-                                e
+                if !media_items.is_empty() {
+                    log::info!(
+                        "[creer_service] 🚀 Traitement batch optimisé de {} images pour produit {}",
+                        media_items.len(),
+                        product_index
+                    );
+
+                    // Traiter les images en batch (hors transaction car parallèle)
+                    match processor
+                        .process_media_batch(service_id, Some(product_index), media_items)
+                        .await
+                    {
+                        Ok(processed) => {
+                            // Insérer dans la transaction par batch
+                            for (image_index, media) in processed.iter().enumerate() {
+                                let is_main = image_index == 0;
+
+                                if let Err(e) = sqlx::query(
+                                    r#"
+                                    INSERT INTO media (
+                                        service_id, product_id, product_index, type, path,
+                                        is_main_image, display_order, uploaded_at,
+                                        image_signature, image_hash, image_metadata
+                                    )
+                                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                                    "#,
+                                )
+                                .bind(service_id)
+                                .bind(&product_id)
+                                .bind(product_index as i32)
+                                .bind("image")
+                                .bind(&media.file_path)
+                                .bind(is_main)
+                                .bind(image_index as i32)
+                                .bind(Utc::now().naive_utc())
+                                .bind(&media.image_signature)
+                                .bind(&media.image_hash)
+                                .bind(&media.image_metadata)
+                                .execute(&mut *tx)
+                                .await
+                                {
+                                    log::error!(
+                                        "[creer_service] ❌ Erreur insertion media produit {} (index {}): {}",
+                                        product_id,
+                                        product_index,
+                                        e
+                                    );
+                                    continue;
+                                }
+
+                                saved_paths_for_product.push(media.file_path.clone());
+                                files_saved += 1;
+                                if product_index == 0 && image_index < service_image_count {
+                                    saved_service_images.push(media.file_path.clone());
+                                }
+                            }
+
+                            log::info!(
+                                "[creer_service] ✅ {} images traitées avec service optimisé pour produit {}",
+                                processed.len(),
+                                product_index
                             );
                         }
                         Err(e) => {
                             log::error!(
-                                "[creer_service] ❌ Erreur task image du produit {}: {}",
+                                "[creer_service] ❌ Erreur traitement batch images produit {}: {}",
                                 product_index,
                                 e
                             );
                         }
                     }
                 }
+            }
 
-                // Trier par index pour préserver l'ordre
-                processed_images.sort_by_key(|(idx, _)| *idx);
+            // ✅ Extraction des métadonnées produit pour mise à jour AI (une seule fois par produit)
+            // Fait après traitement des images pour le premier produit
+            if product_index == 0 && !saved_paths_for_product.is_empty() {
+                let product_name = produit_obj
+                    .get("nom")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let product_description = produit_obj
+                    .get("description")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let product_marque = produit_obj.get("marque").and_then(|v| v.as_str());
+                let product_category = produit_obj
+                    .get("categorie")
+                    .or_else(|| produit_obj.get("category"))
+                    .and_then(|v| v.as_str());
+                let product_couleurs: Vec<String> = produit_obj
+                    .get("couleurs")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
 
-                log::info!(
-                    "[creer_service] ✅ {} images traitées en parallèle pour produit {}",
-                    processed_images.len(),
-                    product_index
-                );
+                let ai_description = if !product_description.is_empty() {
+                    product_description.to_string()
+                } else if !product_name.is_empty() {
+                    format!(
+                        "{} - {}",
+                        product_name,
+                        produit_obj
+                            .get("prix")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                    )
+                } else {
+                    String::new()
+                };
 
-                // ✅ Insérer les résultats dans la transaction (séquentiel mais rapide)
-                for (image_index, processed) in processed_images {
-                    let ProcessedImageResult {
-                        is_main,
-                        file_path,
-                        image_signature,
-                        image_hash,
-                        image_metadata,
-                        ..
-                    } = processed;
+                let mut ai_tags: Vec<String> = Vec::new();
+                if !product_name.is_empty() {
+                    ai_tags.push(product_name.to_string());
+                }
+                if let Some(marque) = product_marque {
+                    ai_tags.push(marque.to_string());
+                }
+                ai_tags.extend(product_couleurs.clone());
+                if let Some(cat) = product_category {
+                    ai_tags.push(cat.to_string());
+                }
 
-                    // ✅ MÉDIA DE PRODUIT : Image liée à un produit spécifique
+                let mut ai_metadata = serde_json::json!({});
+                if let Some(marque) = product_marque {
+                    ai_metadata["marque"] = serde_json::json!(marque);
+                }
+                if !product_couleurs.is_empty() {
+                    ai_metadata["couleurs"] = serde_json::json!(product_couleurs);
+                }
+                if let Some(prix) = produit_obj.get("prix").and_then(|v| v.as_str()) {
+                    ai_metadata["prix"] = serde_json::json!(prix);
+                }
+
+                // Mettre à jour toutes les images du produit avec les métadonnées AI
+                if !ai_description.is_empty() || !ai_tags.is_empty() {
                     if let Err(e) = sqlx::query(
                         r#"
-                        INSERT INTO media (
-                            service_id, product_id, product_index, type, path,
-                            is_main_image, display_order, uploaded_at,
-                            image_signature, image_hash, image_metadata
-                        )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                        UPDATE media
+                        SET ai_description = $1,
+                            ai_tags = $2,
+                            ai_category = $3,
+                            ai_metadata = $4,
+                            ai_analyzed_at = $5,
+                            ai_confidence = 0.95
+                        WHERE service_id = $6 AND product_id = $7 AND product_index = $8
                         "#,
                     )
+                    .bind(if ai_description.is_empty() {
+                        None::<String>
+                    } else {
+                        Some(ai_description.clone())
+                    })
+                    .bind(if ai_tags.is_empty() {
+                        None::<Vec<String>>
+                    } else {
+                        Some(ai_tags.clone())
+                    })
+                    .bind(product_category)
+                    .bind(if ai_metadata.is_null() {
+                        None::<serde_json::Value>
+                    } else {
+                        Some(ai_metadata.clone())
+                    })
+                    .bind(Utc::now().naive_utc())
                     .bind(service_id)
                     .bind(&product_id)
                     .bind(product_index as i32)
-                    .bind("image")
-                    .bind(&file_path)
-                    .bind(is_main)
-                    .bind(image_index as i32)
-                    .bind(Utc::now().naive_utc())
-                    .bind(image_signature)
-                    .bind(image_hash)
-                    .bind(image_metadata)
                     .execute(&mut *tx)
                     .await
                     {
-                        log::error!(
-                            "[creer_service] ❌ Erreur insertion media produit {} (index {}): {}",
-                            product_id,
-                            product_index,
-                            e
-                        );
-                        continue;
+                        log::warn!("[creer_service] ⚠️ Erreur mise à jour media.ai_*: {}", e);
                     } else {
                         log::info!(
-                            "[creer_service] ✅ Media sauvegardé avec succès: service_id={}, product_id={}, product_index={}, path={}",
-                            service_id,
-                            product_id,
-                            product_index,
-                            file_path
+                            "[creer_service] ✅ Images cataloguées avec données produit ({} tags)",
+                            ai_tags.len()
                         );
                     }
-
-                    // Ajouter le chemin aux chemins sauvegardés
-                    saved_paths_for_product.push(file_path.clone());
-                    files_saved += 1;
-                    if product_index == 0 && image_index < service_image_count {
-                        saved_service_images.push(file_path.clone());
-                    }
-                    
-                    // ✅ Extraction des métadonnées produit pour mise à jour AI (une seule fois par produit)
-                    if image_index == 0 {
-                        let product_name = produit_obj
-                            .get("nom")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("");
-                        let product_description = produit_obj
-                            .get("description")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("");
-                        let product_marque = produit_obj.get("marque").and_then(|v| v.as_str());
-                        let product_category = produit_obj
-                            .get("categorie")
-                            .or_else(|| produit_obj.get("category"))
-                            .and_then(|v| v.as_str());
-                        let product_couleurs: Vec<String> = produit_obj
-                            .get("couleurs")
-                            .and_then(|v| v.as_array())
-                            .map(|arr| {
-                                arr.iter()
-                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                    .collect()
-                            })
-                            .unwrap_or_default();
-
-                        let ai_description = if !product_description.is_empty() {
-                            product_description.to_string()
-                        } else if !product_name.is_empty() {
-                            format!(
-                                "{} - {}",
-                                product_name,
-                                produit_obj
-                                    .get("prix")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("")
-                            )
-                        } else {
-                            String::new()
-                        };
-
-                        let mut ai_tags: Vec<String> = Vec::new();
-                        if !product_name.is_empty() {
-                            ai_tags.push(product_name.to_string());
-                        }
-                        if let Some(marque) = product_marque {
-                            ai_tags.push(marque.to_string());
-                        }
-                        ai_tags.extend(product_couleurs.clone());
-                        if let Some(cat) = product_category {
-                            ai_tags.push(cat.to_string());
-                        }
-
-                        let mut ai_metadata = serde_json::json!({});
-                        if let Some(marque) = product_marque {
-                            ai_metadata["marque"] = serde_json::json!(marque);
-                        }
-                        if !product_couleurs.is_empty() {
-                            ai_metadata["couleurs"] = serde_json::json!(product_couleurs);
-                        }
-                        if let Some(prix) = produit_obj.get("prix").and_then(|v| v.as_str()) {
-                            ai_metadata["prix"] = serde_json::json!(prix);
-                        }
-
-                        // Mettre à jour toutes les images du produit avec les métadonnées AI
-                        if !ai_description.is_empty() || !ai_tags.is_empty() {
-                            if let Err(e) = sqlx::query(
-                                r#"
-                                UPDATE media
-                                SET ai_description = $1,
-                                    ai_tags = $2,
-                                    ai_category = $3,
-                                    ai_metadata = $4,
-                                    ai_analyzed_at = $5,
-                                    ai_confidence = 0.95
-                                WHERE service_id = $6 AND product_id = $7 AND product_index = $8
-                                "#,
-                            )
-                            .bind(if ai_description.is_empty() {
-                                None::<String>
-                            } else {
-                                Some(ai_description.clone())
-                            })
-                            .bind(if ai_tags.is_empty() {
-                                None::<Vec<String>>
-                            } else {
-                                Some(ai_tags.clone())
-                            })
-                            .bind(product_category)
-                            .bind(if ai_metadata.is_null() {
-                                None::<serde_json::Value>
-                            } else {
-                                Some(ai_metadata.clone())
-                            })
-                            .bind(Utc::now().naive_utc())
-                            .bind(service_id)
-                            .bind(&product_id)
-                            .bind(product_index as i32)
-                            .execute(&mut *tx)
-                            .await
-                            {
-                                log::warn!("[creer_service] ⚠️ Erreur mise à jour media.ai_*: {}", e);
-                            } else {
-                                log::info!(
-                                    "[creer_service] ✅ Images cataloguées avec données produit ({} tags)",
-                                    ai_tags.len()
-                                );
-                            }
-                        }
-                    }
-                    
-                    log::info!(
-                        "[creer_service] ✅ Image {}/{} du produit {} sauvegardée (main: {})",
-                        image_index + 1,
-                        images_to_process.len(),
-                        product_index,
-                        is_main
-                    );
                 }
             }
 
@@ -2569,31 +2907,42 @@ pub async fn creer_service(
             // ✅ NOUVEAU: Transformer variation_prix en format variants/has_variant pour ProductCard
             // Le ProductCard cherche product.variants et product.has_variant
             // Cloner d'abord pour éviter les conflits d'emprunt
-            let variation_prix_clone = produit_obj.get("variation_prix")
+            let variation_prix_clone = produit_obj
+                .get("variation_prix")
                 .or_else(|| produit_obj.get("variabilite_prix"))
                 .or_else(|| produit_obj.get("price_variant"))
                 .cloned();
-            
+
             if let Some(variation_prix) = variation_prix_clone {
                 if let Some(variation_obj) = variation_prix.as_object() {
-                    if let Some(modalites) = variation_obj.get("modalites").and_then(|v| v.as_array()) {
+                    if let Some(modalites) =
+                        variation_obj.get("modalites").and_then(|v| v.as_array())
+                    {
                         if !modalites.is_empty() {
                             // Transformer les modalités en format variants
                             let variants: Vec<serde_json::Value> = modalites
                                 .iter()
                                 .map(|modalite| {
                                     let mut variant = serde_json::json!({});
-                                    if let Some(valeur) = modalite.get("valeur").or_else(|| modalite.get("value")) {
+                                    if let Some(valeur) =
+                                        modalite.get("valeur").or_else(|| modalite.get("value"))
+                                    {
                                         variant["value"] = valeur.clone();
                                         variant["valeur"] = valeur.clone();
                                     }
-                                    if let Some(prix) = modalite.get("prix").or_else(|| modalite.get("price")) {
+                                    if let Some(prix) =
+                                        modalite.get("prix").or_else(|| modalite.get("price"))
+                                    {
                                         variant["prix"] = prix.clone();
                                     }
-                                    if let Some(devise) = modalite.get("devise").or_else(|| modalite.get("currency")) {
+                                    if let Some(devise) =
+                                        modalite.get("devise").or_else(|| modalite.get("currency"))
+                                    {
                                         variant["devise"] = devise.clone();
                                     }
-                                    if let Some(stock) = modalite.get("stock").or_else(|| modalite.get("quantite")) {
+                                    if let Some(stock) =
+                                        modalite.get("stock").or_else(|| modalite.get("quantite"))
+                                    {
                                         variant["stock"] = stock.clone();
                                     }
                                     if let Some(image) = modalite.get("image") {
@@ -2602,16 +2951,19 @@ pub async fn creer_service(
                                     variant
                                 })
                                 .collect();
-                            
+
                             let modalites_len = modalites.len();
-                            produit_obj.insert("has_variant".to_string(), serde_json::Value::Bool(true));
-                            produit_obj.insert("variants".to_string(), serde_json::Value::Array(variants));
-                            
+                            produit_obj
+                                .insert("has_variant".to_string(), serde_json::Value::Bool(true));
+                            produit_obj
+                                .insert("variants".to_string(), serde_json::Value::Array(variants));
+
                             // Ajouter aussi variant_dimension si disponible
                             if let Some(variable) = variation_obj.get("variable") {
-                                produit_obj.insert("variant_dimension".to_string(), variable.clone());
+                                produit_obj
+                                    .insert("variant_dimension".to_string(), variable.clone());
                             }
-                            
+
                             log::info!(
                                 "[creer_service] ✅ Variations de prix transformées en variants pour produit {}: {} variantes",
                                 product_index,
@@ -2628,7 +2980,8 @@ pub async fn creer_service(
             let mut videos_to_process: Vec<String> = Vec::new();
             if let Some(prod_processed) = produit_from_processed {
                 // ✅ NOUVEAU: Chercher d'abord dans "videoUrls" (upload préalable)
-                if let Some(video_urls) = prod_processed.get("videoUrls").and_then(|v| v.as_array()) {
+                if let Some(video_urls) = prod_processed.get("videoUrls").and_then(|v| v.as_array())
+                {
                     videos_to_process.extend(
                         video_urls
                             .iter()
@@ -2641,7 +2994,9 @@ pub async fn creer_service(
                     );
                 }
                 // Chercher dans "videos" (URLs ou base64)
-                if let Some(product_videos) = prod_processed.get("videos").and_then(|v| v.as_array()) {
+                if let Some(product_videos) =
+                    prod_processed.get("videos").and_then(|v| v.as_array())
+                {
                     videos_to_process.extend(
                         product_videos
                             .iter()
@@ -2675,12 +3030,21 @@ pub async fn creer_service(
                     let file_path = if is_url(video_data) {
                         video_data.to_string()
                     } else if is_probable_base64(video_data) {
-                        match persist_base64_media(storage_root.as_path(), service_id, "videos", video_data, "mp4").await {
+                        match persist_base64_media(
+                            storage_root.as_path(),
+                            service_id,
+                            "videos",
+                            video_data,
+                            "mp4",
+                        )
+                        .await
+                        {
                             Ok(stored) => stored.path,
                             Err(e) => {
                                 log::error!(
                                     "[creer_service] Erreur sauvegarde vidéo produit {}: {}",
-                                    product_index, e
+                                    product_index,
+                                    e
                                 );
                                 continue;
                             }
@@ -2770,35 +3134,48 @@ pub async fn creer_service(
                         saved_image_paths_by_product[0].len()
                     );
                 }
-                
+
                 // ✅ NOUVEAU: Transformer variation_prix en format variants/has_variant pour ProductCard (même si pas de médias)
                 // Le ProductCard cherche product.variants et product.has_variant
                 // Cloner d'abord pour éviter les conflits d'emprunt
-                let variation_prix_clone = first_product_obj.get("variation_prix")
+                let variation_prix_clone = first_product_obj
+                    .get("variation_prix")
                     .or_else(|| first_product_obj.get("variabilite_prix"))
                     .or_else(|| first_product_obj.get("price_variant"))
                     .cloned();
-                
+
                 if let Some(variation_prix) = variation_prix_clone {
                     if let Some(variation_obj) = variation_prix.as_object() {
-                        if let Some(modalites) = variation_obj.get("modalites").and_then(|v| v.as_array()) {
+                        if let Some(modalites) =
+                            variation_obj.get("modalites").and_then(|v| v.as_array())
+                        {
                             if !modalites.is_empty() {
                                 // Transformer les modalités en format variants
                                 let variants: Vec<serde_json::Value> = modalites
                                     .iter()
                                     .map(|modalite| {
                                         let mut variant = serde_json::json!({});
-                                        if let Some(valeur) = modalite.get("valeur").or_else(|| modalite.get("value")) {
+                                        if let Some(valeur) =
+                                            modalite.get("valeur").or_else(|| modalite.get("value"))
+                                        {
                                             variant["value"] = valeur.clone();
                                             variant["valeur"] = valeur.clone();
                                         }
-                                        if let Some(prix) = modalite.get("prix").or_else(|| modalite.get("price")) {
+                                        if let Some(prix) =
+                                            modalite.get("prix").or_else(|| modalite.get("price"))
+                                        {
                                             variant["prix"] = prix.clone();
                                         }
-                                        if let Some(devise) = modalite.get("devise").or_else(|| modalite.get("currency")) {
+                                        if let Some(devise) = modalite
+                                            .get("devise")
+                                            .or_else(|| modalite.get("currency"))
+                                        {
                                             variant["devise"] = devise.clone();
                                         }
-                                        if let Some(stock) = modalite.get("stock").or_else(|| modalite.get("quantite")) {
+                                        if let Some(stock) = modalite
+                                            .get("stock")
+                                            .or_else(|| modalite.get("quantite"))
+                                        {
                                             variant["stock"] = stock.clone();
                                         }
                                         if let Some(image) = modalite.get("image") {
@@ -2807,16 +3184,23 @@ pub async fn creer_service(
                                         variant
                                     })
                                     .collect();
-                                
+
                                 let modalites_len = modalites.len();
-                                first_product_obj.insert("has_variant".to_string(), serde_json::Value::Bool(true));
-                                first_product_obj.insert("variants".to_string(), serde_json::Value::Array(variants));
-                                
+                                first_product_obj.insert(
+                                    "has_variant".to_string(),
+                                    serde_json::Value::Bool(true),
+                                );
+                                first_product_obj.insert(
+                                    "variants".to_string(),
+                                    serde_json::Value::Array(variants),
+                                );
+
                                 // Ajouter aussi variant_dimension si disponible
                                 if let Some(variable) = variation_obj.get("variable") {
-                                    first_product_obj.insert("variant_dimension".to_string(), variable.clone());
+                                    first_product_obj
+                                        .insert("variant_dimension".to_string(), variable.clone());
                                 }
-                                
+
                                 log::info!(
                                     "[creer_service] ✅ Variations de prix transformées en variants pour premier produit: {} variantes",
                                     modalites_len
@@ -2980,10 +3364,9 @@ pub async fn creer_service(
     // Audios
     // ✅ NOUVEAU: Support audioUrls (upload préalable) > audio_base64 (rétrocompatibilité)
     let audio_strings: Vec<String> = {
-        if let Some(audio_urls) = data_processed.get("audioUrls")
-            .and_then(|v| v.as_array())
-        {
-            audio_urls.iter()
+        if let Some(audio_urls) = data_processed.get("audioUrls").and_then(|v| v.as_array()) {
+            audio_urls
+                .iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect()
         } else {
@@ -2998,7 +3381,7 @@ pub async fn creer_service(
                 .unwrap_or_default()
         }
     };
-    
+
     if !audio_strings.is_empty() {
         if let Some(_) = data_processed.get("audioUrls") {
             log::info!(
@@ -3011,7 +3394,7 @@ pub async fn creer_service(
                 audio_strings.len()
             );
         }
-        
+
         log::info!(
             "[creer_service] Sauvegarde de {} audios pour le service {}",
             audio_strings.len(),
@@ -3019,70 +3402,64 @@ pub async fn creer_service(
         );
 
         for (idx, audio_data) in audio_strings.iter().enumerate() {
-                // ✅ AMÉLIORATION: Gérer URLs et base64
-                let stored = if is_url(audio_data) {
-                    download_and_save_image(
-                        storage_root.as_path(),
-                        service_id,
-                        audio_data,
-                        "audio",
-                    )
+            // ✅ AMÉLIORATION: Gérer URLs et base64
+            let stored = if is_url(audio_data) {
+                download_and_save_image(storage_root.as_path(), service_id, audio_data, "audio")
                     .await
-                } else if is_probable_base64(audio_data) {
-                    persist_base64_media(
+            } else if is_probable_base64(audio_data) {
+                persist_base64_media(
                     storage_root.as_path(),
                     service_id,
                     "audio",
                     audio_data,
                     "mp3",
                 )
-                    .await
-                } else {
-                    log::warn!(
-                        "[creer_service] Audio ignoré (format non supporté) index {}: {}",
-                        idx,
-                        &audio_data[..audio_data.len().min(50)]
-                    );
-                    continue;
-                };
-
-                let stored = match stored {
-                    Ok(value) => value,
-                    Err(err) => {
-                        log::error!("[creer_service] Erreur sauvegarde audio {}: {}", idx, err);
-                        continue;
-                    }
-                };
-
-                let path = stored.path;
-                // ✅ MÉDIA GLOBAL DU SERVICE : Audio lié au service (pas à un produit spécifique)
-                // product_id = NULL, product_index = NULL (normal pour médias globaux)
-                if let Err(e) = sqlx::query(
-                    "INSERT INTO media (service_id, type, path, uploaded_at) VALUES ($1, $2, $3, $4)",
-                )
-                .bind(service_id)
-                .bind("audio")
-                .bind(&path)
-                .bind(Utc::now().naive_utc())
-                .execute(&mut *tx)
                 .await
-                {
-                    log::error!("[creer_service] Erreur insertion media audio: {}", e);
+            } else {
+                log::warn!(
+                    "[creer_service] Audio ignoré (format non supporté) index {}: {}",
+                    idx,
+                    &audio_data[..audio_data.len().min(50)]
+                );
+                continue;
+            };
+
+            let stored = match stored {
+                Ok(value) => value,
+                Err(err) => {
+                    log::error!("[creer_service] Erreur sauvegarde audio {}: {}", idx, err);
                     continue;
                 }
+            };
 
-                saved_service_audios.push(path.clone());
-                files_saved += 1;
+            let path = stored.path;
+            // ✅ MÉDIA GLOBAL DU SERVICE : Audio lié au service (pas à un produit spécifique)
+            // product_id = NULL, product_index = NULL (normal pour médias globaux)
+            if let Err(e) = sqlx::query(
+                "INSERT INTO media (service_id, type, path, uploaded_at) VALUES ($1, $2, $3, $4)",
+            )
+            .bind(service_id)
+            .bind("audio")
+            .bind(&path)
+            .bind(Utc::now().naive_utc())
+            .execute(&mut *tx)
+            .await
+            {
+                log::error!("[creer_service] Erreur insertion media audio: {}", e);
+                continue;
             }
+
+            saved_service_audios.push(path.clone());
+            files_saved += 1;
         }
+    }
 
     // Vidéos
     // ✅ NOUVEAU: Support videoUrls (upload préalable) > video_base64 (rétrocompatibilité)
     let video_strings: Vec<String> = {
-        if let Some(video_urls) = data_processed.get("videoUrls")
-            .and_then(|v| v.as_array())
-        {
-            video_urls.iter()
+        if let Some(video_urls) = data_processed.get("videoUrls").and_then(|v| v.as_array()) {
+            video_urls
+                .iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect()
         } else {
@@ -3110,7 +3487,7 @@ pub async fn creer_service(
                 video_strings.len()
             );
         }
-        
+
         log::info!(
             "[creer_service] Sauvegarde de {} vidéos pour le service {}",
             video_strings.len(),
@@ -3118,71 +3495,65 @@ pub async fn creer_service(
         );
 
         for (idx, video_data) in video_strings.iter().enumerate() {
-                // ✅ AMÉLIORATION: Gérer URLs et base64
-                let stored = if is_url(video_data) {
-                    download_and_save_image(
-                        storage_root.as_path(),
-                        service_id,
-                        video_data,
-                        "videos",
-                    )
+            // ✅ AMÉLIORATION: Gérer URLs et base64
+            let stored = if is_url(video_data) {
+                download_and_save_image(storage_root.as_path(), service_id, video_data, "videos")
                     .await
-                } else if is_probable_base64(video_data) {
-                    persist_base64_media(
+            } else if is_probable_base64(video_data) {
+                persist_base64_media(
                     storage_root.as_path(),
                     service_id,
                     "videos",
                     video_data,
                     "mp4",
                 )
-                    .await
-                } else {
-                    log::warn!(
-                        "[creer_service] Vidéo ignorée (format non supporté) index {}: {}",
-                        idx,
-                        &video_data[..video_data.len().min(50)]
-                    );
-                    continue;
-                };
-
-                let stored = match stored {
-                    Ok(value) => value,
-                    Err(err) => {
-                        log::error!("[creer_service] Erreur sauvegarde vidéo {}: {}", idx, err);
-                        continue;
-                    }
-                };
-
-                let path = stored.path;
-                // ✅ MÉDIA GLOBAL DU SERVICE : Vidéo liée au service (pas à un produit spécifique)
-                // product_id = NULL, product_index = NULL (normal pour médias globaux)
-                // Note: Les vidéos de produits sont sauvegardées plus haut avec product_index (ligne ~1649)
-                if let Err(e) = sqlx::query(
-                    "INSERT INTO media (service_id, type, path, uploaded_at) VALUES ($1, $2, $3, $4)",
-                )
-                .bind(service_id)
-                .bind("video")
-                .bind(&path)
-                .bind(Utc::now().naive_utc())
-                .execute(&mut *tx)
                 .await
-                {
-                    log::error!("[creer_service] Erreur insertion media video: {}", e);
+            } else {
+                log::warn!(
+                    "[creer_service] Vidéo ignorée (format non supporté) index {}: {}",
+                    idx,
+                    &video_data[..video_data.len().min(50)]
+                );
+                continue;
+            };
+
+            let stored = match stored {
+                Ok(value) => value,
+                Err(err) => {
+                    log::error!("[creer_service] Erreur sauvegarde vidéo {}: {}", idx, err);
                     continue;
                 }
+            };
 
-                saved_service_videos.push(path.clone());
-                files_saved += 1;
+            let path = stored.path;
+            // ✅ MÉDIA GLOBAL DU SERVICE : Vidéo liée au service (pas à un produit spécifique)
+            // product_id = NULL, product_index = NULL (normal pour médias globaux)
+            // Note: Les vidéos de produits sont sauvegardées plus haut avec product_index (ligne ~1649)
+            if let Err(e) = sqlx::query(
+                "INSERT INTO media (service_id, type, path, uploaded_at) VALUES ($1, $2, $3, $4)",
+            )
+            .bind(service_id)
+            .bind("video")
+            .bind(&path)
+            .bind(Utc::now().naive_utc())
+            .execute(&mut *tx)
+            .await
+            {
+                log::error!("[creer_service] Erreur insertion media video: {}", e);
+                continue;
             }
+
+            saved_service_videos.push(path.clone());
+            files_saved += 1;
         }
+    }
 
     // Documents
     // ✅ NOUVEAU: Support docUrls (upload préalable) > doc_base64 (rétrocompatibilité)
     let doc_strings: Vec<String> = {
-        if let Some(doc_urls) = data_processed.get("docUrls")
-            .and_then(|v| v.as_array())
-        {
-            doc_urls.iter()
+        if let Some(doc_urls) = data_processed.get("docUrls").and_then(|v| v.as_array()) {
+            doc_urls
+                .iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect()
         } else {
@@ -3210,7 +3581,7 @@ pub async fn creer_service(
                 doc_strings.len()
             );
         }
-        
+
         log::info!(
             "[creer_service] Sauvegarde de {} documents pour le service {}",
             doc_strings.len(),
@@ -3220,13 +3591,8 @@ pub async fn creer_service(
         for (idx, doc_data) in doc_strings.iter().enumerate() {
             // ✅ AMÉLIORATION: Gérer URLs et base64
             let stored = if is_url(doc_data) {
-                download_and_save_image(
-                    storage_root.as_path(),
-                    service_id,
-                    doc_data,
-                    "documents",
-                )
-                .await
+                download_and_save_image(storage_root.as_path(), service_id, doc_data, "documents")
+                    .await
             } else if is_probable_base64(doc_data) {
                 persist_base64_media(
                     storage_root.as_path(),
@@ -3235,7 +3601,7 @@ pub async fn creer_service(
                     doc_data,
                     "pdf",
                 )
-                    .await
+                .await
             } else {
                 log::warn!(
                     "[creer_service] Document ignoré (format non supporté) index {}: {}",
@@ -3257,27 +3623,27 @@ pub async fn creer_service(
                 }
             };
 
-                let path = stored.path;
-                // ✅ MÉDIA GLOBAL DU SERVICE : Document lié au service (pas à un produit spécifique)
-                // product_id = NULL, product_index = NULL (normal pour médias globaux)
-                if let Err(e) = sqlx::query(
-                    "INSERT INTO media (service_id, type, path, uploaded_at) VALUES ($1, $2, $3, $4)",
-                )
-                .bind(service_id)
-                .bind("document")
-                .bind(&path)
-                .bind(Utc::now().naive_utc())
-                .execute(&mut *tx)
-                .await
-                {
-                    log::error!("[creer_service] Erreur insertion media document: {}", e);
-                    continue;
-                }
-
-                saved_service_docs.push(path.clone());
-                files_saved += 1;
+            let path = stored.path;
+            // ✅ MÉDIA GLOBAL DU SERVICE : Document lié au service (pas à un produit spécifique)
+            // product_id = NULL, product_index = NULL (normal pour médias globaux)
+            if let Err(e) = sqlx::query(
+                "INSERT INTO media (service_id, type, path, uploaded_at) VALUES ($1, $2, $3, $4)",
+            )
+            .bind(service_id)
+            .bind("document")
+            .bind(&path)
+            .bind(Utc::now().naive_utc())
+            .execute(&mut *tx)
+            .await
+            {
+                log::error!("[creer_service] Erreur insertion media document: {}", e);
+                continue;
             }
+
+            saved_service_docs.push(path.clone());
+            files_saved += 1;
         }
+    }
 
     // Excel
     if let Some(excels) = data_processed
@@ -3375,29 +3741,44 @@ pub async fn creer_service(
         if !saved_service_excels.is_empty() {
             map.insert("excels".to_string(), to_json_array(&saved_service_excels));
         }
-        
+
         // ✅ NOUVEAU 2025-11-26: Ajouter les chemins logo et bannière dans service.data pour faciliter l'accès
         if let Some(logo_path) = &saved_logo_path {
-            map.insert("logo".to_string(), serde_json::json!({
-                "type_donnee": "image",
-                "valeur": logo_path,
-                "origine_champs": "formulaire"
-            }));
-            log::info!("[creer_service] ✅ Logo ajouté dans service.data: {}", logo_path);
+            map.insert(
+                "logo".to_string(),
+                serde_json::json!({
+                    "type_donnee": "image",
+                    "valeur": logo_path,
+                    "origine_champs": "formulaire"
+                }),
+            );
+            log::info!(
+                "[creer_service] ✅ Logo ajouté dans service.data: {}",
+                logo_path
+            );
         }
-        
+
         if let Some(banner_path) = &saved_banner_path {
-            map.insert("banner".to_string(), serde_json::json!({
-                "type_donnee": "image",
-                "valeur": banner_path,
-                "origine_champs": "formulaire"
-            }));
-            map.insert("banniere".to_string(), serde_json::json!({
-                "type_donnee": "image",
-                "valeur": banner_path,
-                "origine_champs": "formulaire"
-            }));
-            log::info!("[creer_service] ✅ Bannière ajoutée dans service.data: {}", banner_path);
+            map.insert(
+                "banner".to_string(),
+                serde_json::json!({
+                    "type_donnee": "image",
+                    "valeur": banner_path,
+                    "origine_champs": "formulaire"
+                }),
+            );
+            map.insert(
+                "banniere".to_string(),
+                serde_json::json!({
+                    "type_donnee": "image",
+                    "valeur": banner_path,
+                    "origine_champs": "formulaire"
+                }),
+            );
+            log::info!(
+                "[creer_service] ✅ Bannière ajoutée dans service.data: {}",
+                banner_path
+            );
         }
 
         for key in [
@@ -3427,20 +3808,25 @@ pub async fn creer_service(
             "[creer_service] ⚠️ Aucun fichier média sauvegardé pour le service {} (vérifier data_processed)",
             service_id
         );
-        
+
         // ✅ DIAGNOSTIC: Log détaillé pour comprendre pourquoi aucun média n'a été sauvegardé
         log::warn!(
             "[creer_service] 🔍 DIAGNOSTIC MÉDIAS ÉCHEC - service_id={}",
             service_id
         );
-        
+
         // Vérifier les différents champs possibles pour les médias
         if let Some(obj) = data_processed.as_object() {
             let media_fields = vec![
-                "base64_image", "images_realisations", "videos", "videos_base64",
-                "audio_base64", "doc_base64", "excel_base64"
+                "base64_image",
+                "images_realisations",
+                "videos",
+                "videos_base64",
+                "audio_base64",
+                "doc_base64",
+                "excel_base64",
             ];
-            
+
             for field in media_fields {
                 if let Some(value) = obj.get(field) {
                     match value {
@@ -3465,7 +3851,7 @@ pub async fn creer_service(
                     }
                 }
             }
-            
+
             // Vérifier les produits
             if let Some(produits) = obj.get("produits") {
                 log::warn!(
@@ -3481,12 +3867,13 @@ pub async fn creer_service(
                             );
                             for (idx, produit) in produits_array.iter().enumerate() {
                                 if let Some(prod_obj) = produit.as_object() {
-                                    let has_images = prod_obj.get("images").is_some() 
+                                    let has_images = prod_obj.get("images").is_some()
                                         || prod_obj.get("images_base64").is_some()
                                         || prod_obj.get("image_base64").is_some();
                                     log::warn!(
                                         "[creer_service] 🔍 DIAGNOSTIC - Produit {} a images: {}",
-                                        idx, has_images
+                                        idx,
+                                        has_images
                                     );
                                 }
                             }
@@ -3502,12 +3889,16 @@ pub async fn creer_service(
         .unwrap_or_else(|_| "false".to_string())
         .parse::<bool>()
         .unwrap_or(false);
-    
+
     let embedding_client = if pinecone_enabled {
-        log::info!("[EMBEDDING_DEBUG] ?? Initialisation du client d'embedding (Pinecone activé)...");
+        log::info!(
+            "[EMBEDDING_DEBUG] ?? Initialisation du client d'embedding (Pinecone activé)..."
+        );
         Some(crate::utils::embedding_client::EmbeddingClient::new("", ""))
     } else {
-        log::info!("[EMBEDDING_DEBUG] ⚠️ Pinecone désactivé (PINECONE_ENABLED=false ou non défini)");
+        log::info!(
+            "[EMBEDDING_DEBUG] ⚠️ Pinecone désactivé (PINECONE_ENABLED=false ou non défini)"
+        );
         None
     };
     // Calcul GPS optimal (service ou fallback prestataire)
@@ -3707,10 +4098,7 @@ pub async fn creer_service(
                         embedding_request
                     );
 
-                    match client
-                        .add_embedding_pinecone(&embedding_request)
-                        .await
-                    {
+                    match client.add_embedding_pinecone(&embedding_request).await {
                         Ok(result) => {
                             log::info!("[PINECONE][SERVICE] Embedding {} ajouté?: champ='{}', service_id={}, retour={:?}", type_donnee, k, service_id, result);
                             Ok(result)
@@ -3774,7 +4162,10 @@ pub async fn creer_service(
             );
 
             // Attendre et traiter tous les résultats d'embedding en parallèle
-            use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
+            use std::sync::{
+                atomic::{AtomicU64, Ordering},
+                Arc,
+            };
             let successful_embeddings = Arc::new(AtomicU64::new(0));
             let failed_embeddings = Arc::new(AtomicU64::new(0));
 
@@ -3909,19 +4300,23 @@ pub async fn creer_service(
     // ✅ NOUVEAU: Sauvegarder les données Google Places complètes dans la table dédiée
     if let Some(google_place_full) = google_place_full_data {
         if let Some(gp_obj) = google_place_full.as_object() {
-            let place_id = gp_obj.get("place_id")
+            let place_id = gp_obj
+                .get("place_id")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
-            
+
             if let Some(pid) = place_id {
                 // Extraire toutes les données Google Places
-                let display_name = gp_obj.get("display_name")
+                let display_name = gp_obj
+                    .get("display_name")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let formatted_address = gp_obj.get("formatted_address")
+                let formatted_address = gp_obj
+                    .get("formatted_address")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let location_vector: Vec<String> = gp_obj.get("location_vector")
+                let location_vector: Vec<String> = gp_obj
+                    .get("location_vector")
                     .and_then(|v| v.as_array())
                     .map(|arr| {
                         arr.iter()
@@ -3929,15 +4324,15 @@ pub async fn creer_service(
                             .collect()
                     })
                     .unwrap_or_default();
-                let coordinates = gp_obj.get("coordinates")
-                    .and_then(|v| v.as_object());
+                let coordinates = gp_obj.get("coordinates").and_then(|v| v.as_object());
                 let latitude = coordinates
                     .and_then(|c| c.get("lat"))
                     .and_then(|v| v.as_f64());
                 let longitude = coordinates
                     .and_then(|c| c.get("lng"))
                     .and_then(|v| v.as_f64());
-                let types: Vec<String> = gp_obj.get("types")
+                let types: Vec<String> = gp_obj
+                    .get("types")
                     .and_then(|v| v.as_array())
                     .map(|arr| {
                         arr.iter()
@@ -3945,24 +4340,29 @@ pub async fn creer_service(
                             .collect()
                     })
                     .unwrap_or_default();
-                let primary_type = gp_obj.get("primary_type")
+                let primary_type = gp_obj
+                    .get("primary_type")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let primary_type_display_name = gp_obj.get("primary_type_display_name")
+                let primary_type_display_name = gp_obj
+                    .get("primary_type_display_name")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let rating = gp_obj.get("rating")
-                    .and_then(|v| v.as_f64());
-                let rating_count = gp_obj.get("rating_count")
+                let rating = gp_obj.get("rating").and_then(|v| v.as_f64());
+                let rating_count = gp_obj
+                    .get("rating_count")
                     .and_then(|v| v.as_i64())
                     .map(|i| i as i32);
-                let price_level = gp_obj.get("price_level")
+                let price_level = gp_obj
+                    .get("price_level")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let business_status = gp_obj.get("business_status")
+                let business_status = gp_obj
+                    .get("business_status")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let serves_cuisine: Vec<String> = gp_obj.get("serves_cuisine")
+                let serves_cuisine: Vec<String> = gp_obj
+                    .get("serves_cuisine")
                     .and_then(|v| v.as_array())
                     .map(|arr| {
                         arr.iter()
@@ -3970,28 +4370,35 @@ pub async fn creer_service(
                             .collect()
                     })
                     .unwrap_or_default();
-                let website_uri = gp_obj.get("website_uri")
+                let website_uri = gp_obj
+                    .get("website_uri")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let google_maps_uri = gp_obj.get("google_maps_uri")
+                let google_maps_uri = gp_obj
+                    .get("google_maps_uri")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let international_phone_number = gp_obj.get("international_phone_number")
+                let international_phone_number = gp_obj
+                    .get("international_phone_number")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let national_phone_number = gp_obj.get("national_phone_number")
+                let national_phone_number = gp_obj
+                    .get("national_phone_number")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let editorial_summary = gp_obj.get("editorial_summary")
+                let editorial_summary = gp_obj
+                    .get("editorial_summary")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
                 let current_opening_hours = gp_obj.get("current_opening_hours").cloned();
                 let regular_opening_hours = gp_obj.get("regular_opening_hours").cloned();
                 let photos = gp_obj.get("photos").cloned();
-                let country = gp_obj.get("country")
+                let country = gp_obj
+                    .get("country")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let country_code = gp_obj.get("country_code")
+                let country_code = gp_obj
+                    .get("country_code")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
 
@@ -4080,51 +4487,30 @@ pub async fn creer_service(
     }
 
     // Commit de la transaction AVANT la réponse
-    tx.commit()
-        .await
-        .map_err(|e| {
-            log::error!(
-                "[creer_service] ❌ Échec commit transaction pour service_id={}: {}",
-                service_id,
-                e
-            );
-            
-            // ✅ CRITIQUE 2025-11-25 : Rembourser le solde si le commit échoue
-            // Le débit a été fait avant, donc on doit rembourser en cas d'échec
-            let pool_clone = pool.clone();
-            let user_id_clone = user_id;
-            let cout_reel_xaf_clone = cout_reel_xaf;
-            tokio::spawn(async move {
-                match sqlx::query(
-                    "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2 RETURNING tokens_balance"
-                )
-                .bind(cout_reel_xaf_clone)
-                .bind(user_id_clone)
-                .fetch_one(&pool_clone)
-                .await {
-                    Ok(refund_row) => {
-                        let refunded_balance = refund_row.get::<i64, _>("tokens_balance");
-                        log::info!(
-                            "[creer_service] ✅ Solde remboursé après échec commit : {} FCFA (nouveau solde: {})",
-                            cout_reel_xaf_clone,
-                            refunded_balance
-                        );
-                    }
-                    Err(refund_err) => {
-                        log::error!(
-                            "[creer_service] ❌ Échec remboursement solde après échec commit pour user {} (montant: {} FCFA): {}",
-                            user_id_clone,
-                            cout_reel_xaf_clone,
-                            refund_err
-                        );
-                    }
-                }
-            });
-            
-            AppError::Internal(format!("Échec commit: {}", e))
-        })?;
+    tx.commit().await.map_err(|e| {
+        log::error!(
+            "[creer_service] ❌ Échec commit transaction pour service_id={}: {}",
+            service_id,
+            e
+        );
 
-    log::info!("[CREER_SERVICE] ? Transaction commitée avec succès - Service ID: {} maintenant visible en base", service_id);
+        // ✅ AMÉLIORATION 2025-01-27 : Le débit est dans la transaction, donc le rollback l'annule automatiquement
+        // Pas besoin de remboursement manuel - la transaction garantit l'atomicité
+
+        AppError::Internal(format!("Échec commit: {}", e))
+    })?;
+
+    // ✅ NOUVEAU 2025-01-27 : Métriques - Succès et durée
+    let duration = start_time.elapsed();
+    if let Ok(metrics) = crate::metrics::product_creation_metrics::ProductCreationMetrics::new() {
+        metrics.products_created_success.inc();
+        metrics
+            .product_creation_duration
+            .observe(duration.as_secs_f64());
+        metrics.products_creation_in_progress.dec();
+    }
+
+    log::info!("[CREER_SERVICE] ✅ Transaction commitée avec succès - Service ID: {} maintenant visible en base (durée: {:.2}s)", service_id, duration.as_secs_f64());
     log::info!(
         "[CREER_SERVICE] Tokens consommés pour utilisateur {}: {:?}",
         user_id,
@@ -4157,7 +4543,7 @@ pub async fn creer_service(
     } else {
         &data_obj
     };
-    
+
     if let Err(e) = save_autocomplete_combination(pool, service_id, data_for_products).await {
         log::warn!(
             "[CREER_SERVICE] Erreur sauvegarde produit réel: {} (non bloquant)",
@@ -4440,14 +4826,17 @@ fn extract_product_vector_from_object(
 
     // 3. Extraire depuis les champs structurés (format recommandé)
     let mut parts: Vec<String> = Vec::new();
-    
+
     // Champs prioritaires (format structuré)
     let priority_keys = [
-        "nom_produit", "nom",
-        "categorie_produit", "categorie",
-        "description_produit", "description",
+        "nom_produit",
+        "nom",
+        "categorie_produit",
+        "categorie",
+        "description_produit",
+        "description",
     ];
-    
+
     for key in priority_keys.iter() {
         if let Some(value) = obj.get(*key) {
             match value {
@@ -4467,12 +4856,10 @@ fn extract_product_vector_from_object(
             }
         }
     }
-    
+
     // Autres champs optionnels
-    let optional_keys = [
-        "marque", "modele", "taille", "style", "couleur", "etat",
-    ];
-    
+    let optional_keys = ["marque", "modele", "taille", "style", "couleur", "etat"];
+
     for key in optional_keys.iter() {
         if let Some(value) = obj.get(*key) {
             if let Some(s) = value.as_str() {
@@ -4568,7 +4955,7 @@ pub async fn save_autocomplete_combination(
                 if let Some(obj) = first.as_object() {
                     // Générer product_vector directement depuis l'objet JSON
                     product_vector = extract_product_vector_from_object(obj);
-                    
+
                     // Extraire product_labels si disponibles
                     if product_labels.is_empty() {
                         if let Some(labels_array) =
@@ -4580,7 +4967,7 @@ pub async fn save_autocomplete_combination(
                                 .collect();
                         }
                     }
-                    
+
                     // Extraire variation_prix
                     if variation_prix_node.is_none() {
                         variation_prix_node = obj
@@ -4589,7 +4976,7 @@ pub async fn save_autocomplete_combination(
                             .or_else(|| obj.get("variation_prix").cloned())
                             .or_else(|| obj.get("price_variant").cloned());
                     }
-                    
+
                     embedded_product_object = Some(first.clone());
                 }
             }
@@ -4604,11 +4991,7 @@ pub async fn save_autocomplete_combination(
                 .collect();
         } else if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
             // Si c'est un array de chaînes (ancien format)
-            if let Some(first_str) = valeur_array
-                .iter()
-                .filter_map(|v| v.as_str())
-                .next()
-            {
+            if let Some(first_str) = valeur_array.iter().filter_map(|v| v.as_str()).next() {
                 product_vector = first_str
                     .split(separateur)
                     .map(|s| s.trim().to_string())
@@ -4888,7 +5271,7 @@ pub async fn save_autocomplete_combination(
         } else {
             None
         };
-        
+
         if let Some(produits_obj) = service_data
             .get_mut("produits")
             .and_then(|p| p.as_object_mut())
@@ -4922,19 +5305,23 @@ pub async fn save_autocomplete_combination(
                             first_product
                                 .insert("chosen_location".to_string(), serde_json::json!(chosen));
                         }
-                        
+
                         // ✅ NOUVEAU 2025-12-XX: Extraire et sauvegarder la description depuis full_vector
                         // La description est souvent le 3ème élément de full_vector (après nom et catégorie)
                         // ou un élément long (> 50 caractères)
-                        if !first_product.contains_key("description") && !first_product.contains_key("description_produit") {
-                            if let Some(description) = full_vector.iter()
+                        if !first_product.contains_key("description")
+                            && !first_product.contains_key("description_produit")
+                        {
+                            if let Some(description) = full_vector
+                                .iter()
                                 .skip(2) // Après nom et catégorie
                                 .find(|s| s.len() > 50) // Description probablement longue
-                                .or_else(|| full_vector.iter().skip(2).next()) // Sinon prendre le 3ème élément
+                                .or_else(|| full_vector.iter().skip(2).next())
+                            // Sinon prendre le 3ème élément
                             {
                                 first_product.insert(
                                     "description".to_string(),
-                                    serde_json::json!(description)
+                                    serde_json::json!(description),
                                 );
                                 log::info!(
                                     "[save_autocomplete_combination] ✅ Description sauvegardée dans produit: {}",
@@ -4994,14 +5381,16 @@ pub async fn save_autocomplete_combination(
             let produits_value = if let Some(produits_obj) = service_data.get("produits") {
                 // Si c'est un objet avec "valeur", prendre la valeur
                 if let Some(obj) = produits_obj.as_object() {
-                    obj.get("valeur").cloned().unwrap_or_else(|| produits_obj.clone())
+                    obj.get("valeur")
+                        .cloned()
+                        .unwrap_or_else(|| produits_obj.clone())
                 } else {
                     produits_obj.clone()
                 }
             } else {
                 serde_json::json!([])
             };
-            
+
             let _ = sqlx::query(
                 r#"
                 UPDATE services 
@@ -5054,13 +5443,11 @@ pub async fn save_autocomplete_combination(
 /// Fonction utilitaire pour r?cup?rer le GPS dynamique du prestataire
 #[allow(dead_code)]
 async fn get_user_gps(pool: &PgPool, user_id: i32) -> Result<(f64, f64), AppError> {
-    let row: Option<UserGpsRow> = sqlx::query_as(
-        "SELECT gps FROM users WHERE id = $1"
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur lecture GPS user: {}", e)))?;
+    let row: Option<UserGpsRow> = sqlx::query_as("SELECT gps FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur lecture GPS user: {}", e)))?;
     if let Some(r) = row {
         if let Some(coords) = r.gps {
             let parts: Vec<&str> = coords.split(',').collect();

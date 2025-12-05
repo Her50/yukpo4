@@ -20,7 +20,7 @@ pub fn start_pipeline_health_worker(state: Arc<AppState>) {
     let last_snapshot = Arc::new(Mutex::new(None::<LastSnapshot>));
     let webhook_url = std::env::var("PIPELINE_ALERT_WEBHOOK").ok();
     let http_client = Arc::new(Client::new());
-    
+
     // Intervalle configurable via variable d'environnement (défaut: 300s = 5 minutes)
     let healthcheck_interval_secs: u64 = std::env::var("PIPELINE_HEALTH_CHECK_INTERVAL_SECS")
         .unwrap_or_else(|_| "300".to_string())
@@ -33,14 +33,18 @@ pub fn start_pipeline_health_worker(state: Arc<AppState>) {
 
         loop {
             ticker.tick().await;
-            
+
             // ✅ CORRECTION: Marquer les stale jobs comme failed avant de calculer le health
-            if let Err(err) = crate::services::pipeline_health_service::mark_stale_jobs_as_failed(worker_state.clone()).await {
+            if let Err(err) = crate::services::pipeline_health_service::mark_stale_jobs_as_failed(
+                worker_state.clone(),
+            )
+            .await
+            {
                 log::error!(
                     "[PipelineWorker] Impossible de marquer les stale jobs comme failed: {err:?}"
                 );
             }
-            
+
             match compute_pipeline_health(worker_state.clone()).await {
                 Ok(status) => {
                     handle_status(
@@ -164,11 +168,7 @@ async fn send_webhook(
         ]
     });
 
-    let response = client
-        .post(url)
-        .json(&payload)
-        .send()
-        .await?;
+    let response = client.post(url).json(&payload).send().await?;
 
     // Vérifier le statut et créer l'erreur avant de consommer la réponse
     if let Err(e) = response.error_for_status_ref() {
@@ -221,11 +221,7 @@ async fn send_recovery_webhook(
         ]
     });
 
-    let response = client
-        .post(url)
-        .json(&payload)
-        .send()
-        .await?;
+    let response = client.post(url).json(&payload).send().await?;
 
     // Vérifier le statut et créer l'erreur avant de consommer la réponse
     if let Err(e) = response.error_for_status_ref() {

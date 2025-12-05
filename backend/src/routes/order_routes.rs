@@ -14,7 +14,9 @@ use crate::{
     core::types::AppError,
     middlewares::jwt::AuthenticatedUser,
     services::{
-        order_preparation_service::{CreateOrderRequest, OrderPreparationService, RejectOrderRequest, ValidateOrderRequest},
+        order_preparation_service::{
+            CreateOrderRequest, OrderPreparationService, RejectOrderRequest, ValidateOrderRequest,
+        },
         product_availability_service::ProductAvailabilityService,
         similar_products_service::SimilarProductsService,
         smart_notification_service::SmartNotificationService,
@@ -25,12 +27,24 @@ use crate::{
 pub fn order_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/api/delivery/orders", post(create_order))
-        .route("/api/delivery/orders/{order_id}/validate", post(validate_order))
+        .route(
+            "/api/delivery/orders/{order_id}/validate",
+            post(validate_order),
+        )
         .route("/api/delivery/orders/{order_id}/reject", post(reject_order))
-        .route("/api/delivery/orders/{order_id}/similar", get(get_similar_products))
+        .route(
+            "/api/delivery/orders/{order_id}/similar",
+            get(get_similar_products),
+        )
         .route("/api/delivery/orders/{order_id}", get(get_order))
-        .route("/api/delivery/orders/provider/pending", get(get_provider_pending_orders))
-        .route("/api/delivery/orders/client/my-orders", get(get_client_orders))
+        .route(
+            "/api/delivery/orders/provider/pending",
+            get(get_provider_pending_orders),
+        )
+        .route(
+            "/api/delivery/orders/client/my-orders",
+            get(get_client_orders),
+        )
         .with_state(state)
 }
 
@@ -62,7 +76,7 @@ async fn create_order(
     }
 
     let availability_service = ProductAvailabilityService::new(state.pg.clone());
-    
+
     // Vérifier la disponibilité du produit
     let availability = availability_service
         .check_availability(
@@ -76,18 +90,15 @@ async fn create_order(
         // Produit non disponible, retourner produits similaires avec proximité
         // ✅ AMÉLIORATION : Utiliser GeographicMatchingService si disponible (Google Maps priorité + fallback local)
         let similar_service = if let Some(geo_service) = state.geographic_matching.as_ref() {
-            SimilarProductsService::with_geographic_matching(
-                state.pg.clone(),
-                geo_service.clone(),
-            )
+            SimilarProductsService::with_geographic_matching(state.pg.clone(), geo_service.clone())
         } else {
             SimilarProductsService::new(state.pg.clone())
         };
-        
+
         let similar_products = similar_service
             .find_similar_products_with_location(
-                payload.service_id, 
-                payload.product_index, 
+                payload.service_id,
+                payload.product_index,
                 5,
                 payload.client_latitude,
                 payload.client_longitude,
@@ -142,15 +153,15 @@ async fn validate_order(
     Json(payload): Json<ValidateOrderRequest>,
 ) -> Result<Json<Value>, AppError> {
     // Vérifier que l'utilisateur est le prestataire
-    let provider_user_id: Option<i32> = sqlx::query(
-        "SELECT provider_user_id FROM product_orders WHERE id = $1",
-    )
-    .bind(order_id)
-    .map(|row: sqlx::postgres::PgRow| row.get::<i32, _>("provider_user_id"))
-    .fetch_optional(&state.pg)
-    .await?;
+    let provider_user_id: Option<i32> =
+        sqlx::query("SELECT provider_user_id FROM product_orders WHERE id = $1")
+            .bind(order_id)
+            .map(|row: sqlx::postgres::PgRow| row.get::<i32, _>("provider_user_id"))
+            .fetch_optional(&state.pg)
+            .await?;
 
-    let provider_user_id = provider_user_id.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
+    let provider_user_id =
+        provider_user_id.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
 
     if provider_user_id != user.id {
         return Err(AppError::Unauthorized(
@@ -168,12 +179,21 @@ async fn validate_order(
         // Récupérer la livraison associée
         if let Some(delivery_id) = updated_order.delivery_id {
             // Utiliser le delivery_service depuis l'état
-            if let Ok(summary) = state.delivery_service.get_delivery_summary(delivery_id).await {
+            if let Ok(summary) = state
+                .delivery_service
+                .get_delivery_summary(delivery_id)
+                .await
+            {
                 // Démarrer le matching immédiatement
-                if let Err(e) = state.delivery_service.enqueue_delivery_matching(&summary).await {
+                if let Err(e) = state
+                    .delivery_service
+                    .enqueue_delivery_matching(&summary)
+                    .await
+                {
                     log::warn!(
                         "[OrderRoutes] Erreur démarrage matching pour delivery_id={}: {}",
-                        delivery_id, e
+                        delivery_id,
+                        e
                     );
                     // Ne pas faire échouer la validation si le matching échoue
                 } else {
@@ -213,7 +233,7 @@ async fn reject_order(
         product_index: i32,
         client_user_id: i32,
     }
-    
+
     let order: Option<OrderInfo> = sqlx::query(
         "SELECT provider_user_id, service_id, product_index, client_user_id FROM product_orders WHERE id = $1",
     )
@@ -270,7 +290,7 @@ async fn get_similar_products(
         product_index: i32,
         client_user_id: i32,
     }
-    
+
     let order: Option<OrderBasicInfo> = sqlx::query(
         "SELECT service_id, product_index, client_user_id FROM product_orders WHERE id = $1",
     )
@@ -287,27 +307,26 @@ async fn get_similar_products(
 
     // ✅ AMÉLIORATION : Récupérer les coordonnées GPS du client si disponibles
     // Note: users table n'a pas de colonnes latitude/longitude, utiliser gps ou autre
-    let client_gps: Option<(f64, f64)> = sqlx::query(
-        "SELECT gps FROM users WHERE id = $1",
-    )
-    .bind(order.client_user_id)
-    .map(|row: sqlx::postgres::PgRow| {
-        let gps_str: Option<String> = row.try_get("gps").ok();
-        // Parser le GPS si nécessaire (format "lat,lng")
-        gps_str.and_then(|gps| {
-            let parts: Vec<&str> = gps.split(',').collect();
-            if parts.len() == 2 {
-                parts[0].parse::<f64>().ok().and_then(|lat| {
-                    parts[1].parse::<f64>().ok().map(|lng| (lat, lng))
-                })
-            } else {
-                None
-            }
+    let client_gps: Option<(f64, f64)> = sqlx::query("SELECT gps FROM users WHERE id = $1")
+        .bind(order.client_user_id)
+        .map(|row: sqlx::postgres::PgRow| {
+            let gps_str: Option<String> = row.get::<Option<_>, _>("gps");
+            // Parser le GPS si nécessaire (format "lat,lng")
+            gps_str.and_then(|gps| {
+                let parts: Vec<&str> = gps.split(',').collect();
+                if parts.len() == 2 {
+                    parts[0]
+                        .parse::<f64>()
+                        .ok()
+                        .and_then(|lat| parts[1].parse::<f64>().ok().map(|lng| (lat, lng)))
+                } else {
+                    None
+                }
+            })
         })
-    })
-    .fetch_optional(&state.pg)
-    .await?
-    .flatten();
+        .fetch_optional(&state.pg)
+        .await?
+        .flatten();
 
     let (client_lat, client_lng) = if let Some(gps) = client_gps {
         (Some(gps.0), Some(gps.1))
@@ -317,18 +336,15 @@ async fn get_similar_products(
 
     // ✅ AMÉLIORATION : Utiliser GeographicMatchingService si disponible (Google Maps priorité + fallback local)
     let similar_service = if let Some(geo_service) = state.geographic_matching.as_ref() {
-        SimilarProductsService::with_geographic_matching(
-            state.pg.clone(),
-            geo_service.clone(),
-        )
+        SimilarProductsService::with_geographic_matching(state.pg.clone(), geo_service.clone())
     } else {
         SimilarProductsService::new(state.pg.clone())
     };
-    
+
     let similar_products = similar_service
         .find_similar_products_with_location(
-            order.service_id, 
-            order.product_index, 
+            order.service_id,
+            order.product_index,
             10,
             client_lat,
             client_lng,
@@ -390,16 +406,23 @@ async fn get_order(
             "validation_deadline": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("validation_deadline").ok(),
             "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
             "updated_at": row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
-            "metadata": row.try_get::<Value, _>("metadata").unwrap_or_else(|_| json!({})),
+            "metadata": row.get::<Option<Value>, _>("metadata").unwrap_or_else(|| json!({})),
         })
     })
     .fetch_optional(&state.pg)
     .await?;
 
-    let order_value = order.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
-    
-    let client_user_id = order_value.get("client_user_id").and_then(|v| v.as_i64()).map(|v| v as i32);
-    let provider_user_id = order_value.get("provider_user_id").and_then(|v| v.as_i64()).map(|v| v as i32);
+    let order_value =
+        order.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
+
+    let client_user_id = order_value
+        .get("client_user_id")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
+    let provider_user_id = order_value
+        .get("provider_user_id")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
 
     // Vérifier que l'utilisateur est le client ou le prestataire
     if let (Some(client_id), Some(provider_id)) = (client_user_id, provider_user_id) {
@@ -409,7 +432,9 @@ async fn get_order(
             ));
         }
     } else {
-        return Err(AppError::Internal("Données de commande invalides".to_string()));
+        return Err(AppError::Internal(
+            "Données de commande invalides".to_string(),
+        ));
     }
 
     Ok(Json(json!({
@@ -469,7 +494,7 @@ async fn get_provider_pending_orders(
             "validation_deadline": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("validation_deadline").ok(),
             "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
             "updated_at": row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
-            "metadata": row.try_get::<Value, _>("metadata").unwrap_or_else(|_| json!({})),
+            "metadata": row.get::<Option<Value>, _>("metadata").unwrap_or_else(|| json!({})),
         })
     })
     .fetch_all(&state.pg)
@@ -531,7 +556,7 @@ async fn get_client_orders(
             "validation_deadline": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("validation_deadline").ok(),
             "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
             "updated_at": row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
-            "metadata": row.try_get::<Value, _>("metadata").unwrap_or_else(|_| json!({})),
+            "metadata": row.get::<Option<Value>, _>("metadata").unwrap_or_else(|| json!({})),
         })
     })
     .fetch_all(&state.pg)
@@ -541,4 +566,3 @@ async fn get_client_orders(
         "orders": orders
     })))
 }
-

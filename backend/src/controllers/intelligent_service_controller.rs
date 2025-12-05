@@ -79,7 +79,7 @@ pub async fn get_services_pending_processing(
           AND s.is_tarissable = FALSE
           AND s.auto_deactivate_at IS NOT NULL
           AND s.auto_deactivate_at < $1
-        "#
+        "#,
     )
     .bind(now)
     .fetch_one(&state.ia.pool)
@@ -95,7 +95,7 @@ pub async fn get_services_pending_processing(
         WHERE s.is_active = TRUE
           AND s.is_tarissable = TRUE
           AND s.vitesse_tarissement IS NOT NULL
-        "#
+        "#,
     )
     .fetch_one(&state.ia.pool)
     .await
@@ -113,7 +113,7 @@ pub async fn get_services_pending_processing(
           AND s.auto_deactivate_at IS NOT NULL
           AND s.auto_deactivate_at < $1
           AND u.tokens_balance < 1000
-        "#
+        "#,
     )
     .bind(now)
     .fetch_one(&state.ia.pool)
@@ -154,7 +154,7 @@ pub async fn reactivate_service_intelligent(
         SELECT id, user_id, is_active, is_tarissable
         FROM services 
         WHERE id = $1 AND user_id = $2
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(user_id)
@@ -178,15 +178,15 @@ pub async fn reactivate_service_intelligent(
     };
 
     // Vérifier le solde de l'utilisateur
-    let user_balance: Option<UserBalanceRow> = sqlx::query_as(
-        "SELECT tokens_balance FROM users WHERE id = $1"
-    )
-    .bind(user_id)
-    .fetch_optional(&state.ia.pool)
-    .await
-    .map_err(AppError::from)?;
+    let user_balance: Option<UserBalanceRow> =
+        sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&state.ia.pool)
+            .await
+            .map_err(AppError::from)?;
 
-    let user_balance = user_balance.ok_or_else(|| AppError::NotFound("Utilisateur non trouvé".to_string()))?;
+    let user_balance =
+        user_balance.ok_or_else(|| AppError::NotFound("Utilisateur non trouvé".to_string()))?;
 
     if user_balance.tokens_balance < reactivation_cost {
         return Err(AppError::BadRequest(format!(

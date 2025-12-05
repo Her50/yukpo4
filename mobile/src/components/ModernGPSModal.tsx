@@ -301,12 +301,17 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
             onRequestClose={onClose}
         >
             <View style={styles.container}>
-                {/* Header compact et moderne */}
+                {/* Header compact et moderne - OPTIMISÉ */}
                 <LinearGradient
                     colors={[modernColors.primary, modernColors.primaryDark]}
                     style={styles.header}
                 >
-                    <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                    <TouchableOpacity
+                        style={styles.closeButton}
+                        onPress={onClose}
+                        accessibilityLabel="Fermer la sélection GPS"
+                        accessibilityRole="button"
+                    >
                         <SafeIcon name="x" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
 

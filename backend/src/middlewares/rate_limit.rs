@@ -1,104 +1,219 @@
-// src/middlewares/rate_limit.rs
-// ✅ SÉCURITÉ: Rate limiting global avec Redis
-use axum::body::Body;
-use axum::extract::State;
-use axum::{http::Request, middleware::Next, response::Response};
-use http::{HeaderValue, StatusCode};
-use log::warn;
-use std::sync::Arc;
+//! ✅ Phase 2 - Middleware de Rate Limiting
+//! Protection contre la surcharge et les attaques DDoS
 
-use crate::state::AppState;
+use axum::middleware::Next;
+use axum::{
+    extract::Request,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+use std::{
+    collections::HashMap,
+    num::NonZeroU32,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::{Duration, Instant},
+};
+use tokio::sync::RwLock;
 
-/// Rate limiting global: 100 requêtes par minute par IP
-const RATE_LIMIT_REQUESTS: u32 = 100;
-const RATE_LIMIT_WINDOW_SECS: u64 = 60;
+// ✅ Phase 3: Métriques rate limiting
+static RATE_LIMIT_BLOCKED_TOTAL: AtomicU64 = AtomicU64::new(0);
+static RATE_LIMIT_BLOCKED_BY_IP_TOTAL: AtomicU64 = AtomicU64::new(0);
+static RATE_LIMIT_BLOCKED_BY_USER_TOTAL: AtomicU64 = AtomicU64::new(0);
 
-/// Extrait l'IP du client depuis les headers
-fn extract_client_ip(req: &Request<Body>) -> String {
-    // Vérifier les headers proxy (X-Forwarded-For, X-Real-IP)
-    if let Some(forwarded_for) = req.headers().get("x-forwarded-for") {
+pub fn get_rate_limit_metrics() -> (u64, u64, u64) {
+    (
+        RATE_LIMIT_BLOCKED_TOTAL.load(Ordering::Relaxed),
+        RATE_LIMIT_BLOCKED_BY_IP_TOTAL.load(Ordering::Relaxed),
+        RATE_LIMIT_BLOCKED_BY_USER_TOTAL.load(Ordering::Relaxed),
+    )
+}
+
+/// Limiteur de taux simple par clé (IP, user_id, etc.)
+#[derive(Clone)]
+pub struct RateLimiter {
+    limits: Arc<RwLock<HashMap<String, RateLimitEntry>>>,
+    max_requests: u32,
+    window_seconds: u64,
+    cleanup_interval: Duration,
+}
+
+struct RateLimitEntry {
+    count: u32,
+    reset_at: Instant,
+}
+
+impl RateLimiter {
+    pub fn new(max_requests: u32, window_seconds: u64) -> Self {
+        Self {
+            limits: Arc::new(RwLock::new(HashMap::new())),
+            max_requests,
+            window_seconds,
+            cleanup_interval: Duration::from_secs(300), // Nettoyage toutes les 5 min
+        }
+    }
+
+    /// Vérifie si une requête est autorisée pour une clé donnée
+    pub async fn check_limit(&self, key: &str) -> bool {
+        let mut limits = self.limits.write().await;
+        let now = Instant::now();
+
+        // Nettoyer les entrées expirées périodiquement
+        if limits.len() > 10000 {
+            limits.retain(|_, entry| entry.reset_at > now);
+        }
+
+        let entry = limits
+            .entry(key.to_string())
+            .or_insert_with(|| RateLimitEntry {
+                count: 0,
+                reset_at: now + Duration::from_secs(self.window_seconds),
+            });
+
+        // Réinitialiser si la fenêtre est expirée
+        if now >= entry.reset_at {
+            entry.count = 0;
+            entry.reset_at = now + Duration::from_secs(self.window_seconds);
+        }
+
+        // Vérifier la limite
+        if entry.count >= self.max_requests {
+            return false;
+        }
+
+        entry.count += 1;
+        true
+    }
+
+    /// Obtient le nombre de requêtes restantes pour une clé
+    pub async fn remaining(&self, key: &str) -> u32 {
+        let limits = self.limits.read().await;
+        let now = Instant::now();
+
+        if let Some(entry) = limits.get(key) {
+            if now >= entry.reset_at {
+                return self.max_requests;
+            }
+            self.max_requests.saturating_sub(entry.count)
+        } else {
+            self.max_requests
+        }
+    }
+}
+
+/// Limiteur global pour toutes les requêtes
+pub struct GlobalRateLimiter {
+    limiter: RateLimiter,
+}
+
+impl GlobalRateLimiter {
+    pub fn new(max_requests_per_second: u32) -> Self {
+        Self {
+            limiter: RateLimiter::new(max_requests_per_second, 1),
+        }
+    }
+
+    pub async fn check(&self, key: &str) -> bool {
+        self.limiter.check_limit(key).await
+    }
+}
+
+/// Limiteur par utilisateur
+pub struct UserRateLimiter {
+    limiter: RateLimiter,
+}
+
+impl UserRateLimiter {
+    pub fn new(max_requests_per_minute: u32) -> Self {
+        Self {
+            limiter: RateLimiter::new(max_requests_per_minute, 60),
+        }
+    }
+
+    pub async fn check(&self, user_id: i32) -> bool {
+        self.limiter.check_limit(&format!("user:{}", user_id)).await
+    }
+
+    pub async fn remaining(&self, user_id: i32) -> u32 {
+        self.limiter.remaining(&format!("user:{}", user_id)).await
+    }
+}
+
+/// Extrait l'IP réelle depuis les headers (support proxy/load balancer)
+fn extract_client_ip(headers: &axum::http::HeaderMap) -> String {
+    // Vérifier les headers de proxy courants
+    if let Some(forwarded_for) = headers.get("x-forwarded-for") {
         if let Ok(ip_str) = forwarded_for.to_str() {
-            // Prendre la première IP (le client original)
+            // Prendre la première IP (client réel)
             if let Some(first_ip) = ip_str.split(',').next() {
                 return first_ip.trim().to_string();
             }
         }
     }
 
-    if let Some(real_ip) = req.headers().get("x-real-ip") {
+    if let Some(real_ip) = headers.get("x-real-ip") {
         if let Ok(ip_str) = real_ip.to_str() {
             return ip_str.to_string();
         }
     }
 
-    // Fallback: utiliser l'adresse de connexion
-    req.extensions()
-        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
-        .map(|addr| addr.ip().to_string())
-        .unwrap_or_else(|| "unknown".to_string())
+    // Fallback
+    "unknown".to_string()
 }
 
-pub async fn rate_limit(
-    State(state): State<Arc<AppState>>,
-    req: Request<Body>,
+/// Middleware Axum pour rate limiting global (par IP)
+pub async fn rate_limit_middleware(
+    axum::extract::State(state): axum::extract::State<std::sync::Arc<crate::state::AppState>>,
+    request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    let client_ip = extract_client_ip(&req);
+    // Extraire l'IP réelle
+    let ip = extract_client_ip(request.headers());
+    let key = format!("ip:{}", ip);
 
-    let redis_key = format!("rate_limit:{}", client_ip);
-
-    // Tenter d'utiliser Redis pour le rate limiting
-    let mut redis_conn = match state.redis_client.get_multiplexed_async_connection().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            warn!("[rate_limit] Redis indisponible: {} - Rate limiting désactivé", e);
-            // Si Redis est indisponible, autoriser la requête (fail-open)
-            // En production, vous pourriez vouloir fail-closed
-            return Ok(next.run(req).await);
-        }
-    };
-
-    // Utiliser Redis pour compter les requêtes
-    let current_count: u32 = match redis::cmd("GET")
-        .arg(&redis_key)
-        .query_async::<Option<u32>>(&mut redis_conn)
-        .await
-    {
-        Ok(count) => count.unwrap_or(0),
-        Err(_) => 0,
-    };
-
-    if current_count >= RATE_LIMIT_REQUESTS {
-        warn!(
-            "[rate_limit] Rate limit dépassé pour IP: {} ({} requêtes en {}s)",
-            client_ip, current_count, RATE_LIMIT_WINDOW_SECS
-        );
-
-        let mut response = Response::new(Body::from(
-            r#"{"error": "Rate limit exceeded", "message": "Trop de requêtes. Réessayez dans quelques instants."}"#,
-        ));
-        *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
-        response.headers_mut().insert(
-            "retry-after",
-            HeaderValue::from_str(&RATE_LIMIT_WINDOW_SECS.to_string()).unwrap(),
-        );
-        return Ok(response);
+    // Vérifier le rate limit
+    if !state.global_rate_limiter.check(&key).await {
+        return Err(StatusCode::TOO_MANY_REQUESTS);
     }
 
-    // Incrémenter le compteur
-    let _: () = redis::cmd("INCR")
-        .arg(&redis_key)
-        .query_async(&mut redis_conn)
-        .await
-        .unwrap_or(());
+    Ok(next.run(request).await)
+}
 
-    // Définir l'expiration de la clé
-    let _: () = redis::cmd("EXPIRE")
-        .arg(&redis_key)
-        .arg(RATE_LIMIT_WINDOW_SECS as i64)
-        .query_async(&mut redis_conn)
-        .await
-        .unwrap_or(());
+/// Middleware pour rate limiting par utilisateur
+pub async fn user_rate_limit_middleware(
+    axum::extract::State(state): axum::extract::State<std::sync::Arc<crate::state::AppState>>,
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    use crate::middlewares::jwt::AuthenticatedUser;
 
-    Ok(next.run(req).await)
+    // Extraire user_id depuis le token JWT (si authentifié)
+    let user_id = request
+        .extensions()
+        .get::<AuthenticatedUser>()
+        .map(|user| user.id)
+        .unwrap_or(0);
+
+    // Si non authentifié, utiliser l'IP comme fallback
+    if user_id == 0 {
+        let ip = extract_client_ip(request.headers());
+        let key = format!("ip:{}", ip);
+
+        if !state.global_rate_limiter.check(&key).await {
+            RATE_LIMIT_BLOCKED_TOTAL.fetch_add(1, Ordering::Relaxed);
+            RATE_LIMIT_BLOCKED_BY_IP_TOTAL.fetch_add(1, Ordering::Relaxed);
+            return Err(StatusCode::TOO_MANY_REQUESTS);
+        }
+    } else {
+        // Utilisateur authentifié: rate limiting par user_id
+        if !state.user_rate_limiter.check(user_id).await {
+            RATE_LIMIT_BLOCKED_TOTAL.fetch_add(1, Ordering::Relaxed);
+            RATE_LIMIT_BLOCKED_BY_USER_TOTAL.fetch_add(1, Ordering::Relaxed);
+            return Err(StatusCode::TOO_MANY_REQUESTS);
+        }
+    }
+
+    Ok(next.run(request).await)
 }

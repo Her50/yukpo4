@@ -254,10 +254,7 @@ impl ImmersiveOrchestrator {
 
             // Injection de stickers métier basés sur le contexte business (promo / livraison / prix)
             if let Some(ctx) = request.business_context.as_ref() {
-                let stickers = scene
-                    .assets
-                    .stickers
-                    .get_or_insert_with(Vec::new);
+                let stickers = scene.assets.stickers.get_or_insert_with(Vec::new);
 
                 // Sticker promo global si une promotion est active
                 if ctx.promotion_active.unwrap_or(false) && idx > 0 && idx < total_scenes - 1 {
@@ -265,9 +262,7 @@ impl ImmersiveOrchestrator {
                         id: format!("promo-main-{:02}", idx),
                         src: "/assets/stickers/promo-main.png".to_string(),
                         start_frame: current_frame.saturating_add(fps / 4),
-                        duration_in_frames: scene
-                            .duration_in_frames
-                            .saturating_sub(fps / 3),
+                        duration_in_frames: scene.duration_in_frames.saturating_sub(fps / 3),
                         position: Some(StickerPosition {
                             x: 900.0,
                             y: 260.0,
@@ -282,9 +277,7 @@ impl ImmersiveOrchestrator {
                         id: "livraison-express".to_string(),
                         src: "/assets/stickers/delivery-fast.png".to_string(),
                         start_frame: current_frame.saturating_add(fps / 3),
-                        duration_in_frames: scene
-                            .duration_in_frames
-                            .saturating_sub(fps / 2),
+                        duration_in_frames: scene.duration_in_frames.saturating_sub(fps / 2),
                         position: Some(StickerPosition {
                             x: 860.0,
                             y: 1520.0,
@@ -299,9 +292,7 @@ impl ImmersiveOrchestrator {
                         id: "price-tag".to_string(),
                         src: "/assets/stickers/price-tag.png".to_string(),
                         start_frame: current_frame,
-                        duration_in_frames: scene
-                            .duration_in_frames
-                            .saturating_sub(fps / 2),
+                        duration_in_frames: scene.duration_in_frames.saturating_sub(fps / 2),
                         position: Some(StickerPosition {
                             x: 260.0,
                             y: 1520.0,
@@ -472,7 +463,11 @@ impl ImmersiveOrchestrator {
         TemplateEvaluation { score, reasons }
     }
 
-    pub fn build_storyboard(&self, request: &TimelineRequest, result: &TimelineResult) -> Storyboard {
+    pub fn build_storyboard(
+        &self,
+        request: &TimelineRequest,
+        result: &TimelineResult,
+    ) -> Storyboard {
         let fps = result.timeline.fps.max(1);
         let mut scenes = Vec::with_capacity(result.timeline.scenes.len());
         let mut total_duration_seconds = 0.0_f32;

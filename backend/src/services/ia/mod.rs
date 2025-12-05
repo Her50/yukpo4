@@ -1,5 +1,7 @@
 pub mod intention_detector;
+pub mod prompt_loader;
 pub mod prompt_manager;
+pub mod response_validator; // ✅ NOUVEAU 2025-01-27: Validateur universel pour réponses IA
 
 use crate::core::types::AppResult;
 use crate::models::input_model::MultiModalInput;

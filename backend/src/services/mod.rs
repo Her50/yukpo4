@@ -1,14 +1,18 @@
+pub mod advanced_analytics_service; // ✅ NOUVEAU: Service analytics avancés (heatmaps, A/B testing, cohort)
 pub mod african_locations_service; // ✅ NOUVEAU 2025-11-06: Base locale africaine pour enfants géographiques
 pub mod ai_image_generation_service; // ✅ NOUVEAU 2025-11-25: Génération d'images par IA (DALL-E)
 pub mod alert_service;
 pub mod analytics_service; // ✅ Phase 10 - Service d'analytics pour prestataires
 pub mod app_ia;
-pub mod email_service; // ✅ Phase 10 - Service Email avec SendGrid
 pub mod assistance;
+pub mod async_upload_service; // ✅ NOUVEAU 2025-01-27 : Service d'upload asynchrone
+pub mod audio_analysis_service;
+pub mod audio_extraction_service;
 pub mod audio_library_service;
 pub mod audio_mastering_service;
 pub mod audio_pipeline;
-pub mod audio_analysis_service;
+pub mod audio_suggestion_service; // ✅ NOUVEAU: Service de suggestions audio contextuelles
+pub mod audio_sync_service; // ✅ NOUVEAU Phase 10: Service de synchronisation audio-vidéo avec IA
 pub mod audio_transcription_service;
 pub mod autocomplete_client_service; // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT (autocomplete_characteristics)
 pub mod autocomplete_combinations_service;
@@ -16,50 +20,76 @@ pub mod autocomplete_history_service;
 pub mod autocomplete_search_service; // ✅ NOUVEAU 2025-11-04: Recherche par vecteur autocomplete
 pub mod background_combination_generator;
 pub mod besoin_service;
+pub mod book_exchange_ai_service; // ✅ NOUVEAU: Service IA bourse du livre
+pub mod blood_bank_ai_service; // ✅ 2025-01-27: Service IA banques de sang (prédictions, optimisation)
+pub mod blood_compatibility_service; // ✅ NOUVEAU: Service compatibilité groupes sanguins
+pub mod blood_stock_monitor; // ✅ NOUVEAU: Service monitoring automatique stocks banque de sang
 pub mod broll_service;
 pub mod cache_service; // ✅ Phase 10 - Service de cache générique centralisé
+pub mod captions_service; // ✅ NOUVEAU: Service de génération automatique de sous-titres
+pub mod chat_support_ai;
+pub mod color_grading_service; // ✅ NOUVEAU: Service de color grading automatique
 pub mod commerce_connector_service;
+pub mod conflict_resolution;
 pub mod content_engagement_service;
 pub mod context_enricher;
 pub mod cost_service;
+pub mod courier_verification_service; // ✅ NOUVEAU : Vérification identité coursier
 pub mod creer_service;
-pub mod upload_service; // ✅ NOUVEAU: Service pour upload préalable de fichiers
 pub mod db_optimizer;
+pub mod delivery_ai_eta_service; // ✅ NOUVEAU: AI ETA Prediction avec AppIA
+pub mod delivery_ai_forecasting_service; // ✅ NOUVEAU: AI Demand Forecasting avec AppIA
+pub mod delivery_ai_prompts; // ✅ NOUVEAU: Prompts spécialisés pour IA livraison
+pub mod delivery_ai_recommendations; // ✅ NOUVEAU: AI Product Recommendations
+pub mod delivery_demand_forecasting; // ✅ NOUVEAU: Demand Forecasting ML
+pub mod delivery_engine_pricing_service; // ✅ NOUVEAU: Service de calcul coût selon type d'engin
+pub mod delivery_fraud_detection; // ✅ NOUVEAU: Fraud Detection System
+pub mod delivery_ml_eta; // ✅ NOUVEAU: ML pour prédiction ETA précise
+pub mod delivery_ml_models; // ✅ NOUVEAU: Infrastructure ML TensorFlow/PyTorch
 pub mod delivery_notification_service; // ✅ RECOMMANDATION 3: Notifications SMS/Email pour clients sans app
 pub mod delivery_payment_service; // ✅ Phase 5 - Améliorations 10-15: Gestion financière avancée
+pub mod delivery_pricing_metrics; // ✅ NOUVEAU: Métriques pour calcul des coûts de livraison
+pub mod delivery_prometheus_metrics; // ✅ Phase 3: Métriques Prometheus pour optimisations
 pub mod delivery_repository;
-pub mod payment_matching_service; // ✅ Phase 5 - Matching intelligent modes de paiement (MTN/Orange Money)
-pub mod negotiated_price_service; // ✅ NOUVEAU : Service pour gérer les prix négociés entre prestataire et client
 pub mod delivery_schedule_service; // ✅ Phase 3 - Amélioration 7: Gestion contraintes horaires
 pub mod delivery_service;
+pub mod delivery_state_sharing; // ✅ Phase 3: Partage d'état Redis pour scaling horizontal
+pub mod delivery_traffic_service; // ✅ NOUVEAU: Service trafic avec API réelle
+pub mod delivery_vrp_solver; // ✅ NOUVEAU: VRP Solver pour optimisation routes multi-livraisons
+pub mod delivery_weather_service; // ✅ NOUVEAU: Service météo avec API réelle
 pub mod distribution_automation_service;
-pub mod order_preparation_service; // ✅ NOUVEAU : Workflow de préparation des commandes
-pub mod product_availability_service; // ✅ NOUVEAU : Vérification disponibilité produits
-pub mod product_stock_service; // ✅ NOUVEAU : Gestion stock en temps réel
-pub mod similar_products_service; // ✅ NOUVEAU : Recherche produits similaires
-pub mod smart_notification_service; // ✅ NOUVEAU : Notifications intelligentes avec redirection
-pub mod courier_verification_service; // ✅ NOUVEAU : Vérification identité coursier
 pub mod dynamic_preparation_time_service; // ✅ NOUVEAU : Calcul dynamique durée préparation par catégorie
-pub mod provider_analytics_service; // ✅ NOUVEAU : Analytics prestataire
-pub mod product_enrichment_service; // ✅ NOUVEAU : Enrichissement produits avec disponibilité
+pub mod effect_preview_service; // ✅ NOUVEAU: Service de génération de previews d'effets
+pub mod email_service; // ✅ Phase 10 - Service Email avec SendGrid
 pub mod embedding_client;
 pub mod embedding_service;
 pub mod embedding_tracker;
+pub mod emploi_ai_service; // ✅ NOUVEAU: Service IA emploi
 pub mod enrich_google_places; // ✅ NOUVEAU: Enrichissement services avec données Google Places complètes
 pub mod exhaustive_combination_generator;
 pub mod file_extractor;
+pub mod flash_sale_cache; // ✅ NOUVEAU: Cache Redis pour Flash Sales
+pub mod flash_sale_queue; // ✅ NOUVEAU: Queue de réservations avec Redis Streams
 pub mod fournitures_service;
 pub mod geocoding_service;
-pub mod geonames_service; // ✅ NOUVEAU: Service GeoNames pour hiérarchie géographique
 pub mod geographic_matching_service; // ✅ Phase 10 - Service de matching géographique optimisé
+pub mod geonames_service; // ✅ NOUVEAU: Service GeoNames pour hiérarchie géographique
+pub mod global_cache_service; // ✅ NOUVEAU 2025-12-01: Cache global pour toutes les fonctionnalités
+pub mod global_metrics_service; // ✅ NOUVEAU 2025-12-01: Métriques globales pour toutes les fonctionnalités
+pub mod global_promo_cache; // ✅ NOUVEAU: Cache Redis pour Black Friday / Global Promo
 pub mod global_promo_service;
 pub mod google_places_service; // ✅ NOUVEAU 2025-11-06: Service Google Places pour hiérarchie bidirectionnelle
+pub mod gps_matching;
 pub mod gpu_detector;
 pub mod gpu_optimizer;
+pub mod gpu_render_service; // ✅ NOUVEAU Phase 7: Service de rendu GPU optimisé
+pub mod hls_dash_service; // ✅ NOUVEAU: Service HLS/DASH pour qualité adaptative serveur
+pub mod hospital_ai_service; // ✅ 2025-01-27: Service IA hôpitaux (recommandations, triage)
 pub mod hybrid_image_search_service; // ✅ NOUVEAU: Recherche hybride intelligente
 pub mod ia;
 pub mod ia_feedback_service;
 pub mod ia_history_service;
+pub mod image_compression_service; // ✅ NOUVEAU 2025-01-27 : Service de compression d'images
 pub mod image_search_service;
 pub mod immersive_orchestrator;
 pub mod immersive_timeline;
@@ -67,46 +97,79 @@ pub mod instructions;
 pub mod intelligent_image_analysis_service;
 pub mod intelligent_service_manager;
 pub mod intelligent_translation_service;
+pub mod kyc_service; // ✅ NOUVEAU: Service KYC pour vérification identité
 pub mod interaction_service;
 pub mod inventory_service;
+pub mod lab_ai_service; // ✅ 2025-01-27: Service IA laboratoires (interprétation, anomalies)
 pub mod live_ai_service;
 pub mod live_audience_service;
 pub mod live_flash_sale_service;
 pub mod live_stream_service;
+pub mod livres_scolaires_service; // ✅ NOUVEAU 2025-01-28: Service livres scolaires
 pub mod llm_service;
 pub mod local_ai_ultra_fast;
 pub mod massive_load_handler;
 pub mod matching_pipeline;
 pub mod media_storage_service;
+pub mod menu_planning_ai_service; // ✅ 2025-01-27: Service IA planification menus
 pub mod mobile_money_service; // ✅ Phase 10 - Service Mobile Money (MTN/Orange Money)
 pub mod mongo_history_service;
 pub mod multimodal_enricher;
 pub mod multimodal_optimizer;
 pub mod multimodal_processor;
 pub mod native_search_service;
+pub mod negotiated_price_service; // ✅ NOUVEAU : Service pour gérer les prix négociés entre prestataire et client
+pub mod notification_queue; // ✅ Service de queue de notifications
 pub mod notification_service; // ✅ Service de notifications en base de données
 pub mod ocr_engine;
+pub mod optimistic_update_service; // ✅ NOUVEAU Phase 10: Service optimistic updates avec rollback
+pub mod optimized_media_processor; // ✅ NOUVEAU 2025-01-27: Service optimisé de traitement batch des médias
 pub mod orchestration_ia;
 pub mod orchestration_ia_optimized;
+pub mod order_preparation_service; // ✅ NOUVEAU : Workflow de préparation des commandes
+pub mod payment_matching_service; // ✅ Phase 5 - Matching intelligent modes de paiement (MTN/Orange Money)
 pub mod payment_service;
+pub mod pharmacy_ai_service; // ✅ 2025-01-27: Service IA pharmacies (interactions, conseils)
+pub mod pharmacy_product_service; // ✅ NOUVEAU: Service produits de pharmacie
+pub mod real_estate_ai_service; // ✅ Service IA immobilier (estimation prix, recommandations, simulation prêt)
+pub mod interior_design_ai_service; // ✅ Service IA décoration (suggestions, visualisation 3D)
+pub mod moving_ai_service; // ✅ Service IA déménagement (calcul volume, estimation coût, optimisation)
+pub mod land_analysis_ai_service; // ✅ Service IA terrains (analyse viabilité, estimation prix)
 pub mod phone_validation_service;
-pub mod product_validation_service;
-pub mod product_price_service; // ✅ NOUVEAU : Service pour calculer les prix réels avec promotions
 pub mod pipeline_health_service;
+pub mod plugin_service; // ✅ NOUVEAU Phase 2: Service de gestion des plugins
 pub mod popular_products_service;
 pub mod prestataire_service;
+pub mod preview_generation_service; // ✅ NOUVEAU: Service de génération de preview rapide
 pub mod preview_monitoring;
+pub mod product_availability_service; // ✅ NOUVEAU : Vérification disponibilité produits
+pub mod product_enrichment_service; // ✅ NOUVEAU : Enrichissement produits avec disponibilité
+pub mod product_price_service; // ✅ NOUVEAU : Service pour calculer les prix réels avec promotions
+pub mod product_stock_service; // ✅ NOUVEAU : Gestion stock en temps réel
+pub mod product_validation_service;
 pub mod programme_service;
 pub mod prompt_optimizer_pro;
+pub mod provider_analytics_service; // ✅ NOUVEAU : Analytics prestataire
+pub mod publicite_filtering_service;
+pub mod publicite_frequency_service;
+pub mod publicite_geographic_service;
+pub mod publicite_notification_service;
+pub mod publicite_optimization_service;
+pub mod publicite_pixel_service;
+pub mod publicite_reporting_service;
+pub mod publicite_scheduler_service;
 pub mod publicite_search_service;
+pub mod publicite_versioning_service;
 pub mod push_notification_service; // ✅ Service de push notifications Expo
 pub mod query_monitor; // ✅ NOUVEAU 2025-11-28: Monitoring avancé des requêtes SQL
 pub mod rechercher_besoin;
 pub mod remotion_renderer_service;
+pub mod scalability_service; // ✅ NOUVEAU 2025-12-XX: Service centralisé de scalabilité pour millions d'interactions
 pub mod scheduling_search_service;
 pub mod scoring_service;
+pub mod search_cache_service; // ✅ NOUVEAU 2025-12-01: Cache multi-niveaux pour recherches
 pub mod search_history_service;
-pub mod sms_service; // ✅ Phase 10 - Service SMS avec Twilio
+pub mod search_metrics; // ✅ NOUVEAU 2025-12-01: Métriques de recherche pour monitoring
 pub mod security_service;
 pub mod semantic_cache;
 pub mod semantic_cache_pro;
@@ -114,22 +177,90 @@ pub mod semantic_exclusion;
 pub mod service_history_service;
 pub mod service_lifecycle_manager;
 pub mod sharing_service;
+pub mod similar_products_service; // ✅ NOUVEAU : Recherche produits similaires
+pub mod smart_notification_service; // ✅ NOUVEAU : Notifications intelligentes avec redirection
+pub mod sms_service; // ✅ Phase 10 - Service SMS avec Twilio
 pub mod social_connector_service;
 pub mod social_distribution_service;
+pub mod specialized_chat_service; // ✅ NOUVEAU: Service chat intégré
+pub mod specialized_notifications;
+pub mod specialized_payment_service; // ✅ NOUVEAU: Service paiement intégré
+pub mod specialized_rating_service; // ✅ NOUVEAU: Service avis et ratings
+pub mod specialized_reservation_service; // ✅ NOUVEAU: Service réservations
+pub mod specialized_services_cache;
+pub mod specialized_services_metrics; // ✅ NOUVEAU: Cache Redis pour services spécialisés
+pub mod specialized_services_optimizer;
+pub mod specialized_services_validation; // ✅ NOUVEAU: Validation stricte pour services spécialisés
+pub mod stock_media_service; // ✅ NOUVEAU Phase 2: Service d'intégration Stock Media (Unsplash, Pexels, Pixabay)
 pub mod story_template_service;
 pub mod studio_service;
 pub mod timeline_converter; // ✅ NOUVEAU: Conversion timeline JSON -> ImmersiveTimeline
+pub mod timeline_variant_service; // ✅ NOUVEAU: Service de génération de variantes de timeline
 pub mod traiter_echange;
 pub mod translation_optimizer;
+pub mod troc_intelligent_service; // ✅ NOUVEAU 2025-01-28: Service troc intelligent
+pub mod upload_service; // ✅ NOUVEAU: Service pour upload préalable de fichiers
 pub mod valider_echange;
 pub mod valider_programme_scolaire;
+pub mod version_control_service; // ✅ NOUVEAU Phase 4: Service de version control
+pub mod video_analysis_service; // ✅ NOUVEAU: Service d'analyse vidéo (auto-cut)
 pub mod video_analytics_service;
 pub mod video_generation_service;
 pub mod video_job_service;
+pub mod video_quality_service;
 pub mod video_renderer;
 pub mod voice_profile_service;
-// pub mod payment_service_temporary;
-// pub mod push_notifications;
-// pub mod typing_status;
-// pub mod voice_messages;
-// pub mod file_sharing;
+// ✅ NOUVEAU 2025-01-XX: Services de scalabilité pour millions de créations vidéo simultanées
+pub mod covoiturage_insurance_service; // ✅ NOUVEAU 2025-01-29: Service assurance passagers
+pub mod covoiturage_matching_service; // ✅ NOUVEAU 2025-01-29: Service matching intelligent
+pub mod covoiturage_proactive_notifications; // ✅ NOUVEAU 2025-01-29: Service notifications proactives
+pub mod distributed_queue_service; // ✅ NOUVEAU 2025-01-27: Queue distribuée Redis Streams
+pub mod multi_level_cache_service; // ✅ NOUVEAU 2025-01-27: Cache multi-niveaux (L1, L2, L4)
+pub mod prometheus_metrics;
+pub mod qr_code_service; // ✅ NOUVEAU 2025-01-29: Service QR code réservations
+pub mod recurring_trips_service; // ✅ NOUVEAU 2025-01-29: Service trajets récurrents
+pub mod redis_service;
+pub mod taxi_analytics_service; // ✅ NOUVEAU 2025-01-29: Service analytics dashboard (Leadership Global 100%)
+pub mod taxi_demand_prediction_service; // ✅ NOUVEAU 2025-01-29: Service prédiction demande taxi/covoiturage (Leadership Global)
+pub mod taxi_dynamic_pricing_service; // ✅ NOUVEAU 2025-01-29: Service prix dynamique IA (Leadership 100%)
+pub mod taxi_matching_service; // ✅ NOUVEAU 2025-01-29: Service matching intelligent taxi (proximité) // ✅ Phase 1: Service Redis pour queue, cache et rate limiting
+pub mod taxi_personalized_recommendations_service; // ✅ NOUVEAU 2025-01-29: Service recommandations personnalisées (Leadership Global 100%)
+pub mod taxi_realtime_metrics_service; // ✅ NOUVEAU 2025-01-29: Service métriques temps réel WebSocket (Leadership 100%)
+pub mod taxi_route_optimization_service; // ✅ NOUVEAU 2025-01-29: Service optimisation itinéraires IA (Leadership Global 100%)
+pub mod video_batch_processor; // ✅ Traitement par batch pour millions de jobs
+pub mod video_cache_service; // ✅ Cache distribué pour optimiser les performances
+pub mod video_queue_service; // ✅ Queue distribué avec priorités et retry
+pub mod video_rate_limiter; // ✅ Rate limiting pour protéger contre les abus
+pub mod video_scalability_service; // ✅ Service centralisé de scalabilité // ✅ Phase 4: Métriques Prometheus pour monitoring
+                                   // pub mod payment_service_temporary;
+                                   // pub mod push_notifications;
+                                   // pub mod typing_status;
+                                   // pub mod voice_messages;
+                                   // pub mod file_sharing;
+pub mod advanced_timeline_service; // ✅ NOUVEAU Phase 2: Service de gestion timelines multi-pistes avancées
+pub mod alertes_emploi_service; // ✅ NOUVEAU 2025-01-28: Service alertes emploi
+pub mod ar_3d_render_service;
+pub mod ar_preview_service; // ✅ NOUVEAU Phase 3.2: Service de rendu 3D pour preview AR
+pub mod candidatures_service; // ✅ NOUVEAU 2025-01-28: Service candidatures
+pub mod concours_entree_service; // ✅ NOUVEAU 2025-01-28: Service concours d'entrée
+pub mod conferences_lives_service; // ✅ NOUVEAU 2025-01-28: Service conférences et lives scolaires
+pub mod effect_library_service; // ✅ NOUVEAU 2025-01-27: Service de gestion bibliothèque d'effets (50+)
+pub mod experiences_etudiants_service; // ✅ NOUVEAU 2025-01-28: Service expériences d'anciens étudiants
+pub mod export_service; // ✅ NOUVEAU Phase 2.3: Service de gestion des jobs d'export vidéo
+pub mod fournitures_scolaires_service; // ✅ NOUVEAU 2025-01-28: Service fournitures scolaires
+pub mod generative_video_service; // ✅ NOUVEAU Phase 3.1: Service de génération vidéo IA complète
+pub mod matching_emploi_service; // ✅ NOUVEAU 2025-01-28: Service matching intelligent
+pub mod notifications_matching_emploi; // ✅ NOUVEAU 2025-01-28: Notifications push pour nouveaux matchings
+pub mod offres_emploi_service; // ✅ NOUVEAU 2025-01-28: Service offres d'emploi
+pub mod orientation_scolaire_ai_service; // ✅ NOUVEAU: Service IA orientation scolaire
+pub mod orientation_scolaire_service; // ✅ NOUVEAU 2025-01-28: Service orientation scolaire
+pub mod profils_candidats_service; // ✅ NOUVEAU 2025-01-28: Service profils candidats
+pub mod programmes_scolaires_service; // ✅ NOUVEAU 2025-01-28: Service programmes scolaires
+pub mod realtime_preview_service; // ✅ NOUVEAU 2025-01-27: Service de preview temps réel pour calcul local
+pub mod render_fallback_service; // ✅ NOUVEAU 2025-01-27: Service de fallback pour rendu si device faible
+pub mod spotify_integration_service; // ✅ NOUVEAU Phase 2.2: Service d'intégration Spotify API
+pub mod statistiques_emploi_service; // ✅ NOUVEAU 2025-01-28: Service statistiques emploi
+pub mod template_service; // ✅ NOUVEAU 2025-01-27: Service de gestion templates vidéo par industrie (50+)
+pub mod transcoding_service; // ✅ NOUVEAU Phase 2.3: Service de transcodage vidéo multi-formats
+pub mod watermark_service; // ✅ NOUVEAU 2025-01-27: Service de watermark Yukpo pour branding vidéo
+pub mod youtube_audio_service; // ✅ NOUVEAU Phase 2.2: Service YouTube Audio Library // ✅ NOUVEAU Phase 3.2 Améliorations: Service de rendu 3D complet

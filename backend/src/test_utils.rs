@@ -132,7 +132,7 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         }
     };
 
-    let user_id: i32 = user_row.get("id");
+    let user_id: i32 = user_row.get::<i32, _>("id");
 
     let mongo_uri = std::env::var("TEST_MONGODB_URL")
         .unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
@@ -184,8 +184,11 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
     let commerce_connector = Arc::new(CommerceConnectorService::new(pool.clone()));
     let story_templates = Arc::new(StoryTemplateService::new());
     let inventory = Arc::new(InventoryService::new(pool.clone()));
-    let studio_service =
-        Arc::new(StudioService::new(pool.clone(), media_storage.clone(), None));
+    let studio_service = Arc::new(StudioService::new(
+        pool.clone(),
+        media_storage.clone(),
+        None,
+    ));
 
     let state = Arc::new(AppState {
         pg: pool.clone(),
@@ -214,6 +217,7 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         studio_service,
         inventory,
         feature_flags: Arc::new(crate::config::feature_flags::FeatureFlagService::from_env()),
+        delivery_chat_ws_manager: None,
     });
 
     Some(BackendTestContext {

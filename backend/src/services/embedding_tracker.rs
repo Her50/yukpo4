@@ -100,7 +100,7 @@ impl EmbeddingTracker {
         use crate::utils::redis_helper;
 
         let key = format!("embedding_status:{}", service_id);
-        
+
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         match redis_helper::get_with_retry(&self.redis_client, &key).await {
             Ok(Some(json)) => {
@@ -136,7 +136,9 @@ impl EmbeddingTracker {
 
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         // Stocker avec expiration de 24h
-        match redis_helper::set_with_retry(&self.redis_client, &key, &status_json, Some(86400)).await {
+        match redis_helper::set_with_retry(&self.redis_client, &key, &status_json, Some(86400))
+            .await
+        {
             Ok(_) => {
                 log::info!(
                     "[EMBEDDING_TRACKER] Statut mis ? jour pour service {}: {:?}",
@@ -158,13 +160,12 @@ impl EmbeddingTracker {
         &self,
         user_id: i32,
     ) -> Result<Vec<EmbeddingStatus>, AppError> {
-        let services: Vec<ServiceIdRow> = sqlx::query_as(
-            "SELECT id FROM services WHERE user_id = $1 ORDER BY created_at DESC"
-        )
-        .bind(user_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur requ?te services: {}", e)))?;
+        let services: Vec<ServiceIdRow> =
+            sqlx::query_as("SELECT id FROM services WHERE user_id = $1 ORDER BY created_at DESC")
+                .bind(user_id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur requ?te services: {}", e)))?;
 
         let mut statuses = Vec::new();
         for service in services {
@@ -182,14 +183,15 @@ impl EmbeddingTracker {
         _user_id: i32,
     ) -> Result<EmbeddingStatus, AppError> {
         // V?rifier que l'utilisateur est propri?taire du service
-        let service: Option<ServiceDataRow> = sqlx::query_as(
-            "SELECT data FROM services WHERE id = $1 AND user_id = $2"
-        )
-        .bind(service_id)
-        .bind(_user_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur v?rification propri?taire: {}", e)))?;
+        let service: Option<ServiceDataRow> =
+            sqlx::query_as("SELECT data FROM services WHERE id = $1 AND user_id = $2")
+                .bind(service_id)
+                .bind(_user_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| {
+                    AppError::Internal(format!("Erreur v?rification propri?taire: {}", e))
+                })?;
 
         let service = service.ok_or(AppError::BadRequest(
             "Service non trouv? ou acc?s refus?".to_string(),

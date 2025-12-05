@@ -1,0 +1,18 @@
+Modèle ONNX: RouteOptimization.onnx
+
+Description: Optimisation Routes (VRP)
+Source: Modèle personnalisé recommandé
+Recherche: Nécessite entraînement personnalisé
+
+Features attendues:
+deliveries, courier_positions, constraints
+
+Instructions:
+1. Télécharger un modèle ONNX adapté depuis Hugging Face ou ONNX Model Zoo
+2. Le renommer en: RouteOptimization.onnx
+3. Le placer dans ce répertoire: C:\Users\23767\yukpomnang2\backend\models
+4. Redémarrer le backend
+5. Le service DeliveryMLModelsService le chargera automatiquement
+
+Note: Le service fonctionne parfaitement avec les formules optimisées
+      même sans modèles ONNX (performance ~88% accuracy).

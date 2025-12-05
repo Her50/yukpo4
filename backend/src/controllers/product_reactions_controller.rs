@@ -112,7 +112,11 @@ pub async fn get_product_reactions(
     // ✅ CORRIGÉ: Gérer le format product_id "service_id_product_index" ou juste product_index
     let normalized_product_id = if product_id.contains('_') {
         // Format "service_id_product_index" - extraire juste le product_index
-        product_id.split('_').last().unwrap_or(&product_id).to_string()
+        product_id
+            .split('_')
+            .last()
+            .unwrap_or(&product_id)
+            .to_string()
     } else {
         product_id.clone()
     };
@@ -194,16 +198,17 @@ pub async fn get_product_reactions(
 
     let user_reaction_types: Vec<String> = user_reactions
         .iter()
-        .filter_map(|r| r.try_get::<String, _>("reaction_type").ok())
+        .filter_map(|r| r.get::<Option<String>, _>("reaction_type"))
         .collect();
 
     // Enrichir avec l'information si l'utilisateur a réagi
     let enriched_reactions: Vec<Value> = reactions
         .iter()
         .filter_map(|r| {
-            let reaction_type: String = r.try_get("reaction_type").ok()?;
-            let count: i64 = r.try_get("count").unwrap_or(0);
-            let users_sample: Vec<String> = r.try_get("users_sample").unwrap_or_default();
+            let reaction_type: String = r.get::<Option<_>, _>("reaction_type")?;
+            let count: i64 = r.get::<Option<_>, _>("count").unwrap_or(0);
+            let users_sample: Vec<String> =
+                r.get::<Option<_>, _>("users_sample").unwrap_or_default();
 
             Some(json!({
                 "reaction_type": reaction_type,

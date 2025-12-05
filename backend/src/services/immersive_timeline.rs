@@ -301,4 +301,3 @@ pub fn apply_style_hints_to_timeline(
         }
     }
 }
-

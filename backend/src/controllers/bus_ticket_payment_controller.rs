@@ -102,22 +102,25 @@ pub async fn process_ticket_payment(
         JOIN services s ON s.id = p.service_id
         WHERE p.id::text = $1
             AND p.type = 'ticket_voyage'
-        "#
+        "#,
     )
     .bind(&payload.product_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| {
-        error!("[process_ticket_payment] Erreur récupération produit: {}", e);
+        error!(
+            "[process_ticket_payment] Erreur récupération produit: {}",
+            e
+        );
         AppError::Internal(format!("Erreur récupération produit: {}", e))
     })?;
 
     let (_product_name, agency_user_id, bus_number, metadata) = match product_row {
         Some(row) => (
-            row.try_get::<String, _>("name").unwrap_or_default(),
-            row.try_get::<i32, _>("agency_user_id").unwrap_or(0),
-            row.try_get::<Option<String>, _>("numero_bus").ok().flatten(),
-            row.try_get::<Option<Value>, _>("metadata").ok().flatten().unwrap_or(json!({})),
+            row.get::<String, _>("name"),
+            row.get::<Option<i32>, _>("agency_user_id").unwrap_or(0),
+            row.get::<Option<String>, _>("numero_bus"),
+            row.get::<Option<Value>, _>("metadata").unwrap_or(json!({})),
         ),
         None => {
             return Err(AppError::NotFound("Produit non trouvé".to_string()));
@@ -125,7 +128,9 @@ pub async fn process_ticket_payment(
     };
 
     if agency_user_id == 0 {
-        return Err(AppError::Internal("Agence non trouvée pour ce produit".to_string()));
+        return Err(AppError::Internal(
+            "Agence non trouvée pour ce produit".to_string(),
+        ));
     }
 
     // Vérifier que les réservations existent et appartiennent à l'utilisateur
@@ -135,14 +140,17 @@ pub async fn process_ticket_payment(
         WHERE id = ANY($1)
             AND user_id = $2
             AND status IN ('pending', 'confirmed')
-        "#
+        "#,
     )
     .bind(&payload.reservation_ids)
     .bind(user_id)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
-        error!("[process_ticket_payment] Erreur vérification réservations: {}", e);
+        error!(
+            "[process_ticket_payment] Erreur vérification réservations: {}",
+            e
+        );
         AppError::Internal(format!("Erreur vérification réservations: {}", e))
     })?;
 
@@ -237,19 +245,18 @@ pub async fn process_ticket_payment(
     })?;
 
     // Appeler la fonction SQL pour calculer commission et reverser
-    let commission_result: Value = sqlx::query_scalar(
-        "SELECT process_bus_ticket_payment_with_commission($1, $2, $3, $4)"
-    )
-    .bind(&payment_id)
-    .bind(payload.ticket_price)
-    .bind(payload.number_of_tickets)
-    .bind(booking_fee)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[process_ticket_payment] Erreur calcul commission: {}", e);
-        AppError::Internal(format!("Erreur calcul commission: {}", e))
-    })?;
+    let commission_result: Value =
+        sqlx::query_scalar("SELECT process_bus_ticket_payment_with_commission($1, $2, $3, $4)")
+            .bind(&payment_id)
+            .bind(payload.ticket_price)
+            .bind(payload.number_of_tickets)
+            .bind(booking_fee)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[process_ticket_payment] Erreur calcul commission: {}", e);
+                AppError::Internal(format!("Erreur calcul commission: {}", e))
+            })?;
 
     let success = commission_result
         .get("success")
@@ -303,7 +310,7 @@ pub async fn process_ticket_payment(
             updated_at = NOW()
         WHERE id = ANY($2)
             AND user_id = $3
-        "#
+        "#,
     )
     .bind(total_amount)
     .bind(&payload.reservation_ids)
@@ -311,7 +318,10 @@ pub async fn process_ticket_payment(
     .execute(&state.pg)
     .await
     .map_err(|e| {
-        error!("[process_ticket_payment] Erreur confirmation réservations: {}", e);
+        error!(
+            "[process_ticket_payment] Erreur confirmation réservations: {}",
+            e
+        );
         AppError::Internal(format!("Erreur confirmation réservations: {}", e))
     })?;
 
@@ -367,7 +377,7 @@ pub async fn get_user_tickets(
         JOIN products p ON p.id::text = btp.product_id
         WHERE btp.user_id = $1
         ORDER BY btp.created_at DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(&state.pg)
@@ -383,8 +393,14 @@ pub async fn get_user_tickets(
             .try_get::<Vec<String>, _>("reservation_ids")
             .unwrap_or_default();
 
-        let return_date: Option<String> = row.try_get::<Option<String>, _>("return_date").ok().flatten();
-        let return_time: Option<String> = row.try_get::<Option<String>, _>("return_time").ok().flatten();
+        let return_date: Option<String> = row
+            .try_get::<Option<String>, _>("return_date")
+            .ok()
+            .flatten();
+        let return_time: Option<String> = row
+            .try_get::<Option<String>, _>("return_time")
+            .ok()
+            .flatten();
         let is_round_trip = return_date.is_some() || return_time.is_some();
 
         let ticket = UserTicket {
@@ -402,7 +418,9 @@ pub async fn get_user_tickets(
             ticket_price: row.get::<i32, _>("ticket_price"),
             number_of_tickets: row.get::<i32, _>("number_of_tickets"),
             total_amount: row.get::<i32, _>("total_amount"),
-            currency: row.get::<Option<String>, _>("currency").unwrap_or_else(|| "XAF".to_string()),
+            currency: row
+                .get::<Option<String>, _>("currency")
+                .unwrap_or_else(|| "XAF".to_string()),
             payment_status: row.get::<String, _>("payment_status"),
             ticket_pdf_url: row.get::<Option<String>, _>("ticket_pdf_url"),
             reservation_ids,
@@ -413,7 +431,10 @@ pub async fn get_user_tickets(
         tickets.push(ticket);
     }
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "tickets": tickets }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "tickets": tickets })),
+    ))
 }
 
 // ============================================================================
@@ -426,7 +447,10 @@ pub async fn get_ticket_details(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(payment_id): Path<String>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_ticket_details] User ID: {}, Payment ID: {}", user_id, payment_id);
+    info!(
+        "[get_ticket_details] User ID: {}, Payment ID: {}",
+        user_id, payment_id
+    );
 
     let row = sqlx::query(
         r#"
@@ -470,7 +494,7 @@ pub async fn get_ticket_details(
         JOIN products p ON p.id::text = btp.product_id
         WHERE btp.id = $1
             AND btp.user_id = $2
-        "#
+        "#,
     )
     .bind(&payment_id)
     .bind(user_id)
@@ -483,20 +507,26 @@ pub async fn get_ticket_details(
 
     match row {
         Some(row) => {
-            let reservation_ids: Vec<String> = row
-                .get::<Vec<String>, _>("reservation_ids");
-            let reservations_details: Option<Value> = row.get::<Option<Value>, _>("reservations_details");
+            let reservation_ids: Vec<String> = row.get::<Vec<String>, _>("reservation_ids");
+            let reservations_details: Option<Value> =
+                row.get::<Option<Value>, _>("reservations_details");
 
-            let return_date: Option<String> = row.try_get::<Option<String>, _>("return_date").ok().flatten();
-            let return_time: Option<String> = row.try_get::<Option<String>, _>("return_time").ok().flatten();
+            let return_date: Option<String> = row
+                .try_get::<Option<String>, _>("return_date")
+                .ok()
+                .flatten();
+            let return_time: Option<String> = row
+                .try_get::<Option<String>, _>("return_time")
+                .ok()
+                .flatten();
             let is_round_trip = return_date.is_some() || return_time.is_some();
 
             let ticket_details = json!({
                 "success": true,
                 "ticket": {
-                    "payment_id": row.try_get::<String, _>("payment_id").unwrap_or_default(),
-                    "product_id": row.try_get::<String, _>("product_id").unwrap_or_default(),
-                    "product_name": row.try_get::<String, _>("product_name").unwrap_or_default(),
+                    "payment_id": row.get::<String, _>("payment_id"),
+                    "product_id": row.get::<String, _>("product_id"),
+                    "product_name": row.get::<String, _>("product_name"),
                     "bus_number": row.get::<Option<String>, _>("bus_number"),
                     "departure_city": row.get::<String, _>("departure_city"),
                     "arrival_city": row.get::<String, _>("arrival_city"),
@@ -529,4 +559,3 @@ pub async fn get_ticket_details(
         None => Err(AppError::NotFound("Ticket non trouvé".to_string())),
     }
 }
-

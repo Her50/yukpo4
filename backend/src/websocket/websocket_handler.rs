@@ -29,7 +29,7 @@ pub struct StatusMessage {
 }
 
 pub fn create_websocket_router() -> Router<Arc<AppState>> {
-    Router::new()
+    let router = Router::new()
         .route(
             "/ws/status/{user_id}",
             get(websocket_status_handler_adapted),
@@ -37,7 +37,10 @@ pub fn create_websocket_router() -> Router<Arc<AppState>> {
         .route(
             "/ws/notifications/{user_id}",
             get(websocket_notifications_handler_adapted),
-        )
+        );
+
+    // ✅ NOUVEAU 2025-01-27 : Ajouter routes upload status
+    crate::websocket::upload_status_ws::add_upload_status_websocket_routes(router)
 }
 
 // Handlers adaptés pour AppState

@@ -9,7 +9,6 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     Linking,
     RefreshControl,
@@ -18,9 +17,10 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
+import SkeletonCard from '../components/SkeletonCard';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
@@ -302,10 +302,9 @@ const MyBusTicketsScreen: React.FC = () => {
 
             {/* Liste des tickets */}
             {loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement de vos tickets...</Text>
-                </View>
+                <ScrollView style={styles.content} contentContainerStyle={{ padding: 16 }}>
+                    <SkeletonCard count={3} />
+                </ScrollView>
             ) : filteredTickets.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="ticket" size={64} color="#D1D5DB" />

@@ -12,8 +12,12 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import AdvancedAnalyticsChart from '../components/AdvancedAnalyticsChart';
+import { ExportButton } from '../components/ExportButton';
 import { NativeCard } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
+import OptimizationSuggestions from '../components/OptimizationSuggestions';
+import PubliciteVersionHistory from '../components/PubliciteVersionHistory';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
@@ -23,7 +27,7 @@ import { modernColors } from '../theme/modernTheme';
 const { width } = Dimensions.get('window');
 
 interface PubliciteStats {
-    id: string;
+    id: string | number;
     titre: string;
     status: 'active' | 'expired' | 'pending';
     vues: number;
@@ -67,6 +71,7 @@ const PubliciteDashboardScreen: React.FC = () => {
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [selectedPubliciteForHistory, setSelectedPubliciteForHistory] = useState<number | null>(null);
     const [publicites, setPublicites] = useState<PubliciteStats[]>([]);
     const [globalStats, setGlobalStats] = useState({
         total_vues: 0,
@@ -321,6 +326,42 @@ const PubliciteDashboardScreen: React.FC = () => {
                     </View>
                 </NativeCard>
 
+                {/* ✅ NOUVEAU: Analytics Avancés */}
+                {user?.id && (
+                    <NativeCard style={styles.analyticsCard}>
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="trending-up" size={24} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Analytics Avancés</Text>
+                            <ExportButton
+                                data={publicites.map(pub => ({
+                                    titre: pub.titre,
+                                    vues: pub.vues,
+                                    clics: pub.clics,
+                                    conversion_rate: pub.conversion_rate,
+                                    budget_depense: pub.budget_depense,
+                                    status: pub.status,
+                                    date_debut: pub.date_debut,
+                                    date_fin: pub.date_fin,
+                                }))}
+                                format="csv"
+                                filename={`publicites_${new Date().toISOString().split('T')[0]}.csv`}
+                            />
+                        </View>
+                        <AdvancedAnalyticsChart userId={parseInt(user.id)} periodDays={30} />
+                    </NativeCard>
+                )}
+
+                {/* ✅ NOUVEAU: Suggestions d'Optimisation */}
+                {user?.id && (
+                    <NativeCard style={styles.analyticsCard}>
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="zap" size={24} color="#F59E0B" />
+                            <Text style={styles.sectionTitle}>Optimisation Automatique</Text>
+                        </View>
+                        <OptimizationSuggestions userId={parseInt(user.id)} />
+                    </NativeCard>
+                )}
+
                 {/* Liste des publicités */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
@@ -441,7 +482,28 @@ const PubliciteDashboardScreen: React.FC = () => {
                                         <SafeIcon name="edit" size={16} color="#6366F1" />
                                         <Text style={styles.modifyButtonText}>Modifier</Text>
                                     </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.historyButton}
+                                        onPress={() => setSelectedPubliciteForHistory(selectedPubliciteForHistory === parseInt(pub.id) ? null : parseInt(pub.id))}
+                                    >
+                                        <SafeIcon name="history" size={16} color="#8B5CF6" />
+                                        <Text style={styles.historyButtonText}>Historique</Text>
+                                    </TouchableOpacity>
                                 </View>
+
+                                {/* ✅ Historique des versions */}
+                                {selectedPubliciteForHistory === parseInt(pub.id) && (
+                                    <View style={styles.historyContainer}>
+                                        <PubliciteVersionHistory
+                                            campaignId={parseInt(pub.id)}
+                                            onVersionSelect={(versionNumber) => {
+                                                console.log('Version sélectionnée:', versionNumber);
+                                                // Recharger les données après restauration
+                                                loadDashboard();
+                                            }}
+                                        />
+                                    </View>
+                                )}
 
                                 {renderVideoMetaSection(pub)}
                             </NativeCard>
@@ -800,6 +862,31 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: modernColors.primary,
+    },
+    historyButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#8B5CF6',
+    },
+    historyButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#8B5CF6',
+    },
+    historyContainer: {
+        marginTop: 16,
+        padding: 12,
+        backgroundColor: modernColors.surface,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: modernColors.border,
     },
 });
 

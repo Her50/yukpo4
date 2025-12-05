@@ -10,9 +10,9 @@ use axum::{
     routing::{delete, get, post},
     Json, Router,
 };
+use bigdecimal::ToPrimitive;
 use chrono::{DateTime, Utc};
 use futures::{SinkExt, StreamExt};
-use bigdecimal::ToPrimitive;
 use log;
 use rust_decimal::{prelude::FromPrimitive, Decimal};
 use serde::{Deserialize, Serialize};
@@ -110,7 +110,8 @@ struct CourierWithStatsRow {
 
 #[derive(FromRow)]
 struct ProductDeliveryConfigOwnerRow {
-    #[allow(dead_code)] // Champ récupéré de la DB mais seulement user_id est utilisé pour vérification
+    #[allow(dead_code)]
+    // Champ récupéré de la DB mais seulement user_id est utilisé pour vérification
     service_id: i32,
     user_id: i32,
 }
@@ -132,18 +133,24 @@ struct ProductDeliveryConfigPickupLocationRow {
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::{jwt_auth, AuthenticatedUser},
-    models::delivery_model::{ClientDeliveryPreferencesInput, DeliveryStatus, MerchantStorageLocationInput, ProductDeliveryConfigInput},
+    models::delivery_model::{
+        ClientDeliveryPreferencesInput, DeliveryStatus, MerchantStorageLocationInput,
+        ProductDeliveryConfigInput,
+    },
     services::cache_service::{cache_keys, CacheService}, // ✅ Phase 10 - Cache Redis
+    services::courier_verification_service::{CourierVerificationService, VerifyCourierRequest}, // ✅ NOUVEAU : Service vérification coursier
     services::delivery_payment_service::DeliveryPaymentService,
+    services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS, // ✅ NOUVEAU : Métriques calcul coûts
     services::delivery_service::{
         CourierApplicationInput, CourierAssetInput, CreateDeliveryParams, DeliveryRecipientInput,
         DeliveryService, LocationInput, NewDeliveryParcelInput, PricingInput,
         PublicDropoffSnapshot, TrackingInput,
     },
     services::product_price_service::ProductPriceService, // ✅ NOUVEAU : Service pour prix avec promotions
-    services::product_validation_service::{notify_missing_delivery_config, validate_product_for_activation},
     services::product_stock_service::ProductStockService, // ✅ NOUVEAU : Service gestion stock
-    services::courier_verification_service::{CourierVerificationService, VerifyCourierRequest}, // ✅ NOUVEAU : Service vérification coursier
+    services::product_validation_service::{
+        notify_missing_delivery_config, validate_product_for_activation,
+    },
     state::AppState,
     websocket::delivery_tracking::{
         record_ws_connection_close, record_ws_connection_open, record_ws_error,
@@ -245,28 +252,82 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // ✅ CORRIGÉ: Ajouter le préfixe /api/ pour toutes les routes delivery
         .route("/api/delivery/parcel-types", get(list_parcel_types))
-        .route("/api/delivery/product-config", post(save_product_delivery_config))
-        .route("/api/delivery/product-config/{service_id}/{product_index}", get(get_product_delivery_config))
+        .route(
+            "/api/delivery/product-config",
+            post(save_product_delivery_config),
+        )
+        .route(
+            "/api/delivery/product-config/{service_id}/{product_index}",
+            get(get_product_delivery_config),
+        )
         // ✅ Phase 9 - Amélioration : Routes pour gérer les zones de livraison des produits
-        .route("/api/products/{service_id}/{product_index}/zones", get(get_product_zones).post(save_product_zones))
+        .route(
+            "/api/products/{service_id}/{product_index}/zones",
+            get(get_product_zones).post(save_product_zones),
+        )
         // ✅ Phase 9 - Amélioration 32 : Routes pour gérer les lieux de stock
-        .route("/api/delivery/storage-locations", get(list_storage_locations).post(create_storage_location))
-        .route("/api/delivery/storage-locations/{id}", get(get_storage_location).put(update_storage_location).delete(delete_storage_location))
+        .route(
+            "/api/delivery/storage-locations",
+            get(list_storage_locations).post(create_storage_location),
+        )
+        .route(
+            "/api/delivery/storage-locations/{id}",
+            get(get_storage_location)
+                .put(update_storage_location)
+                .delete(delete_storage_location),
+        )
         // ✅ Phase 9 - Amélioration : Route pour lister les zones de livraison
         .route("/api/delivery/zones", get(list_delivery_zones))
         // ✅ Phase 9 - Amélioration : Routes pour les médias de preuve de livraison
-        .route("/api/delivery/{id}/proof-media", get(list_proof_media).post(upload_proof_media))
-        .route("/api/delivery/{id}/proof-media/{media_id}", delete(delete_proof_media))
-        .route("/api/delivery/product-validation/{service_id}/{product_index}", get(validate_product))
-        .route("/api/delivery/preferences", post(save_client_delivery_preferences))
-        .route("/api/delivery/preferences/{delivery_id}", get(get_client_delivery_preferences))
-        .route("/api/delivery", post(create_delivery))
+        .route(
+            "/api/delivery/{id}/proof-media",
+            get(list_proof_media).post(upload_proof_media),
+        )
+        .route(
+            "/api/delivery/{id}/proof-media/{media_id}",
+            delete(delete_proof_media),
+        )
+        .route(
+            "/api/delivery/product-validation/{service_id}/{product_index}",
+            get(validate_product),
+        )
+        .route(
+            "/api/delivery/preferences",
+            post(save_client_delivery_preferences),
+        )
+        .route(
+            "/api/delivery/preferences/{delivery_id}",
+            get(get_client_delivery_preferences),
+        )
+        .route(
+            "/api/delivery",
+            post(create_delivery)
+                // ✅ Phase 2: Rate limiting pour création livraison (critique)
+                .layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    crate::middlewares::rate_limit::user_rate_limit_middleware,
+                )),
+        )
         .route("/api/delivery/client-order", post(create_client_order))
-        .route("/api/delivery/estimate-costs", post(estimate_delivery_costs)) // ✅ Phase 7 - Amélioration 23
+        .route(
+            "/api/delivery/estimate-costs",
+            post(estimate_delivery_costs),
+        ) // ✅ Phase 7 - Amélioration 23
         .route("/api/delivery/{id}", get(get_delivery_summary))
         .route("/api/delivery/{id}/navigation", get(get_courier_navigation)) // ✅ NOUVEAU : Navigation pour coursier
-        .route("/api/delivery/{id}/status", post(update_delivery_status))
-        .route("/api/delivery/{id}/confirm-proximity", post(confirm_proximity_suggestion)) // ✅ Phase 6 - Amélioration 20
+        .route(
+            "/api/delivery/{id}/status",
+            post(update_delivery_status)
+                // ✅ Phase 2: Rate limiting pour mise à jour statut (critique)
+                .layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    crate::middlewares::rate_limit::user_rate_limit_middleware,
+                )),
+        )
+        .route(
+            "/api/delivery/{id}/confirm-proximity",
+            post(confirm_proximity_suggestion),
+        ) // ✅ Phase 6 - Amélioration 20
         .route("/api/delivery/{id}/pricing", post(upsert_pricing))
         .route("/api/delivery/{id}/tracking", post(add_tracking_point))
         .route("/api/delivery/{id}/rate-courier", post(rate_courier))
@@ -293,19 +354,34 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .route("/api/wallet/debit", post(debit_wallet_for_delivery))
         .route("/api/wallet/refund", post(refund_wallet_for_delivery))
-        .route("/api/courier/applications", post(submit_courier_application))
+        .route(
+            "/api/courier/applications",
+            post(submit_courier_application),
+        )
         .route("/api/courier/me", get(get_my_courier_status)) // ✅ NOUVEAU : Vérifier statut coursier de l'utilisateur
         .route("/api/courier/{id}/assets", post(upsert_courier_asset))
         .route("/api/delivery/{id}/assign-courier", post(assign_courier)) // ✅ Phase 9 - Amélioration 28
         .route("/api/couriers/available", get(list_available_couriers)) // ✅ Phase 9 - Amélioration 28
         // ✅ NOUVEAU : Routes pour gestion de stock
-        .route("/api/delivery/stock/{config_id}", axum::routing::put(update_stock))
-        .route("/api/delivery/stock/{config_id}/location/{location_id}", axum::routing::delete(delete_stock_location))
+        .route(
+            "/api/delivery/stock/{config_id}",
+            axum::routing::put(update_stock),
+        )
+        .route(
+            "/api/delivery/stock/{config_id}/location/{location_id}",
+            axum::routing::delete(delete_stock_location),
+        )
         // ✅ NOUVEAU : Routes pour vérification coursier
         .route("/api/delivery/{id}/verify-courier", post(verify_courier))
-        .route("/api/delivery/{id}/verification-code", get(get_verification_code))
+        .route(
+            "/api/delivery/{id}/verification-code",
+            get(get_verification_code),
+        )
         // ✅ NOUVEAU : Route pour lieux pickup
-        .route("/api/delivery/config/{config_id}/pickup-locations", get(get_pickup_locations))
+        .route(
+            "/api/delivery/config/{config_id}/pickup-locations",
+            get(get_pickup_locations),
+        )
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
 }
@@ -313,7 +389,10 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
 pub fn delivery_public_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // ✅ CORRIGÉ: Ajouter le préfixe /api/ pour les routes publiques
-        .route("/api/delivery/public/{token}", get(get_public_dropoff_snapshot))
+        .route(
+            "/api/delivery/public/{token}",
+            get(get_public_dropoff_snapshot),
+        )
         .route(
             "/api/delivery/public/{token}/dropoff",
             post(submit_public_dropoff),
@@ -334,16 +413,13 @@ async fn save_product_delivery_config(
     Json(payload): Json<ProductDeliveryConfigInput>,
 ) -> AppResult<Json<Value>> {
     // ✅ 1. Vérifier que l'utilisateur est propriétaire du service
-    let service: Option<ServiceUserIdRow> = sqlx::query_as(
-        "SELECT user_id FROM services WHERE id = $1"
-    )
-    .bind(payload.service_id)
-    .fetch_optional(&state.pg)
-    .await?;
+    let service: Option<ServiceUserIdRow> =
+        sqlx::query_as("SELECT user_id FROM services WHERE id = $1")
+            .bind(payload.service_id)
+            .fetch_optional(&state.pg)
+            .await?;
 
-    let service_owner = service.ok_or_else(|| {
-        AppError::NotFound("Service non trouvé".into())
-    })?;
+    let service_owner = service.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
 
     if service_owner.user_id != user.id {
         return Err(AppError::Unauthorized(
@@ -352,29 +428,30 @@ async fn save_product_delivery_config(
     }
 
     // ✅ 2. Vérifier que le produit existe
-    let service_data: Option<ServiceDataRow> = sqlx::query_as(
-        "SELECT data FROM services WHERE id = $1"
-    )
-    .bind(payload.service_id)
-    .fetch_optional(&state.pg)
-    .await?;
-    
-    let service_data = service_data.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
+    let service_data: Option<ServiceDataRow> =
+        sqlx::query_as("SELECT data FROM services WHERE id = $1")
+            .bind(payload.service_id)
+            .fetch_optional(&state.pg)
+            .await?;
 
-    let products = service_data.data
+    let service_data =
+        service_data.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
+
+    let products = service_data
+        .data
         .get("produits")
         .and_then(|p| p.get("valeur"))
         .and_then(|v| v.as_array());
 
     let _product = products
         .and_then(|arr| arr.get(payload.product_index as usize))
-        .ok_or_else(|| {
-            AppError::BadRequest("Produit non trouvé".into())
-        })?;
+        .ok_or_else(|| AppError::BadRequest("Produit non trouvé".into()))?;
 
     // ✅ 3. Valider les champs obligatoires
     if payload.pickup_address.trim().is_empty() {
-        return Err(AppError::BadRequest("L'adresse de départ est obligatoire".into()));
+        return Err(AppError::BadRequest(
+            "L'adresse de départ est obligatoire".into(),
+        ));
     }
 
     // ✅ 4. Vérifier si la configuration est complète (tous les champs requis présents)
@@ -383,7 +460,7 @@ async fn save_product_delivery_config(
     let is_complete = !payload.pickup_address.trim().is_empty()
         && payload.required_vehicle_type_id > 0
         && has_schedule;
-    
+
     // ✅ NOUVEAU : Stocker le type de véhicule requis dans les métadonnées de la configuration
     // On va utiliser un champ JSONB dans la table pour stocker les métadonnées additionnelles
     // Pour l'instant, on peut le stocker dans pickup_availability_schedule ou créer un champ séparé
@@ -400,18 +477,20 @@ async fn save_product_delivery_config(
             pickup_instructions_json["text"] = serde_json::json!(instructions);
         }
     }
-    
+
     // Ajouter le type de véhicule requis dans les instructions JSON
     if let Some(required_vehicle_type) = &payload.required_vehicle_type {
-        pickup_instructions_json["required_vehicle_type"] = serde_json::json!(required_vehicle_type);
+        pickup_instructions_json["required_vehicle_type"] =
+            serde_json::json!(required_vehicle_type);
     }
-    
-    let pickup_instructions_final = if pickup_instructions_json.is_object() && !pickup_instructions_json.is_null() {
-        Some(pickup_instructions_json.to_string())
-    } else {
-        payload.pickup_instructions.clone()
-    };
-    
+
+    let pickup_instructions_final =
+        if pickup_instructions_json.is_object() && !pickup_instructions_json.is_null() {
+            Some(pickup_instructions_json.to_string())
+        } else {
+            payload.pickup_instructions.clone()
+        };
+
     // ✅ 5. Créer ou mettre à jour la configuration
     let config_row = sqlx::query(
         r#"
@@ -468,14 +547,17 @@ async fn save_product_delivery_config(
     .bind(user.id)
     .fetch_one(&state.pg)
     .await?;
-    
-    let config_id = config_row.try_get::<i32, _>("id")?;
-    let config_is_configured = config_row.try_get::<bool, _>("is_configured")?;
+
+    let config_id = config_row.get::<i32, _>("id");
+    let config_is_configured = config_row.get::<bool, _>("is_configured");
 
     // ✅ Phase 2 - Amélioration 6 : Vérifier si la configuration est complète et notifier si nécessaire
     if !config_is_configured {
         // Configuration incomplète, envoyer notification
-        if let Err(e) = notify_missing_delivery_config(&state.pg, payload.service_id, payload.product_index).await {
+        if let Err(e) =
+            notify_missing_delivery_config(&state.pg, payload.service_id, payload.product_index)
+                .await
+        {
             log::error!("Erreur envoi notification configuration manquante: {:?}", e);
             // Ne pas faire échouer la sauvegarde si la notification échoue
         }
@@ -500,16 +582,13 @@ async fn validate_product(
     Path((service_id, product_index)): Path<(i32, i32)>,
 ) -> AppResult<Json<Value>> {
     // Vérifier propriétaire
-    let service: Option<ServiceUserIdRow> = sqlx::query_as(
-        "SELECT user_id FROM services WHERE id = $1"
-    )
-    .bind(service_id)
-    .fetch_optional(&state.pg)
-    .await?;
+    let service: Option<ServiceUserIdRow> =
+        sqlx::query_as("SELECT user_id FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await?;
 
-    let service_owner = service.ok_or_else(|| {
-        AppError::NotFound("Service non trouvé".into())
-    })?;
+    let service_owner = service.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
 
     if service_owner.user_id != user.id {
         return Err(AppError::Unauthorized(
@@ -533,15 +612,18 @@ async fn save_client_delivery_preferences(
     Json(payload): Json<ClientDeliveryPreferencesInput>,
 ) -> AppResult<Json<Value>> {
     // Parser les dates et heures
-    let preferred_delivery_date = payload.preferred_delivery_date
+    let preferred_delivery_date = payload
+        .preferred_delivery_date
         .as_ref()
         .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok());
-    
-    let preferred_delivery_time_start = payload.preferred_delivery_time_start
+
+    let preferred_delivery_time_start = payload
+        .preferred_delivery_time_start
         .as_ref()
         .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok());
-    
-    let preferred_delivery_time_end = payload.preferred_delivery_time_end
+
+    let preferred_delivery_time_end = payload
+        .preferred_delivery_time_end
         .as_ref()
         .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok());
 
@@ -553,10 +635,12 @@ async fn save_client_delivery_preferences(
     }
 
     let window_hours = payload.preferred_delivery_window_hours.unwrap_or(2);
-    let urgency = payload.urgency_level.unwrap_or_else(|| "standard".to_string());
+    let urgency = payload
+        .urgency_level
+        .unwrap_or_else(|| "standard".to_string());
     let is_flex = payload.is_flexible.unwrap_or(true);
     let flex_days = payload.flexibility_window_days.unwrap_or(3);
-    
+
     let preferences: ClientDeliveryPreferencesFullRow = sqlx::query_as(
         r#"
         INSERT INTO client_delivery_preferences (
@@ -637,7 +721,7 @@ async fn get_client_delivery_preferences(
                created_at, updated_at
         FROM client_delivery_preferences
         WHERE delivery_id = $1 AND user_id = $2
-        "#
+        "#,
     )
     .bind(delivery_id)
     .bind(user.id)
@@ -674,16 +758,13 @@ async fn get_product_delivery_config(
     Path((service_id, product_index)): Path<(i32, i32)>,
 ) -> AppResult<Json<Value>> {
     // Vérifier propriétaire
-    let service: Option<ServiceUserIdRow> = sqlx::query_as(
-        "SELECT user_id FROM services WHERE id = $1"
-    )
-    .bind(service_id)
-    .fetch_optional(&state.pg)
-    .await?;
+    let service: Option<ServiceUserIdRow> =
+        sqlx::query_as("SELECT user_id FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await?;
 
-    let service_owner = service.ok_or_else(|| {
-        AppError::NotFound("Service non trouvé".into())
-    })?;
+    let service_owner = service.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
 
     if service_owner.user_id != user.id {
         return Err(AppError::Unauthorized(
@@ -714,22 +795,22 @@ async fn get_product_delivery_config(
     if let Some(config) = config_row {
         Ok(Json(serde_json::json!({
             "config": {
-                "id": config.try_get::<i32, _>("id")?,
-                "service_id": config.try_get::<i32, _>("service_id")?,
-                "product_index": config.try_get::<i32, _>("product_index")?,
-                "pickup_address": config.try_get::<String, _>("pickup_address")?,
-                "pickup_latitude": config.try_get::<f64, _>("pickup_latitude")?,
-                "pickup_longitude": config.try_get::<f64, _>("pickup_longitude")?,
-                "required_vehicle_type_id": config.try_get::<i32, _>("required_vehicle_type_id")?,
+            "id": config.get::<i32, _>("id"),
+            "service_id": config.get::<i32, _>("service_id"),
+                "product_index": config.get::<i32, _>("product_index"),
+                "pickup_address": config.get::<String, _>("pickup_address"),
+                "pickup_latitude": config.get::<f64, _>("pickup_latitude"),
+                "pickup_longitude": config.get::<f64, _>("pickup_longitude"),
+                "required_vehicle_type_id": config.get::<i32, _>("required_vehicle_type_id"),
                 "weight_kg": config.try_get::<Option<f64>, _>("weight_kg")?,
                 "volume_cm3": config.try_get::<Option<f64>, _>("volume_cm3")?,
-                "requires_isothermal": config.try_get::<bool, _>("requires_isothermal")?,
-                "requires_fragile_handling": config.try_get::<bool, _>("requires_fragile_handling")?,
-                "pickup_availability_schedule": config.try_get::<serde_json::Value, _>("pickup_availability_schedule")?,
+                "requires_isothermal": config.get::<bool, _>("requires_isothermal"),
+                "requires_fragile_handling": config.get::<bool, _>("requires_fragile_handling"),
+                "pickup_availability_schedule": config.get::<serde_json::Value, _>("pickup_availability_schedule"),
                 "pickup_instructions": config.try_get::<Option<String>, _>("pickup_instructions")?,
-                "billing_mode": config.try_get::<String, _>("billing_mode")?,
+                "billing_mode": config.get::<String, _>("billing_mode"),
                 "billing_partner_label": config.try_get::<Option<String>, _>("billing_partner_label")?,
-                "is_configured": config.try_get::<bool, _>("is_configured")?,
+                "is_configured": config.get::<bool, _>("is_configured"),
                 "configured_at": config.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("configured_at")?,
             }
         })))
@@ -789,7 +870,10 @@ async fn create_client_order(
 
     // ✅ NOUVEAU : Vérifier la disponibilité du produit AVANT création
     if let Some(product_index) = payload.product_index {
-        let availability_service = crate::services::product_availability_service::ProductAvailabilityService::new(state.pg.clone());
+        let availability_service =
+            crate::services::product_availability_service::ProductAvailabilityService::new(
+                state.pg.clone(),
+            );
         let availability = availability_service
             .check_availability(
                 payload.service_id,
@@ -803,7 +887,7 @@ async fn create_client_order(
             // ✅ AMÉLIORATION : Utiliser les coordonnées GPS du dropoff (client) pour proximité
             let client_lat = payload.dropoff.as_ref().map(|p| p.latitude);
             let client_lng = payload.dropoff.as_ref().map(|p| p.longitude);
-            
+
             // ✅ AMÉLIORATION : Utiliser GeographicMatchingService si disponible (Google Maps priorité + fallback local)
             let similar_service = if let Some(geo_service) = state.geographic_matching.as_ref() {
                 crate::services::similar_products_service::SimilarProductsService::with_geographic_matching(
@@ -811,13 +895,15 @@ async fn create_client_order(
                     geo_service.clone(),
                 )
             } else {
-                crate::services::similar_products_service::SimilarProductsService::new(state.pg.clone())
+                crate::services::similar_products_service::SimilarProductsService::new(
+                    state.pg.clone(),
+                )
             };
-            
+
             let similar_products = similar_service
                 .find_similar_products_with_location(
-                    payload.service_id, 
-                    product_index, 
+                    payload.service_id,
+                    product_index,
                     5,
                     client_lat,
                     client_lng,
@@ -835,23 +921,24 @@ async fn create_client_order(
     }
 
     // ✅ 1. Récupérer la configuration de livraison du produit
-    let delivery_config: Option<ProductDeliveryConfigRow> = if let Some(product_index) = payload.product_index {
-        sqlx::query_as(
-            "SELECT pickup_address, pickup_latitude, pickup_longitude, 
+    let delivery_config: Option<ProductDeliveryConfigRow> =
+        if let Some(product_index) = payload.product_index {
+            sqlx::query_as(
+                "SELECT pickup_address, pickup_latitude, pickup_longitude, 
                     required_vehicle_type_id, weight_kg, volume_cm3,
                     requires_isothermal, requires_fragile_handling, is_configured,
                     billing_mode, pickup_instructions
              FROM product_delivery_config 
-             WHERE service_id = $1 AND product_index = $2"
-        )
-        .bind(payload.service_id)
-        .bind(product_index)
-        .fetch_optional(&state.pg)
-        .await?
-    } else {
-        None
-    };
-    
+             WHERE service_id = $1 AND product_index = $2",
+            )
+            .bind(payload.service_id)
+            .bind(product_index)
+            .fetch_optional(&state.pg)
+            .await?
+        } else {
+            None
+        };
+
     // ✅ NOUVEAU : Extraire le type de véhicule requis depuis la configuration
     let product_required_vehicle_type: Option<String> = if let Some(config) = &delivery_config {
         // Le type de véhicule peut être stocké dans pickup_instructions (temporaire)
@@ -861,7 +948,8 @@ async fn create_client_order(
         if let Some(instructions) = &config.pickup_instructions {
             // Essayer de parser JSON depuis instructions
             if let Ok(instructions_json) = serde_json::from_str::<serde_json::Value>(instructions) {
-                instructions_json.get("required_vehicle_type")
+                instructions_json
+                    .get("required_vehicle_type")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string())
             } else {
@@ -892,30 +980,39 @@ async fn create_client_order(
         }
     } else {
         // Fallback : récupérer depuis le service
-        let service_data: Option<ServiceDataGpsRow> = sqlx::query_as(
-            "SELECT data, gps FROM services WHERE id = $1"
-        )
-        .bind(payload.service_id)
-        .fetch_optional(&state.pg)
-        .await?;
-        
-        let service_data = service_data.ok_or_else(|| crate::core::types::AppError::NotFound("Service non trouvé".into()))?;
+        let service_data: Option<ServiceDataGpsRow> =
+            sqlx::query_as("SELECT data, gps FROM services WHERE id = $1")
+                .bind(payload.service_id)
+                .fetch_optional(&state.pg)
+                .await?;
+
+        let service_data = service_data
+            .ok_or_else(|| crate::core::types::AppError::NotFound("Service non trouvé".into()))?;
 
         // Extraire GPS du service
         let (lat, lng) = if let Some(gps_str) = &service_data.gps {
             let gps_str = gps_str.clone();
             let parts: Vec<&str> = gps_str.split(',').collect();
             if parts.len() == 2 {
-                if let (Ok(lng), Ok(lat)) = (parts[0].trim().parse::<f64>(), parts[1].trim().parse::<f64>()) {
+                if let (Ok(lng), Ok(lat)) = (
+                    parts[0].trim().parse::<f64>(),
+                    parts[1].trim().parse::<f64>(),
+                ) {
                     (lat, lng)
                 } else {
-                    return Err(crate::core::types::AppError::BadRequest("GPS invalide dans le service".into()));
+                    return Err(crate::core::types::AppError::BadRequest(
+                        "GPS invalide dans le service".into(),
+                    ));
                 }
             } else {
-                return Err(crate::core::types::AppError::BadRequest("Format GPS invalide".into()));
+                return Err(crate::core::types::AppError::BadRequest(
+                    "Format GPS invalide".into(),
+                ));
             }
         } else {
-            return Err(crate::core::types::AppError::BadRequest("Aucune adresse de départ disponible".into()));
+            return Err(crate::core::types::AppError::BadRequest(
+                "Aucune adresse de départ disponible".into(),
+            ));
         };
 
         LocationInput {
@@ -930,26 +1027,35 @@ async fn create_client_order(
         dropoff_payload
     } else {
         // Récupérer GPS utilisateur
-        let user_data: Option<UserGpsNameRow> = sqlx::query_as(
-            "SELECT gps, nom_complet FROM users WHERE id = $1"
-        )
-        .bind(user.id)
-        .fetch_optional(&state.pg)
-        .await?;
+        let user_data: Option<UserGpsNameRow> =
+            sqlx::query_as("SELECT gps, nom_complet FROM users WHERE id = $1")
+                .bind(user.id)
+                .fetch_optional(&state.pg)
+                .await?;
 
-        let user_row = user_data.ok_or_else(|| crate::core::types::AppError::BadRequest("Utilisateur non trouvé".into()))?;
-        let gps_str = user_row.gps.ok_or_else(|| crate::core::types::AppError::BadRequest("Aucune adresse de livraison fournie et GPS utilisateur non disponible".into()))?;
-        
+        let user_row = user_data.ok_or_else(|| {
+            crate::core::types::AppError::BadRequest("Utilisateur non trouvé".into())
+        })?;
+        let gps_str = user_row.gps.ok_or_else(|| {
+            crate::core::types::AppError::BadRequest(
+                "Aucune adresse de livraison fournie et GPS utilisateur non disponible".into(),
+            )
+        })?;
+
         let parts: Vec<&str> = gps_str.split(',').collect();
         if parts.len() != 2 {
-            return Err(crate::core::types::AppError::BadRequest("Format GPS utilisateur invalide".into()));
+            return Err(crate::core::types::AppError::BadRequest(
+                "Format GPS utilisateur invalide".into(),
+            ));
         }
-        
-        let lng = parts[0].trim().parse::<f64>()
-            .map_err(|_| crate::core::types::AppError::BadRequest("GPS utilisateur invalide".into()))?;
-        let lat = parts[1].trim().parse::<f64>()
-            .map_err(|_| crate::core::types::AppError::BadRequest("GPS utilisateur invalide".into()))?;
-        
+
+        let lng = parts[0].trim().parse::<f64>().map_err(|_| {
+            crate::core::types::AppError::BadRequest("GPS utilisateur invalide".into())
+        })?;
+        let lat = parts[1].trim().parse::<f64>().map_err(|_| {
+            crate::core::types::AppError::BadRequest("GPS utilisateur invalide".into())
+        })?;
+
         LocationPayload {
             latitude: lat,
             longitude: lng,
@@ -990,18 +1096,19 @@ async fn create_client_order(
         metadata["product_index"] = serde_json::json!(product_index);
     }
     metadata["order_source"] = serde_json::json!("client_direct");
-    
+
     // ✅ NOUVEAU : Ajouter le type de véhicule préféré dans les métadonnées
     // Priorité : 1) Type choisi par le client, 2) Type requis par le produit
     let preferred_vehicle_type_clone = payload.preferred_vehicle_type.clone();
-    let final_vehicle_type = if let Some(ref preferred_vehicle_type) = payload.preferred_vehicle_type {
-        Some(preferred_vehicle_type.clone())
-    } else if let Some(product_vehicle_type) = product_required_vehicle_type {
-        Some(product_vehicle_type)
-    } else {
-        None
-    };
-    
+    let final_vehicle_type =
+        if let Some(ref preferred_vehicle_type) = payload.preferred_vehicle_type {
+            Some(preferred_vehicle_type.clone())
+        } else if let Some(product_vehicle_type) = product_required_vehicle_type {
+            Some(product_vehicle_type)
+        } else {
+            None
+        };
+
     if let Some(vehicle_type) = final_vehicle_type {
         // Mapper les types du formulaire vers les types du backend
         let vehicle_type_mapping: std::collections::HashMap<&str, &str> = [
@@ -1017,16 +1124,19 @@ async fn create_client_order(
         .iter()
         .cloned()
         .collect();
-        
+
         let backend_vehicle_type = vehicle_type_mapping
             .get(vehicle_type.as_str())
             .unwrap_or(&"autre");
-        
+
         metadata["preferred_vehicle_type"] = serde_json::json!(vehicle_type);
         metadata["preferred_vehicle_type_backend"] = serde_json::json!(backend_vehicle_type);
-        metadata["vehicle_type_source"] = serde_json::json!(
-            if preferred_vehicle_type_clone.is_some() { "client_choice" } else { "product_config" }
-        );
+        metadata["vehicle_type_source"] =
+            serde_json::json!(if preferred_vehicle_type_clone.is_some() {
+                "client_choice"
+            } else {
+                "product_config"
+            });
     }
 
     // ✅ 7. Créer la livraison
@@ -1073,110 +1183,122 @@ async fn create_client_order(
 
     // ✅ Phase 5 - Amélioration 10 : Réservation de paiement AVANT matching
     // Récupérer le prix du produit et le coût de livraison
-    let (product_price_cents, delivery_cost_cents, billing_mode) = if let Some(product_index) = payload.product_index {
-        // Récupérer le prix du produit
-        let product_data: Option<ServiceDataRow> = sqlx::query_as(
-            "SELECT data FROM services WHERE id = $1"
-        )
-        .bind(payload.service_id)
-        .fetch_optional(&state.pg)
-        .await?;
+    let (product_price_cents, delivery_cost_cents, billing_mode) =
+        if let Some(product_index) = payload.product_index {
+            // Récupérer le prix du produit
+            let product_data: Option<ServiceDataRow> =
+                sqlx::query_as("SELECT data FROM services WHERE id = $1")
+                    .bind(payload.service_id)
+                    .fetch_optional(&state.pg)
+                    .await?;
 
-        let product_price_cents = if let Some(service_row) = product_data {
-            let service_data: serde_json::Value = service_row.data;
-            // ✅ CORRECTION: Chercher produits dans produits.valeur (format standard) ou produits directement
-            let products_array = service_data
-                .get("produits")
-                .and_then(|p| {
-                    // Si produits est un objet avec valeur
-                    if let Some(valeur) = p.get("valeur").and_then(|v| v.as_array()) {
-                        Some(valeur)
-                    } else if let Some(arr) = p.as_array() {
-                        // Si produits est directement un tableau
-                        Some(arr)
-                    } else {
-                        None
-                    }
-                })
-                .or_else(|| {
-                    // Fallback: chercher "products" (format anglais)
-                    service_data.get("products").and_then(|v| v.as_array())
-                });
-            
-            if let Some(products) = products_array {
-                if let Some(product) = products.get(product_index as usize) {
-                    // ✅ Utiliser ProductPriceService pour obtenir le prix réel avec promotions et prix négociés
-                    ProductPriceService::get_real_product_price_cents(
-                        &state.pg,
-                        payload.service_id,
-                        product,
-                        Some(product_index),
-                        payload.conversation_id,  // ✅ NOUVEAU : Pour prix négociés
-                        Some(user.id),  // ✅ NOUVEAU : client_user_id = user.id dans create_client_order
-                    )
-                    .await
-                    .unwrap_or_else(|_| {
-                        // Fallback : prix de base si erreur
-                        product.get("price")
-                            .or_else(|| product.get("prix"))
-                            .or_else(|| product.get("prix_produit"))
-                            .and_then(|v| v.as_f64())
-                            .map(|p| (p * 100.0) as i64)
-                            .unwrap_or(0)
+            let product_price_cents = if let Some(service_row) = product_data {
+                let service_data: serde_json::Value = service_row.data;
+                // ✅ CORRECTION: Chercher produits dans produits.valeur (format standard) ou produits directement
+                let products_array = service_data
+                    .get("produits")
+                    .and_then(|p| {
+                        // Si produits est un objet avec valeur
+                        if let Some(valeur) = p.get("valeur").and_then(|v| v.as_array()) {
+                            Some(valeur)
+                        } else if let Some(arr) = p.as_array() {
+                            // Si produits est directement un tableau
+                            Some(arr)
+                        } else {
+                            None
+                        }
                     })
+                    .or_else(|| {
+                        // Fallback: chercher "products" (format anglais)
+                        service_data.get("products").and_then(|v| v.as_array())
+                    });
+
+                if let Some(products) = products_array {
+                    if let Some(product) = products.get(product_index as usize) {
+                        // ✅ Utiliser ProductPriceService pour obtenir le prix réel avec promotions et prix négociés
+                        ProductPriceService::get_real_product_price_cents(
+                            &state.pg,
+                            payload.service_id,
+                            product,
+                            Some(product_index),
+                            payload.conversation_id, // ✅ NOUVEAU : Pour prix négociés
+                            Some(user.id), // ✅ NOUVEAU : client_user_id = user.id dans create_client_order
+                        )
+                        .await
+                        .unwrap_or_else(|_| {
+                            // Fallback : prix de base si erreur
+                            product
+                                .get("price")
+                                .or_else(|| product.get("prix"))
+                                .or_else(|| product.get("prix_produit"))
+                                .and_then(|v| v.as_f64())
+                                .map(|p| (p * 100.0) as i64)
+                                .unwrap_or(0)
+                        })
+                    } else {
+                        0
+                    }
                 } else {
                     0
                 }
             } else {
                 0
-            }
+            };
+
+            // Récupérer le coût de livraison depuis le pricing de la livraison
+            // Note: Le pricing n'est pas dans DeliverySummary, on le récupère depuis metadata ou on utilise 0
+            let delivery_cost_cents = summary
+                .metadata
+                .get("pricing")
+                .and_then(|p| p.get("total_cost_cents"))
+                .and_then(|c| c.as_i64())
+                .unwrap_or(0);
+
+            // Récupérer le billing_mode depuis product_delivery_config
+            let billing_mode = if let Some(config) = &delivery_config {
+                config
+                    .billing_mode
+                    .as_deref()
+                    .unwrap_or("standard")
+                    .to_string()
+            } else {
+                "standard".to_string()
+            };
+
+            (product_price_cents, delivery_cost_cents, billing_mode)
         } else {
-            0
+            // Pas de produit spécifique, utiliser les valeurs par défaut
+            (0, 0, "standard".to_string())
         };
-
-        // Récupérer le coût de livraison depuis le pricing de la livraison
-        // Note: Le pricing n'est pas dans DeliverySummary, on le récupère depuis metadata ou on utilise 0
-        let delivery_cost_cents = summary.metadata
-            .get("pricing")
-            .and_then(|p| p.get("total_cost_cents"))
-            .and_then(|c| c.as_i64())
-            .unwrap_or(0);
-
-        // Récupérer le billing_mode depuis product_delivery_config
-        let billing_mode = if let Some(config) = &delivery_config {
-            config.billing_mode.as_deref().unwrap_or("standard").to_string()
-        } else {
-            "standard".to_string()
-        };
-
-        (product_price_cents, delivery_cost_cents, billing_mode)
-    } else {
-        // Pas de produit spécifique, utiliser les valeurs par défaut
-        (0, 0, "standard".to_string())
-    };
 
     // Créer le service de paiement et réserver le paiement
     if product_price_cents > 0 || delivery_cost_cents > 0 {
-        let payment_service = DeliveryPaymentService::new(state.pg.clone())
-            .with_delivery_service(service.clone());
-        
+        let payment_service =
+            DeliveryPaymentService::new(state.pg.clone()).with_delivery_service(service.clone());
+
         // ✅ Phase 5 - Matching Intelligent : Récupérer le mode de paiement client
         // Pour l'instant, on utilise "wallet" par défaut, mais cela peut être enrichi
         // depuis payment_transactions si le client a déjà effectué un paiement
         let client_payment_method = serde_json::json!({
             "type": "wallet" // Par défaut, sera enrichi depuis payment_transactions lors du reversement
         });
-        
-        match payment_service.reserve_payment(
-            summary.id,
-            user.id,
-            product_price_cents,
-            delivery_cost_cents,
-            &billing_mode,
-            Some(client_payment_method), // ✅ NOUVEAU: Mode de paiement client
-        ).await {
+
+        match payment_service
+            .reserve_payment(
+                summary.id,
+                user.id,
+                product_price_cents,
+                delivery_cost_cents,
+                &billing_mode,
+                Some(client_payment_method), // ✅ NOUVEAU: Mode de paiement client
+            )
+            .await
+        {
             Ok(_) => {
-                log::info!("✅ Réservation de paiement créée pour livraison {}", summary.id);
+                log::info!(
+                    "✅ Réservation de paiement créée pour livraison {}",
+                    summary.id
+                );
             }
             Err(e) => {
                 // Si la réservation échoue (solde insuffisant), on retourne une erreur
@@ -1481,8 +1603,8 @@ async fn update_delivery_status(
     enforce_delivery_access(&service, &summary, user.id).await?;
 
     // ✅ Phase 5 - Amélioration 11 : Gestion paiement selon changement de statut
-    let payment_service = DeliveryPaymentService::new(state.pg.clone())
-        .with_delivery_service(service.clone());
+    let payment_service =
+        DeliveryPaymentService::new(state.pg.clone()).with_delivery_service(service.clone());
 
     // Récupérer l'ancien statut pour détecter les changements
     let old_status = summary.status.clone();
@@ -1504,7 +1626,11 @@ async fn update_delivery_status(
             // Coursier accepte -> Confirmer le paiement (débit définitif)
             if old_status != crate::models::delivery_model::DeliveryStatus::Accepted {
                 if let Err(e) = payment_service.confirm_payment(delivery_id).await {
-                    log::error!("Erreur confirmation paiement pour livraison {}: {:?}", delivery_id, e);
+                    log::error!(
+                        "Erreur confirmation paiement pour livraison {}: {:?}",
+                        delivery_id,
+                        e
+                    );
                     // Ne pas faire échouer la requête, juste logger l'erreur
                 }
             }
@@ -1513,7 +1639,11 @@ async fn update_delivery_status(
             // Livraison annulée -> Libérer la réservation (rembourser)
             if old_status != crate::models::delivery_model::DeliveryStatus::Cancelled {
                 if let Err(e) = payment_service.release_reservation(delivery_id).await {
-                    log::error!("Erreur libération réservation pour livraison {}: {:?}", delivery_id, e);
+                    log::error!(
+                        "Erreur libération réservation pour livraison {}: {:?}",
+                        delivery_id,
+                        e
+                    );
                 }
             }
         }
@@ -1522,7 +1652,8 @@ async fn update_delivery_status(
             // ✅ IMPORTANT : Vérifier si le produit a été rejeté avant de reverser
             if old_status != crate::models::delivery_model::DeliveryStatus::Delivered {
                 // Vérifier dans le payload si le produit a été rejeté
-                let product_rejected = payload_data.as_ref()
+                let product_rejected = payload_data
+                    .as_ref()
                     .and_then(|p| p.get("product_rejected"))
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
@@ -1530,14 +1661,66 @@ async fn update_delivery_status(
                 if product_rejected {
                     // ✅ Produit rejeté : Pas de commission, pas de reversement
                     // Rembourser le client via handle_product_rejection
-                    if let Err(e) = payment_service.handle_product_rejection(delivery_id, user.id).await {
-                        log::error!("Erreur gestion rejet produit pour livraison {}: {:?}", delivery_id, e);
+                    if let Err(e) = payment_service
+                        .handle_product_rejection(delivery_id, user.id)
+                        .await
+                    {
+                        log::error!(
+                            "Erreur gestion rejet produit pour livraison {}: {:?}",
+                            delivery_id,
+                            e
+                        );
                     }
                 } else {
                     // Produit accepté : Reverser au prestataire avec commission
                     let merchant_user_id = summary.creator_id;
-                    if let Err(e) = payment_service.payout_merchant(delivery_id, merchant_user_id).await {
-                        log::error!("Erreur reversement prestataire pour livraison {}: {:?}", delivery_id, e);
+                    if let Err(e) = payment_service
+                        .payout_merchant(delivery_id, merchant_user_id)
+                        .await
+                    {
+                        log::error!(
+                            "Erreur reversement prestataire pour livraison {}: {:?}",
+                            delivery_id,
+                            e
+                        );
+                    }
+
+                    // ✅ NOUVEAU : Reverser les frais de livraison au coursier
+                    if let Some(courier_id) = summary.courier_id {
+                        // Récupérer le user_id du coursier depuis courier_id
+                        let courier_user_id_result: Option<(i32,)> =
+                            sqlx::query_as("SELECT user_id FROM couriers WHERE id = $1")
+                                .bind(courier_id)
+                                .fetch_optional(&state.pg)
+                                .await
+                                .ok()
+                                .flatten();
+
+                        if let Some((courier_user_id,)) = courier_user_id_result {
+                            if let Err(e) = payment_service
+                                .payout_courier(delivery_id, courier_user_id)
+                                .await
+                            {
+                                log::error!(
+                                    "Erreur reversement coursier pour livraison {}: {:?}",
+                                    delivery_id,
+                                    e
+                                );
+                            } else {
+                                log::info!(
+                                    "✅ Reversement coursier effectué pour livraison {}",
+                                    delivery_id
+                                );
+                            }
+                        } else {
+                            log::warn!(
+                                "Coursier {} non trouvé pour livraison {}",
+                                courier_id,
+                                delivery_id
+                            );
+                        }
+                    } else {
+                        log::warn!("Pas de coursier assigné pour livraison {}", delivery_id);
                     }
                 }
             }
@@ -1557,20 +1740,21 @@ async fn confirm_proximity_suggestion(
     Json(payload): Json<serde_json::Value>,
 ) -> AppResult<Json<Value>> {
     let service = delivery_service(&state)?;
-    
+
     // Vérifier que l'utilisateur a accès à cette livraison
     let summary = service.get_delivery_summary(delivery_id).await?;
     enforce_delivery_access(&service, &summary, user.id).await?;
-    
+
     // Récupérer le statut suggéré depuis le payload
     let suggested_status_str = payload
         .get("suggested_status")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::BadRequest("suggested_status manquant".into()))?;
-    
-    let suggested_status = serde_json::from_str::<crate::models::delivery_model::DeliveryStatus>(suggested_status_str)
-        .map_err(|_| AppError::BadRequest("Statut suggéré invalide".into()))?;
-    
+
+    let suggested_status =
+        serde_json::from_str::<crate::models::delivery_model::DeliveryStatus>(suggested_status_str)
+            .map_err(|_| AppError::BadRequest("Statut suggéré invalide".into()))?;
+
     // Changer le statut automatiquement
     service
         .update_delivery_status(
@@ -1581,7 +1765,7 @@ async fn confirm_proximity_suggestion(
             Some(payload), // Passer le payload complet
         )
         .await?;
-    
+
     Ok(Json(serde_json::json!({
         "success": true,
         "message": "Statut confirmé et mis à jour automatiquement"
@@ -1598,6 +1782,8 @@ struct EstimateCostsPayload {
     // ✅ NOUVEAU : ID de la conversation et client pour prix négociés
     conversation_id: Option<String>,
     client_user_id: Option<i32>,
+    // ✅ NOUVEAU : Type d'engin souhaité pour la livraison (pour calcul coût précis)
+    preferred_vehicle_type: Option<String>, // 'bike', 'motorcycle', 'scooter', 'car', 'pickup', 'truck', 'walking'
 }
 
 #[derive(Serialize)]
@@ -1614,34 +1800,43 @@ async fn estimate_delivery_costs(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<EstimateCostsPayload>,
 ) -> AppResult<Json<EstimateCostsResponse>> {
+    // ✅ Monitoring : Enregistrer requête
+    let start_time = std::time::Instant::now();
+    if let Ok(metrics) = &*crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS {
+        metrics.estimate_cost_requests_total.inc();
+    }
+
     // ✅ CORRECTION : Validation des paramètres requis
     if payload.service_id <= 0 {
+        if let Ok(metrics) = &*crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS {
+            metrics.estimate_cost_errors_total.inc();
+        }
         return Err(crate::core::types::AppError::BadRequest(
             "service_id est requis et doit être supérieur à 0".into(),
         ));
     }
-    
+
     // ✅ CORRECTION : Si product_index est fourni mais dropoff manquant, retourner erreur claire
     if payload.product_index.is_some() && payload.dropoff.is_none() {
         return Err(crate::core::types::AppError::BadRequest(
             "dropoff est requis pour calculer le coût de livraison lorsque product_index est fourni".into(),
         ));
     }
-    
+
     let _service = delivery_service(&state)?;
 
     // 1. Récupérer le prix du produit (✅ avec promotions)
     let product_price_cents = if let Some(product_index) = payload.product_index {
-        let product_data: Option<ServiceDataRow> = sqlx::query_as(
-            "SELECT data FROM services WHERE id = $1"
-        )
-        .bind(payload.service_id)
-        .fetch_optional(&state.pg)
-        .await?;
+        let product_data: Option<ServiceDataRow> =
+            sqlx::query_as("SELECT data FROM services WHERE id = $1")
+                .bind(payload.service_id)
+                .fetch_optional(&state.pg)
+                .await?;
 
         if let Some(service_row) = product_data {
             // ✅ CORRECTION: Chercher produits dans produits.valeur (format standard) ou produits directement
-            let products_array = service_row.data
+            let products_array = service_row
+                .data
                 .get("produits")
                 .and_then(|p| {
                     // Si produits est un objet avec valeur
@@ -1658,7 +1853,7 @@ async fn estimate_delivery_costs(
                     // Fallback: chercher "products" (format anglais)
                     service_row.data.get("products").and_then(|v| v.as_array())
                 });
-            
+
             if let Some(products) = products_array {
                 if let Some(product) = products.get(product_index as usize) {
                     // ✅ Utiliser ProductPriceService pour obtenir le prix réel avec promotions et prix négociés
@@ -1667,13 +1862,14 @@ async fn estimate_delivery_costs(
                         payload.service_id,
                         product,
                         Some(product_index),
-                        payload.conversation_id,  // ✅ NOUVEAU : Pour prix négociés
-                        payload.client_user_id.or(Some(user.id)),  // ✅ NOUVEAU : Pour prix négociés
+                        payload.conversation_id, // ✅ NOUVEAU : Pour prix négociés
+                        payload.client_user_id.or(Some(user.id)), // ✅ NOUVEAU : Pour prix négociés
                     )
                     .await
                     .unwrap_or_else(|_| {
                         // Fallback : prix de base si erreur
-                        product.get("price")
+                        product
+                            .get("price")
                             .or_else(|| product.get("prix"))
                             .or_else(|| product.get("prix_produit"))
                             .and_then(|v| v.as_f64())
@@ -1697,7 +1893,7 @@ async fn estimate_delivery_costs(
     let (billing_mode, is_delivery_free) = if let Some(product_index) = payload.product_index {
         let config: Option<BillingModeRow> = sqlx::query_as(
             "SELECT billing_mode FROM product_delivery_config 
-             WHERE service_id = $1 AND product_index = $2"
+             WHERE service_id = $1 AND product_index = $2",
         )
         .bind(payload.service_id)
         .bind(product_index)
@@ -1720,7 +1916,7 @@ async fn estimate_delivery_costs(
         let pickup = if let Some(product_index) = payload.product_index {
             let config: Option<ProductDeliveryConfigPickupRow> = sqlx::query_as(
                 "SELECT pickup_latitude, pickup_longitude FROM product_delivery_config 
-                 WHERE service_id = $1 AND product_index = $2"
+                 WHERE service_id = $1 AND product_index = $2",
             )
             .bind(payload.service_id)
             .bind(product_index)
@@ -1735,60 +1931,155 @@ async fn estimate_delivery_costs(
                         address: None,
                     }
                 } else {
-                    return Err(crate::core::types::AppError::BadRequest("Coordonnées GPS manquantes dans la configuration de livraison".into()));
+                    return Err(crate::core::types::AppError::BadRequest(
+                        "Coordonnées GPS manquantes dans la configuration de livraison".into(),
+                    ));
                 }
             } else {
                 // Fallback : récupérer depuis le service
-                let service_data: Option<ServiceGpsRow> = sqlx::query_as(
-                    "SELECT gps FROM services WHERE id = $1"
-                )
-                .bind(payload.service_id)
-                .fetch_optional(&state.pg)
-                .await?;
+                let service_data: Option<ServiceGpsRow> =
+                    sqlx::query_as("SELECT gps FROM services WHERE id = $1")
+                        .bind(payload.service_id)
+                        .fetch_optional(&state.pg)
+                        .await?;
 
                 if let Some(service_row) = service_data {
                     if let Some(gps_str) = service_row.gps {
                         let parts: Vec<&str> = gps_str.split(',').collect();
                         if parts.len() == 2 {
-                            if let (Ok(lng), Ok(lat)) = (parts[0].trim().parse::<f64>(), parts[1].trim().parse::<f64>()) {
+                            if let (Ok(lng), Ok(lat)) = (
+                                parts[0].trim().parse::<f64>(),
+                                parts[1].trim().parse::<f64>(),
+                            ) {
                                 LocationInput {
                                     latitude: lat,
                                     longitude: lng,
                                     address: None,
                                 }
                             } else {
-                                return Err(crate::core::types::AppError::BadRequest("GPS invalide dans le service".into()));
+                                return Err(crate::core::types::AppError::BadRequest(
+                                    "GPS invalide dans le service".into(),
+                                ));
                             }
                         } else {
-                            return Err(crate::core::types::AppError::BadRequest("Format GPS invalide".into()));
+                            return Err(crate::core::types::AppError::BadRequest(
+                                "Format GPS invalide".into(),
+                            ));
                         }
                     } else {
-                        return Err(crate::core::types::AppError::BadRequest("Aucune adresse de départ disponible".into()));
+                        return Err(crate::core::types::AppError::BadRequest(
+                            "Aucune adresse de départ disponible".into(),
+                        ));
                     }
                 } else {
-                    return Err(crate::core::types::AppError::NotFound("Service non trouvé".into()));
+                    return Err(crate::core::types::AppError::NotFound(
+                        "Service non trouvé".into(),
+                    ));
                 }
             }
         } else {
-            return Err(crate::core::types::AppError::BadRequest("product_index requis pour calculer le coût de livraison".into()));
+            return Err(crate::core::types::AppError::BadRequest(
+                "product_index requis pour calculer le coût de livraison".into(),
+            ));
         };
 
-        // Calculer la distance et estimer le coût
-        // Pour l'instant, on utilise une estimation basique
-        // TODO: Utiliser le service de pricing réel
+        // Calculer la distance
         let distance_km = crate::services::delivery_service::haversine_distance(
             (pickup.latitude, pickup.longitude),
             (dropoff.latitude, dropoff.longitude),
         ) / 1000.0; // Convertir en km
 
-        // Estimation basique : 500 FCFA par km (minimum 1000 FCFA)
-        let estimated_cost = (distance_km * 500.0).max(1000.0);
-        (estimated_cost * 100.0) as i64 // Convertir en centimes
+        // ✅ NOUVEAU : Calculer le coût selon le type d'engin
+        // Déterminer le type d'engin (depuis preferred_vehicle_type ou config produit)
+        let engine_type = if let Some(ref preferred) = payload.preferred_vehicle_type {
+            // Mapper depuis preferred_vehicle_type (format frontend) vers DeliveryEngineType
+            match preferred.as_str() {
+                "bike" | "velo" => crate::models::delivery_model::DeliveryEngineType::VeloCargo,
+                "motorcycle" | "moto" => crate::models::delivery_model::DeliveryEngineType::Moto,
+                "scooter" => crate::models::delivery_model::DeliveryEngineType::Scooter,
+                "tricycle" | "tricycle" => {
+                    crate::models::delivery_model::DeliveryEngineType::Tricycle
+                }
+                "car" | "voiture" => crate::models::delivery_model::DeliveryEngineType::Voiture,
+                "pickup" | "camionnette" => {
+                    crate::models::delivery_model::DeliveryEngineType::Camionnette
+                }
+                "truck" | "camion" => {
+                    crate::models::delivery_model::DeliveryEngineType::CamionLeger
+                }
+                "walking" | "pieton" => crate::models::delivery_model::DeliveryEngineType::Pieton,
+                _ => crate::models::delivery_model::DeliveryEngineType::Moto, // Par défaut : moto
+            }
+        } else {
+            // Par défaut : moto (le plus courant au Cameroun)
+            crate::models::delivery_model::DeliveryEngineType::Moto
+        };
+
+        // Utiliser le service de pricing par type d'engin
+        let pricing_service =
+            crate::services::delivery_engine_pricing_service::DeliveryEnginePricingService::new(
+                state.pg.clone(),
+            );
+        let delivery_cost_fcfa = pricing_service
+            .calculate_delivery_cost(engine_type, distance_km)
+            .await
+            .unwrap_or_else(|_| {
+                // Fallback si erreur : utiliser l'ancienne formule
+                (distance_km * 500.0).max(1000.0)
+            });
+
+        let delivery_cost_cents = (delivery_cost_fcfa * 100.0) as i64; // Convertir en centimes
+
+        // ✅ Monitoring : Enregistrer distance et coût
+        if let Ok(metrics) = &*crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS {
+            metrics.delivery_distance_km.observe(distance_km);
+
+            if distance_km < 1.0 {
+                metrics.delivery_distance_short_total.inc();
+            } else if distance_km <= 10.0 {
+                metrics.delivery_distance_medium_total.inc();
+            } else {
+                metrics.delivery_distance_long_total.inc();
+            }
+        }
+
+        delivery_cost_cents
     } else {
         0
     };
 
-    let total_cents = product_price_cents + if is_delivery_free { 0 } else { delivery_cost_cents };
+    let total_cents = product_price_cents
+        + if is_delivery_free {
+            0
+        } else {
+            delivery_cost_cents
+        };
+
+    // ✅ Monitoring : Enregistrer métriques
+    if let Ok(metrics) = &*crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS {
+        let duration = start_time.elapsed().as_secs_f64();
+        metrics.estimate_cost_duration_seconds.observe(duration);
+
+        metrics.delivery_cost_calculated_total.inc();
+        metrics
+            .delivery_cost_amount_cents_total
+            .inc_by(delivery_cost_cents as f64);
+
+        metrics.product_price_calculated_total.inc();
+        metrics
+            .product_price_amount_cents_total
+            .inc_by(product_price_cents as f64);
+
+        // Billing mode
+        match billing_mode.as_str() {
+            "standard" => metrics.billing_mode_standard_total.inc(),
+            "merchant_inclusive" => metrics.billing_mode_merchant_inclusive_total.inc(),
+            "partner" => metrics.billing_mode_partner_total.inc(),
+            _ => {}
+        }
+
+        // Distance déjà calculée plus haut, métriques enregistrées dans le bloc de calcul
+    }
 
     Ok(Json(EstimateCostsResponse {
         product_price_cents,
@@ -1989,13 +2280,16 @@ async fn get_my_courier_status(
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<Json<Value>> {
     let service = delivery_service(&state)?;
-    
+
     // Vérifier si l'utilisateur a un profil coursier
     let courier = service.repository().find_courier_by_user(user.id).await?;
-    
+
     // Vérifier si l'utilisateur a une candidature en cours
-    let application = service.repository().find_courier_application_by_user(user.id).await?;
-    
+    let application = service
+        .repository()
+        .find_courier_application_by_user(user.id)
+        .await?;
+
     Ok(Json(json!({
         "is_courier": courier.is_some(),
         "courier": courier.map(|c| json!({
@@ -2086,18 +2380,15 @@ async fn get_courier_navigation(
     }
 
     // Récupérer la position actuelle du coursier (optionnel, depuis query params ou dernière position connue)
-    let courier_current_lat = params
-        .get("courier_lat")
-        .and_then(|v| v.as_f64());
-    let courier_current_lng = params
-        .get("courier_lng")
-        .and_then(|v| v.as_f64());
+    let courier_current_lat = params.get("courier_lat").and_then(|v| v.as_f64());
+    let courier_current_lng = params.get("courier_lng").and_then(|v| v.as_f64());
 
     // Déterminer l'origine et la destination selon le statut de la livraison
     let (origin, destination, navigation_type) = match summary.status {
         DeliveryStatus::EnRoutePickup | DeliveryStatus::AwaitingCourierConfirmation => {
             // Le coursier va vers le point de pickup
-            let origin = if let (Some(lat), Some(lng)) = (courier_current_lat, courier_current_lng) {
+            let origin = if let (Some(lat), Some(lng)) = (courier_current_lat, courier_current_lng)
+            {
                 (lat, lng)
             } else {
                 // Fallback : utiliser la position du coursier depuis la base de données
@@ -2111,7 +2402,8 @@ async fn get_courier_navigation(
         }
         DeliveryStatus::PickedUp | DeliveryStatus::EnRouteDelivery => {
             // Le coursier va vers le point de dropoff
-            let origin = if let (Some(lat), Some(lng)) = (courier_current_lat, courier_current_lng) {
+            let origin = if let (Some(lat), Some(lng)) = (courier_current_lat, courier_current_lng)
+            {
                 (lat, lng)
             } else {
                 // Utiliser le pickup comme origine si position actuelle non disponible
@@ -2122,7 +2414,11 @@ async fn get_courier_navigation(
         }
         _ => {
             return Err(AppError::BadRequest(
-                format!("Navigation non disponible pour le statut: {:?}", summary.status).into(),
+                format!(
+                    "Navigation non disponible pour le statut: {:?}",
+                    summary.status
+                )
+                .into(),
             ));
         }
     };
@@ -2334,10 +2630,8 @@ async fn assign_courier(
     Json(payload): Json<AssignCourierPayload>,
 ) -> AppResult<Json<Value>> {
     let service = delivery_service(&state)?;
-    let summary = service
-        .get_delivery_summary(delivery_id)
-        .await?;
-    
+    let summary = service.get_delivery_summary(delivery_id).await?;
+
     // Vérifier que l'utilisateur est le créateur de la livraison
     if summary.creator_id != user.id {
         return Err(AppError::Forbidden(
@@ -2359,13 +2653,13 @@ async fn assign_courier(
     }
 
     // Mettre à jour preferred_courier_id dans la base de données
-    sqlx::query(
-        "UPDATE deliveries SET updated_at = NOW() WHERE id = $1"
-    )
-    .bind(delivery_id)
-    .execute(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur mise à jour preferred_courier_id: {}", e)))?;
+    sqlx::query("UPDATE deliveries SET updated_at = NOW() WHERE id = $1")
+        .bind(delivery_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            AppError::Internal(format!("Erreur mise à jour preferred_courier_id: {}", e))
+        })?;
 
     // Si la livraison n'a pas encore de coursier assigné, déclencher le matching
     if summary.courier_id.is_none() {
@@ -2584,7 +2878,7 @@ async fn delete_storage_location(
     let deleted = sqlx::query(
         r#"
         SELECT 1 WHERE FALSE
-        "#
+        "#,
     )
     .fetch_optional(&state.pg)
     .await
@@ -2608,9 +2902,10 @@ async fn list_delivery_zones(
 ) -> AppResult<Json<Value>> {
     let cache_key = cache_keys::DELIVERY_ZONES;
     let pg_pool = state.pg.clone();
-    
+
     // Essayer de récupérer depuis le cache
-    let zones_list: Vec<Value> = state.cache_service
+    let zones_list: Vec<Value> = state
+        .cache_service
         .get_or_compute_with_ttl(
             cache_key,
             Duration::from_secs(300), // Cache 5 minutes
@@ -2622,7 +2917,7 @@ async fn list_delivery_zones(
                         SELECT id, slug, display_name, description
                         FROM delivery_zones
                         ORDER BY display_name ASC
-                        "#
+                        "#,
                     )
                     .fetch_all(&pg)
                     .await
@@ -2632,9 +2927,9 @@ async fn list_delivery_zones(
                         .into_iter()
                         .map(|row| {
                             json!({
-                                "id": row.try_get::<uuid::Uuid, _>("id").ok(),
-                                "name": row.try_get::<String, _>("display_name").ok(),
-                                "description": row.try_get::<Option<String>, _>("description").ok().flatten(),
+                                "id": row.get::<uuid::Uuid, _>("id"),
+                                "name": row.get::<String, _>("display_name"),
+                                "description": row.get::<Option<String>, _>("description"),
                                 "is_active": true,
                             })
                         })
@@ -2656,10 +2951,8 @@ async fn list_proof_media(
     Path(delivery_id): Path<Uuid>,
 ) -> AppResult<Json<Value>> {
     let service = delivery_service(&state)?;
-    let summary = service
-        .get_delivery_summary(delivery_id)
-        .await?;
-    
+    let summary = service.get_delivery_summary(delivery_id).await?;
+
     // Vérifier que l'utilisateur a accès à cette livraison
     enforce_delivery_access(&service, &summary, user.id).await?;
 
@@ -2676,9 +2969,79 @@ async fn list_proof_media(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération médias: {}", e)))?;
 
+    // ✅ Générer des URLs pré-signées pour chaque média (48 heures de validité)
+    let media_with_presigned: Vec<Value> = futures::future::join_all(media.into_iter().map(|m| {
+        let storage_path = m.media_url.clone();
+        let media_storage = state.media_storage.clone();
+        async move {
+            // Extraire le chemin de stockage depuis l'URL (enlever le préfixe CDN/Wasabi si présent)
+            let storage_path_clean =
+                if storage_path.starts_with("http://") || storage_path.starts_with("https://") {
+                    // Extraire le chemin depuis l'URL complète
+                    if let Some(path_start) = storage_path.find("/uploads/") {
+                        storage_path[path_start + 1..].to_string() // +1 pour garder le "/"
+                    } else {
+                        // Si pas de /uploads/, utiliser le dernier segment
+                        storage_path
+                            .split('/')
+                            .last()
+                            .unwrap_or(&storage_path)
+                            .to_string()
+                    }
+                } else {
+                    // Déjà un chemin relatif
+                    if !storage_path.starts_with("uploads/") {
+                        format!("uploads/{}", storage_path.trim_start_matches('/'))
+                    } else {
+                        storage_path
+                    }
+                };
+
+            // Générer URL pré-signée (48 heures = 48 * 3600 secondes)
+            match media_storage
+                .generate_presigned_url(&storage_path_clean, 48 * 3600)
+                .await
+            {
+                Ok(presigned_url) => {
+                    json!({
+                        "id": m.id,
+                        "delivery_id": m.delivery_id,
+                        "media_type": m.media_type,
+                        "media_url": presigned_url, // URL pré-signée
+                        "proof_type": m.proof_type,
+                        "uploaded_by": m.uploaded_by,
+                        "uploaded_at": m.uploaded_at,
+                        "metadata": m.metadata,
+                        "created_at": m.created_at,
+                    })
+                }
+                Err(e) => {
+                    log::warn!(
+                        "[DeliveryProof] Erreur génération URL pré-signée pour {}: {}",
+                        storage_path_clean,
+                        e
+                    );
+                    // Fallback vers URL publique si génération échoue
+                    json!({
+                        "id": m.id,
+                        "delivery_id": m.delivery_id,
+                        "media_type": m.media_type,
+                        "media_url": m.media_url, // URL publique en fallback
+                        "proof_type": m.proof_type,
+                        "uploaded_by": m.uploaded_by,
+                        "uploaded_at": m.uploaded_at,
+                        "metadata": m.metadata,
+                        "created_at": m.created_at,
+                    })
+                }
+            }
+        }
+    }))
+    .await;
+
     Ok(Json(json!({
-        "media": media,
-        "total": media.len(),
+        "media": media_with_presigned,
+        "total": media_with_presigned.len(),
     })))
 }
 
@@ -2689,15 +3052,13 @@ async fn upload_proof_media(
     Json(payload): Json<crate::models::delivery_model::DeliveryProofMediaInput>,
 ) -> AppResult<Json<Value>> {
     let service = delivery_service(&state)?;
-    let summary = service
-        .get_delivery_summary(delivery_id)
-        .await?;
-    
+    let summary = service.get_delivery_summary(delivery_id).await?;
+
     // Vérifier que l'utilisateur est le coursier assigné
     // Le courier_id est un UUID, on doit vérifier via la table couriers
     let courier = service.repository().find_courier_by_user(user.id).await?;
     let courier_id = courier.map(|c| c.id);
-    
+
     if summary.courier_id.is_none() || summary.courier_id != courier_id {
         return Err(AppError::Forbidden(
             "Seul le coursier assigné peut ajouter des médias de preuve".into(),
@@ -2722,12 +3083,16 @@ async fn upload_proof_media(
             ));
         }
     } else {
-        return Err(AppError::BadRequest("proof_type doit être 'pickup' ou 'delivery'".into()));
+        return Err(AppError::BadRequest(
+            "proof_type doit être 'pickup' ou 'delivery'".into(),
+        ));
     }
 
     // Valider le media_type
     if payload.media_type != "image" && payload.media_type != "video" {
-        return Err(AppError::BadRequest("media_type doit être 'image' ou 'video'".into()));
+        return Err(AppError::BadRequest(
+            "media_type doit être 'image' ou 'video'".into(),
+        ));
     }
 
     let media = sqlx::query_as::<_, crate::models::delivery_model::DeliveryProofMedia>(
@@ -2756,10 +3121,8 @@ async fn delete_proof_media(
     Path((delivery_id, media_id)): Path<(Uuid, i32)>,
 ) -> AppResult<Json<Value>> {
     let service = delivery_service(&state)?;
-    let summary = service
-        .get_delivery_summary(delivery_id)
-        .await?;
-    
+    let summary = service.get_delivery_summary(delivery_id).await?;
+
     // Vérifier que l'utilisateur est le coursier assigné ou le créateur
     let courier = service.repository().find_courier_by_user(user.id).await?;
     let courier_id = courier.map(|c| c.id);
@@ -2775,7 +3138,7 @@ async fn delete_proof_media(
     let deleted = sqlx::query(
         r#"
         SELECT 1 WHERE FALSE
-        "#
+        "#,
     )
     .bind(media_id)
     .bind(delivery_id)
@@ -2831,16 +3194,15 @@ async fn get_product_zones(
     Path((service_id, product_index)): Path<(i32, i32)>,
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est propriétaire du service
-    let service: Option<ServiceUserIdRow> = sqlx::query_as(
-        "SELECT user_id FROM services WHERE id = $1"
-    )
-    .bind(service_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification service: {}", e)))?;
+    let service: Option<ServiceUserIdRow> =
+        sqlx::query_as("SELECT user_id FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification service: {}", e)))?;
 
     let service = service.ok_or_else(|| AppError::NotFound("Service introuvable".into()))?;
-    
+
     if service.user_id != user.id {
         return Err(AppError::Forbidden(
             "Vous n'avez pas accès à ce service".into(),
@@ -2857,7 +3219,8 @@ async fn get_product_zones(
     let pidx = product_index;
 
     // Récupérer depuis le cache ou la base de données
-    let zone_ids: Vec<String> = state.cache_service
+    let zone_ids: Vec<String> = state
+        .cache_service
         .get_or_compute_with_ttl(
             &cache_key,
             Duration::from_secs(600), // Cache 10 minutes
@@ -2871,7 +3234,7 @@ async fn get_product_zones(
                     let zones = sqlx::query(
                         r#"
                         SELECT 1 as zone_id WHERE FALSE
-                        "#
+                        "#,
                     )
                     .bind(s_id)
                     .bind(p_idx)
@@ -2879,8 +3242,11 @@ async fn get_product_zones(
                     .await
                     .map_err(|e| AppError::Internal(format!("Erreur récupération zones: {}", e)))?;
 
-                    let zone_ids: Vec<String> = zones.iter()
-                        .filter_map(|row| row.try_get::<Option<String>, _>("zone_id").ok().flatten())
+                    let zone_ids: Vec<String> = zones
+                        .iter()
+                        .filter_map(|row| {
+                            row.try_get::<Option<String>, _>("zone_id").ok().flatten()
+                        })
                         .collect();
                     Ok(zone_ids)
                 }
@@ -2908,16 +3274,15 @@ async fn save_product_zones(
     Json(payload): Json<SaveProductZonesPayload>,
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est propriétaire du service
-    let service: Option<ServiceUserIdRow> = sqlx::query_as(
-        "SELECT user_id FROM services WHERE id = $1"
-    )
-    .bind(service_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification service: {}", e)))?;
+    let service: Option<ServiceUserIdRow> =
+        sqlx::query_as("SELECT user_id FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification service: {}", e)))?;
 
     let service = service.ok_or_else(|| AppError::NotFound("Service introuvable".into()))?;
-    
+
     if service.user_id != user.id {
         return Err(AppError::Forbidden(
             "Vous n'avez pas accès à ce service".into(),
@@ -2928,39 +3293,38 @@ async fn save_product_zones(
     for zone_id_str in &payload.zone_ids {
         let zone_id = Uuid::parse_str(zone_id_str)
             .map_err(|_| AppError::BadRequest(format!("Zone ID invalide: {}", zone_id_str)))?;
-        
-        let zone_exists = sqlx::query(
-            "SELECT id FROM delivery_zones WHERE id = $1"
-        )
-        .bind(zone_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur vérification zone: {}", e)))?;
+
+        let zone_exists = sqlx::query("SELECT id FROM delivery_zones WHERE id = $1")
+            .bind(zone_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification zone: {}", e)))?;
 
         if zone_exists.is_none() {
-            return Err(AppError::BadRequest(format!("Zone introuvable ou inactive: {}", zone_id_str)));
+            return Err(AppError::BadRequest(format!(
+                "Zone introuvable ou inactive: {}",
+                zone_id_str
+            )));
         }
     }
 
     // Note: product_delivery_zones table n'existe pas encore dans les migrations
     // TODO: Créer la migration pour cette table
     // Supprimer les associations existantes
-    let _ = sqlx::query(
-        "SELECT 1 WHERE FALSE"
-    )
-    .bind(service_id)
-    .bind(product_index)
-    .execute(&state.pg)
-    .await;
+    let _ = sqlx::query("SELECT 1 WHERE FALSE")
+        .bind(service_id)
+        .bind(product_index)
+        .execute(&state.pg)
+        .await;
 
     // Insérer les nouvelles associations
     for zone_id_str in &payload.zone_ids {
         let zone_id = Uuid::parse_str(zone_id_str).unwrap(); // Déjà validé
-        
+
         let _ = sqlx::query(
             r#"
             SELECT 1 WHERE FALSE
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(product_index)
@@ -3012,13 +3376,14 @@ async fn update_stock(
         FROM product_delivery_config pdc
         INNER JOIN services s ON s.id = pdc.service_id
         WHERE pdc.id = $1
-        "#
+        "#,
     )
     .bind(config_id)
     .fetch_optional(&state.pg)
     .await?;
 
-    let config = config.ok_or_else(|| AppError::NotFound("Configuration non trouvée".to_string()))?;
+    let config =
+        config.ok_or_else(|| AppError::NotFound("Configuration non trouvée".to_string()))?;
 
     if config.user_id != user.id {
         return Err(AppError::Unauthorized(
@@ -3027,21 +3392,16 @@ async fn update_stock(
     }
 
     let stock_service = ProductStockService::new(state.pg.clone());
-    
+
     use crate::services::product_stock_service::UpdateStockRequest;
     let request = UpdateStockRequest {
         quantity_available: payload.quantity_available,
         quantity_reserved: payload.quantity_reserved,
         is_available: payload.is_available,
     };
-    
+
     stock_service
-        .update_stock(
-            config_id,
-            payload.storage_location_id,
-            request,
-            user.id,
-        )
+        .update_stock(config_id, payload.storage_location_id, request, user.id)
         .await?;
 
     Ok(Json(json!({
@@ -3063,13 +3423,14 @@ async fn delete_stock_location(
         FROM product_delivery_config pdc
         INNER JOIN services s ON s.id = pdc.service_id
         WHERE pdc.id = $1
-        "#
+        "#,
     )
     .bind(config_id)
     .fetch_optional(&state.pg)
     .await?;
 
-    let config = config.ok_or_else(|| AppError::NotFound("Configuration non trouvée".to_string()))?;
+    let config =
+        config.ok_or_else(|| AppError::NotFound("Configuration non trouvée".to_string()))?;
 
     if config.user_id != user.id {
         return Err(AppError::Unauthorized(
@@ -3104,14 +3465,14 @@ async fn verify_courier(
     Json(payload): Json<VerifyCourierPayload>,
 ) -> AppResult<Json<Value>> {
     // Vérifier que l'utilisateur est le prestataire (créateur de la livraison)
-    let delivery: Option<DeliveryCreatorRow> = sqlx::query_as(
-        "SELECT creator_id FROM deliveries WHERE id = $1"
-    )
-    .bind(delivery_id)
-    .fetch_optional(&state.pg)
-    .await?;
+    let delivery: Option<DeliveryCreatorRow> =
+        sqlx::query_as("SELECT creator_id FROM deliveries WHERE id = $1")
+            .bind(delivery_id)
+            .fetch_optional(&state.pg)
+            .await?;
 
-    let delivery = delivery.ok_or_else(|| AppError::NotFound("Livraison non trouvée".to_string()))?;
+    let delivery =
+        delivery.ok_or_else(|| AppError::NotFound("Livraison non trouvée".to_string()))?;
 
     // Vérifier si l'utilisateur est le prestataire (via product_orders)
     let order_provider_user_id: Option<i32> = sqlx::query_scalar::<_, i32>(
@@ -3172,8 +3533,8 @@ async fn get_verification_code(
     .fetch_optional(&state.pg)
     .await?;
 
-    let provider_user_id = order
-        .ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
+    let provider_user_id =
+        order.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
 
     if user.id != provider_user_id {
         return Err(AppError::Unauthorized(
@@ -3205,13 +3566,14 @@ async fn get_pickup_locations(
             pickup_longitude
         FROM product_delivery_config
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(config_id)
     .fetch_optional(&state.pg)
     .await?;
 
-    let config = config.ok_or_else(|| AppError::NotFound("Configuration non trouvée".to_string()))?;
+    let config =
+        config.ok_or_else(|| AppError::NotFound("Configuration non trouvée".to_string()))?;
 
     // Retourner uniquement l'adresse textuelle, pas les coordonnées GPS
     Ok(Json(json!({

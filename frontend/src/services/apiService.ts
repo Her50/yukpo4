@@ -106,3 +106,34 @@ export const apiPut = async (endpoint: string, data: any, options: ApiServiceOpt
 export const apiDelete = async (endpoint: string, options: ApiServiceOptions = {}) => {
   return apiService(endpoint, { ...options, method: 'DELETE' });
 };
+
+// Helper function for file uploads (multipart/form-data)
+export const apiUpload = async (endpoint: string, file: File, fieldName: string = 'file', additionalData?: Record<string, string>) => {
+  const formData = new FormData();
+  formData.append(fieldName, file);
+
+  if (additionalData) {
+    Object.entries(additionalData).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+  }
+
+  const token = localStorage.getItem('token');
+  const headers: HeadersInit = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${import.meta.env.VITE_API_URL || ''}${endpoint}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Erreur lors de l\'upload' }));
+    throw new Error(error.message || 'Erreur lors de l\'upload');
+  }
+
+  return response.json();
+};

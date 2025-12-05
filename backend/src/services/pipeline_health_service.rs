@@ -71,7 +71,7 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
         SELECT status, COUNT(*)::bigint AS count
         FROM video_generation_jobs
         GROUP BY status
-        "#
+        "#,
     )
     .fetch_all(&state.pg)
     .await
@@ -97,7 +97,7 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
         FROM video_generation_jobs
         WHERE status = 'failed'
           AND updated_at >= NOW() - INTERVAL '24 hours'
-        "#
+        "#,
     )
     .fetch_one(&state.pg)
     .await
@@ -110,7 +110,7 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
         FROM video_generation_jobs
         WHERE status = 'completed'
           AND updated_at >= NOW() - INTERVAL '24 hours'
-        "#
+        "#,
     )
     .fetch_one(&state.pg)
     .await
@@ -122,7 +122,7 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
         SELECT MAX(updated_at) AS last_completed
         FROM video_generation_jobs
         WHERE status = 'completed'
-        "#
+        "#,
     )
     .fetch_one(&state.pg)
     .await
@@ -138,7 +138,7 @@ pub async fn compute_pipeline_health(state: Arc<AppState>) -> AppResult<Pipeline
           AND updated_at < NOW() - INTERVAL '30 minutes'
         ORDER BY updated_at ASC
         LIMIT 10
-        "#
+        "#,
     )
     .fetch_all(&state.pg)
     .await

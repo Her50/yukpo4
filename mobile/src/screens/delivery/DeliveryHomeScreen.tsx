@@ -1,15 +1,18 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, BackHandler, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import ActiveDeliveryCard from '../../components/delivery/ActiveDeliveryCard';
+import AnimatedDeliveryCard from '../../components/delivery/AnimatedDeliveryCard';
 import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
+import HapticTouchable from '../../components/delivery/HapticTouchable';
+import SkeletonDeliveryCard from '../../components/delivery/SkeletonDeliveryCard';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import { modernColors } from '../../theme/modernTheme';
+import { useScreenEnter } from '../../utils/animations';
 
 const DeliveryHomeScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -26,6 +29,9 @@ const DeliveryHomeScreen: React.FC = () => {
     const { isEnabled } = useFeatureFlags();
     const [refreshing, setRefreshing] = useState(false);
     const [navigating, setNavigating] = useState(false);
+
+    // ✅ NOUVEAU: Animation d'entrée d'écran
+    const screenEnterStyle = useScreenEnter();
 
     useFocusEffect(
         useCallback(() => {
@@ -72,8 +78,8 @@ const DeliveryHomeScreen: React.FC = () => {
         setNavigating(true);
 
         try {
-            // Navigation vers le nouveau flux shopping
-            navigation.navigate('DeliveryShoppingFlowNew');
+            // Navigation vers le nouveau flux shopping amélioré
+            navigation.navigate('DeliveryShoppingFlowNew' as never);
             console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingFlowNew');
             // ✅ CORRIGÉ : Réinitialiser immédiatement après navigation réussie
             // L'état sera aussi réinitialisé par useFocusEffect au retour
@@ -92,12 +98,13 @@ const DeliveryHomeScreen: React.FC = () => {
     const handleStartParcel = useCallback(() => {
         if (navigating) return;
 
-        console.log('[DeliveryHomeScreen] 📦 Navigation vers DeliveryParcelFlow');
+        console.log('[DeliveryHomeScreen] 📦 Navigation vers DeliveryParcelFlowNew');
         setNavigating(true);
 
         try {
-            navigation.navigate('DeliveryParcelFlow');
-            console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryParcelFlow');
+            // ✅ NOUVEAU: Navigation vers le nouveau flux amélioré
+            navigation.navigate('DeliveryParcelFlowNew' as never);
+            console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryParcelFlowNew');
             // ✅ CORRIGÉ : Réinitialiser immédiatement après navigation réussie
             // L'état sera aussi réinitialisé par useFocusEffect au retour
             setTimeout(() => setNavigating(false), 500);
@@ -138,154 +145,173 @@ const DeliveryHomeScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container} backgroundColor={modernColors.background}>
-            <ScrollView
-                contentContainerStyle={styles.scroll}
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing && !loading} onRefresh={handleRefresh} />
-                }
-            >
-                <DeliveryAvatarBubble
-                    message="Livraison intelligente Yukpo"
-                    subtitle="Orchestre tes courses supermarché, tracking temps réel et notifications destinataire."
-                />
-
-                {/* ✅ CORRIGÉ: Afficher uniquement si réseau offline (pas pour WebSocket limité) */}
-                {!isNetworkOnline && (
-                    <NativeCard style={[styles.card, styles.warningCard]}>
-                        <Text style={styles.warningTitle}>
-                            Connexion réseau indisponible
-                        </Text>
-                        <Text style={styles.warningSubtitle}>
-                            Votre connexion internet est indisponible. Les actions seront synchronisées automatiquement dès le retour en ligne.
-                        </Text>
-                        <NativeButton
-                            title="Vérifier la connexion"
-                            variant='outline'
-                            onPress={() => {
-                                console.log('[DeliveryHomeScreen] 🔄 Tentative de reconnexion...');
-                                retryPendingMutations();
-                            }}
-                            size='small'
-                            disabled={!isNetworkOnline}
-                        />
-                    </NativeCard>
-                )}
-
-                {pendingMutationCount > 0 && (
-                    <NativeCard style={[styles.card, styles.infoCard]}>
-                        <Text style={styles.infoTitle}>Actions en attente</Text>
-                        <Text style={styles.infoSubtitle}>
-                            {pendingMutationCount} action(s) seront rejouées automatiquement dès que la connexion sera rétablie.
-                        </Text>
-                        <NativeButton
-                            title='Forcer la synchronisation'
-                            variant='ghost'
-                            onPress={() => {
-                                console.log('[DeliveryHomeScreen] 🔄 Forçage synchronisation...');
-                                retryPendingMutations();
-                            }}
-                            size='small'
-                            disabled={!isNetworkOnline}
-                        />
-                    </NativeCard>
-                )}
-
-                {/* ✅ CORRIGÉ: Livraisons actives EN HAUT */}
-                {activeDeliveries.length > 0 && (
-                    <>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>Vos livraisons actives</Text>
-                            <TouchableOpacity
-                                onPress={handleRefresh}
-                                disabled={loading || refreshing}
-                                style={[styles.refreshButton, (loading || refreshing) && styles.refreshButtonDisabled]}
-                            >
-                                <SafeIcon
-                                    name="refresh"
-                                    size={16}
-                                    color={(loading || refreshing) ? modernColors.textSecondary : modernColors.primary}
-                                />
-                                <Text style={[
-                                    styles.refreshButtonText,
-                                    (loading || refreshing) && styles.refreshButtonTextDisabled
-                                ]}>
-                                    Actualiser
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.deliveriesList}>
-                            {activeDeliveries.map(delivery => (
-                                <ActiveDeliveryCard
-                                    key={delivery.id}
-                                    delivery={delivery}
-                                    onPress={handleOpenDelivery}
-                                />
-                            ))}
-                        </View>
-                    </>
-                )}
-
-                {loading && activeDeliveries.length === 0 && (
-                    <View style={styles.loadingState}>
-                        <ActivityIndicator size="small" color={modernColors.primary} />
-                        <Text style={styles.loadingText}>Chargement des livraisons en cours...</Text>
-                    </View>
-                )}
-
-                {/* ✅ NOUVEAU: Section pour créer une nouvelle livraison */}
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Nouvelle livraison</Text>
-                </View>
-
-                {/* ✅ CORRIGÉ: Livraison de colis AVANT courses supermarché */}
-                <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Livraison de colis</Text>
-                    <Text style={styles.cardSubtitle}>
-                        Précisez les caractéristiques du colis que vous souhaitez faire transporter par un coursier.
-                    </Text>
-                    <NativeButton
-                        title="Expédier un colis"
-                        variant="primary"
-                        onPress={handleStartParcel}
-                        disabled={navigating}
-                        style={styles.actionButton}
+            <Animated.View style={[styles.animatedContainer, screenEnterStyle.style as any]}>
+                <ScrollView
+                    contentContainerStyle={styles.scroll}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing && !loading} onRefresh={handleRefresh} />
+                    }
+                >
+                    <DeliveryAvatarBubble
+                        message="Livraison intelligente Yukpo"
+                        subtitle="Orchestre tes courses supermarché, tracking temps réel et notifications destinataire."
                     />
-                </NativeCard>
 
-                <NativeCard style={styles.card}>
-                    <Text style={styles.cardTitle}>Courses supermarché</Text>
-                    <Text style={styles.cardSubtitle}>
-                        Compose ton panier, nous avançons l'achat et tu suis ton coursier en direct.
-                    </Text>
-                    <NativeButton
-                        title="Commander au supermarché"
-                        variant="outline"
-                        onPress={handleStartShopping}
-                        disabled={navigating}
-                        style={styles.actionButton}
-                    />
-                </NativeCard>
+                    {/* ✅ CORRIGÉ: Afficher uniquement si réseau offline (pas pour WebSocket limité) */}
+                    {!isNetworkOnline && (
+                        <NativeCard style={[styles.card, styles.warningCard]}>
+                            <Text style={styles.warningTitle}>
+                                Connexion réseau indisponible
+                            </Text>
+                            <Text style={styles.warningSubtitle}>
+                                Votre connexion internet est indisponible. Les actions seront synchronisées automatiquement dès le retour en ligne.
+                            </Text>
+                            <NativeButton
+                                title="Vérifier la connexion"
+                                variant='outline'
+                                onPress={() => {
+                                    console.log('[DeliveryHomeScreen] 🔄 Tentative de reconnexion...');
+                                    retryPendingMutations();
+                                }}
+                                size='small'
+                                disabled={!isNetworkOnline}
+                            />
+                        </NativeCard>
+                    )}
 
-                {/* ✅ Afficher état vide seulement si pas de livraisons */}
-                {!loading && activeDeliveries.length === 0 && (
-                    <View style={styles.emptyState}>
-                        <View style={styles.emptyIconContainer}>
-                            <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
+                    {pendingMutationCount > 0 && (
+                        <NativeCard style={[styles.card, styles.infoCard]}>
+                            <Text style={styles.infoTitle}>Actions en attente</Text>
+                            <Text style={styles.infoSubtitle}>
+                                {pendingMutationCount} action(s) seront rejouées automatiquement dès que la connexion sera rétablie.
+                            </Text>
+                            <NativeButton
+                                title='Forcer la synchronisation'
+                                variant='ghost'
+                                onPress={() => {
+                                    console.log('[DeliveryHomeScreen] 🔄 Forçage synchronisation...');
+                                    retryPendingMutations();
+                                }}
+                                size='small'
+                                disabled={!isNetworkOnline}
+                            />
+                        </NativeCard>
+                    )}
+
+                    {/* ✅ CORRIGÉ: Livraisons actives EN HAUT */}
+                    {activeDeliveries.length > 0 && (
+                        <>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>Vos livraisons actives</Text>
+                                <TouchableOpacity
+                                    onPress={handleRefresh}
+                                    disabled={loading || refreshing}
+                                    style={[styles.refreshButton, (loading || refreshing) && styles.refreshButtonDisabled]}
+                                >
+                                    <SafeIcon
+                                        name="refresh"
+                                        size={16}
+                                        color={(loading || refreshing) ? modernColors.textSecondary : modernColors.primary}
+                                    />
+                                    <Text style={[
+                                        styles.refreshButtonText,
+                                        (loading || refreshing) && styles.refreshButtonTextDisabled
+                                    ]}>
+                                        Actualiser
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.deliveriesList}>
+                                {activeDeliveries.map((delivery, index) => (
+                                    <AnimatedDeliveryCard
+                                        key={delivery.id}
+                                        delivery={delivery}
+                                        onPress={handleOpenDelivery}
+                                        index={index}
+                                    />
+                                ))}
+                            </View>
+                        </>
+                    )}
+
+                    {loading && activeDeliveries.length === 0 && (
+                        <View style={styles.loadingState}>
+                            <SkeletonDeliveryCard />
+                            <SkeletonDeliveryCard />
+                            <SkeletonDeliveryCard />
                         </View>
-                        <Text style={styles.emptyTitle}>Aucune livraison en cours</Text>
-                        <Text style={styles.emptySubtitle}>
-                            Lance une commande supermarché ou une livraison de colis pour suivre ton coursier en temps réel.
-                        </Text>
+                    )}
+
+                    {/* ✅ NOUVEAU: Section pour créer une nouvelle livraison */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Nouvelle livraison</Text>
                     </View>
-                )}
-            </ScrollView>
+
+                    {/* ✅ CORRIGÉ: Livraison de colis AVANT courses supermarché */}
+                    <NativeCard style={styles.card}>
+                        <Text style={styles.cardTitle}>Livraison de colis</Text>
+                        <Text style={styles.cardSubtitle}>
+                            Précisez les caractéristiques du colis que vous souhaitez faire transporter par un coursier.
+                        </Text>
+                        <HapticTouchable
+                            hapticType="medium"
+                            onPress={handleStartParcel}
+                            disabled={navigating}
+                        >
+                            <NativeButton
+                                title="Expédier un colis"
+                                variant="primary"
+                                onPress={handleStartParcel}
+                                disabled={navigating}
+                                style={styles.actionButton}
+                            />
+                        </HapticTouchable>
+                    </NativeCard>
+
+                    <NativeCard style={styles.card}>
+                        <Text style={styles.cardTitle}>Courses supermarché</Text>
+                        <Text style={styles.cardSubtitle}>
+                            Compose ton panier, nous avançons l'achat et tu suis ton coursier en direct.
+                        </Text>
+                        <HapticTouchable
+                            hapticType="medium"
+                            onPress={handleStartShopping}
+                            disabled={navigating}
+                        >
+                            <NativeButton
+                                title="Commander au supermarché"
+                                variant="outline"
+                                onPress={handleStartShopping}
+                                disabled={navigating}
+                                style={styles.actionButton}
+                            />
+                        </HapticTouchable>
+                    </NativeCard>
+
+                    {/* ✅ Afficher état vide seulement si pas de livraisons */}
+                    {!loading && activeDeliveries.length === 0 && (
+                        <View style={styles.emptyState}>
+                            <View style={styles.emptyIconContainer}>
+                                <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
+                            </View>
+                            <Text style={styles.emptyTitle}>Aucune livraison en cours</Text>
+                            <Text style={styles.emptySubtitle}>
+                                Lance une commande supermarché ou une livraison de colis pour suivre ton coursier en temps réel.
+                            </Text>
+                        </View>
+                    )}
+                </ScrollView>
+            </Animated.View>
         </SafeNativeView>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
+    },
+    animatedContainer: {
         flex: 1,
     },
     scroll: {

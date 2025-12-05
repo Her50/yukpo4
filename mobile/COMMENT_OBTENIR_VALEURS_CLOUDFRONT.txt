@@ -1,0 +1,71 @@
+Comment obtenir les valeurs CloudFront dans AWS
+
+==================================================
+1. URL CloudFront US
+==================================================
+
+AWS Console → CloudFront → Distributions
+
+Si vous avez déjà une distribution US :
+- Ouvrez la distribution
+- Copiez le "Domain Name" (ex: d1234567890abc.cloudfront.net)
+- L'URL complète sera : https://d1234567890abc.cloudfront.net
+
+Si vous n'avez pas de distribution :
+1. Cliquez "Create Distribution"
+2. Origin Domain : Votre bucket S3 ou endpoint Wasabi
+   Exemple : yukpo-video-prod.s3.eu-central-1.wasabisys.com
+3. Origin Path : (laissez vide)
+4. Price Class : US/Canada/Europe (ou moins cher si besoin)
+5. Cliquez "Create Distribution"
+6. Attendez que Status = "Deployed" (5-10 minutes)
+7. Copiez le "Domain Name" → C'est votre EXPO_PUBLIC_CDN_CLOUDFRONT_US_URL
+
+==================================================
+2. URL CloudFront EU
+==================================================
+
+AWS Console → CloudFront → Distributions
+
+Si vous avez déjà une distribution EU :
+- Ouvrez la distribution
+- Copiez le "Domain Name"
+- L'URL complète sera : https://d9876543210xyz.cloudfront.net
+
+Si vous n'avez pas de distribution :
+1. Même processus que US mais :
+   - Price Class : Europe uniquement (pour économiser)
+   - Ou utilisez la même distribution si Price Class = All
+2. Copiez le Domain Name → C'est votre EXPO_PUBLIC_CDN_CLOUDFRONT_EU_URL
+
+==================================================
+Résultat dans mobile/.env
+==================================================
+
+EXPO_PUBLIC_CDN_CLOUDFRONT_US_URL=https://d1234567890abc.cloudfront.net
+EXPO_PUBLIC_CDN_CLOUDFRONT_EU_URL=https://d9876543210xyz.cloudfront.net
+
+==================================================
+Astuce : Utiliser une seule distribution
+==================================================
+
+Vous pouvez utiliser UNE SEULE distribution CloudFront pour les deux régions :
+- Créez une distribution avec Price Class = "All"
+- Utilisez le même Domain Name pour US et EU dans votre .env
+- CloudFront route automatiquement selon la localisation de l'utilisateur
+
+EXPO_PUBLIC_CDN_CLOUDFRONT_US_URL=https://d1234567890abc.cloudfront.net
+EXPO_PUBLIC_CDN_CLOUDFRONT_EU_URL=https://d1234567890abc.cloudfront.net
+
+==================================================
+Test rapide
+==================================================
+
+Ouvrez dans votre navigateur :
+https://d1234567890abc.cloudfront.net
+
+Si ça fonctionne, vous verrez une réponse (même erreur 404 = OK, DNS fonctionne)
+Si erreur, vérifiez que la distribution est "Deployed"
+
+
+

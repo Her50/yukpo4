@@ -106,11 +106,37 @@ impl OrderPreparationService {
 
     /// Crée une nouvelle commande produit
     /// Calcule automatiquement le temps de préparation si NULL
+    /// ✅ NOUVEAU 2025-01-28: Vérifie le stock avant de créer la commande
     pub async fn create_order(&self, request: CreateOrderRequest) -> AppResult<ProductOrder> {
         info!(
             "[OrderPreparation] Création commande: service_id={}, product_index={}, client={}",
             request.service_id, request.product_index, request.client_user_id
         );
+
+        // ✅ NOUVEAU 2025-01-28: Vérifier le stock avant de créer la commande (uniquement pour les produits)
+        use crate::services::product_stock_service::ProductStockService;
+        let stock_service = ProductStockService::new(self.pool.clone());
+
+        let is_tarissable = stock_service.is_tarissable(request.service_id).await?;
+
+        // Uniquement pour les produits (is_tarissable = TRUE)
+        if is_tarissable {
+            let available_stock = stock_service
+                .get_available_stock(request.service_id, request.product_index)
+                .await?;
+
+            if let Some(stock) = available_stock {
+                if stock <= 0 {
+                    return Err(AppError::BadRequest(
+                        "Stock épuisé. Ce produit n'est plus disponible.".to_string(),
+                    ));
+                }
+                info!(
+                    "[OrderPreparation] Stock disponible: {} unités pour service_id={}, product_index={}",
+                    stock, request.service_id, request.product_index
+                );
+            }
+        }
 
         // Récupérer la configuration de livraison
         #[allow(dead_code)]
@@ -119,7 +145,7 @@ impl OrderPreparationService {
             is_immediately_available: Option<bool>,
             max_preparation_time_minutes: Option<i32>,
         }
-        
+
         let config: Option<Config> = sqlx::query(
             r#"
             SELECT 
@@ -133,9 +159,9 @@ impl OrderPreparationService {
         .bind(request.service_id)
         .bind(request.product_index)
         .map(|row: sqlx::postgres::PgRow| Config {
-            preparation_time_minutes: row.try_get("preparation_time_minutes").ok(),
-            is_immediately_available: row.try_get("is_immediately_available").ok(),
-            max_preparation_time_minutes: row.try_get("max_preparation_time_minutes").ok(),
+            preparation_time_minutes: row.get::<Option<_>, _>("preparation_time_minutes"),
+            is_immediately_available: row.get::<Option<_>, _>("is_immediately_available"),
+            max_preparation_time_minutes: row.get::<Option<_>, _>("max_preparation_time_minutes"),
         })
         .fetch_optional(&self.pool)
         .await?;
@@ -170,7 +196,10 @@ impl OrderPreparationService {
 
             if let Some(category) = service_category {
                 let dynamic_service = crate::services::dynamic_preparation_time_service::DynamicPreparationTimeService::new(self.pool.clone());
-                if let Ok(Some(dynamic_time)) = dynamic_service.get_preparation_time_for_category(&category).await {
+                if let Ok(Some(dynamic_time)) = dynamic_service
+                    .get_preparation_time_for_category(&category)
+                    .await
+                {
                     preparation_time_minutes = Some(dynamic_time);
                     info!(
                         "[OrderPreparation] Utilisation temps dynamique pour catégorie {}: {} min",
@@ -191,9 +220,7 @@ impl OrderPreparationService {
         let estimated_ready_at = if is_immediately_available {
             None // Pas de délai si disponible immédiatement
         } else {
-            preparation_time_minutes.map(|mins| {
-                now + Duration::minutes(mins as i64)
-            })
+            preparation_time_minutes.map(|mins| now + Duration::minutes(mins as i64))
         };
 
         let validation_deadline = now + Duration::minutes(validation_timeout_minutes as i64);
@@ -252,7 +279,7 @@ impl OrderPreparationService {
 
         // Vérifier que la commande existe et appartient au prestataire
         let order = self.get_order(order_id).await?;
-        
+
         if order.provider_user_id != provider_user_id {
             return Err(AppError::Forbidden(
                 "Vous n'êtes pas le prestataire de cette commande".to_string(),
@@ -305,11 +332,113 @@ impl OrderPreparationService {
         } else {
             // Utiliser estimated_ready_at fourni ou calculer
             request.estimated_ready_at.or_else(|| {
-                order.preparation_time_minutes.map(|mins| {
-                    now + Duration::minutes(mins as i64)
-                })
+                order
+                    .preparation_time_minutes
+                    .map(|mins| now + Duration::minutes(mins as i64))
             })
         };
+
+        // ✅ NOUVEAU 2025-01-28: Vérifier et décrémenter le stock après validation (uniquement pour les produits)
+        use crate::services::product_stock_service::ProductStockService;
+        let stock_service = ProductStockService::new(self.pool.clone());
+
+        let is_tarissable = stock_service.is_tarissable(order.service_id).await?;
+
+        if is_tarissable {
+            // Décrémenter le stock
+            stock_service
+                .decrement_stock(order.service_id, order.product_index, 1)
+                .await?;
+
+            info!(
+                "[OrderPreparation] Stock décrémenté pour service_id={}, product_index={}",
+                order.service_id, order.product_index
+            );
+
+            // ✅ NOUVEAU: Vérifier si stock = 0 après décrémentation et désactiver automatiquement
+            let is_zero = stock_service
+                .is_stock_zero(order.service_id, order.product_index)
+                .await?;
+
+            if is_zero {
+                info!(
+                    "[OrderPreparation] Stock épuisé après commande - Désactivation automatique du produit service_id={}, product_index={}",
+                    order.service_id, order.product_index
+                );
+
+                // Désactiver le produit dans products_lifecycle
+                let _ = sqlx::query(
+                    r#"
+                    UPDATE products_lifecycle
+                    SET 
+                        is_active = FALSE,
+                        updated_at = NOW(),
+                        deactivation_count = deactivation_count + 1
+                    WHERE service_id = $1
+                        AND product_index = $2
+                        AND is_active = TRUE
+                    "#,
+                )
+                .bind(order.service_id)
+                .bind(order.product_index)
+                .execute(&self.pool)
+                .await?;
+
+                // Envoyer notification au prestataire
+                let provider_user_id_from_order = order.provider_user_id;
+                let product_nom: Option<String> = sqlx::query_scalar(
+                    r#"
+                    SELECT product_nom
+                    FROM products_lifecycle
+                    WHERE service_id = $1
+                        AND product_index = $2
+                    LIMIT 1
+                    "#,
+                )
+                .bind(order.service_id)
+                .bind(order.product_index)
+                .fetch_optional(&self.pool)
+                .await?;
+
+                if let Some(pnom) = product_nom {
+                    // Créer notification
+                    let _ = sqlx::query(
+                        r#"
+                        INSERT INTO notifications (
+                            user_id,
+                            type,
+                            title,
+                            message,
+                            data,
+                            is_read,
+                            created_at
+                        ) VALUES (
+                            $1,
+                            'product_deactivated',
+                            $2,
+                            $3,
+                            $4,
+                            FALSE,
+                            NOW()
+                        )
+                        "#,
+                    )
+                    .bind(provider_user_id_from_order)
+                    .bind(format!("Produit désactivé (stock épuisé): {}", pnom))
+                    .bind(format!(
+                        "Votre produit '{}' a été automatiquement désactivé car le stock est épuisé. Réactivez-le pour 1000 FCFA pour le rendre visible à nouveau.",
+                        pnom
+                    ))
+                    .bind(serde_json::json!({
+                        "service_id": order.service_id,
+                        "product_index": order.product_index,
+                        "reason": "stock_zero"
+                    }))
+                    .execute(&self.pool)
+                    .await?;
+                }
+            }
+        }
 
         // Mettre à jour la commande
         sqlx::query(
@@ -362,7 +491,7 @@ impl OrderPreparationService {
 
         // Vérifier que la commande existe et appartient au prestataire
         let order = self.get_order(order_id).await?;
-        
+
         if order.provider_user_id != provider_user_id {
             return Err(AppError::Forbidden(
                 "Vous n'êtes pas le prestataire de cette commande".to_string(),
@@ -418,10 +547,7 @@ impl OrderPreparationService {
         .execute(&self.pool)
         .await?;
 
-        info!(
-            "[OrderPreparation] Commande rejetée: order_id={}",
-            order_id
-        );
+        info!("[OrderPreparation] Commande rejetée: order_id={}", order_id);
 
         self.get_order(order_id).await
     }
@@ -461,28 +587,46 @@ impl OrderPreparationService {
             client_user_id: row.get::<i32, _>("client_user_id"),
             provider_user_id: row.get::<i32, _>("provider_user_id"),
             status: row.get::<String, _>("status"),
-            preparation_time_minutes: row.try_get::<Option<i32>, _>("preparation_time_minutes").ok().flatten(),
-            estimated_ready_at: row.try_get::<Option<DateTime<Utc>>, _>("estimated_ready_at").ok().flatten(),
-            validated_at: row.try_get::<Option<DateTime<Utc>>, _>("validated_at").ok().flatten(),
+            preparation_time_minutes: row
+                .try_get::<Option<i32>, _>("preparation_time_minutes")
+                .ok()
+                .flatten(),
+            estimated_ready_at: row
+                .try_get::<Option<DateTime<Utc>>, _>("estimated_ready_at")
+                .ok()
+                .flatten(),
+            validated_at: row
+                .try_get::<Option<DateTime<Utc>>, _>("validated_at")
+                .ok()
+                .flatten(),
             validated_by: row.try_get::<Option<i32>, _>("validated_by").ok().flatten(),
-            rejected_at: row.try_get::<Option<DateTime<Utc>>, _>("rejected_at").ok().flatten(),
-            rejection_reason: row.try_get::<Option<String>, _>("rejection_reason").ok().flatten(),
-            validation_deadline: row.try_get::<Option<DateTime<Utc>>, _>("validation_deadline").ok().flatten(),
+            rejected_at: row
+                .try_get::<Option<DateTime<Utc>>, _>("rejected_at")
+                .ok()
+                .flatten(),
+            rejection_reason: row
+                .try_get::<Option<String>, _>("rejection_reason")
+                .ok()
+                .flatten(),
+            validation_deadline: row
+                .try_get::<Option<DateTime<Utc>>, _>("validation_deadline")
+                .ok()
+                .flatten(),
             created_at: row.get::<DateTime<Utc>, _>("created_at"),
             updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
-            metadata: row.try_get::<serde_json::Value, _>("metadata").unwrap_or_else(|_| serde_json::json!({})),
+            metadata: row
+                .get::<Option<serde_json::Value>, _>("metadata")
+                .unwrap_or_else(|| serde_json::json!({})),
         })
         .fetch_optional(&self.pool)
         .await?;
 
         match row {
             Some(order) => Ok(order),
-            None => {
-                Err(AppError::NotFound(format!(
-                    "Commande {} non trouvée",
-                    order_id
-                )))
-            }
+            None => Err(AppError::NotFound(format!(
+                "Commande {} non trouvée",
+                order_id
+            ))),
         }
     }
 
@@ -531,16 +675,36 @@ impl OrderPreparationService {
                 client_user_id: row.get::<i32, _>("client_user_id"),
                 provider_user_id: row.get::<i32, _>("provider_user_id"),
                 status: row.get::<String, _>("status"),
-                preparation_time_minutes: row.try_get::<Option<i32>, _>("preparation_time_minutes").ok().flatten(),
-                estimated_ready_at: row.try_get::<Option<DateTime<Utc>>, _>("estimated_ready_at").ok().flatten(),
-                validated_at: row.try_get::<Option<DateTime<Utc>>, _>("validated_at").ok().flatten(),
+                preparation_time_minutes: row
+                    .try_get::<Option<i32>, _>("preparation_time_minutes")
+                    .ok()
+                    .flatten(),
+                estimated_ready_at: row
+                    .try_get::<Option<DateTime<Utc>>, _>("estimated_ready_at")
+                    .ok()
+                    .flatten(),
+                validated_at: row
+                    .try_get::<Option<DateTime<Utc>>, _>("validated_at")
+                    .ok()
+                    .flatten(),
                 validated_by: row.try_get::<Option<i32>, _>("validated_by").ok().flatten(),
-                rejected_at: row.try_get::<Option<DateTime<Utc>>, _>("rejected_at").ok().flatten(),
-                rejection_reason: row.try_get::<Option<String>, _>("rejection_reason").ok().flatten(),
-                validation_deadline: row.try_get::<Option<DateTime<Utc>>, _>("validation_deadline").ok().flatten(),
+                rejected_at: row
+                    .try_get::<Option<DateTime<Utc>>, _>("rejected_at")
+                    .ok()
+                    .flatten(),
+                rejection_reason: row
+                    .try_get::<Option<String>, _>("rejection_reason")
+                    .ok()
+                    .flatten(),
+                validation_deadline: row
+                    .try_get::<Option<DateTime<Utc>>, _>("validation_deadline")
+                    .ok()
+                    .flatten(),
                 created_at: row.get::<DateTime<Utc>, _>("created_at"),
                 updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
-                metadata: row.try_get::<serde_json::Value, _>("metadata").unwrap_or_else(|_| serde_json::json!({})),
+                metadata: row
+                    .get::<Option<serde_json::Value>, _>("metadata")
+                    .unwrap_or_else(|| serde_json::json!({})),
             })
             .fetch_all(&self.pool)
             .await?
@@ -581,16 +745,36 @@ impl OrderPreparationService {
                 client_user_id: row.get::<i32, _>("client_user_id"),
                 provider_user_id: row.get::<i32, _>("provider_user_id"),
                 status: row.get::<String, _>("status"),
-                preparation_time_minutes: row.try_get::<Option<i32>, _>("preparation_time_minutes").ok().flatten(),
-                estimated_ready_at: row.try_get::<Option<DateTime<Utc>>, _>("estimated_ready_at").ok().flatten(),
-                validated_at: row.try_get::<Option<DateTime<Utc>>, _>("validated_at").ok().flatten(),
+                preparation_time_minutes: row
+                    .try_get::<Option<i32>, _>("preparation_time_minutes")
+                    .ok()
+                    .flatten(),
+                estimated_ready_at: row
+                    .try_get::<Option<DateTime<Utc>>, _>("estimated_ready_at")
+                    .ok()
+                    .flatten(),
+                validated_at: row
+                    .try_get::<Option<DateTime<Utc>>, _>("validated_at")
+                    .ok()
+                    .flatten(),
                 validated_by: row.try_get::<Option<i32>, _>("validated_by").ok().flatten(),
-                rejected_at: row.try_get::<Option<DateTime<Utc>>, _>("rejected_at").ok().flatten(),
-                rejection_reason: row.try_get::<Option<String>, _>("rejection_reason").ok().flatten(),
-                validation_deadline: row.try_get::<Option<DateTime<Utc>>, _>("validation_deadline").ok().flatten(),
+                rejected_at: row
+                    .try_get::<Option<DateTime<Utc>>, _>("rejected_at")
+                    .ok()
+                    .flatten(),
+                rejection_reason: row
+                    .try_get::<Option<String>, _>("rejection_reason")
+                    .ok()
+                    .flatten(),
+                validation_deadline: row
+                    .try_get::<Option<DateTime<Utc>>, _>("validation_deadline")
+                    .ok()
+                    .flatten(),
                 created_at: row.get::<DateTime<Utc>, _>("created_at"),
                 updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
-                metadata: row.try_get::<serde_json::Value, _>("metadata").unwrap_or_else(|_| serde_json::json!({})),
+                metadata: row
+                    .get::<Option<serde_json::Value>, _>("metadata")
+                    .unwrap_or_else(|| serde_json::json!({})),
             })
             .fetch_all(&self.pool)
             .await?
@@ -600,11 +784,7 @@ impl OrderPreparationService {
     }
 
     /// Met à jour le statut d'une commande
-    pub async fn update_status(
-        &self,
-        order_id: Uuid,
-        new_status: &str,
-    ) -> AppResult<ProductOrder> {
+    pub async fn update_status(&self, order_id: Uuid, new_status: &str) -> AppResult<ProductOrder> {
         sqlx::query(
             r#"
             UPDATE product_orders
@@ -623,7 +803,7 @@ impl OrderPreparationService {
     /// Marque une commande comme prête
     pub async fn mark_as_ready(&self, order_id: Uuid) -> AppResult<ProductOrder> {
         let now = Utc::now();
-        
+
         sqlx::query(
             r#"
             UPDATE product_orders
@@ -647,4 +827,3 @@ impl OrderPreparationService {
         self.get_order(order_id).await
     }
 }
-

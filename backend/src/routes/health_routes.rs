@@ -9,26 +9,30 @@ use crate::state::AppState;
 
 pub fn health_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
-        .route("/health/google-maps", axum::routing::get(check_google_maps_support))
+        .route(
+            "/health/google-maps",
+            axum::routing::get(check_google_maps_support),
+        )
         .route("/health/cache", axum::routing::get(check_cache_status))
-        .route("/health/geographic-matching", axum::routing::get(check_geographic_matching))
+        .route(
+            "/health/geographic-matching",
+            axum::routing::get(check_geographic_matching),
+        )
 }
 
 /// ✅ Phase 10 - Vérifie automatiquement le support Google Maps Distance Matrix API
-async fn check_google_maps_support(
-    State(_state): State<Arc<AppState>>,
-) -> impl IntoResponse {
+async fn check_google_maps_support(State(_state): State<Arc<AppState>>) -> impl IntoResponse {
     let api_key = std::env::var("GOOGLE_MAPS_API_KEY").ok();
-    
+
     let has_api_key = api_key.is_some() && !api_key.as_ref().unwrap().is_empty();
-    
+
     // Test avec des coordonnées de test (Yaoundé, Cameroun)
     let test_origin = (3.8480, 11.5021); // Yaoundé
     let test_destination = (4.0511, 9.7679); // Douala
-    
+
     let mut test_result: Option<Value> = None;
     let mut test_error: Option<String> = None;
-    
+
     if has_api_key {
         // Tester une requête réelle
         match test_google_maps_distance_matrix(test_origin, test_destination).await {
@@ -44,7 +48,7 @@ async fn check_google_maps_support(
             }
         }
     }
-    
+
     Json(json!({
         "google_maps_api_key_configured": has_api_key,
         "api_key_present": has_api_key,
@@ -134,22 +138,20 @@ struct DistanceTestResult {
 }
 
 /// Vérifie le statut du cache Redis
-async fn check_cache_status(
-    State(state): State<Arc<AppState>>,
-) -> impl IntoResponse {
+async fn check_cache_status(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let test_key = "health:cache:test";
     let test_value = json!({"test": true, "timestamp": chrono::Utc::now()});
-    
+
     // Tester l'écriture
     let write_ok = state.cache_service.set(test_key, &test_value).await.is_ok();
-    
+
     // Tester la lecture
     let read_result = state.cache_service.get::<Value>(test_key).await;
     let read_ok = read_result.is_ok() && read_result.unwrap().is_some();
-    
+
     // Nettoyer
     let _ = state.cache_service.delete(test_key).await;
-    
+
     Json(json!({
         "redis_configured": true,
         "write_test": write_ok,
@@ -168,9 +170,7 @@ async fn check_cache_status(
 }
 
 /// Vérifie le service de matching géographique
-async fn check_geographic_matching(
-    State(_state): State<Arc<AppState>>,
-) -> impl IntoResponse {
+async fn check_geographic_matching(State(_state): State<Arc<AppState>>) -> impl IntoResponse {
     // Le service est initialisé dans AppState
     Json(json!({
         "geographic_matching_service": "initialized",
@@ -182,4 +182,3 @@ async fn check_geographic_matching(
         "message": "✅ Service de matching géographique initialisé"
     }))
 }
-

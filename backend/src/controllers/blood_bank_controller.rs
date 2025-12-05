@@ -82,49 +82,60 @@ pub async fn create_blood_bank(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateBloodBankRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[create_blood_bank] Création banque de sang pour user_id={}, service_id={}", user_id, payload.service_id);
+    info!(
+        "[create_blood_bank] Création banque de sang pour user_id={}, service_id={}",
+        user_id, payload.service_id
+    );
 
     // Vérifier que le service appartient à l'utilisateur
-    let service_exists: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM services WHERE id = $1 AND user_id = $2"
-    )
-    .bind(payload.service_id)
-    .bind(user_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[create_blood_bank] Erreur vérification service: {}", e);
-        AppError::Internal(format!("Erreur vérification service: {}", e))
-    })?;
+    let service_exists: Option<i32> =
+        sqlx::query_scalar("SELECT id FROM services WHERE id = $1 AND user_id = $2")
+            .bind(payload.service_id)
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[create_blood_bank] Erreur vérification service: {}", e);
+                AppError::Internal(format!("Erreur vérification service: {}", e))
+            })?;
 
     if service_exists.is_none() {
-        return Err(AppError::NotFound("Service non trouvé ou n'appartient pas à l'utilisateur".to_string()));
+        return Err(AppError::NotFound(
+            "Service non trouvé ou n'appartient pas à l'utilisateur".to_string(),
+        ));
     }
 
     // ✅ NOUVEAU : Vérifier si une banque de sang existe déjà pour ce service
-    let existing_blood_bank: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM banques_sang WHERE service_id = $1 AND user_id = $2"
-    )
-    .bind(payload.service_id)
-    .bind(user_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[create_blood_bank] Erreur vérification banque de sang existante: {}", e);
-        AppError::Internal(format!("Erreur vérification banque de sang existante: {}", e))
-    })?;
+    let existing_blood_bank: Option<i32> =
+        sqlx::query_scalar("SELECT id FROM banques_sang WHERE service_id = $1 AND user_id = $2")
+            .bind(payload.service_id)
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!(
+                    "[create_blood_bank] Erreur vérification banque de sang existante: {}",
+                    e
+                );
+                AppError::Internal(format!(
+                    "Erreur vérification banque de sang existante: {}",
+                    e
+                ))
+            })?;
 
     if existing_blood_bank.is_some() {
-        info!("[create_blood_bank] Banque de sang existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
+        info!(
+            "[create_blood_bank] Banque de sang existe déjà pour service_id={}, utilisation UPSERT",
+            payload.service_id
+        );
         let blood_bank_id = existing_blood_bank.unwrap();
-        
-        let horaires_dons: Option<Vec<chrono::NaiveTime>> = payload.horaires_dons
-            .map(|horaires| {
-                horaires
-                    .into_iter()
-                    .filter_map(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok())
-                    .collect()
-            });
+
+        let horaires_dons: Option<Vec<chrono::NaiveTime>> = payload.horaires_dons.map(|horaires| {
+            horaires
+                .into_iter()
+                .filter_map(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok())
+                .collect()
+        });
         let stocks = payload.stocks_groupes_sanguins.unwrap_or_else(|| json!({}));
 
         sqlx::query(
@@ -148,7 +159,7 @@ pub async fn create_blood_bank(
                 email = $18,
                 updated_at = NOW()
             WHERE id = $1 AND user_id = $2
-            "#
+            "#,
         )
         .bind(blood_bank_id)
         .bind(user_id)
@@ -175,40 +186,43 @@ pub async fn create_blood_bank(
             AppError::Internal(format!("Erreur mise à jour banque de sang: {}", e))
         })?;
 
-        return Ok((StatusCode::OK, Json(json!({
-            "success": true,
-            "id": blood_bank_id,
-            "message": "Banque de sang mise à jour avec succès"
-        }))));
+        return Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "id": blood_bank_id,
+                "message": "Banque de sang mise à jour avec succès"
+            })),
+        ));
     }
 
     // Vérifier que hopital_id appartient à l'utilisateur si fourni
     if let Some(hopital_id) = payload.hopital_id {
-        let hopital_exists: Option<i32> = sqlx::query_scalar(
-            "SELECT id FROM hopitaux_cliniques WHERE id = $1 AND user_id = $2"
-        )
-        .bind(hopital_id)
-        .bind(user_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[create_blood_bank] Erreur vérification hôpital: {}", e);
-            AppError::Internal(format!("Erreur vérification hôpital: {}", e))
-        })?;
+        let hopital_exists: Option<i32> =
+            sqlx::query_scalar("SELECT id FROM hopitaux_cliniques WHERE id = $1 AND user_id = $2")
+                .bind(hopital_id)
+                .bind(user_id)
+                .fetch_optional(&state.pg)
+                .await
+                .map_err(|e| {
+                    error!("[create_blood_bank] Erreur vérification hôpital: {}", e);
+                    AppError::Internal(format!("Erreur vérification hôpital: {}", e))
+                })?;
 
         if hopital_exists.is_none() {
-            return Err(AppError::NotFound("Hôpital non trouvé ou n'appartient pas à l'utilisateur".to_string()));
+            return Err(AppError::NotFound(
+                "Hôpital non trouvé ou n'appartient pas à l'utilisateur".to_string(),
+            ));
         }
     }
 
     // Convertir horaires_dons en TIME[]
-    let horaires_dons: Option<Vec<chrono::NaiveTime>> = payload.horaires_dons
-        .map(|horaires| {
-            horaires
-                .into_iter()
-                .filter_map(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok())
-                .collect()
-        });
+    let horaires_dons: Option<Vec<chrono::NaiveTime>> = payload.horaires_dons.map(|horaires| {
+        horaires
+            .into_iter()
+            .filter_map(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok())
+            .collect()
+    });
 
     // Stocks par défaut si non fourni
     let stocks = payload.stocks_groupes_sanguins.unwrap_or_else(|| json!({}));
@@ -222,7 +236,7 @@ pub async fn create_blood_bank(
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         RETURNING id
-        "#
+        "#,
     )
     .bind(payload.service_id)
     .bind(user_id)
@@ -250,16 +264,17 @@ pub async fn create_blood_bank(
     })?;
 
     // ✅ NOUVEAU : Marquer le service comme spécialisé
-    sqlx::query(
-        "UPDATE services SET specialized_type = 'banque_sang' WHERE id = $1"
-    )
-    .bind(payload.service_id)
-    .execute(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[create_blood_bank] Erreur mise à jour specialized_type: {}", e);
-        AppError::Internal("Erreur mise à jour specialized_type".to_string())
-    })?;
+    sqlx::query("UPDATE services SET specialized_type = 'banque_sang' WHERE id = $1")
+        .bind(payload.service_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!(
+                "[create_blood_bank] Erreur mise à jour specialized_type: {}",
+                e
+            );
+            AppError::Internal("Erreur mise à jour specialized_type".to_string())
+        })?;
 
     // Mettre à jour is_available_now avec la fonction PostgreSQL
     sqlx::query(
@@ -276,18 +291,24 @@ pub async fn create_blood_bank(
             ELSE TRUE
         END
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(blood_bank_id)
     .execute(&state.pg)
     .await
     .map_err(|e| {
-        error!("[create_blood_bank] Erreur mise à jour disponibilité: {}", e);
+        error!(
+            "[create_blood_bank] Erreur mise à jour disponibilité: {}",
+            e
+        );
         AppError::Internal("Erreur mise à jour disponibilité".to_string())
     })?;
 
     info!("[create_blood_bank] Banque de sang créée avec succès: id={}, service_id={} marqué comme spécialisé", blood_bank_id, payload.service_id);
-    Ok((StatusCode::CREATED, Json(json!({"message": "Banque de sang créée avec succès", "id": blood_bank_id}))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({"message": "Banque de sang créée avec succès", "id": blood_bank_id})),
+    ))
 }
 
 /// Rechercher des banques de sang
@@ -361,7 +382,10 @@ pub async fn search_blood_banks(
         }));
     }
 
-    Ok((StatusCode::OK, Json(json!({"success": true, "data": results}))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({"success": true, "data": results})),
+    ))
 }
 
 /// ✅ Liste des banques de sang (stub pour éviter erreur 405)
@@ -379,16 +403,15 @@ pub async fn get_blood_bank(
     State(state): State<Arc<AppState>>,
     Path(id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    let blood_bank: Option<BloodBank> = sqlx::query_as::<_, BloodBank>(
-        "SELECT * FROM banques_sang WHERE id = $1"
-    )
-    .bind(id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[get_blood_bank] Erreur: {}", e);
-        AppError::Internal("Erreur récupération banque de sang".to_string())
-    })?;
+    let blood_bank: Option<BloodBank> =
+        sqlx::query_as::<_, BloodBank>("SELECT * FROM banques_sang WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[get_blood_bank] Erreur: {}", e);
+                AppError::Internal("Erreur récupération banque de sang".to_string())
+            })?;
 
     match blood_bank {
         Some(bb) => Ok((StatusCode::OK, Json(json!({"success": true, "data": bb})))),
@@ -404,20 +427,21 @@ pub async fn update_blood_bank_stocks(
     Json(payload): Json<UpdateStocksRequest>,
 ) -> AppResult<impl IntoResponse> {
     // Vérifier que la banque de sang appartient à l'utilisateur
-    let blood_bank_exists: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM banques_sang WHERE id = $1 AND user_id = $2"
-    )
-    .bind(id)
-    .bind(user_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[update_blood_bank_stocks] Erreur vérification: {}", e);
-        AppError::Internal("Erreur vérification".to_string())
-    })?;
+    let blood_bank_exists: Option<i32> =
+        sqlx::query_scalar("SELECT id FROM banques_sang WHERE id = $1 AND user_id = $2")
+            .bind(id)
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[update_blood_bank_stocks] Erreur vérification: {}", e);
+                AppError::Internal("Erreur vérification".to_string())
+            })?;
 
     if blood_bank_exists.is_none() {
-        return Err(AppError::NotFound("Banque de sang non trouvée ou n'appartient pas à l'utilisateur".to_string()));
+        return Err(AppError::NotFound(
+            "Banque de sang non trouvée ou n'appartient pas à l'utilisateur".to_string(),
+        ));
     }
 
     // Mettre à jour les stocks avec timestamp
@@ -436,7 +460,7 @@ pub async fn update_blood_bank_stocks(
     };
 
     sqlx::query(
-        "UPDATE banques_sang SET stocks_groupes_sanguins = $1, updated_at = NOW() WHERE id = $2"
+        "UPDATE banques_sang SET stocks_groupes_sanguins = $1, updated_at = NOW() WHERE id = $2",
     )
     .bind(stocks_with_timestamp)
     .bind(id)
@@ -447,6 +471,192 @@ pub async fn update_blood_bank_stocks(
         AppError::Internal("Erreur mise à jour stocks".to_string())
     })?;
 
-    Ok((StatusCode::OK, Json(json!({"message": "Stocks mis à jour avec succès"}))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({"message": "Stocks mis à jour avec succès"})),
+    ))
 }
 
+// ============================================================================
+// STATISTIQUES BANQUE DE SANG
+// ============================================================================
+
+#[derive(Debug, Serialize)]
+pub struct BloodBankStatistics {
+    pub banque_sang_id: i32,
+    pub banque_sang_nom: String,
+    pub stocks_par_groupe: serde_json::Value,
+    pub demandes_actives: i64,
+    pub demandes_total: i64,
+    pub matches_trouves: i64,
+    pub matches_acceptes: i64,
+    pub taux_acceptation: f64,
+    pub nombre_donneurs: i64,
+    pub donneurs_par_groupe: serde_json::Value,
+    pub dernier_don: Option<String>,
+}
+
+/// GET /api/banques-sang/{id}/statistics
+/// Récupérer les statistiques complètes d'une banque de sang
+pub async fn get_blood_bank_statistics(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(banque_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[get_blood_bank_statistics] User ID: {}, Banque ID: {}",
+        user_id, banque_id
+    );
+
+    // Vérifier que la banque de sang appartient à l'utilisateur
+    let banque_exists: Option<(i32, String, serde_json::Value)> = sqlx::query_as(
+        r#"
+        SELECT id, nom, stocks_groupes_sanguins
+        FROM banques_sang
+        WHERE id = $1 AND user_id = $2
+        "#,
+    )
+    .bind(banque_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_blood_bank_statistics] Erreur vérification: {}", e);
+        AppError::Internal("Erreur vérification banque de sang".to_string())
+    })?;
+
+    let (_, banque_nom, stocks_groupes_sanguins) = match banque_exists {
+        Some(info) => info,
+        None => {
+            return Err(AppError::NotFound(
+                "Banque de sang non trouvée ou n'appartient pas à l'utilisateur".to_string(),
+            ));
+        }
+    };
+
+    // Récupérer les statistiques
+    // 1. Demandes actives et totales
+    let demandes_stats: (i64, i64) = sqlx::query_as(
+        r#"
+        SELECT 
+            COUNT(*) FILTER (WHERE status = 'active') as demandes_actives,
+            COUNT(*) as demandes_total
+        FROM blood_donation_requests
+        WHERE banque_sang_id = $1
+        "#,
+    )
+    .bind(banque_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_blood_bank_statistics] Erreur demandes: {}", e);
+        AppError::Internal("Erreur récupération statistiques demandes".to_string())
+    })?;
+
+    // 2. Matches trouvés et acceptés
+    let matches_stats: (i64, i64) = sqlx::query_as(
+        r#"
+        SELECT 
+            COUNT(*) as matches_trouves,
+            COUNT(*) FILTER (WHERE match_status = 'accepted') as matches_acceptes
+        FROM blood_donation_matches
+        WHERE request_id IN (
+            SELECT id FROM blood_donation_requests WHERE banque_sang_id = $1
+        )
+        "#,
+    )
+    .bind(banque_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_blood_bank_statistics] Erreur matches: {}", e);
+        AppError::Internal("Erreur récupération statistiques matches".to_string())
+    })?;
+
+    // 3. Nombre de donneurs uniques et par groupe
+    let nombre_donneurs: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(DISTINCT donor_user_id)
+        FROM blood_donation_matches
+        WHERE request_id IN (
+            SELECT id FROM blood_donation_requests WHERE banque_sang_id = $1
+        )
+        "#,
+    )
+    .bind(banque_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    // 4. Donneurs par groupe sanguin
+    let donneurs_par_groupe_rows = sqlx::query(
+        r#"
+        SELECT 
+            ubg.groupe_sanguin,
+            COUNT(DISTINCT bdm.donor_user_id) as nombre_donneurs
+        FROM blood_donation_matches bdm
+        JOIN user_blood_groups ubg ON ubg.id = bdm.donor_blood_group_id
+        WHERE bdm.request_id IN (
+            SELECT id FROM blood_donation_requests WHERE banque_sang_id = $1
+        )
+        GROUP BY ubg.groupe_sanguin
+        "#,
+    )
+    .bind(banque_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let mut donneurs_par_groupe = serde_json::Map::new();
+    for row in donneurs_par_groupe_rows {
+        let groupe: String = row.get("groupe_sanguin");
+        let nombre: i64 = row.get("nombre_donneurs");
+        donneurs_par_groupe.insert(groupe, json!(nombre));
+    }
+
+    // 5. Date du dernier don accepté
+    let dernier_don: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+        r#"
+        SELECT MAX(bdm.updated_at)
+        FROM blood_donation_matches bdm
+        WHERE bdm.request_id IN (
+            SELECT id FROM blood_donation_requests WHERE banque_sang_id = $1
+        )
+        AND bdm.match_status = 'accepted'
+        "#,
+    )
+    .bind(banque_id)
+    .fetch_optional(&state.pg)
+    .await
+    .unwrap_or(None);
+
+    let (demandes_actives, demandes_total) = demandes_stats;
+    let (matches_trouves, matches_acceptes) = matches_stats;
+    let taux_acceptation = if matches_trouves > 0 {
+        (matches_acceptes as f64 / matches_trouves as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    let stats = BloodBankStatistics {
+        banque_sang_id: banque_id,
+        banque_sang_nom: banque_nom.clone(),
+        stocks_par_groupe: stocks_groupes_sanguins,
+        demandes_actives,
+        demandes_total,
+        matches_trouves,
+        matches_acceptes,
+        taux_acceptation: (taux_acceptation * 100.0).round() / 100.0, // 2 décimales
+        nombre_donneurs,
+        donneurs_par_groupe: json!(donneurs_par_groupe),
+        dernier_don: dernier_don.map(|dt| dt.to_rfc3339()),
+    };
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "statistics": stats
+        })),
+    ))
+}

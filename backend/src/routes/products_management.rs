@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::state::AppState;
-use sqlx::FromRow;
 use serde_json::Value;
+use sqlx::FromRow;
 
 #[derive(Debug, Deserialize)]
 pub struct ToggleProductRequest {
@@ -90,7 +90,7 @@ pub async fn toggle_product_status(
         FROM products_lifecycle pl
         JOIN services s ON pl.service_id = s.id
         WHERE pl.id = $1
-        "#
+        "#,
     )
     .bind(product_id_i32)
     .fetch_optional(pool)
@@ -111,7 +111,11 @@ pub async fn toggle_product_status(
 
     let (_, service_user_id) = product_owner.unwrap();
     if service_user_id != user.id {
-        log::warn!("⚠️ Utilisateur {} n'est pas propriétaire du produit {}", user.id, product_id);
+        log::warn!(
+            "⚠️ Utilisateur {} n'est pas propriétaire du produit {}",
+            user.id,
+            product_id
+        );
         return Ok(Json(ApiResponse {
             success: false,
             message: "Non autorisé".to_string(),
@@ -127,7 +131,7 @@ pub async fn toggle_product_status(
             updated_at = NOW()
         WHERE id = $2
         RETURNING id
-        "#
+        "#,
     )
     .bind(payload.is_active)
     .bind(product_id_i32)
@@ -194,7 +198,7 @@ pub async fn delete_product(
         FROM products_lifecycle pl
         JOIN services s ON pl.service_id = s.id
         WHERE pl.id = $1
-        "#
+        "#,
     )
     .bind(product_id_i32)
     .fetch_optional(pool)
@@ -215,7 +219,11 @@ pub async fn delete_product(
 
     let (service_id, service_user_id) = product_owner.unwrap();
     if service_user_id != user.id {
-        log::warn!("⚠️ Utilisateur {} n'est pas propriétaire du produit {}", user.id, product_id);
+        log::warn!(
+            "⚠️ Utilisateur {} n'est pas propriétaire du produit {}",
+            user.id,
+            product_id
+        );
         return Ok(Json(ApiResponse {
             success: false,
             message: "Non autorisé".to_string(),
@@ -229,7 +237,7 @@ pub async fn delete_product(
         SELECT product_index
         FROM products_lifecycle
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(product_id_i32)
     .fetch_optional(pool)
@@ -245,7 +253,7 @@ pub async fn delete_product(
         DELETE FROM products_lifecycle
         WHERE id = $1
         RETURNING id, service_id, product_index
-        "#
+        "#,
     )
     .bind(product_id_i32)
     .fetch_optional(pool)
@@ -271,7 +279,7 @@ pub async fn delete_product(
     // service_id est déjà défini depuis product_owner
     // Utiliser product_index de deleted_row ou celui récupéré avant suppression
     let removed_index = deleted_row.product_index.or(product_index);
-    
+
     // ✅ Utiliser service_id de product_owner (déjà vérifié)
     // deleted_row.service_id n'est plus nécessaire car on utilise service_id de product_owner
 
@@ -281,7 +289,7 @@ pub async fn delete_product(
             r#"
             DELETE FROM media
             WHERE service_id = $1 AND product_index = $2
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(removed_idx)
@@ -305,7 +313,7 @@ pub async fn delete_product(
             WHERE service_id = $1
               AND product_index IS NOT NULL
               AND product_index > $2
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(removed_idx)
@@ -326,7 +334,7 @@ pub async fn delete_product(
         SELECT data
         FROM services
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(service_id)
     .fetch_optional(pool)
@@ -373,14 +381,8 @@ pub async fn delete_product(
 
                         for (index, product_value) in arr.iter_mut().enumerate() {
                             if let Some(obj) = product_value.as_object_mut() {
-                                obj.insert(
-                                    "product_index".to_string(),
-                                    serde_json::json!(index),
-                                );
-                                obj.insert(
-                                    "lifecycle_index".to_string(),
-                                    serde_json::json!(index),
-                                );
+                                obj.insert("product_index".to_string(), serde_json::json!(index));
+                                obj.insert("lifecycle_index".to_string(), serde_json::json!(index));
                             }
                         }
                     }
@@ -395,7 +397,7 @@ pub async fn delete_product(
                 SET data = $1,
                     updated_at = NOW()
                 WHERE id = $2
-                "#
+                "#,
             )
             .bind(&service_data)
             .bind(service_id)
@@ -421,7 +423,7 @@ pub async fn delete_product(
                 updated_at = NOW()
             WHERE service_id = $1
               AND product_index > $2
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(removed_idx)
@@ -472,7 +474,7 @@ pub async fn get_all_prestataire_products(
         JOIN services s ON pl.service_id = s.id
         WHERE s.user_id = $1
         ORDER BY pl.created_at DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(pool)
@@ -526,7 +528,7 @@ pub async fn add_product_to_service(
         SELECT data
         FROM services
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(service_id_i32)
     .fetch_optional(pool)
@@ -588,7 +590,7 @@ pub async fn add_product_to_service(
         SET data = $1,
             updated_at = NOW()
         WHERE id = $2
-        "#
+        "#,
     )
     .bind(&service_data)
     .bind(service_id_i32)
@@ -641,7 +643,7 @@ pub async fn update_product(
         SELECT data, user_id
         FROM services
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(service_id_i32)
     .fetch_optional(pool)
@@ -730,7 +732,7 @@ pub async fn update_product(
         SET data = $1,
             updated_at = NOW()
         WHERE id = $2
-        "#
+        "#,
     )
     .bind(&service_data)
     .bind(service_id_update)
@@ -762,7 +764,7 @@ pub async fn update_product(
             r#"
             INSERT INTO service_logs (service_id, user_id, action, modification)
             VALUES ($1, $2, $3, $4::jsonb)
-            "#
+            "#,
         )
         .bind(service_id_update)
         .bind(user_id)

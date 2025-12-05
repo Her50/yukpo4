@@ -15,9 +15,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import QRCodeScanner from '../components/QRCodeScanner';
 import SafeIcon from '../components/SafeIcon';
+import { useAuth } from '../contexts/AuthContext';
+import { trackQRScan } from '../services/analytics';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { requireAgency } from '../utils/navigationGuards';
 
 interface BoardingSummary {
     total_reservations: number;
@@ -49,6 +53,7 @@ interface PassengerInfo {
 const BusBoardingManagementScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
+    const { user } = useAuth();
     const { productId, busNumber } = (route.params as any) || {};
 
     const [loading, setLoading] = useState(true);
@@ -59,13 +64,17 @@ const BusBoardingManagementScreen: React.FC = () => {
     const [selectedPassenger, setSelectedPassenger] = useState<PassengerInfo | null>(null);
 
     useEffect(() => {
+        // Vérifier l'accès agence
+        if (!requireAgency(user, navigation)) {
+            return;
+        }
         if (productId) {
             loadBoardingData();
         } else {
             Alert.alert('Erreur', 'Product ID manquant');
             navigation.goBack();
         }
-    }, [productId]);
+    }, [productId, user]);
 
     const loadBoardingData = async () => {
         try {
@@ -75,12 +84,12 @@ const BusBoardingManagementScreen: React.FC = () => {
                 apiGet(`/api/bus-tickets/boarding/${productId}/passengers`),
             ]);
 
-            if (summaryRes.success) {
-                setSummary(summaryRes.summary);
+            if (summaryRes.success && (summaryRes as any).summary) {
+                setSummary((summaryRes as any).summary);
             }
 
-            if (passengersRes.success) {
-                setPassengers(passengersRes.passengers);
+            if (passengersRes.success && (passengersRes as any).passengers) {
+                setPassengers((passengersRes as any).passengers);
             }
         } catch (error: any) {
             console.error('Erreur chargement données embarquement:', error);
@@ -93,12 +102,34 @@ const BusBoardingManagementScreen: React.FC = () => {
     const handleQRCodeScanned = async (qrData: string) => {
         try {
             setScanning(true);
-            const qrJson = JSON.parse(qrData);
+            let qrJson;
+
+            try {
+                qrJson = JSON.parse(qrData);
+            } catch {
+                // Si ce n'est pas un JSON, essayer de le traiter comme un code simple
+                qrJson = { id: qrData, type: 'BUS_TICKET_YUKPOMNANG' };
+            }
 
             // Vérifier format QR code
-            if (qrJson.type !== 'BUS_TICKET_YUKPOMNANG') {
-                Alert.alert('Erreur', 'QR code invalide');
-                setShowScanner(false);
+            if (!qrJson.type || !qrJson.type.includes('BUS_TICKET')) {
+                Alert.alert(
+                    'Erreur',
+                    'QR code invalide. Ce QR code n\'est pas un ticket de bus.',
+                    [
+                        {
+                            text: 'Réessayer',
+                            onPress: () => setScanning(false),
+                        },
+                        {
+                            text: 'Fermer',
+                            onPress: () => {
+                                setShowScanner(false);
+                                setScanning(false);
+                            },
+                        },
+                    ]
+                );
                 return;
             }
 
@@ -108,32 +139,82 @@ const BusBoardingManagementScreen: React.FC = () => {
                 product_id: productId,
             });
 
+            const responseData = response as any;
+
             if (response.success) {
+                // Track successful scan
+                trackQRScan(true);
+
                 Alert.alert(
                     '✅ Validé',
-                    `Passager: ${response.passenger_name}\nPlace: ${response.seat_number}`,
+                    `Passager: ${responseData.passenger_name || 'N/A'}\nPlace: ${responseData.seat_number || 'N/A'}`,
                     [
                         {
                             text: 'OK',
                             onPress: () => {
                                 setShowScanner(false);
+                                setScanning(false);
                                 loadBoardingData();
                             },
                         },
                     ]
                 );
             } else {
-                if (response.already_boarded) {
-                    Alert.alert('⚠️ Déjà embarqué', 'Ce passager a déjà été validé');
+                // Track failed scan
+                trackQRScan(false, responseData.error || 'Validation échouée');
+                if (responseData.already_boarded) {
+                    Alert.alert(
+                        '⚠️ Déjà embarqué',
+                        'Ce passager a déjà été validé',
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => {
+                                    setScanning(false);
+                                    loadBoardingData();
+                                },
+                            },
+                        ]
+                    );
                 } else {
-                    Alert.alert('Erreur', response.error || 'Validation échouée');
+                    Alert.alert(
+                        'Erreur',
+                        responseData.error || 'Validation échouée',
+                        [
+                            {
+                                text: 'Réessayer',
+                                onPress: () => setScanning(false),
+                            },
+                            {
+                                text: 'Fermer',
+                                onPress: () => {
+                                    setShowScanner(false);
+                                    setScanning(false);
+                                },
+                            },
+                        ]
+                    );
                 }
             }
         } catch (error: any) {
             console.error('Erreur validation QR code:', error);
-            Alert.alert('Erreur', 'QR code invalide ou corrompu');
-        } finally {
-            setScanning(false);
+            Alert.alert(
+                'Erreur',
+                'QR code invalide ou corrompu. Veuillez réessayer.',
+                [
+                    {
+                        text: 'Réessayer',
+                        onPress: () => setScanning(false),
+                    },
+                    {
+                        text: 'Fermer',
+                        onPress: () => {
+                            setShowScanner(false);
+                            setScanning(false);
+                        },
+                    },
+                ]
+            );
         }
     };
 
@@ -343,36 +424,44 @@ const BusBoardingManagementScreen: React.FC = () => {
                             <SafeIcon name="x" size={24} color="#111827" />
                         </TouchableOpacity>
                     </View>
+                    <QRCodeScanner
+                        visible={showScanner}
+                        onClose={() => {
+                            setShowScanner(false);
+                            setScanning(false);
+                        }}
+                        onScan={handleQRCodeScanned}
+                        onError={(error) => {
+                            Alert.alert('Erreur', error);
+                            setScanning(false);
+                        }}
+                    />
                     <View style={styles.scannerContent}>
-                        <Text style={styles.scannerInstructions}>
-                            Pointez la caméra vers le QR code du ticket
-                        </Text>
-                        {/* TODO: Intégrer le scanner QR code réel */}
-                        <View style={styles.scannerPlaceholder}>
-                            <SafeIcon name="camera" size={64} color="#D1D5DB" />
-                            <Text style={styles.scannerPlaceholderText}>
-                                Scanner QR code à implémenter
-                            </Text>
-                            <Text style={styles.scannerPlaceholderSubtext}>
-                                Utiliser expo-barcode-scanner ou react-native-vision-camera
-                            </Text>
-                        </View>
                         <TouchableOpacity
                             style={styles.manualEntryButton}
                             onPress={() => {
                                 // Alternative: saisie manuelle du code
-                                Alert.alert(
+                                Alert.prompt(
                                     'Saisie manuelle',
                                     'Entrez le code de réservation',
                                     [
                                         { text: 'Annuler', style: 'cancel' },
                                         {
                                             text: 'Valider',
-                                            onPress: () => {
-                                                // TODO: Implémenter validation par code
+                                            onPress: async (code) => {
+                                                if (code) {
+                                                    try {
+                                                        const qrJson = JSON.parse(code);
+                                                        await handleQRCodeScanned(JSON.stringify(qrJson));
+                                                    } catch {
+                                                        // Si ce n'est pas un JSON, essayer directement
+                                                        await handleQRCodeScanned(code);
+                                                    }
+                                                }
                                             },
                                         },
-                                    ]
+                                    ],
+                                    'plain-text'
                                 );
                             }}
                         >

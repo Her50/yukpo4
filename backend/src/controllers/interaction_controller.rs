@@ -15,7 +15,7 @@ use crate::services::scoring_service::{compute_score, get_score, ServiceScore};
 use crate::services::sharing_service::generate_share_link;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use sqlx::{Row, FromRow};
+use sqlx::{FromRow, Row};
 use std::sync::Arc;
 
 #[derive(Deserialize)]
@@ -70,9 +70,7 @@ pub async fn post_message(
     .expect("save_interaction");
 
     // Cr?e une alerte pour le prestataire
-    let service = sqlx::query_as::<_, ServiceUserRow>(
-        "SELECT user_id FROM services WHERE id = $1"
-    )
+    let service = sqlx::query_as::<_, ServiceUserRow>("SELECT user_id FROM services WHERE id = $1")
         .bind(service_id)
         .fetch_one(&state.pg)
         .await
@@ -110,7 +108,7 @@ pub async fn post_review(
             .await
             .ok()
             .flatten()
-            .and_then(|row| row.try_get::<String, _>("display_name").ok())
+            .and_then(|row| row.get::<Option<String>, _>("display_name"))
             .unwrap_or_else(|| "Un utilisateur Yukpo".to_string());
 
             let service_title = sqlx::query(
@@ -122,7 +120,7 @@ pub async fn post_review(
             .await
             .ok()
             .flatten()
-            .and_then(|row| row.try_get::<String, _>("titre").ok())
+            .and_then(|row| row.get::<Option<String>, _>("titre"))
             .unwrap_or_else(|| format!("service #{}", service_id));
 
             for mentioned_id in mentions.iter().copied().filter(|id| *id != user_id) {
@@ -171,9 +169,7 @@ pub async fn post_audio(
     .expect("save_interaction");
 
     // Cr?e une alerte pour le prestataire
-    let service = sqlx::query_as::<_, ServiceUserRow>(
-        "SELECT user_id FROM services WHERE id = $1"
-    )
+    let service = sqlx::query_as::<_, ServiceUserRow>("SELECT user_id FROM services WHERE id = $1")
         .bind(service_id)
         .fetch_one(&state.pg)
         .await
@@ -201,9 +197,7 @@ pub async fn post_call(
     .expect("save_interaction");
 
     // Cr?e une alerte pour le prestataire
-    let service = sqlx::query_as::<_, ServiceUserRow>(
-        "SELECT user_id FROM services WHERE id = $1"
-    )
+    let service = sqlx::query_as::<_, ServiceUserRow>("SELECT user_id FROM services WHERE id = $1")
         .bind(service_id)
         .fetch_one(&state.pg)
         .await

@@ -42,7 +42,7 @@ impl ContentEngagementService {
             SELECT liked, saved
             FROM content_engagement
             WHERE user_id = $1 AND content_id = $2
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(content_id)
@@ -64,7 +64,7 @@ impl ContentEngagementService {
             DO UPDATE SET liked = EXCLUDED.liked,
                           saved = EXCLUDED.saved,
                           updated_at = NOW()
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(content_id)
@@ -84,7 +84,7 @@ impl ContentEngagementService {
                 COALESCE(SUM(CASE WHEN saved THEN 1 ELSE 0 END)::BIGINT, 0) AS saves
             FROM content_engagement
             WHERE content_id = $1
-            "#
+            "#,
         )
         .bind(content_id)
         .fetch_one(pool)
@@ -111,7 +111,7 @@ impl ContentEngagementService {
             FROM content_engagement
             WHERE content_id = ANY($1)
             GROUP BY content_id
-            "#
+            "#,
         )
         .bind(content_ids)
         .fetch_all(pool)
@@ -130,7 +130,7 @@ impl ContentEngagementService {
                 SELECT content_id, liked, saved
                 FROM content_engagement
                 WHERE user_id = $1 AND content_id = ANY($2)
-                "#
+                "#,
             )
             .bind(uid)
             .bind(content_ids)

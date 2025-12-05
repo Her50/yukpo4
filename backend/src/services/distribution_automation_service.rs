@@ -133,7 +133,7 @@ async fn fetch_distribution_context(
         JOIN services s ON s.id = m.service_id
         WHERE m.id = $1
           AND s.id = $2
-        "#
+        "#,
     )
     .bind(media_id)
     .bind(service_id)
@@ -256,7 +256,7 @@ async fn mark_distribution_processing(
             updated_at = NOW()
         WHERE media_id = $2
           AND target = $3
-        "#
+        "#,
     )
     .bind(merged)
     .bind(media_id)
@@ -289,7 +289,7 @@ async fn update_missing_connector(
             updated_at = NOW()
         WHERE media_id = $2
           AND target = $3
-        "#
+        "#,
     )
     .bind(payload)
     .bind(media_id)

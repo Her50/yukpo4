@@ -1,9 +1,9 @@
 // ✅ RECOMMANDATION 3: Service pour notifications SMS/Email pour clients sans app
 // ✅ Phase 10 - Intégration complète Twilio, SendGrid et notifications internes
 use crate::core::types::AppResult;
-use crate::services::sms_service::SmsService;
 use crate::services::email_service::EmailService;
 use crate::services::notification_service::{self, NotificationType};
+use crate::services::sms_service::SmsService;
 use serde_json::json;
 use sqlx::PgPool;
 
@@ -15,7 +15,7 @@ pub async fn send_sms_notification(
     _delivery_id: Option<&str>,
 ) -> AppResult<()> {
     let sms_service = SmsService::new();
-    
+
     match sms_service.send_sms(phone_number, message).await {
         Ok(result) => {
             if result.success {
@@ -40,7 +40,7 @@ pub async fn send_sms_notification(
             );
         }
     }
-    
+
     Ok(())
 }
 
@@ -53,7 +53,7 @@ pub async fn send_email_notification(
     _delivery_id: Option<&str>,
 ) -> AppResult<()> {
     let email_service = EmailService::new();
-    
+
     match email_service.send_simple_email(email, subject, body).await {
         Ok(result) => {
             if result.success {
@@ -78,7 +78,7 @@ pub async fn send_email_notification(
             );
         }
     }
-    
+
     Ok(())
 }
 
@@ -186,4 +186,3 @@ pub async fn notify_delivery_status_change(
 
     Ok(())
 }
-

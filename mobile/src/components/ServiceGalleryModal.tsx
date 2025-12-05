@@ -4,6 +4,8 @@ import * as React from 'react';
 import { useState } from 'react';
 import { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge, Card, Paragraph, Title } from 'react-native-paper';
+import { ENVIRONMENT } from '../config/environment';
+import { mediaService } from '../services/mediaService';
 import { theme } from '../theme/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -40,6 +42,13 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
         products: { images: [], videos: [], byType: {} },
         realisations: { images: [], videos: [] }
     });
+
+    // ✅ NOUVEAU 2025-12-03: Initialiser mediaService pour CDN avec fallback
+    React.useEffect(() => {
+        mediaService.initialize(ENVIRONMENT.API_URL).catch(() => {
+            // Ignorer erreurs d'initialisation
+        });
+    }, []);
 
     React.useEffect(() => {
         if (visible && service) {
@@ -137,6 +146,13 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
             'autre': '📦 Autres Produits'
         };
         return labels[type] || '📦 Autres Produits';
+    };
+
+    // ✅ NOUVEAU 2025-12-03: Helper pour obtenir URL optimisée via mediaService
+    const getOptimizedMediaUrl = (url: string): string => {
+        if (!url) return '';
+        if (url.startsWith('http')) return url;
+        return mediaService.getImageUrl(url);
     };
 
     const extractMediaFromField = (field: any): string[] => {
@@ -269,7 +285,11 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                     }}
                                 >
                                     <Image
-                                        source={{ uri: allMedia[selectedImageIndex] }}
+                                        source={{
+                                            uri: allMedia[selectedImageIndex]?.startsWith('http')
+                                                ? allMedia[selectedImageIndex]
+                                                : mediaService.getImageUrl(allMedia[selectedImageIndex] || '')
+                                        }}
                                         style={styles.mainImage}
                                         resizeMode="cover"
                                     />
@@ -301,7 +321,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                 style={styles.thumbnail}
                                                 onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                             >
-                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
                                             </TouchableOpacity>
                                         ))}
                                         {categorizedMedia.branding.videos.map((uri, idx) => (
@@ -310,7 +330,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                 style={styles.thumbnail}
                                                 onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                             >
-                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
                                                 <View style={styles.thumbnailVideoIcon}>
                                                     <Video size={16} color="white" />
                                                 </View>
@@ -344,7 +364,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                             style={styles.thumbnail}
                                                             onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                                         >
-                                                            <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                            <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
                                                         </TouchableOpacity>
                                                     ))}
                                                     {media.videos.map((uri, idx) => (
@@ -353,7 +373,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                             style={styles.thumbnail}
                                                             onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                                         >
-                                                            <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                            <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
                                                             <View style={styles.thumbnailVideoIcon}>
                                                                 <Video size={16} color="white" />
                                                             </View>
@@ -383,7 +403,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                 style={styles.thumbnail}
                                                 onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                             >
-                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
                                             </TouchableOpacity>
                                         ))}
                                         {categorizedMedia.realisations.videos.map((uri, idx) => (
@@ -392,7 +412,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                 style={styles.thumbnail}
                                                 onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                             >
-                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
                                                 <View style={styles.thumbnailVideoIcon}>
                                                     <Video size={16} color="white" />
                                                 </View>

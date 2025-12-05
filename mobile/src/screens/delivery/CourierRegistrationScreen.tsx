@@ -13,6 +13,7 @@ import {
     View,
 } from 'react-native';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import PaymentMethodSelector from '../../components/PaymentMethodSelector';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { VEHICLE_TRANSPORT_OPTIONS, type VehicleType } from '../../config/deliveryConfig';
@@ -63,6 +64,9 @@ const CourierRegistrationScreen: React.FC = () => {
     // Autres
     const [bio, setBio] = useState('');
     const [experience, setExperience] = useState('');
+
+    // Comptes de paiement
+    const [paymentMethod, setPaymentMethod] = useState<any>(null);
 
     useEffect(() => {
         checkApplicationStatus();
@@ -310,6 +314,15 @@ const CourierRegistrationScreen: React.FC = () => {
                 },
                 bio,
                 experience,
+                paymentMethod: paymentMethod ? {
+                    type: paymentMethod.type,
+                    phoneNumber: paymentMethod.phoneNumber,
+                    cardNumber: paymentMethod.cardNumber,
+                    cardExpiry: paymentMethod.cardExpiry,
+                    cardCVV: paymentMethod.cardCVV,
+                    cardHolder: paymentMethod.cardHolder,
+                    taxId: paymentMethod.taxId,
+                } : null,
             };
 
             const response = await deliveryApi.submitCourierApplication({
@@ -722,6 +735,18 @@ const CourierRegistrationScreen: React.FC = () => {
                     />
                 </NativeCard>
 
+                {/* Comptes de paiement */}
+                <NativeCard style={styles.card}>
+                    <Text style={styles.sectionTitle}>Comptes de paiement</Text>
+                    <Text style={styles.helperText}>
+                        Renseignez votre compte pour recevoir vos paiements de livraison. L'argent transite toujours dans le compte de l'application avant reversement.
+                    </Text>
+                    <PaymentMethodSelector
+                        onPaymentChange={setPaymentMethod}
+                        readonly={false}
+                    />
+                </NativeCard>
+
                 {/* Actions */}
                 <View style={styles.actions}>
                     <NativeButton
@@ -776,6 +801,12 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 14,
         color: modernColors.textSecondary,
+    },
+    helperText: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        marginBottom: 12,
+        lineHeight: 18,
     },
     card: {
         marginBottom: 16,

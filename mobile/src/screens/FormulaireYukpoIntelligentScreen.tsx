@@ -705,12 +705,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         'nom_produit', // 1. Nom du produit
         'categorie_produit', // 2. Catégorie
         'description_produit', // 3. Description
-        'produits', // 4. Caractéristiques (autocomplete)
-        'lieu_produit', 'lieu_commercial', 'lieu_commercialisation', // 5. Lieu
-        'prix', 'prix_produit', // 6. Prix
-        'devise', 'devise_produit', // 7. Devise (sera affichée inline avec prix)
-        'price_variant', 'variabilite_prix', // 8. Variations prix
-        'images', 'videos', '_product_media_manager' // 9. Médias
+        'quantite_disponible', // 4. Quantité disponible (produits uniquement)
+        'produits', // 5. Caractéristiques (autocomplete)
+        'lieu_produit', 'lieu_commercial', 'lieu_commercialisation', // 6. Lieu
+        'prix', 'prix_produit', // 7. Prix
+        'devise', 'devise_produit', // 8. Devise (sera affichée inline avec prix)
+        'price_variant', 'variabilite_prix', // 9. Variations prix
+        'images', 'videos', '_product_media_manager' // 10. Médias
       ];
 
       return fields.sort((a, b) => {
@@ -1250,6 +1251,57 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
     }
 
+    // ✅ NOUVEAU 2025-01-28: Validation quantité obligatoire avant de quitter le bloc produit
+    const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
+    if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex) {
+      const typeOffre = valeursFormulaire.type_offre || 'produit';
+      const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+
+      if (!isPrestation) {
+        const quantiteDisponible = valeursFormulaire.quantite_disponible;
+        const stockValue = quantiteDisponible !== null && quantiteDisponible !== undefined && quantiteDisponible !== ''
+          ? (typeof quantiteDisponible === 'number' ? quantiteDisponible : parseInt(String(quantiteDisponible), 10))
+          : null;
+
+        // Vérifier aussi dans les variants de prix si présents
+        let hasVariantStock = false;
+        const priceVariant = valeursFormulaire.variabilite_prix || valeursFormulaire.price_variant || valeursFormulaire.variation_prix;
+        if (priceVariant && typeof priceVariant === 'object') {
+          const modalites = priceVariant.modalites || priceVariant.valeur || (Array.isArray(priceVariant) ? priceVariant : []);
+          if (Array.isArray(modalites) && modalites.length > 0) {
+            hasVariantStock = modalites.some((modalite: any) => {
+              const variantStock = modalite.stock || modalite.quantite;
+              if (variantStock !== null && variantStock !== undefined && variantStock !== '') {
+                const variantStockValue = typeof variantStock === 'number' ? variantStock : parseInt(String(variantStock), 10);
+                return !isNaN(variantStockValue) && variantStockValue > 0;
+              }
+              return false;
+            });
+          }
+        }
+
+        // Si ni stock global ni stock variant n'est valide (> 0)
+        if ((stockValue === null || isNaN(stockValue) || stockValue <= 0) && !hasVariantStock) {
+          Alert.alert(
+            '⚠️ Quantité obligatoire',
+            'La quantité disponible est obligatoire pour les produits et doit être strictement supérieure à 0.\n\n' +
+            'Pourquoi ? La gestion du stock permet d\'éviter les ventes de produits épuisés et d\'améliorer l\'expérience de vos clients.\n\n' +
+            'Veuillez renseigner la quantité disponible dans le champ dédié avant de continuer.',
+            [{ text: 'OK' }]
+          );
+          setFieldErrors({ quantite_disponible: 'La quantité doit être strictement supérieure à 0' });
+          return;
+        }
+
+        // Effacer l'erreur si la validation réussit
+        if (fieldErrors.quantite_disponible) {
+          const newErrors = { ...fieldErrors };
+          delete newErrors.quantite_disponible;
+          setFieldErrors(newErrors);
+        }
+      }
+    }
+
     // Valider le bloc actuel avant de passer au suivant
     const validation = validateCurrentBlock();
 
@@ -1326,6 +1378,56 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
+
+    // ✅ NOUVEAU 2025-01-28: Empêcher de quitter le bloc produit si quantité non renseignée
+    if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex !== productsBlockIndex) {
+      const typeOffre = valeursFormulaire.type_offre || 'produit';
+      const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+
+      if (!isPrestation) {
+        const quantiteDisponible = valeursFormulaire.quantite_disponible;
+        const stockValue = quantiteDisponible !== null && quantiteDisponible !== undefined && quantiteDisponible !== ''
+          ? (typeof quantiteDisponible === 'number' ? quantiteDisponible : parseInt(String(quantiteDisponible), 10))
+          : null;
+
+        // Vérifier aussi dans les variants de prix si présents
+        let hasVariantStock = false;
+        const priceVariant = valeursFormulaire.variabilite_prix || valeursFormulaire.price_variant || valeursFormulaire.variation_prix;
+        if (priceVariant && typeof priceVariant === 'object') {
+          const modalites = priceVariant.modalites || priceVariant.valeur || (Array.isArray(priceVariant) ? priceVariant : []);
+          if (Array.isArray(modalites) && modalites.length > 0) {
+            hasVariantStock = modalites.some((modalite: any) => {
+              const variantStock = modalite.stock || modalite.quantite;
+              if (variantStock !== null && variantStock !== undefined && variantStock !== '') {
+                const variantStockValue = typeof variantStock === 'number' ? variantStock : parseInt(String(variantStock), 10);
+                return !isNaN(variantStockValue) && variantStockValue > 0;
+              }
+              return false;
+            });
+          }
+        }
+
+        // Si ni stock global ni stock variant n'est valide (> 0)
+        if ((stockValue === null || isNaN(stockValue) || stockValue <= 0) && !hasVariantStock) {
+          Alert.alert(
+            '⚠️ Quantité obligatoire',
+            'La quantité disponible est obligatoire pour les produits et doit être strictement supérieure à 0.\n\n' +
+            'Pourquoi ? La gestion du stock permet d\'éviter les ventes de produits épuisés et d\'améliorer l\'expérience de vos clients.\n\n' +
+            'Veuillez renseigner la quantité disponible dans le champ dédié avant de continuer.',
+            [{ text: 'OK' }]
+          );
+          setFieldErrors({ quantite_disponible: 'La quantité doit être strictement supérieure à 0' });
+          return;
+        }
+
+        // Effacer l'erreur si la validation réussit
+        if (fieldErrors.quantite_disponible) {
+          const newErrors = { ...fieldErrors };
+          delete newErrors.quantite_disponible;
+          setFieldErrors(newErrors);
+        }
+      }
+    }
 
     // ✅ CORRECTION: Empêcher de passer à un bloc après le bloc produits si le bloc produits n'a pas de produits
     // ✅ NOUVEAU 2025-11-06: Lever contrainte si mode edit_service_info
@@ -2457,6 +2559,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const typeOffreNormalized = typeOffreRaw.toLowerCase();
     const isPrestation = ['prestation', 'service', 'services'].includes(typeOffreNormalized);
 
+    // ✅ NOUVEAU: Vérifier aussi is_tarissable pour déterminer si c'est un produit
+    const isTarissable = valeursFormulaire.is_tarissable;
+    const isProduit = !isPrestation && (isTarissable === true || isTarissable === 'true' || typeOffreNormalized === 'produit');
+
     const nomProduit = extractStringValue('nom_produit');
     const categorieProduit = extractStringValue('categorie_produit');
     const descriptionProduit = extractStringValue('description_produit');
@@ -2733,6 +2839,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['description_produit'])}</Text>
           )}
         </View>
+
+        {/* ✅ NOUVEAU: Champ quantité disponible (uniquement pour les produits) */}
+        {!isPrestation && (
+          <View style={styles.productFieldGroup}>
+            <Text style={styles.fieldLabel}>Quantité disponible</Text>
+            <NativeInput
+              placeholder="Ex: 50"
+              value={extractStringValue('quantite_disponible') || ''}
+              onChangeText={(text) => {
+                const numValue = text.trim() === '' ? null : parseInt(text, 10);
+                handleFieldChange('quantite_disponible', isNaN(numValue as any) ? null : numValue);
+              }}
+              keyboardType="numeric"
+              style={styles.fieldInput}
+            />
+            <Text style={styles.helperText}>Nombre d'unités disponibles en stock</Text>
+            {fieldErrors['quantite_disponible'] && (
+              <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['quantite_disponible'])}</Text>
+            )}
+          </View>
+        )}
 
         <View style={styles.productFieldGroup}>
           <LinearAutocompleteEditor
@@ -4396,6 +4523,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                   origineChampsForMedia = autocompleteData.origine_champs || 'formulaire';
 
+                  // ✅ NOUVEAU: Extraire quantite_disponible et mapper vers stock
+                  const quantiteDisponible = finalServiceData.quantite_disponible?.valeur || valeursFormulaire.quantite_disponible;
+
+                  // ✅ NOUVEAU 2025-01-28: Vérifier si c'est un produit ou une prestation
+                  const typeOffre = finalServiceData.type_offre?.valeur || valeursFormulaire.type_offre || 'produit';
+                  const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+
                   // Construire l'objet produit enrichi des médias
                   const produitObj: any = {
                     nom: nomProduit,
@@ -4408,6 +4542,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     product_labels: productLabelsFromAutocomplete,
                     origine_champs: autocompleteData.origine_champs || 'formulaire'
                   };
+
+                  // ✅ Ajouter le stock si quantite_disponible est défini (validation déjà faite dans goToNextBlock/goToBlock)
+                  if (quantiteDisponible !== null && quantiteDisponible !== undefined && quantiteDisponible !== '') {
+                    const stockValue = typeof quantiteDisponible === 'number' ? quantiteDisponible : parseInt(String(quantiteDisponible), 10);
+                    if (!isNaN(stockValue) && stockValue >= 0) {
+                      produitObj.stock = stockValue;
+                      produitObj.quantite_disponible = stockValue; // Alias pour compatibilité
+                    }
+                  }
 
                   // ✅ NOUVEAU: Ajouter les variations de prix dans produitObj si disponibles
                   // Le backend transformera variation_prix en variants/has_variant
@@ -4486,6 +4629,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       ? produitsNode.valeur[0]
                       : undefined;
 
+
                   if (!combinationString) {
                     if (typeof produitsNode.combinaison_brute === 'string') {
                       combinationString = produitsNode.combinaison_brute;
@@ -4539,6 +4683,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     origineChamps: origineChampsForMedia || 'formulaire'
                   }
                 );
+                // ✅ Note: Validation quantité déjà faite dans goToNextBlock/goToBlock (empêche de quitter le bloc produit)
+                // ✅ Validation backend ultime dans creer_service.rs (sécurité finale)
 
                 // ✅ NOUVEAU: Upload préalable des médias pour éviter payload trop volumineux
                 console.log('[FormulaireYukpoIntelligentScreen] 📤 Début upload préalable des médias...');

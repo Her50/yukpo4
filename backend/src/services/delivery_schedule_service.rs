@@ -44,20 +44,19 @@ impl DeliveryScheduleService {
             let preferred_delivery_date = prefs.preferred_delivery_date;
             let preferred_delivery_time_start = prefs.preferred_delivery_time_start;
             let preferred_delivery_window_hours = prefs.preferred_delivery_window_hours;
-            
+
             if let Some(delivery_date) = preferred_delivery_date {
                 // Calculer quand récupérer pour livrer à cette date/heure
                 let delivery_time_start = preferred_delivery_time_start
                     .unwrap_or_else(|| NaiveTime::from_hms_opt(14, 0, 0).unwrap());
-                
+
                 let delivery_datetime = NaiveDateTime::new(delivery_date, delivery_time_start);
-                let delivery_datetime_utc = DateTime::<Utc>::from_naive_utc_and_offset(
-                    delivery_datetime,
-                    Utc,
-                );
+                let delivery_datetime_utc =
+                    DateTime::<Utc>::from_naive_utc_and_offset(delivery_datetime, Utc);
 
                 // Estimer temps de transport
-                let pickup_datetime = delivery_datetime_utc - Duration::hours(estimated_transit_hours as i64);
+                let pickup_datetime =
+                    delivery_datetime_utc - Duration::hours(estimated_transit_hours as i64);
 
                 // Vérifier si pickup_datetime est dans les plages horaires du prestataire
                 if let Some(config) = product_config {
@@ -199,14 +198,10 @@ impl DeliveryScheduleService {
                                     NaiveTime::parse_from_str(start_str, "%H:%M"),
                                     NaiveTime::parse_from_str(end_str, "%H:%M"),
                                 ) {
-                                    let slot_start = current
-                                        .date_naive()
-                                        .and_time(start_time)
-                                        .and_utc();
-                                    let slot_end = current
-                                        .date_naive()
-                                        .and_time(end_time)
-                                        .and_utc();
+                                    let slot_start =
+                                        current.date_naive().and_time(start_time).and_utc();
+                                    let slot_end =
+                                        current.date_naive().and_time(end_time).and_utc();
 
                                     if slot_start > current {
                                         return Ok(AcceptableTimeSlot {
@@ -215,8 +210,14 @@ impl DeliveryScheduleService {
                                                 end: slot_start + Duration::hours(1),
                                             },
                                             delivery_slot: Some(TimeSlot {
-                                                start: slot_start + Duration::hours(estimated_transit_hours as i64),
-                                                end: slot_end + Duration::hours(estimated_transit_hours as i64),
+                                                start: slot_start
+                                                    + Duration::hours(
+                                                        estimated_transit_hours as i64,
+                                                    ),
+                                                end: slot_end
+                                                    + Duration::hours(
+                                                        estimated_transit_hours as i64,
+                                                    ),
                                             }),
                                             is_flexible: true,
                                         });
@@ -244,4 +245,3 @@ impl DeliveryScheduleService {
         })
     }
 }
-

@@ -87,6 +87,38 @@ const TaxiResultCard: React.FC<TaxiResultCardProps> = ({ taxi, onPress }) => {
                         </Text>
                     </View>
                 )}
+                <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.courseButton]}
+                        onPress={() => {
+                            (navigation as any).navigate('Reservation', {
+                                serviceId: taxi.service_id,
+                                serviceType: 'taxi',
+                                serviceName: taxi.nom_chauffeur || `Taxi ${taxi.telephone}`,
+                                reservationType: 'course',
+                            });
+                        }}
+                    >
+                        <SafeIcon name="car" size={18} color="#fff" />
+                        <Text style={[styles.actionButtonText, styles.courseButtonText]}>
+                            Commander
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.chatButton]}
+                        onPress={() => {
+                            (navigation as any).navigate('ServiceDetailSpecialized', {
+                                serviceId: taxi.service_id,
+                                serviceType: 'taxi',
+                            });
+                        }}
+                    >
+                        <SafeIcon name="message-circle" size={18} color="#fff" />
+                        <Text style={[styles.actionButtonText, styles.chatButtonText]}>
+                            Contacter
+                        </Text>
+                    </TouchableOpacity>
+                </View>
                 <View style={styles.contactRow}>
                     <TouchableOpacity
                         style={styles.contactButton}

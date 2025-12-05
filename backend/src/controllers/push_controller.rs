@@ -33,6 +33,10 @@ pub async fn register_push_token(
         user.id
     );
 
+    // ✅ CORRIGÉ 2025-12-01 : Cloner avant le move pour éviter l'erreur de borrow
+    let device_type = payload.device_type.clone();
+    let device_id = payload.device_id.clone();
+
     match push_notification_service::register_push_token(
         &state.pg,
         user.id,
@@ -48,7 +52,13 @@ pub async fn register_push_token(
             "message": "Token push enregistré avec succès"
         }))),
         Err(e) => {
-            log::error!("[PushController] Erreur enregistrement token: {}", e);
+            log::error!("[PushController] ❌ Erreur enregistrement token: {:?}", e);
+            log::error!(
+                "[PushController] Détails: user_id={}, device_type={}, device_id={:?}",
+                user.id,
+                device_type,
+                device_id
+            );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }

@@ -21,7 +21,7 @@ pub async fn upsert_programme_scolaire(
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (etablissement, classe, annee)
         DO UPDATE SET programme = EXCLUDED.programme
-        "#
+        "#,
     )
     .bind(etablissement)
     .bind(classe)
@@ -44,7 +44,7 @@ pub async fn get_programme_scolaire(
         WHERE etablissement = $1 AND classe = $2
         ORDER BY annee DESC NULLS LAST
         LIMIT 1
-        "#
+        "#,
     )
     .bind(etablissement)
     .bind(classe)

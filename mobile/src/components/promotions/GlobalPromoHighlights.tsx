@@ -30,7 +30,7 @@ const formatPrice = (value?: number | null) => {
     return `${value.toLocaleString('fr-FR')} CFA`;
 };
 
-const GlobalPromoHighlights: React.FC = () => {
+const GlobalPromoHighlights: React.FC = React.memo(() => {
     const navigation = useNavigation<any>();
     const { catalog, loading, error, refresh } = useGlobalPromos();
     const { isEnabled } = useFeatureFlags();
@@ -89,6 +89,12 @@ const GlobalPromoHighlights: React.FC = () => {
                         variant="ghost"
                         disabled={loading}
                         size="sm"
+                    />
+                    <NativeButton
+                        label="Voir tout"
+                        onPress={() => navigation.navigate('GlobalPromoCatalog')}
+                        size="sm"
+                        variant="secondary"
                     />
                     <NativeButton
                         label="Ajouter mon service"
@@ -256,6 +262,8 @@ const styles = StyleSheet.create({
         color: '#CBD5F5',
     },
 });
+
+GlobalPromoHighlights.displayName = 'GlobalPromoHighlights';
 
 export default GlobalPromoHighlights;
 

@@ -44,14 +44,17 @@ pub async fn anti_bruteforce(
     next: Next,
 ) -> Result<Response, StatusCode> {
     let client_ip = extract_client_ip(&req);
-    
+
     // Vérifier si l'IP est bloquée
     let block_key = format!("bruteforce:blocked:{}", client_ip);
-    
+
     let mut redis_conn = match state.redis_client.get_multiplexed_async_connection().await {
         Ok(conn) => conn,
         Err(e) => {
-            warn!("[anti_bruteforce] Redis indisponible: {} - Protection désactivée", e);
+            warn!(
+                "[anti_bruteforce] Redis indisponible: {} - Protection désactivée",
+                e
+            );
             // Fail-open si Redis est indisponible
             return Ok(next.run(req).await);
         }
@@ -144,7 +147,9 @@ pub async fn anti_bruteforce(
 
         warn!(
             "[anti_bruteforce] Tentative échouée pour IP: {} ({}/{})",
-            client_ip, attempt_count + 1, MAX_FAILED_ATTEMPTS
+            client_ip,
+            attempt_count + 1,
+            MAX_FAILED_ATTEMPTS
         );
     } else if response.status().is_success() {
         // En cas de succès, réinitialiser le compteur

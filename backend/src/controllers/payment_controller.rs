@@ -9,11 +9,11 @@ use axum::{
     response::Json as JsonResponse,
     Json,
 };
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::Arc;
 use sqlx::FromRow;
-use chrono::{DateTime, Utc};
+use std::sync::Arc;
 
 #[derive(FromRow)]
 struct PaymentAttemptRow {
@@ -231,14 +231,13 @@ pub async fn confirm_payment(
     let user_id = user.id;
 
     // Récupérer les détails du paiement
-    let payment: Option<PaymentAttemptRow> = sqlx::query_as(
-        "SELECT * FROM payment_attempts WHERE payment_id = $1 AND user_id = $2"
-    )
-    .bind(&req.payment_id)
-    .bind(user_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur DB: {}", e)))?;
+    let payment: Option<PaymentAttemptRow> =
+        sqlx::query_as("SELECT * FROM payment_attempts WHERE payment_id = $1 AND user_id = $2")
+            .bind(&req.payment_id)
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur DB: {}", e)))?;
 
     let payment = payment.ok_or_else(|| AppError::NotFound("Paiement non trouvé".to_string()))?;
 
@@ -253,7 +252,7 @@ pub async fn confirm_payment(
         UPDATE payment_attempts 
         SET status = $1, transaction_id = $2, confirmed_at = NOW()
         WHERE payment_id = $3
-        "#
+        "#,
     )
     .bind(&req.status)
     .bind(transaction_id)
@@ -266,14 +265,12 @@ pub async fn confirm_payment(
     if req.status == "success" {
         let tokens_to_add = payment.amount_xaf; // 1 token = 1 XAF
 
-        sqlx::query(
-            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
-        )
-        .bind(tokens_to_add)
-        .bind(user_id)
-        .execute(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur crédit tokens: {}", e)))?;
+        sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
+            .bind(tokens_to_add)
+            .bind(user_id)
+            .execute(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur crédit tokens: {}", e)))?;
 
         log::info!(
             "[confirm_payment] {} tokens cr?dit?s pour utilisateur {}",

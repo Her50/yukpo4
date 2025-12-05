@@ -69,9 +69,9 @@ pub async fn get_phone_models(
     let models: Vec<PhoneModel> = rows
         .iter()
         .map(|row| PhoneModel {
-            id: row.get("id"),
-            brand: row.get("brand"),
-            model: row.get("model"),
+            id: row.get::<i32, _>("id"),
+            brand: row.get::<String, _>("brand"),
+            model: row.get::<String, _>("model"),
         })
         .collect();
 
@@ -124,9 +124,9 @@ pub async fn create_phone_model(
 
     use sqlx::Row;
     let model = PhoneModel {
-        id: row.get("id"),
-        brand: row.get("brand"),
-        model: row.get("model"),
+        id: row.get::<i32, _>("id"),
+        brand: row.get::<String, _>("brand"),
+        model: row.get::<String, _>("model"),
     };
 
     Ok(Json(model))

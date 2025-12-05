@@ -25,10 +25,10 @@ pub async fn list_token_packs(
     let packs = rows
         .into_iter()
         .map(|row| TokenPack {
-            id: row.try_get("id").unwrap_or_default(),
-            name: row.try_get("name").unwrap_or_default(),
-            tokens: row.try_get("tokens").unwrap_or_default(),
-            price: row.try_get("price").unwrap_or_default(),
+            id: row.get::<Option<_>, _>("id").unwrap_or_default(),
+            name: row.get::<Option<_>, _>("name").unwrap_or_default(),
+            tokens: row.get::<Option<_>, _>("tokens").unwrap_or_default(),
+            price: row.get::<Option<_>, _>("price").unwrap_or_default(),
         })
         .collect();
 

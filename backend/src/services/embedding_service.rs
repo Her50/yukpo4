@@ -45,7 +45,7 @@ async fn update_embedding_status(
          embedding_error = $2, 
          embedding_last_attempt = NOW(),
          updated_at = NOW()
-         WHERE id = $3"
+         WHERE id = $3",
     )
     .bind(status_str)
     .bind(error_message.as_ref())

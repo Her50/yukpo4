@@ -52,11 +52,12 @@ pub async fn get_health_structures(
     let structures: Vec<HealthStructure> = rows
         .iter()
         .map(|row| {
-            let created_at: chrono::NaiveDateTime = row.get("created_at");
+            let created_at: chrono::NaiveDateTime =
+                row.get::<chrono::NaiveDateTime, _>("created_at");
             HealthStructure {
-                id: row.get("id"),
-                structure_type: row.get("structure_type"),
-                name: row.get("name"),
+                id: row.get::<i32, _>("id"),
+                structure_type: row.get::<String, _>("structure_type"),
+                name: row.get::<String, _>("name"),
                 created_at: created_at.to_string(),
             }
         })
@@ -133,11 +134,11 @@ pub async fn create_health_structure(
     })?;
 
     use sqlx::Row;
-    let created_at: chrono::NaiveDateTime = row.get("created_at");
+    let created_at: chrono::NaiveDateTime = row.get::<chrono::NaiveDateTime, _>("created_at");
     let structure = HealthStructure {
-        id: row.get("id"),
-        structure_type: row.get("structure_type"),
-        name: row.get("name"),
+        id: row.get::<i32, _>("id"),
+        structure_type: row.get::<String, _>("structure_type"),
+        name: row.get::<String, _>("name"),
         created_at: created_at.to_string(),
     };
 
@@ -175,11 +176,12 @@ pub async fn get_all_health_structures(
     let structures: Vec<HealthStructure> = rows
         .iter()
         .map(|row| {
-            let created_at: chrono::NaiveDateTime = row.get("created_at");
+            let created_at: chrono::NaiveDateTime =
+                row.get::<chrono::NaiveDateTime, _>("created_at");
             HealthStructure {
-                id: row.get("id"),
-                structure_type: row.get("structure_type"),
-                name: row.get("name"),
+                id: row.get::<i32, _>("id"),
+                structure_type: row.get::<String, _>("structure_type"),
+                name: row.get::<String, _>("name"),
                 created_at: created_at.to_string(),
             }
         })

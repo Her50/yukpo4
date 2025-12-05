@@ -1,0 +1,36 @@
+# ✅ Phase 2: Ingress pour exposition externe
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: yukpomnang-ingress
+  namespace: yukpomnang
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.yukpomnang.com
+    secretName: yukpomnang-tls
+  rules:
+  - host: api.yukpomnang.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: yukpomnang-backend
+            port:
+              number: 80
+      - path: /metrics
+        pathType: Exact
+        backend:
+          service:
+            name: yukpomnang-backend
+            port:
+              number: 80
+

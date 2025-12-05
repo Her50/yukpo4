@@ -878,10 +878,135 @@ export const deliveryApi = {
     }
     return [];
   },
+  // ✅ NOUVEAU 2025-01-27: Uploader un média (image, audio, vidéo) pour le chat vers S3/Wasabi
+  uploadChatMedia: async (fileData: string | { uri: string; type: string; name: string }): Promise<ApiResponse<{ url: string; storage_path: string }>> => {
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        return { success: false, error: 'Non authentifié' };
+      }
+
+      // Créer FormData (React Native compatible)
+      const formData = new FormData();
+
+      // Si c'est une data URI (base64), on doit la convertir
+      if (typeof fileData === 'string' && fileData.startsWith('data:')) {
+        // Extraire les données base64
+        const base64Data = fileData.split(',')[1];
+        const mimeType = fileData.split(';')[0].split(':')[1];
+        const fileName = `file_${Date.now()}.${mimeType.split('/')[1] || 'jpg'}`;
+
+        formData.append('file', {
+          uri: fileData,
+          type: mimeType,
+          name: fileName,
+        } as any);
+      } else if (typeof fileData === 'object' && fileData.uri) {
+        // Si c'est un objet avec URI (fichier local)
+        formData.append('file', {
+          uri: fileData.uri,
+          type: fileData.type || 'application/octet-stream',
+          name: fileData.name || `file_${Date.now()}`,
+        } as any);
+      } else {
+        // Fallback: traiter comme string URI
+        formData.append('file', {
+          uri: fileData as string,
+          type: 'application/octet-stream',
+          name: `file_${Date.now()}`,
+        } as any);
+      }
+
+      const uploadResponse = await fetch(`${API_BASE_URL}/api/chat/media/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      const data = await uploadResponse.json();
+      return {
+        success: uploadResponse.ok && data.success,
+        data: data.files?.[0] || data,
+        error: data.error || (!uploadResponse.ok ? `Erreur ${uploadResponse.status}` : undefined),
+      };
+    } catch (error: any) {
+      console.error('[API] Erreur upload média chat:', error);
+      return {
+        success: false,
+        error: error?.message || 'Erreur upload média',
+      };
+    }
+  },
   // ✅ Phase 9 - Amélioration : Gestion des médias de preuve de livraison
   listProofMedia: async (deliveryId: string) => {
     return apiCall(`/api/delivery/${deliveryId}/proof-media`);
   },
+  // ✅ NOUVEAU 2025-01-27: Uploader un média (image, audio, vidéo) pour le chat vers S3/Wasabi
+  uploadChatMedia: async (fileData: string | { uri: string; type: string; name: string }): Promise<ApiResponse<{ url: string; storage_path: string }>> => {
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        return { success: false, error: 'Non authentifié' };
+      }
+
+      // Créer FormData (React Native compatible)
+      const formData = new FormData();
+
+      // Si c'est une data URI (base64), on doit la convertir
+      if (typeof fileData === 'string' && fileData.startsWith('data:')) {
+        // Extraire les données base64
+        const base64Data = fileData.split(',')[1];
+        const mimeType = fileData.split(';')[0].split(':')[1];
+        const fileName = `file_${Date.now()}.${mimeType.split('/')[1] || 'jpg'}`;
+
+        formData.append('file', {
+          uri: fileData,
+          type: mimeType,
+          name: fileName,
+        } as any);
+      } else if (typeof fileData === 'object' && fileData.uri) {
+        // Si c'est un objet avec URI (fichier local)
+        formData.append('file', {
+          uri: fileData.uri,
+          type: fileData.type || 'application/octet-stream',
+          name: fileData.name || `file_${Date.now()}`,
+        } as any);
+      } else {
+        // Fallback: traiter comme string URI
+        formData.append('file', {
+          uri: fileData as string,
+          type: 'application/octet-stream',
+          name: `file_${Date.now()}`,
+        } as any);
+      }
+
+      const uploadResponse = await fetch(`${API_BASE_URL}/api/chat/media/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      const data = await uploadResponse.json();
+      return {
+        success: uploadResponse.ok && data.success,
+        data: data.files?.[0] || data,
+        error: data.error || (!uploadResponse.ok ? `Erreur ${uploadResponse.status}` : undefined),
+      };
+    } catch (error: any) {
+      console.error('[API] Erreur upload média chat:', error);
+      return {
+        success: false,
+        error: error?.message || 'Erreur upload média',
+      };
+    }
+  },
+
   uploadProofMedia: async (deliveryId: string, payload: {
     media_type: 'image' | 'video';
     media_url: string;
@@ -1307,6 +1432,111 @@ export const iaApi = {
   getVideoAnalyticsOverview: async (days: number = 7) => {
     return apiCall('/api/media/analytics/overview?days=' + days);
   },
+  // ✅ NOUVEAU: Auto-cut intelligent
+  autoCutVideo: async (payload: {
+    video_url: string;
+    video_id?: number;
+    min_scene_duration?: number;
+    max_scene_duration?: number;
+    silence_threshold?: number;
+    detect_highlights?: boolean;
+    target_duration?: number;
+  }) => {
+    return apiCall('/api/ia/video/auto-cut', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  // ✅ NOUVEAU: Synchronisation audio-vidéo
+  syncAudioVideo: async (payload: {
+    video_url: string;
+    audio_url?: string;
+    music_track_id?: number;
+    beat_detection?: boolean;
+    auto_ducking?: boolean;
+    sync_with_transitions?: boolean;
+    target_bpm?: number;
+    video_transitions?: number[];
+  }) => {
+    return apiCall('/api/ia/video/audio-sync', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  // ✅ NOUVEAU: Color grading automatique
+  colorGradeMedia: async (payload: {
+    media_url: string;
+    media_id?: number;
+    style_preset?: string;
+    target_mood?: string;
+    intensity?: number;
+    maintain_skin_tones?: boolean;
+  }) => {
+    return apiCall('/api/ia/media/color-grade', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  // ✅ NOUVEAU: Génération automatique de sous-titres
+  generateAutoCaptions: async (payload: {
+    video_url: string;
+    audio_url?: string;
+    lang?: string;
+    style?: string;
+    position?: string;
+    max_chars_per_line?: number;
+    font_size?: number;
+    background_opacity?: number;
+  }) => {
+    return apiCall('/api/ia/video/auto-captions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  // ✅ NOUVEAU: Génération de previews d'effets
+  generateEffectPreview: async (payload: {
+    effect_name: string;
+    sample_media_url: string;
+    duration?: number;
+    quality?: string;
+  }) => {
+    return apiCall('/api/ia/effects/preview', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  // ✅ NOUVEAU: Génération de variantes de timeline
+  generateTimelineVariants: async (payload: any) => {
+    return apiCall('/api/ia/video/timeline-variants', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  // ✅ NOUVEAU: Suggestions audio contextuelles
+  getAudioSuggestions: async (payload: {
+    product_name: string;
+    product_type?: string;
+    tone?: string;
+    channel?: string;
+    duration_seconds?: number;
+    count?: number;
+  }) => {
+    return apiCall('/api/ia/audio/suggestions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  // ✅ NOUVEAU: Génération de preview rapide
+  generateQuickPreview: async (payload: {
+    timeline: any;
+    quality?: string;
+    max_duration?: number;
+  }) => {
+    return apiCall('/api/ia/video/quick-preview', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 // ===== UTILISATEUR =====
@@ -1517,8 +1747,15 @@ export const analyticsApi = {
 
 // Gestion des commentaires produits (fil moderne)
 export const commentsApi = {
-  getProductComments: async (serviceId: number) => {
-    return apiCall(`/api/services/${serviceId}/comments`);
+  getProductComments: async (serviceId: number, params?: { limit?: number; cursor?: number | null; sort?: string }) => {
+    const queryParams = params ? new URLSearchParams() : undefined;
+    if (params) {
+      if (params.limit) queryParams!.append('limit', params.limit.toString());
+      if (params.cursor) queryParams!.append('cursor', params.cursor.toString());
+      if (params.sort) queryParams!.append('sort', params.sort);
+    }
+    const url = params && queryParams ? `/api/services/${serviceId}/comments?${queryParams.toString()}` : `/api/services/${serviceId}/comments`;
+    return apiCall(url);
   },
   createProductComment: async (
     serviceId: number,

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import ReactNative from 'react-native';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { apiPatch } from '../services/api';
 import { theme } from '../theme/theme';
 const { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } = ReactNative;
@@ -45,6 +46,7 @@ interface UserSettings {
 
 const SettingsScreen: React.FC = () => {
   const { user, updateUser } = useAuth();
+  const { themeMode, setThemeMode, isDark } = useTheme(); // ✅ NOUVEAU: Utiliser ThemeContext
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<UserSettings>({
     // Profil
@@ -69,7 +71,7 @@ const SettingsScreen: React.FC = () => {
     gpsEnabled: true,
 
     // Apparence
-    theme: 'light',
+    theme: themeMode, // ✅ NOUVEAU: Utiliser le thème du context
     fontSize: 'medium',
     compactMode: false,
 
@@ -373,17 +375,35 @@ const SettingsScreen: React.FC = () => {
               'Thème',
               'Choisissez le thème de l\'application',
               [
-                { text: 'Clair', onPress: () => updateSetting('theme', 'light') },
-                { text: 'Sombre', onPress: () => updateSetting('theme', 'dark') },
-                { text: 'Automatique', onPress: () => updateSetting('theme', 'auto') },
+                {
+                  text: 'Clair',
+                  onPress: () => {
+                    updateSetting('theme', 'light');
+                    setThemeMode('light'); // ✅ NOUVEAU: Mettre à jour le context
+                  }
+                },
+                {
+                  text: 'Sombre',
+                  onPress: () => {
+                    updateSetting('theme', 'dark');
+                    setThemeMode('dark'); // ✅ NOUVEAU: Mettre à jour le context
+                  }
+                },
+                {
+                  text: 'Automatique',
+                  onPress: () => {
+                    updateSetting('theme', 'auto');
+                    setThemeMode('auto'); // ✅ NOUVEAU: Mettre à jour le context
+                  }
+                },
                 { text: 'Annuler', style: 'cancel' }
               ]
             );
           }}
         >
           <Text style={styles.selectorText}>
-            {settings.theme === 'light' ? 'Clair' :
-              settings.theme === 'dark' ? 'Sombre' : 'Automatique'}
+            {themeMode === 'light' ? 'Clair' :
+              themeMode === 'dark' ? 'Sombre' : 'Automatique'}
           </Text>
         </TouchableOpacity>
       </View>

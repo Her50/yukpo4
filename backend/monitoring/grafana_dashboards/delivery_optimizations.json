@@ -1,0 +1,150 @@
+{
+    "dashboard": {
+        "title": "Yukpo Delivery - Optimisations Phase 1 & 2",
+        "tags": [
+            "delivery",
+            "optimizations",
+            "phase1",
+            "phase2"
+        ],
+        "timezone": "browser",
+        "schemaVersion": 27,
+        "version": 1,
+        "panels": [
+            {
+                "id": 1,
+                "title": "Pool DB - Connexions",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "delivery_db_pool_size",
+                        "legendFormat": "Total"
+                    },
+                    {
+                        "expr": "delivery_db_pool_active",
+                        "legendFormat": "Active"
+                    },
+                    {
+                        "expr": "delivery_db_pool_idle",
+                        "legendFormat": "Idle"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 0
+                }
+            },
+            {
+                "id": 2,
+                "title": "Matching Algorithm - Performance",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "rate(delivery_matching_started_total[5m])",
+                        "legendFormat": "Started/s"
+                    },
+                    {
+                        "expr": "rate(delivery_matching_success_total[5m])",
+                        "legendFormat": "Success/s"
+                    },
+                    {
+                        "expr": "rate(delivery_matching_failed_total[5m])",
+                        "legendFormat": "Failed/s"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 0
+                }
+            },
+            {
+                "id": 3,
+                "title": "Cache Hit Rate",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "delivery_cache_matching_hit_rate",
+                        "legendFormat": "Hit Rate"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 8
+                }
+            },
+            {
+                "id": 4,
+                "title": "Rate Limiting - Requêtes Bloquées",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "rate(delivery_rate_limit_blocked_total[5m])",
+                        "legendFormat": "Total"
+                    },
+                    {
+                        "expr": "rate(delivery_rate_limit_blocked_by_ip_total[5m])",
+                        "legendFormat": "By IP"
+                    },
+                    {
+                        "expr": "rate(delivery_rate_limit_blocked_by_user_total[5m])",
+                        "legendFormat": "By User"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 8
+                }
+            },
+            {
+                "id": 5,
+                "title": "WebSocket - Connexions",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "delivery_ws_connections_current",
+                        "legendFormat": "Connections"
+                    },
+                    {
+                        "expr": "rate(delivery_ws_messages_sent_total[5m])",
+                        "legendFormat": "Messages/s"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 16
+                }
+            },
+            {
+                "id": 6,
+                "title": "Partitionnement - Archive",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "delivery_partitions_count",
+                        "legendFormat": "Partitions"
+                    },
+                    {
+                        "expr": "delivery_archive_size",
+                        "legendFormat": "Archived"
+                    }
+                ],
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 16
+                }
+            }
+        ]
+    }
+}

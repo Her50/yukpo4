@@ -1,9 +1,6 @@
 // ✅ src/routes/video_routes.rs
 
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
 use std::sync::Arc;
 
 use crate::controllers::product_video_controller::get_my_videos;
@@ -17,4 +14,3 @@ pub fn video_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)
 }
-

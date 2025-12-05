@@ -3,7 +3,7 @@ module.exports = function(api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
-      // 'react-native-reanimated/plugin', // Désactivé temporairement pour le build
+      'react-native-reanimated/plugin', // ✅ Réactivé pour les animations
       [
         'module-resolver',
         {

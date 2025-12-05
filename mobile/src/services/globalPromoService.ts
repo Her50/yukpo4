@@ -1,111 +1,166 @@
-import type { GlobalPromoCatalogItem, GlobalPromoEvent, SubmitGlobalPromoEntryPayload } from '../types/GlobalPromo';
 import { apiGet, apiPost } from './api';
 
-interface CatalogResponse {
-    success?: boolean;
-    data?: any[];
-    message?: string;
+export interface GlobalPromoEvent {
+    id: string;
+    slug: string;
+    theme: string;
+    displayName: string;
+    description?: string;
+    startsAt: string;
+    endsAt: string;
+    recurrenceRule?: string;
+    status: 'draft' | 'scheduled' | 'live' | 'archived';
+    config?: Record<string, unknown>;
+    createdByUserId?: number;
+    createdAt: string;
+    updatedAt: string;
 }
 
-const mapCatalogItem = (raw: any): GlobalPromoCatalogItem => ({
-    event: {
-        id: raw.event?.id ?? raw.event_id ?? raw.eventId,
-        slug: raw.event?.slug ?? raw.slug,
-        theme: raw.event?.theme ?? raw.theme ?? 'black_friday',
-        displayName: raw.event?.display_name ?? raw.event?.displayName ?? raw.display_name ?? '',
-        description: raw.event?.description ?? raw.description,
-        startsAt: raw.event?.starts_at ?? raw.starts_at ?? new Date().toISOString(),
-        endsAt: raw.event?.ends_at ?? raw.ends_at ?? new Date().toISOString(),
-        status: raw.event?.status ?? raw.status ?? 'scheduled',
-        config: raw.event?.config ?? raw.config ?? {},
-    },
-    entry: {
-        id: raw.entry?.id ?? raw.entry_id ?? raw.id,
-        eventId: raw.entry?.event_id ?? raw.event_id ?? raw.event?.id ?? '',
-        serviceId: raw.entry?.service_id ?? raw.service_id ?? 0,
-        discountPercentage:
-            raw.entry?.discount_percentage ?? raw.discount_percentage ?? raw.discountPercentage,
-        promoPriceCfa: raw.entry?.promo_price_cfa ?? raw.promo_price_cfa ?? raw.promoPriceCfa,
-        availability: raw.entry?.availability ?? raw.availability ?? 'online',
-        status: raw.entry?.status ?? raw.status ?? 'approved',
-        metadata: raw.entry?.metadata ?? raw.metadata ?? {},
-    },
-    product: raw.product
-        ? {
-            id: raw.product.id,
-            promoEntryId: raw.product.promo_entry_id ?? raw.product.promoEntryId ?? raw.entry?.id,
-            availability: raw.product.availability ?? raw.entry?.availability ?? 'online',
-            snapshot: raw.product.snapshot ?? raw.product,
-            priorityScore: raw.product.priority_score ?? raw.product.priorityScore ?? 0,
-            highlighted: Boolean(raw.product.highlighted),
-        }
-        : undefined,
-});
-
-export const fetchGlobalPromoCatalog = async (): Promise<GlobalPromoCatalogItem[]> => {
-    try {
-        const response = await apiGet<CatalogResponse>('/api/global-promos/catalog');
-        if (!response.success || !response.data) {
-            return [];
-        }
-        // Vérifier que response.data est bien un tableau
-        if (!Array.isArray(response.data)) {
-            console.warn('[fetchGlobalPromoCatalog] response.data n\'est pas un tableau:', response.data);
-            return [];
-        }
-        return response.data.map(mapCatalogItem);
-    } catch (error) {
-        console.error('[fetchGlobalPromoCatalog] Erreur lors de la récupération du catalogue:', error);
-        return [];
-    }
-};
-
-interface MyEventsResponse {
-    events: any[];
-    entries: any[];
+export interface GlobalPromoEntry {
+    id: string;
+    eventId: string;
+    serviceId: number;
+    liveSessionId?: string | null;
+    submittedByUserId?: number;
+    discountPercentage?: number | null;
+    promoPriceCfa?: number | null;
+    stockCap?: number | null;
+    availability: 'online' | 'live' | 'both';
+    status: 'draft' | 'pending_review' | 'approved' | 'rejected' | 'published' | 'ended';
+    metadata?: Record<string, unknown>;
+    publishedAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
 }
 
-const mapEvent = (raw: any): GlobalPromoEvent => ({
-    id: raw.id,
-    slug: raw.slug,
-    theme: raw.theme,
-    displayName: raw.display_name ?? raw.displayName ?? '',
-    description: raw.description,
-    startsAt: raw.starts_at ?? raw.startsAt ?? new Date().toISOString(),
-    endsAt: raw.ends_at ?? raw.endsAt ?? new Date().toISOString(),
-    status: raw.status,
-    config: raw.config ?? {},
-});
+export interface GlobalPromoProductSnapshot {
+    id: string;
+    promoEntryId: string;
+    availability: 'online' | 'live' | 'both';
+    snapshot: Record<string, unknown>;
+    priorityScore: number;
+    highlighted: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
 
-const mapEntry = (raw: any): GlobalPromoCatalogItem['entry'] => ({
-    id: raw.id,
-    eventId: raw.event_id ?? raw.eventId,
-    serviceId: raw.service_id ?? raw.serviceId,
-    availability: raw.availability ?? 'online',
-    status: raw.status ?? 'pending_review',
-    discountPercentage: raw.discount_percentage ?? raw.discountPercentage,
-    promoPriceCfa: raw.promo_price_cfa ?? raw.promoPriceCfa,
-    metadata: raw.metadata ?? {},
-});
-
-export const fetchMyGlobalPromoEvents = async (): Promise<{
-    events: GlobalPromoEvent[];
-    entries: GlobalPromoCatalogItem['entry'][];
-}> => {
-    const response = await apiGet<{ data?: MyEventsResponse; success?: boolean }>('/api/me/global-promos/events');
-    if (!response.success || !response.data) {
-        return { events: [], entries: [] };
-    }
-    return {
-        events: (response.data.events ?? []).map(mapEvent),
-        entries: (response.data.entries ?? []).map(mapEntry),
+export interface GlobalPromoCatalogItem {
+    event: GlobalPromoEvent;
+    entry: GlobalPromoEntry;
+    product?: GlobalPromoProductSnapshot;
+    badges?: {
+        eventIsLive: boolean;
+        eventIsImminent: boolean;
     };
+}
+
+export interface GlobalPromoCatalogPage {
+    items: GlobalPromoCatalogItem[];
+    page: number;
+    pageSize: number;
+    total: number;
+    hasMore: boolean;
+}
+
+interface ApiResponse<T> {
+    success?: boolean;
+    data?: T;
+    message?: string;
+    error?: string;
+}
+
+/**
+ * Récupère le catalogue des promotions globales (Black Friday, etc.)
+ */
+export const fetchGlobalPromoCatalog = async (params?: {
+    page?: number;
+    pageSize?: number;
+    highlightedOnly?: boolean;
+    eventSlug?: string;
+    availability?: 'online' | 'live' | 'both';
+    status?: string;
+    search?: string;
+    sort?: 'priority' | 'ending_soon' | 'recent' | 'newest_event';
+    startsWithinMinutes?: number;
+}): Promise<GlobalPromoCatalogPage> => {
+    try {
+        const searchParams = new URLSearchParams();
+        if (params?.page) searchParams.set('page', String(params.page));
+        if (params?.pageSize) searchParams.set('page_size', String(params.pageSize));
+        if (params?.highlightedOnly) searchParams.set('highlighted_only', 'true');
+        if (params?.eventSlug) searchParams.set('event_slug', params.eventSlug);
+        if (params?.availability) searchParams.set('availability', params.availability);
+        if (params?.status) searchParams.set('status', params.status);
+        if (params?.search) searchParams.set('search', params.search);
+        if (params?.sort) searchParams.set('sort', params.sort);
+        if (params?.startsWithinMinutes)
+            searchParams.set('starts_within_minutes', String(params.startsWithinMinutes));
+
+        const query = searchParams.toString();
+        const url = query ? `/api/global-promos/catalog?${query}` : '/api/global-promos/catalog';
+
+        const response = await apiGet<ApiResponse<GlobalPromoCatalogPage>>(url);
+        const payload = response.data || response;
+        if (payload.success === false) {
+            throw new Error(payload.error || payload.message || 'Erreur lors de la récupération du catalogue');
+        }
+        if (!payload.data) {
+            return { items: [], page: 1, pageSize: 24, total: 0, hasMore: false };
+        }
+        return payload.data;
+    } catch (error: any) {
+        console.error('[globalPromoService] Erreur fetchGlobalPromoCatalog:', error);
+        throw error;
+    }
 };
 
+/**
+ * Récupère la liste des événements de promotion globale
+ */
+export const fetchGlobalPromoEvents = async (includeArchived: boolean = false): Promise<GlobalPromoEvent[]> => {
+    try {
+        const query = includeArchived ? '?include_archived=true' : '';
+        const response = await apiGet<ApiResponse<GlobalPromoEvent[]>>(`/api/global-promos/events${query}`);
+        const payload = response.data || response;
+        if (payload.success === false) {
+            throw new Error(payload.error || payload.message || 'Erreur lors de la récupération des événements');
+        }
+        return payload.data || [];
+    } catch (error: any) {
+        console.error('[globalPromoService] Erreur fetchGlobalPromoEvents:', error);
+        throw error;
+    }
+};
+
+/**
+ * Soumet une entrée de promotion globale
+ */
 export const submitGlobalPromoEntry = async (
     eventId: string,
-    payload: SubmitGlobalPromoEntryPayload,
-) => {
-    return apiPost(`/api/me/global-promos/events/${eventId}/entries`, payload);
+    payload: {
+        serviceId: number;
+        discountPercentage?: number;
+        promoPriceCfa?: number;
+        stockCap?: number;
+        availability: 'online' | 'live' | 'both';
+        metadata?: Record<string, unknown>;
+    }
+): Promise<GlobalPromoEntry> => {
+    try {
+        const response = await apiPost<ApiResponse<GlobalPromoEntry>>(
+            `/api/me/global-promos/events/${eventId}/entries`,
+            payload
+        );
+        const payloadResponse = response.data || response;
+        if (payloadResponse.success === false) {
+            throw new Error(payloadResponse.error || payloadResponse.message || 'Erreur lors de la soumission');
+        }
+        if (!payloadResponse.data) {
+            throw new Error('Réponse invalide');
+        }
+        return payloadResponse.data;
+    } catch (error: any) {
+        console.error('[globalPromoService] Erreur submitGlobalPromoEntry:', error);
+        throw error;
+    }
 };
-

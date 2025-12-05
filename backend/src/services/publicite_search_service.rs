@@ -32,19 +32,27 @@ impl PubliciteSearchService {
 
         // ✅ OPTIMISÉ: Vérifier le cache d'abord
         let cache_key = "publicites:active";
-        let active_publicites: Option<Vec<(i32, Vec<String>, String, Option<f64>, Option<f64>, Option<i32>)>> = 
-            if let Some(cache) = &self.cache_service {
-                cache.get(cache_key).await.unwrap_or(None)
-            } else {
-                None
-            };
+        let active_publicites: Option<
+            Vec<(
+                i32,
+                Vec<String>,
+                String,
+                Option<f64>,
+                Option<f64>,
+                Option<i32>,
+            )>,
+        > = if let Some(cache) = &self.cache_service {
+            cache.get(cache_key).await.unwrap_or(None)
+        } else {
+            None
+        };
 
         let active_publicites = if let Some(cached) = active_publicites {
             log::debug!("[PubliciteSearchService] Cache hit pour publicités actives");
             cached
         } else {
             log::debug!("[PubliciteSearchService] Cache miss, requête DB");
-            
+
             // ✅ OPTIMISÉ: Utiliser les colonnes pré-calculées pub_lng/pub_lat au lieu de ST_X/ST_Y
             // Cela évite le calcul géométrique à chaque requête (409ms → <50ms)
             let rows = sqlx::query(
@@ -69,19 +77,25 @@ impl PubliciteSearchService {
 
             let mut publicites = Vec::new();
             for row in rows {
-                let id: i32 = row.get("id");
-                let produits_indexes: Vec<String> = row.try_get("produits_indexes").unwrap_or_default();
-                let zone: String = row.try_get("zone_geographique").unwrap_or_default();
-                let pub_lng: Option<f64> = row.try_get("pub_lng").ok();
-                let pub_lat: Option<f64> = row.try_get("pub_lat").ok();
-                let rayon_km: Option<i32> = row.try_get("rayon_km").ok();
-                
+                let id: i32 = row.get::<i32, _>("id");
+                let produits_indexes: Vec<String> = row
+                    .get::<Option<Vec<String>>, _>("produits_indexes")
+                    .unwrap_or_default();
+                let zone: String = row
+                    .get::<Option<String>, _>("zone_geographique")
+                    .unwrap_or_default();
+                let pub_lng: Option<f64> = row.get::<Option<f64>, _>("pub_lng");
+                let pub_lat: Option<f64> = row.get::<Option<f64>, _>("pub_lat");
+                let rayon_km: Option<i32> = row.get::<Option<i32>, _>("rayon_km");
+
                 publicites.push((id, produits_indexes, zone, pub_lng, pub_lat, rayon_km));
             }
 
             // ✅ Mettre en cache pour 5 minutes
             if let Some(cache) = &self.cache_service {
-                let _ = cache.set_with_ttl(cache_key, &publicites, Duration::from_secs(300)).await;
+                let _ = cache
+                    .set_with_ttl(cache_key, &publicites, Duration::from_secs(300))
+                    .await;
             }
 
             publicites

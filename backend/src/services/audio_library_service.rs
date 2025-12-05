@@ -82,14 +82,13 @@ pub async fn attach_loop_to_service(
     service_id: i32,
     loop_id: &str,
 ) -> AppResult<i32> {
-    let service_owner: Option<ServiceUserIdRow> = sqlx::query_as(
-        "SELECT user_id FROM services WHERE id = $1"
-    )
-    .bind(service_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(AppError::from)?;
-    
+    let service_owner: Option<ServiceUserIdRow> =
+        sqlx::query_as("SELECT user_id FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(AppError::from)?;
+
     let service_owner = service_owner
         .ok_or_else(|| AppError::NotFound("Service introuvable".to_string()))?
         .user_id;
@@ -114,7 +113,7 @@ pub async fn attach_loop_to_service(
     let mut last_error = None;
     let mut response = None;
     let mut is_dns_error = false;
-    
+
     // Tentative avec retry (3 tentatives)
     for attempt in 1..=3 {
         match client.get(audio_loop.url).send().await {
@@ -123,22 +122,30 @@ pub async fn attach_loop_to_service(
                     response = Some(resp);
                     break;
                 } else {
-                    last_error = Some(format!("Statut HTTP {} lors du téléchargement", resp.status()));
+                    last_error = Some(format!(
+                        "Statut HTTP {} lors du téléchargement",
+                        resp.status()
+                    ));
                     if attempt < 3 {
                         info!(
                             "[AudioLibrary] Tentative {}/3 échouée (statut {}), retry...",
-                            attempt, resp.status()
+                            attempt,
+                            resp.status()
                         );
-                        tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+                        tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64))
+                            .await;
                     }
                 }
             }
             Err(err) => {
                 let error_msg = err.to_string();
                 last_error = Some(error_msg.clone());
-                
+
                 // Vérifier si c'est une erreur DNS
-                if error_msg.contains("dns error") || error_msg.contains("failed to lookup") || error_msg.contains("Name or service not known") {
+                if error_msg.contains("dns error")
+                    || error_msg.contains("failed to lookup")
+                    || error_msg.contains("Name or service not known")
+                {
                     is_dns_error = true;
                     warn!(
                         "[AudioLibrary] Erreur DNS pour {}: {}. Tentative fallback local...",
@@ -146,13 +153,14 @@ pub async fn attach_loop_to_service(
                     );
                     break; // Sortir de la boucle pour essayer le fallback
                 }
-                
+
                 if attempt < 3 {
                     info!(
                         "[AudioLibrary] Tentative {}/3 échouée ({}), retry...",
                         attempt, error_msg
                     );
-                    tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+                    tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64))
+                        .await;
                 }
             }
         }
@@ -168,15 +176,26 @@ pub async fn attach_loop_to_service(
                 local_path.display()
             );
             tokio::fs::read(&local_path).await.map_err(|err| {
+                error!(
+                    "[AudioLibrary] Impossible de lire le fichier audio local {}: {}",
+                    local_path.display(),
+                    err
+                );
                 AppError::Internal(format!(
                     "Impossible de lire le fichier audio local {}: {}",
-                    local_path.display(), err
+                    local_path.display(),
+                    err
                 ))
             })?
         } else {
-            return Err(AppError::Internal(format!(
-                "CDN inaccessible et fichier local introuvable ({}). Configurez le CDN ou placez le fichier dans assets/audio/",
-                local_path.display()
+            // ✅ CORRECTION: Ne pas faire échouer complètement, mais retourner une erreur claire
+            error!(
+                "[AudioLibrary] CDN inaccessible (DNS) et fichier local introuvable: {}. Service_id: {}, Loop_id: {}",
+                local_path.display(), service_id, loop_id
+            );
+            return Err(AppError::BadRequest(format!(
+                "Boucle audio temporairement indisponible. Le CDN est inaccessible et le fichier local n'est pas disponible. Réessayez plus tard ou contactez le support si le problème persiste. (Loop: {})",
+                loop_id
             )));
         }
     } else {
@@ -186,14 +205,13 @@ pub async fn attach_loop_to_service(
                 last_error.unwrap_or_else(|| "Erreur inconnue".to_string())
             ))
         })?;
-        
+
         response
             .bytes()
             .await
             .map_err(|err| AppError::Internal(format!("Erreur lecture boucle audio: {err}")))?
             .to_vec()
     };
-
 
     let file_extension = audio_loop.url.rsplit('.').next().unwrap_or("mp3");
 
@@ -240,17 +258,20 @@ pub async fn attach_loop_to_service(
             uploaded_at
         )
         VALUES ($1, 'audio', 'audio', $2, $3, $4, $5, $6, NOW())
-        RETURNING id"
+        RETURNING id",
     )
     .bind(service_id)
     .bind(&normalized_path)
     .bind(bytes.len() as i64)
     .bind(file_extension)
-    .bind(format!("Boucle audio: {} ({})", audio_loop.title, audio_loop.genre))
+    .bind(format!(
+        "Boucle audio: {} ({})",
+        audio_loop.title, audio_loop.genre
+    ))
     .bind(&vec![
         "audio".to_string(),
         audio_loop.genre.to_string(),
-        audio_loop.mood.to_string()
+        audio_loop.mood.to_string(),
     ])
     .fetch_one(&state.pg)
     .await

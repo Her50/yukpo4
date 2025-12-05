@@ -60,7 +60,7 @@ pub async fn enrich_service_with_google_places_data(
         FROM google_places_data
         WHERE service_id = $1 AND place_id = $2
         LIMIT 1
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(&place_id)
@@ -73,13 +73,13 @@ pub async fn enrich_service_with_google_places_data(
         let google_place_data: Option<Value> = row
             .try_get("google_place_data")
             .map_err(|e| AppError::Internal(format!("Erreur parsing Google Places JSON: {}", e)))?;
-        
+
         if let Some(mut gp_data) = google_place_data {
             // Nettoyer les valeurs NULL du JSON
             if let Some(gp_obj) = gp_data.as_object_mut() {
                 gp_obj.retain(|_, v| !v.is_null());
             }
-            
+
             // Remplacer le place_id par l'objet complet dans service_data
             if let Some(data_obj) = service_data.as_object_mut() {
                 data_obj.insert("google_place".to_string(), gp_data);
@@ -101,7 +101,9 @@ pub async fn enrich_services_with_google_places_data(
     services: &mut Vec<(i32, Value)>,
 ) -> Result<(), AppError> {
     for (service_id, service_data) in services.iter_mut() {
-        if let Err(e) = enrich_service_with_google_places_data(pool, *service_id, service_data).await {
+        if let Err(e) =
+            enrich_service_with_google_places_data(pool, *service_id, service_data).await
+        {
             warn!(
                 "[enrich_google_places] Erreur enrichissement service {}: {}",
                 service_id, e
@@ -114,7 +116,7 @@ pub async fn enrich_services_with_google_places_data(
 
 /// ✅ OPTIMISÉ 2025-11-28: Enrichit plusieurs services en BATCH (1 requête SQL au lieu de N)
 /// Récupère toutes les données Google Places en une seule requête SQL pour améliorer les performances
-/// 
+///
 /// Version pour Vec<(service_id, service_data)>
 pub async fn enrich_search_results_batch_with_google_places_data(
     pool: &PgPool,
@@ -178,7 +180,7 @@ pub async fn enrich_search_results_batch_with_google_places_data(
             ) as google_place_data
         FROM google_places_data
         WHERE service_id = ANY($1) AND place_id = ANY($2)
-        "#
+        "#,
     )
     .bind(&service_ids)
     .bind(&place_ids)
@@ -189,11 +191,11 @@ pub async fn enrich_search_results_batch_with_google_places_data(
     // 3. Créer un HashMap pour accès rapide
     let mut google_places_data_map: HashMap<i32, Value> = HashMap::new();
     for row in rows {
-        let service_id: i32 = row.get("service_id");
+        let service_id: i32 = row.get::<i32, _>("service_id");
         let google_place_data: Option<Value> = row
             .try_get("google_place_data")
             .map_err(|e| AppError::Internal(format!("Erreur parsing Google Places JSON: {}", e)))?;
-        
+
         if let Some(mut gp_data) = google_place_data {
             // Nettoyer les valeurs NULL du JSON
             if let Some(gp_obj) = gp_data.as_object_mut() {
@@ -228,7 +230,8 @@ pub async fn enrich_search_results_batch(
     // 1. Extraire tous les (service_id, place_id) des résultats
     let mut service_place_map: HashMap<i32, String> = HashMap::new();
     for result in results.iter() {
-        if let Some(place_id) = result.data
+        if let Some(place_id) = result
+            .data
             .get("google_place")
             .and_then(|gp| gp.as_object())
             .and_then(|gp_obj| gp_obj.get("place_id"))
@@ -278,7 +281,7 @@ pub async fn enrich_search_results_batch(
             ) as google_place_data
         FROM google_places_data
         WHERE service_id = ANY($1) AND place_id = ANY($2)
-        "#
+        "#,
     )
     .bind(&service_ids)
     .bind(&place_ids)
@@ -289,11 +292,11 @@ pub async fn enrich_search_results_batch(
     // 3. Créer un HashMap pour accès rapide
     let mut google_places_data_map: HashMap<i32, Value> = HashMap::new();
     for row in rows {
-        let service_id: i32 = row.get("service_id");
+        let service_id: i32 = row.get::<i32, _>("service_id");
         let google_place_data: Option<Value> = row
             .try_get("google_place_data")
             .map_err(|e| AppError::Internal(format!("Erreur parsing Google Places JSON: {}", e)))?;
-        
+
         if let Some(mut gp_data) = google_place_data {
             if let Some(gp_obj) = gp_data.as_object_mut() {
                 gp_obj.retain(|_, v| !v.is_null());

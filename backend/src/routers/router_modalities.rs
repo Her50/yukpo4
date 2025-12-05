@@ -344,8 +344,8 @@ pub async fn delete_modality(
         }
         Some(m) => {
             use sqlx::Row;
-            let is_system: bool = m.try_get("is_system").unwrap_or(false);
-            let added_by: Option<i32> = m.try_get("added_by").ok();
+            let is_system: bool = m.get::<Option<_>, _>("is_system").unwrap_or(false);
+            let added_by: Option<i32> = m.get::<Option<_>, _>("added_by");
 
             if is_system {
                 return Ok(Json(ApiResponse {

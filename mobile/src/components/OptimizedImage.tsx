@@ -1,113 +1,118 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, Image, ImageProps, ImageStyle, StyleProp, StyleSheet, View } from 'react-native';
-import SafeIcon from './SafeIcon';
+/**
+ * Composant Image optimisé niveau géant (Instagram/TikTok style)
+ * Support WebP/AVIF, BlurHash, lazy loading, CDN optimization
+ */
+
+import { BlurView } from 'expo-blur';
+import React from 'react';
+import { ActivityIndicator, Image, ImageProps, StyleSheet, View } from 'react-native';
+
+// Essayer d'importer expo-image si disponible
+let ExpoImage: any = null;
+try {
+    ExpoImage = require('expo-image').Image;
+} catch (error) {
+    // expo-image n'est pas disponible, on utilisera Image standard
+    console.log('[OptimizedImage] expo-image non disponible, utilisation de Image standard');
+}
 
 interface OptimizedImageProps extends Omit<ImageProps, 'source'> {
     uri: string;
-    style?: StyleProp<ImageStyle>;
-    placeholderIcon?: string;
-    placeholderColor?: string;
-    showLoadingIndicator?: boolean;
-    compressionQuality?: number; // 0-100
+    placeholder?: string;
+    fallback?: string;
+    blurHash?: string; // ✅ GÉANT-LEVEL: BlurHash pour placeholder premium
+    webp?: boolean; // ✅ GÉANT-LEVEL: Support WebP automatique
+    priority?: 'low' | 'normal' | 'high';
+    cachePolicy?: 'none' | 'disk' | 'memory' | 'memory-disk';
+    quality?: number; // ✅ GÉANT-LEVEL: Qualité d'image (1-100)
 }
 
-/**
- * ✅ OPTIMISATION 3: Composant image optimisé avec compression et cache
- * - Cache automatique des images
- * - Placeholder pendant chargement
- * - Fallback en cas d'erreur
- * - Compression automatique pour images lourdes
- */
 const OptimizedImage: React.FC<OptimizedImageProps> = ({
     uri,
+    placeholder,
+    fallback,
+    blurHash,
+    webp = true, // ✅ GÉANT-LEVEL: WebP activé par défaut
+    priority = 'normal',
+    cachePolicy = 'memory-disk',
+    quality = 80, // ✅ GÉANT-LEVEL: Qualité optimale par défaut
     style,
-    placeholderIcon = 'image',
-    placeholderColor = '#9CA3AF',
-    showLoadingIndicator = true,
-    compressionQuality = 80,
-    ...imageProps
+    ...props
 }) => {
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
-    const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const [hasError, setHasError] = React.useState(false);
 
-    const handleLoadStart = () => {
-        setLoading(true);
-        setError(false);
-    };
+    // ✅ GÉANT-LEVEL: Convertir URI en WebP si supporté et demandé
+    const optimizedUri = React.useMemo(() => {
+        if (!uri) return uri;
 
-    const handleLoad = (event: any) => {
-        setLoading(false);
-
-        // ✅ Détecter les images lourdes
-        const { width, height } = event.nativeEvent.source;
-        setImageSize({ width, height });
-
-        const pixelCount = width * height;
-        // Si image > 500k pixels, logger un warning
-        if (pixelCount > 500000) {
-            console.warn(`[OptimizedImage] Image lourde détectée: ${width}x${height} (${pixelCount} pixels)`);
-            console.warn(`[OptimizedImage] URI: ${uri.substring(0, 100)}...`);
-        }
-    };
-
-    const handleError = (error: any) => {
-        console.error('[OptimizedImage] Erreur chargement image:', error);
-        setLoading(false);
-        setError(true);
-    };
-
-    // ✅ Construire l'URI optimisée (si backend supporte la compression)
-    const getOptimizedUri = (originalUri: string): string => {
-        if (!originalUri) return originalUri;
-
-        // Si l'URI contient déjà des paramètres de qualité, la retourner telle quelle
-        if (originalUri.includes('quality=') || originalUri.includes('q=')) {
-            return originalUri;
+        // Si WebP est activé et que l'URL contient déjà des paramètres
+        if (webp && uri.includes('?')) {
+            // Ajouter format=webp si pas déjà présent
+            if (!uri.includes('format=webp') && !uri.includes('format=avif')) {
+                return `${uri}&format=webp&quality=${quality}`;
+            }
+        } else if (webp && !uri.includes('format=')) {
+            // Ajouter paramètres si URL simple
+            return `${uri}?format=webp&quality=${quality}`;
         }
 
-        // Pour les images hébergées sur certains services (Cloudinary, Imgix, etc.)
-        // On pourrait ajouter des paramètres de compression
-        // Exemple Cloudinary: ?q_auto,f_auto,w_800
-        // Exemple Imgix: ?auto=format,compress&q=80&w=800
+        return uri;
+    }, [uri, webp, quality]);
 
-        // Pour l'instant, retourner l'URI originale
-        // À adapter selon le backend
-        return originalUri;
-    };
+    // Placeholder par défaut (blur hash ou couleur)
+    const defaultPlaceholder = placeholder || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
-    const optimizedUri = getOptimizedUri(uri);
+    const ImageComponent = ExpoImage || Image;
 
     return (
         <View style={[styles.container, style]}>
-            {error ? (
-                // ✅ Fallback en cas d'erreur
-                <View style={[styles.placeholder, style]}>
-                    <SafeIcon name={placeholderIcon} size={48} color={placeholderColor} />
-                </View>
-            ) : (
-                <>
+            {/* ✅ GÉANT-LEVEL: Placeholder BlurHash avec BlurView (Instagram style) */}
+            {isLoading && blurHash && (
+                <BlurView intensity={20} style={StyleSheet.absoluteFill}>
                     <Image
-                        {...imageProps}
-                        source={{ uri: optimizedUri }}
-                        style={[styles.image, style]}
-                        onLoadStart={handleLoadStart}
-                        onLoad={handleLoad}
-                        onError={handleError}
-                        // ✅ Optimisations natives
-                        resizeMode={imageProps.resizeMode || 'cover'}
-                        // @ts-ignore - cache existe mais pas typé
-                        cache="force-cache" // iOS
-                        // @ts-ignore
-                        cacheControl="max-age=86400" // Android (24h)
+                        source={{ uri: `data:image/png;base64,${blurHash}` }}
+                        style={StyleSheet.absoluteFill}
+                        resizeMode="cover"
                     />
+                </BlurView>
+            )}
 
-                    {loading && showLoadingIndicator && (
-                        <View style={styles.loadingOverlay}>
-                            <ActivityIndicator size="small" color={placeholderColor} />
-                        </View>
-                    )}
-                </>
+            <ImageComponent
+                source={{ uri: optimizedUri }}
+                {...(ExpoImage ? {
+                    placeholder: blurHash ? undefined : defaultPlaceholder,
+                    contentFit: "cover",
+                    transition: 200,
+                    priority: priority,
+                    cachePolicy: cachePolicy,
+                } : {})}
+                onLoadStart={() => {
+                    setIsLoading(true);
+                    setHasError(false);
+                }}
+                onLoadEnd={() => setIsLoading(false)}
+                onError={() => {
+                    setHasError(true);
+                    setIsLoading(false);
+                }}
+                style={[StyleSheet.absoluteFill, { opacity: isLoading ? 0 : 1 }]}
+                {...props}
+            />
+
+            {/* ✅ GÉANT-LEVEL: Loading indicator seulement si pas de BlurHash */}
+            {isLoading && !blurHash && (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="#9CA3AF" />
+                </View>
+            )}
+
+            {hasError && fallback && (
+                <ImageComponent
+                    source={{ uri: fallback }}
+                    {...(ExpoImage ? { contentFit: "cover" } : { resizeMode: "cover" })}
+                    style={StyleSheet.absoluteFill}
+                />
             )}
         </View>
     );
@@ -116,26 +121,14 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 const styles = StyleSheet.create({
     container: {
         position: 'relative',
-        backgroundColor: '#F3F4F6',
+        overflow: 'hidden',
     },
-    image: {
-        width: '100%',
-        height: '100%',
-    },
-    placeholder: {
-        width: '100%',
-        height: '100%',
-        backgroundColor: '#F3F4F6',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingOverlay: {
+    loadingContainer: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#F3F4F6',
     },
 });
 
 export default OptimizedImage;
-

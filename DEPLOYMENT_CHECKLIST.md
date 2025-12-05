@@ -1,186 +1,227 @@
-# ✅ Checklist de Déploiement - Améliorations Workflow de Livraison
+# ✅ Checklist de déploiement - Services IA
 
-## 📋 Checklist Rapide
+## 1. Application des migrations sur Render
 
-### 🔴 Avant Déploiement
+### Option A: Via SQLx CLI (Recommandé)
 
-- [ ] **Sauvegarde base de données** effectuée
-- [ ] **Code review** effectué
-- [ ] **Tests** passent (backend, frontend, mobile)
-- [ ] **Documentation** à jour
-- [ ] **Variables d'environnement** configurées
-- [ ] **Migrations testées** en staging
+```bash
+# Windows PowerShell
+.\scripts\apply_migrations_render.ps1
 
----
+# Linux/Mac
+chmod +x scripts/apply_migrations_render.sh
+./scripts/apply_migrations_render.sh
+```
 
-### 🟡 Backend
+### Option B: Automatique au démarrage
 
-#### Préparation
-- [ ] Migrations SQL créées et testées
-- [ ] `auto_migrate.rs` contient les nouvelles fonctions
-- [ ] `sqlx-data.json` régénéré (si nécessaire)
-- [ ] Variables d'environnement configurées :
-  - [ ] `DATABASE_URL`
-  - [ ] `SQLX_OFFLINE=true` (pour build sans DB)
+Les migrations s'appliquent automatiquement via `auto_migrate.rs` au démarrage du serveur.
 
-#### Déploiement
-- [ ] Migrations appliquées sur la base de production
-- [ ] Code compilé sans erreurs (`cargo build --release`)
-- [ ] Service redémarré
-- [ ] Logs vérifiés :
-  - [ ] Migrations appliquées
-  - [ ] Tâches périodiques démarrées
-  - [ ] Pas d'erreurs critiques
+**Vérification**:
+```sql
+-- Se connecter à la base Render
+psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
 
-#### Vérifications
-- [ ] Tables créées :
-  - [ ] `product_delivery_config`
-  - [ ] `product_orders`
-  - [ ] `order_cancellations`
-  - [ ] `product_cancellation_stats`
-  - [ ] `category_preparation_stats`
-  - [ ] `product_stock_locations`
-  - [ ] `stock_reservations`
-  - [ ] `courier_verification_codes`
-- [ ] Routes API testées :
-  - [ ] `POST /api/orders`
-  - [ ] `GET /api/orders/:id`
-  - [ ] `GET /api/provider/:id/analytics/dashboard`
-- [ ] Tâches périodiques actives :
-  - [ ] Recalcul stats catégories
-  - [ ] Recalcul stats annulation
-  - [ ] OrderTimeoutMonitor
+-- Vérifier les tables créées
+\dt book_exchanges
+\dt book_recommendations
+\dt book_price_history
+\dt student_profiles
+\dt program_recommendations
+\dt cv_ai_analyses
+\dt salary_predictions
+```
 
----
+## 2. Vérification des endpoints backend
 
-### 🟢 Frontend
+### Tests manuels
 
-#### Préparation
-- [ ] Nouveaux fichiers créés :
-  - [ ] `SimilarProductsPage.tsx`
-  - [ ] `OrderManagementPage.tsx`
-  - [ ] `ProviderAnalyticsPage.tsx`
-  - [ ] `DeliveryBadge.tsx`
-  - [ ] `providerAnalyticsService.ts`
-  - [ ] `productDeliveryService.ts`
-- [ ] Routes ajoutées dans `App.tsx`
-- [ ] Routes ajoutées dans `AppRoutesRegistry.ts`
-- [ ] Variables d'environnement configurées :
-  - [ ] `VITE_API_BASE_URL`
-  - [ ] `VITE_WS_BASE_URL`
+```bash
+# Tester les endpoints IA
+./scripts/test_ai_endpoints.sh http://your-api-url.com
 
-#### Déploiement
-- [ ] Dépendances installées (`npm install`)
-- [ ] Build réussi (`npm run build`)
-- [ ] Déployé sur Netlify/Vercel/serveur
-- [ ] Variables d'environnement configurées dans le dashboard
+# Avec authentification
+./scripts/test_ai_endpoints.sh http://your-api-url.com YOUR_JWT_TOKEN
+```
 
-#### Vérifications
-- [ ] Pages accessibles :
-  - [ ] `/similar-products`
-  - [ ] `/orders/management`
-  - [ ] `/provider/analytics`
-- [ ] ProductCard affiche les badges
-- [ ] Services API fonctionnent (console navigateur)
-- [ ] Pas d'erreurs 404
+### Endpoints à vérifier
 
----
+#### Bourse du Livre
+- ✅ `GET /api/bourse-livre/search` (publique)
+- ✅ `GET /api/bourse-livre/ai/price-suggestions` (publique)
+- ✅ `POST /api/bourse-livre/ai/recommendations` (protégé JWT)
+- ✅ `POST /api/bourse-livre/ai/matching` (protégé JWT)
 
-### 🔵 Mobile
+#### Orientation Scolaire
+- ✅ `POST /api/orientation/ai/analyze-profile` (protégé JWT)
+- ✅ `POST /api/orientation/ai/recommendations` (protégé JWT)
+- ✅ `POST /api/orientation/ai/compare-programs` (protégé JWT)
 
-#### Préparation
-- [ ] Nouveaux fichiers créés :
-  - [ ] `OrderStatusScreen.tsx`
-  - [ ] `ProviderOrderManagementScreen.tsx`
-  - [ ] `orderService.ts`
-  - [ ] `productDeliveryService.ts`
-  - [ ] `stockService.ts`
-  - [ ] `notificationSoundService.ts`
-- [ ] Navigation ajoutée dans `AppNavigator.tsx`
-- [ ] Variables d'environnement configurées :
-  - [ ] `EXPO_PUBLIC_API_BASE_URL`
-  - [ ] `EXPO_PUBLIC_WS_BASE_URL`
-- [ ] Sons de notification ajoutés (optionnel) :
-  - [ ] `order_notification.mp3`
-  - [ ] `courier_assigned.mp3`
-  - [ ] `order_ready.mp3`
+#### Offres d'Emploi
+- ✅ `GET /api/offres-emploi/ai/salary-prediction` (publique)
+- ✅ `POST /api/offres-emploi/ai/analyze-cv` (protégé JWT)
+- ✅ `POST /api/offres-emploi/ai/suggest-formations` (protégé JWT)
 
-#### Déploiement
-- [ ] Dépendances installées (`npm install`)
-- [ ] Build réussi (`eas build` ou `expo build`)
-- [ ] Testé sur appareils réels
-- [ ] Soumis aux stores (si applicable)
+### Vérification des réponses
 
-#### Vérifications
-- [ ] Navigation vers nouveaux screens fonctionne
-- [ ] Appels API fonctionnent
-- [ ] Notifications sonores fonctionnent (si fichiers ajoutés)
-- [ ] Polling temps réel fonctionne
-- [ ] ProductCard affiche les badges (si implémenté)
+Tous les endpoints doivent retourner:
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
 
----
+## 3. Tests des écrans mobiles
 
-### 🟣 Post-Déploiement
+### Prérequis
+- [ ] Backend accessible
+- [ ] Utilisateur connecté
+- [ ] Profil étudiant créé (pour Orientation Scolaire)
 
-#### Tests Fonctionnels
-- [ ] **Client** : Créer une commande
-- [ ] **Client** : Voir produits similaires si non disponible
-- [ ] **Prestataire** : Recevoir notification sonore
-- [ ] **Prestataire** : Valider/Rejeter une commande
-- [ ] **Prestataire** : Voir analytics dashboard
-- [ ] **Prestataire** : Vérifier coursier avec code PIN
-- [ ] **Système** : Timeout automatique fonctionne
-- [ ] **Système** : Tâches périodiques s'exécutent
+### Checklist de test
 
-#### Monitoring
-- [ ] Logs vérifiés (pas d'erreurs critiques)
-- [ ] Métriques surveillées :
-  - [ ] Taux d'erreur API
-  - [ ] Temps de réponse
-  - [ ] Utilisation base de données
-- [ ] Alertes configurées
+#### Bourse du Livre
+- [ ] Recherche fonctionne
+- [ ] Filtres appliqués
+- [ ] Recommandations IA générées
+- [ ] Suggestions prix affichées
+- [ ] Matching IA fonctionne
 
-#### Documentation
-- [ ] Documentation API accessible
-- [ ] Guide utilisateur accessible
-- [ ] Changelog mis à jour
+#### Orientation Scolaire
+- [ ] Profil étudiant créable/modifiable
+- [ ] Analyse profil retourne résultats
+- [ ] Recommandations programmes générées
+- [ ] Comparaison programmes fonctionne
 
----
+#### Offres d'Emploi
+- [ ] Analyse CV retourne scores
+- [ ] Prédiction salaire affiche fourchette
+- [ ] Suggestions formations générées
 
-## 🚨 En cas de problème
+Voir `scripts/test_mobile_screens.md` pour les détails.
 
-### Rollback Backend
-1. Revenir au commit précédent
-2. Recompiler et redéployer
-3. Vérifier les logs
+## 4. Activation Redis Cache
 
-### Rollback Frontend
-1. Revenir au commit précédent
-2. Rebuild et redéployer
-3. Vérifier les pages
+### Étape 1: Configuration
 
-### Rollback Mobile
-1. Revenir au commit précédent
-2. Rebuild
-3. Redéployer
+Ajouter dans les variables d'environnement Render:
 
-### ⚠️ ATTENTION : Base de Données
-**Ne pas supprimer les tables en production sans sauvegarde complète !**
+```bash
+REDIS_URL=redis://your-redis-url:6379/0
+```
 
----
+### Étape 2: Activer dans le code
 
-## 📞 Support
+Modifier `backend/src/services/app_ia.rs` ligne 497-498:
 
-En cas de problème :
-1. Vérifier les logs
-2. Consulter `docs/DEPLOYMENT_GUIDE_DELIVERY_WORKFLOW.md`
-3. Vérifier les issues GitHub
-4. Contacter l'équipe technique
+**AVANT** (désactivé):
+```rust
+log::info!("[AppIA] Redis désactivé - continuation sans cache");
+```
 
----
+**APRÈS** (activé):
+```rust
+// Vérification du cache Redis
+if let Ok(mut conn) = self.redis_client.get_async_connection().await {
+    let cache_key = format!("ai:prompt:{}", md5::compute(prompt));
+    if let Ok(cached) = redis::cmd("GET")
+        .arg(&cache_key)
+        .query_async::<_, Option<String>>(&mut conn)
+        .await
+    {
+        if let Some(cached_response) = cached {
+            log::info!("[AppIA] ✅ Cache hit Redis");
+            return Ok(("cached".to_string(), cached_response, 0));
+        }
+    }
+}
+```
 
-**Date** : _______________  
-**Déployé par** : _______________  
-**Environnement** : _______________  
-**Version** : _______________
+### Étape 3: Sauvegarder dans le cache
 
+Ajouter après une prédiction réussie (après ligne ~536):
+
+```rust
+// Sauvegarder dans le cache (TTL: 1 heure)
+if let Ok(mut conn) = self.redis_client.get_async_connection().await {
+    let cache_key = format!("ai:prompt:{}", md5::compute(prompt));
+    let _ = redis::cmd("SETEX")
+        .arg(&cache_key)
+        .arg(3600) // 1 heure
+        .arg(&response)
+        .query_async::<_, ()>(&mut conn)
+        .await;
+    log::debug!("[AppIA] ✅ Réponse mise en cache");
+}
+```
+
+Voir `scripts/enable_redis_cache.md` pour les détails complets.
+
+## 5. Vérifications finales
+
+### Backend
+- [ ] `cargo check` passe sans erreurs
+- [ ] `cargo test` passe
+- [ ] Migrations appliquées
+- [ ] Endpoints répondent correctement
+- [ ] Logs ne montrent pas d'erreurs critiques
+
+### Mobile
+- [ ] Navigation fonctionne
+- [ ] Écrans s'affichent correctement
+- [ ] Appels API réussis
+- [ ] Gestion d'erreurs fonctionne
+- [ ] UX fluide
+
+### Base de données
+- [ ] Tables créées
+- [ ] Index créés
+- [ ] Contraintes appliquées
+- [ ] Données de test insérées (optionnel)
+
+## 6. Monitoring
+
+### Logs à surveiller
+
+```
+✅ Migration auto: bourse livre advanced tables OK
+✅ Migration auto: orientation scolaire advanced tables OK
+✅ Migration auto: offres emploi advanced tables OK
+[AppIA] ✅ Succès avec openai-gpt4o en 1234ms (456 tokens)
+```
+
+### Métriques à suivre
+
+- Temps de réponse des endpoints IA
+- Taux de succès des prédictions IA
+- Utilisation du cache Redis (si activé)
+- Erreurs dans les logs
+
+## 7. Rollback (si nécessaire)
+
+Si des problèmes surviennent:
+
+```sql
+-- Supprimer les tables avancées (ATTENTION: perte de données)
+DROP TABLE IF EXISTS book_analytics CASCADE;
+DROP TABLE IF EXISTS book_price_history CASCADE;
+DROP TABLE IF EXISTS book_recommendations CASCADE;
+DROP TABLE IF EXISTS book_exchanges CASCADE;
+DROP TABLE IF EXISTS orientation_analytics CASCADE;
+DROP TABLE IF EXISTS program_comparisons CASCADE;
+DROP TABLE IF EXISTS program_recommendations CASCADE;
+DROP TABLE IF EXISTS student_profiles CASCADE;
+DROP TABLE IF EXISTS emploi_analytics_advanced CASCADE;
+DROP TABLE IF EXISTS formation_suggestions CASCADE;
+DROP TABLE IF EXISTS salary_predictions CASCADE;
+DROP TABLE IF EXISTS cv_ai_analyses CASCADE;
+```
+
+## Support
+
+En cas de problème:
+1. Vérifier les logs backend
+2. Vérifier les logs de la base de données
+3. Tester les endpoints individuellement
+4. Vérifier les variables d'environnement

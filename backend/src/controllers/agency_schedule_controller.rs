@@ -26,7 +26,7 @@ pub struct CreateScheduleRequest {
     pub departure_city: String,
     pub arrival_city: String,
     pub departure_times: Vec<String>, // ["08:00", "14:00", "20:00"]
-    pub day_of_week: Option<i32>, // 0=Dimanche, 1=Lundi, ..., 6=Samedi (NULL = tous les jours)
+    pub day_of_week: Option<i32>,     // 0=Dimanche, 1=Lundi, ..., 6=Samedi (NULL = tous les jours)
     pub notes: Option<String>,
 }
 
@@ -62,8 +62,8 @@ pub struct GetSchedulesQuery {
 
 #[derive(Debug, Deserialize)]
 pub struct GetAvailableTimesQuery {
-    pub from: String, // departure_city
-    pub to: String,   // arrival_city
+    pub from: String,         // departure_city
+    pub to: String,           // arrival_city
     pub date: Option<String>, // Format YYYY-MM-DD (optionnel)
 }
 
@@ -83,19 +83,19 @@ pub async fn create_schedule(
     );
 
     // Vérifier que l'utilisateur est une agence
-    let is_agency: bool = sqlx::query_scalar(
-        "SELECT is_provider FROM users WHERE id = $1"
-    )
-    .bind(user_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[create_schedule] Erreur vérification agence: {}", e);
-        AppError::Internal(format!("Erreur vérification agence: {}", e))
-    })?;
+    let is_agency: bool = sqlx::query_scalar("SELECT is_provider FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_schedule] Erreur vérification agence: {}", e);
+            AppError::Internal(format!("Erreur vérification agence: {}", e))
+        })?;
 
     if !is_agency {
-        return Err(AppError::Forbidden("Seules les agences peuvent créer des horaires".to_string()));
+        return Err(AppError::Forbidden(
+            "Seules les agences peuvent créer des horaires".to_string(),
+        ));
     }
 
     // Valider les horaires (format HH:MM)
@@ -104,16 +104,17 @@ pub async fn create_schedule(
         match NaiveTime::parse_from_str(time_str, "%H:%M") {
             Ok(time) => validated_times.push(time),
             Err(_) => {
-                return Err(AppError::BadRequest(
-                    format!("Format d'heure invalide: {}. Format attendu: HH:MM", time_str)
-                ));
+                return Err(AppError::BadRequest(format!(
+                    "Format d'heure invalide: {}. Format attendu: HH:MM",
+                    time_str
+                )));
             }
         }
     }
 
     if validated_times.is_empty() {
         return Err(AppError::BadRequest(
-            "Au moins un horaire doit être fourni".to_string()
+            "Au moins un horaire doit être fourni".to_string(),
         ));
     }
 
@@ -121,7 +122,7 @@ pub async fn create_schedule(
     if let Some(day) = payload.day_of_week {
         if day < 0 || day > 6 {
             return Err(AppError::BadRequest(
-                "day_of_week doit être entre 0 (Dimanche) et 6 (Samedi)".to_string()
+                "day_of_week doit être entre 0 (Dimanche) et 6 (Samedi)".to_string(),
             ));
         }
     }
@@ -151,7 +152,7 @@ pub async fn create_schedule(
             notes = EXCLUDED.notes,
             updated_at = NOW()
         RETURNING id
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(&payload.departure_city)
@@ -169,10 +170,13 @@ pub async fn create_schedule(
     // Récupérer l'horaire créé
     let schedule = get_schedule_by_id(&state.pg, &schedule_id).await?;
 
-    Ok((StatusCode::CREATED, Json(json!({
-        "success": true,
-        "schedule": schedule
-    }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "schedule": schedule
+        })),
+    ))
 }
 
 // ============================================================================
@@ -202,7 +206,7 @@ pub async fn get_agency_schedules(
             updated_at
         FROM agency_departure_schedules
         WHERE agency_user_id = $1
-        "#
+        "#,
     );
 
     let mut params: Vec<String> = vec![user_id.to_string()];
@@ -231,7 +235,7 @@ pub async fn get_agency_schedules(
         params.push(active.to_string());
         param_index += 1;
     }
-    
+
     // param_index est utilisé dans les format! ci-dessus pour construire la requête SQL
     let _ = param_index;
 
@@ -253,40 +257,45 @@ pub async fn get_agency_schedules(
         query_builder = query_builder.bind(active);
     }
 
-    let rows = query_builder
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[get_agency_schedules] Erreur: {}", e);
-            AppError::Internal(format!("Erreur récupération horaires: {}", e))
-        })?;
+    let rows = query_builder.fetch_all(&state.pg).await.map_err(|e| {
+        error!("[get_agency_schedules] Erreur: {}", e);
+        AppError::Internal(format!("Erreur récupération horaires: {}", e))
+    })?;
 
     let mut schedules = Vec::new();
     for row in rows {
-        let departure_times: Vec<chrono::NaiveTime> = row.get("departure_times");
+        let departure_times: Vec<chrono::NaiveTime> =
+            row.get::<Vec<chrono::NaiveTime>, _>("departure_times");
         let times_str: Vec<String> = departure_times
             .iter()
             .map(|t| t.format("%H:%M").to_string())
             .collect();
 
         schedules.push(ScheduleResponse {
-            id: row.get("id"),
-            agency_user_id: row.get("agency_user_id"),
-            departure_city: row.get("departure_city"),
-            arrival_city: row.get("arrival_city"),
+            id: row.get::<i32, _>("id").to_string(),
+            agency_user_id: row.get::<i32, _>("agency_user_id"),
+            departure_city: row.get::<String, _>("departure_city"),
+            arrival_city: row.get::<String, _>("arrival_city"),
             departure_times: times_str,
-            day_of_week: row.get("day_of_week"),
-            is_active: row.get("is_active"),
-            notes: row.get("notes"),
-            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
-            updated_at: row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at").to_rfc3339(),
+            day_of_week: row.get::<Option<i32>, _>("day_of_week"),
+            is_active: row.get::<bool, _>("is_active"),
+            notes: row.get::<Option<String>, _>("notes"),
+            created_at: row
+                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                .to_rfc3339(),
+            updated_at: row
+                .get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
+                .to_rfc3339(),
         });
     }
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "schedules": schedules
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "schedules": schedules
+        })),
+    ))
 }
 
 // ============================================================================
@@ -306,9 +315,10 @@ pub async fn get_available_times(
     );
 
     // Parser la date si fournie
-    let date_param: Option<chrono::NaiveDate> = query.date.clone().and_then(|d| {
-        chrono::NaiveDate::parse_from_str(&d, "%Y-%m-%d").ok()
-    });
+    let date_param: Option<chrono::NaiveDate> = query
+        .date
+        .clone()
+        .and_then(|d| chrono::NaiveDate::parse_from_str(&d, "%Y-%m-%d").ok());
 
     // Appeler la fonction SQL
     let rows = sqlx::query(
@@ -319,7 +329,7 @@ pub async fn get_available_times(
             is_specific_day
         FROM get_available_departure_times($1, $2, $3, $4)
         ORDER BY day_of_week NULLS FIRST, departure_time
-        "#
+        "#,
     )
     .bind(agency_id)
     .bind(&query.from)
@@ -334,7 +344,7 @@ pub async fn get_available_times(
 
     let mut times = Vec::new();
     for row in rows {
-        let time: chrono::NaiveTime = row.get("departure_time");
+        let time: chrono::NaiveTime = row.get::<chrono::NaiveTime, _>("departure_time");
         times.push(json!({
             "time": time.format("%H:%M").to_string(),
             "day_of_week": row.get::<Option<i32>, _>("day_of_week"),
@@ -342,14 +352,17 @@ pub async fn get_available_times(
         }));
     }
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "agency_id": agency_id,
-        "from": query.from,
-        "to": query.to,
-        "date": query.date,
-        "available_times": times
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "agency_id": agency_id,
+            "from": query.from,
+            "to": query.to,
+            "date": query.date,
+            "available_times": times
+        })),
+    ))
 }
 
 // ============================================================================
@@ -363,19 +376,21 @@ pub async fn update_schedule(
     Path(schedule_id): Path<String>,
     Json(payload): Json<UpdateScheduleRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[update_schedule] User ID: {}, Schedule ID: {}", user_id, schedule_id);
+    info!(
+        "[update_schedule] User ID: {}, Schedule ID: {}",
+        user_id, schedule_id
+    );
 
     // Vérifier que l'horaire appartient à l'agence
-    let schedule_agency_id: Option<i32> = sqlx::query_scalar(
-        "SELECT agency_user_id FROM agency_departure_schedules WHERE id = $1"
-    )
-    .bind(&schedule_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[update_schedule] Erreur vérification: {}", e);
-        AppError::Internal(format!("Erreur vérification horaire: {}", e))
-    })?;
+    let schedule_agency_id: Option<i32> =
+        sqlx::query_scalar("SELECT agency_user_id FROM agency_departure_schedules WHERE id = $1")
+            .bind(&schedule_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[update_schedule] Erreur vérification: {}", e);
+                AppError::Internal(format!("Erreur vérification horaire: {}", e))
+            })?;
 
     match schedule_agency_id {
         Some(agency_id) if agency_id == user_id => {
@@ -383,7 +398,7 @@ pub async fn update_schedule(
         }
         Some(_) => {
             return Err(AppError::Forbidden(
-                "Cet horaire n'appartient pas à votre agence".to_string()
+                "Cet horaire n'appartient pas à votre agence".to_string(),
             ));
         }
         None => {
@@ -392,30 +407,41 @@ pub async fn update_schedule(
     }
 
     // Vérifier qu'au moins un champ est modifié
-    if payload.departure_times.is_none() 
-        && payload.day_of_week.is_none() 
-        && payload.is_active.is_none() 
-        && payload.notes.is_none() {
+    if payload.departure_times.is_none()
+        && payload.day_of_week.is_none()
+        && payload.is_active.is_none()
+        && payload.notes.is_none()
+    {
         return Err(AppError::BadRequest(
-            "Aucune modification à effectuer".to_string()
+            "Aucune modification à effectuer".to_string(),
         ));
     }
 
     // Approche simplifiée : requêtes séparées selon les champs modifiés
-    if payload.departure_times.is_some() || payload.day_of_week.is_some() || payload.is_active.is_some() || payload.notes.is_some() {
+    if payload.departure_times.is_some()
+        || payload.day_of_week.is_some()
+        || payload.is_active.is_some()
+        || payload.notes.is_some()
+    {
         let times_array = if let Some(ref times) = payload.departure_times {
             let mut validated_times: Vec<NaiveTime> = Vec::new();
             for time_str in times {
                 match NaiveTime::parse_from_str(time_str, "%H:%M") {
                     Ok(time) => validated_times.push(time),
                     Err(_) => {
-                        return Err(AppError::BadRequest(
-                            format!("Format d'heure invalide: {}", time_str)
-                        ));
+                        return Err(AppError::BadRequest(format!(
+                            "Format d'heure invalide: {}",
+                            time_str
+                        )));
                     }
                 }
             }
-            Some(validated_times.iter().map(|t| t.format("%H:%M:%S").to_string()).collect::<Vec<String>>())
+            Some(
+                validated_times
+                    .iter()
+                    .map(|t| t.format("%H:%M:%S").to_string())
+                    .collect::<Vec<String>>(),
+            )
         } else {
             None
         };
@@ -430,7 +456,7 @@ pub async fn update_schedule(
                 notes = COALESCE($4, notes),
                 updated_at = NOW()
             WHERE id = $5
-            "#
+            "#,
         )
         .bind(&times_array)
         .bind(&payload.day_of_week)
@@ -448,10 +474,13 @@ pub async fn update_schedule(
     // Récupérer l'horaire mis à jour
     let schedule = get_schedule_by_id(&state.pg, &schedule_id).await?;
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "schedule": schedule
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "schedule": schedule
+        })),
+    ))
 }
 
 // ============================================================================
@@ -464,19 +493,21 @@ pub async fn delete_schedule(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(schedule_id): Path<String>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[delete_schedule] User ID: {}, Schedule ID: {}", user_id, schedule_id);
+    info!(
+        "[delete_schedule] User ID: {}, Schedule ID: {}",
+        user_id, schedule_id
+    );
 
     // Vérifier que l'horaire appartient à l'agence
-    let schedule_agency_id: Option<i32> = sqlx::query_scalar(
-        "SELECT agency_user_id FROM agency_departure_schedules WHERE id = $1"
-    )
-    .bind(&schedule_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[delete_schedule] Erreur vérification: {}", e);
-        AppError::Internal(format!("Erreur vérification horaire: {}", e))
-    })?;
+    let schedule_agency_id: Option<i32> =
+        sqlx::query_scalar("SELECT agency_user_id FROM agency_departure_schedules WHERE id = $1")
+            .bind(&schedule_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[delete_schedule] Erreur vérification: {}", e);
+                AppError::Internal(format!("Erreur vérification horaire: {}", e))
+            })?;
 
     match schedule_agency_id {
         Some(agency_id) if agency_id == user_id => {
@@ -492,13 +523,16 @@ pub async fn delete_schedule(
                 AppError::Internal(format!("Erreur suppression horaire: {}", e))
             })?;
 
-            Ok((StatusCode::OK, Json(json!({
-                "success": true,
-                "message": "Horaire désactivé avec succès"
-            }))))
+            Ok((
+                StatusCode::OK,
+                Json(json!({
+                    "success": true,
+                    "message": "Horaire désactivé avec succès"
+                })),
+            ))
         }
         Some(_) => Err(AppError::Forbidden(
-            "Cet horaire n'appartient pas à votre agence".to_string()
+            "Cet horaire n'appartient pas à votre agence".to_string(),
         )),
         None => Err(AppError::NotFound("Horaire non trouvé".to_string())),
     }
@@ -527,7 +561,7 @@ async fn get_schedule_by_id(
             updated_at
         FROM agency_departure_schedules
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(schedule_id)
     .fetch_optional(pool)
@@ -539,26 +573,30 @@ async fn get_schedule_by_id(
 
     match row {
         Some(row) => {
-            let departure_times: Vec<chrono::NaiveTime> = row.get("departure_times");
+            let departure_times: Vec<chrono::NaiveTime> =
+                row.get::<Vec<chrono::NaiveTime>, _>("departure_times");
             let times_str: Vec<String> = departure_times
                 .iter()
                 .map(|t| t.format("%H:%M").to_string())
                 .collect();
 
             Ok(ScheduleResponse {
-                id: row.get("id"),
-                agency_user_id: row.get("agency_user_id"),
-                departure_city: row.get("departure_city"),
-                arrival_city: row.get("arrival_city"),
+                id: row.get::<i32, _>("id").to_string(),
+                agency_user_id: row.get::<i32, _>("agency_user_id"),
+                departure_city: row.get::<String, _>("departure_city"),
+                arrival_city: row.get::<String, _>("arrival_city"),
                 departure_times: times_str,
-                day_of_week: row.get("day_of_week"),
-                is_active: row.get("is_active"),
-                notes: row.get("notes"),
-                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
-                updated_at: row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at").to_rfc3339(),
+                day_of_week: row.get::<Option<i32>, _>("day_of_week"),
+                is_active: row.get::<bool, _>("is_active"),
+                notes: row.get::<Option<String>, _>("notes"),
+                created_at: row
+                    .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                    .to_rfc3339(),
+                updated_at: row
+                    .get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
+                    .to_rfc3339(),
             })
         }
         None => Err(AppError::NotFound("Horaire non trouvé".to_string())),
     }
 }
-

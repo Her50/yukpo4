@@ -4,7 +4,7 @@ use std::{
 };
 
 use axum::{
-    extract::{Extension, Path, State},
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
     Json,
 };
@@ -19,10 +19,11 @@ use crate::{
     services::notification_service::{create_notification, NotificationType},
     state::AppState,
 };
+use std::time::Duration;
 
 const ALLOWED_REACTIONS: &[&str] = &["like", "love", "insightful", "support", "funny", "angry"];
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MentionUser {
     pub id: i32,
     pub name: String,
@@ -30,7 +31,7 @@ pub struct MentionUser {
     pub avatar_url: Option<String>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CommentResponse {
     pub id: i32,
     pub service_id: i32,
@@ -51,6 +52,9 @@ pub struct CommentResponse {
     pub reaction_counts: Value,
     #[serde(default)]
     pub user_reactions: Vec<String>,
+    // ✅ FINALISÉ: Support médias (images/vidéos) - URLs S3/Wasabi
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub media_urls: Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -63,18 +67,33 @@ pub struct CommentResponse {
     pub replies: Vec<CommentResponse>,
 }
 
-#[derive(Debug, Serialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CommentStats {
     pub total_comments: i64,
     pub rating_count: i64,
     pub average_rating: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CommentsPayload {
     pub success: bool,
     pub comments: Vec<CommentResponse>,
     pub stats: CommentStats,
+    // ✅ NOUVEAU: Pagination
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub has_more: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CommentsQuery {
+    #[serde(default)]
+    pub limit: Option<i32>,
+    #[serde(default)]
+    pub cursor: Option<i32>, // ID du dernier commentaire chargé
+    #[serde(default)]
+    pub sort: Option<String>, // "recent", "oldest", "helpful"
 }
 
 #[derive(Debug, Deserialize)]
@@ -106,16 +125,64 @@ pub struct ReactionRequest {
 pub async fn get_product_comments(
     Path(service_id): Path<i32>,
     State(state): State<Arc<AppState>>,
+    Query(query): Query<CommentsQuery>,
     maybe_user: Option<Extension<AuthenticatedUser>>,
 ) -> Result<Json<CommentsPayload>, StatusCode> {
     let current_user_id = maybe_user.as_ref().map(|ext| ext.0.id);
+    let limit = query.limit.unwrap_or(50).min(100).max(1); // Limite entre 1 et 100
+    let sort_option = query.sort.as_deref().unwrap_or("recent");
 
-    match load_comments(&state, service_id, current_user_id).await {
-        Ok((comments, stats)) => Ok(Json(CommentsPayload {
-            success: true,
-            comments,
-            stats,
-        })),
+    // ✅ FINALISÉ: Vérifier le cache Redis si disponible
+    let cache_key = format!(
+        "comments:{}:{}:{}:{}",
+        service_id,
+        limit,
+        query.cursor.unwrap_or(0),
+        sort_option
+    );
+
+    // ✅ FINALISÉ: Cache Redis via cache_service
+    if let Ok(Some(cached_json)) = state.cache_service.get::<String>(&cache_key).await {
+        if let Ok(payload) = serde_json::from_str::<CommentsPayload>(&cached_json) {
+            info!("[ProductComments] ✅ Cache hit pour {}", cache_key);
+            return Ok(Json(payload));
+        }
+    }
+
+    match load_comments(
+        &state,
+        service_id,
+        current_user_id,
+        limit,
+        query.cursor,
+        sort_option,
+    )
+    .await
+    {
+        Ok((comments, stats, next_cursor)) => {
+            let payload = CommentsPayload {
+                success: true,
+                comments: comments.clone(),
+                stats,
+                next_cursor,
+                has_more: Some(next_cursor.is_some()),
+            };
+
+            // ✅ FINALISÉ: Mettre en cache Redis (TTL 2 minutes)
+            if let Ok(payload_json) = serde_json::to_string(&payload) {
+                let _ = state
+                    .cache_service
+                    .set_with_ttl(
+                        &cache_key,
+                        &payload_json,
+                        std::time::Duration::from_secs(120),
+                    )
+                    .await; // TTL 2 minutes
+                info!("[ProductComments] ✅ Cache mis à jour pour {}", cache_key);
+            }
+
+            Ok(Json(payload))
+        }
         Err(err) => {
             error!(
                 "[ProductComments] ❌ Erreur lors du chargement des commentaires: {}",
@@ -163,7 +230,7 @@ pub async fn create_product_comment(
 
         match row {
             Some(parent) => {
-                let parent_service_id: i32 = parent.get("service_id");
+                let parent_service_id: i32 = parent.get::<i32, _>("service_id");
                 if parent_service_id != service_id {
                     return Err(StatusCode::BAD_REQUEST);
                 }
@@ -207,7 +274,7 @@ pub async fn create_product_comment(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    let comment_id: i32 = row.get("id");
+    let comment_id: i32 = row.get::<i32, _>("id");
     info!(
         "[ProductComments] ✅ Commentaire {} créé sur service {} par user {}",
         comment_id, service_id, auth_user.id
@@ -422,7 +489,7 @@ pub async fn toggle_product_comment_reaction(
     })?;
 
     let action = if let Some(row) = existing {
-        let reaction_id: i32 = row.get("id");
+        let reaction_id: i32 = row.get::<i32, _>("id");
         sqlx::query("DELETE FROM product_comment_reactions WHERE id = $1")
             .bind(reaction_id)
             .execute(&state.pg)
@@ -483,11 +550,31 @@ async fn load_comments(
     state: &Arc<AppState>,
     service_id: i32,
     current_user_id: Option<i32>,
-) -> Result<(Vec<CommentResponse>, CommentStats), sqlx::Error> {
-    let rows = sqlx::query(
+    limit: i32,
+    cursor: Option<i32>,
+    sort: &str,
+) -> Result<(Vec<CommentResponse>, CommentStats, Option<i32>), sqlx::Error> {
+    // ✅ NOUVEAU: Construire la requête avec pagination et tri
+    let order_clause = match sort {
+        "oldest" => "ORDER BY pc.created_at ASC",
+        "helpful" => "ORDER BY (pc.reaction_counts->>'like')::INT DESC, pc.created_at DESC",
+        _ => "ORDER BY pc.created_at DESC", // "recent" par défaut
+    };
+
+    let cursor_clause = if let Some(cursor_id) = cursor {
+        match sort {
+            "oldest" => format!("AND pc.id > {}", cursor_id),
+            _ => format!("AND pc.id < {}", cursor_id),
+        }
+    } else {
+        String::new()
+    };
+
+    let query_str = format!(
         r#"
         SELECT
             pc.id,
+            pc.media_urls,
             pc.service_id,
             pc.user_id,
             pc.parent_comment_id,
@@ -503,61 +590,62 @@ async fn load_comments(
             u.avatar_url AS user_avatar
         FROM product_comments pc
         JOIN users u ON u.id = pc.user_id
-        WHERE pc.service_id = $1
-        ORDER BY pc.created_at ASC
+        WHERE pc.service_id = $1 AND pc.parent_comment_id IS NULL {}
+        {}
+        LIMIT $2
         "#,
-    )
-    .bind(service_id)
-    .fetch_all(&state.pg)
-    .await?;
+        cursor_clause, order_clause
+    );
 
-    if rows.is_empty() {
-        return Ok((
-            Vec::new(),
-            CommentStats {
-                total_comments: 0,
-                rating_count: 0,
-                average_rating: 0.0,
-            },
-        ));
+    let rows = sqlx::query(&query_str)
+        .bind(service_id)
+        .bind(limit + 1) // Charger un de plus pour détecter s'il y a une suite
+        .fetch_all(&state.pg)
+        .await?;
+
+    // ✅ NOUVEAU: Détecter le cursor suivant
+    let has_more = rows.len() > limit as usize;
+    let rows_to_process = if has_more {
+        &rows[0..limit as usize]
+    } else {
+        &rows[..]
+    };
+
+    let next_cursor = if has_more {
+        rows_to_process.last().map(|row| row.get::<i32, _>("id"))
+    } else {
+        None
+    };
+
+    // ✅ NOUVEAU: Charger les stats depuis le cache ou la DB
+    let stats = load_comment_stats(state, service_id).await?;
+
+    if rows_to_process.is_empty() {
+        return Ok((Vec::new(), stats, None));
     }
 
-    let mut raw_comments = Vec::with_capacity(rows.len());
-    let mut comment_ids = Vec::with_capacity(rows.len());
+    let mut raw_comments = Vec::with_capacity(rows_to_process.len());
+    let mut comment_ids = Vec::with_capacity(rows_to_process.len());
     let mut root_ids = Vec::new();
     let mut children_map: HashMap<i32, Vec<i32>> = HashMap::new();
     let mut mention_ids: HashSet<i32> = HashSet::new();
     let mut created_at_map: HashMap<i32, DateTime<Utc>> = HashMap::new();
 
-    let mut rating_sum: i64 = 0;
-    let mut rating_count: i64 = 0;
-    let mut total_visible_comments: i64 = 0;
-
-    for row in rows {
-        let id: i32 = row.get("id");
-        let parent_comment_id: Option<i32> = row.get("parent_comment_id");
-        let rating: Option<i32> = row.get("rating");
-        let content: String = row.get("content");
+    for row in rows_to_process {
+        let id: i32 = row.get::<i32, _>("id");
+        let parent_comment_id: Option<i32> = row.get::<Option<i32>, _>("parent_comment_id");
+        let rating: Option<i32> = row.get::<Option<i32>, _>("rating");
+        let content: String = row.get::<String, _>("content");
         let mentions: Vec<i32> = row.get::<Vec<i32>, _>("mentions");
-        let reaction_counts: Option<Value> = row.get("reaction_counts");
-        let created_at: DateTime<Utc> = row.get("created_at");
-        let updated_at: DateTime<Utc> = row.get("updated_at");
-        let edited_at: Option<DateTime<Utc>> = row.get("edited_at");
-        let is_deleted: bool = row.get("is_deleted");
-        let user_name: String = row.get("user_name");
-        let user_avatar: Option<String> = row.get("user_avatar");
-        let user_id: i32 = row.get("user_id");
-
-        if !is_deleted {
-            total_visible_comments += 1;
-        }
-
-        if let Some(r) = rating {
-            if r >= 0 && r <= 5 && !is_deleted {
-                rating_sum += r as i64;
-                rating_count += 1;
-            }
-        }
+        let reaction_counts: Option<Value> = row.get::<Option<Value>, _>("reaction_counts");
+        let media_urls: Option<Value> = row.get::<Option<Value>, _>("media_urls");
+        let created_at: DateTime<Utc> = row.get::<DateTime<Utc>, _>("created_at");
+        let updated_at: DateTime<Utc> = row.get::<DateTime<Utc>, _>("updated_at");
+        let edited_at: Option<DateTime<Utc>> = row.get::<Option<DateTime<Utc>>, _>("edited_at");
+        let is_deleted: bool = row.get::<bool, _>("is_deleted");
+        let user_name: String = row.get::<String, _>("user_name");
+        let user_avatar: Option<String> = row.get::<Option<String>, _>("user_avatar");
+        let user_id: i32 = row.get::<i32, _>("user_id");
 
         for mention_id in &mentions {
             mention_ids.insert(*mention_id);
@@ -587,6 +675,8 @@ async fn load_comments(
                 mention_users: Vec::new(),
                 reaction_counts: reaction_counts.unwrap_or_else(|| json!({})),
                 user_reactions: Vec::new(),
+                // ✅ FINALISÉ: Récupérer media_urls depuis la DB
+                media_urls: media_urls.unwrap_or_else(|| json!([])),
                 created_at,
                 updated_at,
                 edited_at,
@@ -612,9 +702,9 @@ async fn load_comments(
 
         rows.into_iter()
             .map(|row| {
-                let id: i32 = row.get("id");
-                let name: String = row.get("display_name");
-                let avatar_url: Option<String> = row.get("avatar_url");
+                let id: i32 = row.get::<i32, _>("id");
+                let name: String = row.get::<String, _>("display_name");
+                let avatar_url: Option<String> = row.get::<Option<String>, _>("avatar_url");
                 (
                     id,
                     MentionUser {
@@ -639,8 +729,8 @@ async fn load_comments(
             .await?;
 
             for row in rows {
-                let cid: i32 = row.get("comment_id");
-                let reaction: String = row.get("reaction_type");
+                let cid: i32 = row.get::<i32, _>("comment_id");
+                let reaction: String = row.get::<String, _>("reaction_type");
                 user_reaction_map.entry(cid).or_default().push(reaction);
             }
         }
@@ -675,20 +765,190 @@ async fn load_comments(
         }
     }
 
-    let average_rating = if rating_count > 0 {
-        (rating_sum as f64 / rating_count as f64 * 100.0).round() / 100.0
-    } else {
-        0.0
-    };
+    // ✅ NOUVEAU: Charger les réponses pour chaque commentaire racine (limité à 5 par commentaire)
+    for comment in &mut comments {
+        if let Some(replies) =
+            load_replies_for_comment(state, comment.id, current_user_id, 5).await?
+        {
+            let reply_count = replies.len() as i32;
+            comment.replies = replies;
+            comment.reply_count = reply_count;
+        }
+    }
 
-    Ok((
-        comments,
-        CommentStats {
-            total_comments: total_visible_comments,
-            rating_count,
-            average_rating,
-        },
-    ))
+    Ok((comments, stats, next_cursor))
+}
+
+// ✅ NOUVEAU: Fonction pour charger les stats (avec cache potentiel)
+async fn load_comment_stats(
+    state: &Arc<AppState>,
+    service_id: i32,
+) -> Result<CommentStats, sqlx::Error> {
+    // TODO: Vérifier cache Redis ici
+
+    let row = sqlx::query(
+        r#"
+        SELECT 
+            COUNT(*) FILTER (WHERE NOT is_deleted) as total_comments,
+            COUNT(*) FILTER (WHERE rating IS NOT NULL AND NOT is_deleted) as rating_count,
+            COALESCE(AVG(rating) FILTER (WHERE rating IS NOT NULL AND NOT is_deleted), 0) as average_rating
+        FROM product_comments
+        WHERE service_id = $1 AND parent_comment_id IS NULL
+        "#,
+    )
+    .bind(service_id)
+    .fetch_one(&state.pg)
+    .await?;
+
+    Ok(CommentStats {
+        total_comments: row.get::<i64, _>("total_comments"),
+        rating_count: row.get::<i64, _>("rating_count"),
+        average_rating: row.get::<f64, _>("average_rating"),
+    })
+}
+
+// ✅ NOUVEAU: Fonction pour charger les réponses d'un commentaire
+async fn load_replies_for_comment(
+    state: &Arc<AppState>,
+    comment_id: i32,
+    current_user_id: Option<i32>,
+    limit: i32,
+) -> Result<Option<Vec<CommentResponse>>, sqlx::Error> {
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            pc.id,
+            pc.service_id,
+            pc.user_id,
+            pc.parent_comment_id,
+            pc.rating,
+            pc.content,
+            pc.mentions,
+            pc.reaction_counts,
+            pc.media_urls,
+            pc.created_at,
+            pc.updated_at,
+            pc.edited_at,
+            pc.is_deleted,
+            COALESCE(u.nom_complet, u.email) AS user_name,
+            u.avatar_url AS user_avatar
+        FROM product_comments pc
+        JOIN users u ON u.id = pc.user_id
+        WHERE pc.parent_comment_id = $1
+        ORDER BY pc.created_at ASC
+        LIMIT $2
+        "#,
+    )
+    .bind(comment_id)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await?;
+
+    if rows.is_empty() {
+        return Ok(None);
+    }
+
+    // Construire les réponses (simplifié, sans réponses imbriquées)
+    let mut replies = Vec::new();
+    for row in rows {
+        let id: i32 = row.get::<i32, _>("id");
+        let user_id: i32 = row.get::<i32, _>("user_id");
+        let mentions: Vec<i32> = row.get::<Vec<i32>, _>("mentions");
+
+        // Charger les mentions
+        let mention_users = if !mentions.is_empty() {
+            load_mention_users(state, &mentions).await?
+        } else {
+            Vec::new()
+        };
+
+        // Charger les réactions de l'utilisateur
+        let user_reactions = if let Some(uid) = current_user_id {
+            load_user_reactions(state, id, uid).await?
+        } else {
+            Vec::new()
+        };
+
+        replies.push(CommentResponse {
+            id,
+            service_id: row.get::<i32, _>("service_id"),
+            user_id,
+            user_name: row.get::<String, _>("user_name"),
+            user_avatar: row.get::<Option<String>, _>("user_avatar"),
+            parent_comment_id: row.get::<Option<i32>, _>("parent_comment_id"),
+            rating: row.get::<Option<i32>, _>("rating"),
+            content: sanitize_content(
+                &row.get::<String, _>("content"),
+                row.get::<bool, _>("is_deleted"),
+            ),
+            mentions,
+            mention_users,
+            reaction_counts: row
+                .get::<Option<Value>, _>("reaction_counts")
+                .unwrap_or_else(|| json!({})),
+            user_reactions,
+            // ✅ FINALISÉ: Récupérer media_urls pour les réponses aussi
+            media_urls: row
+                .get::<Option<Value>, _>("media_urls")
+                .unwrap_or_else(|| json!([])),
+            created_at: row.get::<DateTime<Utc>, _>("created_at"),
+            updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
+            edited_at: row.get::<Option<DateTime<Utc>>, _>("edited_at"),
+            is_deleted: row.get::<bool, _>("is_deleted"),
+            reply_count: 0,
+            can_edit: current_user_id.map_or(false, |uid| uid == user_id),
+            can_delete: current_user_id.map_or(false, |uid| uid == user_id),
+            replies: Vec::new(),
+        });
+    }
+
+    Ok(Some(replies))
+}
+
+// ✅ NOUVEAU: Fonction helper pour charger les utilisateurs mentionnés
+async fn load_mention_users(
+    state: &Arc<AppState>,
+    mention_ids: &[i32],
+) -> Result<Vec<MentionUser>, sqlx::Error> {
+    if mention_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let rows = sqlx::query(
+        "SELECT id, COALESCE(nom_complet, email) AS display_name, avatar_url FROM users WHERE id = ANY($1)",
+    )
+    .bind(mention_ids)
+    .fetch_all(&state.pg)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| MentionUser {
+            id: row.get::<i32, _>("id"),
+            name: row.get::<String, _>("display_name"),
+            avatar_url: row.get::<Option<String>, _>("avatar_url"),
+        })
+        .collect())
+}
+
+// ✅ NOUVEAU: Fonction helper pour charger les réactions de l'utilisateur
+async fn load_user_reactions(
+    state: &Arc<AppState>,
+    comment_id: i32,
+    user_id: i32,
+) -> Result<Vec<String>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT reaction_type FROM product_comment_reactions WHERE comment_id = $1 AND user_id = $2",
+    )
+    .bind(comment_id)
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| row.get::<String, _>("reaction_type"))
+        .collect())
 }
 
 fn build_comment_tree(
@@ -727,7 +987,7 @@ async fn fetch_display_name(pool: &sqlx::PgPool, user_id: i32) -> Result<String,
             .bind(user_id)
             .fetch_one(pool)
             .await?;
-    Ok(row.get("display_name"))
+    Ok(row.get::<String, _>("display_name"))
 }
 
 async fn fetch_service_title(pool: &sqlx::PgPool, service_id: i32) -> Result<String, sqlx::Error> {
@@ -737,7 +997,7 @@ async fn fetch_service_title(pool: &sqlx::PgPool, service_id: i32) -> Result<Str
     .bind(service_id)
     .fetch_one(pool)
     .await?;
-    Ok(row.get("titre"))
+    Ok(row.get::<String, _>("titre"))
 }
 
 async fn refresh_comment_reaction_counts(
@@ -753,8 +1013,8 @@ async fn refresh_comment_reaction_counts(
 
     let mut map = serde_json::Map::new();
     for row in rows {
-        let reaction_type: String = row.get("reaction_type");
-        let count: i32 = row.get("count");
+        let reaction_type: String = row.get::<String, _>("reaction_type");
+        let count: i32 = row.get::<i32, _>("count");
         map.insert(reaction_type, json!(count));
     }
 

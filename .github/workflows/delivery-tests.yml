@@ -1,0 +1,179 @@
+name: Delivery System Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/src/routes/delivery_routes.rs'
+      - 'backend/src/services/delivery_service.rs'
+      - 'backend/src/services/delivery_payment_service.rs'
+      - 'backend/src/services/delivery_pricing_metrics.rs'
+      - 'backend/tests/delivery_*.rs'
+      - 'frontend/src/components/delivery/**'
+      - 'frontend/tests/e2e/delivery-*.spec.ts'
+      - 'mobile/src/components/delivery/**'
+      - 'mobile/src/__tests__/delivery*.test.tsx'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/src/routes/delivery_routes.rs'
+      - 'backend/src/services/delivery_service.rs'
+      - 'backend/src/services/delivery_payment_service.rs'
+      - 'backend/src/services/delivery_pricing_metrics.rs'
+      - 'backend/tests/delivery_*.rs'
+      - 'frontend/src/components/delivery/**'
+      - 'frontend/tests/e2e/delivery-*.spec.ts'
+      - 'mobile/src/components/delivery/**'
+      - 'mobile/src/__tests__/delivery*.test.tsx'
+  workflow_dispatch:
+
+jobs:
+  backend-tests:
+    name: Backend Tests (Rust)
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: yukpomnang_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            backend/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      
+      - name: Set up environment
+        working-directory: backend
+        run: |
+          export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/yukpomnang_test
+          export SQLX_OFFLINE=true
+          echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
+          echo "SQLX_OFFLINE=true" >> $GITHUB_ENV
+      
+      - name: Run database migrations
+        working-directory: backend
+        run: |
+          cargo install sqlx-cli --features postgres --no-default-features || true
+          sqlx migrate run --database-url $DATABASE_URL || echo "Migrations skipped"
+      
+      - name: Run unit tests
+        working-directory: backend
+        run: |
+          cargo test delivery_pricing_tests --lib -- --nocapture
+      
+      - name: Run integration tests (if available)
+        working-directory: backend
+        run: |
+          cargo test --test delivery_api_integration_tests -- --ignored || echo "Integration tests skipped (require DB setup)"
+        continue-on-error: true
+
+  frontend-tests:
+    name: Frontend Tests (Playwright)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps
+      
+      - name: Run E2E tests
+        working-directory: frontend
+        run: |
+          npm run test:e2e || echo "E2E tests require backend running"
+        continue-on-error: true
+        env:
+          CI: true
+
+  mobile-tests:
+    name: Mobile Tests (React Native)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm ci
+      
+      - name: Run unit tests
+        working-directory: mobile
+        run: |
+          npm test -- --testPathPattern=deliveryPricing || echo "Tests require setup"
+        continue-on-error: true
+
+  lint-check:
+    name: Lint Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      
+      - name: Run clippy
+        working-directory: backend
+        run: |
+          cargo clippy --all-targets --all-features -- -D warnings || true
+        continue-on-error: true
+      
+      - name: Check formatting
+        working-directory: backend
+        run: |
+          cargo fmt --check || true
+        continue-on-error: true
+

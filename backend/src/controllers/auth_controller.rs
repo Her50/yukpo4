@@ -14,7 +14,7 @@ use crate::{
     utils::{
         jwt_manager::generate_jwt,
         sanitize_logs::log_safe_email,
-        validation::{validate_email, validate_password_strength, validate_name},
+        validation::{validate_email, validate_name, validate_password_strength},
     },
 };
 
@@ -38,11 +38,14 @@ pub async fn login_handler(
     if payload.password.is_empty() {
         return Err(AppError::BadRequest("Le mot de passe est requis".into()));
     }
-    
+
     // ✅ SÉCURITÉ: Logger l'email masqué
-    info!("Appel login_handler pour email={}", log_safe_email(&payload.email));
+    info!(
+        "Appel login_handler pour email={}",
+        log_safe_email(&payload.email)
+    );
     let db = &state.pg;
-    
+
     #[derive(FromRow)]
     struct UserRow {
         id: i32,
@@ -52,7 +55,7 @@ pub async fn login_handler(
         tokens_balance: i64,
         nom_complet: Option<String>,
     }
-    
+
     let user = sqlx::query_as::<_, UserRow>(
         r#"
         SELECT id, email, password_hash, role, tokens_balance, nom_complet
@@ -79,7 +82,7 @@ pub async fn login_handler(
             return Err(e.into());
         }
     };
-    
+
     // ✅ SÉCURITÉ: Vérifier le mot de passe AVANT de logger quoi que ce soit
     // Utiliser un message générique pour éviter l'énumération
     if !verify(&payload.password, &user.password_hash)? {
@@ -103,9 +106,11 @@ pub async fn login_handler(
         "token": jwt,
         "tokens_balance": user.tokens_balance
     });
-    info!("[login_handler] ✅ Réponse login générée: token présent={}, tokens_balance={}", 
-          !response_data["token"].as_str().unwrap_or("").is_empty(),
-          response_data["tokens_balance"]);
+    info!(
+        "[login_handler] ✅ Réponse login générée: token présent={}, tokens_balance={}",
+        !response_data["token"].as_str().unwrap_or("").is_empty(),
+        response_data["tokens_balance"]
+    );
     Ok(Json(response_data))
 }
 
@@ -127,7 +132,7 @@ pub async fn register_user(
     // ✅ SÉCURITÉ: Valider les entrées
     validate_email(&payload.email)?;
     validate_password_strength(&payload.password)?;
-    
+
     // Valider les noms si fournis
     if let Some(ref nom) = payload.nom {
         validate_name(nom, "Nom")?;
@@ -138,16 +143,18 @@ pub async fn register_user(
     if let Some(ref name) = payload.name {
         validate_name(name, "Nom complet")?;
     }
-    
+
     // ✅ SÉCURITÉ: Logger l'email masqué
-    info!("Appel register_user pour email={}", log_safe_email(&payload.email));
+    info!(
+        "Appel register_user pour email={}",
+        log_safe_email(&payload.email)
+    );
     let db = &state.pg;
-    let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)",
-    )
-    .bind(&payload.email)
-    .fetch_one(db)
-    .await;
+    let exists =
+        sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)")
+            .bind(&payload.email)
+            .fetch_one(db)
+            .await;
     let exists = match exists {
         Ok(val) => val,
         Err(e) => {
@@ -195,7 +202,7 @@ pub async fn register_user(
         id: i32,
         tokens_balance: i64,
     }
-    
+
     let new = sqlx::query_as::<_, NewUserRow>(
         r#"
         INSERT INTO users (
@@ -277,41 +284,49 @@ pub async fn oauth_login_handler(
         payload.provider
     );
     let client = Client::new();
-    
+
     // ✅ SÉCURITÉ: Validation OAuth améliorée
     let (user_res, provider_name) = match payload.provider.as_str() {
         "google" => {
             // Pour Google, utiliser tokeninfo qui valide le token
             let tokeninfo_url = format!(
-            "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token={}",
-            payload.token_id
+                "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token={}",
+                payload.token_id
             );
-            
+
             let resp = client.get(&tokeninfo_url).send().await.map_err(|e| {
                 error!("[oauth_login_handler] Erreur requête Google tokeninfo: {e:?}");
                 AppError::Unauthorized("Token Google invalide".into())
             })?;
-            
+
             // Vérifier le status code
             if !resp.status().is_success() {
-                error!("[oauth_login_handler] Google tokeninfo retourne une erreur: {}", resp.status());
-                return Err(AppError::Unauthorized("Token Google invalide ou expiré".into()));
+                error!(
+                    "[oauth_login_handler] Google tokeninfo retourne une erreur: {}",
+                    resp.status()
+                );
+                return Err(AppError::Unauthorized(
+                    "Token Google invalide ou expiré".into(),
+                ));
             }
-            
+
             let user_data = resp.json::<serde_json::Value>().await.map_err(|e| {
                 error!("[oauth_login_handler] Erreur parsing JSON Google: {e:?}");
                 AppError::Unauthorized("Réponse Google invalide".into())
             })?;
-            
+
             // ✅ SÉCURITÉ: Vérifier que le token n'est pas expiré
             if let Some(exp) = user_data.get("exp").and_then(|v| v.as_i64()) {
                 let now = chrono::Utc::now().timestamp();
                 if exp < now {
-                    error!("[oauth_login_handler] Token Google expiré (exp: {}, now: {})", exp, now);
+                    error!(
+                        "[oauth_login_handler] Token Google expiré (exp: {}, now: {})",
+                        exp, now
+                    );
                     return Err(AppError::Unauthorized("Token Google expiré".into()));
                 }
             }
-            
+
             // ✅ SÉCURITÉ: Vérifier l'audience (optionnel si GOOGLE_CLIENT_ID est défini)
             if let Ok(expected_aud) = std::env::var("GOOGLE_CLIENT_ID") {
                 if let Some(actual_aud) = user_data.get("aud").and_then(|v| v.as_str()) {
@@ -320,11 +335,13 @@ pub async fn oauth_login_handler(
                             "[oauth_login_handler] Audience Google invalide: attendu {}, reçu {}",
                             expected_aud, actual_aud
                         );
-                        return Err(AppError::Unauthorized("Token Google pour une autre application".into()));
+                        return Err(AppError::Unauthorized(
+                            "Token Google pour une autre application".into(),
+                        ));
                     }
                 }
             }
-            
+
             (user_data, "google")
         }
         "facebook" => {
@@ -333,23 +350,23 @@ pub async fn oauth_login_handler(
                 .map_err(|_| AppError::Internal("FACEBOOK_APP_ID manquant".into()))?;
             let app_secret = std::env::var("FACEBOOK_APP_SECRET")
                 .map_err(|_| AppError::Internal("FACEBOOK_APP_SECRET manquant".into()))?;
-            
+
             // Vérifier le token avec l'endpoint debug
             let debug_url = format!(
                 "https://graph.facebook.com/debug_token?input_token={}&access_token={}|{}",
                 payload.token_id, app_id, app_secret
             );
-            
+
             let debug_resp = client.get(&debug_url).send().await.map_err(|e| {
                 error!("[oauth_login_handler] Erreur requête Facebook debug_token: {e:?}");
                 AppError::Unauthorized("Token Facebook invalide".into())
             })?;
-            
+
             let debug_data = debug_resp.json::<serde_json::Value>().await.map_err(|e| {
                 error!("[oauth_login_handler] Erreur parsing JSON Facebook debug: {e:?}");
                 AppError::Unauthorized("Réponse Facebook debug invalide".into())
             })?;
-            
+
             // Vérifier que le token est valide
             if let Some(is_valid) = debug_data
                 .get("data")
@@ -364,28 +381,31 @@ pub async fn oauth_login_handler(
                 error!("[oauth_login_handler] Réponse Facebook debug invalide: {debug_data:?}");
                 return Err(AppError::Unauthorized("Token Facebook invalide".into()));
             }
-            
+
             // Maintenant récupérer les informations utilisateur
             let user_url = format!(
-            "https://graph.facebook.com/me?fields=id,name,email&access_token={}",
-            payload.token_id
+                "https://graph.facebook.com/me?fields=id,name,email&access_token={}",
+                payload.token_id
             );
-            
+
             let user_resp = client.get(&user_url).send().await.map_err(|e| {
                 error!("[oauth_login_handler] Erreur requête Facebook /me: {e:?}");
                 AppError::Unauthorized("Impossible de récupérer les informations Facebook".into())
             })?;
-            
+
             if !user_resp.status().is_success() {
-                error!("[oauth_login_handler] Facebook /me retourne une erreur: {}", user_resp.status());
+                error!(
+                    "[oauth_login_handler] Facebook /me retourne une erreur: {}",
+                    user_resp.status()
+                );
                 return Err(AppError::Unauthorized("Token Facebook invalide".into()));
             }
-            
+
             let user_data = user_resp.json::<serde_json::Value>().await.map_err(|e| {
                 error!("[oauth_login_handler] Erreur parsing JSON Facebook: {e:?}");
                 AppError::Unauthorized("Réponse Facebook invalide".into())
             })?;
-            
+
             (user_data, "facebook")
         }
         _ => {
@@ -398,7 +418,7 @@ pub async fn oauth_login_handler(
             ));
         }
     };
-    
+
     // Extraire l'email
     let email = user_res.get("email").and_then(|v| v.as_str());
     let email = match email {
@@ -421,7 +441,7 @@ pub async fn oauth_login_handler(
         .map(|s| s.to_string());
 
     let db = &state.pg;
-    
+
     #[derive(FromRow)]
     struct OAuthUserRow {
         id: i32,
@@ -429,13 +449,13 @@ pub async fn oauth_login_handler(
         tokens_balance: i64,
         nom_complet: Option<String>,
     }
-    
+
     #[derive(FromRow)]
     struct NewOAuthUserRow {
         id: i32,
         tokens_balance: i64,
     }
-    
+
     let row = sqlx::query_as::<_, OAuthUserRow>(
         r#"
         SELECT id, role, tokens_balance, nom_complet

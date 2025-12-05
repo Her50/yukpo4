@@ -324,7 +324,7 @@ pub async fn generate_suggestions(
         // ✅ Intégration IA pour générer des suggestions intelligentes
         let product_name = payload.product_name.as_deref().unwrap_or("produit");
         let service_name = payload.service_name.as_deref().unwrap_or("service");
-        
+
         let prompt = format!(
             "Tu es un expert en marketing vidéo pour Yukpomnang. Analyse ce brief et génère 4-5 suggestions concises (une phrase chacune) pour améliorer la vidéo promotionnelle.\n\nBrief : {}\nProduit : {}\nService : {}\n\nFormat de réponse (JSON strict) :\n{{\n  \"suggestions\": [\n    \"Suggestion 1\",\n    \"Suggestion 2\",\n    \"Suggestion 3\",\n    \"Suggestion 4\"\n  ]\n}}\n\nLes suggestions doivent être :\n- Concrètes et actionnables\n- Adaptées au contexte du brief\n- Orientées vers l'engagement et la conversion\n- Maximum 15 mots chacune",
             payload.brief,
@@ -339,32 +339,41 @@ pub async fn generate_suggestions(
                 let json_block = extract_json_from_text(&response);
                 if let Some(json_str) = json_block {
                     if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_str) {
-                        if let Some(suggestions_array) = parsed.get("suggestions").and_then(|v| v.as_array()) {
+                        if let Some(suggestions_array) =
+                            parsed.get("suggestions").and_then(|v| v.as_array())
+                        {
                             let ai_suggestions: Vec<String> = suggestions_array
                                 .iter()
                                 .filter_map(|v| v.as_str().map(|s| s.trim().to_string()))
                                 .filter(|s| !s.is_empty())
                                 .take(5)
                                 .collect();
-                            
+
                             if !ai_suggestions.is_empty() {
-                                return Ok(Json(SuggestionsResponse { suggestions: ai_suggestions }));
+                                return Ok(Json(SuggestionsResponse {
+                                    suggestions: ai_suggestions,
+                                }));
                             }
                         }
                     }
                 }
-                
+
                 // Fallback si parsing JSON échoue : extraire les suggestions du texte
                 let fallback_suggestions = extract_suggestions_from_text(&response);
                 if !fallback_suggestions.is_empty() {
-                    return Ok(Json(SuggestionsResponse { suggestions: fallback_suggestions }));
+                    return Ok(Json(SuggestionsResponse {
+                        suggestions: fallback_suggestions,
+                    }));
                 }
-                
+
                 // Dernier fallback : suggestions basiques
                 generate_fallback_suggestions(&payload.brief)
             }
             Err(e) => {
-                log::warn!("Erreur IA pour suggestions: {}. Utilisation de fallback.", e);
+                log::warn!(
+                    "Erreur IA pour suggestions: {}. Utilisation de fallback.",
+                    e
+                );
                 generate_fallback_suggestions(&payload.brief)
             }
         }
@@ -379,7 +388,7 @@ fn extract_json_from_text(text: &str) -> Option<String> {
     let start = text.find('{')?;
     let mut depth = 0;
     let mut end = start;
-    
+
     for (i, ch) in text[start..].char_indices() {
         match ch {
             '{' => depth += 1,
@@ -393,7 +402,7 @@ fn extract_json_from_text(text: &str) -> Option<String> {
             _ => {}
         }
     }
-    
+
     if depth == 0 {
         Some(text[start..end].to_string())
     } else {
@@ -405,13 +414,15 @@ fn extract_json_from_text(text: &str) -> Option<String> {
 fn extract_suggestions_from_text(text: &str) -> Vec<String> {
     let lines: Vec<&str> = text.lines().collect();
     let mut suggestions = Vec::new();
-    
+
     for line in lines {
         let trimmed = line.trim();
         // Chercher des lignes qui commencent par des numéros, tirets, ou puces
         if trimmed.starts_with(|c: char| c.is_ascii_digit() || c == '-' || c == '•' || c == '*') {
             let cleaned = trimmed
-                .trim_start_matches(|c: char| c.is_ascii_digit() || c == '-' || c == '•' || c == '*' || c == '.' || c == ' ')
+                .trim_start_matches(|c: char| {
+                    c.is_ascii_digit() || c == '-' || c == '•' || c == '*' || c == '.' || c == ' '
+                })
                 .trim()
                 .to_string();
             if !cleaned.is_empty() && cleaned.len() <= 100 {
@@ -419,7 +430,7 @@ fn extract_suggestions_from_text(text: &str) -> Vec<String> {
             }
         }
     }
-    
+
     suggestions.truncate(5);
     suggestions
 }
@@ -430,7 +441,8 @@ fn generate_fallback_suggestions(brief: &str) -> Vec<String> {
     let mut suggestions = Vec::new();
 
     // Suggestions contextuelles basées sur le contenu du brief
-    if brief_lower.contains("prix") || brief_lower.contains("coût") || brief_lower.contains("tarif") {
+    if brief_lower.contains("prix") || brief_lower.contains("coût") || brief_lower.contains("tarif")
+    {
         suggestions.push("Mettre en avant le rapport qualité/prix".to_string());
     }
     if brief_lower.contains("livraison") || brief_lower.contains("rapide") {
@@ -439,7 +451,10 @@ fn generate_fallback_suggestions(brief: &str) -> Vec<String> {
     if brief_lower.contains("qualité") || brief_lower.contains("premium") {
         suggestions.push("Mettre en avant la qualité premium".to_string());
     }
-    if brief_lower.contains("promo") || brief_lower.contains("réduction") || brief_lower.contains("offre") {
+    if brief_lower.contains("promo")
+        || brief_lower.contains("réduction")
+        || brief_lower.contains("offre")
+    {
         suggestions.push("Mettre en avant l'offre promotionnelle".to_string());
     }
 
@@ -494,7 +509,9 @@ pub async fn generate_storyboard(
     };
 
     let orchestrator = ImmersiveOrchestrator::new(state.clone());
-    let timeline_result = orchestrator.generate_timeline(timeline_request.clone()).await?;
+    let timeline_result = orchestrator
+        .generate_timeline(timeline_request.clone())
+        .await?;
     let storyboard = orchestrator.build_storyboard(&timeline_request, &timeline_result);
 
     Ok(Json(StoryboardResponse { storyboard }))

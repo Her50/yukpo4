@@ -333,4 +333,3 @@ impl SmartNotificationService {
         Ok(())
     }
 }
-

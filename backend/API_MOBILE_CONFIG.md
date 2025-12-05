@@ -4,7 +4,7 @@
 
 ```env
 # OpenWeatherMap API pour la météo
-OPENWEATHER_API_KEY=your-openweather-api-key-here
+OPENWEATHERMAP_API_KEY=your-openweathermap-api-key-here
 ```
 
 ## Comment obtenir la clé OpenWeatherMap

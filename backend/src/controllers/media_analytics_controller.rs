@@ -48,14 +48,15 @@ pub async fn track_view(
 ) -> AppResult<Json<serde_json::Value>> {
     // ✅ CORRECTION 2025-12-01: Validation media_id AVANT le parsing JSON pour éviter 500
     let media_id_trimmed = media_id.trim();
-    
-    if media_id_trimmed.is_empty() || media_id_trimmed == "undefined" || media_id_trimmed == "null" {
+
+    if media_id_trimmed.is_empty() || media_id_trimmed == "undefined" || media_id_trimmed == "null"
+    {
         return Err(crate::core::types::AppError::BadRequest(format!(
             "media_id invalide: '{}'. Le paramètre media_id est requis et doit être un entier valide.",
             media_id
         )));
     }
-    
+
     // ✅ CORRECTION 2025-12-01: Gérer l'erreur de parsing JSON gracieusement (retourner 400 au lieu de 500)
     let payload = payload.map_err(|e| {
         crate::core::types::AppError::BadRequest(format!(
@@ -63,7 +64,7 @@ pub async fn track_view(
             e
         ))
     })?;
-    
+
     // Valider que media_id est un entier valide
     let media_id_int = media_id_trimmed.parse::<i32>().map_err(|_| {
         crate::core::types::AppError::BadRequest(format!(
@@ -71,7 +72,7 @@ pub async fn track_view(
             media_id_trimmed, media_id
         ))
     })?;
-    
+
     // Valider que l'ID est positif
     if media_id_int <= 0 {
         return Err(crate::core::types::AppError::BadRequest(format!(

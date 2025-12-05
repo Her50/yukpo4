@@ -18,4 +18,3 @@ async fn delivery_api_smoke_test() {
     // pour le crate backend fonctionne.
     assert!(true);
 }
-

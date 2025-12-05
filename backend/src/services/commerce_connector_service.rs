@@ -50,7 +50,7 @@ impl CommerceConnectorService {
             JOIN services s ON s.id = pl.service_id
             WHERE pl.service_id = $1
               AND pl.product_index = $2
-            "#
+            "#,
         )
         .bind(service_id)
         .bind(product_index)

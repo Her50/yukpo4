@@ -306,18 +306,46 @@ pub async fn reserve_flash_sale(
     Authenticated(user): Authenticated,
     Json(payload): Json<FlashSaleReservationPayload>,
 ) -> AppResult<Json<serde_json::Value>> {
-    let summary = LiveFlashSaleService::reserve_slot(
-        &state.pg,
-        flash_sale_id,
-        user.id,
-        payload.quantity.unwrap_or(1),
-    )
-    .await?;
+    // ✅ NOUVEAU: Utiliser la queue pour gérer les pics de trafic
+    if let Some(queue) = &state.flash_sale_queue {
+        use crate::services::flash_sale_queue::{
+            FlashSaleReservationQueue, FlashSaleReservationRequest,
+        };
+        use chrono::Utc;
 
-    Ok(Json(json!({
-        "success": true,
-        "data": summary
-    })))
+        let request = FlashSaleReservationRequest {
+            flash_sale_id,
+            user_id: user.id,
+            quantity: payload.quantity.unwrap_or(1),
+            requested_at: Utc::now(),
+        };
+
+        let ticket = queue.enqueue_reservation(request).await?;
+
+        Ok(Json(json!({
+            "success": true,
+            "data": {
+                "ticket_id": ticket.ticket_id,
+                "status": ticket.status,
+                "estimated_wait_time_seconds": ticket.estimated_wait_time_seconds,
+                "message": "Réservation en cours de traitement. Utilisez /api/live/flash-sales/tickets/{ticket_id} pour vérifier le statut."
+            }
+        })))
+    } else {
+        // Fallback vers l'ancienne méthode si la queue n'est pas disponible
+        let summary = LiveFlashSaleService::reserve_slot(
+            &state.pg,
+            flash_sale_id,
+            user.id,
+            payload.quantity.unwrap_or(1),
+        )
+        .await?;
+
+        Ok(Json(json!({
+            "success": true,
+            "data": summary
+        })))
+    }
 }
 pub async fn list_flash_sale_reservations(
     State(state): State<Arc<AppState>>,
@@ -346,6 +374,28 @@ pub async fn list_flash_sale_commentaries(
         "success": true,
         "data": commentaries
     })))
+}
+
+pub async fn get_flash_sale_ticket_status(
+    State(state): State<Arc<AppState>>,
+    Path(ticket_id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    if let Some(queue) = &state.flash_sale_queue {
+        let ticket = queue.get_ticket_status(&ticket_id).await?;
+
+        if let Some(ticket) = ticket {
+            Ok(Json(json!({
+                "success": true,
+                "data": ticket
+            })))
+        } else {
+            Err(AppError::NotFound("Ticket introuvable".into()))
+        }
+    } else {
+        Err(AppError::Internal(
+            "Queue de réservations non disponible".into(),
+        ))
+    }
 }
 
 pub async fn create_flash_sale_commentary(

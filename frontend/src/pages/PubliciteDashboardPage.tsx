@@ -6,6 +6,7 @@ import {
     Eye,
     Film,
     Globe,
+    History,
     MapPin,
     Megaphone,
     MousePointer,
@@ -17,8 +18,12 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AdvancedAnalyticsChart from '../components/AdvancedAnalyticsChart';
+import OptimizationSuggestions from '../components/OptimizationSuggestions';
+import PubliciteVersionHistory from '../components/PubliciteVersionHistory';
 import { Button } from '../components/ui/buttons/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { useUserSWR } from '../hooks/useUserSWR';
 import { apiGet } from '../services/apiService';
 
 interface PubliciteStats {
@@ -70,7 +75,9 @@ const defaultVideoSummary: VideoSummary = {
 
 const PubliciteDashboardPage: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useUserSWR();
     const [loading, setLoading] = useState(true);
+    const [selectedPubliciteForHistory, setSelectedPubliciteForHistory] = useState<string | null>(null);
     const [publicites, setPublicites] = useState<PubliciteStats[]>([]);
     const [globalStats, setGlobalStats] = useState<GlobalStats>({
         total_vues: 0,
@@ -389,6 +396,36 @@ const PubliciteDashboardPage: React.FC = () => {
                     </CardContent>
                 </Card>
 
+                {/* ✅ NOUVEAU: Analytics Avancés */}
+                {user?.id && (
+                    <Card className="mb-8">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <TrendingUp className="w-5 h-5" />
+                                Analytics Avancés
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <AdvancedAnalyticsChart userId={parseInt(user.id)} periodDays={30} />
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* ✅ NOUVEAU: Suggestions d'Optimisation */}
+                {user?.id && (
+                    <Card className="mb-8">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Sparkles className="w-5 h-5" />
+                                Optimisation Automatique
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <OptimizationSuggestions userId={parseInt(user.id)} />
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Liste des publicités */}
                 <Card>
                     <CardHeader>
@@ -524,7 +561,29 @@ const PubliciteDashboardPage: React.FC = () => {
                                                 <span className="mr-2">✏️</span>
                                                 Modifier
                                             </Button>
+                                            <Button
+                                                onClick={() => setSelectedPubliciteForHistory(selectedPubliciteForHistory === pub.id ? null : pub.id)}
+                                                variant="outline"
+                                                className="flex-1"
+                                                size="sm"
+                                            >
+                                                <History className="w-4 h-4 mr-2" />
+                                                Historique
+                                            </Button>
                                         </div>
+
+                                        {/* ✅ Historique des versions */}
+                                        {selectedPubliciteForHistory === pub.id && (
+                                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                                <PubliciteVersionHistory
+                                                    campaignId={parseInt(pub.id)}
+                                                    onVersionSelect={(versionNumber) => {
+                                                        console.log('Version sélectionnée:', versionNumber);
+                                                        loadDashboard();
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
 
                                         {renderVideoDetails(pub)}
                                     </div>

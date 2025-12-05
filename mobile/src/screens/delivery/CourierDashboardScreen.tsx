@@ -1,8 +1,9 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Animated,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -10,6 +11,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import CourierStatsChart from '../../components/delivery/CourierStatsChart';
+import SkeletonDeliveryCard from '../../components/delivery/SkeletonDeliveryCard';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
@@ -17,6 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary } from '../../types/delivery';
+import { useScreenEnter } from '../../utils/animations';
 
 const CourierDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -29,7 +33,12 @@ const CourierDashboardScreen: React.FC = () => {
         completedDeliveries: 0,
         totalEarnings: 0,
         currentMonthEarnings: 0,
+        avgDeliveryTime: 0,
+        successRate: 95,
     });
+
+    // ✅ NOUVEAU: Animation d'entrée
+    const screenEnterStyle = useScreenEnter();
 
     useFocusEffect(
         useCallback(() => {
@@ -78,93 +87,97 @@ const CourierDashboardScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            <ScrollView
-                style={styles.scroll}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-            >
-                <View style={styles.header}>
-                    <Text style={styles.title}>Suivre mes courses</Text>
-                    <Text style={styles.subtitle}>Tableau de bord coursier</Text>
-                </View>
+            <Animated.View style={[styles.animatedContainer, screenEnterStyle.style as any]}>
+                <ScrollView
+                    style={styles.scroll}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+                >
+                    <View style={styles.header}>
+                        <Text style={styles.title}>Tableau de bord coursier</Text>
+                        <Text style={styles.subtitle}>Suivez vos performances et livraisons</Text>
+                    </View>
 
-                {/* Statistiques */}
-                <View style={styles.statsContainer}>
-                    <NativeCard style={styles.statCard}>
-                        <Text style={styles.statValue}>{stats.completedDeliveries}</Text>
-                        <Text style={styles.statLabel}>Livraisons complétées</Text>
-                    </NativeCard>
-                    <NativeCard style={styles.statCard}>
-                        <Text style={styles.statValue}>{stats.totalEarnings.toLocaleString()} XAF</Text>
-                        <Text style={styles.statLabel}>Gains totaux</Text>
-                    </NativeCard>
-                    <NativeCard style={styles.statCard}>
-                        <Text style={styles.statValue}>{stats.currentMonthEarnings.toLocaleString()} XAF</Text>
-                        <Text style={styles.statLabel}>Ce mois</Text>
-                    </NativeCard>
-                </View>
-
-                {/* Livraisons actives */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Livraisons actives</Text>
-                    {activeDeliveries.length === 0 ? (
-                        <NativeCard style={styles.emptyCard}>
-                            <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
-                            <Text style={styles.emptyText}>Aucune livraison active</Text>
-                        </NativeCard>
-                    ) : (
-                        activeDeliveries.map((delivery) => (
-                            <TouchableOpacity
-                                key={delivery.id}
-                                onPress={() => handleOpenDelivery(delivery.id)}
-                            >
-                                <NativeCard style={styles.deliveryCard}>
-                                    <View style={styles.deliveryHeader}>
-                                        <Text style={styles.deliveryId}>
-                                            Livraison #{delivery.id.slice(-6)}
-                                        </Text>
-                                        <Text style={styles.deliveryStatus}>{delivery.status}</Text>
-                                    </View>
-                                    <View style={styles.deliveryInfo}>
-                                        <View style={styles.deliveryRow}>
-                                            <SafeIcon name="map-pin" size={16} color={modernColors.textSecondary} />
-                                            <Text style={styles.deliveryText}>
-                                                {delivery.pickup?.label || 'Pickup'}
-                                            </Text>
-                                        </View>
-                                        <View style={styles.deliveryRow}>
-                                            <SafeIcon name="navigation" size={16} color={modernColors.textSecondary} />
-                                            <Text style={styles.deliveryText}>
-                                                {delivery.dropoff?.label || 'Dropoff'}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </NativeCard>
-                            </TouchableOpacity>
-                        ))
-                    )}
-                </View>
-
-                {/* Actions rapides */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Actions rapides</Text>
-                    <NativeButton
-                        title="📊 Voir mes statistiques"
-                        variant="outline"
-                        onPress={() => {
-                            // TODO: Naviguer vers page statistiques détaillées
-                            Alert.alert('Info', 'Page statistiques à venir');
-                        }}
+                    {/* ✅ NOUVEAU: Graphiques de statistiques animés */}
+                    <CourierStatsChart
+                        completedDeliveries={stats.completedDeliveries}
+                        totalEarnings={stats.totalEarnings}
+                        currentMonthEarnings={stats.currentMonthEarnings}
+                        avgDeliveryTime={stats.avgDeliveryTime}
+                        successRate={stats.successRate}
                     />
-                    <NativeButton
-                        title="💰 Voir mes gains"
-                        variant="outline"
-                        onPress={() => {
-                            // TODO: Naviguer vers page gains
-                            Alert.alert('Info', 'Page gains à venir');
-                        }}
-                    />
-                </View>
-            </ScrollView>
+
+                    {/* Livraisons actives */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Livraisons actives</Text>
+                        {loading && activeDeliveries.length === 0 ? (
+                            <>
+                                <SkeletonDeliveryCard />
+                                <SkeletonDeliveryCard />
+                            </>
+                        ) : activeDeliveries.length === 0 ? (
+                            <NativeCard style={styles.emptyCard}>
+                                <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
+                                <Text style={styles.emptyText}>Aucune livraison active</Text>
+                                <Text style={styles.emptySubtext}>
+                                    Les nouvelles livraisons apparaîtront ici
+                                </Text>
+                            </NativeCard>
+                        ) : (
+                            activeDeliveries.map((delivery, index) => (
+                                <TouchableOpacity
+                                    key={delivery.id}
+                                    onPress={() => handleOpenDelivery(delivery.id)}
+                                    style={styles.deliveryCardWrapper}
+                                >
+                                    <NativeCard style={styles.deliveryCard}>
+                                        <View style={styles.deliveryHeader}>
+                                            <Text style={styles.deliveryId}>
+                                                Livraison #{delivery.id.slice(-6)}
+                                            </Text>
+                                            <Text style={styles.deliveryStatus}>{delivery.status}</Text>
+                                        </View>
+                                        <View style={styles.deliveryInfo}>
+                                            <View style={styles.deliveryRow}>
+                                                <SafeIcon name="map-pin" size={16} color={modernColors.textSecondary} />
+                                                <Text style={styles.deliveryText}>
+                                                    {delivery.pickup?.label || 'Pickup'}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.deliveryRow}>
+                                                <SafeIcon name="navigation" size={16} color={modernColors.textSecondary} />
+                                                <Text style={styles.deliveryText}>
+                                                    {delivery.dropoff?.label || 'Dropoff'}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </NativeCard>
+                                </TouchableOpacity>
+                            ))
+                        )}
+                    </View>
+
+                    {/* Actions rapides */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Actions rapides</Text>
+                        <NativeButton
+                            title="📊 Voir mes statistiques"
+                            variant="outline"
+                            onPress={() => {
+                                // TODO: Naviguer vers page statistiques détaillées
+                                Alert.alert('Info', 'Page statistiques à venir');
+                            }}
+                        />
+                        <NativeButton
+                            title="💰 Voir mes gains"
+                            variant="outline"
+                            onPress={() => {
+                                // TODO: Naviguer vers page gains
+                                Alert.alert('Info', 'Page gains à venir');
+                            }}
+                        />
+                    </View>
+                </ScrollView>
+            </Animated.View>
         </SafeNativeView>
     );
 };
@@ -173,6 +186,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: modernColors.background,
+    },
+    animatedContainer: {
+        flex: 1,
     },
     loadingContainer: {
         flex: 1,
@@ -238,9 +254,19 @@ const styles = StyleSheet.create({
         padding: 32,
     },
     emptyText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginTop: 12,
+    },
+    emptySubtext: {
         fontSize: 14,
         color: modernColors.textSecondary,
-        marginTop: 12,
+        marginTop: 4,
+        textAlign: 'center',
+    },
+    deliveryCardWrapper: {
+        marginBottom: 12,
     },
     deliveryCard: {
         marginBottom: 12,

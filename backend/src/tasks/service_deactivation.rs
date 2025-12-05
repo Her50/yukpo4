@@ -35,7 +35,7 @@ pub async fn envoyer_alertes_prestataires(pool: &PgPool) -> Result<(), sqlx::Err
         WHERE is_active = FALSE
           AND is_tarissable = TRUE
           AND (last_alert_sent_at IS NULL OR last_alert_sent_at < $1)
-        "#
+        "#,
     )
     .bind(il_y_a_24_heures)
     .fetch_all(pool)
@@ -52,13 +52,11 @@ pub async fn envoyer_alertes_prestataires(pool: &PgPool) -> Result<(), sqlx::Err
         let maintenant_naive = maintenant.naive_utc();
 
         // Mettre à jour la date de la dernière alerte
-        sqlx::query(
-            "UPDATE services SET last_alert_sent_at = $1 WHERE id = $2"
-        )
-        .bind(maintenant_naive)
-        .bind(service.id)
-        .execute(pool)
-        .await?;
+        sqlx::query("UPDATE services SET last_alert_sent_at = $1 WHERE id = $2")
+            .bind(maintenant_naive)
+            .bind(service.id)
+            .execute(pool)
+            .await?;
     }
 
     Ok(())
@@ -70,13 +68,11 @@ pub async fn confirmer_desactivation(
     service_id: i32,
     user_id: i32,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "UPDATE services SET is_active = FALSE WHERE id = $1 AND user_id = $2"
-    )
-    .bind(service_id)
-    .bind(user_id)
-    .execute(pool)
-    .await?;
+    sqlx::query("UPDATE services SET is_active = FALSE WHERE id = $1 AND user_id = $2")
+        .bind(service_id)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
 
     Ok(())
 }
@@ -103,7 +99,7 @@ pub async fn reactiver_service(
 
     // Vérifier que le service existe et appartient à l'utilisateur
     let service: Option<ServiceRow> = sqlx::query_as(
-        "SELECT id, user_id, is_active FROM services WHERE id = $1 AND user_id = $2"
+        "SELECT id, user_id, is_active FROM services WHERE id = $1 AND user_id = $2",
     )
     .bind(service_id)
     .bind(user_id)
@@ -117,19 +113,18 @@ pub async fn reactiver_service(
             }
 
             // Vérifier le solde de l'utilisateur
-            let user_balance: Option<UserBalanceRow> = sqlx::query_as(
-                "SELECT tokens_balance FROM users WHERE id = $1"
-            )
-            .bind(user_id)
-            .fetch_optional(pool)
-            .await?;
+            let user_balance: Option<UserBalanceRow> =
+                sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
+                    .bind(user_id)
+                    .fetch_optional(pool)
+                    .await?;
 
             match user_balance {
                 Some(user) => {
                     if user.tokens_balance >= COUT_REACTIVATION {
                         // Débiter le coût de réactivation
                         sqlx::query(
-                            "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2"
+                            "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2",
                         )
                         .bind(COUT_REACTIVATION)
                         .bind(user_id)

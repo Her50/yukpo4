@@ -677,6 +677,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const fetchRequestSeqRef = useRef(0);
     const autoAppliedRef = useRef(false); // ✅ NOUVEAU: Suivre si l'application automatique a déjà été faite
     const initialMountRef = useRef(true); // ✅ NOUVEAU: Suivre si c'est le premier montage du composant
+    // ✅ NOUVEAU 2025-12-01: État pour suivre si le tableau initial des sous-caractéristiques a été validé
+    // Le tableau doit s'afficher TOUJOURS en premier, même si des chips existent déjà
+    // L'utilisateur doit cliquer sur "Valider" pour appliquer les caractéristiques
+    const [isTableauInitialValidated, setIsTableauInitialValidated] = useState(false);
     const getPopularSuggestionKey = useCallback(
         (product: PopularProduct, index: number) =>
             `popular-${index}-${sanitizeKey((product?.product_vector || []).join('-') || `p-${index}`)}`,
@@ -835,6 +839,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
 
             onChange([result.vector], result.sousCaracs);
+            // ✅ NOUVEAU 2025-12-01: Marquer le tableau initial comme validé
+            // Cela permet de cacher le tableau et d'afficher seulement les chips après validation
+            if (key === 'ia-sous-caracteristiques-preferred') {
+                setIsTableauInitialValidated(true);
+            }
             // ✅ CORRIGÉ: Réinitialiser tous les états pour fermer le modal de suggestion
             setSearchQuery('');
             setSuggestions([]);
@@ -1072,7 +1081,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     setSuggestions([]);
                 }
 
-                if (combinationsResult.status === 'fulfilled' && combinationsResult.value?.success) {
+                // ✅ NOUVEAU 2025-12-01: Vérifier si le tableau initial existe et n'est pas validé
+                // Si l'utilisateur fait une recherche sans avoir validé le tableau initial, ne pas afficher de suggestions de sous-caractéristiques
+                // L'utilisateur peut rechercher d'autres produits/caractéristiques pour remplacer le tableau initial
+                const hasInitialTableau = (productVector && productLabels && productVector.length > 0) ||
+                    (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0);
+                const shouldShowSubCharacteristics = isTableauInitialValidated || !hasInitialTableau;
+
+                if (combinationsResult.status === 'fulfilled' && combinationsResult.value?.success && shouldShowSubCharacteristics) {
                     const combos = normalizeCombinationResponse(
                         combinationsResult.value?.data ?? combinationsResult.value
                     );
@@ -1171,6 +1187,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             ? 'Aucune caractéristique pertinente trouvée.'
                             : null
                     );
+                } else if (combinationsResult.status === 'fulfilled' && !shouldShowSubCharacteristics) {
+                    // ✅ NOUVEAU 2025-12-01: Ne pas afficher de suggestions de sous-caractéristiques si le tableau initial n'est pas validé
+                    // L'utilisateur peut rechercher d'autres produits, mais pas de combinaisons de sous-caractéristiques
+                    setCombinationSuggestions([]);
+                    setCombinationError(null);
                 } else {
                     setCombinationSuggestions([]);
                 }
@@ -1198,6 +1219,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             iaCombinaisons,
             separateur,
             setActiveTokens,
+            isTableauInitialValidated,
+            productVector,
+            productLabels,
+            sousCaracteristiques,
         ]
     );
 
@@ -1839,16 +1864,16 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             } as SuggestionCandidate;
         }
 
-        // ✅ PRIORITÉ 4: Utiliser preferredDraftCandidate s'il existe (déjà créé depuis les données)
+        // ✅ PRIORITÉ 4: Utiliser preferredDraftCandidate s'il existe (déjà créé depuis les données IA)
         if (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0) {
             return preferredDraftCandidate;
         }
 
-        // ✅ PRIORITÉ 5: Utiliser displayCandidate (bestSuggestionCandidate) s'il existe
-        if (displayCandidate && displayCandidate.rows && displayCandidate.rows.length > 0) {
-            return displayCandidate;
-        }
-
+        // ✅ CORRIGÉ 2025-12-01: NE PAS utiliser displayCandidate (bestSuggestionCandidate) car il peut contenir
+        // des suggestions populaires ou des combinaisons, pas les caractéristiques préférées par l'IA
+        // Le tableau initial doit TOUJOURS afficher les caractéristiques préférées par l'IA (productVector/productLabels ou sousCaracteristiques)
+        // Si ces données n'existent pas, ne rien afficher (return null)
+        // Les suggestions populaires/combinaisons ne doivent apparaître qu'après validation du tableau initial
         return null;
     }, [productVector, productLabels, sousCaracteristiques, normalizedSousCaracteristiques, preferredDraftCandidate, displayCandidate]);
 
@@ -2115,6 +2140,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             // Si on a de nouvelles données IA, réinitialiser pour permettre une nouvelle application automatique
             autoAppliedRef.current = false;
             initialMountRef.current = true; // Réinitialiser aussi le flag de montage initial
+            // ✅ NOUVEAU 2025-12-01: Réinitialiser aussi la validation du tableau initial pour afficher le nouveau tableau
+            setIsTableauInitialValidated(false);
         }
     }, [productVector, productLabels]);
 
@@ -2334,10 +2361,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 )}
             </View>
 
-            {/* ✅ CORRECTION RACINE: Afficher le tableau UNIQUEMENT si pas encore validé (pas de chips) */}
-            {/* Si chips.length > 0, c'est qu'on a déjà validé, donc on cache le tableau et on affiche seulement les chips (miniatures) */}
-            {/* Le tableau s'affiche au chargement pour permettre la validation, puis disparaît après validation */}
-            {chips.length === 0 && (loadingSuggestions || loadingCombinationSuggestions || finalCandidateToDisplay || combinationError) && (
+            {/* ✅ CORRIGÉ 2025-12-01: Afficher le tableau TOUJOURS en premier, même si des chips existent */}
+            {/* Le tableau s'affiche au chargement pour permettre la validation */}
+            {/* Après validation (isTableauInitialValidated = true), le tableau disparaît et seuls les chips s'affichent */}
+            {!isTableauInitialValidated && (loadingSuggestions || loadingCombinationSuggestions || finalCandidateToDisplay || combinationError) && (
                 <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
 

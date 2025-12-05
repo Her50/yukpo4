@@ -1249,44 +1249,130 @@ async fn analyser_contexte_ultra_avance(
 ) -> AppResult<ContextAnalysis> {
     let prompt_analyse = format!(
         r#"
-Analyse le contexte utilisateur suivant et fournis une analyse structur?e :
+Tu es un expert en analyse contextuelle pour l'assistant IA Yukpomnang.
 
-Contexte : {}
+CONTEXTE UTILISATEUR:
+{}
 
-Retourne un JSON avec :
-- user_intent_confidence (0-1) : confiance dans l'intention d?tect?e
-- context_relevance_score (0-1) : pertinence du contexte
-- sentiment_score (-1 ? 1) : sentiment de la demande
-- language_detected : langue d?tect?e (fr, en, etc.)
-- user_expertise_level : niveau d'expertise (beginner, intermediate, expert)
-- request_complexity : complexit? (simple, medium, complex)
-- suggested_improvements : suggestions d'am?lioration
-- context_enhancements : enrichissements contextuels
+TÂCHE:
+Analyse le contexte et fournis une analyse structurée complète.
+
+FORMAT DE RÉPONSE (JSON STRICT - PAS DE MARKDOWN):
+{{
+    "user_intent_confidence": 0.85,
+    "context_relevance_score": 0.90,
+    "sentiment_score": 0.5,
+    "language_detected": "fr",
+    "user_expertise_level": "intermediate",
+    "request_complexity": "medium",
+    "security_risk_level": "low",
+    "suggested_improvements": ["suggestion1", "suggestion2"],
+    "context_enhancements": {{}},
+    "ai_model_recommendation": "gpt-4o",
+    "expected_response_quality": 0.85,
+    "user_behavior_pattern": "standard",
+    "content_safety_score": 0.95,
+    "optimization_opportunities": ["opportunity1"]
+}}
+
+CONTRAINTES:
+- user_intent_confidence: nombre entre 0.0 et 1.0
+- context_relevance_score: nombre entre 0.0 et 1.0
+- sentiment_score: nombre entre -1.0 et 1.0
+- language_detected: code langue ISO (fr, en, es, pt)
+- user_expertise_level: "beginner" | "intermediate" | "expert"
+- request_complexity: "simple" | "medium" | "complex"
+- security_risk_level: "low" | "medium" | "high"
+- ai_model_recommendation: nom du modèle recommandé
+- expected_response_quality: nombre entre 0.0 et 1.0
+- content_safety_score: nombre entre 0.0 et 1.0
+
+IMPORTANT:
+- Retourne UNIQUEMENT du JSON valide
+- Pas de texte avant ou après le JSON
+- Pas de markdown (```json```)
+- Pas de commentaires dans le JSON
 "#,
         serde_json::to_string_pretty(input_context).unwrap_or_default()
     );
 
-    let (_, response, _tokens_used) = app_ia.predict(&prompt_analyse).await?;
+    let (model_name, response, _tokens_used) = app_ia.predict(&prompt_analyse).await?;
 
-    // Nettoyer et parser la r?ponse
-    let cleaned_response = nettoyer_reponse_ia(&response);
-    let analysis: ContextAnalysis =
-        serde_json::from_str(&cleaned_response).unwrap_or_else(|_| ContextAnalysis {
-            user_intent_confidence: 0.7,
-            context_relevance_score: 0.8,
-            sentiment_score: 0.5,
-            language_detected: "fr".to_string(),
-            user_expertise_level: "intermediate".to_string(),
-            request_complexity: "medium".to_string(),
-            security_risk_level: "low".to_string(),
-            suggested_improvements: vec![],
-            context_enhancements: json!({}),
-            ai_model_recommendation: "gpt-4".to_string(),
-            expected_response_quality: 0.8,
-            user_behavior_pattern: "standard".to_string(),
-            content_safety_score: 0.9,
-            optimization_opportunities: vec![],
-        });
+    // Nettoyer et parser la réponse avec validation stricte
+    let cleaned_response = nettoyer_reponse_ia_ultra_avance(&response);
+
+    // ✅ AMÉLIORATION: Validation stricte au lieu de valeurs par défaut
+    let json_value: Value = serde_json::from_str(&cleaned_response).map_err(|e| {
+        log::error!(
+            "[orchestration_ia] Erreur parsing JSON analyse contextuelle: {} | Réponse: {}",
+            e,
+            &response.chars().take(200).collect::<String>()
+        );
+        crate::core::types::AppError::Internal(format!(
+            "Réponse IA invalide pour analyse contextuelle: {}",
+            e
+        ))
+    })?;
+
+    // ✅ NOUVEAU: Validation des champs requis
+    let required_fields = [
+        "user_intent_confidence",
+        "context_relevance_score",
+        "sentiment_score",
+        "language_detected",
+        "user_expertise_level",
+        "request_complexity",
+    ];
+
+    for field in &required_fields {
+        if !json_value.get(field).is_some() {
+            return Err(crate::core::types::AppError::Internal(format!(
+                "Champ requis manquant dans réponse IA: {}",
+                field
+            ))
+            .into());
+        }
+    }
+
+    // ✅ NOUVEAU: Validation des types et plages de valeurs
+    if let Some(confidence) = json_value
+        .get("user_intent_confidence")
+        .and_then(|v| v.as_f64())
+    {
+        if !(0.0..=1.0).contains(&confidence) {
+            return Err(crate::core::types::AppError::Internal(
+                "user_intent_confidence doit être entre 0.0 et 1.0".to_string(),
+            )
+            .into());
+        }
+    }
+
+    if let Some(sentiment) = json_value.get("sentiment_score").and_then(|v| v.as_f64()) {
+        if !(-1.0..=1.0).contains(&sentiment) {
+            return Err(crate::core::types::AppError::Internal(
+                "sentiment_score doit être entre -1.0 et 1.0".to_string(),
+            )
+            .into());
+        }
+    }
+
+    // Parser en structure typée
+    let analysis: ContextAnalysis = serde_json::from_value(json_value).map_err(|e| {
+        log::error!(
+            "[orchestration_ia] Erreur conversion JSON vers ContextAnalysis: {}",
+            e
+        );
+        crate::core::types::AppError::Internal(format!(
+            "Structure JSON invalide pour ContextAnalysis: {}",
+            e
+        ))
+    })?;
+
+    log::info!(
+        "[orchestration_ia] ✅ Analyse contextuelle validée (modèle: {}, confiance: {:.2})",
+        model_name,
+        analysis.user_intent_confidence
+    );
 
     Ok(analysis)
 }
@@ -1703,9 +1789,9 @@ pub fn extract_keywords_from_text(text: &str) -> Vec<String> {
         .to_lowercase()
         // ✅ CORRECTION 2025-11-26 : Remplacer les séparateurs par des espaces AVANT le nettoyage
         // Cela permet de traiter correctement les listes séparées par virgules
-        .replace(",", " ")  // Virgules → espaces
-        .replace(";", " ")  // Point-virgules → espaces
-        .replace("|", " ")  // Pipes → espaces
+        .replace(",", " ") // Virgules → espaces
+        .replace(";", " ") // Point-virgules → espaces
+        .replace("|", " ") // Pipes → espaces
         // Supprimer les expressions de recherche courantes
         .replace("je cherche", "")
         .replace("je voudrais", "")
@@ -1798,11 +1884,13 @@ async fn router_metier_ultra_optimise(
             // NOUVEAU : Recherche directe avec le texte original de l'utilisateur
             let (result, tokens_consumed) =
                 crate::services::rechercher_besoin::rechercher_besoin_direct(
-                    &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
-                    Some(_state.cache_service.clone()), // ✅ CORRIGÉ: Réutiliser le cache service
+                    &_state.pg,                          // ✅ CORRIGÉ: Utiliser le pool existant
+                    Some(_state.cache_service.clone()),  // ✅ CORRIGÉ: Réutiliser le cache service
                     _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique (déjà Option)
-                    _user_id, 
-                    user_text, 
+                    Some(_state.search_metrics.clone()), // ✅ NOUVEAU 2025-12-01: Service de métriques singleton
+                    Some(_state.scalability.clone()), // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour cache optimisé
+                    _user_id,
+                    user_text,
                     None, // Pas de zone GPS pour cette recherche
                     None, // Pas de rayon GPS pour cette recherche
                     None, // ✅ Pas de specialized_type (recherche générale)

@@ -1,5 +1,5 @@
 use crate::core::types::{AppError, AppResult};
-use chrono::{Datelike, DateTime, Utc};
+use chrono::{DateTime, Datelike, Utc};
 use serde_json::{json, Value};
 use sqlx::{PgPool, Row};
 
@@ -40,7 +40,7 @@ impl ProductEnrichmentService {
             pickup_address: Option<String>,
             is_configured: Option<bool>,
         }
-        
+
         let config: Option<Config> = sqlx::query(
             r#"
             SELECT 
@@ -60,13 +60,13 @@ impl ProductEnrichmentService {
         .bind(service_id)
         .bind(product_index)
         .map(|row: sqlx::postgres::PgRow| Config {
-            is_immediately_available: row.try_get("is_immediately_available").ok(),
-            preparation_time_minutes: row.try_get("preparation_time_minutes").ok(),
-            max_preparation_time_minutes: row.try_get("max_preparation_time_minutes").ok(),
-            availability_days: row.try_get("availability_days").ok(),
-            pickup_availability_schedule: row.try_get("pickup_availability_schedule").ok(),
-            pickup_address: row.try_get("pickup_address").ok(),
-            is_configured: row.try_get("is_configured").ok(),
+            is_immediately_available: row.get::<Option<_>, _>("is_immediately_available"),
+            preparation_time_minutes: row.get::<Option<_>, _>("preparation_time_minutes"),
+            max_preparation_time_minutes: row.get::<Option<_>, _>("max_preparation_time_minutes"),
+            availability_days: row.get::<Option<_>, _>("availability_days"),
+            pickup_availability_schedule: row.get::<Option<_>, _>("pickup_availability_schedule"),
+            pickup_address: row.get::<Option<_>, _>("pickup_address"),
+            is_configured: row.get::<Option<_>, _>("is_configured"),
         })
         .fetch_optional(&self.pool)
         .await?;
@@ -91,12 +91,14 @@ impl ProductEnrichmentService {
         // Calculer si le produit est disponible maintenant
         let now = Utc::now();
         let current_weekday = now.weekday().num_days_from_sunday() as i32;
-        
+
         // Vérifier les jours de disponibilité
-        let availability_days: Vec<i32> = config.availability_days
+        let availability_days: Vec<i32> = config
+            .availability_days
             .and_then(|v| serde_json::from_value(v).ok())
             .unwrap_or_default();
-        let is_available_today = availability_days.is_empty() || availability_days.contains(&current_weekday);
+        let is_available_today =
+            availability_days.is_empty() || availability_days.contains(&current_weekday);
 
         // Vérifier les plages horaires
         let is_in_time_window = if let Some(schedule) = &config.pickup_availability_schedule {
@@ -126,7 +128,9 @@ impl ProductEnrichmentService {
         product_index: i32,
         product: &mut Value,
     ) -> AppResult<()> {
-        let availability_data = self.get_availability_data(service_id, product_index).await?;
+        let availability_data = self
+            .get_availability_data(service_id, product_index)
+            .await?;
 
         if let Some(availability) = availability_data {
             if let Some(product_obj) = product.as_object_mut() {
@@ -167,17 +171,17 @@ impl ProductEnrichmentService {
 
             if let Some(products_array) = products {
                 for (index, product) in products_array.iter_mut().enumerate() {
-                    self.enrich_product(service_id, index as i32, product).await?;
+                    self.enrich_product(service_id, index as i32, product)
+                        .await?;
                 }
             } else {
                 // Format alternatif : produits directement dans un array
-                let products = data
-                    .get_mut("produits")
-                    .and_then(|p| p.as_array_mut());
+                let products = data.get_mut("produits").and_then(|p| p.as_array_mut());
 
                 if let Some(products_array) = products {
                     for (index, product) in products_array.iter_mut().enumerate() {
-                        self.enrich_product(service_id, index as i32, product).await?;
+                        self.enrich_product(service_id, index as i32, product)
+                            .await?;
                     }
                 }
             }
@@ -187,13 +191,11 @@ impl ProductEnrichmentService {
     }
 
     /// Enrichit une liste de services avec les données de disponibilité de leurs produits
-    pub async fn enrich_services(
-        &self,
-        services: &mut Vec<Value>,
-    ) -> AppResult<()> {
+    pub async fn enrich_services(&self, services: &mut Vec<Value>) -> AppResult<()> {
         for service in services.iter_mut() {
             if let Some(service_id) = service.get("id").and_then(|v| v.as_i64()) {
-                self.enrich_service_products(service_id as i32, service).await?;
+                self.enrich_service_products(service_id as i32, service)
+                    .await?;
             }
         }
 
@@ -257,4 +259,3 @@ impl ProductEnrichmentService {
         Ok(false)
     }
 }
-

@@ -13,6 +13,6 @@ pub struct ServiceEmbedding {
     pub gps_fixe: Option<(f64, f64)>,        // (longitude, latitude)
 }
 
-// Pour l'insertion, tu peux utiliser sqlx ou diesel avec Postgres + pgvector
-// Matching: requ?te SQL avec ORDER BY embedding_contenu <=> $1 LIMIT N
-// Note: Ces champs correspondent ? geometry(Point,4326) dans PostGIS. Utiliser sqlx::types::GeoPoint ou un tuple (f64, f64) selon le driver.
+// Note: Ce modèle n'est plus utilisé (pgvector non disponible)
+// Les embeddings sont stockés en TEXT dans la table videos si nécessaire
+// Note: Ces champs correspondent à geometry(Point,4326) dans PostGIS. Utiliser sqlx::types::GeoPoint ou un tuple (f64, f64) selon le driver.

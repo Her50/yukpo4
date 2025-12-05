@@ -1,18 +1,20 @@
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Dimensions, Animated as RNAnimated, StyleSheet, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
 interface ModernBackgroundProps {
     variant?: 'home' | 'services' | 'dashboard' | 'minimal';
     children: React.ReactNode;
+    scrollY?: RNAnimated.Value; // ✅ NOUVEAU: Pour parallax scrolling
 }
 
 const ModernBackground: React.FC<ModernBackgroundProps> = ({
     variant = 'home',
-    children
+    children,
+    scrollY,
 }) => {
     const getGradientColors = () => {
         switch (variant) {
@@ -52,10 +54,29 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
 
     const gradients = getGradientColors();
 
+    // ✅ NOUVEAU: Parallax scrolling pour background
+    const parallaxAnim = React.useRef(new RNAnimated.Value(0)).current;
+
+    useEffect(() => {
+        if (scrollY) {
+            const listener = scrollY.addListener(({ value }: { value: number }) => {
+                // Parallax: background se déplace 3x plus lentement que le scroll
+                parallaxAnim.setValue(value * 0.3);
+            });
+            return () => {
+                scrollY.removeListener(listener);
+            };
+        }
+    }, [scrollY, parallaxAnim]);
+
+    const parallaxStyle = scrollY ? {
+        transform: [{ translateY: parallaxAnim }],
+    } : {};
+
     return (
         <View style={styles.container}>
-            {/* Arrière-plan avec dégradés animés */}
-            <View style={styles.backgroundContainer}>
+            {/* Arrière-plan avec dégradés animés + Parallax */}
+            <RNAnimated.View style={[styles.backgroundContainer, parallaxStyle]}>
                 {gradients.map((colors, index) => (
                     <LinearGradient
                         key={index}
@@ -75,7 +96,7 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
                         ]}
                     />
                 ))}
-            </View>
+            </RNAnimated.View>
 
             {/* Effet glassmorphism */}
             <BlurView

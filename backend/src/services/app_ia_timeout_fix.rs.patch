@@ -1,0 +1,22 @@
+// ✅ PATCH: Corrections timeout pour génération vidéo dans app_ia.rs
+// À appliquer dans la fonction pub async fn predict
+
+// 1. Ajouter en haut de la fonction predict:
+let is_video_generation = prompt.contains("generate") 
+    || prompt.contains("video") 
+    || prompt.contains("storyboard")
+    || prompt.contains("clip")
+    || prompt.contains("timeline");
+
+// 2. Remplacer les timeouts fixes par:
+let ai_timeout = std::env::var("AI_REQUEST_TIMEOUT_SECONDS")
+    .ok()
+    .and_then(|s| s.parse::<u64>().ok())
+    .unwrap_or(120); // 2 minutes par défaut
+
+let timeout_duration = if is_video_generation {
+    Duration::from_secs(ai_timeout * 5) // 10 minutes pour génération vidéo
+} else {
+    Duration::from_secs(60) // 1 minute pour requêtes simples
+};
+

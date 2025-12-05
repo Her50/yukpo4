@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Json, State},
+    extract::{Extension, Json, State},
     http::StatusCode,
     response::Json as ResponseJson,
     routing::post,
@@ -9,7 +9,11 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;
+use crate::utils::prompt_sanitizer::{
+    detect_prompt_injection, sanitize_prompt_input, validate_input_length,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct ChatRequest {
@@ -51,8 +55,27 @@ pub struct AnalyzeResponse {
 /// Chat IA avec OpenAI
 pub async fn chat_ai(
     State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>, // ✅ SÉCURITÉ: Authentification requise
     Json(payload): Json<ChatRequest>,
 ) -> Result<ResponseJson<ChatResponse>, StatusCode> {
+    // ✅ SÉCURITÉ: Valider la longueur de l'input
+    if let Err(e) = validate_input_length(&payload.message, 5000) {
+        return Ok(ResponseJson(ChatResponse {
+            message: format!("Erreur: {}", e),
+            suggestions: vec![],
+            confidence: 0.0,
+        }));
+    }
+
+    // ✅ SÉCURITÉ: Détecter les tentatives d'injection
+    if detect_prompt_injection(&payload.message) {
+        return Ok(ResponseJson(ChatResponse {
+            message: "Requête rejetée pour raisons de sécurité".to_string(),
+            suggestions: vec![],
+            confidence: 0.0,
+        }));
+    }
+
     let api_key = match std::env::var("OPENAI_API_KEY") {
         Ok(key) => key,
         Err(_) => {
@@ -66,16 +89,21 @@ pub async fn chat_ai(
 
     let client = Client::new();
 
+    // ✅ SÉCURITÉ: Sanitiser les inputs utilisateur
+    let sanitized_message = sanitize_prompt_input(&payload.message);
+
     // Construire le prompt avec le contexte
     let system_prompt = "Tu es Yukpomnang, un assistant intelligent spécialisé dans les services locaux. Réponds de manière utile et concise en français.";
     let user_message = if let Some(context) = payload.context {
+        // ✅ SÉCURITÉ: Sanitiser aussi le contexte si présent
+        let context_str = serde_json::to_string(&context).unwrap_or_default();
+        let sanitized_context = sanitize_prompt_input(&context_str);
         format!(
             "Contexte: {}\nQuestion: {}",
-            serde_json::to_string(&context).unwrap_or_default(),
-            payload.message
+            sanitized_context, sanitized_message
         )
     } else {
-        payload.message
+        sanitized_message
     };
 
     let request_body = serde_json::json!({
@@ -147,6 +175,7 @@ pub async fn chat_ai(
 /// Génère des recommandations personnalisées
 pub async fn get_recommendations(
     State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>, // ✅ SÉCURITÉ: Authentification requise
     Json(_payload): Json<RecommendationsRequest>,
 ) -> Result<ResponseJson<RecommendationsResponse>, StatusCode> {
     // Pour l'instant, retourner des recommandations basiques
@@ -163,26 +192,45 @@ pub async fn get_recommendations(
 /// Analyse le sentiment et extrait les mots-clés d'un texte
 pub async fn analyze_text(
     State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>, // ✅ SÉCURITÉ: Authentification requise
     Json(payload): Json<AnalyzeRequest>,
 ) -> Result<ResponseJson<AnalyzeResponse>, StatusCode> {
-    // Analyse basique du sentiment
-    let sentiment = if payload.text.to_lowercase().contains("merci")
-        || payload.text.to_lowercase().contains("parfait")
-        || payload.text.to_lowercase().contains("excellent")
+    // ✅ SÉCURITÉ: Valider la longueur
+    if let Err(e) = validate_input_length(&payload.text, 5000) {
+        return Ok(ResponseJson(AnalyzeResponse {
+            sentiment: "erreur".to_string(),
+            keywords: vec![format!("Erreur: {}", e)],
+        }));
+    }
+
+    // ✅ SÉCURITÉ: Détecter les tentatives d'injection
+    if detect_prompt_injection(&payload.text) {
+        return Ok(ResponseJson(AnalyzeResponse {
+            sentiment: "erreur".to_string(),
+            keywords: vec!["Requête rejetée pour raisons de sécurité".to_string()],
+        }));
+    }
+
+    // ✅ SÉCURITÉ: Sanitiser l'input
+    let sanitized_text = sanitize_prompt_input(&payload.text);
+
+    // Analyse basique du sentiment (utiliser texte sanitisé)
+    let sentiment = if sanitized_text.to_lowercase().contains("merci")
+        || sanitized_text.to_lowercase().contains("parfait")
+        || sanitized_text.to_lowercase().contains("excellent")
     {
         "positif"
-    } else if payload.text.to_lowercase().contains("problème")
-        || payload.text.to_lowercase().contains("erreur")
-        || payload.text.to_lowercase().contains("mauvais")
+    } else if sanitized_text.to_lowercase().contains("problème")
+        || sanitized_text.to_lowercase().contains("erreur")
+        || sanitized_text.to_lowercase().contains("mauvais")
     {
         "négatif"
     } else {
         "neutre"
     };
 
-    // Extraire les mots-clés (mots de plus de 3 caractères)
-    let keywords: Vec<String> = payload
-        .text
+    // Extraire les mots-clés (mots de plus de 3 caractères) depuis texte sanitisé
+    let keywords: Vec<String> = sanitized_text
         .split_whitespace()
         .filter(|word| word.len() > 3)
         .map(|word| word.to_lowercase())
@@ -196,9 +244,19 @@ pub async fn analyze_text(
 }
 
 pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+    use crate::middlewares::ia_rate_limit::ia_rate_limit;
+    use crate::middlewares::jwt::jwt_auth;
+
     Router::<Arc<AppState>>::new()
         .route("/ai/chat", post(chat_ai))
         .route("/ai/recommendations", post(get_recommendations))
         .route("/ai/analyze", post(analyze_text))
+        // ✅ SÉCURITÉ: Protéger toutes les routes avec JWT
+        .layer(axum::middleware::from_fn(jwt_auth))
+        // ✅ SÉCURITÉ: Rate limiting strict (100 appels/heure, 10/minute)
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            ia_rate_limit,
+        ))
         .with_state(state)
 }

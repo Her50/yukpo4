@@ -35,7 +35,7 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ SÉCURITÉ: Rate limiting avec State pour accéder à Redis
         .layer(middleware::from_fn_with_state(
             state.clone(),
-            crate::middlewares::rate_limit::rate_limit,
+            crate::middlewares::rate_limit,
         ))
         .layer(middleware::from_fn(
             crate::middlewares::hide_headers::hide_headers,

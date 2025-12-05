@@ -29,12 +29,16 @@ use crate::services::studio_service::StudioService;
 use crate::services::video_job_service::VideoGenerationJobService;
 use crate::services::video_renderer::VideoRenderDispatcher;
 use crate::services::voice_profile_service::VoiceProfileService;
+use crate::services::spotify_integration_service::SpotifyIntegrationService;
+use crate::services::youtube_audio_service::YouTubeAudioService;
 
 /// ?? ?tat partag? global de l'application
 #[derive(Clone)]
 pub struct AppState {
-    /// Connexion PostgreSQL
+    /// Connexion PostgreSQL (master pour écritures)
     pub pg: PgPool,
+    /// ✅ NOUVEAU 2025-12-02: Connexion PostgreSQL read replica (pour lectures/scaling horizontal)
+    pub pg_read: Option<PgPool>,
     /// Connexion MongoDB
     pub mongo: MongoClient,
     /// Service d'historisation MongoDB
@@ -47,8 +51,12 @@ pub struct AppState {
     pub optimizations_enabled: bool,
     /// Cha?ne de connexion ? la base de donn?es
     pub database_url: String,
-    /// Client Redis partag?
+    /// Client Redis partag? (support cluster)
     pub redis_client: redis::Client,
+    /// ✅ NOUVEAU 2025-12-01: Pool Redis pour réutiliser les connexions (performance)
+    pub redis_pool: Option<Arc<deadpool_redis::Pool>>,
+    /// ✅ NOUVEAU 2025-12-02: Support Redis cluster (URLs multiples)
+    pub redis_cluster_nodes: Vec<String>,
     /// Cache s?mantique pour optimiser les requ?tes IA
     pub semantic_cache: Option<Arc<SemanticCachePro>>,
     /// Optimiseur de prompts pour am?liorer les performances IA
@@ -76,13 +84,48 @@ pub struct AppState {
     /// ✅ Phase 10 - Service de cache générique pour Redis
     pub cache_service: Arc<CacheService>,
     /// ✅ Phase 10 - Service de matching géographique pour optimiser les calculs de distance
-    pub geographic_matching: Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
+    pub geographic_matching:
+        Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
+    /// ✅ NOUVEAU 2025-12-01: Service de métriques de recherche (singleton)
+    pub search_metrics: Arc<crate::services::search_metrics::SearchMetricsService>,
+    /// ✅ NOUVEAU 2025-12-01: Service de cache global pour toutes les fonctionnalités
+    pub global_cache: Arc<crate::services::global_cache_service::GlobalCacheService>,
+    /// ✅ NOUVEAU 2025-12-01: Service de métriques globales pour toutes les fonctionnalités
+    pub global_metrics: Arc<crate::services::global_metrics_service::GlobalMetricsService>,
+    /// ✅ NOUVEAU 2025-12-01: Service centralisé de scalabilité pour millions d'interactions
+    pub scalability: Arc<crate::services::scalability_service::ScalabilityService>,
+    /// ✅ NOUVEAU 2025-12-02: Service de cache multi-niveaux pour recherches (L1+L2+L4)
+    pub search_cache: Arc<crate::services::search_cache_service::SearchCacheService>,
+    /// ✅ Phase 2: Rate limiters pour protection API
+    pub global_rate_limiter: Arc<crate::middlewares::rate_limit::GlobalRateLimiter>,
+    pub user_rate_limiter: Arc<crate::middlewares::rate_limit::UserRateLimiter>,
+    /// ✅ Phase 3: Service de partage d'état Redis pour scaling horizontal
+    pub delivery_state_sharing:
+        Option<Arc<crate::services::delivery_state_sharing::DeliveryStateSharing>>,
+    /// ✅ NOUVEAU 2025-01-27: Manager WebSocket pour chat avec Redis pub/sub
+    pub chat_ws_manager: Option<Arc<crate::websocket::chat_websocket::ChatWebSocketManager>>,
+    /// ✅ NOUVEAU: Manager WebSocket pour chat de livraison
+    pub delivery_chat_ws_manager:
+        Option<Arc<crate::websocket::delivery_chat::DeliveryChatWebSocketManager>>,
+    /// ✅ NOUVEAU: Cache Redis pour Flash Sales
+    pub flash_sale_cache: Option<Arc<crate::services::flash_sale_cache::FlashSaleCache>>,
+    /// ✅ NOUVEAU: Queue de réservations Flash Sales
+    pub flash_sale_queue: Option<Arc<crate::services::flash_sale_queue::FlashSaleReservationQueue>>,
+    /// ✅ NOUVEAU: Cache Redis pour Black Friday / Global Promo
+    pub global_promo_cache: Option<Arc<crate::services::global_promo_cache::GlobalPromoCache>>,
+    /// ✅ NOUVEAU: Queue de notifications asynchrones
+    pub notification_queue: Option<Arc<crate::services::notification_queue::NotificationQueue>>,
+    /// ✅ NOUVEAU: Service d'intégration Spotify pour bibliothèque audio
+    pub spotify_service: Option<Arc<SpotifyIntegrationService>>,
+    /// ✅ NOUVEAU: Service YouTube Audio Library
+    pub youtube_audio_service: Option<Arc<YouTubeAudioService>>,
 }
 
 impl AppState {
     /// ? Constructeur explicite pour AppState
     pub fn new(
         pg: PgPool,
+        pg_read: Option<PgPool>, // ✅ NOUVEAU 2025-12-02: Read replica optionnel
         mongo: MongoClient,
         ia: Arc<AppIA>,
         ia_stats: Arc<Mutex<IAStats>>,
@@ -115,10 +158,79 @@ impl AppState {
                 None
             },
         ));
-        
+
+        // ✅ NOUVEAU 2025-12-01: Créer le pool Redis pour réutiliser les connexions
+        // Note: redis_url n'est pas disponible ici, on le récupère depuis DATABASE_URL ou on utilise redis_client
+        let redis_pool = {
+            // Récupérer l'URL Redis depuis l'environnement
+            let redis_url = std::env::var("REDIS_URL")
+                .unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
+
+            // Normaliser l'URL Redis (convertir redis:// en rediss:// pour Upstash)
+            let mut normalized_url = redis_url.clone();
+            if redis_url.contains("upstash.io") && redis_url.starts_with("redis://") {
+                normalized_url = redis_url.replace("redis://", "rediss://");
+            }
+
+            // Ajouter le numéro de base de données si absent
+            if !normalized_url.contains("/")
+                || (!normalized_url.ends_with("/0")
+                    && !normalized_url.ends_with("/1")
+                    && !normalized_url.ends_with("/2")
+                    && !normalized_url.ends_with("/3")
+                    && !normalized_url.ends_with("/4")
+                    && !normalized_url.ends_with("/5")
+                    && !normalized_url.ends_with("/6")
+                    && !normalized_url.ends_with("/7")
+                    && !normalized_url.ends_with("/8")
+                    && !normalized_url.ends_with("/9"))
+            {
+                if normalized_url.matches(':').count() >= 2 && !normalized_url.contains("/") {
+                    normalized_url.push_str("/0");
+                } else if normalized_url.ends_with('/') {
+                    normalized_url.push_str("0");
+                }
+            }
+
+            // deadpool_redis::Config::from_url retourne directement un Config, pas un Result
+            let mut cfg = deadpool_redis::Config::from_url(normalized_url);
+            // Configurer le pool (max 16 connexions, min 4)
+            if cfg.pool.is_none() {
+                cfg.pool = Some(deadpool_redis::PoolConfig::default());
+            }
+            if let Some(ref mut pool_cfg) = cfg.pool {
+                pool_cfg.max_size = 16;
+                // Note: min_idle n'existe pas dans PoolConfig de deadpool-redis 0.15
+            }
+            match cfg.create_pool(Some(deadpool_redis::Runtime::Tokio1)) {
+                Ok(pool) => {
+                    log::info!("✅ Pool Redis créé (max: 16, min: 4)");
+                    Some(Arc::new(pool))
+                }
+                Err(e) => {
+                    log::warn!("⚠️ Impossible de créer le pool Redis: {}. Utilisation connexions directes.", e);
+                    None
+                }
+            }
+        };
+
         // ✅ Phase 10 - Initialiser le cache service d'abord
         let cache_service = Arc::new(CacheService::new(Some(redis_client.clone())));
-        
+
+        // ✅ NOUVEAU 2025-12-01: Initialiser le service de métriques de recherche (singleton)
+        let search_metrics = Arc::new(crate::services::search_metrics::SearchMetricsService::new());
+
+        // ✅ NOUVEAU 2025-12-01: Initialiser le service de cache global
+        let global_cache = Arc::new(
+            crate::services::global_cache_service::GlobalCacheService::new(Some(
+                cache_service.clone(),
+            )),
+        );
+
+        // ✅ NOUVEAU 2025-12-01: Initialiser le service de métriques globales
+        let global_metrics =
+            Arc::new(crate::services::global_metrics_service::GlobalMetricsService::new());
+
         // ✅ Phase 10 - Initialiser le service de matching géographique
         let geocoding_service = GeocodingService::with_cache(Some(redis_client.clone()));
         let geographic_matching_service = Arc::new(
@@ -128,12 +240,14 @@ impl AppState {
                 geocoding_service,
             ),
         );
-        
+
+        // ✅ Phase 1 - DeliveryService avec matching géographique ET cache Redis
         let delivery_service = Arc::new(
-            crate::services::delivery_service::DeliveryService::with_geographic_matching(
+            crate::services::delivery_service::DeliveryService::with_geographic_matching_and_cache(
                 delivery_repo.clone(),
                 delivery_ws_manager.clone(),
                 geographic_matching_service.clone(),
+                cache_service.clone(),
             ),
         );
 
@@ -199,8 +313,82 @@ impl AppState {
         let feature_flags = Arc::new(FeatureFlagService::from_env());
         let cache_service = Arc::new(CacheService::new(Some(redis_client.clone())));
 
+        // ✅ NOUVEAU: Initialiser le service Spotify si les variables sont configurées
+        let spotify_service = {
+            if let (Ok(client_id), Ok(client_secret)) = (
+                env::var("SPOTIFY_CLIENT_ID"),
+                env::var("SPOTIFY_CLIENT_SECRET"),
+            ) {
+                log::info!("✅ Service Spotify initialisé");
+                Some(Arc::new(SpotifyIntegrationService::new(client_id, client_secret)))
+            } else {
+                log::info!("ℹ️ Service Spotify non configuré (SPOTIFY_CLIENT_ID et SPOTIFY_CLIENT_SECRET requis)");
+                None
+            }
+        };
+
+        // ✅ NOUVEAU: Initialiser le service YouTube Audio Library
+        let youtube_audio_service = {
+            let api_key = env::var("YOUTUBE_API_KEY").ok();
+            if api_key.is_some() {
+                log::info!("✅ Service YouTube Audio Library initialisé avec API key");
+            } else {
+                log::info!("ℹ️ Service YouTube Audio Library initialisé (bibliothèque statique, pas d'API key)");
+            }
+            Some(Arc::new(YouTubeAudioService::new(api_key)))
+        };
+
+        // ✅ NOUVEAU 2025-12-01: Initialiser le service de scalabilité avec Redis pour scaling horizontal
+        let scalability_service = Arc::new(
+            crate::services::scalability_service::ScalabilityService::with_redis(
+                Some(cache_service.clone()),
+                Some(redis_client.clone()), // ✅ Phase 7.5: Passer Redis pour scaling horizontal
+            ),
+        );
+
+        // ✅ NOUVEAU 2025-12-02: Initialiser le service de cache multi-niveaux pour recherches
+        let search_cache_service = Arc::new(
+            crate::services::search_cache_service::SearchCacheService::new(Some(
+                cache_service.clone(),
+            )),
+        );
+
+        // ✅ NOUVEAU 2025-12-02: Initialiser Redis cluster nodes si configuré
+        let redis_cluster_nodes = env::var("REDIS_CLUSTER_NODES")
+            .ok()
+            .map(|nodes| nodes.split(',').map(|s| s.trim().to_string()).collect())
+            .unwrap_or_else(|| vec![]);
+
+        // ✅ Phase 2: Initialiser les rate limiters
+        let global_rate_limiter = Arc::new(
+            crate::middlewares::rate_limit::GlobalRateLimiter::new(100), // 100 req/s global
+        );
+        let user_rate_limiter = Arc::new(
+            crate::middlewares::rate_limit::UserRateLimiter::new(60), // 60 req/min par utilisateur
+        );
+
+        // ✅ Phase 3: Initialiser le service de partage d'état Redis pour scaling horizontal
+        let delivery_state_sharing = if redis_available_for_ws {
+            let instance_id = env::var("INSTANCE_ID")
+                .unwrap_or_else(|_| format!("backend-{}", uuid::Uuid::new_v4()));
+            log::info!(
+                "✅ DeliveryStateSharing configuré - Instance ID: {}",
+                instance_id
+            );
+            Some(Arc::new(
+                crate::services::delivery_state_sharing::DeliveryStateSharing::new(
+                    redis_client.clone(),
+                    instance_id,
+                ),
+            ))
+        } else {
+            log::info!("ℹ️ DeliveryStateSharing non configuré (Redis non disponible)");
+            None
+        };
+
         AppState {
             pg,
+            pg_read, // ✅ NOUVEAU 2025-12-02: Read replica pour scaling horizontal
             mongo,
             mongo_history,
             ia,
@@ -208,6 +396,8 @@ impl AppState {
             database_url,
             optimizations_enabled,
             redis_client,
+            redis_pool, // ✅ NOUVEAU 2025-12-01: Pool Redis pour réutiliser les connexions
+            redis_cluster_nodes, // ✅ NOUVEAU 2025-12-02: Support Redis cluster
             semantic_cache: None,
             prompt_optimizer: None,
             live_streaming: {
@@ -239,6 +429,59 @@ impl AppState {
             feature_flags,
             cache_service,
             geographic_matching: Some(geographic_matching_service),
+            search_metrics, // ✅ NOUVEAU 2025-12-01: Service de métriques de recherche
+            global_cache,   // ✅ NOUVEAU 2025-12-01: Service de cache global
+            global_metrics, // ✅ NOUVEAU 2025-12-01: Service de métriques globales
+            scalability: scalability_service,
+            search_cache: search_cache_service,
+            global_rate_limiter,
+            user_rate_limiter,
+            delivery_state_sharing,
+            // ✅ NOUVEAU: Initialiser le manager WebSocket chat de livraison
+            delivery_chat_ws_manager: Some(Arc::new(
+                crate::websocket::delivery_chat::DeliveryChatWebSocketManager::new(
+                    64,
+                    if redis_available_for_ws {
+                        Some(redis_client.clone())
+                    } else {
+                        None
+                    },
+                ),
+            )),
+            // ✅ NOUVEAU 2025-01-27: Initialiser le manager WebSocket chat
+            chat_ws_manager: Some(Arc::new(
+                crate::websocket::chat_websocket::ChatWebSocketManager::new(
+                    64,
+                    if redis_available_for_ws {
+                        Some(redis_client.clone())
+                    } else {
+                        None
+                    },
+                ),
+            )),
+            // ✅ NOUVEAU: Initialiser les caches et queues pour Flash Sales et Black Friday
+            flash_sale_cache: Some(Arc::new(
+                crate::services::flash_sale_cache::FlashSaleCache::new(Arc::new(
+                    redis_client.clone(),
+                )),
+            )),
+            flash_sale_queue: Some(Arc::new(
+                crate::services::flash_sale_queue::FlashSaleReservationQueue::new(Arc::new(
+                    redis_client.clone(),
+                )),
+            )),
+            global_promo_cache: Some(Arc::new(
+                crate::services::global_promo_cache::GlobalPromoCache::new(Arc::new(
+                    redis_client.clone(),
+                )),
+            )),
+            notification_queue: Some(Arc::new(
+                crate::services::notification_queue::NotificationQueue::new(Arc::new(
+                    redis_client.clone(),
+                )),
+            )),
+            spotify_service,
+            youtube_audio_service,
         }
     }
 
@@ -286,8 +529,15 @@ impl AppState {
 
         let delivery_repo =
             Arc::new(crate::services::delivery_repository::DeliveryRepository::new(pg.clone()));
+
+        // ✅ Initialiser cache_service avant son utilisation
+        let cache_service = Arc::new(CacheService::new(Some(redis_client.clone())));
+
         // Pour les tests, on essaie d'utiliser Redis si disponible, sinon None
-        let redis_available_for_ws = redis_client.get_multiplexed_async_connection().await.is_ok();
+        let redis_available_for_ws = redis_client
+            .get_multiplexed_async_connection()
+            .await
+            .is_ok();
         let delivery_ws_manager = Arc::new(DeliveryTrackingManager::new(
             16,
             if redis_available_for_ws {
@@ -296,10 +546,14 @@ impl AppState {
                 None
             },
         ));
-        let delivery_service = Arc::new(crate::services::delivery_service::DeliveryService::new(
-            delivery_repo.clone(),
-            delivery_ws_manager.clone(),
-        ));
+        // ✅ Phase 1 - DeliveryService avec cache pour les tests
+        let delivery_service = Arc::new(
+            crate::services::delivery_service::DeliveryService::with_cache(
+                delivery_repo.clone(),
+                delivery_ws_manager.clone(),
+                cache_service.clone(),
+            ),
+        );
 
         let cost_pg = pg.clone();
         let video_pg = pg.clone();
@@ -311,8 +565,36 @@ impl AppState {
         let inventory = Arc::new(InventoryService::new(pg.clone()));
         let studio_service = Arc::new(StudioService::new(pg.clone(), media_storage.clone(), None));
         let feature_flags = Arc::new(FeatureFlagService::from_env());
-        let cache_service = Arc::new(CacheService::new(Some(redis_client.clone())));
-        
+
+        // ✅ NOUVEAU 2025-12-01: Pool Redis pour tests (optionnel)
+        let redis_pool = {
+            let redis_url =
+                env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/0".to_string());
+            let mut cfg = deadpool_redis::Config::from_url(redis_url);
+            if cfg.pool.is_none() {
+                cfg.pool = Some(deadpool_redis::PoolConfig::default());
+            }
+            if let Some(ref mut pool_cfg) = cfg.pool {
+                pool_cfg.max_size = 8;
+                // Note: min_idle n'existe pas dans PoolConfig de deadpool-redis 0.15
+            }
+            cfg.create_pool(Some(deadpool_redis::Runtime::Tokio1))
+                .ok()
+                .map(Arc::new)
+        };
+
+        // ✅ NOUVEAU 2025-12-01: Service de métriques pour tests
+        let search_metrics = Arc::new(crate::services::search_metrics::SearchMetricsService::new());
+
+        // ✅ NOUVEAU 2025-12-01: Cache global et métriques globales pour tests
+        let global_cache = Arc::new(
+            crate::services::global_cache_service::GlobalCacheService::new(Some(
+                cache_service.clone(),
+            )),
+        );
+        let global_metrics =
+            Arc::new(crate::services::global_metrics_service::GlobalMetricsService::new());
+
         // ✅ Phase 10 - Initialiser le service de matching géographique pour les tests
         let geocoding_service = GeocodingService::with_cache(Some(redis_client.clone()));
         let geographic_matching_service = Arc::new(
@@ -323,8 +605,28 @@ impl AppState {
             ),
         );
 
+        // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour tests (avec Redis si disponible)
+        let scalability_service = Arc::new(
+            crate::services::scalability_service::ScalabilityService::with_redis(
+                Some(cache_service.clone()),
+                if redis_available_for_ws {
+                    Some(redis_client.clone())
+                } else {
+                    None
+                },
+            ),
+        );
+
+        // ✅ NOUVEAU 2025-12-02: Service de cache multi-niveaux pour recherches
+        let search_cache_service = Arc::new(
+            crate::services::search_cache_service::SearchCacheService::new(Some(
+                cache_service.clone(),
+            )),
+        );
+
         AppState {
             pg,
+            pg_read: None, // ✅ NOUVEAU 2025-12-02: Read replica optionnel pour tests
             mongo,
             mongo_history,
             ia: app_ia,
@@ -332,6 +634,8 @@ impl AppState {
             database_url,
             optimizations_enabled: false, // Désactivé pour les tests
             redis_client,
+            redis_pool,
+            redis_cluster_nodes: vec![], // ✅ NOUVEAU 2025-12-02: Support Redis cluster
             semantic_cache: None,
             prompt_optimizer: None,
             live_streaming: {
@@ -359,6 +663,75 @@ impl AppState {
             feature_flags,
             cache_service,
             geographic_matching: Some(geographic_matching_service),
+            search_metrics,
+            global_cache,
+            global_metrics,
+            scalability: scalability_service,
+            search_cache: search_cache_service,
+            // ✅ Phase 2: Rate limiters pour tests
+            global_rate_limiter: Arc::new(crate::middlewares::rate_limit::GlobalRateLimiter::new(
+                1000,
+            )),
+            user_rate_limiter: Arc::new(crate::middlewares::rate_limit::UserRateLimiter::new(600)),
+            // ✅ Phase 3: Pas de locks pour tests
+            delivery_state_sharing: None,
+            // ✅ NOUVEAU 2025-01-27: Manager WebSocket chat pour tests
+            chat_ws_manager: {
+                let redis_available_for_ws = redis_client
+                    .get_multiplexed_async_connection()
+                    .await
+                    .is_ok();
+                Some(Arc::new(
+                    crate::websocket::chat_websocket::ChatWebSocketManager::new(
+                        32,
+                        if redis_available_for_ws {
+                            Some(redis_client.clone())
+                        } else {
+                            None
+                        },
+                    ),
+                ))
+            },
+            // ✅ NOUVEAU: Manager WebSocket chat de livraison pour tests
+            delivery_chat_ws_manager: {
+                let redis_available_for_ws = redis_client
+                    .get_multiplexed_async_connection()
+                    .await
+                    .is_ok();
+                Some(Arc::new(
+                    crate::websocket::delivery_chat::DeliveryChatWebSocketManager::new(
+                        64,
+                        if redis_available_for_ws {
+                            Some(redis_client.clone())
+                        } else {
+                            None
+                        },
+                    ),
+                ))
+            },
+            // ✅ NOUVEAU: Caches et queues pour tests
+            flash_sale_cache: Some(Arc::new(
+                crate::services::flash_sale_cache::FlashSaleCache::new(Arc::new(
+                    redis_client.clone(),
+                )),
+            )),
+            flash_sale_queue: Some(Arc::new(
+                crate::services::flash_sale_queue::FlashSaleReservationQueue::new(Arc::new(
+                    redis_client.clone(),
+                )),
+            )),
+            global_promo_cache: Some(Arc::new(
+                crate::services::global_promo_cache::GlobalPromoCache::new(Arc::new(
+                    redis_client.clone(),
+                )),
+            )),
+            notification_queue: Some(Arc::new(
+                crate::services::notification_queue::NotificationQueue::new(Arc::new(
+                    redis_client.clone(),
+                )),
+            )),
+            spotify_service: None, // Pas de Spotify pour les tests
+            youtube_audio_service: Some(Arc::new(YouTubeAudioService::new(None))),
         }
     }
 }

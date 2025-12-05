@@ -1,4 +1,5 @@
 use axum::http::{HeaderMap, StatusCode};
+use base64::Engine;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, TokenData, Validation};
 use serde::Deserialize;
 
@@ -36,7 +37,8 @@ pub fn extract_auth_user(headers: &HeaderMap) -> Result<AuthUser, (StatusCode, S
         if token.ends_with(".dev_signature") {
             let parts: Vec<&str> = token.split('.').collect();
             if parts.len() == 3 {
-                if let Ok(payload_str) = base64::engine::general_purpose::STANDARD.decode(parts[1]) {
+                if let Ok(payload_str) = base64::engine::general_purpose::STANDARD.decode(parts[1])
+                {
                     if let Ok(payload) = serde_json::from_slice::<serde_json::Value>(&payload_str) {
                         return Ok(AuthUser {
                             user_id: payload["sub"].as_str().unwrap_or("dev-user-id").to_string(),

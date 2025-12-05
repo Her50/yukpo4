@@ -10,6 +10,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { ENVIRONMENT } from '../config/environment';
+import { mediaService } from '../services/mediaService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -32,6 +34,13 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
     const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState<'all' | 'images' | 'videos'>('all');
+
+    // ✅ NOUVEAU 2025-12-03: Initialiser mediaService pour CDN avec fallback
+    useEffect(() => {
+        mediaService.initialize(ENVIRONMENT.API_URL).catch(() => {
+            // Ignorer erreurs d'initialisation
+        });
+    }, []);
 
     useEffect(() => {
         if (visible && service) {
@@ -245,7 +254,10 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                                 onPress={() => setSelectedMedia(item)}
                             >
                                 {item.type === 'image' ? (
-                                    <Image source={{ uri: item.url }} style={styles.mediaImage} />
+                                    <Image
+                                        source={{ uri: item.url.startsWith('http') ? item.url : mediaService.getImageUrl(item.url) }}
+                                        style={styles.mediaImage}
+                                    />
                                 ) : (
                                     <View style={styles.videoPlaceholder}>
                                         <SafeIcon name="play-circle" size={40} color="#FFFFFF" />
@@ -274,7 +286,7 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
 
                             {selectedMedia.type === 'image' ? (
                                 <Image
-                                    source={{ uri: selectedMedia.url }}
+                                    source={{ uri: selectedMedia.url.startsWith('http') ? selectedMedia.url : mediaService.getImageUrl(selectedMedia.url) }}
                                     style={styles.fullScreenImage}
                                     resizeMode="contain"
                                 />

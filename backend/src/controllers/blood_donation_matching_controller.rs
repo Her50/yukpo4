@@ -3,6 +3,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::services::blood_compatibility_service::BloodCompatibilityService;
 use crate::services::push_notification_service;
 use crate::state::AppState;
 use axum::{
@@ -114,7 +115,8 @@ pub async fn create_blood_donation_request(
     let valid_groups = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"];
     if !valid_groups.contains(&payload.groupe_sanguin_requis.as_str()) {
         return Err(AppError::BadRequest(
-            "Groupe sanguin invalide. Valeurs acceptées: O+, O-, A+, A-, B+, B-, AB+, AB-".to_string(),
+            "Groupe sanguin invalide. Valeurs acceptées: O+, O-, A+, A-, B+, B-, AB+, AB-"
+                .to_string(),
         ));
     }
 
@@ -138,14 +140,17 @@ pub async fn create_blood_donation_request(
             AND stocks_groupes_sanguins ? $1
             AND (stocks_groupes_sanguins->$1->>'statut')::TEXT IN ('disponible', 'moyen')
             AND (stocks_groupes_sanguins->$1->>'quantite')::INTEGER >= $2
-        "#
+        "#,
     )
     .bind(&payload.groupe_sanguin_requis)
     .bind(quantite_requise)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| {
-        error!("[create_blood_donation_request] Erreur vérification stock: {}", e);
+        error!(
+            "[create_blood_donation_request] Erreur vérification stock: {}",
+            e
+        );
         AppError::Internal(format!("Erreur vérification stock: {}", e))
     })?;
 
@@ -181,7 +186,8 @@ pub async fn create_blood_donation_request(
         let valid_levels = ["normal", "urgent", "critique"];
         if !valid_levels.contains(&level.as_str()) {
             return Err(AppError::BadRequest(
-                "Niveau d'urgence invalide. Valeurs acceptées: normal, urgent, critique".to_string(),
+                "Niveau d'urgence invalide. Valeurs acceptées: normal, urgent, critique"
+                    .to_string(),
             ));
         }
     }
@@ -189,8 +195,9 @@ pub async fn create_blood_donation_request(
     // Parser deadline_date si fourni
     let deadline_date = if let Some(ref date_str) = payload.deadline_date {
         Some(
-            chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-                .map_err(|_| AppError::BadRequest("Format date invalide (YYYY-MM-DD requis)".to_string()))?,
+            chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d").map_err(|_| {
+                AppError::BadRequest("Format date invalide (YYYY-MM-DD requis)".to_string())
+            })?,
         )
     } else {
         None
@@ -223,7 +230,10 @@ pub async fn create_blood_donation_request(
         AppError::Internal(format!("Erreur création demande: {}", e))
     })?;
 
-    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
+    let success = result
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
     if !success {
         let error_msg = result
@@ -233,9 +243,15 @@ pub async fn create_blood_donation_request(
         return Err(AppError::BadRequest(error_msg.to_string()));
     }
 
-    let request_id = result.get("request_id").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let request_id = result
+        .get("request_id")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
     let matches_found = result.get("matches_found").and_then(|v| v.as_i64());
-    let message = result.get("message").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let message = result
+        .get("message")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
 
     // Si des matches ont été trouvés et que la demande est urgente, notifier immédiatement
     if matches_found.unwrap_or(0) > 0 && payload.is_urgent.unwrap_or(false) {
@@ -245,11 +261,16 @@ pub async fn create_blood_donation_request(
             let req_id_clone = req_id.clone();
             tokio::spawn(async move {
                 // Convertir l'erreur en String pour éviter le problème Send
-                match notify_donors_for_request_internal(&state_clone, &req_id_clone, Some(10)).await {
+                match notify_donors_for_request_internal(&state_clone, &req_id_clone, Some(10))
+                    .await
+                {
                     Ok(_) => {}
                     Err(e) => {
                         let error_msg = format!("{:?}", e);
-                        error!("[create_blood_donation_request] Erreur notification donneurs: {}", error_msg);
+                        error!(
+                            "[create_blood_donation_request] Erreur notification donneurs: {}",
+                            error_msg
+                        );
                     }
                 }
             });
@@ -293,7 +314,7 @@ pub async fn notify_donors_for_request(
             WHERE bdr.id = $1
                 AND (bdr.requested_by_user_id = $2 OR s.user_id = $2)
         )
-        "#
+        "#,
     )
     .bind(&payload.request_id)
     .bind(user_id)
@@ -345,7 +366,7 @@ async fn notify_donors_for_request_internal(
         FROM blood_donation_requests bdr
         JOIN banques_sang bs ON bs.id = bdr.banque_sang_id
         WHERE bdr.id = $1 AND bdr.status = 'active'
-        "#
+        "#,
     )
     .bind(request_id)
     .fetch_optional(&state.pg)
@@ -358,11 +379,13 @@ async fn notify_donors_for_request_internal(
     let (groupe_sanguin, banque_nom, is_urgent, urgence_level, location) = match request_info {
         Some(info) => info,
         None => {
-            return Err(AppError::NotFound("Demande non trouvée ou inactive".to_string()));
+            return Err(AppError::NotFound(
+                "Demande non trouvée ou inactive".to_string(),
+            ));
         }
     };
 
-    // Récupérer les matches pending à notifier
+    // ✅ AMÉLIORATION: Récupérer plus de matches pour filtrer intelligemment
     let matches: Vec<(String, i32, Option<f64>, Option<String>)> = sqlx::query_as(
         r#"
         SELECT 
@@ -376,11 +399,10 @@ async fn notify_donors_for_request_internal(
             AND bdm.match_status = 'pending'
             AND bdm.notification_sent = FALSE
         ORDER BY bdm.relevance_score DESC, bdm.distance_km ASC NULLS LAST
-        LIMIT $2
-        "#
+        LIMIT 50
+        "#,
     )
     .bind(request_id)
-    .bind(max_donors.unwrap_or(20) as i64)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| {
@@ -388,9 +410,38 @@ async fn notify_donors_for_request_internal(
         AppError::Internal(format!("Erreur récupération matches: {}", e))
     })?;
 
+    // ✅ AMÉLIORATION: Prioriser donneurs proches (< 10km) et limiter
+    let max_notifications = max_donors.unwrap_or(10);
+
+    // 1. Séparer donneurs proches et lointains
+    let (nearby_donors, far_donors): (Vec<_>, Vec<_>) = matches
+        .into_iter()
+        .partition(|(_, _, distance_km, _)| distance_km.map(|d| d < 10.0).unwrap_or(false));
+
+    // 2. Prioriser donneurs proches, puis compléter avec lointains si besoin
+    let mut donors_to_notify: Vec<_> = nearby_donors;
+    if donors_to_notify.len() < max_notifications as usize {
+        let remaining = max_notifications as usize - donors_to_notify.len();
+        donors_to_notify.extend(far_donors.into_iter().take(remaining));
+    }
+
+    // 3. Limiter au maximum
+    let donors_to_notify: Vec<_> = donors_to_notify
+        .into_iter()
+        .take(max_notifications as usize)
+        .collect();
+
     let mut notified_count = 0;
 
-    for (match_id, donor_user_id, distance_km, _donor_name) in matches {
+    // ✅ AMÉLIORATION: Espacer les notifications (1 seconde entre chaque)
+    for (index, (match_id, donor_user_id, distance_km, _donor_name)) in
+        donors_to_notify.iter().enumerate()
+    {
+        // Espacer notifications pour éviter spam (sauf pour la première)
+        if index > 0 {
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+
         // Construire le message de notification
         let title = if is_urgent {
             format!("🩸 URGENCE: Don de sang {} requis", groupe_sanguin)
@@ -437,7 +488,7 @@ async fn notify_donors_for_request_internal(
         // Convertir l'erreur en String pour éviter le problème Send
         let notification_result = push_notification_service::send_push_notification(
             &state.pg,
-            donor_user_id,
+            *donor_user_id,
             title.clone(),
             body.clone(),
             Some(notification_data),
@@ -445,7 +496,7 @@ async fn notify_donors_for_request_internal(
         )
         .await
         .map_err(|e| format!("{:?}", e));
-        
+
         match notification_result {
             Ok(_) => {
                 // Marquer comme notifié
@@ -457,13 +508,16 @@ async fn notify_donors_for_request_internal(
                         notified_at = NOW(),
                         updated_at = NOW()
                     WHERE id = $1
-                    "#
+                    "#,
                 )
                 .bind(&match_id)
                 .execute(&state.pg)
                 .await
                 .map_err(|e| {
-                    error!("[notify_donors_for_request_internal] Erreur mise à jour match: {}", e);
+                    error!(
+                        "[notify_donors_for_request_internal] Erreur mise à jour match: {}",
+                        e
+                    );
                 })
                 .ok();
 
@@ -476,7 +530,8 @@ async fn notify_donors_for_request_internal(
             Err(e) => {
                 error!(
                     "[notify_donors_for_request_internal] ❌ Erreur notification donneur {}: {}",
-                    donor_user_id, format!("{:?}", e)
+                    donor_user_id,
+                    format!("{:?}", e)
                 );
             }
         }
@@ -507,7 +562,7 @@ pub async fn update_match_status(
             SELECT 1 FROM blood_donation_matches
             WHERE id = $1 AND donor_user_id = $2
         )
-        "#
+        "#,
     )
     .bind(&payload.match_id)
     .bind(user_id)
@@ -533,20 +588,21 @@ pub async fn update_match_status(
     }
 
     // Appeler la fonction SQL
-    let result: Value = sqlx::query_scalar(
-        "SELECT update_blood_donation_match_status($1, $2, $3)"
-    )
-    .bind(&payload.match_id)
-    .bind(&payload.new_status)
-    .bind(&payload.declined_reason)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[update_match_status] Erreur: {}", e);
-        AppError::Internal(format!("Erreur mise à jour match: {}", e))
-    })?;
+    let result: Value = sqlx::query_scalar("SELECT update_blood_donation_match_status($1, $2, $3)")
+        .bind(&payload.match_id)
+        .bind(&payload.new_status)
+        .bind(&payload.declined_reason)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[update_match_status] Erreur: {}", e);
+            AppError::Internal(format!("Erreur mise à jour match: {}", e))
+        })?;
 
-    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
+    let success = result
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
     if !success {
         let error_msg = result
@@ -566,7 +622,7 @@ pub async fn update_match_status(
         LEFT JOIN user_blood_groups ubg ON ubg.id = bdm.donor_blood_group_id
         JOIN users u ON u.id = bdm.donor_user_id
         WHERE bdm.id = $1
-        "#
+        "#,
     )
     .bind(&payload.match_id)
     .fetch_optional(&state.pg)
@@ -578,7 +634,8 @@ pub async fn update_match_status(
     .unwrap_or((None, None));
 
     let (blood_group_from_table, blood_group_from_user) = has_blood_group;
-    let should_prompt_blood_group = blood_group_from_table.is_none() && blood_group_from_user.is_none();
+    let should_prompt_blood_group =
+        blood_group_from_table.is_none() && blood_group_from_user.is_none();
 
     // Si accepté, mettre à jour la disponibilité du donneur
     if payload.new_status == "accepted" {
@@ -595,14 +652,17 @@ pub async fn update_match_status(
                     SET is_available_for_donation = FALSE,
                         updated_at = NOW()
                     WHERE user_id = $1 AND groupe_sanguin = $2
-                    "#
+                    "#,
                 )
                 .bind(user_id)
                 .bind(groupe)
                 .execute(&state.pg)
                 .await
                 .map_err(|e| {
-                    warn!("[update_match_status] Erreur mise à jour disponibilité: {}", e);
+                    warn!(
+                        "[update_match_status] Erreur mise à jour disponibilité: {}",
+                        e
+                    );
                 })
                 .ok();
             }
@@ -640,7 +700,10 @@ pub async fn list_active_requests(
     info!("[list_active_requests] Listing demandes actives");
 
     // Construire la requête avec filtres optionnels
-    let rows = if params.banque_sang_id.is_some() || params.groupe_sanguin.is_some() || params.is_urgent.is_some() {
+    let rows = if params.banque_sang_id.is_some()
+        || params.groupe_sanguin.is_some()
+        || params.is_urgent.is_some()
+    {
         sqlx::query(
             r#"
             SELECT 
@@ -654,7 +717,7 @@ pub async fn list_active_requests(
                 AND ($3::BOOLEAN IS NULL OR is_urgent = $3)
             ORDER BY created_at DESC
             LIMIT 50
-            "#
+            "#,
         )
         .bind(params.banque_sang_id)
         .bind(&params.groupe_sanguin)
@@ -672,7 +735,7 @@ pub async fn list_active_requests(
             FROM blood_donation_requests_active
             ORDER BY created_at DESC
             LIMIT 50
-            "#
+            "#,
         )
         .fetch_all(&state.pg)
         .await
@@ -691,8 +754,12 @@ pub async fn list_active_requests(
             groupe_sanguin_requis: row.get::<String, _>("groupe_sanguin_requis"),
             quantite_requise: row.get::<i32, _>("quantite_requise"),
             is_urgent: row.get::<bool, _>("is_urgent"),
-            urgence_level: row.get::<Option<String>, _>("urgence_level").unwrap_or_else(|| "normal".to_string()),
-            status: row.get::<Option<String>, _>("status").unwrap_or_else(|| "active".to_string()),
+            urgence_level: row
+                .get::<Option<String>, _>("urgence_level")
+                .unwrap_or_else(|| "normal".to_string()),
+            status: row
+                .get::<Option<String>, _>("status")
+                .unwrap_or_else(|| "active".to_string()),
             request_location_address: row.get::<Option<String>, _>("request_location_address"),
             patient_name: row.get::<Option<String>, _>("patient_name"),
             hospital_name: row.get::<Option<String>, _>("hospital_name"),
@@ -705,7 +772,10 @@ pub async fn list_active_requests(
         requests.push(request);
     }
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "requests": requests }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "requests": requests })),
+    ))
 }
 
 // ============================================================================
@@ -737,7 +807,7 @@ pub async fn list_matches_for_request(
         JOIN user_blood_groups ubg ON ubg.id = bdm.donor_blood_group_id
         WHERE bdm.request_id = $1
         ORDER BY bdm.relevance_score DESC, bdm.distance_km ASC NULLS LAST
-        "#
+        "#,
     )
     .bind(&request_id)
     .fetch_all(&state.pg)
@@ -758,7 +828,9 @@ pub async fn list_matches_for_request(
             groupe_sanguin: row.get::<String, _>("groupe_sanguin"),
             distance_km: row.get::<Option<f64>, _>("distance_km"),
             relevance_score: row.get::<f64, _>("relevance_score"),
-            match_status: row.get::<Option<String>, _>("match_status").unwrap_or_else(|| "pending".to_string()),
+            match_status: row
+                .get::<Option<String>, _>("match_status")
+                .unwrap_or_else(|| "pending".to_string()),
             notified_at: row
                 .get::<Option<chrono::DateTime<chrono::Utc>>, _>("notified_at")
                 .map(|dt| dt.to_rfc3339()),
@@ -766,7 +838,10 @@ pub async fn list_matches_for_request(
         matches.push(match_info);
     }
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "matches": matches }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "matches": matches })),
+    ))
 }
 
 // ============================================================================
@@ -791,26 +866,28 @@ pub async fn update_last_donation(
     );
 
     let donation_date = if let Some(ref date_str) = payload.donation_date {
-        chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-            .map_err(|_| AppError::BadRequest("Format date invalide (YYYY-MM-DD requis)".to_string()))?
+        chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d").map_err(|_| {
+            AppError::BadRequest("Format date invalide (YYYY-MM-DD requis)".to_string())
+        })?
     } else {
         chrono::Utc::now().date_naive()
     };
 
-    let result: Value = sqlx::query_scalar(
-        "SELECT update_donor_last_donation($1, $2, $3)"
-    )
-    .bind(user_id)
-    .bind(&payload.groupe_sanguin)
-    .bind(donation_date)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[update_last_donation] Erreur: {}", e);
-        AppError::Internal(format!("Erreur mise à jour dernier don: {}", e))
-    })?;
+    let result: Value = sqlx::query_scalar("SELECT update_donor_last_donation($1, $2, $3)")
+        .bind(user_id)
+        .bind(&payload.groupe_sanguin)
+        .bind(donation_date)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[update_last_donation] Erreur: {}", e);
+            AppError::Internal(format!("Erreur mise à jour dernier don: {}", e))
+        })?;
 
-    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
+    let success = result
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
     if !success {
         let error_msg = result
@@ -824,7 +901,10 @@ pub async fn update_last_donation(
         .get("next_donation_available_date")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
-    let message = result.get("message").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let message = result
+        .get("message")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
 
     Ok((
         StatusCode::OK,
@@ -861,7 +941,7 @@ pub async fn get_user_blood_groups(
         FROM user_blood_groups
         WHERE user_id = $1
         ORDER BY created_at DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(&state.pg)
@@ -886,7 +966,64 @@ pub async fn get_user_blood_groups(
         }));
     }
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "data": blood_groups }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "data": blood_groups })),
+    ))
+}
+
+// ============================================================================
+// COMPATIBILITÉ GROUPES SANGUINS
+// ============================================================================
+
+/// GET /api/blood-donation/compatibility/{group}
+/// Obtenir les informations de compatibilité pour un groupe sanguin
+pub async fn get_blood_group_compatibility(
+    State(_state): State<Arc<AppState>>,
+    Path(group): Path<String>,
+) -> AppResult<impl IntoResponse> {
+    info!("[get_blood_group_compatibility] Group: {}", group);
+
+    let compatibility_info = BloodCompatibilityService::get_compatibility_info(&group);
+
+    match compatibility_info {
+        Some(info) => Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "data": info
+            })),
+        )),
+        None => Err(AppError::BadRequest(format!(
+            "Groupe sanguin invalide: {}. Valeurs acceptées: O+, O-, A+, A-, B+, B-, AB+, AB-",
+            group
+        ))),
+    }
+}
+
+/// GET /api/blood-donation/compatibility
+/// Obtenir toutes les informations de compatibilité
+pub async fn get_all_blood_group_compatibilities(
+    State(_state): State<Arc<AppState>>,
+) -> AppResult<impl IntoResponse> {
+    info!("[get_all_blood_group_compatibilities] Getting all compatibilities");
+
+    let all_groups = BloodCompatibilityService::get_all_blood_groups();
+    let mut compatibilities = serde_json::Map::new();
+
+    for group in all_groups {
+        if let Some(info) = BloodCompatibilityService::get_compatibility_info(&group) {
+            compatibilities.insert(group.clone(), info);
+        }
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": compatibilities
+        })),
+    ))
 }
 
 #[derive(Debug, Deserialize)]
@@ -911,7 +1048,8 @@ pub async fn create_or_update_blood_group(
     let valid_groups = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"];
     if !valid_groups.contains(&payload.groupe_sanguin.as_str()) {
         return Err(AppError::BadRequest(
-            "Groupe sanguin invalide. Valeurs acceptées: O+, O-, A+, A-, B+, B-, AB+, AB-".to_string(),
+            "Groupe sanguin invalide. Valeurs acceptées: O+, O-, A+, A-, B+, B-, AB+, AB-"
+                .to_string(),
         ));
     }
 
@@ -921,14 +1059,17 @@ pub async fn create_or_update_blood_group(
         UPDATE users
         SET groupe_sanguin = $1, updated_at = NOW()
         WHERE id = $2
-        "#
+        "#,
     )
     .bind(&payload.groupe_sanguin)
     .bind(user_id)
     .execute(&state.pg)
     .await
     .map_err(|e| {
-        error!("[create_or_update_blood_group] Erreur mise à jour users: {}", e);
+        error!(
+            "[create_or_update_blood_group] Erreur mise à jour users: {}",
+            e
+        );
         AppError::Internal(format!("Erreur mise à jour groupe sanguin: {}", e))
     })?;
 
@@ -967,4 +1108,3 @@ pub async fn create_or_update_blood_group(
         })),
     ))
 }
-

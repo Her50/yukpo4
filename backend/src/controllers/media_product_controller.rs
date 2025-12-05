@@ -84,39 +84,43 @@ pub async fn get_product_media(
 
     log_info(&format!("[MediaProduct] {} médias trouvés", rows.len()));
 
-    // ✅ CORRIGÉ 2025-11-30: Transformer les chemins en URLs complètes
-    let api_base_url = std::env::var("PUBLIC_BASE_URL")
-        .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
-        .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
-
+    // ✅ CORRIGÉ: Transformer les chemins en URLs publiques S3/Wasabi
     // Convertir les résultats
     let media: Vec<ProductMediaItem> = rows
         .iter()
         .map(|row| {
-            let path: String = row.get("path");
+            let path: String = row.get::<String, _>("path");
             // Si c'est déjà une URL complète, la retourner telle quelle
             let full_url = if path.starts_with("http://") || path.starts_with("https://") {
                 path
+            } else if state.media_storage.is_remote() {
+                // ✅ CORRIGÉ: Utiliser MediaStorageService pour construire URL S3/Wasabi
+                state.media_storage.build_public_url(&path)
             } else {
-                // Construire l'URL complète avec l'endpoint /api/media/files
+                // ✅ Fallback pour anciens médias locaux (temporaire, migration)
+                let api_base_url = std::env::var("PUBLIC_BASE_URL")
+                    .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+                    .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
                 let clean_path = path.trim_start_matches('/');
-                format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path)
+                format!(
+                    "{}/api/media/files/{}",
+                    api_base_url.trim_end_matches('/'),
+                    clean_path
+                )
             };
 
             ProductMediaItem {
-                id: row.get("id"),
-                service_id: row.get("service_id"),
-                product_id: row.get("product_id"),
-                product_index: row.get("product_index"),
-                media_type: row.get("media_type"),
+                id: row.get::<i32, _>("id"),
+                service_id: row.get::<i32, _>("service_id"),
+                product_id: row.get::<Option<String>, _>("product_id"),
+                product_index: row.get::<Option<i32>, _>("product_index"),
+                media_type: row.get::<String, _>("media_type"),
                 path: full_url,
-                is_main_image: row.get("is_main_image"),
-                display_order: row.get("display_order"),
-                uploaded_at: row
-                    .get::<DateTime<Utc>, _>("uploaded_at")
-                    .to_rfc3339(),
-                ai_description: row.get("ai_description"),
-                ai_tags: row.get("ai_tags"),
+                is_main_image: row.get::<bool, _>("is_main_image"),
+                display_order: row.get::<i32, _>("display_order"),
+                uploaded_at: row.get::<DateTime<Utc>, _>("uploaded_at").to_rfc3339(),
+                ai_description: row.get::<Option<String>, _>("ai_description"),
+                ai_tags: row.get::<Option<Vec<String>>, _>("ai_tags"),
             }
         })
         .collect();
@@ -175,14 +179,18 @@ pub async fn get_product_images(
     let images: Vec<String> = rows
         .iter()
         .map(|row| {
-            let path: String = row.get("path");
+            let path: String = row.get::<String, _>("path");
             // Si c'est déjà une URL complète, la retourner telle quelle
             if path.starts_with("http://") || path.starts_with("https://") {
                 return path;
             }
             // Construire l'URL complète avec l'endpoint /api/media/files
             let clean_path = path.trim_start_matches('/');
-            format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path)
+            format!(
+                "{}/api/media/files/{}",
+                api_base_url.trim_end_matches('/'),
+                clean_path
+            )
         })
         .collect();
 
@@ -234,14 +242,18 @@ pub async fn get_product_videos(
     let videos: Vec<String> = rows
         .iter()
         .map(|row| {
-            let path: String = row.get("path");
+            let path: String = row.get::<String, _>("path");
             // Si c'est déjà une URL complète, la retourner telle quelle
             if path.starts_with("http://") || path.starts_with("https://") {
                 return path;
             }
             // Construire l'URL complète avec l'endpoint /api/media/files
             let clean_path = path.trim_start_matches('/');
-            format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path)
+            format!(
+                "{}/api/media/files/{}",
+                api_base_url.trim_end_matches('/'),
+                clean_path
+            )
         })
         .collect();
 
@@ -275,8 +287,8 @@ pub async fn set_main_image(
         })?;
 
     if let Some(row) = media_info {
-        let service_id: i32 = row.get("service_id");
-        let product_index: Option<i32> = row.get("product_index");
+        let service_id: i32 = row.get::<i32, _>("service_id");
+        let product_index: Option<i32> = row.get::<Option<i32>, _>("product_index");
 
         if let Some(prod_idx) = product_index {
             // Désactiver toutes les images principales de ce produit

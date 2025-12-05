@@ -165,7 +165,7 @@ pub async fn upsert_combination(
 
     match base_insert {
         Ok(row) => {
-            let id: i32 = row.get("id");
+            let id: i32 = row.get::<i32, _>("id");
             Ok(id)
         }
         Err(e) => {
@@ -221,7 +221,7 @@ pub async fn upsert_combination(
                         ))
                     })?;
 
-                    let id: i32 = fallback_row.get("id");
+                    let id: i32 = fallback_row.get::<i32, _>("id");
                     return Ok(id);
                 }
             }
@@ -256,7 +256,9 @@ pub async fn search_combinations(
 
     // ✅ CORRECTION: Si la requête est vide, charger les combinaisons populaires
     if terms.is_empty() {
-        log::info!("[AutocompleteCombinations] Requête vide - Chargement des combinaisons populaires");
+        log::info!(
+            "[AutocompleteCombinations] Requête vide - Chargement des combinaisons populaires"
+        );
         let sql = format!(
             r#"
             SELECT 
@@ -278,7 +280,9 @@ pub async fn search_combinations(
             .bind(limit)
             .fetch_all(pool)
             .await
-            .map_err(|e| AppError::Internal(format!("Erreur recherche combinaisons populaires: {}", e)))?;
+            .map_err(|e| {
+                AppError::Internal(format!("Erreur recherche combinaisons populaires: {}", e))
+            })?;
 
         let results: Vec<CombinationSearchResult> = rows
             .into_iter()

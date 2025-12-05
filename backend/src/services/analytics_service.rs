@@ -163,8 +163,12 @@ impl AnalyticsService {
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération stats livraisons: {}", e)))?;
 
-        let total = stats_row.try_get::<i64, _>("total_deliveries").unwrap_or(0) as f64;
-        let completed = stats_row.try_get::<i64, _>("completed_deliveries").unwrap_or(0) as f64;
+        let total = stats_row
+            .get::<Option<i64>, _>("total_deliveries")
+            .unwrap_or(0) as f64;
+        let completed = stats_row
+            .get::<Option<i64>, _>("completed_deliveries")
+            .unwrap_or(0) as f64;
         let success_rate = if total > 0.0 {
             (completed / total * 100.0).round() / 100.0
         } else {
@@ -180,12 +184,23 @@ impl AnalyticsService {
         };
 
         Ok(DeliveryStats {
-            total_deliveries: stats_row.try_get::<i64, _>("total_deliveries").unwrap_or(0),
-            completed_deliveries: stats_row.try_get::<i64, _>("completed_deliveries").unwrap_or(0),
-            cancelled_deliveries: stats_row.try_get::<i64, _>("cancelled_deliveries").unwrap_or(0),
-            pending_deliveries: stats_row.try_get::<i64, _>("pending_deliveries").unwrap_or(0),
+            total_deliveries: stats_row
+                .get::<Option<i64>, _>("total_deliveries")
+                .unwrap_or(0),
+            completed_deliveries: stats_row
+                .get::<Option<i64>, _>("completed_deliveries")
+                .unwrap_or(0),
+            cancelled_deliveries: stats_row
+                .get::<Option<i64>, _>("cancelled_deliveries")
+                .unwrap_or(0),
+            pending_deliveries: stats_row
+                .get::<Option<i64>, _>("pending_deliveries")
+                .unwrap_or(0),
             success_rate,
-            avg_delivery_time_minutes: stats_row.try_get::<Option<f64>, _>("avg_delivery_time_minutes").ok().flatten(),
+            avg_delivery_time_minutes: stats_row
+                .try_get::<Option<f64>, _>("avg_delivery_time_minutes")
+                .ok()
+                .flatten(),
             total_revenue,
             avg_revenue_per_delivery,
         })
@@ -207,7 +222,7 @@ impl AnalyticsService {
             WHERE user_id = $1
               AND created_at >= $2
               AND created_at <= $3
-            "#
+            "#,
         )
         .bind(provider_user_id)
         .bind(period_start)
@@ -222,9 +237,13 @@ impl AnalyticsService {
         let total_interactions = 0i64;
         let avg_rating = None::<f64>;
         let total_reviews = 0i64;
-        
-        let total_services = stats_row.try_get::<i64, _>("total_services").unwrap_or(0);
-        let active_services = stats_row.try_get::<i64, _>("active_services").unwrap_or(0);
+
+        let total_services = stats_row
+            .get::<Option<i64>, _>("total_services")
+            .unwrap_or(0);
+        let active_services = stats_row
+            .get::<Option<i64>, _>("active_services")
+            .unwrap_or(0);
 
         Ok(ServiceStats {
             total_services,
@@ -291,7 +310,7 @@ impl AnalyticsService {
             GROUP BY service_id, product_index
             ORDER BY order_count DESC
             LIMIT $4
-            "#
+            "#,
         )
         .bind(provider_user_id)
         .bind(period_start)
@@ -303,16 +322,16 @@ impl AnalyticsService {
 
         let mut top_products = Vec::new();
         for row in products {
-            let service_id: i32 = row.try_get("service_id").unwrap_or(0);
-            let product_index: Option<i32> = row.try_get("product_index").ok();
-            
+            let service_id: i32 = row.get::<Option<_>, _>("service_id").unwrap_or(0);
+            let product_index: Option<i32> = row.get::<Option<_>, _>("product_index");
+
             // Récupérer le nom du produit depuis le JSON du service
             let service_data = sqlx::query(
                 r#"
                 SELECT data
                 FROM services
                 WHERE id = $1
-                "#
+                "#,
             )
             .bind(service_id)
             .fetch_optional(&self.pool)
@@ -345,8 +364,8 @@ impl AnalyticsService {
                 service_id,
                 product_index,
                 product_name,
-                order_count: row.try_get::<i64, _>("order_count").unwrap_or(0),
-                total_revenue: row.try_get::<f64, _>("total_revenue").unwrap_or(0.0),
+                order_count: row.get::<Option<i64>, _>("order_count").unwrap_or(0),
+                total_revenue: row.get::<Option<f64>, _>("total_revenue").unwrap_or(0.0),
             });
         }
 
@@ -380,7 +399,7 @@ impl AnalyticsService {
             GROUP BY dz.id, dz.display_name
             ORDER BY delivery_count DESC
             LIMIT $4
-            "#
+            "#,
         )
         .bind(provider_user_id)
         .bind(period_start)
@@ -393,10 +412,17 @@ impl AnalyticsService {
         Ok(zones
             .into_iter()
             .map(|row| TopDeliveryZone {
-                zone_id: row.try_get::<Option<uuid::Uuid>, _>("zone_id").ok().flatten().map(|id| id.to_string()),
+                zone_id: row
+                    .try_get::<Option<uuid::Uuid>, _>("zone_id")
+                    .ok()
+                    .flatten()
+                    .map(|id| id.to_string()),
                 zone_name: row.try_get::<Option<String>, _>("zone_name").ok().flatten(),
-                delivery_count: row.try_get::<i64, _>("delivery_count").unwrap_or(0),
-                avg_distance_km: row.try_get::<Option<f64>, _>("avg_distance_km").ok().flatten(),
+                delivery_count: row.get::<Option<i64>, _>("delivery_count").unwrap_or(0),
+                avg_distance_km: row
+                    .try_get::<Option<f64>, _>("avg_distance_km")
+                    .ok()
+                    .flatten(),
             })
             .collect())
     }
@@ -435,15 +461,21 @@ impl AnalyticsService {
         Ok(data
             .into_iter()
             .map(|row| {
-                let date: chrono::NaiveDate = row.try_get("date").unwrap_or_else(|_| chrono::Utc::now().date_naive());
+                let date: chrono::NaiveDate = row
+                    .get::<Option<_>, _>("date")
+                    .unwrap_or_else(|| chrono::Utc::now().date_naive());
                 PerformanceDataPoint {
                     date: date.format("%Y-%m-%d").to_string(),
-                    deliveries: row.try_get::<i64, _>("deliveries").unwrap_or(0),
-                    revenue: row.try_get::<f64, _>("revenue").unwrap_or(0.0),
-                    success_rate: (row.try_get::<Option<f64>, _>("success_rate").unwrap_or(Some(0.0)).unwrap_or(0.0)).round() / 100.0,
+                    deliveries: row.get::<Option<i64>, _>("deliveries").unwrap_or(0),
+                    revenue: row.get::<Option<f64>, _>("revenue").unwrap_or(0.0),
+                    success_rate: (row
+                        .try_get::<Option<f64>, _>("success_rate")
+                        .unwrap_or(Some(0.0))
+                        .unwrap_or(0.0))
+                    .round()
+                        / 100.0,
                 }
             })
             .collect())
     }
 }
-

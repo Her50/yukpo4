@@ -59,7 +59,7 @@ pub async fn upsert_autocomplete_characteristic(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur upsert caractéristique: {}", e)))?;
 
-    let id: i32 = row.get("id");
+    let id: i32 = row.get::<i32, _>("id");
     log::info!(
         "[AutocompleteHistoryService] ✅ Caractéristique sauvegardée: {}",
         id
@@ -183,8 +183,8 @@ pub async fn get_autocomplete_suggestions(
     let suggestions = rows
         .iter()
         .map(|row| AutocompleteSuggestion {
-            valeur: row.get("valeur"),
-            usage_count: row.get("usage_count"),
+            valeur: row.get::<String, _>("valeur"),
+            usage_count: row.get::<i32, _>("usage_count"),
         })
         .collect();
 
@@ -211,7 +211,7 @@ pub async fn get_sub_characteristics(
 
     let sub_chars: Vec<String> = rows
         .iter()
-        .map(|row| row.get("sous_caracteristique"))
+        .map(|row| row.get::<String, _>("sous_caracteristique"))
         .collect();
     Ok(sub_chars)
 }
@@ -237,7 +237,10 @@ pub async fn get_all_values(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération valeurs: {}", e)))?;
 
-    let values: Vec<String> = rows.iter().map(|row| row.get("valeur")).collect();
+    let values: Vec<String> = rows
+        .iter()
+        .map(|row| row.get::<String, _>("valeur"))
+        .collect();
     Ok(values)
 }
 

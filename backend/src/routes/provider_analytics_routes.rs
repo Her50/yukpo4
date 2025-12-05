@@ -10,20 +10,36 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use crate::{
-    core::types::AppError,
-    middlewares::jwt::AuthenticatedUser,
-    services::provider_analytics_service::ProviderAnalyticsService,
-    state::AppState,
+    core::types::AppError, middlewares::jwt::AuthenticatedUser,
+    services::provider_analytics_service::ProviderAnalyticsService, state::AppState,
 };
 
 pub fn provider_analytics_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
-        .route("/api/provider/{provider_id}/analytics/orders", get(get_order_stats))
-        .route("/api/provider/{provider_id}/analytics/preparation-time", get(get_preparation_time_stats))
-        .route("/api/provider/{provider_id}/analytics/rejections", get(get_rejection_stats))
-        .route("/api/provider/{provider_id}/analytics/cancellations", get(get_cancellation_stats))
-        .route("/api/provider/{provider_id}/analytics/product-performance", get(get_product_performance))
-        .route("/api/provider/{provider_id}/analytics/dashboard", get(get_dashboard_analytics))
+        .route(
+            "/api/provider/{provider_id}/analytics/orders",
+            get(get_order_stats),
+        )
+        .route(
+            "/api/provider/{provider_id}/analytics/preparation-time",
+            get(get_preparation_time_stats),
+        )
+        .route(
+            "/api/provider/{provider_id}/analytics/rejections",
+            get(get_rejection_stats),
+        )
+        .route(
+            "/api/provider/{provider_id}/analytics/cancellations",
+            get(get_cancellation_stats),
+        )
+        .route(
+            "/api/provider/{provider_id}/analytics/product-performance",
+            get(get_product_performance),
+        )
+        .route(
+            "/api/provider/{provider_id}/analytics/dashboard",
+            get(get_dashboard_analytics),
+        )
         .with_state(state)
 }
 
@@ -142,7 +158,12 @@ async fn get_product_performance(
 
     let analytics_service = ProviderAnalyticsService::new(state.pg.clone());
     let product_stats = analytics_service
-        .get_product_cancellation_stats(provider_id, params.service_id, params.period_start, params.period_end)
+        .get_product_cancellation_stats(
+            provider_id,
+            params.service_id,
+            params.period_start,
+            params.period_end,
+        )
         .await?;
 
     Ok(Json(json!({
@@ -172,4 +193,3 @@ async fn get_dashboard_analytics(
         "analytics": analytics
     })))
 }
-

@@ -14,8 +14,7 @@ use uuid::Uuid;
 use crate::{
     core::types::{AppError, AppResult},
     models::delivery_model::{
-        ClientDeliveryPreferencesInput,
-        ExternalDeliveryProvider, ExternalDeliveryRequest,
+        ClientDeliveryPreferencesInput, ExternalDeliveryProvider, ExternalDeliveryRequest,
     },
     services::delivery_service::{
         CreateDeliveryParams, DeliveryRecipientInput, DeliveryService, NewDeliveryParcelInput,
@@ -27,7 +26,10 @@ use crate::{
 pub fn delivery_external_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/api/external/delivery", post(create_external_delivery))
-        .route("/api/external/track/{token}", get(get_delivery_status_by_token))
+        .route(
+            "/api/external/track/{token}",
+            get(get_delivery_status_by_token),
+        )
         .with_state(state)
 }
 
@@ -47,7 +49,10 @@ async fn create_external_delivery(
 
     let internal_parcel = NewDeliveryParcelInput {
         type_id: Some(parcel_type_id),
-        weight_kg: payload.parcel.weight_kg.and_then(|w| rust_decimal::Decimal::from_f64(w)),
+        weight_kg: payload
+            .parcel
+            .weight_kg
+            .and_then(|w| rust_decimal::Decimal::from_f64(w)),
         volume_cm3: None,
         declared_value: None,
         notes: payload.parcel.description.clone(),
@@ -109,7 +114,7 @@ async fn create_external_delivery(
         let preferred_delivery_time_start = prefs.preferred_delivery_time_start.clone();
         let preferred_delivery_time_end = prefs.preferred_delivery_time_end.clone();
         let urgency = prefs.urgency.clone();
-        
+
         let _prefs_input = ClientDeliveryPreferencesInput {
             delivery_id: Some(summary.id),
             preferred_delivery_date: preferred_delivery_date.clone(),
@@ -134,7 +139,7 @@ async fn create_external_delivery(
             .as_ref()
             .and_then(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").ok());
         let urgency_level = urgency.unwrap_or_else(|| "standard".to_string());
-        
+
         sqlx::query(
             r#"
             INSERT INTO client_delivery_preferences (
@@ -147,7 +152,7 @@ async fn create_external_delivery(
                 0, $1, $2, $3, $4, 2, $5, TRUE, 3
             )
             ON CONFLICT DO NOTHING
-            "#
+            "#,
         )
         .bind(summary.id)
         .bind(delivery_date)
@@ -161,14 +166,14 @@ async fn create_external_delivery(
 
     // ✅ 6. Générer et stocker token de suivi public
     let tracking_token = generate_public_tracking_token(&summary.id);
-    
+
     // Stocker le token dans la base
     sqlx::query(
         r#"
         INSERT INTO public_tracking_tokens (delivery_id, tracking_token, provider_id)
         VALUES ($1, $2, $3)
         ON CONFLICT (delivery_id, tracking_token) DO NOTHING
-        "#
+        "#,
     )
     .bind(summary.id)
     .bind(&tracking_token)
@@ -186,7 +191,8 @@ async fn create_external_delivery(
         let summary_clone = summary.clone();
         let token_clone = tracking_token.clone();
         tokio::spawn(async move {
-            if let Err(e) = trigger_webhook(&webhook_url_clone, &summary_clone, &token_clone).await {
+            if let Err(e) = trigger_webhook(&webhook_url_clone, &summary_clone, &token_clone).await
+            {
                 log::error!("Erreur webhook pour provider {}: {:?}", provider.id, e);
             }
         });
@@ -230,15 +236,13 @@ async fn validate_api_key(
     api_key: &str,
 ) -> AppResult<ExternalDeliveryProvider> {
     let provider = sqlx::query_as::<_, ExternalDeliveryProvider>(
-        "SELECT * FROM external_delivery_providers WHERE api_key = $1 AND is_active = TRUE"
+        "SELECT * FROM external_delivery_providers WHERE api_key = $1 AND is_active = TRUE",
     )
     .bind(api_key)
     .fetch_optional(&state.pg)
     .await?;
 
-    provider.ok_or_else(|| {
-        AppError::Unauthorized("API key invalide ou inactive".into())
-    })
+    provider.ok_or_else(|| AppError::Unauthorized("API key invalide ou inactive".into()))
 }
 
 /// Vérifie le rate limit pour un provider
@@ -252,12 +256,9 @@ async fn check_rate_limit(
 }
 
 /// Trouve l'ID d'un type de colis par son nom
-async fn find_parcel_type_by_name(
-    state: &Arc<AppState>,
-    vehicle_type: &str,
-) -> AppResult<i32> {
+async fn find_parcel_type_by_name(state: &Arc<AppState>, vehicle_type: &str) -> AppResult<i32> {
     let type_id = sqlx::query_scalar::<_, i32>(
-        "SELECT id FROM parcel_types WHERE LOWER(name) = LOWER($1) LIMIT 1"
+        "SELECT id FROM parcel_types WHERE LOWER(name) = LOWER($1) LIMIT 1",
     )
     .bind(vehicle_type)
     .fetch_optional(&state.pg)
@@ -279,27 +280,19 @@ fn generate_public_tracking_token(delivery_id: &Uuid) -> String {
 }
 
 /// Récupère l'ID d'une livraison depuis son token public
-async fn get_delivery_id_from_token(
-    state: &Arc<AppState>,
-    token: &str,
-) -> AppResult<Uuid> {
+async fn get_delivery_id_from_token(state: &Arc<AppState>, token: &str) -> AppResult<Uuid> {
     let delivery_id = sqlx::query_scalar::<_, Uuid>(
-        "SELECT delivery_id FROM public_tracking_tokens WHERE tracking_token = $1"
+        "SELECT delivery_id FROM public_tracking_tokens WHERE tracking_token = $1",
     )
     .bind(token)
     .fetch_optional(&state.pg)
     .await?;
 
-    delivery_id.ok_or_else(|| {
-        AppError::NotFound("Token de suivi invalide".into())
-    })
+    delivery_id.ok_or_else(|| AppError::NotFound("Token de suivi invalide".into()))
 }
 
 /// Met à jour les statistiques d'un provider
-async fn update_provider_stats(
-    state: &Arc<AppState>,
-    provider_id: i32,
-) -> AppResult<()> {
+async fn update_provider_stats(state: &Arc<AppState>, provider_id: i32) -> AppResult<()> {
     sqlx::query(
         r#"
         UPDATE external_delivery_providers
@@ -307,7 +300,7 @@ async fn update_provider_stats(
             last_used_at = NOW(),
             total_deliveries = total_deliveries + 1
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(provider_id)
     .execute(&state.pg)
@@ -394,4 +387,3 @@ async fn get_or_create_external_system_user(
 fn delivery_service(state: &Arc<AppState>) -> Arc<DeliveryService> {
     state.delivery_service.clone()
 }
-

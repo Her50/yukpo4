@@ -229,36 +229,40 @@ impl GooglePlacesService {
                 .text()
                 .await
                 .unwrap_or_else(|_| "<no body>".to_string());
-            
-            let error_type = if text.contains("BILLING_DISABLED") || text.contains("billing_disabled") {
-                "BILLING_DISABLED"
-            } else if text.contains("API_KEY_INVALID") || text.contains("api_key_invalid") {
-                "API_KEY_INVALID"
-            } else if text.contains("PERMISSION_DENIED") || text.contains("permission_denied") {
-                "PERMISSION_DENIED"
-            } else if status == 403 {
-                "FORBIDDEN"
-            } else if status == 429 {
-                "RATE_LIMIT"
-            } else {
-                "UNKNOWN"
-            };
-            
+
+            let error_type =
+                if text.contains("BILLING_DISABLED") || text.contains("billing_disabled") {
+                    "BILLING_DISABLED"
+                } else if text.contains("API_KEY_INVALID") || text.contains("api_key_invalid") {
+                    "API_KEY_INVALID"
+                } else if text.contains("PERMISSION_DENIED") || text.contains("permission_denied") {
+                    "PERMISSION_DENIED"
+                } else if status == 403 {
+                    "FORBIDDEN"
+                } else if status == 429 {
+                    "RATE_LIMIT"
+                } else {
+                    "UNKNOWN"
+                };
+
             error!(
                 "[Places] Recherche échouée (HTTP {}): {} - Type: {}",
                 status.as_u16(),
                 text,
                 error_type
             );
-            
-            if error_type == "BILLING_DISABLED" || error_type == "API_KEY_INVALID" || error_type == "PERMISSION_DENIED" {
+
+            if error_type == "BILLING_DISABLED"
+                || error_type == "API_KEY_INVALID"
+                || error_type == "PERMISSION_DENIED"
+            {
                 return Err(AppError::Internal(format!(
                     "Google Places API indisponible ({}): {}. Veuillez activer la facturation ou vérifier la clé API.",
                     error_type,
                     text.chars().take(200).collect::<String>()
                 )));
             }
-            
+
             return Ok(Vec::new());
         }
 
@@ -300,37 +304,44 @@ impl GooglePlacesService {
                 .text()
                 .await
                 .unwrap_or_else(|_| "<no body>".to_string());
-            
-            let error_type = if text.contains("BILLING_DISABLED") || text.contains("billing_disabled") {
-                "BILLING_DISABLED"
-            } else if text.contains("API_KEY_INVALID") || text.contains("api_key_invalid") {
-                "API_KEY_INVALID"
-            } else if text.contains("PERMISSION_DENIED") || text.contains("permission_denied") {
-                "PERMISSION_DENIED"
-            } else if status == 403 {
-                "FORBIDDEN"
-            } else if status == 429 {
-                "RATE_LIMIT"
-            } else {
-                "UNKNOWN"
-            };
-            
+
+            let error_type =
+                if text.contains("BILLING_DISABLED") || text.contains("billing_disabled") {
+                    "BILLING_DISABLED"
+                } else if text.contains("API_KEY_INVALID") || text.contains("api_key_invalid") {
+                    "API_KEY_INVALID"
+                } else if text.contains("PERMISSION_DENIED") || text.contains("permission_denied") {
+                    "PERMISSION_DENIED"
+                } else if status == 403 {
+                    "FORBIDDEN"
+                } else if status == 429 {
+                    "RATE_LIMIT"
+                } else {
+                    "UNKNOWN"
+                };
+
             error!(
                 "[Places] Détails échoués (HTTP {}): {} - Type: {}",
                 status.as_u16(),
                 text,
                 error_type
             );
-            
-            if error_type == "BILLING_DISABLED" || error_type == "API_KEY_INVALID" || error_type == "PERMISSION_DENIED" {
+
+            if error_type == "BILLING_DISABLED"
+                || error_type == "API_KEY_INVALID"
+                || error_type == "PERMISSION_DENIED"
+            {
                 return Err(AppError::Internal(format!(
                     "Google Places API indisponible ({}): {}. Veuillez activer la facturation ou vérifier la clé API.",
                     error_type,
                     text.chars().take(200).collect::<String>()
                 )));
             }
-            
-            return Err(AppError::Internal(format!("Erreur récupération détails: {}", text)));
+
+            return Err(AppError::Internal(format!(
+                "Erreur récupération détails: {}",
+                text
+            )));
         }
 
         let details: PlaceDetails = details_response
@@ -420,8 +431,10 @@ impl GooglePlacesService {
         language_code: Option<&str>,
         coordinates: Option<(f64, f64)>,
     ) -> Result<Option<GooglePlaceEnriched>, AppError> {
-        let places = self.search_places(query, country_hint, language_code, coordinates).await?;
-        
+        let places = self
+            .search_places(query, country_hint, language_code, coordinates)
+            .await?;
+
         if places.is_empty() {
             return Ok(None);
         }
@@ -450,8 +463,10 @@ impl GooglePlacesService {
         prestataire_name: Option<&str>,
         max_distance_km: f64,
     ) -> Result<Option<GooglePlaceEnriched>, AppError> {
-        let places = self.search_places(query, country_hint, language_code, coordinates).await?;
-        
+        let places = self
+            .search_places(query, country_hint, language_code, coordinates)
+            .await?;
+
         if places.is_empty() {
             info!("[Places] Aucun résultat pour '{}'", query);
             return Ok(None);
@@ -459,10 +474,10 @@ impl GooglePlacesService {
 
         // ✅ AMÉLIORATION: Augmenter à 10 résultats pour améliorer les chances de trouver le bon match
         let places_to_check = places.into_iter().take(10).collect::<Vec<_>>();
-        
+
         // ✅ NOUVEAU: Garder plusieurs candidats pour gérer les cas de structures similaires au même endroit
         let mut candidates: Vec<(GooglePlaceEnriched, f64, Option<f64>)> = Vec::new(); // (enriched, score, distance)
-        
+
         for place in places_to_check {
             let place_id = match place.id {
                 Some(id) => id,
@@ -473,7 +488,10 @@ impl GooglePlacesService {
             let enriched = match self.enrich_place_details(&place_id, language_code).await {
                 Ok(e) => e,
                 Err(e) => {
-                    warn!("[Places] Erreur enrichissement place_id {}: {}", place_id, e);
+                    warn!(
+                        "[Places] Erreur enrichissement place_id {}: {}",
+                        place_id, e
+                    );
                     continue;
                 }
             };
@@ -485,11 +503,9 @@ impl GooglePlacesService {
             // ✅ AMÉLIORATION: Score de distance plus granulaire pour mieux gérer plusieurs structures proches
             if let Some((lat, lng)) = coordinates {
                 if let Some(place_coords) = enriched.coordinates.as_ref() {
-                    let distance_km = calculate_distance_haversine(
-                        lat, lng,
-                        place_coords.lat, place_coords.lng
-                    );
-                    
+                    let distance_km =
+                        calculate_distance_haversine(lat, lng, place_coords.lat, place_coords.lng);
+
                     if distance_km > max_distance_km {
                         warn!(
                             "[Places] Lieu {} trop éloigné: {} km (max: {} km)",
@@ -497,14 +513,14 @@ impl GooglePlacesService {
                         );
                         continue; // Ignorer ce lieu
                     }
-                    
+
                     // ✅ Score de distance amélioré : plus granulaire pour distinguer les structures proches
                     let distance_score = if distance_km <= 0.1 {
-                        50.0  // Très proche (< 100m) - priorité maximale
+                        50.0 // Très proche (< 100m) - priorité maximale
                     } else if distance_km <= 0.3 {
-                        45.0  // Proche (< 300m)
+                        45.0 // Proche (< 300m)
                     } else if distance_km <= 0.5 {
-                        40.0  // Assez proche (< 500m)
+                        40.0 // Assez proche (< 500m)
                     } else {
                         // Dans le rayon mais plus loin : score inversement proportionnel
                         (max_distance_km - distance_km) / max_distance_km * 35.0
@@ -521,7 +537,7 @@ impl GooglePlacesService {
             if let Some(prestataire) = prestataire_name {
                 let display_name_lower = enriched.display_name.to_lowercase();
                 let prestataire_lower = prestataire.to_lowercase();
-                
+
                 // Correspondance exacte (nom identique)
                 if display_name_lower == prestataire_lower {
                     score += 40.0; // Correspondance exacte du nom
@@ -529,17 +545,20 @@ impl GooglePlacesService {
                     score += 35.0; // Contient le nom complet
                 } else {
                     // Vérifier correspondance partielle (mots individuels)
-                    let prestataire_words: Vec<&str> = prestataire_lower.split_whitespace().collect();
-                    let matching_words = prestataire_words.iter()
+                    let prestataire_words: Vec<&str> =
+                        prestataire_lower.split_whitespace().collect();
+                    let matching_words = prestataire_words
+                        .iter()
                         .filter(|word| {
                             // Ignorer les mots trop courts (articles, prépositions)
                             word.len() > 2 && display_name_lower.contains(*word)
                         })
                         .count();
-                    
+
                     if matching_words > 0 {
                         // Score proportionnel au nombre de mots correspondants
-                        let word_match_ratio = matching_words as f64 / prestataire_words.len() as f64;
+                        let word_match_ratio =
+                            matching_words as f64 / prestataire_words.len() as f64;
                         score += word_match_ratio * 30.0;
                     }
                 }
@@ -556,7 +575,7 @@ impl GooglePlacesService {
                 if rating_count > 50 {
                     score += 10.0; // Beaucoup d'avis (> 50)
                 } else if rating_count > 10 {
-                    score += 5.0;  // Assez d'avis (> 10)
+                    score += 5.0; // Assez d'avis (> 10)
                 }
             }
 
@@ -572,8 +591,9 @@ impl GooglePlacesService {
             const MIN_SCORE_THRESHOLD: f64 = 50.0;
             if score >= MIN_SCORE_THRESHOLD {
                 let distance = if let Some((lat, lng)) = coordinates {
-                    enriched.coordinates.as_ref()
-                        .map(|coords| calculate_distance_haversine(lat, lng, coords.lat, coords.lng))
+                    enriched.coordinates.as_ref().map(|coords| {
+                        calculate_distance_haversine(lat, lng, coords.lat, coords.lng)
+                    })
                 } else {
                     None
                 };
@@ -583,7 +603,10 @@ impl GooglePlacesService {
 
         // ✅ NOUVEAU: Gérer les cas de plusieurs structures similaires au même endroit
         if candidates.is_empty() {
-            warn!("[Places] Aucun match valide trouvé pour '{}' (score < seuil minimum)", query);
+            warn!(
+                "[Places] Aucun match valide trouvé pour '{}' (score < seuil minimum)",
+                query
+            );
             return Ok(None);
         }
 
@@ -593,13 +616,15 @@ impl GooglePlacesService {
         // Si plusieurs candidats avec un score très proche (différence < 5 points), choisir le plus proche
         if candidates.len() > 1 {
             let best_score = candidates[0].1;
-            let similar_candidates: Vec<_> = candidates.iter()
+            let similar_candidates: Vec<_> = candidates
+                .iter()
                 .filter(|(_, score, _)| (score - best_score).abs() < 5.0)
                 .collect();
 
             if similar_candidates.len() > 1 {
                 // Plusieurs candidats avec score similaire : choisir le plus proche
-                if let Some((enriched, score, distance)) = similar_candidates.iter()
+                if let Some((enriched, score, distance)) = similar_candidates
+                    .iter()
                     .filter_map(|(e, s, d)| d.map(|dist| (e, s, dist)))
                     .min_by(|a, b| a.2.partial_cmp(&b.2).unwrap_or(std::cmp::Ordering::Equal))
                 {

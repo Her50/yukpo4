@@ -25,11 +25,15 @@ interface PharmacieResultCardProps {
         is_on_duty_now?: boolean;
         distance_km?: number;
         services?: string[];
+        // ✅ 2025-01-27: Statistiques ratings
+        average_rating?: number;
+        total_ratings?: number;
     };
     onPress?: () => void;
+    onContact?: () => void;
 }
 
-const PharmacieResultCard: React.FC<PharmacieResultCardProps> = ({ pharmacy, onPress }) => {
+const PharmacieResultCard: React.FC<PharmacieResultCardProps> = ({ pharmacy, onPress, onContact }) => {
     const navigation = useNavigation();
     const { user } = useAuth();
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
@@ -79,6 +83,19 @@ const PharmacieResultCard: React.FC<PharmacieResultCardProps> = ({ pharmacy, onP
                 </View>
             )}
 
+            {/* ✅ 2025-01-27: Statistiques de ratings */}
+            {(pharmacy.average_rating !== undefined || pharmacy.total_ratings !== undefined) && (
+                <View style={styles.ratingsRow}>
+                    <SafeIcon name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.ratingsText}>
+                        {pharmacy.average_rating ? `${pharmacy.average_rating.toFixed(1)}` : 'N/A'}
+                        {pharmacy.total_ratings !== undefined && pharmacy.total_ratings > 0 && (
+                            <Text style={styles.ratingsCount}> ({pharmacy.total_ratings} avis)</Text>
+                        )}
+                    </Text>
+                </View>
+            )}
+
             <View style={styles.footer}>
                 {pharmacy.distance_km && (
                     <View style={styles.distanceRow}>
@@ -113,15 +130,33 @@ const PharmacieResultCard: React.FC<PharmacieResultCardProps> = ({ pharmacy, onP
                 </View>
             </View>
 
-            {/* Bouton Livraison */}
+            {/* Actions contextuelles */}
             <View style={styles.actionsRow}>
+                <TouchableOpacity
+                    style={[styles.actionButton, styles.chatButton]}
+                    onPress={() => {
+                        if (onContact) {
+                            onContact();
+                        } else {
+                            (navigation as any).navigate('ServiceDetailSpecialized', {
+                                serviceId: pharmacy.service_id,
+                                serviceType: 'pharmacie',
+                            });
+                        }
+                    }}
+                >
+                    <SafeIcon name="message-circle" size={18} color="#fff" />
+                    <Text style={[styles.actionButtonText, styles.chatButtonText]}>
+                        Contacter
+                    </Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.actionButton, styles.deliveryButton]}
                     onPress={() => setShowDeliveryModal(true)}
                 >
                     <SafeIcon name="truck" size={18} color="#fff" />
                     <Text style={[styles.actionButtonText, styles.deliveryButtonText]}>
-                        Commander avec livraison
+                        Livraison
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -218,6 +253,23 @@ const styles = StyleSheet.create({
     serviceTagText: {
         fontSize: 12,
         color: '#374151',
+    },
+    // ✅ 2025-01-27: Styles pour ratings
+    ratingsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 8,
+    },
+    ratingsText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    ratingsCount: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontWeight: '400',
     },
     footer: {
         flexDirection: 'row',

@@ -19,8 +19,8 @@ use crate::{
         phone_validation_service::{PhoneValidationRequest, PhoneValidationService},
     },
 };
-use sqlx::FromRow;
 use chrono::{DateTime, Utc};
+use sqlx::FromRow;
 
 #[derive(FromRow)]
 struct PaymentAttemptWebhookRow {
@@ -303,7 +303,7 @@ async fn process_payment_webhook(
     // Rechercher la tentative de paiement correspondante
     let reference_str = reference.as_deref().unwrap_or("");
     let payment_attempt: Option<PaymentAttemptWebhookRow> = sqlx::query_as(
-        "SELECT * FROM payment_attempts WHERE transaction_id = $1 OR payment_id = $2"
+        "SELECT * FROM payment_attempts WHERE transaction_id = $1 OR payment_id = $2",
     )
     .bind(transaction_id)
     .bind(reference_str)
@@ -350,7 +350,7 @@ async fn process_payment_webhook(
         UPDATE payment_attempts 
         SET status = $1, transaction_id = $2, confirmed_at = NOW()
         WHERE id = $3
-        "#
+        "#,
     )
     .bind(&internal_status)
     .bind(transaction_id)
@@ -363,14 +363,12 @@ async fn process_payment_webhook(
     if internal_status == "success" {
         let tokens_to_add = payment_attempt.amount_xaf;
 
-        sqlx::query(
-            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
-        )
-        .bind(tokens_to_add)
-        .bind(payment_attempt.user_id)
-        .execute(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur crédit tokens: {}", e)))?;
+        sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
+            .bind(tokens_to_add)
+            .bind(payment_attempt.user_id)
+            .execute(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur crédit tokens: {}", e)))?;
 
         log::info!(
             "[process_payment_webhook] {} tokens crédités pour utilisateur {}",

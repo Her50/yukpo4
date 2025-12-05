@@ -2,6 +2,7 @@ use crate::utils::jwt_manager::decode_jwt;
 use axum::body::Body;
 use axum::http::StatusCode;
 use axum::{http::Request, middleware::Next, response::Response};
+use base64::Engine;
 use std::env;
 
 /// ? Authenticated user structure
@@ -36,7 +37,9 @@ pub async fn jwt_auth(
                     eprintln!("[DEBUG] Token de développement détecté (mode debug uniquement)");
                     let parts: Vec<&str> = token.split('.').collect();
                     if parts.len() == 3 {
-                        if let Ok(payload_str) = base64::engine::general_purpose::STANDARD.decode(parts[1]) {
+                        if let Ok(payload_str) =
+                            base64::engine::general_purpose::STANDARD.decode(parts[1])
+                        {
                             if let Ok(payload) =
                                 serde_json::from_slice::<serde_json::Value>(&payload_str)
                             {
@@ -118,7 +121,9 @@ pub async fn optional_jwt_auth(mut req: Request<Body>, next: Next) -> Response {
                 if token.ends_with(".dev_signature") {
                     let parts: Vec<&str> = token.split('.').collect();
                     if parts.len() == 3 {
-                        if let Ok(payload_str) = base64::engine::general_purpose::STANDARD.decode(parts[1]) {
+                        if let Ok(payload_str) =
+                            base64::engine::general_purpose::STANDARD.decode(parts[1])
+                        {
                             if let Ok(payload) =
                                 serde_json::from_slice::<serde_json::Value>(&payload_str)
                             {
@@ -140,7 +145,9 @@ pub async fn optional_jwt_auth(mut req: Request<Body>, next: Next) -> Response {
                 Err(_) => {
                     // Si JWT_SECRET manquant, continuer sans authentification (comportement optionnel)
                     // Mais loguer l'erreur pour alerter
-                    log::warn!("[optional_jwt_auth] JWT_SECRET manquant - authentification ignorée");
+                    log::warn!(
+                        "[optional_jwt_auth] JWT_SECRET manquant - authentification ignorée"
+                    );
                     return next.run(req).await;
                 }
             };

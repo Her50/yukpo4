@@ -60,6 +60,18 @@ GOOGLE_MAPS_API_KEY=...
 GOOGLE_TRANSLATE_API_KEY=...
 ```
 
+### 🌤️ **Services Météo (Module de Livraison)**
+```bash
+# OpenWeatherMap (pour données météo réelles dans prédictions ETA)
+OPENWEATHERMAP_API_KEY=...
+```
+
+### 🧠 **Modèles ML (Module de Livraison)**
+```bash
+# Répertoire pour modèles ML entraînés (défaut: "models")
+ML_MODELS_DIR=models
+```
+
 ### ⚙️ **Configuration application**
 ```bash
 # API Yukpo interne

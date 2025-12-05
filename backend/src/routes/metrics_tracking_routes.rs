@@ -1,12 +1,6 @@
 //! Routes de tracking pour les métriques frontend (carrousels, navigation, etc.)
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::Json,
-    routing::post,
-    Router,
-};
+use axum::{extract::State, http::StatusCode, response::Json, routing::post, Router};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -145,7 +139,7 @@ pub async fn track_navigation(
             crate::metrics::NAVIGATION_METRICS
                 .searches_total
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            
+
             // Si recherche sans résultats
             if let Some(has_results) = payload.has_results {
                 if !has_results {
@@ -229,10 +223,18 @@ pub async fn track_global_promo_entry(
 
 pub fn metrics_tracking_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
-        .route("/api/metrics/track/product-carousel", post(track_product_carousel))
-        .route("/api/metrics/track/video-carousel", post(track_video_carousel))
+        .route(
+            "/api/metrics/track/product-carousel",
+            post(track_product_carousel),
+        )
+        .route(
+            "/api/metrics/track/video-carousel",
+            post(track_video_carousel),
+        )
         .route("/api/metrics/track/navigation", post(track_navigation))
-        .route("/api/metrics/track/global-promo-entry", post(track_global_promo_entry))
+        .route(
+            "/api/metrics/track/global-promo-entry",
+            post(track_global_promo_entry),
+        )
         .with_state(state)
 }
-

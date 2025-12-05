@@ -6,14 +6,15 @@ import axios from 'axios';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { buildUrl } from '../config/api.config';
 
 export default function AgenceVoyageForm() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { serviceId: serviceIdParam } = useParams<{ serviceId?: string }>();
     const { user } = useUser();
-    const serviceId = location.state?.serviceId;
+    const serviceId = serviceIdParam ? parseInt(serviceIdParam, 10) : (location.state?.serviceId as number | undefined);
 
     const [formData, setFormData] = useState({
         nom: '',
@@ -166,8 +167,8 @@ export default function AgenceVoyageForm() {
                                             type="button"
                                             onClick={() => toggleService(service)}
                                             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedServices.includes(service)
-                                                    ? 'bg-indigo-600 text-white'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                 }`}
                                         >
                                             {service}

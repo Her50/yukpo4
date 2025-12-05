@@ -47,10 +47,16 @@ const CovoiturageFormScreen: React.FC = () => {
         fumeur_autorise: false,
         climatisation: false,
         image_vehicule: null as string | null, // ✅ NOUVEAU : Image du véhicule
+        // ✅ NOUVEAU 2025-01-29: Trajets récurrents
+        is_recurring: false,
+        recurrence_type: null as 'daily' | 'weekly' | 'monthly' | null,
+        recurrence_days: [] as number[], // Jours de la semaine (1=lundi, 7=dimanche)
+        recurrence_end_date: null as Date | null,
     });
 
     const [loading, setLoading] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showRecurrenceEndDatePicker, setShowRecurrenceEndDatePicker] = useState(false);
 
     // ✅ NOUVEAU : Fonction pour sélectionner une image du véhicule
     const pickVehicleImage = async () => {
@@ -149,6 +155,16 @@ const CovoiturageFormScreen: React.FC = () => {
                             }
                         }
 
+                        // Parser recurrence_end_date si présent
+                        let recurrenceEndDate = null as Date | null;
+                        if (data.recurrence_end_date) {
+                            if (typeof data.recurrence_end_date === 'string') {
+                                recurrenceEndDate = new Date(data.recurrence_end_date);
+                            } else {
+                                recurrenceEndDate = new Date(data.recurrence_end_date);
+                            }
+                        }
+
                         setFormData({
                             depart: data.depart ? { raw: data.depart, place_name: data.depart } : null,
                             destination: data.destination ? { raw: data.destination, place_name: data.destination } : null,
@@ -165,6 +181,11 @@ const CovoiturageFormScreen: React.FC = () => {
                             animaux_autorises: data.animaux_autorises || false,
                             fumeur_autorise: data.fumeur_autorise || false,
                             climatisation: data.climatisation || false,
+                            // ✅ NOUVEAU 2025-01-29: Trajets récurrents
+                            is_recurring: data.is_recurring || false,
+                            recurrence_type: data.recurrence_type || null,
+                            recurrence_days: data.recurrence_days ? data.recurrence_days.map((d: number) => Number(d)) : [],
+                            recurrence_end_date: recurrenceEndDate,
                         });
 
                         if (data.gps_depart) {
@@ -271,6 +292,11 @@ const CovoiturageFormScreen: React.FC = () => {
                 fumeur_autorise: formData.fumeur_autorise,
                 climatisation: formData.climatisation,
                 image_vehicule: formData.image_vehicule || null, // ✅ NOUVEAU : Image du véhicule
+                // ✅ NOUVEAU 2025-01-29: Trajets récurrents
+                is_recurring: formData.is_recurring,
+                recurrence_type: formData.recurrence_type || null,
+                recurrence_days: formData.recurrence_days.length > 0 ? formData.recurrence_days.map(d => Number(d)) : null,
+                recurrence_end_date: formData.recurrence_end_date ? formData.recurrence_end_date.toISOString().split('T')[0] : null, // Format YYYY-MM-DD
             };
 
             const response = await apiPost('/api/covoiturages', payload);
@@ -279,7 +305,17 @@ const CovoiturageFormScreen: React.FC = () => {
                 Alert.alert(
                     'Succès',
                     'Trajet de covoiturage créé avec succès !',
-                    [{ text: 'OK', onPress: () => navigation.goBack() }]
+                    [
+                        {
+                            text: 'Voir mes trajets',
+                            onPress: () => navigation.navigate('MyTrips' as never)
+                        },
+                        {
+                            text: 'OK',
+                            style: 'cancel',
+                            onPress: () => navigation.goBack()
+                        }
+                    ]
                 );
             } else {
                 Alert.alert('Erreur', response.error || 'Impossible de créer le trajet');
@@ -305,11 +341,11 @@ const CovoiturageFormScreen: React.FC = () => {
                 <View style={styles.form}>
                     <View style={styles.inputGroup}>
                         <LocationSelector
-                            label="Point de départ *"
+                            label="Ville de départ *"
                             value={formData.depart || ''}
                             onSelect={(value) => setFormData({ ...formData, depart: value })}
-                            placeholder="Rechercher un lieu de départ..."
-                            scope="all"
+                            placeholder="Rechercher une ville de départ..."
+                            scope="city"
                             enrichWithBackend
                             required
                         />
@@ -332,8 +368,8 @@ const CovoiturageFormScreen: React.FC = () => {
                             label="Destination *"
                             value={formData.destination || ''}
                             onSelect={(value) => setFormData({ ...formData, destination: value })}
-                            placeholder="Rechercher une destination..."
-                            scope="all"
+                            placeholder="Rechercher une ville de destination..."
+                            scope="city"
                             enrichWithBackend
                             required
                         />
@@ -510,11 +546,160 @@ const CovoiturageFormScreen: React.FC = () => {
                         />
                     </View>
 
+                    {/* ✅ NOUVEAU 2025-01-29: Section Trajets Récurrents */}
+                    <View style={styles.sectionDivider}>
+                        <Text style={styles.sectionTitle}>Trajet Récurrent</Text>
+                    </View>
+
+                    <View style={styles.switchGroup}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.label}>Trajet récurrent</Text>
+                            <Text style={styles.hint}>Créez ce trajet de manière répétée</Text>
+                        </View>
+                        <Switch
+                            value={formData.is_recurring}
+                            onValueChange={(value) => setFormData({ ...formData, is_recurring: value })}
+                            trackColor={{ false: '#D1D5DB', true: modernColors.primary }}
+                        />
+                    </View>
+
+                    {formData.is_recurring && (
+                        <>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Type de récurrence *</Text>
+                                <View style={styles.recurrenceTypeContainer}>
+                                    {(['daily', 'weekly', 'monthly'] as const).map((type) => {
+                                        const labels = {
+                                            daily: 'Quotidien',
+                                            weekly: 'Hebdomadaire',
+                                            monthly: 'Mensuel',
+                                        };
+                                        const icons = {
+                                            daily: 'calendar',
+                                            weekly: 'calendar-days',
+                                            monthly: 'calendar-range',
+                                        };
+                                        return (
+                                            <TouchableOpacity
+                                                key={type}
+                                                style={[
+                                                    styles.recurrenceTypeButton,
+                                                    formData.recurrence_type === type && styles.recurrenceTypeButtonActive,
+                                                ]}
+                                                onPress={() => setFormData({ ...formData, recurrence_type: type })}
+                                            >
+                                                <SafeIcon
+                                                    name={icons[type]}
+                                                    size={20}
+                                                    color={formData.recurrence_type === type ? '#fff' : modernColors.primary}
+                                                />
+                                                <Text
+                                                    style={[
+                                                        styles.recurrenceTypeText,
+                                                        formData.recurrence_type === type && styles.recurrenceTypeTextActive,
+                                                    ]}
+                                                >
+                                                    {labels[type]}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+
+                            {formData.recurrence_type === 'weekly' && (
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.label}>Jours de la semaine *</Text>
+                                    <View style={styles.daysContainer}>
+                                        {[
+                                            { value: 1, label: 'L' },
+                                            { value: 2, label: 'M' },
+                                            { value: 3, label: 'M' },
+                                            { value: 4, label: 'J' },
+                                            { value: 5, label: 'V' },
+                                            { value: 6, label: 'S' },
+                                            { value: 7, label: 'D' },
+                                        ].map((day) => {
+                                            const isSelected = formData.recurrence_days.includes(day.value);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={day.value}
+                                                    style={[
+                                                        styles.dayButton,
+                                                        isSelected && styles.dayButtonActive,
+                                                    ]}
+                                                    onPress={() => {
+                                                        const newDays = isSelected
+                                                            ? formData.recurrence_days.filter((d) => d !== day.value)
+                                                            : [...formData.recurrence_days, day.value].sort();
+                                                        setFormData({ ...formData, recurrence_days: newDays });
+                                                    }}
+                                                >
+                                                    <Text
+                                                        style={[
+                                                            styles.dayButtonText,
+                                                            isSelected && styles.dayButtonTextActive,
+                                                        ]}
+                                                    >
+                                                        {day.label}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            )}
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Date de fin (optionnelle)</Text>
+                                <TouchableOpacity
+                                    style={styles.dateButton}
+                                    onPress={() => setShowRecurrenceEndDatePicker(true)}
+                                >
+                                    <Text style={styles.dateButtonText}>
+                                        {formData.recurrence_end_date
+                                            ? formData.recurrence_end_date.toLocaleDateString('fr-FR')
+                                            : 'Sans date de fin'}
+                                    </Text>
+                                    <SafeIcon name="calendar" size={20} color={modernColors.primary} />
+                                </TouchableOpacity>
+                                {showRecurrenceEndDatePicker && (
+                                    <DateTimePicker
+                                        value={formData.recurrence_end_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}
+                                        mode="date"
+                                        display="default"
+                                        minimumDate={new Date(Date.now() + 24 * 60 * 60 * 1000)}
+                                        onChange={(event, selectedDate) => {
+                                            setShowRecurrenceEndDatePicker(false);
+                                            if (selectedDate) {
+                                                setFormData({ ...formData, recurrence_end_date: selectedDate });
+                                            }
+                                        }}
+                                    />
+                                )}
+                                {formData.recurrence_end_date && (
+                                    <TouchableOpacity
+                                        style={styles.clearDateButton}
+                                        onPress={() => setFormData({ ...formData, recurrence_end_date: null })}
+                                    >
+                                        <Text style={styles.clearDateText}>Supprimer la date de fin</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        </>
+                    )}
+
                     {/* ✅ CORRIGÉ: Utiliser title au lieu de children */}
                     <NativeButton
                         title={loading ? 'Création...' : 'Créer le Trajet'}
                         onPress={handleSubmit}
-                        disabled={loading || !formData.depart || !formData.destination || !formData.prix_par_place.trim()}
+                        disabled={
+                            loading ||
+                            !formData.depart ||
+                            !formData.destination ||
+                            !formData.prix_par_place.trim() ||
+                            (formData.is_recurring && (!formData.recurrence_type || (formData.recurrence_type === 'weekly' && formData.recurrence_days.length === 0)))
+                        }
                         variant="primary"
                         size="large"
                         style={styles.submitButton}
@@ -667,6 +852,90 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.primary,
+    },
+    sectionDivider: {
+        marginTop: 24,
+        marginBottom: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    hint: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+    },
+    recurrenceTypeContainer: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+    recurrenceTypeButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    recurrenceTypeButtonActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    recurrenceTypeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    recurrenceTypeTextActive: {
+        color: '#fff',
+    },
+    daysContainer: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+        flexWrap: 'wrap',
+    },
+    dayButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    dayButtonActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    dayButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    dayButtonTextActive: {
+        color: '#fff',
+    },
+    clearDateButton: {
+        marginTop: 8,
+        padding: 8,
+    },
+    clearDateText: {
+        fontSize: 12,
+        color: '#DC2626',
+        fontWeight: '600',
     },
 });
 

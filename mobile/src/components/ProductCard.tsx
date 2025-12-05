@@ -6,33 +6,94 @@
 
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   Dimensions,
-  Image,
   Linking,
-  Modal,
+  Pressable,
   ScrollView,
   Share,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import AnimatedReanimated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { config } from '../config/environment';
 import { useLocation } from '../contexts/LocationContext';
+import { useTheme } from '../contexts/ThemeContext';
+import useDeviceType from '../hooks/useDeviceType';
 import { apiGet, apiPost, commentsApi } from '../services/api';
+import { mediaService } from '../services/mediaService';
 import { modernColors } from '../theme/modernTheme';
+import { triggerHaptic } from '../utils/hapticFeedback';
 import ChatModalMobile from './ChatModalMobile';
+import ContextMenu from './ContextMenu';
 import OrderDeliveryModal from './delivery/OrderDeliveryModal';
+import ModalSwipeable from './ModalSwipeable';
 import { NativeCard } from './NativeDesign';
+import OptimizedImage from './OptimizedImage';
+import ProductBadges from './ProductBadges';
 import ProductCommentsSection from './ProductCommentsSection';
 import ProductMediaCarousel from './ProductMediaCarousel';
+import QuickCartButton from './QuickCartButton';
 import SafeIcon from './SafeIcon';
 import ServiceGalleryModal from './ServiceGalleryModal';
+import { useToaster } from './ToasterProvider';
 
 const { width } = Dimensions.get('window');
+
+// ✅ NOUVEAU: Composant bouton d'action avec animations premium
+const EnhancedActionButton: React.FC<{
+  style?: any;
+  onPress: () => void;
+  icon: string;
+  iconColor: string;
+  text: string;
+  textStyle?: any;
+  accessibilityLabel?: string;
+}> = ({ style, onPress, icon, iconColor, text, textStyle, accessibilityLabel }) => {
+  const scale = useSharedValue(1);
+  const glow = useSharedValue(0);
+
+  const pressGesture = Gesture.Tap()
+    .onBegin(() => {
+      scale.value = withSpring(0.92, { damping: 12, stiffness: 150 });
+      glow.value = withTiming(1, { duration: 150 });
+    })
+    .onFinalize(() => {
+      scale.value = withSpring(1, { damping: 12, stiffness: 150 });
+      glow.value = withTiming(0, { duration: 300 });
+      onPress();
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    shadowOpacity: glow.value * 0.3,
+    shadowRadius: glow.value * 8,
+  }));
+
+  return (
+    <GestureDetector gesture={pressGesture}>
+      <AnimatedReanimated.View style={[style, animatedStyle]} accessibilityRole="button" accessibilityLabel={accessibilityLabel}>
+        <SafeIcon name={icon as any} size={16} color={iconColor} />
+        <Text style={textStyle} numberOfLines={1}>
+          {text}
+        </Text>
+      </AnimatedReanimated.View>
+    </GestureDetector>
+  );
+};
 
 interface ProductCardProps {
   product: any;
@@ -41,6 +102,7 @@ interface ProductCardProps {
   userLocation?: { latitude: number; longitude: number } | null;
   onPress?: () => void;
   onChatPress?: () => void; // ✅ NOUVEAU: Handler chat personnalisé
+  onAllMediaViewed?: () => void; // ✅ NOUVEAU: Callback quand tous les médias ont été vus
 }
 
 // ✅ NOUVEAU : Constantes pour réactions
@@ -52,6 +114,155 @@ const REACTIONS = [
   { type: 'thinking', emoji: '🤔', label: 'À réfléchir' },
   { type: 'disappointed', emoji: '😕', label: 'Déçu' },
 ];
+
+// ✅ NOUVEAU: Composant section "Autres clients ont aussi acheté"
+const RelatedProductsSection: React.FC<{ product: any; service: any; navigation: any }> = ({ product, service, navigation }) => {
+  const [relatedProducts, setRelatedProducts] = React.useState<any[]>([]);
+  const [loadingRelated, setLoadingRelated] = React.useState(false);
+  const { apiGet } = require('../services/api');
+
+  React.useEffect(() => {
+    const loadRelatedProducts = async () => {
+      if (!product?.service_id && !service?.id) return;
+
+      setLoadingRelated(true);
+      try {
+        // Charger des produits similaires du même prestataire ou catégorie
+        const serviceId = product?.service_id || service?.id;
+        const response = await apiGet(`/api/services/recent?limit=4&exclude=${serviceId}`);
+
+        if (response.success && Array.isArray(response.data?.data)) {
+          setRelatedProducts(response.data.data.slice(0, 3)); // Limiter à 3 produits
+        }
+      } catch (error) {
+        console.error('[ProductCard] Erreur chargement produits similaires:', error);
+      } finally {
+        setLoadingRelated(false);
+      }
+    };
+
+    loadRelatedProducts();
+  }, [product?.service_id, service?.id]);
+
+  if (loadingRelated || relatedProducts.length === 0) {
+    return null; // Ne pas afficher si pas de produits ou en chargement
+  }
+
+  return (
+    <View style={relatedProductsStyles.container}>
+      <View style={relatedProductsStyles.header}>
+        <SafeIcon name="users" size={16} color={modernColors.primary} />
+        <Text style={relatedProductsStyles.title}>Autres clients ont aussi acheté</Text>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={relatedProductsStyles.scrollContent}
+      >
+        {relatedProducts.map((item: any, index: number) => {
+          const productName = item.nom || item.data?.nom_produit?.valeur || item.data?.titre_service?.valeur || 'Produit';
+          const productImage = item.images?.[0] || item.data?.images?.[0] || item.image_url;
+          const productPrice = item.prix || item.data?.prix?.valeur || item.price;
+
+          return (
+            <TouchableOpacity
+              key={index}
+              style={relatedProductsStyles.productCard}
+              onPress={() => {
+                navigation.navigate('ServiceDetail' as any, {
+                  serviceId: String(item.service_id || item.id)
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              {productImage ? (
+                <OptimizedImage
+                  source={{ uri: productImage }}
+                  style={relatedProductsStyles.productImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[relatedProductsStyles.productImage, relatedProductsStyles.placeholderImage]}>
+                  <SafeIcon name="image" size={24} color="#D1D5DB" />
+                </View>
+              )}
+              <Text style={relatedProductsStyles.productName} numberOfLines={2}>
+                {productName}
+              </Text>
+              {productPrice && (
+                <Text style={relatedProductsStyles.productPrice}>
+                  {typeof productPrice === 'number' ? productPrice.toFixed(0) : productPrice} FCFA
+                </Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+};
+
+const relatedProductsStyles = StyleSheet.create({
+  container: {
+    marginTop: 16,
+    marginBottom: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  scrollContent: {
+    paddingHorizontal: 4,
+    gap: 12,
+  },
+  productCard: {
+    width: 120,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  productImage: {
+    width: '100%',
+    height: 80,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  placeholderImage: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  productName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+    minHeight: 32,
+  },
+  productPrice: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: modernColors.primary,
+  },
+});
 
 const formatCompactNumber = (value: number | undefined | null): string => {
   if (value === undefined || value === null) {
@@ -203,8 +414,9 @@ const getCountryFlag = (country?: string): string => {
   return '🌍';
 };
 
-// ✅ NOUVEAU 2025-11-26: Helper pour construire l'URL complète d'un média
-// ✅ CORRIGÉ 2025-11-30: Utiliser l'endpoint /api/media/files pour les chemins uploads/
+// ✅ NOUVEAU 2025-12-03: Utiliser mediaService pour CDN avec fallback
+// ✅ REMPLACÉ: buildMediaUrl() par mediaService pour bénéficier du CDN Cloudflare
+// Le service gère automatiquement : CDN → Wasabi → Backend
 const buildMediaUrl = (path: string | undefined | null): string | undefined => {
   if (!path || typeof path !== 'string') return undefined;
 
@@ -218,15 +430,9 @@ const buildMediaUrl = (path: string | undefined | null): string | undefined => {
     return path;
   }
 
-  // ✅ CORRIGÉ: Utiliser l'endpoint /api/media/files pour les chemins uploads/
-  if (path.startsWith('uploads/') || path.startsWith('/uploads/')) {
-    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-    return `${config.API_BASE_URL}/api/media/files/${cleanPath}`;
-  }
-
-  // Pour les autres chemins relatifs, utiliser aussi /api/media/files
-  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-  return `${config.API_BASE_URL}/api/media/files/${cleanPath}`;
+  // ✅ NOUVEAU: Utiliser mediaService pour bénéficier du CDN avec fallback
+  // mediaService gère automatiquement : CDN Cloudflare → Wasabi Direct → Backend
+  return mediaService.getImageUrl(path);
 };
 
 const firstNonEmptyString = (...values: any[]): string | undefined => {
@@ -279,12 +485,93 @@ const ProductCard: React.FC<ProductCardProps> = ({
   userLocation = null,
   onPress,
   onChatPress,
+  onAllMediaViewed,
 }) => {
+  // ✅ NOUVEAU: Utiliser le thème (clair/sombre)
+  const { colors } = useTheme();
+  // ✅ GÉANT-LEVEL: Détection type appareil et breakpoints (Amazon/Instagram style)
+  const deviceType = useDeviceType();
   // ✅ CORRIGÉ: Utiliser LocationContext pour calculer la distance si nécessaire
   const { calculateDistance: locationCalculateDistance, location: contextLocation } = useLocation();
-  const effectiveUserLocation = userLocation || (contextLocation ? { latitude: contextLocation.coords.latitude, longitude: contextLocation.coords.longitude } : null);
+  const effectiveUserLocation = useMemo(() =>
+    userLocation || (contextLocation ? { latitude: contextLocation.coords.latitude, longitude: contextLocation.coords.longitude } : null),
+    [userLocation, contextLocation]
+  );
   const navigation = useNavigation();
+  const toaster = useToaster(); // ✅ NOUVEAU: Toast pour feedback utilisateur
   const [imageError, setImageError] = useState(false);
+
+  // ✅ NOUVEAU 2025-12-03: Initialiser mediaService pour CDN avec fallback
+  useEffect(() => {
+    mediaService.initialize(config.API_BASE_URL).catch(() => {
+      // Ignorer erreurs d'initialisation
+    });
+  }, []);
+
+  // ✅ PREMIUM: Animations d'entrée et interactions
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const pressAnim = useRef(new Animated.Value(1)).current;
+  const trendingPulseAnim = useRef(new Animated.Value(1)).current;
+  const popularPulseAnim = useRef(new Animated.Value(1)).current;
+
+  // ✅ PREMIUM: Calculer isTrending et isPopular tôt pour les animations
+  const usageCount = product.usage_count || 0;
+  const isPopular = usageCount >= 5;  // Populaire si recherché 5+ fois
+  const isTrending = usageCount >= 10; // Tendance si recherché 10+ fois
+
+  // ✅ PREMIUM: Animation d'entrée de la carte
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  // ✅ PREMIUM: Animation pulse pour badges trending/popularité
+  useEffect(() => {
+    if (isTrending) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(trendingPulseAnim, {
+            toValue: 1.1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(trendingPulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+    if (isPopular && !isTrending) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(popularPulseAnim, {
+            toValue: 1.08,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(popularPulseAnim, {
+            toValue: 1,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [isTrending, isPopular]);
   const [showChatModal, setShowChatModal] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
@@ -307,6 +594,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [commentStats, setCommentStats] = useState<{ total_comments: number; rating_count: number; average_rating: number } | null>(null);
   const [loadingComments, setLoadingComments] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
+  // ✅ NOUVEAU : État pour menu contextuel (long-press)
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  // ✅ NOUVEAU : État pour mode compact/étendu
+  const [isExpanded, setIsExpanded] = useState(false);
+  // ✅ GÉANT-LEVEL: États pour swipe gestures et double-tap (Instagram/TikTok style)
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const heartScale = useSharedValue(1);
 
   // Données produit
   const productVector = Array.isArray(product.product_vector)
@@ -586,9 +883,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   // ✅ NOUVEAU : Popularité (usage_count de autocomplete_characteristics)
-  const usageCount = product.usage_count || 0;
-  const isPopular = usageCount >= 5;  // Populaire si recherché 5+ fois
-  const isTrending = usageCount >= 10; // Tendance si recherché 10+ fois
+  // Note: usageCount, isPopular, isTrending sont maintenant déclarés plus haut pour les animations
 
   // Images et vidéos
   // ✅ CORRIGÉ: Extraire depuis product.images directement (depuis extractSearchResults)
@@ -693,9 +988,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
       : Array.isArray(service?.videos)
         ? (service?.videos as string[]).filter(Boolean)
         : [];
-  // ✅ CORRIGÉ: Construire les URLs complètes pour chaque vidéo
+  // ✅ CORRIGÉ: Construire les URLs complètes pour chaque vidéo via CDN avec fallback
   const videos: string[] = rawVideos
-    .map(vid => buildMediaUrl(vid))
+    .map(vid => {
+      if (!vid || typeof vid !== 'string') return null;
+      // Utiliser getVideoUrl pour bénéficier du CDN avec fallback
+      return mediaService.getVideoUrl(vid);
+    })
     .filter((vid): vid is string => typeof vid === 'string' && vid.length > 0);
 
   const googleRating =
@@ -753,7 +1052,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const variantImage = selectedVariant?.image || selectedVariant?.images?.[0];
   const hasMedia = images.length > 0 || videos.length > 0 || !!variantImage;
 
-  const serviceId = product.service_id || service?.id;
+  // ✅ CORRIGÉ: Extraire serviceId depuis plusieurs sources possibles
+  const serviceId = product.service_id ||
+    product.serviceId ||
+    product._serviceId ||
+    service?.id ||
+    service?.service_id ||
+    service?.serviceId ||
+    (typeof product.service === 'object' && product.service?.id) ||
+    (typeof product.service === 'object' && product.service?.service_id) ||
+    null;
   const productIndex =
     typeof product.product_index === 'number'
       ? product.product_index
@@ -866,101 +1174,130 @@ const ProductCard: React.FC<ProductCardProps> = ({
     });
   };
 
-  // Extraire le prix depuis service.data.produits si nécessaire
-  const extractedPriceData = extractPriceFromProductData(service?.data, productIndex);
+  // ✅ OPTIMISÉ: Extraire le prix avec useMemo pour éviter recalculs
+  const extractedPriceData = useMemo(() =>
+    extractPriceFromProductData(service?.data, productIndex),
+    [service?.data, productIndex]
+  );
 
-  // ✅ AMÉLIORÉ 2025-11-29: Prix avec extraction améliorée depuis multiple sources
-  const displayPrice = hasVariant && variants.length > 0
-    ? Math.min(...variants.map((v: any) => v.prix || v.price || 0))
-    : (() => {
-      // Chercher dans product directement
-      let prix = product.prix || product.prix_produit || product.price;
-      // Convertir string en number si nécessaire
-      if (typeof prix === 'string') {
-        const parsed = parseFloat(prix);
-        prix = isNaN(parsed) ? 0 : parsed;
-      }
-      // Si prix = 0, null, undefined, chercher dans extractedPriceData
-      if (!prix || prix === 0 || prix === "0") {
-        prix = extractedPriceData.prix;
-      }
-      return prix || 0;
-    })();
+  // ✅ OPTIMISÉ: Prix avec useMemo
+  const displayPrice = useMemo(() => {
+    if (hasVariant && variants.length > 0) {
+      return Math.min(...variants.map((v: any) => v.prix || v.price || 0));
+    }
 
-  const devise = product.devise ||
+    // Chercher dans product directement
+    let prix = product.prix || product.prix_produit || product.price;
+    // Convertir string en number si nécessaire
+    if (typeof prix === 'string') {
+      const parsed = parseFloat(prix);
+      prix = isNaN(parsed) ? 0 : parsed;
+    }
+    // Si prix = 0, null, undefined, chercher dans extractedPriceData
+    if (!prix || prix === 0 || prix === "0") {
+      prix = extractedPriceData.prix;
+    }
+    return prix || 0;
+  }, [hasVariant, variants, product.prix, product.prix_produit, product.price, extractedPriceData.prix]);
+
+  const devise = useMemo(() =>
+    product.devise ||
     variants[0]?.devise ||
     extractedPriceData.devise ||
-    'XAF';
+    'XAF',
+    [product.devise, variants, extractedPriceData.devise]
+  );
 
-  // ✅ CORRIGÉ: Calculer la distance avec plusieurs sources
-  // 1. Distance fournie directement
-  const rawDistance = product.distance_km
-    ?? product.distanceKm
-    ?? product.distance
-    ?? product.distance_client
-    ?? product.distance_user
-    ?? product.distance_user_km
-    ?? product.distanceFromUser
-    ?? product.distance_text
-    ?? service?.distance_km
-    ?? service?.distanceKm
-    ?? service?.distance;
+  // ✅ OPTIMISÉ: Calculer la distance avec useMemo pour éviter recalculs
+  const distanceKm = useMemo(() => {
+    // 1. Distance fournie directement
+    const rawDistance = product.distance_km
+      ?? product.distanceKm
+      ?? product.distance
+      ?? product.distance_client
+      ?? product.distance_user
+      ?? product.distance_user_km
+      ?? product.distanceFromUser
+      ?? product.distance_text
+      ?? service?.distance_km
+      ?? service?.distanceKm
+      ?? service?.distance;
 
-  let distanceKm = parseDistanceToKm(rawDistance);
+    let parsedDistance = parseDistanceToKm(rawDistance);
 
-  // 2. ✅ NOUVEAU: Calculer la distance côté client si userLocation et service GPS disponibles
-  if (!distanceKm && effectiveUserLocation) {
-    // Extraire les coordonnées GPS du service
-    const parseGPS = (gpsValue: any): { lat: number; lng: number } | null => {
-      if (!gpsValue) return null;
+    // 2. Calculer la distance côté client si userLocation et service GPS disponibles
+    if (!parsedDistance && effectiveUserLocation) {
+      // Extraire les coordonnées GPS du service
+      const parseGPS = (gpsValue: any): { lat: number; lng: number } | null => {
+        if (!gpsValue) return null;
 
-      // Format 1: "lat,lng" ou "lat|lng"
-      if (typeof gpsValue === 'string') {
-        const parts = gpsValue.replace(/\s+/g, '').split(/[,|]/);
-        if (parts.length >= 2) {
-          const lat = parseFloat(parts[0]);
-          const lng = parseFloat(parts[1]);
+        // Format 1: "lat,lng" ou "lat|lng"
+        if (typeof gpsValue === 'string') {
+          const parts = gpsValue.replace(/\s+/g, '').split(/[,|]/);
+          if (parts.length >= 2) {
+            const lat = parseFloat(parts[0]);
+            const lng = parseFloat(parts[1]);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+              return { lat, lng };
+            }
+          }
+        }
+
+        // Format 2: Objet { lat, lng } ou { latitude, longitude }
+        if (typeof gpsValue === 'object') {
+          const lat = gpsValue.lat ?? gpsValue.latitude;
+          const lng = gpsValue.lng ?? gpsValue.longitude;
           if (Number.isFinite(lat) && Number.isFinite(lng)) {
             return { lat, lng };
           }
         }
-      }
 
-      // Format 2: Objet { lat, lng } ou { latitude, longitude }
-      if (typeof gpsValue === 'object') {
-        const lat = gpsValue.lat ?? gpsValue.latitude;
-        const lng = gpsValue.lng ?? gpsValue.longitude;
-        if (Number.isFinite(lat) && Number.isFinite(lng)) {
-          return { lat, lng };
+        return null;
+      };
+
+      const serviceGPS = parseGPS(service?.gps)
+        ?? parseGPS(service?.data?.gps_fixe)
+        ?? parseGPS(service?.data?.gps)
+        ?? parseGPS(product.gps)
+        ?? parseGPS(product.data?.gps);
+
+      if (serviceGPS && locationCalculateDistance) {
+        try {
+          const calculatedDistance = locationCalculateDistance(
+            effectiveUserLocation.latitude,
+            effectiveUserLocation.longitude,
+            serviceGPS.lat,
+            serviceGPS.lng
+          );
+          if (Number.isFinite(calculatedDistance) && calculatedDistance >= 0) {
+            parsedDistance = calculatedDistance;
+          }
+        } catch (error) {
+          // Erreur silencieuse - on continue sans distance
+          console.debug('[ProductCard] Erreur calcul distance:', error);
         }
-      }
-
-      return null;
-    };
-
-    const serviceGPS = parseGPS(service?.gps)
-      ?? parseGPS(service?.data?.gps_fixe)
-      ?? parseGPS(service?.data?.gps)
-      ?? parseGPS(product.gps)
-      ?? parseGPS(product.data?.gps);
-
-    if (serviceGPS && locationCalculateDistance) {
-      try {
-        const calculatedDistance = locationCalculateDistance(
-          effectiveUserLocation.latitude,
-          effectiveUserLocation.longitude,
-          serviceGPS.lat,
-          serviceGPS.lng
-        );
-        if (Number.isFinite(calculatedDistance) && calculatedDistance >= 0) {
-          distanceKm = calculatedDistance;
-          // Ne pas logger - c'est un calcul normal
-        }
-      } catch (error) {
-        // Erreur silencieuse - on continue sans distance
       }
     }
-  }
+
+    return parsedDistance;
+  }, [
+    product.distance_km,
+    product.distanceKm,
+    product.distance,
+    product.distance_client,
+    product.distance_user,
+    product.distanceFromUser,
+    product.distance_text,
+    product.gps,
+    service?.distance_km,
+    service?.distanceKm,
+    service?.distance,
+    service?.gps,
+    service?.data?.gps_fixe,
+    service?.data?.gps,
+    effectiveUserLocation,
+    locationCalculateDistance,
+  ]);
 
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm);
 
@@ -1106,8 +1443,35 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // ✅ CORRIGÉ : Toujours afficher les 3 premières statistiques principales même si elles sont à 0
   const compactTopStats = topStatsData.slice(0, 3);
 
+  // ✅ AMÉLIORÉ: Handler avec haptic feedback et animations premium (scale + glow)
+  const handlePressIn = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(pressAnim, {
+        toValue: 0.95, // ✅ Réduit de 0.96 à 0.95 pour effet plus visible
+        friction: 8,
+        tension: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    triggerHaptic('medium'); // ✅ Changé de 'light' à 'medium' pour meilleur feedback
+  }, [pressAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(pressAnim, {
+        toValue: 1,
+        friction: 6,
+        tension: 80,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [pressAnim]);
+
   // ✅ CORRIGÉ: Toujours ouvrir le modal - amélioration robuste
-  const handleChatPress = () => {
+  const handleChatPress = useCallback(() => {
+    // ✅ PREMIUM: Haptic feedback
+    triggerHaptic('medium');
+
     // Appeler onChatPress si fourni (pour compatibilité)
     if (onChatPress) {
       onChatPress();
@@ -1140,11 +1504,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
     });
     setPrivateConversationId(null);
     setShowChatModal(true);
-  };
+  }, [onChatPress, prestataireUserId, prestataire, product, service, prestataireName, prestataireAvatar]);
 
-  // ✅ NOUVEAU : Handler partage produit
+  // ✅ NOUVEAU : Handler partage produit avec toast
   const handleShare = async () => {
     try {
+      triggerHaptic('medium');
       const productName = product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
       const productDesc = product.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur || '';
       const price = displayPrice > 0 ? `${displayPrice.toLocaleString()} ${devise}` : '';
@@ -1162,7 +1527,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
       });
 
       if (result.action === Share.sharedAction) {
-        console.log('[ProductCard] Produit partagé avec succès');
+        toaster.success('Produit partagé avec succès');
+        triggerHaptic('success');
       }
     } catch (error) {
       // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
@@ -1174,13 +1540,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
         product: product?.nom || product?.name,
         error: error
       });
-      Alert.alert('Erreur', 'Impossible de partager le produit');
+      toaster.error('Impossible de partager le produit');
+      triggerHaptic('error');
     }
   };
 
-  // ✅ NOUVEAU : Charger réactions du produit
-  const loadReactions = useCallback(async () => {
+  // ✅ AMÉLIORÉ: Charger réactions avec retry automatique
+  const loadReactions = useCallback(async (retryCount = 0) => {
     if (!serviceId || !resolvedProductId) return;
+
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000; // 1 seconde
 
     try {
       setLoadingReactions(true);
@@ -1205,16 +1575,25 @@ const ProductCard: React.FC<ProductCardProps> = ({
         }
       }
     } catch (error) {
-      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      // ✅ AMÉLIORÉ: Retry automatique avec exponential backoff
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
       console.error('[ProductCard] Erreur chargement réactions:', {
         message: errorMessage,
-        stack: errorStack,
         serviceId,
         resolvedProductId,
+        retryCount,
         error: error
       });
+
+      if (retryCount < MAX_RETRIES) {
+        const delay = RETRY_DELAY * Math.pow(2, retryCount); // Exponential backoff
+        setTimeout(() => {
+          loadReactions(retryCount + 1);
+        }, delay);
+      } else {
+        // Échec après tous les retries
+        console.error('[ProductCard] Échec chargement réactions après', MAX_RETRIES, 'tentatives');
+      }
     } finally {
       setLoadingReactions(false);
     }
@@ -1224,9 +1603,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
     loadReactions();
   }, [loadReactions]);
 
-  // ✅ NOUVEAU : Charger les stats des commentaires (version compacte)
-  const loadCommentStats = useCallback(async () => {
+  // ✅ AMÉLIORÉ: Charger les stats des commentaires avec retry automatique
+  const loadCommentStats = useCallback(async (retryCount = 0) => {
     if (!commentServiceId || commentServiceId <= 0) return;
+
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000;
+
     try {
       setLoadingComments(true);
       const response = await commentsApi.getProductComments(commentServiceId);
@@ -1239,15 +1622,23 @@ const ProductCard: React.FC<ProductCardProps> = ({
         });
       }
     } catch (error) {
-      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      // ✅ AMÉLIORÉ: Retry automatique avec exponential backoff
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
       console.error('[ProductCard] Erreur chargement stats commentaires:', {
         message: errorMessage,
-        stack: errorStack,
         commentServiceId,
+        retryCount,
         error: error
       });
+
+      if (retryCount < MAX_RETRIES) {
+        const delay = RETRY_DELAY * Math.pow(2, retryCount);
+        setTimeout(() => {
+          loadCommentStats(retryCount + 1);
+        }, delay);
+      } else {
+        console.error('[ProductCard] Échec chargement stats commentaires après', MAX_RETRIES, 'tentatives');
+      }
     } finally {
       setLoadingComments(false);
     }
@@ -1257,17 +1648,29 @@ const ProductCard: React.FC<ProductCardProps> = ({
     loadCommentStats();
   }, [loadCommentStats]);
 
-  // ✅ NOUVEAU : Handler pour réagir
+  // ✅ GÉANT-LEVEL: Handler pour réagir avec optimistic update (Instagram style)
   const handleReaction = async (reactionType: string) => {
     if (!serviceId || !resolvedProductId) {
-      Alert.alert(
-        'Information manquante',
-        'Impossible de réagir à ce produit pour le moment.'
-      );
+      toaster.warning('Impossible de réagir à ce produit pour le moment.');
       return;
     }
 
     setPendingReaction(reactionType);
+    triggerHaptic('light');
+
+    // ✅ GÉANT-LEVEL: Optimistic update - Mise à jour UI immédiate
+    const previousReactions = { ...reactions };
+    const currentReaction = reactions[reactionType] || { count: 0, hasReacted: false };
+    const newHasReacted = !currentReaction.hasReacted;
+    const newCount = newHasReacted ? currentReaction.count + 1 : Math.max(0, currentReaction.count - 1);
+
+    setReactions({
+      ...reactions,
+      [reactionType]: {
+        count: newCount,
+        hasReacted: newHasReacted,
+      },
+    });
 
     try {
       const response = await apiPost(`/api/products/${serviceId}/${resolvedProductId}/react`, {
@@ -1276,9 +1679,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
       if (response.success) {
         await loadReactions();
+        const reactionLabel = REACTIONS.find(r => r.type === reactionType)?.label || 'réaction';
+        toaster.success(`${reactionLabel} enregistrée`);
+        triggerHaptic('success');
+      } else {
+        // ✅ GÉANT-LEVEL: Rollback si erreur
+        setReactions(previousReactions);
+        toaster.error("Impossible d'enregistrer votre réaction");
+        triggerHaptic('error');
       }
     } catch (error) {
-      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      // ✅ GÉANT-LEVEL: Rollback si erreur
+      setReactions(previousReactions);
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       console.error('[ProductCard] Erreur réaction:', {
@@ -1289,7 +1701,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
         reactionType,
         error: error
       });
-      Alert.alert('Erreur', "Impossible d'enregistrer votre réaction pour le moment.");
+      toaster.error("Impossible d'enregistrer votre réaction pour le moment.");
+      triggerHaptic('error');
     } finally {
       setPendingReaction(null);
     }
@@ -1362,563 +1775,1426 @@ const ProductCard: React.FC<ProductCardProps> = ({
     return sum + (reaction?.count || 0);
   }, 0);
 
-  return (
-    <>
-      <LinearGradient
-        colors={['rgba(79, 70, 229, 0.12)', 'rgba(14, 165, 233, 0.05)', 'rgba(255, 255, 255, 0.45)']}
-        style={styles.cardGradient}
-      >
-        <NativeCard
-          padding={0}
-          style={[styles.cardContainer, !hasMedia && styles.cardContainerCompact]}
-        >
+  // ✅ PREMIUM: Handler principal avec haptic feedback (défini tôt pour être utilisé dans gestures)
+  const handleMainPress = useCallback(() => {
+    triggerHaptic('light');
+    if (onPress) {
+      onPress();
+    } else {
+      const targetServiceId = product.service_id || service?.id;
+      if (!targetServiceId) {
+        Alert.alert('Erreur', 'Service introuvable : ID manquant');
+        return;
+      }
+      navigation.navigate('ServiceDetail' as any, { serviceId: String(targetServiceId) });
+    }
+  }, [onPress, product.service_id, service?.id, navigation]);
+
+  // ✅ GÉANT-LEVEL: Handler double-tap pour favoris avec optimistic update (Instagram style)
+  const handleDoubleTap = useCallback(async () => {
+    const newFavoriteState = !isFavorite;
+
+    // ✅ GÉANT-LEVEL: Optimistic update - Mise à jour UI immédiate
+    setIsFavorite(newFavoriteState);
+    triggerHaptic('medium');
+    setShowHeartAnimation(true);
+
+    heartScale.value = withSequence(
+      withSpring(1.5, { damping: 8, stiffness: 200 }),
+      withSpring(1, { damping: 8, stiffness: 200 }, () => {
+        runOnJS(setShowHeartAnimation)(false);
+      })
+    );
+
+    // Appel API en arrière-plan
+    try {
+      const response = await apiPost(`/api/products/${serviceId}/${resolvedProductId}/favorite`, {
+        is_favorite: newFavoriteState,
+      });
+      if (response.success) {
+        toaster.success(newFavoriteState ? 'Ajouté aux favoris' : 'Retiré des favoris');
+        triggerHaptic('success');
+      } else {
+        // ✅ GÉANT-LEVEL: Rollback si erreur
+        setIsFavorite(!newFavoriteState);
+        toaster.error('Erreur lors de la modification');
+        triggerHaptic('error');
+      }
+    } catch (error) {
+      // ✅ GÉANT-LEVEL: Rollback si erreur
+      setIsFavorite(!newFavoriteState);
+      console.error('[ProductCard] Erreur favoris:', error);
+      toaster.error('Erreur lors de la modification');
+      triggerHaptic('error');
+    }
+  }, [isFavorite, serviceId, resolvedProductId, heartScale, toaster]);
+
+  // ✅ GÉANT-LEVEL: Swipe gestures (TikTok/Instagram style)
+  const swipeLeftGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      if (e.translationX < -50) {
+        translateX.value = e.translationX;
+      }
+    })
+    .onEnd((e) => {
+      if (e.translationX < -100) {
+        runOnJS(handleShare)();
+      }
+      translateX.value = withSpring(0);
+    });
+
+  const swipeRightGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      if (e.translationX > 50) {
+        translateX.value = e.translationX;
+      }
+    })
+    .onEnd((e) => {
+      if (e.translationX > 100) {
+        runOnJS(handleChatPress)();
+      }
+      translateX.value = withSpring(0);
+    });
+
+  const swipeUpGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      if (e.translationY < -50) {
+        translateY.value = e.translationY;
+      }
+    })
+    .onEnd((e) => {
+      if (e.translationY < -100) {
+        runOnJS(handleMainPress)();
+      }
+      translateY.value = withSpring(0);
+    });
+
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      runOnJS(handleDoubleTap)();
+    });
+
+  const composedGesture = Gesture.Simultaneous(
+    swipeLeftGesture,
+    swipeRightGesture,
+    swipeUpGesture,
+    doubleTapGesture
+  );
+
+  const swipeAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    const tx = translateX.value * 0.3;
+    const ty = translateY.value * 0.3;
+    return {
+      transform: [
+        { translateX: tx },
+        { translateY: ty },
+      ] as any, // ✅ Type assertion pour éviter erreur TypeScript
+    };
+  });
+
+  const heartAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: heartScale.value }],
+    opacity: heartScale.value > 1 ? 1 : 0,
+  }));
+
+  // ✅ GÉANT-LEVEL: Render contenu optimisé pour tablette paysage
+  const renderTabletLandscapeContent = useCallback(() => {
+    return (
+      <>
+        {/* Stats */}
+        <View style={styles.topStatsRow}>
+          {compactTopStats.map((stat) => (
+            <View
+              key={stat.key}
+              style={[
+                styles.topStatPillCompact,
+                { backgroundColor: `${stat.tint}08` },
+                { borderColor: `${stat.tint}30` },
+              ]}
+            >
+              <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
+              <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
+                {formatCompactNumber(stat.value ?? 0)}
+              </Text>
+              <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
+                {stat.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Nom produit */}
+        <Text style={[styles.productName, styles.tabletLandscapeProductName]} numberOfLines={3}>
+          {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
+        </Text>
+
+        {/* Badges */}
+        <ProductBadges product={product} service={service} />
+
+        {/* Prestataire */}
+        {prestataireName && (
           <TouchableOpacity
-            style={styles.touchableContainer}
-            activeOpacity={0.9}
-            onPress={onPress || (() => {
-              // ✅ CORRIGÉ: Vérifier et convertir serviceId en string avant navigation
-              const targetServiceId = product.service_id || service?.id;
-              if (!targetServiceId) {
-                Alert.alert('Erreur', 'Service introuvable : ID manquant');
-                return;
+            style={styles.prestataireRow}
+            onPress={() => {
+              if (prestataire.user_id) {
+                navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
               }
-              navigation.navigate('ServiceDetail' as any, { serviceId: String(targetServiceId) });
-            })}
+            }}
+            activeOpacity={0.7}
           >
-            {/* Carousel d'images/vidéos avec support variation */}
-            {hasMedia && (
-              <View style={styles.imageContainer}>
-                <ProductMediaCarousel
-                  images={images}
-                  videos={videos}
-                  variantImage={variantImage}
-                  onImagePress={() => {
-                    // ✅ NOUVEAU : Ouvrir galerie complète du prestataire
-                    setShowGallery(true);
-                  }}
-                />
-
-                {/* Badge pays (coin supérieur droit) */}
-                {showCountryBadge && (
-                  <View style={styles.countryBadge}>
-                    <Text style={styles.countryFlag}>{countryFlag}</Text>
-                  </View>
-                )}
-
-                {/* Badge distance (coin supérieur gauche) */}
-                {formattedDistance && (
-                  <View style={styles.distanceBadge}>
-                    <SafeIcon name="navigation" size={12} color="#FFF" />
-                    <Text style={styles.distanceText}>{formattedDistance}</Text>
-                  </View>
-                )}
-
-                {/* ✅ NOUVEAU : Badge popularité (coin inférieur gauche) */}
-                {isTrending && (
-                  <View style={styles.trendingBadge}>
-                    <Text style={styles.trendingEmoji}>🔥🔥</Text>
-                    <Text style={styles.trendingText}>Tendance</Text>
-                    <Text style={styles.trendingCount}>{usageCount}×</Text>
-                  </View>
-                )}
-                {!isTrending && isPopular && (
-                  <View style={styles.popularBadge}>
-                    <Text style={styles.popularEmoji}>🔥</Text>
-                    <Text style={styles.popularText}>Populaire</Text>
-                    <Text style={styles.popularCount}>{usageCount}×</Text>
-                  </View>
-                )}
+            {prestataireAvatar ? (
+              <OptimizedImage
+                uri={prestataireAvatar}
+                style={styles.avatar}
+                priority="normal"
+                cachePolicy="memory-disk"
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <SafeIcon name="user" size={14} color="#FFF" />
               </View>
             )}
+            <Text style={styles.prestataireName} numberOfLines={1}>
+              {prestataireName}
+            </Text>
+            <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
 
-            <View style={[styles.content, !hasMedia && styles.contentCompact]}>
-              {/* ✅ CORRIGÉ: Toujours afficher les statistiques principales avec icônes */}
-              <View style={styles.topStatsRow}>
-                {compactTopStats.map((stat) => (
-                  <View
-                    key={stat.key}
-                    style={[
-                      styles.topStatPillCompact,
-                      { backgroundColor: `${stat.tint}08` },
-                      { borderColor: `${stat.tint}30` },
-                    ]}
-                  >
-                    <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
-                    <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
-                      {formatCompactNumber(stat.value ?? 0)}
-                    </Text>
-                    <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
-                      {stat.label}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-
-              {/* Nom produit */}
-              <Text style={styles.productName} numberOfLines={2}>
-                {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
+        {/* Localisation */}
+        {(chosenLocation || locationVector.length > 0) && (
+          <View style={styles.locationSection}>
+            <View style={styles.locationRow}>
+              <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+              <Text style={styles.locationTextPrimary} numberOfLines={2}>
+                {chosenLocation || locationVector[0] || 'Localisation disponible'}
               </Text>
-
-              {/* ✅ CORRIGÉ: Prestataire - Toujours afficher si disponible */}
-              {prestataireName && (
-                <TouchableOpacity
-                  style={styles.prestataireRow}
-                  onPress={() => {
-                    if (prestataire.user_id) {
-                      navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  {prestataireAvatar ? (
-                    <Image
-                      source={{ uri: prestataireAvatar }}
-                      style={styles.avatar}
-                    />
-                  ) : (
-                    <View style={styles.avatarPlaceholder}>
-                      <SafeIcon name="user" size={14} color="#FFF" />
-                    </View>
-                  )}
-                  <Text style={styles.prestataireName} numberOfLines={1}>
-                    {prestataireName}
-                  </Text>
-                  <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
-                </TouchableOpacity>
+              {countryFlag && countryFlag !== '🌍' && (
+                <Text style={styles.locationFlag} numberOfLines={1}>
+                  {countryFlag}
+                </Text>
               )}
+            </View>
+            {formattedDistance && (
+              <View style={styles.locationDistanceChip}>
+                <SafeIcon name="navigation" size={12} color={modernColors.primary} />
+                <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
+              </View>
+            )}
+          </View>
+        )}
 
-              {/* ✅ AMÉLIORÉ 2025-11-29: Localisation hiérarchique détaillée - Toujours afficher si disponible */}
-              {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete || prestataire?.adresse) && (
-                <View style={styles.locationSection}>
-                  <View style={styles.locationRow}>
-                    <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
-                    <Text style={styles.locationTextPrimary} numberOfLines={2}>
-                      {chosenLocation ||
-                        locationVector[0] ||
-                        product.adresse_complete ||
-                        product.adresse ||
-                        product.ville ||
-                        product.region ||
-                        prestataire?.adresse || // ✅ NOUVEAU: Vérifier prestataire.adresse
-                        service?.adresse_complete ||
-                        service?.adresse ||
-                        'Localisation disponible'}
-                    </Text>
-                    {/* ✅ AMÉLIORÉ : Afficher le drapeau si disponible, même si générique */}
-                    {countryFlag && countryFlag !== '🌍' && (
-                      <Text style={styles.locationFlag} numberOfLines={1}>
-                        {countryFlag}
-                      </Text>
-                    )}
+        {/* Prix */}
+        {hasVariant && variants.length > 0 ? (
+          <View style={styles.priceVariations}>
+            <View style={styles.sectionHeader}>
+              <SafeIcon name="dollar-sign" size={14} color="#6B7280" />
+              <Text style={styles.sectionTitle}>
+                Prix selon {product.variant_dimension || 'variante'}
+              </Text>
+            </View>
+            <View style={styles.priceTable}>
+              {variants.slice(0, 3).map((variant: any, i: number) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[
+                    styles.priceRow,
+                    selectedVariantIndex === i && styles.priceRowSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedVariantIndex(selectedVariantIndex === i ? null : i);
+                    triggerHaptic('selection');
+                  }}
+                >
+                  <View style={styles.cellVariant}>
+                    <Text style={styles.variantValue}>{variant.value || variant.valeur}</Text>
                   </View>
-                  {/* Hiérarchie complète (quartier > ville > région > pays) */}
-                  {locationVector.length > 1 && (
-                    <View style={styles.locationHierarchy}>
-                      <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
-                      <Text style={styles.locationTextSecondary} numberOfLines={2}>
-                        {locationVector.slice(1).join(' › ')}
-                      </Text>
+                  <View style={styles.cellPrice}>
+                    <Text style={styles.variantPrice}>
+                      {formatPrice(variant.prix)}
+                    </Text>
+                    <Text style={styles.variantDevise}>{variant.devise || devise}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.priceFromContainer}>
+              <Text style={styles.priceFromLabel}>À partir de</Text>
+              <Text style={styles.priceFromValue}>
+                {formatPrice(displayPrice)} {devise}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.priceUniqueContainer}>
+            <Text style={styles.priceLabel}>Prix</Text>
+            <View style={styles.priceRow}>
+              <Text style={styles.price}>
+                {formatPrice(displayPrice)}
+              </Text>
+              <Text style={styles.priceDevise}>{devise}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Actions */}
+        <View style={styles.actions}>
+          {serviceId && isProduct && (
+            <TouchableOpacity
+              style={[styles.actionButtonModern, styles.actionButtonDelivery]}
+              onPress={() => {
+                triggerHaptic('medium');
+                setShowOrderModal(true);
+              }}
+            >
+              <SafeIcon name="truck" size={16} color="#10B981" />
+              <Text style={[styles.actionButtonText, styles.actionButtonTextDelivery]}>
+                Me livrer
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.actionButtonModern, styles.actionButtonChat]}
+            onPress={handleChatPress}
+          >
+            <SafeIcon name="message-circle" size={16} color={modernColors.primary} />
+            <Text style={[styles.actionButtonText, styles.actionButtonTextChat]}>Chat</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButtonModern, styles.actionButtonView]}
+            onPress={handleMainPress}
+          >
+            <SafeIcon name="eye" size={16} color="#6B7280" />
+            <Text style={[styles.actionButtonText, styles.actionButtonTextView]}>Voir</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* QuickCartButton */}
+        {serviceId && isProduct && (
+          <QuickCartButton
+            product={product}
+            service={service}
+          />
+        )}
+      </>
+    );
+  }, [
+    compactTopStats,
+    product,
+    service,
+    prestataireName,
+    prestataire,
+    prestataireAvatar,
+    chosenLocation,
+    locationVector,
+    countryFlag,
+    formattedDistance,
+    hasVariant,
+    variants,
+    selectedVariantIndex,
+    displayPrice,
+    devise,
+    serviceId,
+    isProduct,
+    handleChatPress,
+    handleMainPress,
+    navigation,
+    formatPrice,
+    formatCompactNumber,
+  ]);
+
+  // ✅ PREMIUM: Styles animés
+  const animatedCardStyle = useMemo(() => ({
+    transform: [
+      { scale: Animated.multiply(scaleAnim, pressAnim) },
+    ],
+    opacity: fadeAnim,
+  }), [scaleAnim, pressAnim, fadeAnim]);
+
+  const animatedTrendingBadgeStyle = useMemo(() => ({
+    transform: [{ scale: trendingPulseAnim }],
+  }), [trendingPulseAnim]);
+
+  const animatedPopularBadgeStyle = useMemo(() => ({
+    transform: [{ scale: popularPulseAnim }],
+  }), [popularPulseAnim]);
+
+  // ✅ GÉANT-LEVEL: Styles adaptatifs selon device type
+  const adaptiveCardStyle = useMemo(() => {
+    const baseStyle: any[] = [styles.cardContainer, !hasMedia && styles.cardContainerCompact].filter(Boolean);
+
+    // Optimisation tablette
+    if (deviceType.isTablet) {
+      if (deviceType.orientation === 'landscape') {
+        baseStyle.push(styles.cardContainerTabletLandscape);
+      } else {
+        baseStyle.push(styles.cardContainerTabletPortrait);
+      }
+    }
+
+    // Breakpoints adaptatifs
+    if (deviceType.isSmall) {
+      baseStyle.push(styles.cardContainerSmall);
+    } else if (deviceType.isLarge || deviceType.isXLarge) {
+      baseStyle.push(styles.cardContainerLarge);
+    }
+
+    return baseStyle;
+  }, [deviceType, hasMedia]);
+
+  return (
+    <>
+      <Animated.View style={animatedCardStyle}>
+        <LinearGradient
+          colors={['rgba(79, 70, 229, 0.15)', 'rgba(14, 165, 233, 0.08)', 'rgba(255, 255, 255, 0.5)']} // ✅ PREMIUM: Gradient plus prononcé
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[
+            styles.cardGradient,
+            deviceType.isTablet && deviceType.orientation === 'landscape' && styles.cardGradientLandscape
+          ]}
+        >
+          <GestureDetector gesture={composedGesture}>
+            <AnimatedReanimated.View style={swipeAnimatedStyle}>
+              <NativeCard
+                padding={0}
+                style={adaptiveCardStyle}
+              >
+                <Pressable
+                  style={styles.touchableContainer}
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  onPress={handleMainPress}
+                  onLongPress={() => {
+                    triggerHaptic('medium');
+                    setShowContextMenu(true);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Voir les détails de ${product.nom || 'ce produit'}`}
+                  accessibilityHint="Double-tapez pour ouvrir la page de détails, maintenez pour le menu contextuel"
+                  // ✅ GÉANT-LEVEL: Accessibilité WCAG améliorée
+                  accessibilityState={{ disabled: false }}
+                  accessibilityValue={{ text: `${product.nom || 'Produit'}, prix ${displayPrice} ${devise}` }}
+                >
+                  {/* ✅ GÉANT-LEVEL: Layout adaptatif tablette/paysage (Amazon style) */}
+                  {deviceType.isTablet && deviceType.orientation === 'landscape' ? (
+                    <View style={styles.tabletLandscapeContainer}>
+                      {/* Images à gauche en paysage */}
+                      {hasMedia && (
+                        <View style={styles.tabletLandscapeImageContainer}>
+                          <ProductMediaCarousel
+                            images={images}
+                            videos={videos}
+                            variantImage={variantImage}
+                            onImagePress={() => setShowGallery(true)}
+                            onMediaChange={(currentIndex, totalMedia) => {
+                              console.log('[ProductCard] Média changé:', currentIndex, '/', totalMedia);
+                            }}
+                            onAllMediaViewed={() => {
+                              console.log('[ProductCard] Tous les médias ont été vus');
+                              onAllMediaViewed?.();
+                            }}
+                          />
+                          {/* Badges sur images */}
+                          {showCountryBadge && (
+                            <View style={styles.countryBadge}>
+                              <Text style={styles.countryFlag}>{countryFlag}</Text>
+                            </View>
+                          )}
+                          {formattedDistance && (
+                            <View style={styles.distanceBadge}>
+                              <SafeIcon name="navigation" size={12} color="#FFF" />
+                              <Text style={styles.distanceText}>{formattedDistance}</Text>
+                            </View>
+                          )}
+                          {isTrending && (
+                            <Animated.View style={[styles.trendingBadge, animatedTrendingBadgeStyle]}>
+                              <Text style={styles.trendingEmoji}>🔥🔥</Text>
+                              <Text style={styles.trendingText}>Tendance</Text>
+                              <Text style={styles.trendingCount}>{usageCount}×</Text>
+                            </Animated.View>
+                          )}
+                          {!isTrending && isPopular && (
+                            <Animated.View style={[styles.popularBadge, animatedPopularBadgeStyle]}>
+                              <Text style={styles.popularEmoji}>🔥</Text>
+                              <Text style={styles.popularText}>Populaire</Text>
+                              <Text style={styles.popularCount}>{usageCount}×</Text>
+                            </Animated.View>
+                          )}
+                        </View>
+                      )}
+
+                      {/* Contenu à droite en paysage */}
+                      <ScrollView
+                        style={styles.tabletLandscapeContent}
+                        contentContainerStyle={styles.tabletLandscapeContentInner}
+                        showsVerticalScrollIndicator={false}
+                      >
+                        {/* Contenu identique mais optimisé pour layout horizontal */}
+                        {renderTabletLandscapeContent()}
+                      </ScrollView>
                     </View>
-                  )}
-                  {/* Affichage supplémentaire des adresses si disponibles */}
-                  {(!chosenLocation || locationVector.length === 0) && (
+                  ) : (
                     <>
-                      {product.quartier && (
-                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
-                          📍 Quartier: {product.quartier}
-                        </Text>
+                      {/* Layout portrait standard */}
+                      {/* Carousel d'images/vidéos avec support variation */}
+                      {hasMedia && (
+                        <View style={styles.imageContainer}>
+                          <ProductMediaCarousel
+                            images={images}
+                            videos={videos}
+                            variantImage={variantImage}
+                            onImagePress={() => {
+                              // ✅ NOUVEAU : Ouvrir galerie complète du prestataire
+                              setShowGallery(true);
+                            }}
+                            onMediaChange={(currentIndex, totalMedia) => {
+                              // ✅ NOUVEAU: Callback pour tracker navigation médias (utilisé par MixedContentCarousel)
+                              console.log('[ProductCard] Média changé:', currentIndex, '/', totalMedia);
+                            }}
+                            onAllMediaViewed={() => {
+                              // ✅ NOUVEAU: Callback quand tous les médias ont été vus (utilisé par MixedContentCarousel)
+                              console.log('[ProductCard] Tous les médias ont été vus');
+                              onAllMediaViewed?.();
+                            }}
+                          />
+
+                          {/* Badge pays (coin supérieur droit) */}
+                          {showCountryBadge && (
+                            <View style={styles.countryBadge}>
+                              <Text style={styles.countryFlag}>{countryFlag}</Text>
+                            </View>
+                          )}
+
+                          {/* Badge distance (coin supérieur gauche) */}
+                          {formattedDistance && (
+                            <View style={styles.distanceBadge}>
+                              <SafeIcon name="navigation" size={12} color="#FFF" />
+                              <Text style={styles.distanceText}>{formattedDistance}</Text>
+                            </View>
+                          )}
+
+                          {/* ✅ PREMIUM : Badge popularité avec animation pulse */}
+                          {isTrending && (
+                            <Animated.View style={[styles.trendingBadge, animatedTrendingBadgeStyle]}>
+                              <Text style={styles.trendingEmoji}>🔥🔥</Text>
+                              <Text style={styles.trendingText}>Tendance</Text>
+                              <Text style={styles.trendingCount}>{usageCount}×</Text>
+                            </Animated.View>
+                          )}
+                          {!isTrending && isPopular && (
+                            <Animated.View style={[styles.popularBadge, animatedPopularBadgeStyle]}>
+                              <Text style={styles.popularEmoji}>🔥</Text>
+                              <Text style={styles.popularText}>Populaire</Text>
+                              <Text style={styles.popularCount}>{usageCount}×</Text>
+                            </Animated.View>
+                          )}
+                        </View>
                       )}
-                      {product.ville && (
-                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
-                          🏙️ Ville: {product.ville}
-                        </Text>
-                      )}
-                      {product.region && (
-                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
-                          🌍 Région: {product.region}
-                        </Text>
+
+                      {/* ✅ NOUVEAU: ScrollView vertical quand il y a des médias pour éviter la troncature */}
+                      {hasMedia ? (
+                        <ScrollView
+                          style={styles.contentScrollable}
+                          contentContainerStyle={styles.contentScrollableContent}
+                          showsVerticalScrollIndicator={false}
+                          nestedScrollEnabled={true}
+                          bounces={false}
+                        >
+                          {/* ✅ CORRIGÉ: Toujours afficher les statistiques principales avec icônes */}
+                          <View style={styles.topStatsRow}>
+                            {compactTopStats.map((stat) => (
+                              <View
+                                key={stat.key}
+                                style={[
+                                  styles.topStatPillCompact,
+                                  { backgroundColor: `${stat.tint}08` },
+                                  { borderColor: `${stat.tint}30` },
+                                ]}
+                              >
+                                <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
+                                <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
+                                  {formatCompactNumber(stat.value ?? 0)}
+                                </Text>
+                                <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
+                                  {stat.label}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+
+                          {/* Nom produit */}
+                          <Text style={styles.productName} numberOfLines={2}>
+                            {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
+                          </Text>
+
+                          {/* ✅ GÉANT-LEVEL: Badges promotionnels (Amazon/Instagram/TikTok style) */}
+                          <ProductBadges product={product} service={service} />
+
+                          {/* ✅ CORRIGÉ: Prestataire - Toujours afficher si disponible */}
+                          {prestataireName && (
+                            <TouchableOpacity
+                              style={styles.prestataireRow}
+                              onPress={() => {
+                                if (prestataire.user_id) {
+                                  navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
+                                }
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              {prestataireAvatar ? (
+                                <OptimizedImage
+                                  uri={prestataireAvatar}
+                                  style={styles.avatar}
+                                  priority="normal"
+                                  cachePolicy="memory-disk"
+                                />
+                              ) : (
+                                <View style={styles.avatarPlaceholder}>
+                                  <SafeIcon name="user" size={14} color="#FFF" />
+                                </View>
+                              )}
+                              <Text style={styles.prestataireName} numberOfLines={1}>
+                                {prestataireName}
+                              </Text>
+                              <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
+                            </TouchableOpacity>
+                          )}
+
+                          {/* ✅ AMÉLIORÉ 2025-11-29: Localisation hiérarchique détaillée - Toujours afficher si disponible */}
+                          {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete || prestataire?.adresse) && (
+                            <View style={styles.locationSection}>
+                              <View style={styles.locationRow}>
+                                <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                                <Text style={styles.locationTextPrimary} numberOfLines={2}>
+                                  {chosenLocation ||
+                                    locationVector[0] ||
+                                    product.adresse_complete ||
+                                    product.adresse ||
+                                    product.ville ||
+                                    product.region ||
+                                    prestataire?.adresse || // ✅ NOUVEAU: Vérifier prestataire.adresse
+                                    service?.adresse_complete ||
+                                    service?.adresse ||
+                                    'Localisation disponible'}
+                                </Text>
+                                {/* ✅ AMÉLIORÉ : Afficher le drapeau si disponible, même si générique */}
+                                {countryFlag && countryFlag !== '🌍' && (
+                                  <Text style={styles.locationFlag} numberOfLines={1}>
+                                    {countryFlag}
+                                  </Text>
+                                )}
+                              </View>
+                              {/* Hiérarchie complète (quartier > ville > région > pays) - Progressive disclosure */}
+                              {locationVector.length > 1 && isExpanded && (
+                                <View style={styles.locationHierarchy}>
+                                  <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
+                                  <Text style={styles.locationTextSecondary} numberOfLines={2}>
+                                    {locationVector.slice(1).join(' › ')}
+                                  </Text>
+                                </View>
+                              )}
+                              {/* Affichage supplémentaire des adresses si disponibles */}
+                              {(!chosenLocation || locationVector.length === 0) && (
+                                <>
+                                  {product.quartier && (
+                                    <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                                      📍 Quartier: {product.quartier}
+                                    </Text>
+                                  )}
+                                  {product.ville && (
+                                    <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                                      🏙️ Ville: {product.ville}
+                                    </Text>
+                                  )}
+                                  {product.region && (
+                                    <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                                      🌍 Région: {product.region}
+                                    </Text>
+                                  )}
+                                </>
+                              )}
+                              {formattedDistance && (
+                                <View style={styles.locationDistanceChip}>
+                                  <SafeIcon name="navigation" size={12} color={modernColors.primary} />
+                                  <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
+                                </View>
+                              )}
+                              {/* ✅ CORRIGÉ: Afficher la distance même si pas dans locationSection */}
+                              {!formattedDistance && hasDistance && distanceKm !== undefined && (
+                                <View style={styles.locationDistanceChip}>
+                                  <SafeIcon name="navigation" size={12} color={modernColors.primary} />
+                                  <Text style={styles.locationDistanceText}>
+                                    {distanceKm < 1
+                                      ? `${Math.round(distanceKm * 1000)}m`
+                                      : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)}km`}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          )}
+                          {/* ✅ CORRIGÉ: Afficher la section localisation même si minimal, pour montrer distance/drapeau */}
+                          {!chosenLocation && locationVector.length === 0 && !product.adresse && !product.ville && !product.region && !product.adresse_complete && !service?.adresse && !service?.adresse_complete && (formattedDistance || hasDistance || countryFlag) && (
+                            <View style={styles.locationSection}>
+                              {formattedDistance && (
+                                <View style={styles.locationDistanceChip}>
+                                  <SafeIcon name="navigation" size={12} color={modernColors.primary} />
+                                  <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
+                                </View>
+                              )}
+                              {countryFlag && countryFlag !== '🌍' && (
+                                <View style={styles.locationRow}>
+                                  <Text style={styles.locationFlag} numberOfLines={1}>
+                                    {countryFlag}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          )}
+
+                          {(googleRating ||
+                            googlePrimaryTag ||
+                            googleCuisineBadges.length > 0 ||
+                            googleOpenNow !== null) && (
+                              <View style={styles.googleMetaSection}>
+                                {googlePrimaryTag && (
+                                  <View style={styles.googleMetaChip}>
+                                    <SafeIcon name="sparkles" size={12} color="#4F46E5" />
+                                    <Text style={styles.googleMetaText}>{googlePrimaryTag}</Text>
+                                  </View>
+                                )}
+                                {googleRating && (
+                                  <View style={styles.googleMetaChip}>
+                                    <SafeIcon name="star" size={12} color="#F59E0B" />
+                                    <Text style={styles.googleMetaText}>{googleRating.toFixed(1)}</Text>
+                                    {typeof googleRatingCount === 'number' && googleRatingCount > 0 && (
+                                      <Text style={styles.googleMetaSubText}>({googleRatingCount})</Text>
+                                    )}
+                                  </View>
+                                )}
+                                {googleOpenNow !== null && (
+                                  <View
+                                    style={[
+                                      styles.googleMetaChip,
+                                      googleOpenNow ? styles.googleMetaChipOpen : styles.googleMetaChipClosed,
+                                    ]}
+                                  >
+                                    <SafeIcon
+                                      name="clock"
+                                      size={12}
+                                      color={googleOpenNow ? '#047857' : '#B91C1C'}
+                                    />
+                                    <Text
+                                      style={[
+                                        styles.googleMetaText,
+                                        googleOpenNow ? styles.googleMetaTextOpen : styles.googleMetaTextClosed,
+                                      ]}
+                                    >
+                                      {googleOpenNow ? 'Ouvert' : 'Fermé'}
+                                    </Text>
+                                  </View>
+                                )}
+                                {googleCuisineBadges.map((cuisine) => (
+                                  <View key={cuisine} style={styles.googleCuisineChip}>
+                                    <Text style={styles.googleCuisineText}>🍽️ {cuisine}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            )}
+                          {googleOpeningHeadline && (
+                            <Text style={styles.googleMetaSubInfo} numberOfLines={1}>
+                              {googleOpeningHeadline}
+                            </Text>
+                          )}
+
+                          {googleEditorialSummary && (
+                            <Text style={styles.googleEditorialText} numberOfLines={2}>
+                              {googleEditorialSummary}
+                            </Text>
+                          )}
+
+                          {(totalReactions > 0 || usageCount > 0) && (
+                            <LinearGradient
+                              colors={['#EEF2FF', '#FFFFFF']}
+                              style={styles.metricsCard}
+                            >
+                              <View style={styles.compactStatsRow}>
+                                {totalReactions > 0 && (
+                                  <View style={styles.compactStatPillMuted}>
+                                    <Text style={styles.compactStatEmoji}>🎭</Text>
+                                    <Text style={styles.compactStatValue}>{totalReactions}</Text>
+                                    <Text style={styles.compactStatLabel}>réactions</Text>
+                                  </View>
+                                )}
+
+                                {usageCount > 0 && (
+                                  <View style={styles.compactStatPillMuted}>
+                                    <Text style={styles.compactStatEmoji}>🔥</Text>
+                                    <Text style={styles.compactStatValue}>{usageCount}</Text>
+                                    <Text style={styles.compactStatLabel}>recherches</Text>
+                                  </View>
+                                )}
+                              </View>
+                            </LinearGradient>
+                          )}
+
+                          {/* Caractéristiques (vecteur produit) en chips - Progressive disclosure */}
+                          {productVector.length > 0 && (isExpanded || productVector.length <= maxDisplayedCaracs) && (
+                            <View style={styles.characteristicsSection}>
+                              <View style={styles.sectionHeader}>
+                                <SafeIcon name="tag" size={14} color="#6B7280" />
+                                <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                              </View>
+                              <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.chipsScroll}
+                              >
+                                {(isExpanded ? productVector : limitedProductVector).map((carac: string, i: number) => (
+                                  <View key={i} style={styles.chip}>
+                                    <Text style={styles.chipText}>{carac}</Text>
+                                  </View>
+                                ))}
+                                {!isExpanded && hasMoreCaracs && (
+                                  <View style={styles.chipMore}>
+                                    <Text style={styles.chipMoreText}>+{productVector.length - maxDisplayedCaracs}</Text>
+                                  </View>
+                                )}
+                              </ScrollView>
+                            </View>
+                          )}
+
+                          {/* Prix avec variations */}
+                          {hasVariant && variants.length > 0 ? (
+                            <View style={styles.priceVariations}>
+                              <View style={styles.sectionHeader}>
+                                <SafeIcon name="dollar-sign" size={14} color="#6B7280" />
+                                <Text style={styles.sectionTitle}>
+                                  Prix selon {product.variant_dimension || 'variante'}
+                                </Text>
+                              </View>
+
+                              <View style={styles.priceTable}>
+                                <View style={styles.priceTableHeader}>
+                                  <Text style={styles.tableHeaderText}>Variante</Text>
+                                  <Text style={styles.tableHeaderText}>Prix</Text>
+                                  <Text style={styles.tableHeaderText}>Stock</Text>
+                                </View>
+
+                                {variants.slice(0, 5).map((variant: any, i: number) => (
+                                  <TouchableOpacity
+                                    key={i}
+                                    style={[
+                                      styles.priceRow,
+                                      selectedVariantIndex === i && styles.priceRowSelected
+                                    ]}
+                                    onPress={() => {
+                                      // Sélectionner la variation pour afficher son image
+                                      setSelectedVariantIndex(selectedVariantIndex === i ? null : i);
+                                      triggerHaptic('selection');
+                                    }}
+                                    accessibilityRole="button"
+                                    accessibilityState={{
+                                      selected: selectedVariantIndex === i,
+                                      disabled: false
+                                    }}
+                                    accessibilityLabel={`Variante ${variant.value || variant.valeur}, prix ${formatPrice(variant.prix)} ${variant.devise || devise}`}
+                                  >
+                                    <View style={styles.cellVariant}>
+                                      {/* Image de la variation si existe */}
+                                      {variant.image && (
+                                        <OptimizedImage
+                                          uri={variant.image.startsWith('data:') ? variant.image : `data:image/jpeg;base64,${variant.image}`}
+                                          style={styles.variantImageThumb}
+                                          priority="low"
+                                          cachePolicy="memory-disk"
+                                        />
+                                      )}
+                                      <Text style={styles.variantValue}>{variant.value || variant.valeur}</Text>
+                                    </View>
+                                    <View style={styles.cellPrice}>
+                                      <Text style={styles.variantPrice}>
+                                        {formatPrice(variant.prix)}
+                                      </Text>
+                                      <Text style={styles.variantDevise}>{variant.devise || devise}</Text>
+                                    </View>
+                                    <View style={styles.cellStock}>
+                                      <View style={[
+                                        styles.stockBadge,
+                                        (variant.stock || 0) > 5 ? styles.stockOK :
+                                          (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
+                                      ]}>
+                                        <Text style={styles.stockText}>
+                                          {(variant.stock || 0) > 0 ? `${variant.stock}` : '0'}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                  </TouchableOpacity>
+                                ))}
+
+                                {variants.length > 5 && (
+                                  <Text style={styles.moreVariantsText}>
+                                    +{variants.length - 5} autres variantes
+                                  </Text>
+                                )}
+                              </View>
+
+                              <View style={styles.priceFromContainer}>
+                                <Text style={styles.priceFromLabel}>À partir de</Text>
+                                <Text style={styles.priceFromValue}>
+                                  {formatPrice(displayPrice)} {devise}
+                                </Text>
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={styles.priceUniqueContainer}>
+                              <Text style={styles.priceLabel}>Prix</Text>
+                              <View style={styles.priceRow}>
+                                <Text style={styles.price}>
+                                  {formatPrice(displayPrice)}
+                                </Text>
+                                <Text style={styles.priceDevise}>{devise}</Text>
+                              </View>
+                            </View>
+                          )}
+
+                          {/* Actions - Design moderne et subtil */}
+                          <View style={styles.actions}>
+                            {/* ✅ AMÉLIORÉ: Bouton "Me livrer" - Style outline subtil */}
+                            {serviceId && isProduct && (
+                              <TouchableOpacity
+                                style={[styles.actionButtonModern, styles.actionButtonDelivery]}
+                                onPress={() => {
+                                  triggerHaptic('medium');
+                                  setShowOrderModal(true);
+                                }}
+                                accessibilityRole="button"
+                                accessibilityState={{ disabled: false }}
+                                accessibilityLabel="Commander la livraison"
+                                accessibilityHint="Ouvre le formulaire de commande de livraison"
+                              >
+                                <SafeIcon name="truck" size={16} color="#10B981" />
+                                <Text style={[styles.actionButtonText, styles.actionButtonTextDelivery]} numberOfLines={1}>
+                                  Me livrer
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+
+                            <TouchableOpacity
+                              style={[styles.actionButtonModern, styles.actionButtonChat]}
+                              onPress={handleChatPress}
+                              accessibilityRole="button"
+                              accessibilityState={{ disabled: loadingReactions }}
+                              accessibilityLabel="Ouvrir le chat"
+                              accessibilityHint="Ouvre une conversation avec le prestataire"
+                            >
+                              <SafeIcon name="message-circle" size={16} color={modernColors.primary} />
+                              <Text style={[styles.actionButtonText, styles.actionButtonTextChat]} numberOfLines={1}>
+                                Chat
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[styles.actionButtonModern, styles.actionButtonView]}
+                              onPress={onPress || (() => {
+                                // ✅ CORRIGÉ: Vérifier et convertir serviceId en string avant navigation
+                                const targetServiceId = serviceId ||
+                                  product.service_id ||
+                                  product.serviceId ||
+                                  service?.id ||
+                                  service?.service_id ||
+                                  (typeof product.service === 'object' && product.service?.id);
+                                if (!targetServiceId) {
+                                  console.error('[ProductCard] ❌ ServiceId manquant pour navigation:', {
+                                    product: {
+                                      service_id: product.service_id,
+                                      serviceId: product.serviceId,
+                                      service: product.service
+                                    },
+                                    service: {
+                                      id: service?.id,
+                                      service_id: service?.service_id
+                                    }
+                                  });
+                                  toaster.error('Service introuvable : ID manquant');
+                                  return;
+                                }
+                                console.log('[ProductCard] ✅ Navigation vers ServiceDetail avec serviceId:', targetServiceId);
+                                navigation.navigate('ServiceDetail' as any, { serviceId: String(targetServiceId) });
+                              })}
+                              accessibilityRole="button"
+                              accessibilityState={{ disabled: false }}
+                              accessibilityLabel="Voir les détails"
+                              accessibilityHint="Ouvre la page de détails du produit"
+                            >
+                              <SafeIcon name="eye" size={16} color="#6B7280" />
+                              <Text style={[styles.actionButtonText, styles.actionButtonTextView]} numberOfLines={1}>
+                                Voir
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {/* ✅ NOUVEAU : Actions secondaires (Galerie, Partage) */}
+                          <View style={styles.secondaryActions}>
+                            {hasMedia && (
+                              <TouchableOpacity
+                                style={styles.secondaryActionButton}
+                                onPress={() => setShowGallery(true)}
+                              >
+                                <SafeIcon name="image" size={18} color={modernColors.primary} />
+                                <Text style={styles.secondaryActionText}>Galerie</Text>
+                              </TouchableOpacity>
+                            )}
+                            {googleMapsUri && (
+                              <TouchableOpacity
+                                style={styles.secondaryActionButton}
+                                onPress={async () => {
+                                  try {
+                                    await Linking.openURL(googleMapsUri);
+                                  } catch (error) {
+                                    Alert.alert('Google Maps', 'Impossible d\'ouvrir la fiche Google Maps');
+                                  }
+                                }}
+                              >
+                                <SafeIcon name="map" size={18} color={modernColors.primary} />
+                                <Text style={styles.secondaryActionText}>Google Maps</Text>
+                              </TouchableOpacity>
+                            )}
+                            <TouchableOpacity
+                              style={styles.secondaryActionButton}
+                              onPress={handleShare}
+                            >
+                              <SafeIcon name="share" size={18} color={modernColors.primary} />
+                              <Text style={styles.secondaryActionText}>Partager</Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {/* ✅ GÉANT-LEVEL: QuickCartButton (Amazon one-click style) */}
+                          {serviceId && isProduct && (
+                            <QuickCartButton
+                              product={product}
+                              service={service}
+                            />
+                          )}
+
+                          {/* ✅ AMÉLIORÉ: Section commentaires ultra-compacte avec état de chargement visible */}
+                          {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
+                            <View style={styles.commentsCompactSection}>
+                              <View style={styles.commentsCompactRow}>
+                                <View style={styles.commentsCompactStats}>
+                                  <SafeIcon
+                                    name="message-circle"
+                                    size={14}
+                                    color={loadingComments ? "#9CA3AF" : "#6B7280"}
+                                  />
+                                  {loadingComments ? (
+                                    <View style={styles.loadingIndicator}>
+                                      <Animated.View
+                                        style={[
+                                          styles.loadingDot,
+                                          {
+                                            opacity: fadeAnim.interpolate({
+                                              inputRange: [0, 1],
+                                              outputRange: [0.3, 1],
+                                            }),
+                                          },
+                                        ]}
+                                      />
+                                    </View>
+                                  ) : (
+                                    <Text style={styles.commentsCompactText}>
+                                      {commentStats ? `${commentStats.rating_count} avis` : '0 avis'}
+                                    </Text>
+                                  )}
+                                  {!loadingComments && commentStats && commentStats.average_rating > 0 && (
+                                    <>
+                                      <Text style={styles.commentsCompactSeparator}>•</Text>
+                                      <Text style={styles.commentsCompactRating}>
+                                        {commentStats.average_rating.toFixed(1)}/5
+                                      </Text>
+                                    </>
+                                  )}
+                                </View>
+                                <TouchableOpacity
+                                  style={[
+                                    styles.commentsCompactButton,
+                                    loadingComments && styles.commentsCompactButtonDisabled
+                                  ]}
+                                  onPress={() => setShowCommentsModal(true)}
+                                  disabled={loadingComments}
+                                  accessibilityState={{ disabled: loadingComments }}
+                                  accessibilityLabel="Ouvrir les commentaires"
+                                >
+                                  <SafeIcon name="corner-up-right" size={14} color={modernColors.primary} />
+                                  <Text style={styles.commentsCompactButtonText}>Ouvrir le fil</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          )}
+
+                          {/* ✅ NOUVEAU: Section "Autres clients ont aussi acheté" (Amazon style) */}
+                          <RelatedProductsSection product={product} service={service} navigation={navigation} />
+
+                          {/* Footer info */}
+                          <View style={styles.footer}>
+                            {hasDistance && (
+                              <View style={styles.footerItem}>
+                                <SafeIcon name="map-pin" size={12} color="#9CA3AF" />
+                                <Text style={styles.footerText}>
+                                  {distanceKm < 1
+                                    ? 'Très proche'
+                                    : distanceKm < 5
+                                      ? 'À proximité'
+                                      : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km`}
+                                </Text>
+                              </View>
+                            )}
+                            {product.usage_count && (
+                              <View style={styles.footerItem}>
+                                <SafeIcon name="eye" size={12} color="#9CA3AF" />
+                                <Text style={styles.footerText}>
+                                  {product.usage_count} vues
+                                </Text>
+                              </View>
+                            )}
+                            {product.created_at && (
+                              <View style={styles.footerItem}>
+                                <SafeIcon name="clock" size={12} color="#9CA3AF" />
+                                <Text style={styles.footerText}>
+                                  {formatDate(product.created_at)}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </ScrollView>
+                      ) : (
+                        <View style={[styles.content, !hasMedia && styles.contentCompact]}>
+                          {/* ✅ CORRIGÉ: Toujours afficher les statistiques principales avec icônes */}
+                          <View style={styles.topStatsRow}>
+                            {compactTopStats.map((stat) => (
+                              <View
+                                key={stat.key}
+                                style={[
+                                  styles.topStatPillCompact,
+                                  { backgroundColor: `${stat.tint}08` },
+                                  { borderColor: `${stat.tint}30` },
+                                ]}
+                              >
+                                <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
+                                <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
+                                  {formatCompactNumber(stat.value ?? 0)}
+                                </Text>
+                                <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
+                                  {stat.label}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+
+                          {/* Nom produit avec toggle expand/collapse */}
+                          <View style={styles.productNameRow}>
+                            <Text style={styles.productName} numberOfLines={isExpanded ? undefined : 2}>
+                              {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
+                            </Text>
+                            {(product.description || productVector.length > maxDisplayedCaracs || locationVector.length > 1) && (
+                              <TouchableOpacity
+                                style={styles.expandButton}
+                                onPress={() => {
+                                  setIsExpanded(!isExpanded);
+                                  triggerHaptic('light');
+                                }}
+                                accessibilityRole="button"
+                                accessibilityLabel={isExpanded ? "Réduire les détails" : "Voir plus de détails"}
+                              >
+                                <SafeIcon
+                                  name={isExpanded ? "chevron-up" : "chevron-down"}
+                                  size={16}
+                                  color={modernColors.primary}
+                                />
+                                <Text style={styles.expandButtonText}>
+                                  {isExpanded ? "Moins" : "Plus"}
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+
+                          {/* ✅ CORRIGÉ: Prestataire - Toujours afficher si disponible */}
+                          {prestataireName && (
+                            <TouchableOpacity
+                              style={styles.prestataireRow}
+                              onPress={() => {
+                                if (prestataire.user_id) {
+                                  navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
+                                }
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              {prestataireAvatar ? (
+                                <OptimizedImage
+                                  uri={prestataireAvatar}
+                                  style={styles.avatar}
+                                  priority="normal"
+                                  cachePolicy="memory-disk"
+                                />
+                              ) : (
+                                <View style={styles.avatarPlaceholder}>
+                                  <SafeIcon name="user" size={14} color="#FFF" />
+                                </View>
+                              )}
+                              <Text style={styles.prestataireName} numberOfLines={1}>
+                                {prestataireName}
+                              </Text>
+                              <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
+                            </TouchableOpacity>
+                          )}
+
+                          {/* ✅ AMÉLIORÉ 2025-11-29: Localisation hiérarchique détaillée - Toujours afficher si disponible */}
+                          {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete || prestataire?.adresse) && (
+                            <View style={styles.locationSection}>
+                              <View style={styles.locationRow}>
+                                <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                                <Text style={styles.locationTextPrimary} numberOfLines={2}>
+                                  {chosenLocation ||
+                                    locationVector[0] ||
+                                    product.adresse_complete ||
+                                    product.adresse ||
+                                    product.ville ||
+                                    product.region ||
+                                    prestataire?.adresse ||
+                                    service?.adresse_complete ||
+                                    service?.adresse ||
+                                    'Localisation disponible'}
+                                </Text>
+                                {countryFlag && countryFlag !== '🌍' && (
+                                  <Text style={styles.locationFlag} numberOfLines={1}>
+                                    {countryFlag}
+                                  </Text>
+                                )}
+                              </View>
+                              {locationVector.length > 1 && isExpanded && (
+                                <View style={styles.locationHierarchy}>
+                                  <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
+                                  <Text style={styles.locationTextSecondary} numberOfLines={2}>
+                                    {locationVector.slice(1).join(' › ')}
+                                  </Text>
+                                </View>
+                              )}
+                              {formattedDistance && (
+                                <View style={styles.locationDistanceChip}>
+                                  <SafeIcon name="navigation" size={12} color={modernColors.primary} />
+                                  <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
+                                </View>
+                              )}
+                            </View>
+                          )}
+
+                          {/* Prix avec variations */}
+                          {hasVariant && variants.length > 0 ? (
+                            <View style={styles.priceVariations}>
+                              <View style={styles.sectionHeader}>
+                                <SafeIcon name="dollar-sign" size={14} color="#6B7280" />
+                                <Text style={styles.sectionTitle}>
+                                  Prix selon {product.variant_dimension || 'variante'}
+                                </Text>
+                              </View>
+                              <View style={styles.priceTable}>
+                                <View style={styles.priceTableHeader}>
+                                  <Text style={styles.tableHeaderText}>Variante</Text>
+                                  <Text style={styles.tableHeaderText}>Prix</Text>
+                                  <Text style={styles.tableHeaderText}>Stock</Text>
+                                </View>
+                                {variants.slice(0, 3).map((variant: any, i: number) => (
+                                  <TouchableOpacity
+                                    key={i}
+                                    style={[
+                                      styles.priceRow,
+                                      selectedVariantIndex === i && styles.priceRowSelected
+                                    ]}
+                                    onPress={() => {
+                                      setSelectedVariantIndex(selectedVariantIndex === i ? null : i);
+                                    }}
+                                  >
+                                    <View style={styles.cellVariant}>
+                                      <Text style={styles.variantValue}>{variant.value || variant.valeur}</Text>
+                                    </View>
+                                    <View style={styles.cellPrice}>
+                                      <Text style={styles.variantPrice}>
+                                        {formatPrice(variant.prix)}
+                                      </Text>
+                                      <Text style={styles.variantDevise}>{variant.devise || devise}</Text>
+                                    </View>
+                                    <View style={styles.cellStock}>
+                                      <View style={[
+                                        styles.stockBadge,
+                                        (variant.stock || 0) > 5 ? styles.stockOK :
+                                          (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
+                                      ]}>
+                                        <Text style={styles.stockText}>
+                                          {(variant.stock || 0) > 0 ? `${variant.stock}` : '0'}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                  </TouchableOpacity>
+                                ))}
+                                {variants.length > 3 && (
+                                  <Text style={styles.moreVariantsText}>
+                                    +{variants.length - 3} autres variantes
+                                  </Text>
+                                )}
+                              </View>
+                              <View style={styles.priceFromContainer}>
+                                <Text style={styles.priceFromLabel}>À partir de</Text>
+                                <Text style={styles.priceFromValue}>
+                                  {formatPrice(displayPrice)} {devise}
+                                </Text>
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={styles.priceUniqueContainer}>
+                              <Text style={styles.priceLabel}>Prix</Text>
+                              <View style={styles.priceRow}>
+                                <Text style={styles.price}>
+                                  {formatPrice(displayPrice)}
+                                </Text>
+                                <Text style={styles.priceDevise}>{devise}</Text>
+                              </View>
+                            </View>
+                          )}
+
+                          {/* Actions - Design moderne avec animations premium */}
+                          <View style={styles.actions}>
+                            {serviceId && isProduct && (
+                              <EnhancedActionButton
+                                style={[styles.actionButtonModern, styles.actionButtonDelivery]}
+                                onPress={() => {
+                                  triggerHaptic('medium');
+                                  setShowOrderModal(true);
+                                }}
+                                icon="truck"
+                                iconColor="#10B981"
+                                text="Me livrer"
+                                textStyle={[styles.actionButtonText, styles.actionButtonTextDelivery]}
+                                accessibilityLabel="Commander la livraison"
+                              />
+                            )}
+                            <EnhancedActionButton
+                              style={[styles.actionButtonModern, styles.actionButtonChat]}
+                              onPress={handleChatPress}
+                              icon="message-circle"
+                              iconColor={modernColors.primary}
+                              text="Chat"
+                              textStyle={[styles.actionButtonText, styles.actionButtonTextChat]}
+                              accessibilityLabel="Ouvrir le chat"
+                            />
+                            <EnhancedActionButton
+                              style={[styles.actionButtonModern, styles.actionButtonView]}
+                              onPress={handleMainPress}
+                              icon="eye"
+                              iconColor="#6B7280"
+                              text="Voir"
+                              textStyle={[styles.actionButtonText, styles.actionButtonTextView]}
+                              accessibilityLabel="Voir les détails"
+                            />
+                          </View>
+
+                          {/* Footer info */}
+                          <View style={styles.footer}>
+                            {hasDistance && (
+                              <View style={styles.footerItem}>
+                                <SafeIcon name="map-pin" size={12} color="#9CA3AF" />
+                                <Text style={styles.footerText}>
+                                  {distanceKm < 1
+                                    ? 'Très proche'
+                                    : distanceKm < 5
+                                      ? 'À proximité'
+                                      : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km`}
+                                </Text>
+                              </View>
+                            )}
+                            {product.usage_count && (
+                              <View style={styles.footerItem}>
+                                <SafeIcon name="eye" size={12} color="#9CA3AF" />
+                                <Text style={styles.footerText}>
+                                  {product.usage_count} vues
+                                </Text>
+                              </View>
+                            )}
+                            {product.created_at && (
+                              <View style={styles.footerItem}>
+                                <SafeIcon name="clock" size={12} color="#9CA3AF" />
+                                <Text style={styles.footerText}>
+                                  {formatDate(product.created_at)}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
                       )}
                     </>
                   )}
-                  {formattedDistance && (
-                    <View style={styles.locationDistanceChip}>
-                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
-                      <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
-                    </View>
-                  )}
-                  {/* ✅ CORRIGÉ: Afficher la distance même si pas dans locationSection */}
-                  {!formattedDistance && hasDistance && distanceKm !== undefined && (
-                    <View style={styles.locationDistanceChip}>
-                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
-                      <Text style={styles.locationDistanceText}>
-                        {distanceKm < 1
-                          ? `${Math.round(distanceKm * 1000)}m`
-                          : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)}km`}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-              {/* ✅ CORRIGÉ: Afficher la section localisation même si minimal, pour montrer distance/drapeau */}
-              {!chosenLocation && locationVector.length === 0 && !product.adresse && !product.ville && !product.region && !product.adresse_complete && !service?.adresse && !service?.adresse_complete && (formattedDistance || hasDistance || countryFlag) && (
-                <View style={styles.locationSection}>
-                  {formattedDistance && (
-                    <View style={styles.locationDistanceChip}>
-                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
-                      <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
-                    </View>
-                  )}
-                  {countryFlag && countryFlag !== '🌍' && (
-                    <View style={styles.locationRow}>
-                      <Text style={styles.locationFlag} numberOfLines={1}>
-                        {countryFlag}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {(googleRating ||
-                googlePrimaryTag ||
-                googleCuisineBadges.length > 0 ||
-                googleOpenNow !== null) && (
-                  <View style={styles.googleMetaSection}>
-                    {googlePrimaryTag && (
-                      <View style={styles.googleMetaChip}>
-                        <SafeIcon name="sparkles" size={12} color="#4F46E5" />
-                        <Text style={styles.googleMetaText}>{googlePrimaryTag}</Text>
-                      </View>
-                    )}
-                    {googleRating && (
-                      <View style={styles.googleMetaChip}>
-                        <SafeIcon name="star" size={12} color="#F59E0B" />
-                        <Text style={styles.googleMetaText}>{googleRating.toFixed(1)}</Text>
-                        {typeof googleRatingCount === 'number' && googleRatingCount > 0 && (
-                          <Text style={styles.googleMetaSubText}>({googleRatingCount})</Text>
-                        )}
-                      </View>
-                    )}
-                    {googleOpenNow !== null && (
-                      <View
-                        style={[
-                          styles.googleMetaChip,
-                          googleOpenNow ? styles.googleMetaChipOpen : styles.googleMetaChipClosed,
-                        ]}
-                      >
-                        <SafeIcon
-                          name="clock"
-                          size={12}
-                          color={googleOpenNow ? '#047857' : '#B91C1C'}
-                        />
-                        <Text
-                          style={[
-                            styles.googleMetaText,
-                            googleOpenNow ? styles.googleMetaTextOpen : styles.googleMetaTextClosed,
-                          ]}
-                        >
-                          {googleOpenNow ? 'Ouvert' : 'Fermé'}
-                        </Text>
-                      </View>
-                    )}
-                    {googleCuisineBadges.map((cuisine) => (
-                      <View key={cuisine} style={styles.googleCuisineChip}>
-                        <Text style={styles.googleCuisineText}>🍽️ {cuisine}</Text>
-                      </View>
-                    ))}
-                  </View>
+                </Pressable>
+                {/* ✅ GÉANT-LEVEL: Animation cœur double-tap (Instagram style) */}
+                {showHeartAnimation && (
+                  <AnimatedReanimated.View style={[styles.heartOverlay, heartAnimatedStyle]}>
+                    <SafeIcon name="heart" size={64} color="#EF4444" />
+                  </AnimatedReanimated.View>
                 )}
-              {googleOpeningHeadline && (
-                <Text style={styles.googleMetaSubInfo} numberOfLines={1}>
-                  {googleOpeningHeadline}
-                </Text>
-              )}
+              </NativeCard>
+            </AnimatedReanimated.View>
+          </GestureDetector>
+        </LinearGradient>
+      </Animated.View>
 
-              {googleEditorialSummary && (
-                <Text style={styles.googleEditorialText} numberOfLines={2}>
-                  {googleEditorialSummary}
-                </Text>
-              )}
-
-              {(totalReactions > 0 || usageCount > 0) && (
-                <LinearGradient
-                  colors={['#EEF2FF', '#FFFFFF']}
-                  style={styles.metricsCard}
-                >
-                  <View style={styles.compactStatsRow}>
-                    {totalReactions > 0 && (
-                      <View style={styles.compactStatPillMuted}>
-                        <Text style={styles.compactStatEmoji}>🎭</Text>
-                        <Text style={styles.compactStatValue}>{totalReactions}</Text>
-                        <Text style={styles.compactStatLabel}>réactions</Text>
-                      </View>
-                    )}
-
-                    {usageCount > 0 && (
-                      <View style={styles.compactStatPillMuted}>
-                        <Text style={styles.compactStatEmoji}>🔥</Text>
-                        <Text style={styles.compactStatValue}>{usageCount}</Text>
-                        <Text style={styles.compactStatLabel}>recherches</Text>
-                      </View>
-                    )}
-                  </View>
-                </LinearGradient>
-              )}
-
-              {/* Caractéristiques (vecteur produit) en chips */}
-              {productVector.length > 0 && (
-                <View style={styles.characteristicsSection}>
-                  <View style={styles.sectionHeader}>
-                    <SafeIcon name="tag" size={14} color="#6B7280" />
-                    <Text style={styles.sectionTitle}>Caractéristiques</Text>
-                  </View>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.chipsScroll}
-                  >
-                    {limitedProductVector.map((carac: string, i: number) => (
-                      <View key={i} style={styles.chip}>
-                        <Text style={styles.chipText}>{carac}</Text>
-                      </View>
-                    ))}
-                    {hasMoreCaracs && (
-                      <View style={styles.chipMore}>
-                        <Text style={styles.chipMoreText}>+{productVector.length - maxDisplayedCaracs}</Text>
-                      </View>
-                    )}
-                  </ScrollView>
-                </View>
-              )}
-
-              {/* Prix avec variations */}
-              {hasVariant && variants.length > 0 ? (
-                <View style={styles.priceVariations}>
-                  <View style={styles.sectionHeader}>
-                    <SafeIcon name="dollar-sign" size={14} color="#6B7280" />
-                    <Text style={styles.sectionTitle}>
-                      Prix selon {product.variant_dimension || 'variante'}
-                    </Text>
-                  </View>
-
-                  <View style={styles.priceTable}>
-                    <View style={styles.priceTableHeader}>
-                      <Text style={styles.tableHeaderText}>Variante</Text>
-                      <Text style={styles.tableHeaderText}>Prix</Text>
-                      <Text style={styles.tableHeaderText}>Stock</Text>
-                    </View>
-
-                    {variants.slice(0, 5).map((variant: any, i: number) => (
-                      <TouchableOpacity
-                        key={i}
-                        style={[
-                          styles.priceRow,
-                          selectedVariantIndex === i && styles.priceRowSelected
-                        ]}
-                        onPress={() => {
-                          // Sélectionner la variation pour afficher son image
-                          setSelectedVariantIndex(selectedVariantIndex === i ? null : i);
-                        }}
-                      >
-                        <View style={styles.cellVariant}>
-                          {/* Image de la variation si existe */}
-                          {variant.image && (
-                            <Image
-                              source={{ uri: variant.image.startsWith('data:') ? variant.image : `data:image/jpeg;base64,${variant.image}` }}
-                              style={styles.variantImageThumb}
-                              resizeMode="cover"
-                            />
-                          )}
-                          <Text style={styles.variantValue}>{variant.value || variant.valeur}</Text>
-                        </View>
-                        <View style={styles.cellPrice}>
-                          <Text style={styles.variantPrice}>
-                            {formatPrice(variant.prix)}
-                          </Text>
-                          <Text style={styles.variantDevise}>{variant.devise || devise}</Text>
-                        </View>
-                        <View style={styles.cellStock}>
-                          <View style={[
-                            styles.stockBadge,
-                            (variant.stock || 0) > 5 ? styles.stockOK :
-                              (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
-                          ]}>
-                            <Text style={styles.stockText}>
-                              {(variant.stock || 0) > 0 ? `${variant.stock}` : '0'}
-                            </Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-
-                    {variants.length > 5 && (
-                      <Text style={styles.moreVariantsText}>
-                        +{variants.length - 5} autres variantes
-                      </Text>
-                    )}
-                  </View>
-
-                  <View style={styles.priceFromContainer}>
-                    <Text style={styles.priceFromLabel}>À partir de</Text>
-                    <Text style={styles.priceFromValue}>
-                      {formatPrice(displayPrice)} {devise}
-                    </Text>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.priceUniqueContainer}>
-                  <Text style={styles.priceLabel}>Prix</Text>
-                  <View style={styles.priceRow}>
-                    <Text style={styles.price}>
-                      {formatPrice(displayPrice)}
-                    </Text>
-                    <Text style={styles.priceDevise}>{devise}</Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Actions - Design moderne et subtil */}
-              <View style={styles.actions}>
-                {/* ✅ AMÉLIORÉ: Bouton "Me livrer" - Style outline subtil */}
-                {serviceId && isProduct && (
-                  <TouchableOpacity
-                    style={[styles.actionButtonModern, styles.actionButtonDelivery]}
-                    onPress={() => setShowOrderModal(true)}
-                  >
-                    <SafeIcon name="truck" size={16} color="#10B981" />
-                    <Text style={[styles.actionButtonText, styles.actionButtonTextDelivery]} numberOfLines={1}>
-                      Me livrer
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.actionButtonModern, styles.actionButtonChat]}
-                  onPress={handleChatPress}
-                >
-                  <SafeIcon name="message-circle" size={16} color={modernColors.primary} />
-                  <Text style={[styles.actionButtonText, styles.actionButtonTextChat]} numberOfLines={1}>
-                    Chat
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.actionButtonModern, styles.actionButtonView]}
-                  onPress={onPress || (() => {
-                    // ✅ CORRIGÉ: Vérifier et convertir serviceId en string avant navigation
-                    const targetServiceId = product.service_id || service?.id;
-                    if (!targetServiceId) {
-                      Alert.alert('Erreur', 'Service introuvable : ID manquant');
-                      return;
-                    }
-                    navigation.navigate('ServiceDetail' as any, { serviceId: String(targetServiceId) });
-                  })}
-                >
-                  <SafeIcon name="eye" size={16} color="#6B7280" />
-                  <Text style={[styles.actionButtonText, styles.actionButtonTextView]} numberOfLines={1}>
-                    Voir
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* ✅ NOUVEAU : Actions secondaires (Galerie, Partage) */}
-              <View style={styles.secondaryActions}>
-                {hasMedia && (
-                  <TouchableOpacity
-                    style={styles.secondaryActionButton}
-                    onPress={() => setShowGallery(true)}
-                  >
-                    <SafeIcon name="image" size={18} color={modernColors.primary} />
-                    <Text style={styles.secondaryActionText}>Galerie</Text>
-                  </TouchableOpacity>
-                )}
-                {googleMapsUri && (
-                  <TouchableOpacity
-                    style={styles.secondaryActionButton}
-                    onPress={async () => {
-                      try {
-                        await Linking.openURL(googleMapsUri);
-                      } catch (error) {
-                        Alert.alert('Google Maps', 'Impossible d\'ouvrir la fiche Google Maps');
-                      }
-                    }}
-                  >
-                    <SafeIcon name="map" size={18} color={modernColors.primary} />
-                    <Text style={styles.secondaryActionText}>Google Maps</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  style={styles.secondaryActionButton}
-                  onPress={handleShare}
-                >
-                  <SafeIcon name="share" size={18} color={modernColors.primary} />
-                  <Text style={styles.secondaryActionText}>Partager</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* ✅ AMÉLIORÉ: Section commentaires ultra-compacte */}
-              {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
-                <View style={styles.commentsCompactSection}>
-                  <View style={styles.commentsCompactRow}>
-                    <View style={styles.commentsCompactStats}>
-                      <SafeIcon name="message-circle" size={14} color="#6B7280" />
-                      <Text style={styles.commentsCompactText}>
-                        {loadingComments ? '...' : commentStats ? `${commentStats.rating_count} avis` : '0 avis'}
-                      </Text>
-                      {commentStats && commentStats.average_rating > 0 && (
-                        <>
-                          <Text style={styles.commentsCompactSeparator}>•</Text>
-                          <Text style={styles.commentsCompactRating}>
-                            {commentStats.average_rating.toFixed(1)}/5
-                          </Text>
-                        </>
-                      )}
-                    </View>
-                    <TouchableOpacity
-                      style={styles.commentsCompactButton}
-                      onPress={() => setShowCommentsModal(true)}
-                    >
-                      <SafeIcon name="corner-up-right" size={14} color={modernColors.primary} />
-                      <Text style={styles.commentsCompactButtonText}>Ouvrir le fil</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-              {/* Footer info */}
-              <View style={styles.footer}>
-                {hasDistance && (
-                  <View style={styles.footerItem}>
-                    <SafeIcon name="map-pin" size={12} color="#9CA3AF" />
-                    <Text style={styles.footerText}>
-                      {distanceKm < 1
-                        ? 'Très proche'
-                        : distanceKm < 5
-                          ? 'À proximité'
-                          : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km`}
-                    </Text>
-                  </View>
-                )}
-                {product.usage_count && (
-                  <View style={styles.footerItem}>
-                    <SafeIcon name="eye" size={12} color="#9CA3AF" />
-                    <Text style={styles.footerText}>
-                      {product.usage_count} vues
-                    </Text>
-                  </View>
-                )}
-                {product.created_at && (
-                  <View style={styles.footerItem}>
-                    <SafeIcon name="clock" size={12} color="#9CA3AF" />
-                    <Text style={styles.footerText}>
-                      {formatDate(product.created_at)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </TouchableOpacity>
-        </NativeCard>
-      </LinearGradient>
+      {/* ✅ NOUVEAU: Menu contextuel (long-press) */}
+      <ContextMenu
+        visible={showContextMenu}
+        onClose={() => setShowContextMenu(false)}
+        actions={[
+          {
+            label: 'Partager',
+            icon: 'share',
+            onPress: handleShare,
+          },
+          {
+            label: 'Ouvrir la galerie',
+            icon: 'image',
+            onPress: () => {
+              if (hasMedia) {
+                setShowGallery(true);
+              } else {
+                toaster.info('Aucun média disponible');
+              }
+            },
+          },
+          {
+            label: 'Voir sur Google Maps',
+            icon: 'map',
+            onPress: async () => {
+              if (googleMapsUri) {
+                try {
+                  await Linking.openURL(googleMapsUri);
+                  toaster.success('Ouverture de Google Maps');
+                } catch (error) {
+                  toaster.error('Impossible d\'ouvrir Google Maps');
+                }
+              } else {
+                toaster.info('Adresse Google Maps non disponible');
+              }
+            },
+          },
+          {
+            label: 'Signaler ce produit',
+            icon: 'flag',
+            onPress: () => {
+              toaster.warning('Fonctionnalité de signalement à venir');
+            },
+            destructive: true,
+          },
+        ]}
+        title={product.nom || 'Options'}
+      />
 
       {/* ✅ CORRIGÉ: Modal Chat - Toujours rendre le composant, contrôler via visible */}
       <ChatModalMobile
@@ -1970,12 +3246,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
         />
       )}
 
-      {/* ✅ NOUVEAU: Modal commentaires complet */}
-      <Modal
+      {/* ✅ AMÉLIORÉ: Modal commentaires avec swipe-to-dismiss */}
+      <ModalSwipeable
         visible={showCommentsModal}
-        animationType="slide"
-        onRequestClose={() => setShowCommentsModal(false)}
-        transparent={false}
+        onClose={() => setShowCommentsModal(false)}
+        swipeDirection="down"
       >
         {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
           <View style={styles.commentsModalContainer}>
@@ -1993,7 +3268,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             />
           </View>
         )}
-      </Modal>
+      </ModalSwipeable>
     </>
   );
 };
@@ -2020,20 +3295,20 @@ const styles = StyleSheet.create({
   cardContainer: {
     overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement du contenu
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', // ✅ AMÉLIORÉ: Plus opaque pour meilleur contraste
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.25)',
+    borderColor: 'rgba(148, 163, 184, 0.3)', // ✅ AMÉLIORÉ: Bordure légèrement plus visible
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.12, // ✅ AMÉLIORÉ: Ombre plus prononcée pour meilleure profondeur
     shadowRadius: 12,
-    elevation: 4,
+    elevation: 5, // ✅ AMÉLIORÉ: Élévation augmentée
     // ✅ CORRIGÉ 2025-11-29: S'assurer que la carte s'adapte à la largeur du conteneur parent (carousel)
     width: '100%',
     maxWidth: '100%',
     alignSelf: 'stretch',
-    height: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
-    maxHeight: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
+    height: 260, // ✅ AMÉLIORÉ: 240 → 260 pour plus de confort visuel
+    maxHeight: 260, // ✅ AMÉLIORÉ: 240 → 260
   },
   cardContainerCompact: {
     borderRadius: 20,
@@ -2041,43 +3316,53 @@ const styles = StyleSheet.create({
   touchableContainer: {
     flex: 1,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundColor: 'rgba(255,255,255,0.95)', // ✅ AMÉLIORÉ: Plus opaque
     height: '100%', // ✅ AJOUTÉ: Prendre toute la hauteur disponible
-    maxHeight: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
+    maxHeight: 260, // ✅ AMÉLIORÉ: 240 → 260
   },
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 120, // ✅ RÉDUIT: 140 → 120 pour libérer de l'espace vertical
+    height: 130, // ✅ AMÉLIORÉ: 120 → 130 pour meilleure visibilité des images
     overflow: 'hidden',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
   },
   countryBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    top: 10, // ✅ AMÉLIORÉ: Légèrement plus haut pour éviter chevauchement
+    right: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)', // ✅ AMÉLIORÉ: Plus opaque pour meilleur contraste
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#FFF',
+    shadowColor: '#000', // ✅ AMÉLIORÉ: Ombre pour meilleure visibilité
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   countryFlag: {
     fontSize: 20,
   },
   distanceBadge: {
     position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(99, 102, 241, 0.95)',
+    top: 10, // ✅ AMÉLIORÉ: Légèrement plus haut
+    left: 10,
+    backgroundColor: 'rgba(99, 102, 241, 0.98)', // ✅ AMÉLIORÉ: Plus opaque
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    shadowColor: '#6366F1', // ✅ AMÉLIORÉ: Ombre pour meilleure visibilité
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
   },
   distanceText: {
     fontSize: 12,
@@ -2088,18 +3373,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 12,
     left: 12,
-    backgroundColor: 'rgba(239, 68, 68, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
+    backgroundColor: 'rgba(239, 68, 68, 0.98)', // ✅ PREMIUM: Plus opaque
+    paddingHorizontal: 12, // ✅ PREMIUM: 10 → 12
+    paddingVertical: 6, // ✅ PREMIUM: 5 → 6
+    borderRadius: 18, // ✅ PREMIUM: 16 → 18
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    gap: 5, // ✅ PREMIUM: 4 → 5
+    shadowColor: '#EF4444', // ✅ PREMIUM: Ombre colorée
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
+    borderWidth: 1.5, // ✅ PREMIUM: Bordure pour plus de définition
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   trendingEmoji: {
     fontSize: 14,
@@ -2119,18 +3406,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 12,
     left: 12,
-    backgroundColor: 'rgba(251, 146, 60, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
+    backgroundColor: 'rgba(251, 146, 60, 0.98)', // ✅ PREMIUM: Plus opaque
+    paddingHorizontal: 12, // ✅ PREMIUM: 10 → 12
+    paddingVertical: 6, // ✅ PREMIUM: 5 → 6
+    borderRadius: 18, // ✅ PREMIUM: 16 → 18
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    gap: 5, // ✅ PREMIUM: 4 → 5
+    shadowColor: '#FB923C', // ✅ PREMIUM: Ombre colorée
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 5,
+    borderWidth: 1.5, // ✅ PREMIUM: Bordure pour plus de définition
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   popularEmoji: {
     fontSize: 13,
@@ -2186,12 +3475,27 @@ const styles = StyleSheet.create({
     overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
     // ✅ NOTE: Sans médias, le contenu prend toute la hauteur de 280px
   },
+  // ✅ NOUVEAU: Styles pour ScrollView vertical quand il y a des médias
+  contentScrollable: {
+    flex: 1,
+    maxHeight: 130, // ✅ AMÉLIORÉ: 100 → 130 (260px carte - 130px média = 130px)
+    overflow: 'hidden',
+  },
+  contentScrollableContent: {
+    paddingHorizontal: 12, // ✅ AMÉLIORÉ: 10 → 12 pour meilleur espacement
+    paddingVertical: 10, // ✅ AMÉLIORÉ: 8 → 10
+    gap: 6, // ✅ AMÉLIORÉ: 4 → 6 pour meilleure respiration
+    backgroundColor: 'rgba(255, 255, 255, 0.98)', // ✅ AMÉLIORÉ: Plus opaque
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    paddingBottom: 12, // ✅ Padding supplémentaire en bas pour le scroll
+  },
   topStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 3, // ✅ RÉDUIT: 4 → 3 (encore plus compact)
-    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
+    gap: 4, // ✅ AMÉLIORÉ: 3 → 4 pour meilleure séparation visuelle
+    marginBottom: 4, // ✅ AMÉLIORÉ: 2 → 4 pour meilleur espacement
   },
   topStatPill: {
     flexDirection: 'row',
@@ -2206,11 +3510,11 @@ const styles = StyleSheet.create({
   topStatPillCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 4, // ✅ RÉDUIT: 5 → 4 (encore plus compact)
-    paddingVertical: 2,
-    borderRadius: 8, // ✅ RÉDUIT: 10 → 8
-    borderWidth: 1,
-    gap: 2,
+    paddingHorizontal: 6, // ✅ AMÉLIORÉ: 4 → 6 pour meilleure lisibilité
+    paddingVertical: 3, // ✅ AMÉLIORÉ: 2 → 3
+    borderRadius: 10, // ✅ AMÉLIORÉ: 8 → 10
+    borderWidth: 1.5, // ✅ AMÉLIORÉ: 1 → 1.5 pour meilleure visibilité
+    gap: 3, // ✅ AMÉLIORÉ: 2 → 3
   },
   topStatValue: {
     fontSize: 12,
@@ -2218,33 +3522,56 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   topStatValueCompact: {
-    fontSize: 9, // ✅ RÉDUIT: 10 → 9 (encore plus compact)
-    fontWeight: '600',
+    fontSize: 10, // ✅ AMÉLIORÉ: 9 → 10 pour meilleure lisibilité
+    fontWeight: '700', // ✅ AMÉLIORÉ: 600 → 700
   },
   topStatLabelCompact: {
-    fontSize: 7, // ✅ RÉDUIT: 8 → 7
-    fontWeight: '500',
-    opacity: 0.8,
-    marginLeft: 1,
+    fontSize: 8, // ✅ AMÉLIORÉ: 7 → 8
+    fontWeight: '600', // ✅ AMÉLIORÉ: 500 → 600
+    opacity: 0.85, // ✅ AMÉLIORÉ: 0.8 → 0.85
+    marginLeft: 2, // ✅ AMÉLIORÉ: 1 → 2
+  },
+  productNameRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 4,
   },
   productName: {
-    fontSize: 14, // ✅ RÉDUIT: 15 → 14 (encore plus compact)
-    fontWeight: '700',
-    color: '#1F2937',
-    lineHeight: 18, // ✅ RÉDUIT: 20 → 18
-    marginBottom: 2, // ✅ AJOUTÉ: Réduire espace après titre
+    fontSize: 15, // ✅ AMÉLIORÉ: 14 → 15 pour meilleure visibilité
+    fontWeight: '800', // ✅ AMÉLIORÉ: 700 → 800 pour hiérarchie plus forte
+    color: '#111827', // ✅ AMÉLIORÉ: #1F2937 → #111827 pour meilleur contraste
+    lineHeight: 20, // ✅ AMÉLIORÉ: 18 → 20
+    flex: 1,
+  },
+  expandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#CBD5F5',
+  },
+  expandButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: modernColors.primary,
   },
   prestataireRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4, // ✅ RÉDUIT: 5 → 4 (encore plus compact)
-    paddingVertical: 2,
-    paddingHorizontal: 4, // ✅ RÉDUIT: 5 → 4
+    gap: 6, // ✅ AMÉLIORÉ: 4 → 6 pour meilleur espacement
+    paddingVertical: 4, // ✅ AMÉLIORÉ: 2 → 4
+    paddingHorizontal: 6, // ✅ AMÉLIORÉ: 4 → 6
     backgroundColor: '#F8FAFC',
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10, // ✅ AMÉLIORÉ: 8 → 10
+    borderWidth: 1, // ✅ AMÉLIORÉ: StyleSheet.hairlineWidth → 1 pour meilleure visibilité
     borderColor: '#E5E7EB',
-    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
+    marginBottom: 4, // ✅ AMÉLIORÉ: 2 → 4
   },
   avatar: {
     width: 22, // ✅ RÉDUIT: 26 → 22 (encore plus compact)
@@ -2453,14 +3780,16 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   price: {
-    fontSize: 18, // ✅ RÉDUIT: 20 → 18 (encore plus compact)
-    fontWeight: '800',
+    fontSize: 28, // ✅ GÉANT-LEVEL: 20 → 28 (niveau Amazon/Instagram)
+    fontWeight: '900', // ✅ GÉANT-LEVEL: Hiérarchie maximale
     color: modernColors.primary,
+    letterSpacing: -0.5, // ✅ GÉANT-LEVEL: Espacement négatif pour compacité
+    lineHeight: 32, // ✅ GÉANT-LEVEL: Ajouté pour meilleure lisibilité
   },
   priceDevise: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontSize: 15, // ✅ AMÉLIORÉ: 14 → 15
+    fontWeight: '700', // ✅ AMÉLIORÉ: 600 → 700
+    color: '#4B5563', // ✅ AMÉLIORÉ: #6B7280 → #4B5563 pour meilleur contraste
   },
   actions: {
     flexDirection: 'row',
@@ -2476,12 +3805,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3, // ✅ RÉDUIT: 4 → 3 (encore plus compact)
-    paddingVertical: 6, // ✅ RÉDUIT: 8 → 6
-    paddingHorizontal: 8, // ✅ RÉDUIT: 10 → 8
-    borderRadius: 8, // ✅ RÉDUIT: 10 → 8
+    gap: 4, // ✅ GÉANT-LEVEL: 3 → 4 pour meilleur espacement
+    paddingVertical: 10, // ✅ GÉANT-LEVEL: 8 → 10 (Apple HIG: 44px minimum)
+    paddingHorizontal: 10, // ✅ GÉANT-LEVEL: 8 → 10
+    borderRadius: 10, // ✅ GÉANT-LEVEL: 8 → 10
     borderWidth: 1.5,
     backgroundColor: '#FFFFFF',
+    minHeight: 44, // ✅ GÉANT-LEVEL: Apple HIG recommandation (40 → 44)
+    minWidth: 44, // ✅ GÉANT-LEVEL: Ajouté pour accessibilité complète
   },
   actionButtonDelivery: {
     borderColor: '#D1FAE5',
@@ -2496,8 +3827,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   actionButtonText: {
-    fontSize: 12, // ✅ RÉDUIT: 13 → 12 (encore plus compact)
-    fontWeight: '600',
+    fontSize: 13, // ✅ AMÉLIORÉ: 12 → 13 pour meilleure lisibilité
+    fontWeight: '700', // ✅ AMÉLIORÉ: 600 → 700 pour meilleur contraste
   },
   actionButtonTextDelivery: {
     color: '#047857',
@@ -2563,19 +3894,20 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   locationSection: {
-    gap: 2, // ✅ RÉDUIT: 3 → 2 (encore plus compact)
+    gap: 4, // ✅ AMÉLIORÉ: 2 → 4 pour meilleure respiration
     backgroundColor: '#F8FAFC',
-    padding: 4, // ✅ RÉDUIT: 5 → 4
-    borderRadius: 8,
+    padding: 6, // ✅ AMÉLIORÉ: 4 → 6
+    borderRadius: 10, // ✅ AMÉLIORÉ: 8 → 10
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
+    marginBottom: 4, // ✅ AMÉLIORÉ: 2 → 4
   },
   locationTextPrimary: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#111827', // ✅ AMÉLIORÉ: #1F2937 → #111827 pour meilleur contraste
     flex: 1,
+    lineHeight: 18, // ✅ AMÉLIORÉ: Ajout lineHeight pour meilleure lisibilité
   },
   locationFlag: {
     fontSize: 18,
@@ -2695,11 +4027,17 @@ const styles = StyleSheet.create({
   },
   cardGradient: {
     borderRadius: 22,
-    padding: 1,
-    marginBottom: 6, // ✅ RÉDUIT: 8 → 6 (encore plus compact)
-    height: 280, // ✅ AJOUTÉ: Hauteur fixe pour éviter le débordement
-    maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
+    padding: 1.5, // ✅ PREMIUM: 1 → 1.5 pour gradient plus visible
+    marginBottom: 8, // ✅ AMÉLIORÉ: 6 → 8 pour meilleur espacement entre cartes
+    height: 260, // ✅ AMÉLIORÉ: 280 → 260 (cohérent avec cardContainer)
+    maxHeight: 260, // ✅ AMÉLIORÉ: 280 → 260
     overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
+    // ✅ PREMIUM: Ombre portée pour le gradient
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   // ✅ NOUVEAU: Styles section commentaires compacte
   commentsCompactSection: {
@@ -2771,6 +4109,105 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1F2937',
   },
+  // ✅ NOUVEAU: Styles pour indicateurs de chargement
+  loadingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  loadingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#6B7280',
+  },
+  commentsCompactButtonDisabled: {
+    opacity: 0.5,
+  },
+  // ✅ GÉANT-LEVEL: Style pour animation cœur double-tap (Instagram style)
+  heartOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -32,
+    marginLeft: -32,
+    width: 64,
+    height: 64,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    pointerEvents: 'none',
+  },
+  // ✅ GÉANT-LEVEL: Styles adaptatifs tablette
+  cardContainerTabletPortrait: {
+    maxWidth: '48%', // 2 colonnes en portrait tablette
+    marginHorizontal: '1%',
+  },
+  cardContainerTabletLandscape: {
+    maxWidth: '32%', // 3 colonnes en paysage tablette
+    marginHorizontal: '0.66%',
+  },
+  cardContainerSmall: {
+    padding: 10, // Réduire padding sur petits écrans
+  },
+  cardContainerLarge: {
+    padding: 16, // Augmenter padding sur grands écrans
+  },
+  cardGradientLandscape: {
+    height: 'auto', // Hauteur auto en paysage
+    minHeight: 200,
+  },
+  // ✅ GÉANT-LEVEL: Layout tablette paysage (Amazon style)
+  tabletLandscapeContainer: {
+    flexDirection: 'row',
+    height: '100%',
+  },
+  tabletLandscapeImageContainer: {
+    width: '45%', // 45% pour images
+    height: '100%',
+    position: 'relative',
+  },
+  tabletLandscapeContent: {
+    width: '55%', // 55% pour contenu
+    padding: 12,
+  },
+  tabletLandscapeContentInner: {
+    gap: 8,
+  },
+  tabletLandscapeProductName: {
+    fontSize: 20, // Plus grand sur tablette
+    fontWeight: '700',
+  },
 });
 
-export default ProductCard;
+// ✅ OPTIMISÉ: Memoization complète pour performance optimale
+export default React.memo(ProductCard, (prevProps, nextProps) => {
+  // Comparaison complète pour éviter re-renders inutiles
+  const prevProductId = prevProps.product?.service_id || prevProps.product?.id || prevProps.product?.product_id;
+  const nextProductId = nextProps.product?.service_id || nextProps.product?.id || nextProps.product?.product_id;
+
+  const prevServiceId = prevProps.service?.id || prevProps.service?.service_id;
+  const nextServiceId = nextProps.service?.id || nextProps.service?.service_id;
+
+  const prevPrestataireId = prevProps.prestataire?.user_id || prevProps.prestataire?.id;
+  const nextPrestataireId = nextProps.prestataire?.user_id || nextProps.prestataire?.id;
+
+  const prevLocation = prevProps.userLocation?.latitude && prevProps.userLocation?.longitude
+    ? `${prevProps.userLocation.latitude},${prevProps.userLocation.longitude}`
+    : null;
+  const nextLocation = nextProps.userLocation?.latitude && nextProps.userLocation?.longitude
+    ? `${nextProps.userLocation.latitude},${nextProps.userLocation.longitude}`
+    : null;
+
+  return (
+    prevProductId === nextProductId &&
+    prevProps.product?.nom === nextProps.product?.nom &&
+    prevProps.product?.prix === nextProps.product?.prix &&
+    prevServiceId === nextServiceId &&
+    prevPrestataireId === nextPrestataireId &&
+    prevLocation === nextLocation &&
+    prevProps.onPress === nextProps.onPress &&
+    prevProps.onChatPress === nextProps.onChatPress &&
+    prevProps.onAllMediaViewed === nextProps.onAllMediaViewed
+  );
+});

@@ -126,12 +126,13 @@ impl CostEstimator {
         struct UserBalanceRow {
             tokens_balance: i64,
         }
-        
-        let balance_row: UserBalanceRow = sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
-            .bind(user_id)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(AppError::from)?;
+
+        let balance_row: UserBalanceRow =
+            sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
+                .bind(user_id)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(AppError::from)?;
 
         let balance_fcfa = balance_row.tokens_balance;
         estimation.current_balance_fcfa = Some(balance_fcfa);
@@ -193,13 +194,13 @@ impl CostEstimator {
         struct AvgTokensRow {
             avg_tokens: Option<i64>,
         }
-        
+
         let row: AvgTokensRow = sqlx::query_as(
             r#"
             SELECT COALESCE(AVG(tokens_ia_consumed)::numeric, 0)::BIGINT AS avg_tokens
             FROM token_usage_logs
             WHERE intention = $1
-            "#
+            "#,
         )
         .bind(intention)
         .fetch_one(&self.pool)

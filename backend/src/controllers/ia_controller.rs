@@ -13,7 +13,7 @@ use crate::{
     ia::behavior_engine::{compute_behavior_score, is_suspicious},
     services::app_ia::{
         DistributionRequest, DistributionSuggestion, MediaAnalysisRequest, MediaAnalysisResult,
-        TimelineRequest, TimelineBriefInput, TimelineStyleInput, TimelineMediaItem,
+        TimelineBriefInput, TimelineMediaItem, TimelineRequest, TimelineStyleInput,
         VideoBriefRequest, VideoStyleRequest, VideoStyleSuggestion, VideoTimeline,
     },
     state::AppState,
@@ -243,7 +243,7 @@ pub async fn generate_video_subtitles(
     }
 
     let duration = payload.duration_seconds.max(5).min(900);
-    
+
     // ✅ CORRECTION: Gestion d'erreur robuste avec fallback
     let srt = match state
         .ia
@@ -370,7 +370,7 @@ pub async fn generate_video_brief(
                 "[generate_video_brief] Erreur génération brief IA: {} - Utilisation valeurs par défaut",
                 err
             );
-            
+
             // Fallback vers des valeurs par défaut
             use crate::services::app_ia::VideoBrief;
             vec![VideoBrief {
@@ -386,10 +386,7 @@ pub async fn generate_video_brief(
                     "Découvrez {} sur Yukpomnang. Qualité garantie, satisfaction assurée.",
                     request.product_name
                 )),
-                hashtags: vec![
-                    "#Yukpomnang".to_string(),
-                    "#Qualité".to_string(),
-                ],
+                hashtags: vec!["#Yukpomnang".to_string(), "#Qualité".to_string()],
             }]
         }
     };
@@ -433,7 +430,7 @@ pub async fn generate_video_style(
                 "[generate_video_style] Erreur génération style IA: {} - Utilisation valeurs par défaut",
                 err
             );
-            
+
             // Fallback vers des valeurs par défaut basées sur le channel
             let default_suggestion = match payload.channel.as_str() {
                 "tiktok" | "shorts" | "reels" => VideoStyleSuggestion {
@@ -454,7 +451,10 @@ pub async fn generate_video_style(
                     effects: vec!["Slow motion".to_string(), "Focus blur".to_string()],
                     transitions: vec!["Crossfade".to_string(), "Wipe".to_string()],
                     color_palette: Some("#1E293B #64748B".to_string()),
-                    overlay_tips: vec!["Titre élégant".to_string(), "Sous-titre discret".to_string()],
+                    overlay_tips: vec![
+                        "Titre élégant".to_string(),
+                        "Sous-titre discret".to_string(),
+                    ],
                     music_hint: Some("Orchestre épique ou ambient".to_string()),
                 },
                 _ => VideoStyleSuggestion {
@@ -465,12 +465,12 @@ pub async fn generate_video_style(
                     music_hint: Some("Musique générique".to_string()),
                 },
             };
-            
+
             warn!(
                 "[generate_video_style] Style IA indisponible, utilisation valeurs par défaut pour channel: {}",
                 payload.channel
             );
-            
+
             default_suggestion
         }
     };
@@ -536,7 +536,7 @@ pub async fn analyze_media_tags(
                 "[analyze_media_tags] Erreur analyse média IA: {} - Utilisation valeurs par défaut",
                 err
             );
-            
+
             // Fallback vers des valeurs par défaut
             use crate::services::app_ia::MediaAnalysisResult;
             MediaAnalysisResult {
@@ -582,23 +582,28 @@ pub async fn generate_distribution_plan(
                 "[generate_distribution_plan] Erreur génération plan IA: {} - Utilisation valeurs par défaut",
                 err
             );
-            
+
             // Fallback vers des valeurs par défaut
-            use crate::services::app_ia::{DistributionSuggestion, DistributionScheduleItem};
+            use crate::services::app_ia::{DistributionScheduleItem, DistributionSuggestion};
             DistributionSuggestion {
-                summary: Some(format!("Découvrez {} - Qualité et confiance garanties", request.product_name)),
+                summary: Some(format!(
+                    "Découvrez {} - Qualité et confiance garanties",
+                    request.product_name
+                )),
                 hashtags: vec![
                     "#Yukpomnang".to_string(),
                     "#Qualité".to_string(),
                     "#Confiance".to_string(),
                 ],
-                schedule: request.channels.iter().map(|channel| {
-                    DistributionScheduleItem {
+                schedule: request
+                    .channels
+                    .iter()
+                    .map(|channel| DistributionScheduleItem {
                         channel: channel.clone(),
                         best_time: "Lundi 10h".to_string(),
                         call_to_action: Some("Découvrez maintenant".to_string()),
-                    }
-                }).collect(),
+                    })
+                    .collect(),
             }
         }
     };
@@ -712,4 +717,411 @@ pub async fn generate_video_timeline(
         success: true,
         timeline,
     }))
+}
+
+// ✅ NOUVEAU: Auto-cut intelligent
+#[derive(Debug, Deserialize)]
+pub struct AutoCutPayload {
+    pub video_url: String,
+    pub video_id: Option<i32>,
+    pub min_scene_duration: Option<f64>,
+    pub max_scene_duration: Option<f64>,
+    pub silence_threshold: Option<f64>,
+    pub detect_highlights: Option<bool>,
+    pub target_duration: Option<f64>,
+}
+
+use crate::services::video_analysis_service::{detect_scenes, AutoCutRequest};
+
+/// ✅ POST /api/ia/video/auto-cut - Détecte automatiquement les scènes dans une vidéo
+pub async fn handle_auto_cut(
+    State(_state): State<Arc<AppState>>,
+    Json(payload): Json<AutoCutPayload>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!(
+        "[handle_auto_cut] Request - video_url: {}",
+        payload.video_url
+    );
+
+    let request = AutoCutRequest {
+        video_url: payload.video_url,
+        video_id: payload.video_id,
+        min_scene_duration: payload.min_scene_duration,
+        max_scene_duration: payload.max_scene_duration,
+        silence_threshold: payload.silence_threshold,
+        detect_highlights: payload.detect_highlights,
+        target_duration: payload.target_duration,
+    };
+
+    match detect_scenes(request).await {
+        Ok(response) => {
+            info!(
+                "[handle_auto_cut] ✅ Success - {} scènes détectées",
+                response.scenes.len()
+            );
+            Ok(Json(serde_json::to_value(response).unwrap_or_default()))
+        }
+        Err(e) => {
+            error!("[handle_auto_cut] ❌ Error: {:?}", e);
+            Err(e)
+        }
+    }
+}
+
+// ✅ NOUVEAU: Synchronisation audio-vidéo
+#[derive(Debug, Deserialize)]
+pub struct AudioSyncPayload {
+    pub video_url: String,
+    pub audio_url: Option<String>,
+    pub music_track_id: Option<i32>,
+    pub beat_detection: Option<bool>,
+    pub auto_ducking: Option<bool>,
+    pub sync_with_transitions: Option<bool>,
+    pub target_bpm: Option<f64>,
+    pub video_transitions: Option<Vec<f64>>,
+}
+
+use crate::services::audio_analysis_service::{sync_audio_video, AudioSyncRequest};
+
+/// ✅ POST /api/ia/video/audio-sync - Synchronise l'audio avec la vidéo
+pub async fn handle_audio_sync(
+    State(_state): State<Arc<AppState>>,
+    Json(payload): Json<AudioSyncPayload>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!(
+        "[handle_audio_sync] Request - video_url: {}",
+        payload.video_url
+    );
+
+    let request = AudioSyncRequest {
+        video_url: payload.video_url,
+        audio_url: payload.audio_url,
+        music_track_id: payload.music_track_id,
+        beat_detection: payload.beat_detection,
+        auto_ducking: payload.auto_ducking,
+        sync_with_transitions: payload.sync_with_transitions,
+        target_bpm: payload.target_bpm,
+    };
+
+    let video_transitions = payload.video_transitions.unwrap_or_default();
+
+    match sync_audio_video(request, video_transitions).await {
+        Ok(response) => {
+            info!(
+                "[handle_audio_sync] ✅ Success - {} beats, {} sync points",
+                response.beats.len(),
+                response.sync_points.len()
+            );
+            Ok(Json(serde_json::to_value(response).unwrap_or_default()))
+        }
+        Err(e) => {
+            error!("[handle_audio_sync] ❌ Error: {:?}", e);
+            Err(e)
+        }
+    }
+}
+
+// ✅ NOUVEAU: Color grading automatique
+#[derive(Debug, Deserialize)]
+pub struct ColorGradingPayload {
+    pub media_url: String,
+    pub media_id: Option<i32>,
+    pub style_preset: Option<String>,
+    pub target_mood: Option<String>,
+    pub intensity: Option<f64>,
+    pub maintain_skin_tones: Option<bool>,
+}
+
+use crate::services::color_grading_service::{apply_color_grading, ColorGradingRequest};
+
+/// ✅ POST /api/ia/media/color-grade - Applique un color grading automatique
+pub async fn handle_color_grade(
+    State(_state): State<Arc<AppState>>,
+    Json(payload): Json<ColorGradingPayload>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!(
+        "[handle_color_grade] Request - media_url: {}, preset: {:?}",
+        payload.media_url, payload.style_preset
+    );
+
+    let request = ColorGradingRequest {
+        media_url: payload.media_url,
+        media_id: payload.media_id,
+        style_preset: payload.style_preset,
+        target_mood: payload.target_mood,
+        intensity: payload.intensity,
+        maintain_skin_tones: payload.maintain_skin_tones,
+    };
+
+    match apply_color_grading(request).await {
+        Ok(response) => {
+            info!(
+                "[handle_color_grade] ✅ Success - preset: {}",
+                response.applied_preset
+            );
+            Ok(Json(serde_json::to_value(response).unwrap_or_default()))
+        }
+        Err(e) => {
+            error!("[handle_color_grade] ❌ Error: {:?}", e);
+            Err(e)
+        }
+    }
+}
+
+// ✅ NOUVEAU: Génération automatique de sous-titres
+#[derive(Debug, Deserialize)]
+pub struct AutoCaptionsPayload {
+    pub video_url: String,
+    pub audio_url: Option<String>,
+    pub lang: Option<String>,
+    pub style: Option<String>,
+    pub position: Option<String>,
+    pub max_chars_per_line: Option<i32>,
+    pub font_size: Option<f64>,
+    pub background_opacity: Option<f64>,
+}
+
+use crate::services::captions_service::{generate_captions, AutoCaptionsRequest};
+
+/// ✅ POST /api/ia/video/auto-captions - Génère des sous-titres automatiques
+pub async fn handle_auto_captions(
+    State(_state): State<Arc<AppState>>,
+    Json(payload): Json<AutoCaptionsPayload>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!(
+        "[handle_auto_captions] Request - video_url: {}, lang: {:?}",
+        payload.video_url, payload.lang
+    );
+
+    let request = AutoCaptionsRequest {
+        video_url: payload.video_url,
+        audio_url: payload.audio_url,
+        lang: payload.lang,
+        style: payload.style,
+        position: payload.position,
+        max_chars_per_line: payload.max_chars_per_line,
+        font_size: payload.font_size,
+        background_opacity: payload.background_opacity,
+    };
+
+    match generate_captions(request).await {
+        Ok(response) => {
+            info!(
+                "[handle_auto_captions] ✅ Success - {} sous-titres générés",
+                response.subtitles.len()
+            );
+            Ok(Json(serde_json::to_value(response).unwrap_or_default()))
+        }
+        Err(e) => {
+            error!("[handle_auto_captions] ❌ Error: {:?}", e);
+            Err(e)
+        }
+    }
+}
+
+// ✅ NOUVEAU: Génération de previews d'effets
+#[derive(Debug, Deserialize)]
+pub struct EffectPreviewPayload {
+    pub effect_name: String,
+    pub sample_media_url: String,
+    pub duration: Option<f64>,
+    pub quality: Option<String>,
+}
+
+use crate::services::effect_preview_service::{generate_effect_preview, EffectPreviewRequest};
+
+/// ✅ POST /api/ia/effects/preview - Génère un preview d'effet
+pub async fn handle_effect_preview(
+    State(_state): State<Arc<AppState>>,
+    Json(payload): Json<EffectPreviewPayload>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!(
+        "[handle_effect_preview] Request - effect: {}",
+        payload.effect_name
+    );
+
+    let request = EffectPreviewRequest {
+        effect_name: payload.effect_name,
+        sample_media_url: payload.sample_media_url,
+        duration: payload.duration,
+        quality: payload.quality,
+    };
+
+    match generate_effect_preview(request).await {
+        Ok(response) => {
+            info!(
+                "[handle_effect_preview] ✅ Success - preview: {}",
+                response.preview_url
+            );
+            Ok(Json(serde_json::to_value(response).unwrap_or_default()))
+        }
+        Err(e) => {
+            error!("[handle_effect_preview] ❌ Error: {:?}", e);
+            Err(e)
+        }
+    }
+}
+
+// ✅ NOUVEAU: Génération de variantes de timeline
+#[derive(Debug, Deserialize)]
+pub struct TimelineVariantPayload {
+    pub brief: TimelineBriefPayload,
+    pub style: TimelineStylePayload,
+    pub available_media: Vec<TimelineMediaPayload>,
+    pub duration_seconds: f64,
+    pub voiceover_script: Option<String>,
+    pub music_track_id: Option<String>,
+    pub lang: Option<String>,
+    pub variant_count: Option<usize>,
+    pub variant_styles: Option<Vec<String>>,
+}
+
+use crate::services::timeline_variant_service::{
+    generate_timeline_variants, TimelineVariantRequest,
+};
+
+/// ✅ POST /api/ia/video/timeline-variants - Génère plusieurs variantes de timeline
+pub async fn handle_timeline_variants(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<TimelineVariantPayload>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!(
+        "[handle_timeline_variants] Request - variant_count: {:?}",
+        payload.variant_count
+    );
+
+    let base_request = TimelineRequest {
+        brief: TimelineBriefInput {
+            script_outline: payload.brief.script_outline,
+            headline: payload.brief.headline,
+            call_to_action: payload.brief.call_to_action,
+        },
+        style: TimelineStyleInput {
+            effects: payload.style.effects,
+            transitions: payload.style.transitions,
+            color_palette: payload.style.color_palette,
+        },
+        available_media: payload
+            .available_media
+            .into_iter()
+            .map(|m| TimelineMediaItem {
+                id: m.id,
+                url: m.url,
+                media_type: m.media_type,
+            })
+            .collect(),
+        duration_seconds: payload.duration_seconds,
+        voiceover_script: payload.voiceover_script,
+        music_track_id: payload.music_track_id,
+        lang: payload.lang,
+    };
+
+    let variant_request = TimelineVariantRequest {
+        base_request,
+        variant_count: payload.variant_count,
+        variant_styles: payload.variant_styles,
+    };
+
+    match generate_timeline_variants(&state.ia, variant_request).await {
+        Ok(response) => {
+            info!(
+                "[handle_timeline_variants] ✅ Success - {} variantes générées",
+                response.variants.len()
+            );
+            Ok(Json(serde_json::to_value(response).unwrap_or_default()))
+        }
+        Err(e) => {
+            error!("[handle_timeline_variants] ❌ Error: {:?}", e);
+            Err(e)
+        }
+    }
+}
+
+// ✅ NOUVEAU: Suggestions audio contextuelles
+#[derive(Debug, Deserialize)]
+pub struct AudioSuggestionPayload {
+    pub product_name: String,
+    pub product_type: Option<String>,
+    pub tone: Option<String>,
+    pub channel: Option<String>,
+    pub duration_seconds: Option<f64>,
+    pub count: Option<usize>,
+}
+
+use crate::services::audio_suggestion_service::{suggest_audio_tracks, AudioSuggestionRequest};
+
+/// ✅ POST /api/ia/audio/suggestions - Génère des suggestions audio contextuelles
+pub async fn handle_audio_suggestions(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<AudioSuggestionPayload>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!(
+        "[handle_audio_suggestions] Request - product: {}",
+        payload.product_name
+    );
+
+    let request = AudioSuggestionRequest {
+        product_name: payload.product_name,
+        product_type: payload.product_type,
+        tone: payload.tone,
+        channel: payload.channel,
+        duration_seconds: payload.duration_seconds,
+        count: payload.count,
+    };
+
+    match suggest_audio_tracks(&state.ia, request).await {
+        Ok(response) => {
+            info!(
+                "[handle_audio_suggestions] ✅ Success - {} suggestions",
+                response.suggestions.len()
+            );
+            Ok(Json(serde_json::to_value(response).unwrap_or_default()))
+        }
+        Err(e) => {
+            error!("[handle_audio_suggestions] ❌ Error: {:?}", e);
+            Err(e)
+        }
+    }
+}
+
+// ✅ NOUVEAU: Génération de preview rapide
+#[derive(Debug, Deserialize)]
+pub struct QuickPreviewPayload {
+    pub timeline: VideoTimeline,
+    pub quality: Option<String>,
+    pub max_duration: Option<f64>,
+}
+
+use crate::services::preview_generation_service::{generate_quick_preview, QuickPreviewRequest};
+
+/// ✅ POST /api/ia/video/quick-preview - Génère un preview rapide de la timeline
+pub async fn handle_quick_preview(
+    State(_state): State<Arc<AppState>>,
+    Json(payload): Json<QuickPreviewPayload>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!(
+        "[handle_quick_preview] Request - {} scènes, qualité: {:?}",
+        payload.timeline.scenes.len(),
+        payload.quality
+    );
+
+    let request = QuickPreviewRequest {
+        timeline: payload.timeline,
+        quality: payload.quality,
+        max_duration: payload.max_duration,
+    };
+
+    match generate_quick_preview(request).await {
+        Ok(response) => {
+            info!(
+                "[handle_quick_preview] ✅ Success - preview: {} ({}ms)",
+                response.preview_url, response.processing_time_ms
+            );
+            Ok(Json(serde_json::to_value(response).unwrap_or_default()))
+        }
+        Err(e) => {
+            error!("[handle_quick_preview] ❌ Error: {:?}", e);
+            Err(e)
+        }
+    }
 }

@@ -1,13 +1,11 @@
 // Contrôleur pour exposer les métriques de performance
 
+use crate::state::AppState;
 use axum::{extract::State, response::Json};
 use std::sync::Arc;
-use crate::state::AppState;
 
 /// Obtenir les statistiques de performance globales
-pub async fn get_performance_stats(
-    State(_state): State<Arc<AppState>>,
-) -> Json<serde_json::Value> {
+pub async fn get_performance_stats(State(_state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     // Récupérer le QueryMonitor depuis l'AppState si disponible
     // Pour l'instant, on retourne des stats basiques
     Json(serde_json::json!({
@@ -18,13 +16,10 @@ pub async fn get_performance_stats(
 }
 
 /// Obtenir les requêtes les plus lentes
-pub async fn get_slow_queries(
-    State(_state): State<Arc<AppState>>,
-) -> Json<serde_json::Value> {
+pub async fn get_slow_queries(State(_state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     Json(serde_json::json!({
         "status": "ok",
         "message": "Slow queries endpoint - QueryMonitor à intégrer dans AppState",
         "queries": [],
     }))
 }
-

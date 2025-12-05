@@ -1,6 +1,7 @@
 // This file contains the implementation of the AppIA service.
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
+use redis::AsyncCommands;
 use redis::Client as RedisClient;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -152,14 +153,14 @@ pub struct MediaAnalysisRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineScene {
     pub scene_index: usize,
-    pub start_time: f64,        // secondes
-    pub duration: f64,           // secondes
+    pub start_time: f64, // secondes
+    pub duration: f64,   // secondes
     pub media_id: Option<String>,
     pub media_url: Option<String>,
     pub text: Option<String>,
     pub text_position: Option<String>, // 'top' | 'center' | 'bottom'
-    pub transition: Option<String>,     // 'fade' | 'slide' | 'zoom' | 'none'
-    pub effects: Vec<String>,           // Liste des effets à appliquer
+    pub transition: Option<String>,    // 'fade' | 'slide' | 'zoom' | 'none'
+    pub effects: Vec<String>,          // Liste des effets à appliquer
     pub audio_cue: Option<f64>,        // Timing pour synchronisation audio (secondes)
 }
 
@@ -171,7 +172,7 @@ pub struct VideoTimeline {
 }
 
 /// ✅ NOUVEAU: Requête pour générer une timeline
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineRequest {
     pub brief: TimelineBriefInput,
     pub style: TimelineStyleInput,
@@ -265,8 +266,8 @@ impl AppIA {
                 top_p: 0.8,             // R?duit pour plus de pr?cision
                 frequency_penalty: 0.0, // Supprim? pour acc?l?rer
                 presence_penalty: 0.0,  // Supprim? pour acc?l?rer
-                timeout: 40,            // Augment? ? 40s pour analyse compl?te des images
-                retry_count: 2,         // R?duit ? 2 tentatives
+                timeout: 60, // ✅ Augmenté à 60s pour analyse complète des images (éviter timeouts)
+                retry_count: 2, // R?duit ? 2 tentatives
                 priority: 10,
                 cost_per_token: 0.000005, // GPT-4o est moins cher que GPT-4 Turbo
                 enabled: true,
@@ -285,7 +286,7 @@ impl AppIA {
                 top_p: 0.8,             // R?duit pour plus de pr?cision
                 frequency_penalty: 0.0, // Supprim? pour acc?l?rer
                 presence_penalty: 0.0,  // Supprim? pour acc?l?rer
-                timeout: 30,
+                timeout: 60,            // ✅ Augmenté pour éviter timeouts extrêmes
                 retry_count: 2,         // R?duit ? 2 tentatives
                 priority: 9,
                 cost_per_token: 0.00000015,
@@ -305,7 +306,7 @@ impl AppIA {
                 top_p: 0.9,
                 frequency_penalty: 0.1,
                 presence_penalty: 0.1,
-                timeout: 30,
+                timeout: 60, // ✅ Augmenté pour éviter timeouts extrêmes
                 retry_count: 3,
                 priority: 8,
                 cost_per_token: 0.000002,
@@ -325,7 +326,7 @@ impl AppIA {
                 top_p: 0.8,             // R?duit pour plus de pr?cision
                 frequency_penalty: 0.0, // Supprim? pour acc?l?rer
                 presence_penalty: 0.0,  // Supprim? pour acc?l?rer
-                timeout: 30,
+                timeout: 60,            // ✅ Augmenté pour éviter timeouts extrêmes
                 retry_count: 2,         // R?duit ? 2 tentatives
                 priority: 3,
                 cost_per_token: 0.000024,
@@ -345,7 +346,7 @@ impl AppIA {
                 top_p: 0.9,
                 frequency_penalty: 0.1,
                 presence_penalty: 0.1,
-                timeout: 40, // Augment? ? 40s pour analyse compl?te des images
+                timeout: 60, // ✅ Augmenté à 60s pour analyse complète des images (éviter timeouts)
                 retry_count: 3,
                 priority: 5,
                 cost_per_token: 0.00000375, // Tr?s ?conomique
@@ -387,7 +388,7 @@ impl AppIA {
                 top_p: 0.9,
                 frequency_penalty: 0.1,
                 presence_penalty: 0.1,
-                timeout: 40, // Augment? ? 40s pour analyse compl?te des images
+                timeout: 60, // ✅ Augmenté à 60s pour analyse complète des images (éviter timeouts)
                 retry_count: 3,
                 priority: 7,
                 cost_per_token: 0.000003, // Tr?s ?conomique
@@ -407,7 +408,7 @@ impl AppIA {
                 top_p: 0.9,
                 frequency_penalty: 0.1,
                 presence_penalty: 0.1,
-                timeout: 30,
+                timeout: 60, // ✅ Augmenté pour éviter timeouts extrêmes
                 retry_count: 3,
                 priority: 6,
                 cost_per_token: 0.000015,
@@ -428,7 +429,7 @@ impl AppIA {
                 top_p: 0.9,
                 frequency_penalty: 0.1,
                 presence_penalty: 0.1,
-                timeout: 30,
+                timeout: 60, // ✅ Augmenté pour éviter timeouts extrêmes
                 retry_count: 3,
                 priority: 2,
                 cost_per_token: 0.0,
@@ -449,7 +450,7 @@ impl AppIA {
                 top_p: 0.9,
                 frequency_penalty: 0.1,
                 presence_penalty: 0.1,
-                timeout: 30,
+                timeout: 60, // ✅ Augmenté pour éviter timeouts extrêmes
                 retry_count: 3,
                 priority: 1,
                 cost_per_token: 0.0,
@@ -469,7 +470,7 @@ impl AppIA {
                 top_p: 0.9,
                 frequency_penalty: 0.1,
                 presence_penalty: 0.1,
-                timeout: 30,
+                timeout: 60, // ✅ Augmenté pour éviter timeouts extrêmes
                 retry_count: 3,
                 priority: 2,
                 cost_per_token: 0.000015,
@@ -494,8 +495,50 @@ impl AppIA {
         // ?? OPTIMISATION PERFORMANCE : Timeout augment? ? 20s
         log::info!("[AppIA] Tentative avec mod?les IA optimis?s");
 
-        // 1. V?rification du cache Redis (d?sactiv? temporairement)
-        log::info!("[AppIA] Redis d?sactiv? - continuation sans cache");
+        // 1. ✅ Vérification du cache Redis (ACTIVÉ)
+        let cache_key = format!("ai:prompt:{}", Self::_hash_prompt(prompt));
+        match self.redis_client.get_async_connection().await {
+            Ok(mut conn) => match conn.get::<_, Option<String>>(&cache_key).await {
+                Ok(Some(response_json)) => {
+                    log::info!(
+                        "[AppIA] ✅ Cache Redis HIT pour prompt hash: {}",
+                        &cache_key[..16]
+                    );
+                    if let Ok(cached_data) = serde_json::from_str::<Value>(&response_json) {
+                        let model_name = cached_data
+                            .get("model")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("cached")
+                            .to_string();
+                        let response = cached_data
+                            .get("response")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or(&response_json)
+                            .to_string();
+                        let tokens = cached_data
+                            .get("tokens")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0) as u32;
+                        return Ok((model_name, response, tokens));
+                    }
+                }
+                Ok(None) => {
+                    log::debug!("[AppIA] Cache Redis MISS - continuation avec appel IA");
+                }
+                Err(e) => {
+                    log::warn!(
+                        "[AppIA] Erreur lecture cache Redis: {} - continuation sans cache",
+                        e
+                    );
+                }
+            },
+            Err(e) => {
+                log::warn!(
+                    "[AppIA] Impossible de se connecter à Redis: {} - continuation sans cache",
+                    e
+                );
+            }
+        }
 
         // 2. S?lection intelligente du mod?le
         let models = self.models.read().await;
@@ -515,10 +558,16 @@ impl AppIA {
 
         for model in enabled_models {
             log::info!(
-                "[AppIA] Tentative avec mod?le: {} (timeout: 15s)",
+                "[AppIA] Tentative avec mod?le: {} (timeout: 30s)",
                 model.name
             );
-            let timeout_duration = Duration::from_secs(15);
+            // ✅ Utilisation des timeouts adaptatifs selon type de requête
+            use crate::config::ai_timeouts::{AIRequestType, AITimeoutConfig};
+            let timeout_duration = AITimeoutConfig::get_timeout(AIRequestType::Standard);
+            log::debug!(
+                "[AppIA] Timeout adaptatif utilisé: {}s",
+                timeout_duration.as_secs()
+            );
             match tokio::time::timeout(timeout_duration, async {
                 self.call_model(model, prompt, &interaction_id).await
             })
@@ -532,6 +581,31 @@ impl AppIA {
                         processing_time,
                         tokens
                     );
+
+                    // ✅ Mise en cache Redis (TTL: 24h pour recommandations, 12h pour analyses, 6h pour prédictions)
+                    let cache_ttl = 86400; // 24h par défaut
+                    let cache_data = json!({
+                        "model": model_name,
+                        "response": response,
+                        "tokens": tokens,
+                        "timestamp": SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+                    });
+                    if let Ok(cache_json) = serde_json::to_string(&cache_data) {
+                        if let Ok(mut conn) = self.redis_client.get_async_connection().await {
+                            if let Err(e) = conn
+                                .set_ex::<_, _, ()>(&cache_key, &cache_json, cache_ttl)
+                                .await
+                            {
+                                log::warn!("[AppIA] Erreur mise en cache Redis: {}", e);
+                            } else {
+                                log::debug!(
+                                    "[AppIA] ✅ Réponse mise en cache Redis (TTL: {}s)",
+                                    cache_ttl
+                                );
+                            }
+                        }
+                    }
+
                     return Ok((model_name, response, tokens));
                 }
                 Ok(Err(e)) => {
@@ -539,7 +613,7 @@ impl AppIA {
                     _last_error = Some(e);
                 }
                 Err(_) => {
-                    log::warn!("[AppIA] ? Timeout avec {} (15s)", model.name);
+                    log::warn!("[AppIA] ⚠️ Timeout avec {} (60s)", model.name);
                     _last_error = Some(AppError::Internal("Timeout".to_string()));
                 }
             }
@@ -571,10 +645,15 @@ impl AppIA {
         let production_config = crate::config::production_config::ProductionConfig::new();
 
         log::info!("[AppIA] Tentative multimodale avec mod?les IA optimis?s");
+
+        // ✅ Utilisation des timeouts adaptatifs
+        use crate::config::ai_timeouts::AITimeoutConfig;
+        let multimodal_timeout = AITimeoutConfig::get_multimodal_timeout();
+
         log::info!(
-            "[AppIA] Configuration: GPU={}, Timeout={}s",
+            "[AppIA] Configuration: GPU={}, Timeout adaptatif={}s",
             production_config.gpu_enabled,
-            production_config.api_timeouts.multimodal
+            multimodal_timeout.as_secs()
         );
 
         // 1. S?lection intelligente du mod?le (priorit? aux mod?les multimodaux)
@@ -593,9 +672,9 @@ impl AppIA {
         // 2. Test des mod?les multimodaux avec timeout adaptatif
         let mut _last_error = None;
         for model in enabled_models.iter().take(1) {
-            // ? NOUVEAU : Timeout adaptatif selon GPU
+            // ✅ Timeout adaptatif selon GPU et type de requête
             let timeout_duration = if production_config.gpu_enabled {
-                Duration::from_secs(production_config.api_timeouts.multimodal)
+                multimodal_timeout
             } else {
                 Duration::from_secs(30)
             };
@@ -691,7 +770,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             Ok((model_name, response, tokens)) => {
                 log::info!(
                     "[AppIA::generate_subtitles_srt] ✅ Prédiction réussie avec {} ({} tokens)",
-                    model_name, tokens
+                    model_name,
+                    tokens
                 );
                 response
             }
@@ -726,15 +806,19 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                         );
                         cleaned.to_string()
                     } else {
-                log::error!(
+                        log::error!(
                     "[AppIA::generate_subtitles_srt] ❌ JSON manquant dans réponse IA ({} chars): {}",
                     response.len(),
                     if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
                 );
-                return Err(AppError::Internal(format!(
-                    "Réponse IA sous-titres invalide (JSON manquant). Réponse reçue: {}",
-                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
-                )));
+                        return Err(AppError::Internal(format!(
+                            "Réponse IA sous-titres invalide (JSON manquant). Réponse reçue: {}",
+                            if response.len() > 200 {
+                                format!("{}...", &response[..200])
+                            } else {
+                                response
+                            }
+                        )));
                     }
                 } else {
                     log::error!(
@@ -744,7 +828,11 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     );
                     return Err(AppError::Internal(format!(
                         "Réponse IA sous-titres invalide (JSON manquant). Réponse reçue: {}",
-                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                        if response.len() > 200 {
+                            format!("{}...", &response[..200])
+                        } else {
+                            response
+                        }
                     )));
                 }
             }
@@ -757,12 +845,20 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 log::error!(
                     "[AppIA::generate_subtitles_srt] ❌ JSON malformé: {} - JSON: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block.clone()
+                    }
                 );
                 return Err(AppError::Internal(format!(
                     "JSON sous-titres IA illisible: {}. JSON reçu: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block
+                    }
                 )));
             }
         };
@@ -857,7 +953,11 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             log::error!(
                 "[AppIA::generate_tts_audio] ❌ JSON malformé: {} - JSON: {}",
                 err,
-                if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                if json_block.len() > 500 {
+                    format!("{}...", &json_block[..500])
+                } else {
+                    json_block.clone()
+                }
             );
             AppError::Internal(format!("JSON TTS IA invalide: {err} - {json_block}"))
         })?;
@@ -905,27 +1005,42 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 Ok((response, tokens_used)) => {
                     let response_time = start_time.elapsed().unwrap().as_millis() as f64;
 
-                    // Log de performance avec tokens
+                    // ✅ Log structuré avec contexte
                     log::info!(
-                        "[AppIA] Mod?le {} r?ussi en {}ms, {} tokens (tentative {})",
+                        "[AppIA] ✅ Modèle {} réussi en {}ms, {} tokens (tentative {}/{})",
                         model.name,
                         response_time,
                         tokens_used,
-                        attempt + 1
+                        attempt + 1,
+                        model.retry_count
                     );
 
                     return Ok((model.name.clone(), response, tokens_used));
                 }
                 Err(e) => {
+                    // ✅ Gestion d'erreur avancée avec backoff exponentiel
+                    let error_msg = format!("{}", e);
                     log::warn!(
-                        "[AppIA] Mod?le {} ?chec tentative {}: {}",
+                        "[AppIA] ⚠️ Modèle {} échec tentative {}/{}: {}",
                         model.name,
                         attempt + 1,
-                        e
+                        model.retry_count,
+                        error_msg
                     );
 
                     if attempt < model.retry_count - 1 {
-                        tokio::time::sleep(Duration::from_millis(100 * (attempt + 1) as u64)).await;
+                        // ✅ Backoff exponentiel : 100ms, 200ms, 400ms, etc.
+                        let backoff_ms = 100 * (1 << attempt.min(4)) as u64;
+                        log::debug!("[AppIA] Retry dans {}ms (backoff exponentiel)", backoff_ms);
+                        tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
+                    } else {
+                        // ✅ Dernière tentative échouée - log d'erreur structuré
+                        log::error!(
+                            "[AppIA] ❌ Modèle {} a échoué après {} tentatives. Erreur finale: {}",
+                            model.name,
+                            model.retry_count,
+                            error_msg
+                        );
                     }
                 }
             }
@@ -1086,7 +1201,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .ok_or_else(|| {
                 let error_msg = format!(
                     "OpenAI response missing content. Response structure: {}",
-                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                    serde_json::to_string(&body)
+                        .unwrap_or_else(|_| "Unable to serialize".to_string())
                 );
                 log::error!("[OpenAI] {}", error_msg);
                 error_msg
@@ -1183,7 +1299,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .ok_or_else(|| {
                 let error_msg = format!(
                     "Mistral response missing content. Response structure: {}",
-                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                    serde_json::to_string(&body)
+                        .unwrap_or_else(|_| "Unable to serialize".to_string())
                 );
                 log::error!("[Mistral] {}", error_msg);
                 error_msg
@@ -1267,7 +1384,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .ok_or_else(|| {
                 let error_msg = format!(
                     "DeepSeek response missing content. Response structure: {}",
-                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                    serde_json::to_string(&body)
+                        .unwrap_or_else(|_| "Unable to serialize".to_string())
                 );
                 log::error!("[DeepSeek] {}", error_msg);
                 error_msg
@@ -1382,7 +1500,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .ok_or_else(|| {
                 let error_msg = format!(
                     "Gemini response missing content. Response structure: {}",
-                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                    serde_json::to_string(&body)
+                        .unwrap_or_else(|_| "Unable to serialize".to_string())
                 );
                 log::error!("[Gemini] {}", error_msg);
                 error_msg
@@ -1520,7 +1639,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .ok_or_else(|| {
                 let error_msg = format!(
                     "Anthropic response missing content. Response structure: {}",
-                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                    serde_json::to_string(&body)
+                        .unwrap_or_else(|_| "Unable to serialize".to_string())
                 );
                 log::error!("[Anthropic] {}", error_msg);
                 error_msg
@@ -1720,7 +1840,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             .ok_or_else(|| {
                 let error_msg = format!(
                     "OpenAI multimodal response missing content. Response structure: {}",
-                    serde_json::to_string(&body).unwrap_or_else(|_| "Unable to serialize".to_string())
+                    serde_json::to_string(&body)
+                        .unwrap_or_else(|_| "Unable to serialize".to_string())
                 );
                 log::error!("[OpenAI Multimodal] {}", error_msg);
                 error_msg
@@ -2242,7 +2363,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         Ok(())
     }
 
-    /// ?? Hash du prompt pour le cache
+    /// ✅ Hash du prompt pour le cache Redis
     fn _hash_prompt(prompt: &str) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
@@ -2446,7 +2567,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             Ok((model_name, response, tokens)) => {
                 log::info!(
                     "[AppIA::generate_video_briefs] ✅ Prédiction réussie avec {} ({} tokens)",
-                    model_name, tokens
+                    model_name,
+                    tokens
                 );
                 response
             }
@@ -2481,15 +2603,19 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                         );
                         cleaned.to_string()
                     } else {
-                log::error!(
+                        log::error!(
                     "[AppIA::generate_video_briefs] ❌ JSON manquant dans réponse IA ({} chars): {}",
                     response.len(),
                     if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
                 );
-                return Err(AppError::Internal(format!(
-                    "Réponse IA vidéo invalide (JSON manquant). Réponse reçue: {}",
-                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
-                )));
+                        return Err(AppError::Internal(format!(
+                            "Réponse IA vidéo invalide (JSON manquant). Réponse reçue: {}",
+                            if response.len() > 200 {
+                                format!("{}...", &response[..200])
+                            } else {
+                                response
+                            }
+                        )));
                     }
                 } else {
                     log::error!(
@@ -2499,7 +2625,11 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     );
                     return Err(AppError::Internal(format!(
                         "Réponse IA vidéo invalide (JSON manquant). Réponse reçue: {}",
-                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                        if response.len() > 200 {
+                            format!("{}...", &response[..200])
+                        } else {
+                            response
+                        }
                     )));
                 }
             }
@@ -2511,12 +2641,20 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 log::error!(
                     "[AppIA::generate_video_briefs] ❌ JSON malformé: {} - JSON: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block.clone()
+                    }
                 );
                 return Err(AppError::Internal(format!(
                     "JSON vidéo IA illisible: {}. JSON reçu: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block
+                    }
                 )));
             }
         };
@@ -2633,7 +2771,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             Ok((model_name, response, tokens)) => {
                 log::info!(
                     "[AppIA::generate_video_style] ✅ Prédiction réussie avec {} ({} tokens)",
-                    model_name, tokens
+                    model_name,
+                    tokens
                 );
                 response
             }
@@ -2664,16 +2803,20 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                         );
                         cleaned.to_string()
                     } else {
-                log::error!(
+                        log::error!(
                     "[AppIA::generate_video_style] ❌ JSON manquant dans réponse IA ({} chars): {}",
                     response.len(),
                     if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
                 );
-                // Retourner l'erreur pour que le contrôleur utilise le fallback
-                return Err(AppError::Internal(format!(
-                    "Réponse IA style invalide (JSON manquant). Réponse reçue: {}",
-                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
-                )));
+                        // Retourner l'erreur pour que le contrôleur utilise le fallback
+                        return Err(AppError::Internal(format!(
+                            "Réponse IA style invalide (JSON manquant). Réponse reçue: {}",
+                            if response.len() > 200 {
+                                format!("{}...", &response[..200])
+                            } else {
+                                response
+                            }
+                        )));
                     }
                 } else {
                     log::error!(
@@ -2684,16 +2827,24 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     // Retourner l'erreur pour que le contrôleur utilise le fallback
                     return Err(AppError::Internal(format!(
                         "Réponse IA style invalide (JSON manquant). Réponse reçue: {}",
-                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                        if response.len() > 200 {
+                            format!("{}...", &response[..200])
+                        } else {
+                            response
+                        }
                     )));
                 }
             }
         };
-        
+
         log::debug!(
             "[AppIA::generate_video_style] ✅ JSON extrait ({} chars): {}",
             json_block.len(),
-            if json_block.len() > 300 { format!("{}...", &json_block[..300]) } else { json_block.clone() }
+            if json_block.len() > 300 {
+                format!("{}...", &json_block[..300])
+            } else {
+                json_block.clone()
+            }
         );
 
         let parsed: Value = match serde_json::from_str(&json_block) {
@@ -2702,13 +2853,21 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 log::error!(
                     "[AppIA::generate_video_style] ❌ JSON malformé: {} - JSON: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block.clone()
+                    }
                 );
                 // Retourner l'erreur pour que le contrôleur utilise le fallback
                 return Err(AppError::Internal(format!(
                     "JSON style IA illisible: {}. JSON reçu: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block
+                    }
                 )));
             }
         };
@@ -2802,7 +2961,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             Ok((model_name, response, tokens)) => {
                 log::info!(
                     "[AppIA::analyze_media] ✅ Prédiction réussie avec {} ({} tokens)",
-                    model_name, tokens
+                    model_name,
+                    tokens
                 );
                 response
             }
@@ -2837,25 +2997,37 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                         );
                         cleaned.to_string()
                     } else {
-                log::error!(
+                        log::error!(
                     "[AppIA::analyze_media] ❌ JSON manquant dans réponse IA ({} chars): {}",
                     response.len(),
                     if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
                 );
-                return Err(AppError::Internal(format!(
-                    "Réponse IA analyse média invalide (JSON manquant). Réponse reçue: {}",
-                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
-                )));
+                        return Err(AppError::Internal(format!(
+                            "Réponse IA analyse média invalide (JSON manquant). Réponse reçue: {}",
+                            if response.len() > 200 {
+                                format!("{}...", &response[..200])
+                            } else {
+                                response
+                            }
+                        )));
                     }
                 } else {
                     log::error!(
                         "[AppIA::analyze_media] ❌ JSON manquant dans réponse IA ({} chars): {}",
                         response.len(),
-                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
+                        if response.len() > 200 {
+                            format!("{}...", &response[..200])
+                        } else {
+                            response.clone()
+                        }
                     );
                     return Err(AppError::Internal(format!(
                         "Réponse IA analyse média invalide (JSON manquant). Réponse reçue: {}",
-                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                        if response.len() > 200 {
+                            format!("{}...", &response[..200])
+                        } else {
+                            response
+                        }
                     )));
                 }
             }
@@ -2868,12 +3040,20 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 log::error!(
                     "[AppIA::analyze_media] ❌ JSON malformé: {} - JSON: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block.clone()
+                    }
                 );
                 return Err(AppError::Internal(format!(
                     "JSON analyse média illisible: {}. JSON reçu: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block
+                    }
                 )));
             }
         };
@@ -2964,7 +3144,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             Ok((model_name, response, tokens)) => {
                 log::info!(
                     "[AppIA::generate_distribution_plan] ✅ Prédiction réussie avec {} ({} tokens)",
-                    model_name, tokens
+                    model_name,
+                    tokens
                 );
                 response
             }
@@ -2999,15 +3180,19 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                         );
                         cleaned.to_string()
                     } else {
-                log::error!(
+                        log::error!(
                     "[AppIA::generate_distribution_plan] ❌ JSON manquant dans réponse IA ({} chars): {}",
                     response.len(),
                     if response.len() > 200 { format!("{}...", &response[..200]) } else { response.clone() }
                 );
-                return Err(AppError::Internal(format!(
-                    "Réponse IA diffusion invalide (JSON manquant). Réponse reçue: {}",
-                    if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
-                )));
+                        return Err(AppError::Internal(format!(
+                            "Réponse IA diffusion invalide (JSON manquant). Réponse reçue: {}",
+                            if response.len() > 200 {
+                                format!("{}...", &response[..200])
+                            } else {
+                                response
+                            }
+                        )));
                     }
                 } else {
                     log::error!(
@@ -3017,7 +3202,11 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     );
                     return Err(AppError::Internal(format!(
                         "Réponse IA diffusion invalide (JSON manquant). Réponse reçue: {}",
-                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                        if response.len() > 200 {
+                            format!("{}...", &response[..200])
+                        } else {
+                            response
+                        }
                     )));
                 }
             }
@@ -3029,12 +3218,20 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 log::error!(
                     "[AppIA::generate_distribution_plan] ❌ JSON malformé: {} - JSON: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block.clone()
+                    }
                 );
                 return Err(AppError::Internal(format!(
                     "JSON diffusion IA illisible: {}. JSON reçu: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block
+                    }
                 )));
             }
         };
@@ -3105,14 +3302,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 .available_media
                 .iter()
                 .enumerate()
-                .map(|(i, m)| {
-                    format!(
-                        "{}. {} ({})",
-                        i + 1,
-                        m.media_type,
-                        m.id
-                    )
-                })
+                .map(|(i, m)| format!("{}. {} ({})", i + 1, m.media_type, m.id))
                 .collect::<Vec<String>>()
                 .join("\n")
         };
@@ -3200,7 +3390,8 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             Ok((model_name, response, tokens)) => {
                 log::info!(
                     "[AppIA::generate_video_timeline] ✅ Prédiction réussie avec {} ({} tokens)",
-                    model_name, tokens
+                    model_name,
+                    tokens
                 );
                 response
             }
@@ -3239,7 +3430,11 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                         );
                         return Err(AppError::Internal(format!(
                             "Réponse IA timeline invalide (JSON manquant). Réponse reçue: {}",
-                            if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                            if response.len() > 200 {
+                                format!("{}...", &response[..200])
+                            } else {
+                                response
+                            }
                         )));
                     }
                 } else {
@@ -3250,7 +3445,11 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     );
                     return Err(AppError::Internal(format!(
                         "Réponse IA timeline invalide (JSON manquant). Réponse reçue: {}",
-                        if response.len() > 200 { format!("{}...", &response[..200]) } else { response }
+                        if response.len() > 200 {
+                            format!("{}...", &response[..200])
+                        } else {
+                            response
+                        }
                     )));
                 }
             }
@@ -3263,12 +3462,20 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 log::error!(
                     "[AppIA::generate_video_timeline] ❌ JSON malformé: {} - JSON: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block.clone() }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block.clone()
+                    }
                 );
                 return Err(AppError::Internal(format!(
                     "JSON timeline IA illisible: {}. JSON reçu: {}",
                     err,
-                    if json_block.len() > 500 { format!("{}...", &json_block[..500]) } else { json_block }
+                    if json_block.len() > 500 {
+                        format!("{}...", &json_block[..500])
+                    } else {
+                        json_block
+                    }
                 )));
             }
         };
@@ -3277,7 +3484,9 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         let scenes_array = parsed
             .get("scenes")
             .and_then(Value::as_array)
-            .ok_or_else(|| AppError::Internal("JSON timeline IA sans champ 'scenes'".to_string()))?;
+            .ok_or_else(|| {
+                AppError::Internal("JSON timeline IA sans champ 'scenes'".to_string())
+            })?;
 
         let mut scenes: Vec<TimelineScene> = Vec::new();
         let mut current_time = 0.0;
@@ -3337,12 +3546,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     .get("transition")
                     .and_then(Value::as_str)
                     .map(|s| s.trim().to_string())
-                    .filter(|s| {
-                        matches!(
-                            s.as_str(),
-                            "fade" | "slide" | "zoom" | "none"
-                        )
-                    }),
+                    .filter(|s| matches!(s.as_str(), "fade" | "slide" | "zoom" | "none")),
                 effects: entry
                     .get("effects")
                     .and_then(Value::as_array)
@@ -3354,9 +3558,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                             .collect()
                     })
                     .unwrap_or_default(),
-                audio_cue: entry
-                    .get("audio_cue")
-                    .and_then(Value::as_f64),
+                audio_cue: entry.get("audio_cue").and_then(Value::as_f64),
             };
 
             scenes.push(scene);
@@ -3378,7 +3580,11 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     media_url: None,
                     text: Some(line.clone()),
                     text_position: Some("center".to_string()),
-                    transition: Some(if idx == 0 { "none".to_string() } else { "fade".to_string() }),
+                    transition: Some(if idx == 0 {
+                        "none".to_string()
+                    } else {
+                        "fade".to_string()
+                    }),
                     effects: vec!["zoom".to_string()],
                     audio_cue: Some(idx as f64 * scene_duration),
                 });
@@ -3399,16 +3605,16 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 }
 
 /// ✅ CORRECTION: Extraction JSON robuste qui gère les code blocks markdown
-fn extract_json_block(response: &str) -> Option<String> {
+pub fn extract_json_block(response: &str) -> Option<String> {
     let trimmed = response.trim();
-    
+
     // ✅ CORRECTION: Vérifier si la réponse est juste un nom de modèle (ex: "openai-gpt4o")
     // Si c'est le cas, c'est probablement une erreur de l'API, retourner None
     if trimmed.len() < 50 && !trimmed.contains('{') && !trimmed.contains('[') {
         // Probablement juste un nom de modèle ou un message d'erreur court
         return None;
     }
-    
+
     // 1. Si la réponse est entourée de ```json ou ```, extraire le contenu
     if trimmed.starts_with("```json") || trimmed.starts_with("```") {
         let start_marker = if trimmed.starts_with("```json") {
@@ -3416,7 +3622,7 @@ fn extract_json_block(response: &str) -> Option<String> {
         } else {
             "```"
         };
-        
+
         // Trouver la fin du code block
         let start_idx = start_marker.len();
         let end_marker = "\n```";
@@ -3435,13 +3641,13 @@ fn extract_json_block(response: &str) -> Option<String> {
             return Some(cleaned.to_string());
         }
     }
-    
+
     // 2. Chercher un bloc JSON entre { et } (méthode originale améliorée)
     if let Some(start) = trimmed.find('{') {
         // Compter les accolades pour trouver la fin correcte
         let mut depth = 0;
         let mut end_pos = None;
-        
+
         for (idx, ch) in trimmed[start..].char_indices() {
             match ch {
                 '{' => depth += 1,
@@ -3455,7 +3661,7 @@ fn extract_json_block(response: &str) -> Option<String> {
                 _ => {}
             }
         }
-        
+
         if let Some(end) = end_pos {
             let json_candidate = trimmed[start..=end].to_string();
             // Vérifier que c'est du JSON valide en essayant de le parser
@@ -3464,12 +3670,12 @@ fn extract_json_block(response: &str) -> Option<String> {
             }
         }
     }
-    
+
     // 3. Chercher un tableau JSON entre [ et ]
     if let Some(start) = trimmed.find('[') {
         let mut depth = 0;
         let mut end_pos = None;
-        
+
         for (idx, ch) in trimmed[start..].char_indices() {
             match ch {
                 '[' => depth += 1,
@@ -3483,7 +3689,7 @@ fn extract_json_block(response: &str) -> Option<String> {
                 _ => {}
             }
         }
-        
+
         if let Some(end) = end_pos {
             let json_candidate = trimmed[start..=end].to_string();
             if serde_json::from_str::<Value>(&json_candidate).is_ok() {
@@ -3491,7 +3697,7 @@ fn extract_json_block(response: &str) -> Option<String> {
             }
         }
     }
-    
+
     None
 }
 

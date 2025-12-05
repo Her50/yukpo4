@@ -92,16 +92,47 @@ const CovoiturageResultCard: React.FC<CovoiturageResultCardProps> = ({ covoitura
                 </View>
             </View>
 
-            {covoiturage.distance_km && (
-                <View style={styles.footer}>
+            <View style={styles.footer}>
+                {covoiturage.distance_km && (
                     <View style={styles.distanceRow}>
                         <SafeIcon name="navigation" size={14} color={modernColors.primary} />
                         <Text style={styles.distanceText}>
                             {covoiturage.distance_km.toFixed(1)} km
                         </Text>
                     </View>
+                )}
+                <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.reserveButton]}
+                        onPress={() => {
+                            (navigation as any).navigate('Reservation', {
+                                serviceId: covoiturage.service_id,
+                                serviceType: 'covoiturage',
+                                serviceName: `${covoiturage.depart} → ${covoiturage.destination}`,
+                                reservationType: 'place',
+                            });
+                        }}
+                    >
+                        <SafeIcon name="calendar-plus" size={18} color="#fff" />
+                        <Text style={[styles.actionButtonText, styles.reserveButtonText]}>
+                            Réserver
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.chatButton]}
+                        onPress={() => {
+                            (navigation as any).navigate('ServiceDetail', {
+                                serviceId: covoiturage.service_id,
+                            });
+                        }}
+                    >
+                        <SafeIcon name="message-circle" size={18} color="#fff" />
+                        <Text style={[styles.actionButtonText, styles.chatButtonText]}>
+                            Contacter
+                        </Text>
+                    </TouchableOpacity>
                 </View>
-            )}
+            </View>
         </TouchableOpacity>
     );
 };

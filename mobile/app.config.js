@@ -36,7 +36,9 @@ module.exports = {
                             "yukpomnang"
                         ]
                     }
-                ]
+                ],
+                NSCameraUsageDescription: "Cette app utilise la caméra pour l'édition vidéo en réalité augmentée",
+                NSLocationWhenInUseUsageDescription: "Cette app utilise la localisation pour améliorer l'expérience AR"
             }
         },
         android: {
@@ -55,6 +57,12 @@ module.exports = {
                 "android.permission.WRITE_EXTERNAL_STORAGE",
                 "android.permission.READ_EXTERNAL_STORAGE",
                 "android.permission.INTERNET"
+            ],
+            usesFeatures: [
+                {
+                    name: "android.hardware.camera.ar",
+                    required: false
+                }
             ],
             intentFilters: [
                 {
@@ -86,7 +94,13 @@ module.exports = {
                 googleMaps: {
                     apiKey: "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
                 }
-            }
+            },
+            "meta-data": [
+                {
+                    name: "com.google.ar.core",
+                    value: "required"
+                }
+            ]
         },
         web: {
             favicon: "./assets/favicon.png"
@@ -94,6 +108,7 @@ module.exports = {
         plugins: [
             "expo-location",
             "expo-camera",
+            "expo-barcode-scanner",
             "expo-image-picker",
             "expo-document-picker",
             "expo-file-system",

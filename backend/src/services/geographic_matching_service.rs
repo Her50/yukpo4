@@ -102,7 +102,10 @@ impl GeographicMatchingService {
         // Calculer la distance
         let result = if self.use_google_maps {
             // Essayer Google Maps Distance Matrix API pour une distance routière précise
-            match self.calculate_distance_google_maps(origin, destination).await {
+            match self
+                .calculate_distance_google_maps(origin, destination)
+                .await
+            {
                 Ok(google_result) => {
                     log::debug!(
                         "[GeographicMatching] Distance Google Maps: {}m",
@@ -246,12 +249,13 @@ impl GeographicMatchingService {
             .timeout(Duration::from_secs(10))
             .send()
             .await
-            .map_err(|e| AppError::Internal(format!("Erreur requête Google Maps Directions: {}", e)))?;
+            .map_err(|e| {
+                AppError::Internal(format!("Erreur requête Google Maps Directions: {}", e))
+            })?;
 
-        let data: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur parsing Google Maps Directions: {}", e)))?;
+        let data: serde_json::Value = response.json().await.map_err(|e| {
+            AppError::Internal(format!("Erreur parsing Google Maps Directions: {}", e))
+        })?;
 
         // Parser la réponse Google Maps Directions
         if let Some(status) = data.get("status").and_then(|s| s.as_str()) {
@@ -267,24 +271,36 @@ impl GeographicMatchingService {
                     let legs = route
                         .get("legs")
                         .and_then(|l| l.as_array())
-                        .ok_or_else(|| AppError::Internal("Aucune étape trouvée dans la route".to_string()))?;
+                        .ok_or_else(|| {
+                            AppError::Internal("Aucune étape trouvée dans la route".to_string())
+                        })?;
 
                     let mut total_distance_meters = 0.0;
                     let mut total_duration_seconds = 0.0;
                     let mut steps = Vec::new();
 
                     for leg in legs {
-                        if let Some(distance) = leg.get("distance").and_then(|d| d.get("value")).and_then(|v| v.as_f64()) {
+                        if let Some(distance) = leg
+                            .get("distance")
+                            .and_then(|d| d.get("value"))
+                            .and_then(|v| v.as_f64())
+                        {
                             total_distance_meters += distance;
                         }
-                        if let Some(duration) = leg.get("duration").and_then(|d| d.get("value")).and_then(|v| v.as_f64()) {
+                        if let Some(duration) = leg
+                            .get("duration")
+                            .and_then(|d| d.get("value"))
+                            .and_then(|v| v.as_f64())
+                        {
                             total_duration_seconds += duration;
                         }
 
                         // Extraire les instructions de chaque étape
                         if let Some(leg_steps) = leg.get("steps").and_then(|s| s.as_array()) {
                             for step in leg_steps {
-                                if let Some(html_instructions) = step.get("html_instructions").and_then(|i| i.as_str()) {
+                                if let Some(html_instructions) =
+                                    step.get("html_instructions").and_then(|i| i.as_str())
+                                {
                                     // Nettoyer les balises HTML
                                     let clean_instructions = html_instructions
                                         .replace("<b>", "")
@@ -395,7 +411,11 @@ impl GeographicMatchingService {
         );
 
         // Essayer le cache (TTL court car les positions changent)
-        if let Some(cached) = self.cache_service.get::<Vec<CourierLocation>>(&cache_key).await? {
+        if let Some(cached) = self
+            .cache_service
+            .get::<Vec<CourierLocation>>(&cache_key)
+            .await?
+        {
             log::debug!(
                 "[GeographicMatching] Coursiers récupérés du cache: {}",
                 cached.len()
@@ -479,4 +499,3 @@ impl<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow> for CourierLocation {
         })
     }
 }
-

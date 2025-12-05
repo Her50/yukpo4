@@ -1,5 +1,5 @@
-use std::time::Duration;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 /// Configuration des optimisations de performance
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -120,10 +120,10 @@ impl Default for OptimizationConfig {
 impl Default for CacheConfig {
     fn default() -> Self {
         Self {
-            default_ttl: 300, // 5 minutes
-            services_ttl: 600, // 10 minutes
-            users_ttl: 1800,   // 30 minutes
-            exchanges_ttl: 300, // 5 minutes
+            default_ttl: 300,                   // 5 minutes
+            services_ttl: 600,                  // 10 minutes
+            users_ttl: 1800,                    // 30 minutes
+            exchanges_ttl: 300,                 // 5 minutes
             max_memory_size: 100 * 1024 * 1024, // 100MB
             max_entries: 10000,
         }
@@ -151,7 +151,7 @@ impl Default for MatchingConfig {
             .unwrap_or_else(|_| "0.70".to_string())
             .parse::<f64>()
             .unwrap_or(0.70);
-            
+
         Self {
             min_score_threshold, // Seuil configurable via variable d'environnement
             early_stop_threshold: 0.9,
@@ -180,9 +180,9 @@ impl Default for ApiConfig {
 impl Default for BackgroundConfig {
     fn default() -> Self {
         Self {
-            cache_cleanup_interval: 300, // 5 minutes
+            cache_cleanup_interval: 300,         // 5 minutes
             service_deactivation_interval: 3600, // 1 heure
-            score_update_interval: 1800, // 30 minutes
+            score_update_interval: 1800,         // 30 minutes
             worker_count: 4,
             task_queue_size: 1000,
         }
@@ -236,19 +236,19 @@ impl OptimizationManager {
                     std::env::var("DB_CONNECT_TIMEOUT")
                         .unwrap_or_else(|_| "30".to_string())
                         .parse()
-                        .unwrap_or(30)
+                        .unwrap_or(30),
                 ),
                 acquire_timeout: Duration::from_secs(
                     std::env::var("DB_ACQUIRE_TIMEOUT")
                         .unwrap_or_else(|_| "30".to_string())
                         .parse()
-                        .unwrap_or(30)
+                        .unwrap_or(30),
                 ),
                 idle_timeout: Duration::from_secs(
                     std::env::var("DB_IDLE_TIMEOUT")
                         .unwrap_or_else(|_| "600".to_string())
                         .parse()
-                        .unwrap_or(600)
+                        .unwrap_or(600),
                 ),
                 max_query_size: std::env::var("DB_MAX_QUERY_SIZE")
                     .unwrap_or_else(|_| "1048576".to_string()) // 1MB
@@ -310,7 +310,7 @@ impl OptimizationManager {
                     std::env::var("API_REQUEST_TIMEOUT")
                         .unwrap_or_else(|_| "30".to_string())
                         .parse()
-                        .unwrap_or(30)
+                        .unwrap_or(30),
                 ),
                 enable_compression: std::env::var("API_ENABLE_COMPRESSION")
                     .unwrap_or_else(|_| "true".to_string())
@@ -330,10 +330,12 @@ impl OptimizationManager {
                     .unwrap_or_else(|_| "300".to_string())
                     .parse()
                     .unwrap_or(300),
-                service_deactivation_interval: std::env::var("BACKGROUND_SERVICE_DEACTIVATION_INTERVAL")
-                    .unwrap_or_else(|_| "3600".to_string())
-                    .parse()
-                    .unwrap_or(3600),
+                service_deactivation_interval: std::env::var(
+                    "BACKGROUND_SERVICE_DEACTIVATION_INTERVAL",
+                )
+                .unwrap_or_else(|_| "3600".to_string())
+                .parse()
+                .unwrap_or(3600),
                 score_update_interval: std::env::var("BACKGROUND_SCORE_UPDATE_INTERVAL")
                     .unwrap_or_else(|_| "1800".to_string())
                     .parse()
@@ -359,4 +361,4 @@ impl OptimizationManager {
     pub fn config_mut(&mut self) -> &mut OptimizationConfig {
         &mut self.config
     }
-} 
+}

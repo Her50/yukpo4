@@ -74,7 +74,15 @@ pub async fn create_global_promo_event(
     Authenticated(user): Authenticated,
     Json(payload): Json<CreateGlobalPromoEventRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
-    let event = GlobalPromoService::create_event(&state.pg, payload, user.id).await?;
+    // ✅ NOUVEAU: Passer la queue de notifications si disponible
+    let notification_queue = state.notification_queue.as_deref();
+    let event = GlobalPromoService::create_event_with_notification_queue(
+        &state.pg,
+        payload,
+        user.id,
+        notification_queue,
+    )
+    .await?;
     Ok(Json(json!({ "success": true, "data": event })))
 }
 
@@ -161,7 +169,9 @@ pub async fn list_global_promo_catalog(
             }
         })));
     }
-    let catalog = GlobalPromoService::list_active_catalog(&state.pg, query).await?;
+    // ✅ NOUVEAU: Utiliser le cache si disponible
+    let cache = state.global_promo_cache.as_deref();
+    let catalog = GlobalPromoService::list_active_catalog(&state.pg, query, cache).await?;
     Ok(Json(json!({ "success": true, "data": catalog })))
 }
 

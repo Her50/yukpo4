@@ -1,39 +1,67 @@
+# ✅ Phase 3 - Configuration Prometheus
+# Scrape config pour collecter les métriques du backend Yukpo
+
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
-  # Configuration AlertManager
   external_labels:
     cluster: 'yukpo-production'
     environment: 'production'
 
-# Règles d'alertes
-rule_files:
-  - '/etc/prometheus/alerts.yml'
-
-# Configuration AlertManager
+# Alertmanager configuration
 alerting:
   alertmanagers:
     - static_configs:
         - targets:
-            - 'alertmanager:9093'
+          # - alertmanager:9093
 
+# Load rules once and periodically evaluate them
+rule_files:
+  - "prometheus_alerts.yml"
+
+# Scrape configurations
 scrape_configs:
-  # Scrape du backend Yukpo (vidéo + delivery) via /metrics
-  # ✅ Backend déployé sur Render (cloud) en production
+  # ✅ Backend Yukpo - Métriques Prometheus
   - job_name: 'yukpo-backend'
-    metrics_path: /metrics
-    scheme: https
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/metrics/prometheus'
     static_configs:
       - targets:
-          - 'yukpomnang.onrender.com'  # ✅ URL Render backend en production
+          - 'localhost:3001'
         labels:
-          instance: 'yukpo-backend-render'
-          environment: 'production'
-          deployment: 'cloud'
+          service: 'yukpo-backend'
+          instance: 'backend-1'
     
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-        replacement: 'yukpo-backend-render'
+    # Si plusieurs instances (scaling horizontal)
+    # - targets:
+    #     - 'backend-1:3001'
+    #     - 'backend-2:3001'
+    #     - 'backend-3:3001'
 
+  # ✅ Métriques système (optionnel)
+  - job_name: 'node-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - 'localhost:9100'
+        labels:
+          service: 'system'
 
+  # ✅ Métriques PostgreSQL (optionnel - nécessite postgres_exporter)
+  - job_name: 'postgres'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'localhost:9187'
+        labels:
+          service: 'postgresql'
+
+  # ✅ Métriques Redis (optionnel - nécessite redis_exporter)
+  - job_name: 'redis'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'localhost:9121'
+        labels:
+          service: 'redis'

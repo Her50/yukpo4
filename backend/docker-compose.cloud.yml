@@ -13,8 +13,12 @@ services:
       - GPU_ENABLED=true
       - MAX_CONCURRENT_REQUESTS=10000
       - CACHE_TTL=300
+      # ✅ NOUVEAU 2025-12-01: Variables pour scalabilité
+      - DB_POOL_SIZE=100
+      - CACHE_TTL_SEARCH=600
+      - RATE_LIMIT_IP=200
     deploy:
-      replicas: 3
+      replicas: 5 # ✅ Augmenté de 3 à 5 pour meilleure scalabilité
       resources:
         limits:
           cpus: '2.0'
@@ -28,6 +32,12 @@ services:
         max_attempts: 3
     networks:
       - cloud-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     depends_on:
       - primary-db
       - redis-cluster
@@ -253,4 +263,4 @@ volumes:
 networks:
   cloud-network:
     driver: overlay
-    attachable: true 
+    attachable: true

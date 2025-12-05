@@ -324,6 +324,7 @@ async fn route_to_existing_business_logic(
                 user_id.expect("User ID requis"),
                 &data,
                 &state.redis_client,
+                Some(state.scalability.clone()),
             )
             .await
             .map(|(result, _)| result)

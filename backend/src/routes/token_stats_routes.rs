@@ -262,16 +262,20 @@ pub async fn get_token_stats(
         .map(|row| {
             use sqlx::Row;
             RecentUsageItem {
-                id: row.get("id"),
-                intention: row.get("intention"),
-                tokens_ia_consumed: row.get("tokens_ia_consumed"),
-                tokens_cost_xaf: row.get("tokens_cost_xaf"),
-                tokens_deducted: row.get("tokens_deducted"),
-                balance_after: row.get("balance_after"),
-                processing_time_ms: row.get("processing_time_ms"),
-                response_source: row.get("response_source"),
-                endpoint: row.get("endpoint"),
-                created_at: row.get("created_at"),
+                id: row.get::<i32, _>("id"),
+                intention: row.get::<String, _>("intention"),
+                tokens_ia_consumed: row.get::<i64, _>("tokens_ia_consumed") as i32,
+                tokens_cost_xaf: row.get::<i64, _>("tokens_cost_xaf") as i32,
+                tokens_deducted: row.get::<i64, _>("tokens_deducted") as i32,
+                balance_after: row.get::<i64, _>("balance_after"),
+                processing_time_ms: row
+                    .get::<Option<i64>, _>("processing_time_ms")
+                    .map(|v| v as i32),
+                response_source: row.get::<Option<String>, _>("response_source"),
+                endpoint: row.get::<Option<String>, _>("endpoint"),
+                created_at: row
+                    .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                    .naive_utc(),
             }
         })
         .collect();

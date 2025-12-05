@@ -16,6 +16,12 @@ export const ENVIRONMENT = {
     // Environnement (development, production, staging)
     ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT || 'production',
 
+    // CDN Configuration
+    // ⚠️ Architecture : Cloudflare (CDN) lit depuis Wasabi (Storage)
+    // Cloudflare = Distribution optimale | Wasabi = Stockage source
+    CDN_CLOUDFLARE_URL: process.env.EXPO_PUBLIC_CDN_CLOUDFLARE_URL || 'https://cdn.yukpomnang.com',
+    WASABI_DIRECT_URL: process.env.EXPO_PUBLIC_WASABI_DIRECT_URL || 'https://yukpo-video-prod.s3.eu-central-1.wasabisys.com',
+
     // Configuration de traduction
     TRANSLATION: {
         // Langue par défaut

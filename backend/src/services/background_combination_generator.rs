@@ -222,7 +222,7 @@ async fn update_progress(
 ) -> Result<(), AppError> {
     // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
     use crate::utils::redis_helper;
-    
+
     let key = format!("combination_progress:{}", session_id);
 
     let progress = serde_json::json!({
@@ -247,7 +247,7 @@ async fn mark_generation_completed(
 ) -> Result<(), AppError> {
     // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
     use crate::utils::redis_helper;
-    
+
     let key = format!("combination_progress:{}", session_id);
 
     let progress = serde_json::json!({

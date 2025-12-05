@@ -90,7 +90,7 @@ pub async fn list_social_accounts(
                   updated_at
           FROM social_accounts
           WHERE user_id = $1
-          ORDER BY platform"#
+          ORDER BY platform"#,
     )
     .bind(user_id)
     .fetch_all(&state.pg)
@@ -125,7 +125,7 @@ pub async fn list_accounts_for_platforms(
         FROM social_accounts
         WHERE user_id = $1
           AND lower(platform) = ANY($2)
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(&normalized)
@@ -157,10 +157,10 @@ pub struct SocialAccountRecord {
 pub async fn create_oauth_state(redis: &redis::Client, user_id: i32) -> AppResult<String> {
     // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
     use crate::utils::redis_helper;
-    
+
     let state_id = format!("{}:{}", user_id, Uuid::new_v4());
     let key = format!("social_oauth:{}", &state_id);
-    
+
     redis_helper::set_with_retry(redis, &key, &user_id.to_string(), Some(600))
         .await
         .map_err(|e| AppError::Internal(format!("Redis set_ex error (après retry): {e}")))?;
@@ -170,24 +170,28 @@ pub async fn create_oauth_state(redis: &redis::Client, user_id: i32) -> AppResul
 pub async fn consume_oauth_state(redis: &redis::Client, state: &str) -> AppResult<Option<i32>> {
     // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
     use crate::utils::redis_helper;
-    
+
     let key = format!("social_oauth:{}", state);
-    
+
     // Récupérer la valeur avec retry
     let user_id_str = match redis_helper::get_with_retry(redis, &key).await {
         Ok(Some(val)) => val,
         Ok(None) => return Ok(None),
-        Err(e) => return Err(AppError::Internal(format!("Redis get error (après retry): {e}"))),
+        Err(e) => {
+            return Err(AppError::Internal(format!(
+                "Redis get error (après retry): {e}"
+            )))
+        }
     };
-    
+
     // Parser user_id
     let user_id: i32 = user_id_str
         .parse()
         .map_err(|_| AppError::Internal("Invalid user_id format in Redis".to_string()))?;
-    
+
     // Supprimer la clé après consommation
     let _ = redis_helper::del_with_retry(redis, &key).await;
-    
+
     Ok(Some(user_id))
 }
 

@@ -10,7 +10,7 @@ try {
     Write-Host "✅ Endpoint config accessible" -ForegroundColor Green
     Write-Host "Réponse: $($response | ConvertTo-Json -Depth 3)" -ForegroundColor Cyan
     
-    if ($response.apiKey -and $response.apiKey -ne "YOUR_OPENWEATHER_API_KEY") {
+    if ($response.apiKey -and $response.apiKey -ne "YOUR_OPENWEATHERMAP_API_KEY") {
         Write-Host "✅ Clé API récupérée avec succès" -ForegroundColor Green
     }
     else {

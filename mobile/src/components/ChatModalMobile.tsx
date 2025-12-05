@@ -19,7 +19,8 @@ import {
     View
 } from 'react-native';
 import { useWebSocketChat } from '../hooks/useWebSocketChat';
-import { apiGet, apiPost } from '../services/api';
+import { apiGet, apiPost, deliveryApi } from '../services/api';
+import { mediaService } from '../services/mediaService';
 import { modernColors } from '../theme/modernTheme';
 import InAppCallModal from './InAppCallModal';
 import ProductGalleryPickerModal from './ProductGalleryPickerModal';
@@ -27,6 +28,12 @@ import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
 import NegotiatedPriceModal from './chat/NegotiatedPriceModal'; // ✅ NOUVEAU : Prix négociés
 import OrderDeliveryModal from './delivery/OrderDeliveryModal'; // ✅ Phase 8 - Amélioration 25
+// ✅ NOUVEAU : Imports pour améliorations UX
+import AudioMessageWaveform from './chat/AudioMessageWaveform';
+import DateSeparator from './chat/DateSeparator';
+import MessageReactions from './chat/MessageReactions';
+import MessageStatusIndicator from './chat/MessageStatusIndicator';
+import SwipeableMessage from './chat/SwipeableMessage';
 
 interface ChatModalMobileProps {
     visible: boolean;
@@ -101,6 +108,13 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [showNegotiatedPriceModal, setShowNegotiatedPriceModal] = useState(false);
     const [selectedProductForNegotiation, setSelectedProductForNegotiation] = useState<{ index?: number, name?: string, price?: number } | null>(null);
 
+    // ✅ NOUVEAU : États pour réactions aux messages
+    const [messageReactions, setMessageReactions] = useState<Record<string, Array<{
+        emoji: string;
+        count: number;
+        users: Array<{ id: number; name: string; avatar?: string }>;
+    }>>>({});
+
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -110,8 +124,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         ? parsedConversationId
         : (service?.id || 0);
 
-    // ✅ NOUVEAU : ID réel de la conversation pour les prix négociés (utilise effectiveServiceId)
-    const realConversationId = effectiveServiceId;
+    // ✅ CORRIGÉ : ID réel de la conversation pour les prix négociés
+    // Si conversation privée, utiliser l'UUID (string), sinon utiliser service.id (number converti en string)
+    const realConversationId = isPrivateConversation && privateConversationId
+        ? privateConversationId // UUID string pour conversations privées
+        : String(service?.id || 0); // String pour conversations de service
 
     const prestataireUserId = Number(
         prestataireInfo?.user_id ?? prestataireInfo?.userId ?? 0,
@@ -445,6 +462,110 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         setEditingMessageId(null);
         setEditingContent('');
     };
+
+    // ✅ NOUVEAU: Fonctions de gestion des réactions
+    const handleAddReaction = async (messageId: string, emoji: string) => {
+        try {
+            // Mettre à jour localement
+            setMessageReactions(prev => {
+                const reactions = prev[messageId] || [];
+                const existingIndex = reactions.findIndex(r => r.emoji === emoji);
+
+                if (existingIndex >= 0) {
+                    // Ajouter l'utilisateur à la réaction existante
+                    const updated = [...reactions];
+                    const userAlreadyReacted = updated[existingIndex].users.some(u => u.id === user?.id);
+                    if (!userAlreadyReacted) {
+                        updated[existingIndex] = {
+                            ...updated[existingIndex],
+                            count: updated[existingIndex].count + 1,
+                            users: [...updated[existingIndex].users, {
+                                id: user?.id || 0,
+                                name: user?.name || user?.nom_complet || 'Vous',
+                                avatar: user?.avatar || user?.avatar_url
+                            }]
+                        };
+                    }
+                    return { ...prev, [messageId]: updated };
+                } else {
+                    // Nouvelle réaction
+                    return {
+                        ...prev,
+                        [messageId]: [...reactions, {
+                            emoji,
+                            count: 1,
+                            users: [{
+                                id: user?.id || 0,
+                                name: user?.name || user?.nom_complet || 'Vous',
+                                avatar: user?.avatar || user?.avatar_url
+                            }]
+                        }]
+                    };
+                }
+            });
+
+            // Envoyer au backend via WebSocket (sera géré par useWebSocketChat)
+            // Le hook gérera l'envoi automatiquement
+        } catch (error) {
+            console.error('Erreur ajout réaction:', error);
+        }
+    };
+
+    const handleRemoveReaction = async (messageId: string, emoji: string) => {
+        try {
+            setMessageReactions(prev => {
+                const reactions = prev[messageId] || [];
+                const updated = reactions.map(r => {
+                    if (r.emoji === emoji) {
+                        return {
+                            ...r,
+                            count: r.count - 1,
+                            users: r.users.filter(u => u.id !== user?.id)
+                        };
+                    }
+                    return r;
+                }).filter(r => r.count > 0);
+
+                return { ...prev, [messageId]: updated };
+            });
+
+            // Envoyer au backend (sera géré par useWebSocketChat)
+        } catch (error) {
+            console.error('Erreur suppression réaction:', error);
+        }
+    };
+
+    // ✅ NOUVEAU: Fonction pour grouper les messages par date
+    const groupMessagesByDate = React.useMemo(() => {
+        return (messages: any[]) => {
+            const grouped: Array<{ date: Date; messages: any[] }> = [];
+            let currentDate: Date | null = null;
+            let currentGroup: any[] = [];
+
+            messages.forEach((message, index) => {
+                const messageDate = new Date(message.timestamp);
+                messageDate.setHours(0, 0, 0, 0);
+
+                if (!currentDate || messageDate.getTime() !== currentDate.getTime()) {
+                    // Nouvelle date
+                    if (currentGroup.length > 0 && currentDate) {
+                        grouped.push({ date: currentDate, messages: currentGroup });
+                    }
+                    currentDate = messageDate;
+                    currentGroup = [message];
+                } else {
+                    currentGroup.push(message);
+                }
+
+                // Dernier message
+                if (index === messages.length - 1 && currentDate) {
+                    grouped.push({ date: currentDate, messages: currentGroup });
+                }
+            });
+
+            return grouped;
+        };
+    }, []);
 
     const handleCall = () => {
         const phoneNumber = getServiceFieldValue(service?.data?.telephone) ||
@@ -786,6 +907,27 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         setIsPlayingAudio(false);
     };
 
+    // ✅ NOUVEAU 2025-01-27: Uploader les médias vers S3/Wasabi avant envoi
+    const uploadMediaToS3 = async (mediaData: string | { uri: string; type: string; name: string }): Promise<string | null> => {
+        try {
+            console.log('[ChatModal] 📤 Upload média vers S3/Wasabi');
+            const result = await deliveryApi.uploadChatMedia(mediaData);
+
+            if (result.success && result.data) {
+                const uploadedFile = Array.isArray(result.data.files) ? result.data.files[0] : result.data;
+                const url = uploadedFile?.url || uploadedFile?.public_url || result.data?.url;
+                console.log('[ChatModal] ✅ Média uploadé vers S3/Wasabi:', url);
+                return url;
+            } else {
+                console.error('[ChatModal] ❌ Erreur upload média:', result.error);
+                return null;
+            }
+        } catch (error) {
+            console.error('[ChatModal] ❌ Erreur upload média:', error);
+            return null;
+        }
+    };
+
     // Envoyer message avec médias
     const handleSendWithMedia = async () => {
         if (!newMessage.trim() && selectedImages.length === 0 && !selectedAudio && selectedDocuments.length === 0) {
@@ -793,11 +935,44 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             return;
         }
 
+        // ✅ NOUVEAU 2025-01-27: Uploader les médias vers S3/Wasabi avant envoi
+        let uploadedImages: string[] = [];
+        let uploadedAudio: string | null = null;
+        let uploadedDocuments: string[] = [];
+
+        // Uploader les images
+        if (selectedImages.length > 0) {
+            for (const image of selectedImages) {
+                // Si c'est une data URI (base64), on peut l'uploader directement
+                const url = await uploadMediaToS3(image);
+                if (url) uploadedImages.push(url);
+            }
+        }
+
+        // Uploader l'audio
+        if (selectedAudio) {
+            const audioUrl = await uploadMediaToS3({
+                uri: selectedAudio,
+                type: 'audio/m4a',
+                name: `audio_${Date.now()}.m4a`
+            });
+            if (audioUrl) uploadedAudio = audioUrl;
+        }
+
+        // Uploader les documents
+        if (selectedDocuments.length > 0) {
+            for (const doc of selectedDocuments) {
+                // Les documents sont en base64, on peut les uploader directement
+                const url = await uploadMediaToS3(doc.base64);
+                if (url) uploadedDocuments.push(url);
+            }
+        }
+
         const messageData = {
             content: newMessage.trim(),
-            images: selectedImages.length > 0 ? selectedImages : undefined,
-            audio: selectedAudio || undefined,
-            documents: selectedDocuments.length > 0 ? selectedDocuments.map(doc => doc.base64) : undefined,
+            images: uploadedImages.length > 0 ? uploadedImages : undefined,
+            audio: uploadedAudio || undefined,
+            documents: uploadedDocuments.length > 0 ? uploadedDocuments : undefined,
             mentioned_users: mentionedUsers.length > 0 ? mentionedUsers : undefined,
             reply_to_id: replyingTo?.id || undefined,
             reply_to: replyingTo ? {
@@ -812,9 +987,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         };
 
         // ✅ CORRIGÉ: Détecter automatiquement le type de message
-        const messageType = selectedImages.length > 0 ? 'image' :
-            selectedAudio ? 'audio' :
-                selectedDocuments.length > 0 ? 'file' : 'text';
+        const messageType = uploadedImages.length > 0 ? 'image' :
+            uploadedAudio ? 'audio' :
+                uploadedDocuments.length > 0 ? 'file' : 'text';
 
         await sendMessage(newMessage.trim() || '', messageType, messageData);
 
@@ -992,159 +1167,191 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     contentContainerStyle={styles.messagesContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    {messages.map((message) => (
-                        <View
-                            key={message.id}
-                            style={[
-                                styles.messageContainer,
-                                message.from === 'client' ? styles.messageContainerRight : styles.messageContainerLeft
-                            ]}
-                        >
-                            <View style={[
-                                styles.messageBubble,
-                                message.from === 'client' ? styles.messageBubbleRight : styles.messageBubbleLeft
-                            ]}>
-                                {editingMessageId === message.id ? (
-                                    <View style={styles.editContainer}>
-                                        <TextInput
-                                            style={styles.editInput}
-                                            value={editingContent}
-                                            onChangeText={setEditingContent}
-                                            multiline
-                                            autoFocus
-                                        />
-                                        <View style={styles.editActions}>
-                                            <TouchableOpacity
-                                                style={[styles.editButton, styles.saveButton]}
-                                                onPress={handleEditMessage}
-                                            >
-                                                <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={[styles.editButton, styles.cancelEditButton]}
-                                                onPress={cancelEditing}
-                                            >
-                                                <SafeIcon name="x" size={16} color="#FFFFFF" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                ) : (
-                                    <>
-                                        {/* ✅ NOUVEAU: Afficher l'image si présente */}
-                                        {message.type === 'image' && message.imageUrl && (
-                                            <Image
-                                                source={{ uri: message.imageUrl }}
-                                                style={styles.messageImage}
-                                                resizeMode="cover"
-                                            />
-                                        )}
-
-                                        {/* ✅ NOUVEAU: Afficher l'audio si présent */}
-                                        {message.type === 'audio' && message.audioUrl && (
-                                            <View style={styles.audioContainer}>
-                                                <SafeIcon name="mic" size={20} color={message.from === 'client' ? '#FFFFFF' : modernColors.primary} />
-                                                <Text style={[
-                                                    styles.audioText,
-                                                    message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
-                                                ]}>
-                                                    Message vocal
-                                                </Text>
-                                            </View>
-                                        )}
-
-                                        {/* ✅ NOUVEAU: Afficher le fichier si présent */}
-                                        {message.type === 'file' && message.fileUrl && (
-                                            <View style={styles.fileContainer}>
-                                                <SafeIcon name="file" size={20} color={message.from === 'client' ? '#FFFFFF' : modernColors.primary} />
-                                                <Text style={[
-                                                    styles.fileText,
-                                                    message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
-                                                ]}>
-                                                    Document
-                                                </Text>
-                                            </View>
-                                        )}
-
-                                        {/* ✅ NOUVEAU: Afficher le message cité si présent */}
-                                        {message.reply_to && (
-                                            <View style={styles.quotedMessage}>
-                                                <View style={styles.quotedMessageBar} />
-                                                <View style={styles.quotedMessageContent}>
-                                                    <Text style={styles.quotedMessageAuthor}>
-                                                        {message.reply_to.sender_name || 'Message'}
-                                                    </Text>
-                                                    <Text style={styles.quotedMessageText} numberOfLines={2}>
-                                                        {message.reply_to.content_type === 'text' && message.reply_to.content}
-                                                        {message.reply_to.content_type === 'audio' && '🎤 Message audio'}
-                                                        {message.reply_to.content_type === 'image' && '🖼️ Image'}
-                                                        {message.reply_to.content_type === 'file' && '📄 Fichier'}
-                                                        {message.reply_to.content_type === 'video' && '🎥 Vidéo'}
-                                                    </Text>
+                    {groupMessagesByDate(messages).map((group, groupIndex) => (
+                        <React.Fragment key={`group-${groupIndex}`}>
+                            <DateSeparator date={group.date} />
+                            {group.messages.map((message) => (
+                                <SwipeableMessage
+                                    key={message.id}
+                                    onSwipeLeft={() => setReplyingTo({
+                                        id: message.id,
+                                        sender_name: message.from === 'client' ? (user?.name || user?.nom_complet) : nomPrestataire,
+                                        content: message.content,
+                                        content_type: message.type || 'text',
+                                        imageUrl: message.imageUrl,
+                                        audioUrl: message.audioUrl,
+                                        fileUrl: message.fileUrl
+                                    })}
+                                    onSwipeRight={message.from === 'client' && message.editable
+                                        ? () => handleDeleteMessage(message.id)
+                                        : undefined
+                                    }
+                                    canDelete={message.from === 'client' && message.editable}
+                                >
+                                    <View
+                                        style={[
+                                            styles.messageContainer,
+                                            message.from === 'client' ? styles.messageContainerRight : styles.messageContainerLeft
+                                        ]}
+                                    >
+                                        <View style={[
+                                            styles.messageBubble,
+                                            message.from === 'client' ? styles.messageBubbleRight : styles.messageBubbleLeft
+                                        ]}>
+                                            {editingMessageId === message.id ? (
+                                                <View style={styles.editContainer}>
+                                                    <TextInput
+                                                        style={styles.editInput}
+                                                        value={editingContent}
+                                                        onChangeText={setEditingContent}
+                                                        multiline
+                                                        autoFocus
+                                                    />
+                                                    <View style={styles.editActions}>
+                                                        <TouchableOpacity
+                                                            style={[styles.editButton, styles.saveButton]}
+                                                            onPress={handleEditMessage}
+                                                        >
+                                                            <SafeIcon name="check" size={16} color="#FFFFFF" />
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={[styles.editButton, styles.cancelEditButton]}
+                                                            onPress={cancelEditing}
+                                                        >
+                                                            <SafeIcon name="x" size={16} color="#FFFFFF" />
+                                                        </TouchableOpacity>
+                                                    </View>
                                                 </View>
-                                            </View>
-                                        )}
-
-                                        {/* Afficher le texte pour les messages texte ou avec le texte */}
-                                        {(message.type === 'text' || (message.content && !message.content.match(/^[📷🎤📎]/))) && (
-                                            <Text style={[
-                                                styles.messageText,
-                                                message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
-                                            ]}>
-                                                {message.content}
-                                            </Text>
-                                        )}
-
-                                        <View style={styles.messageFooter}>
-                                            <View style={styles.messageFooterLeft}>
-                                                <Text style={[
-                                                    styles.messageTime,
-                                                    message.from === 'client' ? styles.messageTimeRight : styles.messageTimeLeft
-                                                ]}>
-                                                    {formatMessageTime(message.timestamp)}
-                                                    {message.edited && (
-                                                        <Text style={styles.editedIndicator}> (modifié)</Text>
+                                            ) : (
+                                                <>
+                                                    {/* ✅ NOUVEAU: Afficher l'image si présente */}
+                                                    {message.type === 'image' && message.imageUrl && (
+                                                        <Image
+                                                            source={{ uri: mediaService.getImageUrl(message.imageUrl) }}
+                                                            style={styles.messageImage}
+                                                            resizeMode="cover"
+                                                        />
                                                     )}
-                                                </Text>
 
-                                                {/* ✅ CORRIGÉ : Bouton Répondre - Icône de réponse appropriée */}
-                                                <TouchableOpacity
-                                                    style={styles.replyButton}
-                                                    onPress={() => setReplyingTo({
-                                                        id: message.id,
-                                                        sender_name: message.from === 'client' ? user?.name : nomPrestataire,
-                                                        content: message.content,
-                                                        content_type: message.type || 'text',
-                                                        imageUrl: message.imageUrl,
-                                                        audioUrl: message.audioUrl,
-                                                        fileUrl: message.fileUrl
-                                                    })}
-                                                >
-                                                    <SafeIcon name="corner-up-right" size={14} color={modernColors.textSecondary} />
-                                                    <Text style={styles.replyButtonText}>Répondre</Text>
-                                                </TouchableOpacity>
-                                            </View>
+                                                    {/* ✅ NOUVEAU: Audio avec waveform */}
+                                                    {message.type === 'audio' && message.audioUrl && (
+                                                        <AudioMessageWaveform
+                                                            audioUrl={message.audioUrl}
+                                                            duration={message.duration}
+                                                            isFromClient={message.from === 'client'}
+                                                        />
+                                                    )}
 
-                                            {message.from === 'client' && message.editable && (
-                                                <View style={styles.messageActions}>
-                                                    <TouchableOpacity
-                                                        style={styles.messageActionButton}
-                                                        onPress={() => startEditing(message)}
-                                                    >
-                                                        <SafeIcon name="edit" size={14} color={modernColors.primary} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={styles.messageActionButton}
-                                                        onPress={() => handleDeleteMessage(message.id)}
-                                                    >
-                                                        <SafeIcon name="trash" size={14} color={modernColors.error} />
-                                                    </TouchableOpacity>
-                                                </View>
+                                                    {/* ✅ NOUVEAU: Afficher le fichier si présent */}
+                                                    {message.type === 'file' && message.fileUrl && (
+                                                        <View style={styles.fileContainer}>
+                                                            <SafeIcon name="file" size={20} color={message.from === 'client' ? '#FFFFFF' : modernColors.primary} />
+                                                            <Text style={[
+                                                                styles.fileText,
+                                                                message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
+                                                            ]}>
+                                                                Document
+                                                            </Text>
+                                                        </View>
+                                                    )}
+
+                                                    {/* ✅ NOUVEAU: Afficher le message cité si présent */}
+                                                    {message.reply_to && (
+                                                        <View style={styles.quotedMessage}>
+                                                            <View style={styles.quotedMessageBar} />
+                                                            <View style={styles.quotedMessageContent}>
+                                                                <Text style={styles.quotedMessageAuthor}>
+                                                                    {message.reply_to.sender_name || 'Message'}
+                                                                </Text>
+                                                                <Text style={styles.quotedMessageText} numberOfLines={2}>
+                                                                    {message.reply_to.content_type === 'text' && message.reply_to.content}
+                                                                    {message.reply_to.content_type === 'audio' && '🎤 Message audio'}
+                                                                    {message.reply_to.content_type === 'image' && '🖼️ Image'}
+                                                                    {message.reply_to.content_type === 'file' && '📄 Fichier'}
+                                                                    {message.reply_to.content_type === 'video' && '🎥 Vidéo'}
+                                                                </Text>
+                                                            </View>
+                                                        </View>
+                                                    )}
+
+                                                    {/* Afficher le texte pour les messages texte ou avec le texte */}
+                                                    {(message.type === 'text' || (message.content && !message.content.match(/^[📷🎤📎]/))) && (
+                                                        <Text style={[
+                                                            styles.messageText,
+                                                            message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
+                                                        ]}>
+                                                            {message.content}
+                                                        </Text>
+                                                    )}
+
+                                                    {/* ✅ NOUVEAU: Footer avec statut amélioré */}
+                                                    <View style={styles.messageFooter}>
+                                                        <View style={styles.messageFooterLeft}>
+                                                            <MessageStatusIndicator
+                                                                status={message.status || 'sent'}
+                                                                timestamp={message.timestamp}
+                                                                isFromClient={message.from === 'client'}
+                                                            />
+                                                            {message.edited && (
+                                                                <Text style={[
+                                                                    styles.editedIndicator,
+                                                                    message.from === 'client' ? styles.messageTimeRight : styles.messageTimeLeft
+                                                                ]}>
+                                                                    (modifié)
+                                                                </Text>
+                                                            )}
+
+                                                            {/* ✅ CORRIGÉ : Bouton Répondre - Icône de réponse appropriée */}
+                                                            <TouchableOpacity
+                                                                style={styles.replyButton}
+                                                                onPress={() => setReplyingTo({
+                                                                    id: message.id,
+                                                                    sender_name: message.from === 'client' ? (user?.name || user?.nom_complet) : nomPrestataire,
+                                                                    content: message.content,
+                                                                    content_type: message.type || 'text',
+                                                                    imageUrl: message.imageUrl,
+                                                                    audioUrl: message.audioUrl,
+                                                                    fileUrl: message.fileUrl
+                                                                })}
+                                                            >
+                                                                <SafeIcon name="corner-up-right" size={14} color={modernColors.textSecondary} />
+                                                                <Text style={styles.replyButtonText}>Répondre</Text>
+                                                            </TouchableOpacity>
+                                                        </View>
+
+                                                        {message.from === 'client' && message.editable && (
+                                                            <View style={styles.messageActions}>
+                                                                <TouchableOpacity
+                                                                    style={styles.messageActionButton}
+                                                                    onPress={() => startEditing(message)}
+                                                                >
+                                                                    <SafeIcon name="edit" size={14} color={modernColors.primary} />
+                                                                </TouchableOpacity>
+                                                                <TouchableOpacity
+                                                                    style={styles.messageActionButton}
+                                                                    onPress={() => handleDeleteMessage(message.id)}
+                                                                >
+                                                                    <SafeIcon name="trash" size={14} color={modernColors.error} />
+                                                                </TouchableOpacity>
+                                                            </View>
+                                                        )}
+                                                    </View>
+
+                                                    {/* ✅ NOUVEAU: Réactions aux messages */}
+                                                    <MessageReactions
+                                                        messageId={message.id}
+                                                        reactions={messageReactions[message.id] || []}
+                                                        currentUserId={user?.id || 0}
+                                                        onAddReaction={handleAddReaction}
+                                                        onRemoveReaction={handleRemoveReaction}
+                                                    />
+                                                </>
                                             )}
                                         </View>
-                                    </>
-                                )}
-                            </View>
-                        </View>
+                                    </View>
+                                </SwipeableMessage>
+                            ))}
+                        </React.Fragment>
                     ))}
 
                     {prestataireTyping && (
@@ -1547,7 +1754,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         setShowNegotiatedPriceModal(false);
                         setSelectedProductForNegotiation(null);
                     }}
-                    conversationId={realConversationId || service?.id || 0} // ✅ ID réel de la conversation (ou service.id en fallback)
+                    conversationId={realConversationId || String(service?.id || 0)} // ✅ CORRIGÉ: ID réel de la conversation (string)
                     serviceId={service?.id || 0}
                     productIndex={selectedProductForNegotiation.index}
                     originalPrice={selectedProductForNegotiation.price || 0}
@@ -1585,7 +1792,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         <View style={styles.participantAvatar}>
                                             {participant.user_avatar ? (
                                                 <Image
-                                                    source={{ uri: participant.user_avatar }}
+                                                    source={{ uri: mediaService.getImageUrl(participant.user_avatar) }}
                                                     style={styles.participantAvatarImage}
                                                 />
                                             ) : (

@@ -84,9 +84,9 @@ async fn check_expiring_soon_publicites(pool: &PgPool) -> Result<usize, sqlx::Er
     let mut notifications_sent = 0;
 
     for pub_row in expiring_publicites {
-        let user_id: i32 = pub_row.try_get("user_id").unwrap_or(0);
-        let titre: String = pub_row.try_get("titre").unwrap_or_default();
-        let jours_restants: i32 = pub_row.try_get("jours_restants").unwrap_or(0);
+        let user_id: i32 = pub_row.get::<Option<_>, _>("user_id").unwrap_or(0);
+        let titre: String = pub_row.get::<Option<_>, _>("titre").unwrap_or_default();
+        let jours_restants: i32 = pub_row.get::<Option<_>, _>("jours_restants").unwrap_or(0);
 
         let message = format!(
             "⚠️ Votre publicité '{}' expire dans {} jour(s). Pensez à la renouveler.",
@@ -94,7 +94,7 @@ async fn check_expiring_soon_publicites(pool: &PgPool) -> Result<usize, sqlx::Er
         );
 
         let metadata = serde_json::json!({
-            "publicite_id": pub_row.try_get::<i32, _>("id").unwrap_or(0),
+            "publicite_id": pub_row.get::<i32, _>("id")(0),
             "jours_restants": jours_restants,
             "titre": titre
         });

@@ -96,7 +96,7 @@ pub async fn cors_middleware(request: Request, next: Next) -> Response {
                 origin_str,
                 config.allowed_origins.join(", ")
             );
-            
+
             // Ne pas autoriser cette origine
             // Ne pas mettre de header Access-Control-Allow-Origin = * avec credentials
             // Laisser la réponse sans header CORS = requête bloquée par le navigateur
@@ -155,7 +155,10 @@ pub async fn cors_preflight_handler(req: Request<axum::body::Body>) -> Response 
                 );
             } else {
                 // ✅ SÉCURITÉ: Origin non autorisée - rejeter la requête preflight
-                warn!("[CORS] Preflight rejeté pour origine non autorisée: {}", origin_str);
+                warn!(
+                    "[CORS] Preflight rejeté pour origine non autorisée: {}",
+                    origin_str
+                );
                 *response.status_mut() = axum::http::StatusCode::FORBIDDEN;
                 return response;
             }

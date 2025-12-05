@@ -89,7 +89,7 @@ pub async fn generate_video_for_product(
             Err(err) => {
                 let error_message = format!("{}", err);
                 let error_detail = format!("{:?}", err);
-                
+
                 error!(
                     "[ProductVideoController] ❌ Erreur génération vidéo pour job {}: {}",
                     job_id, error_message
@@ -98,21 +98,16 @@ pub async fn generate_video_for_product(
                     "[ProductVideoController] Détails: service_id={}, product_index={}, user_id={}",
                     service_id, product_index, user_clone.id
                 );
-                error!(
-                    "[ProductVideoController] Stack trace: {}",
-                    error_detail
-                );
-                
+                error!("[ProductVideoController] Stack trace: {}", error_detail);
+
                 // Créer des steps d'erreur pour le tracking
-                let error_steps = vec![
-                    crate::services::video_generation_service::ProgressStep {
-                        key: "error",
-                        label: "Erreur de génération",
-                        status: "failed",
-                        detail: Some(error_message.clone()),
-                    }
-                ];
-                
+                let error_steps = vec![crate::services::video_generation_service::ProgressStep {
+                    key: "error",
+                    label: "Erreur de génération",
+                    status: "failed",
+                    detail: Some(error_message.clone()),
+                }];
+
                 if let Err(mark_err) = state_clone
                     .video_jobs
                     .mark_failed(job_id, &error_message, Some(&error_steps))
@@ -198,7 +193,10 @@ pub async fn get_my_videos(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<Json<serde_json::Value>> {
-    info!("[ProductVideoController] Récupération vidéos pour user_id={}", user.id);
+    info!(
+        "[ProductVideoController] Récupération vidéos pour user_id={}",
+        user.id
+    );
 
     let videos: Vec<UserVideoRow> = sqlx::query_as::<_, UserVideoRow>(
         r#"
@@ -234,17 +232,24 @@ pub async fn get_my_videos(
         AND m.type = 'video_generated'
         AND m.media_type = 'video'
         ORDER BY m.created_at DESC
-        "#
+        "#,
     )
     .bind(user.id)
     .fetch_all(&state.pg)
     .await
     .map_err(|err| {
         error!("[ProductVideoController] Erreur récupération vidéos: {err:?}");
-        AppError::Internal(format!("Erreur lors de la récupération des vidéos: {}", err))
+        AppError::Internal(format!(
+            "Erreur lors de la récupération des vidéos: {}",
+            err
+        ))
     })?;
 
-    info!("[ProductVideoController] ✅ {} vidéo(s) trouvée(s) pour user_id={}", videos.len(), user.id);
+    info!(
+        "[ProductVideoController] ✅ {} vidéo(s) trouvée(s) pour user_id={}",
+        videos.len(),
+        user.id
+    );
 
     // Construire l'URL complète pour chaque vidéo
     let api_base_url = std::env::var("PUBLIC_BASE_URL")
@@ -256,7 +261,11 @@ pub async fn get_my_videos(
             let video_url = if row.path.starts_with("http://") || row.path.starts_with("https://") {
                 row.path.clone()
             } else {
-                format!("{}/{}", api_base_url.trim_end_matches('/'), row.path.trim_start_matches('/'))
+                format!(
+                    "{}/{}",
+                    api_base_url.trim_end_matches('/'),
+                    row.path.trim_start_matches('/')
+                )
             };
 
             UserVideo {

@@ -1,0 +1,117 @@
+==================================================
+OBTENIR LES VALEURS CDN
+==================================================
+
+PARTIE 1 : CLOUDFLARE
+==================================================
+
+Variable : EXPO_PUBLIC_CDN_CLOUDFLARE_URL
+
+1. Connectez-vous à Cloudflare Dashboard
+   → https://dash.cloudflare.com
+
+2. Sélectionnez votre domaine : yukpomnang.com
+
+3. Allez dans l'onglet "DNS"
+
+4. Cherchez l'enregistrement CNAME avec :
+   - Type : CNAME
+   - Name : cdn
+   - Target : (votre configuration)
+   - Proxy : ✅ Orange cloud activé
+
+5. Si l'enregistrement existe :
+   → Votre URL sera : https://cdn.yukpomnang.com
+   → Copiez cette valeur
+
+6. Si l'enregistrement n'existe pas :
+   → Créez un nouveau CNAME
+   → Type: CNAME, Name: cdn, Target: votre-domaine.com
+   → Activez le proxy (cloud orange)
+   → Attendez quelques minutes
+   → L'URL sera : https://cdn.yukpomnang.com
+
+RÉSULTAT :
+EXPO_PUBLIC_CDN_CLOUDFLARE_URL=https://cdn.yukpomnang.com
+
+==================================================
+PARTIE 2 : AWS CLOUDFRONT
+==================================================
+
+Variable 1 : EXPO_PUBLIC_CDN_CLOUDFRONT_US_URL
+Variable 2 : EXPO_PUBLIC_CDN_CLOUDFRONT_EU_URL
+
+1. Connectez-vous à AWS Console
+   → https://console.aws.amazon.com
+
+2. Allez dans "CloudFront"
+   → Recherchez "CloudFront" dans la barre de recherche
+   → Ou Services → Networking & Content Delivery → CloudFront
+
+3. Dans "Distributions", vous verrez vos distributions
+
+4. Pour chaque distribution :
+   → Cliquez sur l'ID de la distribution
+   → Dans "General" → "Domain Name"
+   → Copiez l'URL (ex: d1234567890abc.cloudfront.net)
+
+5. Identifiez quelle distribution est pour US et laquelle pour EU :
+   - Vérifiez "Price Class" dans la distribution
+   - US = Price Class incluant US/Canada
+   - EU = Price Class Europe uniquement
+   - Ou créez deux distributions différentes
+
+6. Si vous n'avez pas de distribution CloudFront :
+
+   A. Créer Distribution US :
+   → Cliquez "Create Distribution"
+   → Origin Domain : yukpo-video-prod.s3.eu-central-1.wasabisys.com
+   → Price Class : US/Canada/Europe (ou All)
+   → Cliquez "Create Distribution"
+   → Attendez Status = "Deployed" (5-10 min)
+   → Copiez le Domain Name
+
+   B. Créer Distribution EU (optionnel) :
+   → Même processus mais Price Class = Europe uniquement
+   → Ou utilisez la même distribution si Price Class = All
+
+RÉSULTAT :
+EXPO_PUBLIC_CDN_CLOUDFRONT_US_URL=https://d1234567890abc.cloudfront.net
+EXPO_PUBLIC_CDN_CLOUDFRONT_EU_URL=https://d9876543210xyz.cloudfront.net
+
+OU (si une seule distribution) :
+EXPO_PUBLIC_CDN_CLOUDFRONT_US_URL=https://d1234567890abc.cloudfront.net
+EXPO_PUBLIC_CDN_CLOUDFRONT_EU_URL=https://d1234567890abc.cloudfront.net
+
+==================================================
+FICHIER .env COMPLET
+==================================================
+
+mobile/.env :
+
+# Cloudflare CDN
+EXPO_PUBLIC_CDN_CLOUDFLARE_URL=https://cdn.yukpomnang.com
+
+# AWS CloudFront
+EXPO_PUBLIC_CDN_CLOUDFRONT_US_URL=https://d1234567890abc.cloudfront.net
+EXPO_PUBLIC_CDN_CLOUDFRONT_EU_URL=https://d9876543210xyz.cloudfront.net
+
+# Wasabi Direct (fallback)
+EXPO_PUBLIC_WASABI_DIRECT_URL=https://yukpo-video-prod.s3.eu-central-1.wasabisys.com
+
+==================================================
+TEST RAPIDE
+==================================================
+
+Cloudflare :
+→ Ouvrez : https://cdn.yukpomnang.com
+→ Si ça répond (même erreur 404) = OK
+
+AWS CloudFront :
+→ Ouvrez : https://d1234567890abc.cloudfront.net
+→ Si ça répond = OK
+
+==================================================
+
+
+

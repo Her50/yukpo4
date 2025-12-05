@@ -39,11 +39,11 @@ impl AIImageGenerationService {
     }
 
     /// Génère des images pour un produit/service basées sur la description
-    /// 
+    ///
     /// # Arguments
     /// * `description` - Description du produit/service
     /// * `count` - Nombre d'images à générer (1-5, DALL-E 3 limite à 1 par requête)
-    /// 
+    ///
     /// # Returns
     /// Vec de bytes d'images (JPEG)
     pub async fn generate_product_images(
@@ -62,7 +62,10 @@ impl AIImageGenerationService {
 
         // DALL-E 3 génère 1 image par requête, donc on fait plusieurs requêtes
         for i in 0..max_count {
-            match self.generate_single_image(description, i + 1, max_count).await {
+            match self
+                .generate_single_image(description, i + 1, max_count)
+                .await
+            {
                 Ok(image_bytes) => {
                     images.push(image_bytes);
                     info!("[AIImageGeneration] ✅ Image {} générée avec succès", i + 1);
@@ -70,7 +73,8 @@ impl AIImageGenerationService {
                 Err(err) => {
                     warn!(
                         "[AIImageGeneration] ⚠️ Erreur génération image {}: {}",
-                        i + 1, err
+                        i + 1,
+                        err
                     );
                     // Continuer même si une image échoue
                 }
@@ -165,15 +169,10 @@ impl AIImageGenerationService {
         let image_url = &dalle_response.data[0].url;
 
         // Télécharger l'image depuis l'URL
-        let image_response = self
-            .client
-            .get(image_url)
-            .send()
-            .await
-            .map_err(|e| {
-                error!("[AIImageGeneration] Erreur téléchargement image: {}", e);
-                AppError::Internal(format!("Erreur téléchargement image: {}", e))
-            })?;
+        let image_response = self.client.get(image_url).send().await.map_err(|e| {
+            error!("[AIImageGeneration] Erreur téléchargement image: {}", e);
+            AppError::Internal(format!("Erreur téléchargement image: {}", e))
+        })?;
 
         if !image_response.status().is_success() {
             return Err(AppError::Internal(
@@ -210,14 +209,16 @@ pub async fn generate_and_save_ai_images(
     );
 
     let ai_service = AIImageGenerationService::new()?;
-    let images = ai_service.generate_product_images(description, count).await?;
+    let images = ai_service
+        .generate_product_images(description, count)
+        .await?;
 
     let mut saved_media_ids = Vec::new();
 
     // Utiliser le service de stockage média
-    use crate::services::media_storage_service::MediaStorageService;
     use crate::config::storage::MediaStorageConfig;
-    
+    use crate::services::media_storage_service::MediaStorageService;
+
     let storage_config = MediaStorageConfig::from_env();
     let storage_service = MediaStorageService::new(storage_config);
 
@@ -260,13 +261,16 @@ pub async fn generate_and_save_ai_images(
                 saved_media_ids.push(media_id);
                 info!(
                     "[AIImageGeneration] ✅ Image {} sauvegardée avec media_id={}, path={}",
-                    index + 1, media_id, stored_location.storage_path
+                    index + 1,
+                    media_id,
+                    stored_location.storage_path
                 );
             }
             Err(err) => {
                 error!(
                     "[AIImageGeneration] ❌ Erreur sauvegarde image {}: {}",
-                    index + 1, err
+                    index + 1,
+                    err
                 );
                 // Continuer même si une sauvegarde échoue
             }
@@ -286,4 +290,3 @@ pub async fn generate_and_save_ai_images(
 
     Ok(saved_media_ids)
 }
-

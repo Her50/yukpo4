@@ -80,7 +80,7 @@ pub async fn record_search(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur enregistrement recherche: {}", e)))?;
 
-    let id: i32 = row.get("id");
+    let id: i32 = row.get::<i32, _>("id");
     log::info!("[SearchHistoryService] ✅ Recherche enregistrée: {}", id);
 
     Ok(id)
@@ -153,9 +153,9 @@ pub async fn get_popular_searches(
     let popular = rows
         .iter()
         .map(|row| PopularSearch {
-            query_text: row.get("query_text"),
-            search_count: row.get("search_count"),
-            last_searched: row.get("last_searched"),
+            query_text: row.get::<String, _>("query_text"),
+            search_count: row.get::<i64, _>("search_count"),
+            last_searched: row.get::<chrono::DateTime<chrono::Utc>, _>("last_searched"),
         })
         .collect();
 
@@ -253,8 +253,8 @@ pub async fn get_search_suggestions(
     let suggestions = rows
         .iter()
         .map(|row| SearchSuggestion {
-            query_text: row.get("query_text"),
-            search_count: row.get("search_count"),
+            query_text: row.get::<String, _>("query_text"),
+            search_count: row.get::<i64, _>("search_count"),
         })
         .collect();
 
@@ -287,20 +287,20 @@ pub async fn get_user_search_history(
     let history = rows
         .iter()
         .map(|row| SearchHistoryEntry {
-            id: row.get("id"),
-            user_id: row.get("user_id"),
-            query_text: row.get("query_text"),
-            query_type: row.get("query_type"),
-            category: row.get("category"),
-            filters: row.get("filters"),
-            location_lat: row.get("location_lat"),
-            location_lon: row.get("location_lon"),
-            results_count: row.get("results_count"),
-            clicked_result_id: row.get("clicked_result_id"),
-            clicked_at: row.get("clicked_at"),
-            session_id: row.get("session_id"),
-            device_type: row.get("device_type"),
-            created_at: row.get("created_at"),
+            id: row.get::<i32, _>("id"),
+            user_id: row.get::<Option<i32>, _>("user_id"),
+            query_text: row.get::<String, _>("query_text"),
+            query_type: row.get::<String, _>("query_type"),
+            category: row.get::<Option<String>, _>("category"),
+            filters: row.get::<Option<serde_json::Value>, _>("filters"),
+            location_lat: row.get::<Option<f64>, _>("location_lat"),
+            location_lon: row.get::<Option<f64>, _>("location_lon"),
+            results_count: row.get::<i32, _>("results_count"),
+            clicked_result_id: row.get::<Option<i32>, _>("clicked_result_id"),
+            clicked_at: row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("clicked_at"),
+            session_id: row.get::<Option<String>, _>("session_id"),
+            device_type: row.get::<Option<String>, _>("device_type"),
+            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
         })
         .collect();
 
@@ -324,7 +324,7 @@ pub async fn cleanup_old_search_history(pool: &PgPool, days_to_keep: i32) -> Res
     .await
     .map_err(|e| AppError::Internal(format!("Erreur nettoyage historique: {}", e)))?;
 
-    let deleted_count: i64 = row.get("deleted_count");
+    let deleted_count: i64 = row.get::<i64, _>("deleted_count");
     log::info!(
         "[SearchHistoryService] ✅ {} recherches supprimées",
         deleted_count

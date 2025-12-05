@@ -48,6 +48,14 @@ const linking: LinkingOptions<any> = {
         },
       },
       ProviderOrderManagement: 'orders/management',
+      // ✅ NOUVEAU: Deep links Flash Sales et Promos
+      FlashSale: {
+        path: 'flash-sale/:sessionId?',
+        parse: {
+          sessionId: (sessionId: string) => sessionId || undefined,
+        },
+      },
+      GlobalPromoCatalog: 'promo/black-friday',
     },
   },
 };

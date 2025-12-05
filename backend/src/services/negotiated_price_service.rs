@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 use log::info;
 use serde::Serialize;
-use sqlx::{FromRow, PgPool};
+use sqlx::{FromRow, PgPool, Row};
 
 use crate::core::types::{AppError, AppResult};
 
@@ -33,11 +33,11 @@ impl NegotiatedPriceService {
     /// Crée une offre de prix négocié
     pub async fn create_negotiated_price(
         &self,
-        _conversation_id: String,
-        _service_id: i32,
-        _product_index: Option<i32>,
-        _merchant_user_id: i32,
-        _client_user_id: i32,
+        conversation_id: String,
+        service_id: i32,
+        product_index: Option<i32>,
+        merchant_user_id: i32,
+        client_user_id: i32,
         original_price_cents: i64,
         negotiated_price_cents: i64,
         expires_in_hours: Option<i32>,
@@ -50,22 +50,60 @@ impl NegotiatedPriceService {
         }
 
         // Calculer la date d'expiration
-        let _expires_at = expires_in_hours.map(|hours| {
-            Utc::now() + Duration::hours(hours as i64)
-        });
+        let expires_at = expires_in_hours.map(|hours| Utc::now() + Duration::hours(hours as i64));
 
-        // Note: negotiated_prices table n'existe pas encore dans les migrations
-        // TODO: Créer la migration pour cette table
-        // Pour l'instant, cette fonction est un placeholder
+        // ✅ CORRIGÉ: Annuler toute offre en attente existante pour cette conversation/service/produit
+        sqlx::query(
+            r#"
+            UPDATE negotiated_prices
+            SET status = 'rejected'
+            WHERE conversation_id = $1
+            AND service_id = $2
+            AND (product_index = $3 OR ($3 IS NULL AND product_index IS NULL))
+            AND client_user_id = $4
+            AND status = 'pending'
+            "#,
+        )
+        .bind(&conversation_id)
+        .bind(service_id)
+        .bind(product_index)
+        .bind(client_user_id)
+        .execute(&self._pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur annulation offres précédentes: {}", e)))?;
 
-        // Note: negotiated_prices table n'existe pas encore dans les migrations
-        // TODO: Créer la migration pour cette table
-        // Pour l'instant, retourner un ID placeholder
-        let id = 0;
+        // ✅ CORRIGÉ: Insérer la nouvelle offre dans la base de données
+        let row = sqlx::query(
+            r#"
+            INSERT INTO negotiated_prices (
+                conversation_id, service_id, product_index,
+                merchant_user_id, client_user_id,
+                original_price_cents, negotiated_price_cents,
+                status, expires_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8)
+            RETURNING id
+            "#,
+        )
+        .bind(&conversation_id)
+        .bind(service_id)
+        .bind(product_index)
+        .bind(merchant_user_id)
+        .bind(client_user_id)
+        .bind(original_price_cents)
+        .bind(negotiated_price_cents)
+        .bind(expires_at)
+        .fetch_one(&self._pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur création offre: {}", e)))?;
+
+        let id: i32 = row
+            .try_get("id")
+            .map_err(|e| AppError::Internal(format!("Erreur extraction ID: {}", e)))?;
 
         info!(
-            "✅ Offre de prix négocié créée: conversation={}, service={}, produit={:?}, prix={} -> {}",
-            _conversation_id, _service_id, _product_index, original_price_cents, negotiated_price_cents
+            "✅ Offre de prix négocié créée: id={}, conversation={}, service={}, produit={:?}, prix={} -> {}",
+            id, conversation_id, service_id, product_index, original_price_cents, negotiated_price_cents
         );
 
         Ok(id)
@@ -74,46 +112,283 @@ impl NegotiatedPriceService {
     /// Récupère le prix négocié actif pour une conversation/service/produit
     pub async fn get_active_negotiated_price(
         &self,
-        _conversation_id: String,
-        _service_id: i32,
-        _product_index: Option<i32>,
-        _client_user_id: i32,
+        conversation_id: String,
+        service_id: i32,
+        product_index: Option<i32>,
+        client_user_id: i32,
     ) -> AppResult<Option<i64>> {
-        // Note: negotiated_prices table n'existe pas encore dans les migrations
-        // TODO: Créer la migration pour cette table
-        // Pour l'instant, retourner None
-        Ok(None)
+        // ✅ CORRIGÉ: Récupérer le prix négocié accepté depuis la base de données
+        let row = sqlx::query(
+            r#"
+            SELECT negotiated_price_cents
+            FROM negotiated_prices
+            WHERE conversation_id = $1
+            AND service_id = $2
+            AND (product_index = $3 OR ($3 IS NULL AND product_index IS NULL))
+            AND client_user_id = $4
+            AND status = 'accepted'
+            ORDER BY accepted_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(&conversation_id)
+        .bind(service_id)
+        .bind(product_index)
+        .bind(client_user_id)
+        .fetch_optional(&self._pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération prix négocié: {}", e)))?;
+
+        if let Some(row) = row {
+            let price_cents: i64 = row
+                .try_get("negotiated_price_cents")
+                .map_err(|e| AppError::Internal(format!("Erreur extraction prix: {}", e)))?;
+            Ok(Some(price_cents))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Récupère l'offre en attente pour une conversation/service/produit
     pub async fn get_pending_offer(
         &self,
-        _conversation_id: String,
-        _service_id: i32,
-        _product_index: Option<i32>,
-        _client_user_id: i32,
+        conversation_id: String,
+        service_id: i32,
+        product_index: Option<i32>,
+        client_user_id: i32,
     ) -> AppResult<Option<NegotiatedPriceOffer>> {
-        // Note: negotiated_prices table n'existe pas encore dans les migrations
-        // TODO: Créer la migration pour cette table
-        // Pour l'instant, retourner None
-        Ok(None)
+        // ✅ CORRIGÉ: Récupérer l'offre en attente depuis la base de données
+        let offer = sqlx::query_as::<_, NegotiatedPriceOffer>(
+            r#"
+            SELECT id, conversation_id, service_id, product_index,
+                   merchant_user_id, client_user_id,
+                   original_price_cents, negotiated_price_cents,
+                   status, expires_at, created_at
+            FROM negotiated_prices
+            WHERE conversation_id = $1
+            AND service_id = $2
+            AND (product_index = $3 OR ($3 IS NULL AND product_index IS NULL))
+            AND client_user_id = $4
+            AND status = 'pending'
+            AND (expires_at IS NULL OR expires_at > NOW())
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(&conversation_id)
+        .bind(service_id)
+        .bind(product_index)
+        .bind(client_user_id)
+        .fetch_optional(&self._pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération offre: {}", e)))?;
+
+        Ok(offer)
     }
 
     /// Accepte une offre de prix négocié
-    pub async fn accept_offer(&self, _offer_id: i32, _client_user_id: i32) -> AppResult<()> {
-        // Note: negotiated_prices table n'existe pas encore dans les migrations
-        // TODO: Créer la migration pour cette table
-        // Pour l'instant, retourner une erreur
-        Err(AppError::NotFound("Offre introuvable ou expirée".into()))
+    pub async fn accept_offer(&self, offer_id: i32, user_id: i32) -> AppResult<()> {
+        // ✅ CORRIGÉ: Vérifier que l'offre existe et que l'utilisateur est autorisé
+        let offer = sqlx::query(
+            r#"
+            SELECT merchant_user_id, client_user_id, status, expires_at
+            FROM negotiated_prices
+            WHERE id = $1
+            "#,
+        )
+        .bind(offer_id)
+        .fetch_optional(&self._pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur vérification offre: {}", e)))?;
+
+        let offer_row = offer.ok_or_else(|| AppError::NotFound("Offre introuvable".into()))?;
+
+        let merchant_id: i32 = offer_row
+            .try_get("merchant_user_id")
+            .map_err(|e| AppError::Internal(format!("Erreur extraction merchant_id: {}", e)))?;
+        let client_id: i32 = offer_row
+            .try_get("client_user_id")
+            .map_err(|e| AppError::Internal(format!("Erreur extraction client_id: {}", e)))?;
+        let status: String = offer_row
+            .try_get("status")
+            .map_err(|e| AppError::Internal(format!("Erreur extraction status: {}", e)))?;
+        let expires_at: Option<chrono::DateTime<Utc>> = offer_row
+            .try_get("expires_at")
+            .map_err(|_| None)
+            .unwrap_or(None);
+
+        // Vérifier que l'utilisateur est le prestataire (seul le prestataire peut accepter)
+        if user_id != merchant_id {
+            return Err(AppError::Forbidden(
+                "Seul le prestataire peut accepter une offre".into(),
+            ));
+        }
+
+        // Vérifier que l'offre est en attente
+        if status != "pending" {
+            return Err(AppError::BadRequest(
+                format!("L'offre n'est plus en attente (status: {})", status).into(),
+            ));
+        }
+
+        // Vérifier que l'offre n'est pas expirée
+        if let Some(expires) = expires_at {
+            if expires < Utc::now() {
+                // Marquer comme expirée
+                sqlx::query("UPDATE negotiated_prices SET status = 'expired' WHERE id = $1")
+                    .bind(offer_id)
+                    .execute(&self._pool)
+                    .await
+                    .ok();
+                return Err(AppError::BadRequest("L'offre a expiré".into()));
+            }
+        }
+
+        // ✅ CORRIGÉ: Accepter l'offre
+        let rows_affected = sqlx::query(
+            r#"
+            UPDATE negotiated_prices
+            SET status = 'accepted', accepted_at = NOW()
+            WHERE id = $1 AND status = 'pending'
+            "#,
+        )
+        .bind(offer_id)
+        .execute(&self._pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur acceptation offre: {}", e)))?;
+
+        if rows_affected.rows_affected() == 0 {
+            return Err(AppError::NotFound(
+                "Offre introuvable ou déjà traitée".into(),
+            ));
+        }
+
+        info!("✅ Offre de prix négocié acceptée: id={}", offer_id);
+        Ok(())
     }
 
     /// Rejette une offre de prix négocié
-    pub async fn reject_offer(&self, _offer_id: i32, _client_user_id: i32) -> AppResult<()> {
-        // Note: negotiated_prices table n'existe pas encore dans les migrations
-        // TODO: Créer la migration pour cette table
-        // Pour l'instant, retourner une erreur
-        Err(AppError::NotFound("Offre introuvable".into()))
+    pub async fn reject_offer(&self, offer_id: i32, user_id: i32) -> AppResult<()> {
+        // ✅ CORRIGÉ: Vérifier que l'offre existe et que l'utilisateur est autorisé
+        let offer = sqlx::query(
+            r#"
+            SELECT merchant_user_id, client_user_id, status
+            FROM negotiated_prices
+            WHERE id = $1
+            "#,
+        )
+        .bind(offer_id)
+        .fetch_optional(&self._pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur vérification offre: {}", e)))?;
+
+        let offer_row = offer.ok_or_else(|| AppError::NotFound("Offre introuvable".into()))?;
+
+        let merchant_id: i32 = offer_row
+            .try_get("merchant_user_id")
+            .map_err(|e| AppError::Internal(format!("Erreur extraction merchant_id: {}", e)))?;
+        let _client_id: i32 = offer_row
+            .try_get("client_user_id")
+            .map_err(|e| AppError::Internal(format!("Erreur extraction client_id: {}", e)))?;
+        let status: String = offer_row
+            .try_get("status")
+            .map_err(|e| AppError::Internal(format!("Erreur extraction status: {}", e)))?;
+
+        // Vérifier que l'utilisateur est le prestataire (seul le prestataire peut rejeter)
+        if user_id != merchant_id {
+            return Err(AppError::Forbidden(
+                "Seul le prestataire peut rejeter une offre".into(),
+            ));
+        }
+
+        // Vérifier que l'offre est en attente
+        if status != "pending" {
+            return Err(AppError::BadRequest(
+                format!("L'offre n'est plus en attente (status: {})", status).into(),
+            ));
+        }
+
+        // ✅ CORRIGÉ: Rejeter l'offre
+        let rows_affected = sqlx::query(
+            r#"
+            UPDATE negotiated_prices
+            SET status = 'rejected'
+            WHERE id = $1 AND status = 'pending'
+            "#,
+        )
+        .bind(offer_id)
+        .execute(&self._pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur rejet offre: {}", e)))?;
+
+        if rows_affected.rows_affected() == 0 {
+            return Err(AppError::NotFound(
+                "Offre introuvable ou déjà traitée".into(),
+            ));
+        }
+
+        info!("✅ Offre de prix négocié rejetée: id={}", offer_id);
+        Ok(())
+    }
+
+    /// ✅ NOUVEAU: Annule une offre de prix négocié (pour le client)
+    pub async fn cancel_offer(&self, offer_id: i32, user_id: i32) -> AppResult<()> {
+        // Vérifier que l'offre existe et que l'utilisateur est le client
+        let offer = sqlx::query(
+            r#"
+            SELECT client_user_id, status
+            FROM negotiated_prices
+            WHERE id = $1
+            "#,
+        )
+        .bind(offer_id)
+        .fetch_optional(&self._pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur vérification offre: {}", e)))?;
+
+        let offer_row = offer.ok_or_else(|| AppError::NotFound("Offre introuvable".into()))?;
+
+        let client_id: i32 = offer_row
+            .try_get("client_user_id")
+            .map_err(|e| AppError::Internal(format!("Erreur extraction client_id: {}", e)))?;
+        let status: String = offer_row
+            .try_get("status")
+            .map_err(|e| AppError::Internal(format!("Erreur extraction status: {}", e)))?;
+
+        // Vérifier que l'utilisateur est le client
+        if user_id != client_id {
+            return Err(AppError::Forbidden(
+                "Seul le client peut annuler sa propre offre".into(),
+            ));
+        }
+
+        // Vérifier que l'offre est en attente
+        if status != "pending" {
+            return Err(AppError::BadRequest(
+                format!("L'offre n'est plus en attente (status: {})", status).into(),
+            ));
+        }
+
+        // Annuler l'offre
+        let rows_affected = sqlx::query(
+            r#"
+            UPDATE negotiated_prices
+            SET status = 'rejected'
+            WHERE id = $1 AND status = 'pending'
+            "#,
+        )
+        .bind(offer_id)
+        .execute(&self._pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur annulation offre: {}", e)))?;
+
+        if rows_affected.rows_affected() == 0 {
+            return Err(AppError::NotFound(
+                "Offre introuvable ou déjà traitée".into(),
+            ));
+        }
+
+        info!("✅ Offre de prix négocié annulée: id={}", offer_id);
+        Ok(())
     }
 }
-
-

@@ -25,11 +25,15 @@ interface HopitalResultCardProps {
         distance_km?: number;
         prestations_medicales?: string[];
         urgences_disponible?: boolean;
+        // ✅ 2025-01-27: Statistiques ratings
+        average_rating?: number;
+        total_ratings?: number;
     };
     onPress?: () => void;
+    onContact?: () => void;
 }
 
-const HopitalResultCard: React.FC<HopitalResultCardProps> = ({ hospital, onPress }) => {
+const HopitalResultCard: React.FC<HopitalResultCardProps> = ({ hospital, onPress, onContact }) => {
     const navigation = useNavigation();
 
     const handlePress = () => {
@@ -86,6 +90,19 @@ const HopitalResultCard: React.FC<HopitalResultCardProps> = ({ hospital, onPress
                 </View>
             )}
 
+            {/* ✅ 2025-01-27: Statistiques de ratings */}
+            {(hospital.average_rating !== undefined || hospital.total_ratings !== undefined) && (
+                <View style={styles.ratingsRow}>
+                    <SafeIcon name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.ratingsText}>
+                        {hospital.average_rating ? `${hospital.average_rating.toFixed(1)}` : 'N/A'}
+                        {hospital.total_ratings !== undefined && hospital.total_ratings > 0 && (
+                            <Text style={styles.ratingsCount}> ({hospital.total_ratings} avis)</Text>
+                        )}
+                    </Text>
+                </View>
+            )}
+
             <View style={styles.footer}>
                 {hospital.distance_km && (
                     <View style={styles.distanceRow}>
@@ -95,6 +112,42 @@ const HopitalResultCard: React.FC<HopitalResultCardProps> = ({ hospital, onPress
                         </Text>
                     </View>
                 )}
+                <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.rdvButton]}
+                        onPress={() => {
+                            (navigation as any).navigate('Reservation', {
+                                serviceId: hospital.service_id,
+                                serviceType: 'hopital',
+                                serviceName: hospital.nom,
+                                reservationType: 'rdv',
+                            });
+                        }}
+                    >
+                        <SafeIcon name="calendar-plus" size={18} color="#fff" />
+                        <Text style={[styles.actionButtonText, styles.rdvButtonText]}>
+                            Prendre RDV
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.chatButton]}
+                        onPress={() => {
+                            if (onContact) {
+                                onContact();
+                            } else {
+                                (navigation as any).navigate('ServiceDetailSpecialized', {
+                                    serviceId: hospital.service_id,
+                                    serviceType: 'hopital',
+                                });
+                            }
+                        }}
+                    >
+                        <SafeIcon name="message-circle" size={18} color="#fff" />
+                        <Text style={[styles.actionButtonText, styles.chatButtonText]}>
+                            Contacter
+                        </Text>
+                    </TouchableOpacity>
+                </View>
                 <View style={styles.contactRow}>
                     {hospital.telephone && (
                         <TouchableOpacity
@@ -216,6 +269,23 @@ const styles = StyleSheet.create({
     prestationTagText: {
         fontSize: 12,
         color: '#374151',
+    },
+    // ✅ 2025-01-27: Styles pour ratings
+    ratingsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 8,
+    },
+    ratingsText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    ratingsCount: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontWeight: '400',
     },
     footer: {
         flexDirection: 'row',

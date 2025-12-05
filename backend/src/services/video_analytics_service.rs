@@ -46,13 +46,11 @@ pub async fn record_engagement(
     session_id: Option<String>,
     metadata: Option<Value>,
 ) -> AppResult<()> {
-    let service_id: Option<i32> = sqlx::query_scalar(
-        "SELECT service_id FROM media WHERE id = $1"
-    )
-    .bind(media_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|err| {
+    let service_id: Option<i32> = sqlx::query_scalar("SELECT service_id FROM media WHERE id = $1")
+        .bind(media_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|err| {
             error!(
                 "[VideoAnalytics] Erreur récupération service pour media {}: {:?}",
                 media_id, err
@@ -103,7 +101,7 @@ pub async fn list_recent_quality_scores(
         WHERE event_type = 'quality_score'
         ORDER BY occurred_at DESC
         LIMIT $1
-        "#
+        "#,
     )
     .bind(limit.max(1))
     .fetch_all(&state.pg)
@@ -141,7 +139,7 @@ pub async fn schedule_distribution_targets(
         sqlx::query(
             "INSERT INTO media_distribution (media_id, service_id, target, status)
              VALUES ($1, $2, $3, 'scheduled')
-             ON CONFLICT DO NOTHING"
+             ON CONFLICT DO NOTHING",
         )
         .bind(media_id)
         .bind(service_id)
@@ -213,7 +211,7 @@ pub async fn video_analytics_overview(
         FROM media
         WHERE media_type = 'video'
           AND uploaded_at >= NOW() - ($1::int * INTERVAL '1 day')
-        "#
+        "#,
     )
     .bind(days_i32)
     .fetch_one(&state.pg)
@@ -229,7 +227,7 @@ pub async fn video_analytics_overview(
         FROM media_engagement
         WHERE occurred_at >= NOW() - ($1::int * INTERVAL '1 day')
           AND event_type IN ('view', 'share', 'quality_score')
-        "#
+        "#,
     )
     .bind(days_i32)
     .fetch_one(&state.pg)
@@ -243,7 +241,7 @@ pub async fn video_analytics_overview(
             COUNT(*) FILTER (WHERE status IN ('scheduled', 'processing'))      AS pending
         FROM media_distribution
         WHERE updated_at >= NOW() - ($1::int * INTERVAL '1 day')
-        "#
+        "#,
     )
     .bind(days_i32)
     .fetch_one(&state.pg)
@@ -290,7 +288,7 @@ mod tests {
         .fetch_one(&pool)
         .await
         .expect("insert service");
-        let service_id: i32 = service_row.get("id");
+        let service_id: i32 = service_row.get::<i32, _>("id");
 
         let media_row = sqlx::query(
             r#"
@@ -303,7 +301,7 @@ mod tests {
         .fetch_one(&pool)
         .await
         .expect("insert media");
-        let media_id: i32 = media_row.get("id");
+        let media_id: i32 = media_row.get::<i32, _>("id");
 
         // Deux vues
         for session in ["sess-view-1", "sess-view-2"] {

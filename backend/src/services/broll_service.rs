@@ -106,10 +106,10 @@ impl BrollService {
 
         let key = self.cache_key(request);
         let key_clone = key.clone();
-        
+
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         use crate::utils::redis_helper;
-        
+
         match redis_helper::execute_with_retry(
             &self.redis_client,
             move |mut conn| {
@@ -118,23 +118,26 @@ impl BrollService {
             },
             3,
             500,
-        ).await {
-            Ok(Some(bytes)) => {
-                match serde_json::from_slice::<BrollClip>(&bytes) {
-                    Ok(mut clip) => {
-                        if clip.local_path.exists() {
-                            clip.variants.retain(|variant| variant.path.exists());
-                            return Ok(Some(clip));
-                        }
+        )
+        .await
+        {
+            Ok(Some(bytes)) => match serde_json::from_slice::<BrollClip>(&bytes) {
+                Ok(mut clip) => {
+                    if clip.local_path.exists() {
+                        clip.variants.retain(|variant| variant.path.exists());
+                        return Ok(Some(clip));
                     }
-                    Err(err) => debug!("[Broll] cache invalide: {err:?}"),
                 }
-            }
+                Err(err) => debug!("[Broll] cache invalide: {err:?}"),
+            },
             Ok(None) => {
                 // Pas de cache, continuer
             }
             Err(e) => {
-                debug!("[Broll] Redis indisponible pour get {}: {}. Pas de cache.", key, e);
+                debug!(
+                    "[Broll] Redis indisponible pour get {}: {}. Pas de cache.",
+                    key, e
+                );
             }
         }
 
@@ -148,16 +151,16 @@ impl BrollService {
 
         let key = self.cache_key(request);
         let key_clone = key.clone();
-        
+
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         use crate::utils::redis_helper;
-        
+
         let payload = serde_json::to_vec(clip).map_err(|err| {
             AppError::Internal(format!("Sérialisation cache b-roll impossible: {err}"))
         })?;
         let ttl = self.config.cache.ttl.as_secs();
         let payload_clone = payload.clone();
-        
+
         // Utiliser execute_with_retry pour Vec<u8>
         match redis_helper::execute_with_retry(
             &self.redis_client,
@@ -171,12 +174,17 @@ impl BrollService {
             },
             3,
             500,
-        ).await {
+        )
+        .await
+        {
             Ok(_) => {
                 debug!("[Broll] Cache mis à jour: {}", key);
             }
             Err(e) => {
-                debug!("[Broll] Redis indisponible pour set {}: {}. L'opération continue sans cache.", key, e);
+                debug!(
+                    "[Broll] Redis indisponible pour set {}: {}. L'opération continue sans cache.",
+                    key, e
+                );
             }
         }
         Ok(())

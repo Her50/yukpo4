@@ -6,7 +6,9 @@ use std::sync::Arc;
 
 use crate::{
     controllers::ia_controller::{
-        analyze_behavior, analyze_text_input, enrichir_contexte_ia, predict_ia,
+        analyze_behavior, analyze_text_input, enrichir_contexte_ia, handle_audio_suggestions,
+        handle_audio_sync, handle_auto_captions, handle_auto_cut, handle_color_grade,
+        handle_effect_preview, handle_quick_preview, handle_timeline_variants, predict_ia,
     },
     controllers::ia_status_controller::get_ia_status,
     middlewares::jwt::jwt_auth,
@@ -27,6 +29,25 @@ pub fn ia_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/ia/status", get(get_ia_status))
         // ?? Analyse de texte pour le frontend (ChatInputPanel)
         .route("/api/ia/analyze", post(analyze_text_input))
+        // ✅ NOUVEAU: Auto-cut intelligent
+        .route("/api/ia/video/auto-cut", post(handle_auto_cut))
+        // ✅ NOUVEAU: Synchronisation audio-vidéo
+        .route("/api/ia/video/audio-sync", post(handle_audio_sync))
+        // ✅ NOUVEAU: Color grading automatique
+        .route("/api/ia/media/color-grade", post(handle_color_grade))
+        // ✅ NOUVEAU: Génération automatique de sous-titres
+        .route("/api/ia/video/auto-captions", post(handle_auto_captions))
+        // ✅ NOUVEAU: Génération de previews d'effets
+        .route("/api/ia/effects/preview", post(handle_effect_preview))
+        // ✅ NOUVEAU: Génération de variantes de timeline
+        .route(
+            "/api/ia/video/timeline-variants",
+            post(handle_timeline_variants),
+        )
+        // ✅ NOUVEAU: Suggestions audio contextuelles
+        .route("/api/ia/audio/suggestions", post(handle_audio_suggestions))
+        // ✅ NOUVEAU: Génération de preview rapide
+        .route("/api/ia/video/quick-preview", post(handle_quick_preview))
         .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)
 }

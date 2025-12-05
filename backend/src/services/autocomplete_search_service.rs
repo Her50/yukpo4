@@ -249,10 +249,10 @@ pub async fn search_by_autocomplete_vector(
 
     let mut results = Vec::new();
     for row in rows {
-        let service_id: i32 = row.get("service_id");
-        let service_data: serde_json::Value = row.get("service_data");
-        let user_id: i32 = row.get("user_id");
-        let user_email: String = row.get("user_email");
+        let service_id: i32 = row.get::<i32, _>("service_id");
+        let service_data: serde_json::Value = row.get::<serde_json::Value, _>("service_data");
+        let user_id: i32 = row.get::<i32, _>("user_id");
+        let user_email: String = row.get::<String, _>("user_email");
 
         // Extraire nom prestataire du JSON ou de l'email
         let nom_prestataire = service_data
@@ -264,26 +264,26 @@ pub async fn search_by_autocomplete_vector(
 
         results.push(AutocompleteSearchResult {
             service_id,
-            product_id: row.get("product_id"),
-            product_vector: row.get("product_vector"),
-            product_labels: row.get("product_labels"),
-            location_vector: row.get("location_vector"),
-            full_vector: row.get("full_vector"),
-            chosen_location: row.get("chosen_location"),
-            usage_count: row.get("usage_count"),
-            relevance_score: row.get("relevance_score"),
+            product_id: row.get::<String, _>("product_id"),
+            product_vector: row.get::<Vec<String>, _>("product_vector"),
+            product_labels: row.get::<Vec<String>, _>("product_labels"),
+            location_vector: row.get::<Vec<String>, _>("location_vector"),
+            full_vector: row.get::<Vec<String>, _>("full_vector"),
+            chosen_location: row.get::<Option<String>, _>("chosen_location"),
+            usage_count: row.get::<i32, _>("usage_count"),
+            relevance_score: row.get::<f64, _>("relevance_score"),
             service_data,
             prestataire: Some(PrestataireInfo {
                 user_id,
                 nom: nom_prestataire,
                 avatar_url: None,
             }),
-            distance_km: row.get("distance_km"),
+            distance_km: row.get::<Option<f64>, _>("distance_km"),
             // ✅ Extractions produit
-            has_variant: row.get("has_variant"),
-            variant_dimension: row.get("variant_dimension"),
-            prix: row.get("prix"),
-            devise: row.get("devise"),
+            has_variant: row.get::<bool, _>("has_variant"),
+            variant_dimension: row.get::<Option<String>, _>("variant_dimension"),
+            prix: row.get::<Option<f64>, _>("prix"),
+            devise: row.get::<Option<String>, _>("devise"),
         });
     }
 

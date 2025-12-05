@@ -3,13 +3,16 @@ use axum::{
     body::Body,
     extract::{Extension, Path, State},
     http::{HeaderMap, HeaderValue, StatusCode},
-    response::Response,
+    response::{IntoResponse, Redirect, Response},
     routing::{delete, get, patch, post, put},
     Json, Router,
 };
 use log::{error, info, warn};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 
@@ -61,7 +64,6 @@ use crate::{
     services::creer_service,
     state::AppState,
 };
-use axum::response::IntoResponse;
 
 #[axum::debug_handler]
 async fn handle_feature_flags(State(state): State<Arc<AppState>>) -> Json<Value> {
@@ -108,6 +110,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(|| async { "Yukpomnang Backend API - Service actif" }),
         )
         .route("/api/test/ping", get(handle_ping))
+        .route("/api/health", get(handle_health_check)) // ✅ NOUVEAU 2025-12-01: Health check pour monitoring
         .route("/api/meta/feature-flags", get(handle_feature_flags))
         .route("/api/geocoding/reverse", post(handle_reverse_geocode))
         .route("/api/places/autocomplete", get(autocomplete_places))
@@ -121,7 +124,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ SÉCURITÉ: Rate limiting avec State pour accéder à Redis
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
-            rate_limit::rate_limit,
+            rate_limit,
         ))
         .layer(axum::middleware::from_fn(hide_headers::hide_headers))
         .layer(axum::middleware::from_fn(
@@ -188,8 +191,20 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
                     check_tokens,
                 )),
         )
+        // ✅ NOUVEAU 2025-12-02: Recherche paginée avec cursor-based pagination
+        .route(
+            "/api/search/paginated",
+            post(handle_paginated_search).layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                check_tokens,
+            )),
+        )
         // Nouveau endpoint pour consulter les m?triques d'optimisation
         .route("/api/ia/metrics", get(handle_optimization_metrics))
+        // ✅ NOUVEAU 2025-12-01: Métriques de recherche pour monitoring
+        .route("/api/metrics/search", get(handle_search_metrics))
+        // ✅ NOUVEAU 2025-12-01: Métriques globales pour toutes les fonctionnalités
+        .route("/api/metrics/global", get(handle_global_metrics))
         // Routes d'interaction sur services avec middleware de tracking et d?bit prestataire
         .route(
             "/api/services/{id}/message",
@@ -236,6 +251,13 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/comments/{id}/reactions",
             post(toggle_product_comment_reaction)
                 .layer(axum::middleware::from_fn(optional_jwt_auth)),
+        )
+        // ✅ FINALISÉ: Route pour upload médias dans commentaires
+        .route(
+            "/api/comments/{id}/media",
+            post(crate::routes::comment_media_routes::upload_comment_media).layer(
+                axum::middleware::from_fn_with_state(state.clone(), jwt_auth),
+            ),
         )
         .route("/api/services/{id}/score", get(get_service_score))
         .route("/api/services/{id}/stats", get(get_service_stats))
@@ -310,10 +332,9 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ CORRIGÉ 2025-12-01: Ajout DefaultBodyLimit pour éviter erreur 413 (Payload Too Large)
         .route(
             "/api/services/{service_id}/products",
-            post(add_product_to_service)
-                .layer(
-                    axum::extract::DefaultBodyLimit::max(200_000_000) // ✅ 200 MB - pour permettre images/vidéos base64 volumineuses
-                ),
+            post(add_product_to_service).layer(
+                axum::extract::DefaultBodyLimit::max(200_000_000), // ✅ 200 MB - pour permettre images/vidéos base64 volumineuses
+            ),
         )
         // ✅ NOUVEAU 2025-11-01: Routes pour cycle de vie produits (désactivation/réactivation)
         .route(
@@ -412,8 +433,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .route(
             "/api/studio/sessions/{session_id}/next",
-            get(studio_controller::get_next_video)
-                .layer(axum::middleware::from_fn(jwt_auth)),
+            get(studio_controller::get_next_video).layer(axum::middleware::from_fn(jwt_auth)),
         )
         .route(
             "/api/studio/sessions/{session_id}/previews",
@@ -438,7 +458,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ Phase 7 - Amélioration 22 : Endpoint suggestions IA
         .route(
             "/api/studio/sessions/{session_id}/suggestions",
-            post(studio_controller::generate_suggestions).layer(axum::middleware::from_fn(jwt_auth)),
+            post(studio_controller::generate_suggestions)
+                .layer(axum::middleware::from_fn(jwt_auth)),
         )
         .route(
             "/api/studio/templates",
@@ -507,7 +528,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ SÉCURITÉ: Rate limiting avec State pour accéder à Redis
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
-            rate_limit::rate_limit,
+            rate_limit,
         ))
         .layer(axum::middleware::from_fn(hide_headers::hide_headers))
         .layer(axum::middleware::from_fn(
@@ -549,6 +570,9 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Ces routes sont mergées explicitement dans lib.rs pour éviter les conflits
 
     // ✅ NOUVEAU: Routes pour système de publicité (intégrées directement)
+    use crate::controllers::bus_ticket_rating_controller;
+    use crate::controllers::chat_support_controller;
+    use crate::controllers::loyalty_controller;
     use crate::controllers::media_product_controller;
     use crate::controllers::publicite_controller;
     let publicite_routes_inline = Router::new()
@@ -571,6 +595,58 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/publicites/dashboard",
             get(publicite_controller::get_publicite_dashboard),
+        )
+        .route(
+            "/api/publicites/analytics/advanced",
+            get(publicite_controller::get_advanced_analytics),
+        )
+        .route(
+            "/api/publicites/optimization/suggestions",
+            get(publicite_controller::get_optimization_suggestions),
+        )
+        .route(
+            "/api/publicites/{id}/optimize",
+            get(publicite_controller::analyze_campaign),
+        )
+        .route(
+            "/api/publicites/alerts",
+            get(publicite_controller::get_publicite_alerts),
+        )
+        .route(
+            "/api/publicites/alerts/check",
+            post(publicite_controller::trigger_alert_check),
+        )
+        .route(
+            "/api/publicites/{id}/export",
+            get(publicite_controller::export_campaign),
+        )
+        .route(
+            "/api/publicites/export/all",
+            get(publicite_controller::export_all_campaigns),
+        )
+        .route(
+            "/api/publicites/export/excel",
+            post(publicite_controller::export_excel_campaigns),
+        )
+        .route(
+            "/api/publicites/import",
+            post(publicite_controller::import_campaign),
+        )
+        .route(
+            "/api/publicites/{id}/versions",
+            get(publicite_controller::get_publicite_versions),
+        )
+        .route(
+            "/api/publicites/{id}/versions/{version_number}",
+            get(publicite_controller::get_publicite_version),
+        )
+        .route(
+            "/api/publicites/{id}/versions/{version_number}/restore",
+            post(publicite_controller::restore_publicite_version),
+        )
+        .route(
+            "/api/publicites/{id}/versions/{v1}/compare/{v2}",
+            get(publicite_controller::compare_publicite_versions),
         )
         .route(
             "/api/publicites/track-click",
@@ -604,10 +680,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
                 .layer(axum::extract::DefaultBodyLimit::max(100_000_000)) // ✅ 100 MB - pour upload de médias de preuve
                 .layer(axum::middleware::from_fn(jwt_auth)),
         )
-        .route(
-            "/api/media/proof/{*filename}",
-            get(serve_proof_media_file),
-        );
+        .route("/api/media/proof/{*filename}", get(serve_proof_media_file));
     // Routes pour product_modalities (modalités réutilisables)
     let modality_routes = router_modalities::modality_routes(state.clone());
 
@@ -642,7 +715,7 @@ async fn handle_direct_search(
 
     // Extraire specialized_type depuis l'input (pour recherche spécialisée dédiée)
     let specialized_type = input.specialized_type.as_deref();
-    
+
     log_info(&format!(
         "[DIRECT_SEARCH] Recherche directe pour utilisateur {} (GPS: {:?}, specialized_type: {:?})",
         user.id, input.gps_mobile, specialized_type
@@ -670,9 +743,9 @@ async fn handle_direct_search(
     // ✅ NOUVELLE LOGIQUE 2025-11-28: Si audio présent, transcrire PUIS combiner avec texte
     if has_audio {
         use crate::services::audio_transcription_service::AudioTranscriptionService;
-        
+
         log_info("[DIRECT_SEARCH] 🎤 Audio détecté - Transcription en cours...");
-        
+
         if let Some(audios) = &input.audio_base64 {
             if let Some(first_audio) = audios.first() {
                 match AudioTranscriptionService::transcribe_audio_base64(first_audio).await {
@@ -683,14 +756,14 @@ async fn handle_direct_search(
                             transcription.language,
                             transcription.confidence
                         ));
-                        
+
                         // Combiner le texte existant avec la transcription
                         if user_text.trim().is_empty() {
                             user_text = transcription.text;
                         } else {
                             user_text = format!("{} {}", user_text.trim(), transcription.text);
                         }
-                        
+
                         log_info(&format!(
                             "[DIRECT_SEARCH] 📝 Texte combiné après transcription: '{}'",
                             user_text.chars().take(150).collect::<String>()
@@ -795,9 +868,11 @@ async fn handle_direct_search(
 
                 // ✅ APPELER RECHERCHE avec l'input combiné
                 let (mut result, tokens_consumed_search) = rechercher_besoin_direct(
-                    &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
-                    Some(_state.cache_service.clone()), // ✅ CORRIGÉ: Réutiliser le cache service
+                    &_state.pg,                          // ✅ CORRIGÉ: Utiliser le pool existant
+                    Some(_state.cache_service.clone()),  // ✅ CORRIGÉ: Réutiliser le cache service
                     _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique (déjà Option)
+                    Some(_state.search_metrics.clone()), // ✅ NOUVEAU 2025-12-01: Service de métriques singleton
+                    Some(_state.scalability.clone()), // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour cache optimisé
                     Some(user.id),
                     &combined_search_text,
                     gps_zone,
@@ -858,15 +933,18 @@ async fn handle_direct_search(
                     });
 
                     // ✅ OPTIMISÉ: Utiliser le cache pour les publicités
-                    let publicite_service = crate::services::publicite_search_service::PubliciteSearchService::new(
-                        Some(_state.cache_service.clone())
-                    );
-                    if let Err(e) = publicite_service.enrich_search_results_with_promotion(
-                        &_state.pg,
-                        resultats,
-                        user_coords
-                    ).await {
-                        log_error(&format!("[DIRECT_SEARCH] Erreur enrichissement promotion: {}", e));
+                    let publicite_service =
+                        crate::services::publicite_search_service::PubliciteSearchService::new(
+                            Some(_state.cache_service.clone()),
+                        );
+                    if let Err(e) = publicite_service
+                        .enrich_search_results_with_promotion(&_state.pg, resultats, user_coords)
+                        .await
+                    {
+                        log_error(&format!(
+                            "[DIRECT_SEARCH] Erreur enrichissement promotion: {}",
+                            e
+                        ));
                     }
 
                     // Re-trier par score
@@ -881,7 +959,7 @@ async fn handle_direct_search(
 
                 // ✅ OPTIMISÉ 2025-11-30: Extraire l'objet prestataires depuis le résultat
                 let prestataires = result.get("prestataires").cloned();
-                
+
                 // Construire la réponse avec résultats de recherche globale + méta-données analyse image
                 let response = serde_json::json!({
                     "status": "success",
@@ -928,9 +1006,11 @@ async fn handle_direct_search(
                     let search_radius_km = Some(50);
 
                     let (result, tokens_consumed) = rechercher_besoin_direct(
-                        &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
+                        &_state.pg,                          // ✅ CORRIGÉ: Utiliser le pool existant
                         Some(_state.cache_service.clone()), // ✅ CORRIGÉ: Réutiliser le cache service
                         _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique (déjà Option)
+                        Some(_state.search_metrics.clone()), // ✅ NOUVEAU 2025-12-01: Service de métriques singleton
+                        Some(_state.scalability.clone()), // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour cache optimisé
                         Some(user.id),
                         &user_text,
                         gps_zone,
@@ -941,7 +1021,7 @@ async fn handle_direct_search(
 
                     // ✅ OPTIMISÉ 2025-11-30: Extraire l'objet prestataires depuis le résultat
                     let prestataires = result.get("prestataires").cloned();
-                    
+
                     let response = serde_json::json!({
                         "status": "success",
                         "intention": "recherche_besoin",
@@ -1011,17 +1091,19 @@ async fn handle_direct_search(
     ));
 
     // Recherche directe sans détection d'intention, avec filtrage GPS
-    let (mut result, tokens_consumed) =
-        rechercher_besoin_direct(
-            &_state.pg, // ✅ CORRIGÉ: Utiliser le pool existant
-            Some(_state.cache_service.clone()), // ✅ CORRIGÉ: Réutiliser le cache service
-            _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique (déjà Option)
-            Some(user.id), 
-            &user_text, 
-            gps_zone, 
-            search_radius_km, 
-            specialized_type
-        ).await?;
+    let (mut result, tokens_consumed) = rechercher_besoin_direct(
+        &_state.pg,                          // ✅ CORRIGÉ: Utiliser le pool existant
+        Some(_state.cache_service.clone()),  // ✅ CORRIGÉ: Réutiliser le cache service
+        _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique (déjà Option)
+        Some(_state.search_metrics.clone()), // ✅ NOUVEAU 2025-12-01: Service de métriques singleton
+        Some(_state.scalability.clone()), // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour cache optimisé
+        Some(user.id),
+        &user_text,
+        gps_zone,
+        search_radius_km,
+        specialized_type,
+    )
+    .await?;
 
     // ✅ ENRICHIR avec données de publicité et booster scores
     if let Some(resultats) = result.get_mut("resultats").and_then(|r| r.as_array_mut()) {
@@ -1038,15 +1120,18 @@ async fn handle_direct_search(
         });
 
         // ✅ OPTIMISÉ: Utiliser le cache pour les publicités
-        let publicite_service = crate::services::publicite_search_service::PubliciteSearchService::new(
-            Some(_state.cache_service.clone())
-        );
-        if let Err(e) = publicite_service.enrich_search_results_with_promotion(
-            &_state.pg,
-            resultats,
-            user_coords
-        ).await {
-            log_error(&format!("[DIRECT_SEARCH] Erreur enrichissement promotion: {}", e));
+        let publicite_service =
+            crate::services::publicite_search_service::PubliciteSearchService::new(Some(
+                _state.cache_service.clone(),
+            ));
+        if let Err(e) = publicite_service
+            .enrich_search_results_with_promotion(&_state.pg, resultats, user_coords)
+            .await
+        {
+            log_error(&format!(
+                "[DIRECT_SEARCH] Erreur enrichissement promotion: {}",
+                e
+            ));
             // Continuer même si erreur
         }
 
@@ -1066,10 +1151,10 @@ async fn handle_direct_search(
     } else {
         "text"
     };
-    
+
     // ✅ OPTIMISÉ 2025-11-30: Extraire l'objet prestataires depuis le résultat (s'il existe)
     let prestataires = result.get("prestataires").cloned();
-    
+
     let response = serde_json::json!({
         "status": "success",
         "intention": "recherche_besoin",
@@ -1269,6 +1354,80 @@ async fn handle_ping() -> Result<axum::response::Response, axum::http::StatusCod
     Ok(axum::Json(response).into_response())
 }
 
+/// ✅ NOUVEAU 2025-12-01: Health check endpoint pour monitoring et load balancer
+/// Compatible avec Kubernetes, Docker Swarm, et autres orchestrateurs
+#[axum::debug_handler]
+async fn handle_health_check(
+    State(state): State<Arc<AppState>>,
+) -> Result<axum::response::Response, axum::http::StatusCode> {
+    use chrono::Utc;
+
+    // Vérifier la connexion DB (critique)
+    let db_healthy = state.pg.acquire().await.is_ok();
+
+    // ✅ OPTIMISÉ 2025-12-01: Vérifier Redis via connexion directe (plus fiable)
+    let redis_healthy = state
+        .redis_client
+        .get_multiplexed_async_connection()
+        .await
+        .is_ok();
+
+    // Statut global
+    let status = if db_healthy {
+        if redis_healthy {
+            "healthy"
+        } else {
+            "degraded" // DB OK mais Redis down (acceptable)
+        }
+    } else {
+        "unhealthy" // DB down = critique
+    };
+
+    // Informations sur le pool de connexions
+    let pool_size = state.pg.size();
+    let idle_connections = state.pg.num_idle();
+    let active_connections = pool_size.saturating_sub(idle_connections as u32);
+
+    // ✅ OPTIMISÉ 2025-12-01: Retourner HTTP 503 si unhealthy (pour load balancer)
+    let http_status = if status == "unhealthy" {
+        axum::http::StatusCode::SERVICE_UNAVAILABLE
+    } else {
+        axum::http::StatusCode::OK
+    };
+
+    let mut response = axum::response::Response::builder()
+        .status(http_status)
+        .header("Content-Type", "application/json")
+        .body(axum::body::Body::from(
+            serde_json::to_string(&json!({
+                "status": status,
+                "timestamp": Utc::now().to_rfc3339(),
+                "version": env!("CARGO_PKG_VERSION"),
+                "services": {
+                    "database": {
+                        "status": if db_healthy { "ok" } else { "down" },
+                        "pool": {
+                            "size": pool_size,
+                            "active": active_connections,
+                            "idle": idle_connections,
+                        }
+                    },
+                    "redis": {
+                        "status": if redis_healthy { "ok" } else { "down" },
+                    }
+                },
+                "uptime_seconds": std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs()
+            }))
+            .unwrap_or_default(),
+        ))
+        .unwrap();
+
+    Ok(response)
+}
+
 /// Endpoint pour valider un brouillon de service sans insertion en base
 async fn handle_brouillon_service(
     State(_state): State<Arc<AppState>>,
@@ -1410,7 +1569,7 @@ async fn handle_creation_service_direct(
 
     // ?? NOUVEAU : Transcrire l'audio si présent
     let mut user_text = input.texte.clone().unwrap_or_default();
-    
+
     if has_audios {
         log::info!("[handle_creation_service_direct] 🎤 Transcription audio en cours...");
         if let Some(audios) = &input.audio_base64 {
@@ -1507,7 +1666,9 @@ Format JSON attendu :
             .await?
     } else {
         if has_audios {
-            log::info!("[handle_creation_service_direct] Appel texte avec audio transcrit (pas d'images)");
+            log::info!(
+                "[handle_creation_service_direct] Appel texte avec audio transcrit (pas d'images)"
+            );
         } else {
             log::info!("[handle_creation_service_direct] Appel texte uniquement (pas d'images)");
         }
@@ -1762,74 +1923,110 @@ Format JSON attendu :
 
     // ✅ NOUVEAU 2025-11-28 : Extraire les données des seeds depuis combination_info
     let mut data_obj = serde_json::Map::new();
-    
+
     // Ajouter les champs de base
-    data_obj.insert("titre_service".to_string(), json!({
-        "type_donnee": "string",
-        "valeur": titre_value,
-        "origine_champs": "ia"
-    }));
-    data_obj.insert("category".to_string(), json!({
-        "type_donnee": "string",
-        "valeur": category_value,
-        "origine_champs": "ia"
-    }));
-    data_obj.insert("description".to_string(), json!({
-        "type_donnee": "string",
-        "valeur": description_value,
-        "origine_champs": "ia"
-    }));
-    
+    data_obj.insert(
+        "titre_service".to_string(),
+        json!({
+            "type_donnee": "string",
+            "valeur": titre_value,
+            "origine_champs": "ia"
+        }),
+    );
+    data_obj.insert(
+        "category".to_string(),
+        json!({
+            "type_donnee": "string",
+            "valeur": category_value,
+            "origine_champs": "ia"
+        }),
+    );
+    data_obj.insert(
+        "description".to_string(),
+        json!({
+            "type_donnee": "string",
+            "valeur": description_value,
+            "origine_champs": "ia"
+        }),
+    );
+
     // Champs PRODUIT
-    data_obj.insert("nom_produit".to_string(), json!({
-        "type_donnee": "string",
-        "valeur": service_data.get("nom_produit")
-            .and_then(|v| v.get("valeur"))
-            .cloned()
-            .unwrap_or(titre_value.clone()),
-        "origine_champs": "ia"
-    }));
-    data_obj.insert("categorie_produit".to_string(), json!({
-        "type_donnee": "string",
-        "valeur": service_data.get("categorie_produit")
-            .and_then(|v| v.get("valeur"))
-            .cloned()
-            .unwrap_or(category_value.clone()),
-        "origine_champs": "ia"
-    }));
-    data_obj.insert("description_produit".to_string(), json!({
-        "type_donnee": "string",
-        "valeur": service_data.get("description_produit")
-            .and_then(|v| v.get("valeur"))
-            .cloned()
-            .unwrap_or(description_value.clone()),
-        "origine_champs": "ia"
-    }));
-    data_obj.insert("is_tarissable".to_string(), json!({
-        "type_donnee": "boolean",
-        "valeur": service_data.get("is_tarissable")
-            .and_then(|v| v.get("valeur"))
-            .cloned()
-            .unwrap_or(json!(false)),
-        "origine_champs": "ia"
-    }));
-    
+    data_obj.insert(
+        "nom_produit".to_string(),
+        json!({
+            "type_donnee": "string",
+            "valeur": service_data.get("nom_produit")
+                .and_then(|v| v.get("valeur"))
+                .cloned()
+                .unwrap_or(titre_value.clone()),
+            "origine_champs": "ia"
+        }),
+    );
+    data_obj.insert(
+        "categorie_produit".to_string(),
+        json!({
+            "type_donnee": "string",
+            "valeur": service_data.get("categorie_produit")
+                .and_then(|v| v.get("valeur"))
+                .cloned()
+                .unwrap_or(category_value.clone()),
+            "origine_champs": "ia"
+        }),
+    );
+    data_obj.insert(
+        "description_produit".to_string(),
+        json!({
+            "type_donnee": "string",
+            "valeur": service_data.get("description_produit")
+                .and_then(|v| v.get("valeur"))
+                .cloned()
+                .unwrap_or(description_value.clone()),
+            "origine_champs": "ia"
+        }),
+    );
+    data_obj.insert(
+        "is_tarissable".to_string(),
+        json!({
+            "type_donnee": "boolean",
+            "valeur": service_data.get("is_tarissable")
+                .and_then(|v| v.get("valeur"))
+                .cloned()
+                .unwrap_or(json!(false)),
+            "origine_champs": "ia"
+        }),
+    );
+
     // ✅ NOUVEAU 2025-11-28 : Ajouter les données produits avec sous_caracteristiques depuis seeds
-    if let Some(seeds_available) = combination_info.get("seeds_available").and_then(|v| v.as_bool()) {
+    if let Some(seeds_available) = combination_info
+        .get("seeds_available")
+        .and_then(|v| v.as_bool())
+    {
         if seeds_available {
-            let sous_caracs = combination_info.get("sous_caracteristiques").cloned().unwrap_or(json!({}));
-            let product_vector = combination_info.get("product_vector").cloned().unwrap_or(json!([]));
-            let product_labels = combination_info.get("product_labels").cloned().unwrap_or(json!([]));
-            
-            data_obj.insert("produits".to_string(), json!({
-                "type_donnee": "autocomplete",
-                "valeur": [],
-                "sous_caracteristiques": sous_caracs,
-                "product_vector": product_vector,
-                "product_labels": product_labels,
-                "origine_champs": "ia"
-            }));
-            
+            let sous_caracs = combination_info
+                .get("sous_caracteristiques")
+                .cloned()
+                .unwrap_or(json!({}));
+            let product_vector = combination_info
+                .get("product_vector")
+                .cloned()
+                .unwrap_or(json!([]));
+            let product_labels = combination_info
+                .get("product_labels")
+                .cloned()
+                .unwrap_or(json!([]));
+
+            data_obj.insert(
+                "produits".to_string(),
+                json!({
+                    "type_donnee": "autocomplete",
+                    "valeur": [],
+                    "sous_caracteristiques": sous_caracs,
+                    "product_vector": product_vector,
+                    "product_labels": product_labels,
+                    "origine_champs": "ia"
+                }),
+            );
+
             log::info!("[handle_creation_service_direct] ✅ Données produits avec sous_caracteristiques ajoutées à la réponse");
         }
     }
@@ -1885,12 +2082,13 @@ async fn handle_optimization_metrics(
     struct UserBalanceRow {
         tokens_balance: i64,
     }
-    
+
     // R?cup?rer le solde actuel de l'utilisateur
-    let solde_result: Result<UserBalanceRow, _> = sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
-        .bind(user_id)
-        .fetch_one(&state.pg)
-        .await;
+    let solde_result: Result<UserBalanceRow, _> =
+        sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(&state.pg)
+            .await;
 
     let solde_actuel = match solde_result {
         Ok(user_data) => user_data.tokens_balance,
@@ -1940,6 +2138,215 @@ async fn handle_optimization_metrics(
     Ok(axum::Json(metrics).into_response())
 }
 
+/// ✅ NOUVEAU 2025-12-02: Handler pour recherche paginée avec cursor
+#[axum::debug_handler]
+async fn handle_paginated_search(
+    Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<crate::services::native_search_service::PaginatedSearchRequest>,
+) -> AppResult<impl IntoResponse> {
+    use crate::services::native_search_service::NativeSearchService;
+    use crate::utils::log::log_info;
+
+    let start_time = std::time::Instant::now();
+
+    log_info(&format!(
+        "[PAGINATED_SEARCH] Recherche paginée pour utilisateur {}: '{}' (cursor: {:?}, page_size: {:?})",
+        user.id,
+        request.query,
+        request.cursor.as_ref().map(|c| c.chars().take(20).collect::<String>()),
+        request.page_size
+    ));
+
+    // Appeler le service de recherche paginée
+    // Créer une instance de NativeSearchService avec le pool de lecture si disponible
+    let search_service =
+        crate::services::native_search_service::NativeSearchService::new_with_read_replica(
+            state.pg.clone(),
+            state.pg_read.clone(),
+        );
+    let response = search_service.intelligent_search_paginated(request).await?;
+
+    let duration = start_time.elapsed();
+
+    // Enregistrer les métriques
+    if let Some(ref metrics) = state.search_metrics {
+        metrics
+            .record_search(
+                &request.query,
+                request.specialized_type.as_deref(),
+                request.category_filter.as_deref(),
+                duration,
+                Duration::from_millis(0), // DB time non mesuré pour l'instant
+                false,                    // Cache hit sera déterminé par le service
+            )
+            .await;
+    }
+
+    log_info(&format!(
+        "[PAGINATED_SEARCH] ✅ Recherche paginée terminée en {:?}: {} résultats (has_more: {})",
+        duration,
+        response.results.len(),
+        response.has_more
+    ));
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "data": response,
+        "duration_ms": duration.as_millis(),
+    })))
+}
+
+async fn handle_search_metrics(State(state): State<Arc<AppState>>) -> Json<Value> {
+    // ✅ CORRIGÉ 2025-12-01: Utiliser le service singleton depuis AppState
+    let metrics_service = &state.search_metrics;
+
+    // Mettre à jour les infos du pool
+    let pool_size = state.pg.size();
+    let idle = state.pg.num_idle();
+    metrics_service
+        .update_pool_info(pool_size.saturating_sub(idle as u32), idle)
+        .await;
+
+    let metrics = metrics_service.get_metrics().await;
+    let cache_hit_rate = metrics_service.cache_hit_rate().await;
+
+    Json(json!({
+        "status": "ok",
+        "metrics": {
+            "total_searches": metrics.total_searches,
+            "successful_searches": metrics.successful_searches,
+            "failed_searches": metrics.failed_searches,
+            "cache_hits": metrics.cache_hits,
+            "cache_misses": metrics.cache_misses,
+            "cache_hit_rate_percent": cache_hit_rate,
+            "average_response_time_ms": metrics.average_response_time_ms,
+            "average_db_time_ms": metrics.average_db_time_ms,
+            "searches_by_type": metrics.searches_by_type,
+            "searches_by_category": metrics.searches_by_category,
+            "top_queries": metrics.top_queries,
+            "last_24h_searches": metrics.last_24h_searches,
+            "last_hour_searches": metrics.last_hour_searches,
+            "pool_connections": {
+                "active": metrics.pool_connections_active,
+                "idle": metrics.pool_connections_idle,
+                "total": metrics.pool_connections_active + metrics.pool_connections_idle,
+            }
+        },
+        "timestamp": chrono::Utc::now().to_rfc3339()
+    }))
+}
+
+/// ✅ NOUVEAU 2025-12-01: Endpoint métriques globales pour toutes les fonctionnalités
+#[axum::debug_handler]
+async fn handle_global_metrics(State(state): State<Arc<AppState>>) -> Json<Value> {
+    // ✅ Utiliser le service singleton depuis AppState
+    let metrics_service = &state.global_metrics;
+
+    // Mettre à jour les infos des pools
+    let db_pool_size = state.pg.size();
+    let db_idle = state.pg.num_idle();
+    let db_active = db_pool_size.saturating_sub(db_idle as u32);
+
+    // Note: deadpool-redis Pool n'a pas de méthode status() avec size/idle
+    // Utiliser les champs disponibles: max_size, size, available, waiting
+    let redis_status = state
+        .redis_pool
+        .as_ref()
+        .map(|p| {
+            let status = p.status();
+            (status.size, status.available)
+        })
+        .unwrap_or((0, 0));
+    let redis_active = redis_status.0.saturating_sub(redis_status.1) as u32;
+    let redis_idle = redis_status.1 as u32;
+
+    metrics_service
+        .update_pool_info(db_active, db_idle, redis_active, redis_idle)
+        .await;
+
+    let metrics = metrics_service.get_metrics().await;
+    let cache_hit_rate = metrics_service.cache_hit_rate().await;
+
+    Json(json!({
+        "status": "ok",
+        "metrics": {
+            "global": {
+                "total_requests": metrics.total_requests,
+                "total_successful": metrics.total_successful,
+                "total_failed": metrics.total_failed,
+                "average_response_time_ms": metrics.average_response_time_ms,
+                "cache_hit_rate_percent": cache_hit_rate,
+            },
+            "by_function": {
+                "search": {
+                    "total": metrics.searches.total,
+                    "successful": metrics.searches.successful,
+                    "failed": metrics.searches.failed,
+                    "cache_hits": metrics.searches.cache_hits,
+                    "cache_misses": metrics.searches.cache_misses,
+                    "average_time_ms": metrics.searches.average_time_ms,
+                    "last_24h": metrics.searches.last_24h,
+                    "last_hour": metrics.searches.last_hour,
+                },
+                "product_creation": {
+                    "total": metrics.product_creation.total,
+                    "successful": metrics.product_creation.successful,
+                    "failed": metrics.product_creation.failed,
+                    "cache_hits": metrics.product_creation.cache_hits,
+                    "cache_misses": metrics.product_creation.cache_misses,
+                    "average_time_ms": metrics.product_creation.average_time_ms,
+                    "last_24h": metrics.product_creation.last_24h,
+                    "last_hour": metrics.product_creation.last_hour,
+                },
+                "video_creation": {
+                    "total": metrics.video_creation.total,
+                    "successful": metrics.video_creation.successful,
+                    "failed": metrics.video_creation.failed,
+                    "cache_hits": metrics.video_creation.cache_hits,
+                    "cache_misses": metrics.video_creation.cache_misses,
+                    "average_time_ms": metrics.video_creation.average_time_ms,
+                    "last_24h": metrics.video_creation.last_24h,
+                    "last_hour": metrics.video_creation.last_hour,
+                },
+                "delivery_ordering": {
+                    "total": metrics.delivery_ordering.total,
+                    "successful": metrics.delivery_ordering.successful,
+                    "failed": metrics.delivery_ordering.failed,
+                    "cache_hits": metrics.delivery_ordering.cache_hits,
+                    "cache_misses": metrics.delivery_ordering.cache_misses,
+                    "average_time_ms": metrics.delivery_ordering.average_time_ms,
+                    "last_24h": metrics.delivery_ordering.last_24h,
+                    "last_hour": metrics.delivery_ordering.last_hour,
+                },
+                "other_operations": {
+                    "total": metrics.other_operations.total,
+                    "successful": metrics.other_operations.successful,
+                    "failed": metrics.other_operations.failed,
+                    "cache_hits": metrics.other_operations.cache_hits,
+                    "cache_misses": metrics.other_operations.cache_misses,
+                    "average_time_ms": metrics.other_operations.average_time_ms,
+                    "last_24h": metrics.other_operations.last_24h,
+                    "last_hour": metrics.other_operations.last_hour,
+                },
+            },
+            "pools": {
+                "database": {
+                    "active": metrics.db_pool_active,
+                    "idle": metrics.db_pool_idle,
+                    "total": metrics.db_pool_active + metrics.db_pool_idle,
+                },
+                "redis": {
+                    "active": metrics.redis_pool_active,
+                    "idle": metrics.redis_pool_idle,
+                    "total": metrics.redis_pool_active + metrics.redis_pool_idle,
+                }
+            }
+        },
+        "timestamp": chrono::Utc::now().to_rfc3339()
+    }))
+}
+
 /// Handler pour le géocodage inverse (coordonnées GPS vers adresse)
 #[axum::debug_handler]
 async fn handle_reverse_geocode(
@@ -1972,8 +2379,11 @@ async fn handle_reverse_geocode(
 }
 
 /// Servir les fichiers média
-/// ✅ CORRIGÉ 2025-11-30: Gérer les chemins avec ou sans préfixe uploads/services/
-async fn serve_media_file(Path(file_path): Path<String>) -> Result<Response<Body>, StatusCode> {
+/// ✅ CORRIGÉ: Rediriger vers S3/Wasabi si configuré, sinon fallback local
+async fn serve_media_file(
+    Path(file_path): Path<String>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Response<Body>, StatusCode> {
     info!("[serve_media_file] Demande fichier: {}", file_path);
 
     // Sécurité : vérifier que le chemin ne contient pas de traversée de répertoire
@@ -1985,20 +2395,32 @@ async fn serve_media_file(Path(file_path): Path<String>) -> Result<Response<Body
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    // ✅ CORRIGÉ: Gérer les chemins avec ou sans préfixe uploads/services/
+    // ✅ CORRIGÉ: Si S3/Wasabi configuré, rediriger vers URL publique
+    if state.media_storage.is_remote() {
+        let public_url = state.media_storage.build_public_url(&file_path);
+        info!(
+            "[serve_media_file] Redirection vers S3/Wasabi: {}",
+            public_url
+        );
+
+        // Redirection permanente vers URL S3/Wasabi
+        return Ok(Redirect::permanent(&public_url).into_response());
+    }
+
+    // ✅ Fallback: Servir depuis stockage local (anciens médias, migration)
     let full_path = if file_path.starts_with("uploads/services/") {
-        // Le chemin contient déjà le préfixe, l'utiliser tel quel
         file_path.clone()
     } else if file_path.starts_with("uploads/") {
-        // Le chemin commence par uploads/ mais pas uploads/services/, l'utiliser tel quel
         file_path.clone()
     } else {
-        // Le chemin est relatif, ajouter le préfixe uploads/services/
         format!("uploads/services/{}", file_path)
     };
-    info!("[serve_media_file] Chemin complet: {}", full_path);
+    info!(
+        "[serve_media_file] Fallback local - Chemin complet: {}",
+        full_path
+    );
 
-    // Lire le fichier
+    // Lire le fichier depuis disque local
     match File::open(&full_path).await {
         Ok(mut file) => {
             let mut contents = Vec::new();
@@ -2055,7 +2477,36 @@ async fn serve_media_file(Path(file_path): Path<String>) -> Result<Response<Body
             }
         }
         Err(_) => {
-            warn!("[serve_media_file] Fichier non trouvé: {}", full_path);
+            // ✅ Réduire le logging : logger seulement les fichiers manquants une fois par minute max
+            // pour éviter de spammer les logs avec des fichiers qui n'existent plus
+            use std::sync::OnceLock;
+
+            static LAST_MISSING_FILE_WARNING: OnceLock<Mutex<HashMap<String, Instant>>> =
+                OnceLock::new();
+            let warning_map = LAST_MISSING_FILE_WARNING.get_or_init(|| Mutex::new(HashMap::new()));
+
+            let should_log = {
+                let mut last_warnings = warning_map.lock().unwrap();
+                let now = Instant::now();
+                let file_key = full_path.clone();
+
+                let should_log = last_warnings
+                    .get(&file_key)
+                    .map(|last| now.duration_since(*last) > Duration::from_secs(60))
+                    .unwrap_or(true);
+
+                if should_log {
+                    last_warnings.insert(file_key, now);
+                    // Nettoyer les entrées anciennes (> 5 minutes)
+                    last_warnings
+                        .retain(|_, time| now.duration_since(*time) < Duration::from_secs(300));
+                }
+                should_log
+            };
+
+            if should_log {
+                warn!("[serve_media_file] Fichier non trouvé: {} (prochain warning pour ce fichier dans 1min)", full_path);
+            }
             Err(StatusCode::NOT_FOUND)
         }
     }

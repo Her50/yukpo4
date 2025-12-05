@@ -17,14 +17,8 @@ struct PaymentMethodRow {
 /// Mode de reversement déterminé par le matching
 #[derive(Debug, Clone)]
 pub enum PayoutMethod {
-    MtnMoney {
-        phone: String,
-        verified: bool,
-    },
-    OrangeMoney {
-        phone: String,
-        verified: bool,
-    },
+    MtnMoney { phone: String, verified: bool },
+    OrangeMoney { phone: String, verified: bool },
     WalletInternal, // Fallback vers wallet interne
 }
 
@@ -58,7 +52,7 @@ impl PaymentMatchingService {
     }
 
     /// ✅ Détermine le mode de paiement optimal pour le reversement
-    /// 
+    ///
     /// Algorithme:
     /// 1. Si client a payé MTN Money ET prestataire a MTN Money → Transfert MTN Money
     /// 2. Si client a payé Orange Money ET prestataire a Orange Money → Transfert Orange Money
@@ -127,34 +121,29 @@ impl PaymentMatchingService {
         &self,
         merchant_user_id: i32,
     ) -> AppResult<MerchantPaymentMethods> {
-        let row: Option<UserPaymentMethodsRow> = sqlx::query_as(
-            "SELECT payment_methods FROM users WHERE id = $1"
-        )
-        .bind(merchant_user_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let row: Option<UserPaymentMethodsRow> =
+            sqlx::query_as("SELECT payment_methods FROM users WHERE id = $1")
+                .bind(merchant_user_id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         let payment_methods_json = row
             .and_then(|r| r.payment_methods)
             .unwrap_or_else(|| json!({}));
 
-        let mtn_money = payment_methods_json
-            .get("mtn_money")
-            .and_then(|v| {
-                Some(MtnMoneyConfig {
-                    phone: v.get("phone")?.as_str()?.to_string(),
-                    verified: v.get("verified")?.as_bool().unwrap_or(false),
-                })
-            });
+        let mtn_money = payment_methods_json.get("mtn_money").and_then(|v| {
+            Some(MtnMoneyConfig {
+                phone: v.get("phone")?.as_str()?.to_string(),
+                verified: v.get("verified")?.as_bool().unwrap_or(false),
+            })
+        });
 
-        let orange_money = payment_methods_json
-            .get("orange_money")
-            .and_then(|v| {
-                Some(OrangeMoneyConfig {
-                    phone: v.get("phone")?.as_str()?.to_string(),
-                    verified: v.get("verified")?.as_bool().unwrap_or(false),
-                })
-            });
+        let orange_money = payment_methods_json.get("orange_money").and_then(|v| {
+            Some(OrangeMoneyConfig {
+                phone: v.get("phone")?.as_str()?.to_string(),
+                verified: v.get("verified")?.as_bool().unwrap_or(false),
+            })
+        });
 
         Ok(MerchantPaymentMethods {
             mtn_money,
@@ -163,7 +152,7 @@ impl PaymentMatchingService {
     }
 
     /// ✅ Effectue le reversement selon le mode déterminé
-    /// 
+    ///
     /// Note: Les APIs mobile money ne sont pas encore disponibles,
     /// donc pour l'instant on utilise toujours le wallet interne.
     /// La structure est prête pour intégrer les APIs plus tard.
@@ -184,11 +173,23 @@ impl PaymentMatchingService {
                         merchant_user_id,
                         phone
                     );
-                    self.credit_wallet_internal(merchant_user_id, amount_cents, delivery_id, Some("Reversement (MTN Money non disponible, crédité wallet)".to_string())).await?;
+                    self.credit_wallet_internal(
+                        merchant_user_id,
+                        amount_cents,
+                        delivery_id,
+                        Some("Reversement (MTN Money non disponible, crédité wallet)".to_string()),
+                    )
+                    .await?;
                     Ok("wallet_internal".to_string())
                 } else {
                     // Numéro non vérifié → wallet interne
-                    self.credit_wallet_internal(merchant_user_id, amount_cents, delivery_id, Some("Reversement (MTN Money non vérifié)".to_string())).await?;
+                    self.credit_wallet_internal(
+                        merchant_user_id,
+                        amount_cents,
+                        delivery_id,
+                        Some("Reversement (MTN Money non vérifié)".to_string()),
+                    )
+                    .await?;
                     Ok("wallet_internal".to_string())
                 }
             }
@@ -201,17 +202,37 @@ impl PaymentMatchingService {
                         merchant_user_id,
                         phone
                     );
-                    self.credit_wallet_internal(merchant_user_id, amount_cents, delivery_id, Some("Reversement (Orange Money non disponible, crédité wallet)".to_string())).await?;
+                    self.credit_wallet_internal(
+                        merchant_user_id,
+                        amount_cents,
+                        delivery_id,
+                        Some(
+                            "Reversement (Orange Money non disponible, crédité wallet)".to_string(),
+                        ),
+                    )
+                    .await?;
                     Ok("wallet_internal".to_string())
                 } else {
                     // Numéro non vérifié → wallet interne
-                    self.credit_wallet_internal(merchant_user_id, amount_cents, delivery_id, Some("Reversement (Orange Money non vérifié)".to_string())).await?;
+                    self.credit_wallet_internal(
+                        merchant_user_id,
+                        amount_cents,
+                        delivery_id,
+                        Some("Reversement (Orange Money non vérifié)".to_string()),
+                    )
+                    .await?;
                     Ok("wallet_internal".to_string())
                 }
             }
             PayoutMethod::WalletInternal => {
                 // Wallet interne (comportement normal)
-                self.credit_wallet_internal(merchant_user_id, amount_cents, delivery_id, Some("Reversement livraison".to_string())).await?;
+                self.credit_wallet_internal(
+                    merchant_user_id,
+                    amount_cents,
+                    delivery_id,
+                    Some("Reversement livraison".to_string()),
+                )
+                .await?;
                 Ok("wallet_internal".to_string())
             }
         }
@@ -234,22 +255,18 @@ impl PaymentMatchingService {
     }
 
     /// 🔮 TODO: Intégrer API MTN Money (à implémenter quand API disponible)
-    /// 
+    ///
     /// Cette fonction sera appelée quand l'API MTN Money sera disponible.
     /// Pour l'instant, elle n'est pas utilisée (fallback wallet).
     #[allow(dead_code)]
-    async fn transfer_mtn_money(
-        &self,
-        _phone: &str,
-        _amount_cents: i64,
-    ) -> AppResult<String> {
+    async fn transfer_mtn_money(&self, _phone: &str, _amount_cents: i64) -> AppResult<String> {
         // TODO: Implémenter appel API MTN Money
         // Exemple de structure:
         /*
         let client = reqwest::Client::new();
         let api_key = std::env::var("MTN_MONEY_API_KEY")?;
         let api_url = std::env::var("MTN_MONEY_API_URL")?;
-        
+
         let response = client
             .post(&format!("{}/transfer", api_url))
             .header("Authorization", format!("Bearer {}", api_key))
@@ -260,15 +277,15 @@ impl PaymentMatchingService {
             }))
             .send()
             .await?;
-        
+
         let result: Value = response.json().await?;
         let transaction_id = result.get("transaction_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| AppError::Internal("MTN Money API: transaction_id manquant".into()))?;
-        
+
         Ok(transaction_id.to_string())
         */
-        
+
         // Pour l'instant, retourner une erreur (ne devrait pas être appelé)
         Err(AppError::Internal(
             "API MTN Money non encore implémentée".into(),
@@ -276,22 +293,18 @@ impl PaymentMatchingService {
     }
 
     /// 🔮 TODO: Intégrer API Orange Money (à implémenter quand API disponible)
-    /// 
+    ///
     /// Cette fonction sera appelée quand l'API Orange Money sera disponible.
     /// Pour l'instant, elle n'est pas utilisée (fallback wallet).
     #[allow(dead_code)]
-    async fn transfer_orange_money(
-        &self,
-        _phone: &str,
-        _amount_cents: i64,
-    ) -> AppResult<String> {
+    async fn transfer_orange_money(&self, _phone: &str, _amount_cents: i64) -> AppResult<String> {
         // TODO: Implémenter appel API Orange Money
         // Exemple de structure:
         /*
         let client = reqwest::Client::new();
         let api_key = std::env::var("ORANGE_MONEY_API_KEY")?;
         let api_url = std::env::var("ORANGE_MONEY_API_URL")?;
-        
+
         let response = client
             .post(&format!("{}/transfer", api_url))
             .header("Authorization", format!("Bearer {}", api_key))
@@ -302,15 +315,15 @@ impl PaymentMatchingService {
             }))
             .send()
             .await?;
-        
+
         let result: Value = response.json().await?;
         let transaction_id = result.get("transaction_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| AppError::Internal("Orange Money API: transaction_id manquant".into()))?;
-        
+
         Ok(transaction_id.to_string())
         */
-        
+
         // Pour l'instant, retourner une erreur (ne devrait pas être appelé)
         Err(AppError::Internal(
             "API Orange Money non encore implémentée".into(),
@@ -318,10 +331,7 @@ impl PaymentMatchingService {
     }
 
     /// ✅ Récupère le mode de paiement utilisé par le client depuis payment_transactions
-    pub async fn get_client_payment_method(
-        &self,
-        delivery_id: uuid::Uuid,
-    ) -> AppResult<Value> {
+    pub async fn get_client_payment_method(&self, delivery_id: uuid::Uuid) -> AppResult<Value> {
         // Chercher la transaction de paiement associée à cette livraison
         let row: Option<PaymentMethodRow> = sqlx::query_as(
             r#"
@@ -331,17 +341,25 @@ impl PaymentMatchingService {
             WHERE dpr.delivery_id = $1
             ORDER BY pt.created_at DESC
             LIMIT 1
-            "#
+            "#,
         )
         .bind(delivery_id)
         .fetch_optional(&self.pool)
         .await?;
 
         if let Some(record) = row {
-            if record.payment_method.is_none() || record.payment_method.as_ref().map(|v| v.is_null()).unwrap_or(true) {
+            if record.payment_method.is_none()
+                || record
+                    .payment_method
+                    .as_ref()
+                    .map(|v| v.is_null())
+                    .unwrap_or(true)
+            {
                 Ok(json!({"type": "wallet"}))
             } else {
-                Ok(record.payment_method.unwrap_or_else(|| json!({"type": "wallet"})))
+                Ok(record
+                    .payment_method
+                    .unwrap_or_else(|| json!({"type": "wallet"})))
             }
         } else {
             // Pas de transaction trouvée → par défaut wallet
@@ -349,4 +367,3 @@ impl PaymentMatchingService {
         }
     }
 }
-

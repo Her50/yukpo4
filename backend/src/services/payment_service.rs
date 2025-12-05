@@ -232,10 +232,12 @@ impl PaymentService {
         amount: f64,
     ) -> Result<(PaymentStatus, Option<serde_json::Value>), String> {
         // ✅ Phase 10 - Utiliser le service Mobile Money
-        use crate::services::mobile_money_service::{MobileMoneyService, MobileMoneyProvider, MobileMoneyPaymentRequest};
-        
+        use crate::services::mobile_money_service::{
+            MobileMoneyPaymentRequest, MobileMoneyProvider, MobileMoneyService,
+        };
+
         let mobile_money_service = MobileMoneyService::new();
-        
+
         let request = MobileMoneyPaymentRequest {
             provider: MobileMoneyProvider::Orange,
             phone_number: format!("{}{}", country_code, phone_number),
@@ -245,7 +247,7 @@ impl PaymentService {
             description: Some("Paiement Yukpomnang".to_string()),
             callback_url: None,
         };
-        
+
         match mobile_money_service.initiate_payment(request).await {
             Ok(response) => {
                 let gateway_response = serde_json::json!({
@@ -259,15 +261,25 @@ impl PaymentService {
                     "instructions": response.instructions,
                     "timestamp": chrono::Utc::now()
                 });
-                
+
                 let status = match response.status {
-                    crate::services::mobile_money_service::PaymentStatus::Completed => PaymentStatus::Completed,
-                    crate::services::mobile_money_service::PaymentStatus::Pending => PaymentStatus::Pending,
-                    crate::services::mobile_money_service::PaymentStatus::Processing => PaymentStatus::Processing,
-                    crate::services::mobile_money_service::PaymentStatus::Failed => PaymentStatus::Failed,
-                    crate::services::mobile_money_service::PaymentStatus::Cancelled => PaymentStatus::Cancelled,
+                    crate::services::mobile_money_service::PaymentStatus::Completed => {
+                        PaymentStatus::Completed
+                    }
+                    crate::services::mobile_money_service::PaymentStatus::Pending => {
+                        PaymentStatus::Pending
+                    }
+                    crate::services::mobile_money_service::PaymentStatus::Processing => {
+                        PaymentStatus::Processing
+                    }
+                    crate::services::mobile_money_service::PaymentStatus::Failed => {
+                        PaymentStatus::Failed
+                    }
+                    crate::services::mobile_money_service::PaymentStatus::Cancelled => {
+                        PaymentStatus::Cancelled
+                    }
                 };
-                
+
                 Ok((status, Some(gateway_response)))
             }
             Err(e) => {
@@ -297,10 +309,12 @@ impl PaymentService {
         amount: f64,
     ) -> Result<(PaymentStatus, Option<serde_json::Value>), String> {
         // ✅ Phase 10 - Utiliser le service Mobile Money
-        use crate::services::mobile_money_service::{MobileMoneyService, MobileMoneyProvider, MobileMoneyPaymentRequest};
-        
+        use crate::services::mobile_money_service::{
+            MobileMoneyPaymentRequest, MobileMoneyProvider, MobileMoneyService,
+        };
+
         let mobile_money_service = MobileMoneyService::new();
-        
+
         let request = MobileMoneyPaymentRequest {
             provider: MobileMoneyProvider::MTN,
             phone_number: format!("{}{}", country_code, phone_number),
@@ -310,7 +324,7 @@ impl PaymentService {
             description: Some("Paiement Yukpomnang".to_string()),
             callback_url: None,
         };
-        
+
         match mobile_money_service.initiate_payment(request).await {
             Ok(response) => {
                 let gateway_response = serde_json::json!({
@@ -324,15 +338,25 @@ impl PaymentService {
                     "instructions": response.instructions,
                     "timestamp": chrono::Utc::now()
                 });
-                
+
                 let status = match response.status {
-                    crate::services::mobile_money_service::PaymentStatus::Completed => PaymentStatus::Completed,
-                    crate::services::mobile_money_service::PaymentStatus::Pending => PaymentStatus::Pending,
-                    crate::services::mobile_money_service::PaymentStatus::Processing => PaymentStatus::Processing,
-                    crate::services::mobile_money_service::PaymentStatus::Failed => PaymentStatus::Failed,
-                    crate::services::mobile_money_service::PaymentStatus::Cancelled => PaymentStatus::Cancelled,
+                    crate::services::mobile_money_service::PaymentStatus::Completed => {
+                        PaymentStatus::Completed
+                    }
+                    crate::services::mobile_money_service::PaymentStatus::Pending => {
+                        PaymentStatus::Pending
+                    }
+                    crate::services::mobile_money_service::PaymentStatus::Processing => {
+                        PaymentStatus::Processing
+                    }
+                    crate::services::mobile_money_service::PaymentStatus::Failed => {
+                        PaymentStatus::Failed
+                    }
+                    crate::services::mobile_money_service::PaymentStatus::Cancelled => {
+                        PaymentStatus::Cancelled
+                    }
                 };
-                
+
                 Ok((status, Some(gateway_response)))
             }
             Err(e) => {

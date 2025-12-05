@@ -75,7 +75,7 @@ pub async fn enregistrer_consultation(
         provider_avatar_url: Option<String>,
         provider_tokens_balance: i64,
     }
-    
+
     // 2. Charger le service et le prestataire pour construire l'événement enrichi
     let service_record: ServiceRecordRow = sqlx::query_as(
         r#"
@@ -92,7 +92,7 @@ pub async fn enregistrer_consultation(
             FROM services s
             JOIN users u ON u.id = s.user_id
             WHERE s.id = $1
-        "#
+        "#,
     )
     .bind(service_id)
     .fetch_one(pool)
@@ -159,24 +159,20 @@ pub async fn enregistrer_consultation(
     }
 
     // 3. Débiter le solde du prestataire (PostgreSQL)
-    sqlx::query(
-        "UPDATE users SET tokens_balance = $1 WHERE id = $2"
-    )
-    .bind(tokens_after)
-    .bind(provider_id)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur débit tokens: {}", e)))?;
-
-    // 4. Si solde <= 0, désactiver tous les services du prestataire (PostgreSQL)
-    if tokens_after <= 0 {
-        sqlx::query(
-            "UPDATE services SET is_active = FALSE WHERE user_id = $1"
-        )
+    sqlx::query("UPDATE users SET tokens_balance = $1 WHERE id = $2")
+        .bind(tokens_after)
         .bind(provider_id)
         .execute(pool)
         .await
-        .map_err(|e| AppError::Internal(format!("Erreur désactivation services: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur débit tokens: {}", e)))?;
+
+    // 4. Si solde <= 0, désactiver tous les services du prestataire (PostgreSQL)
+    if tokens_after <= 0 {
+        sqlx::query("UPDATE services SET is_active = FALSE WHERE user_id = $1")
+            .bind(provider_id)
+            .execute(pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur désactivation services: {}", e)))?;
     }
 
     Ok("Consultation enregistrée".to_string())
@@ -447,7 +443,7 @@ async fn fetch_service_and_provider_snapshot(
         provider_avatar_url: Option<String>,
         provider_tokens_balance: i64,
     }
-    
+
     let record: Option<ServiceProviderSnapshotRow> = sqlx::query_as(
         r#"
             SELECT
@@ -463,7 +459,7 @@ async fn fetch_service_and_provider_snapshot(
             FROM services s
             JOIN users u ON u.id = s.user_id
             WHERE s.id = $1
-        "#
+        "#,
     )
     .bind(service_id)
     .fetch_optional(pool)

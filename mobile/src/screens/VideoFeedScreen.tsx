@@ -5,7 +5,6 @@ import {
     ActionSheetIOS,
     ActivityIndicator,
     Alert,
-    Animated,
     Dimensions,
     FlatList,
     Image,
@@ -21,21 +20,52 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    ViewToken,
+    ViewToken
 } from 'react-native';
+import AnimatedReanimated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming
+} from 'react-native-reanimated';
+import ProductCommentsSection from '../components/ProductCommentsSection';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
-import VideoCommentsModal from '../components/VideoCommentsModal';
+// ✅ NOUVEAU: Composants améliorés VideoFeed
+import { DoubleTapLike } from '../components/video/DoubleTapLike';
+import DuetRemixModal from '../components/video/DuetRemixModal';
+import { HashtagsList } from '../components/video/HashtagsList';
+import { LiveStreamPlayer } from '../components/video/LiveStreamPlayer';
+import { VideoGestureHandler } from '../components/video/VideoGestureHandler';
+import { VideoWithEffects } from '../components/video/VideoWithEffects';
+// ✅ NOUVEAU: Accessibilité
+import { AccessibilityWrapper, useAccessibility } from '../components/ux/AccessibilityWrapper';
+// ✅ NOUVEAU: Optimisations batterie
+import { useBatteryOptimization } from '../services/batteryOptimizationService';
+// ✅ NOUVEAU: Fonctionnalités sociales avancées
+// ✅ NOUVEAU: Composants livraison et chat depuis vidéo
+import ChatModalMobile from '../components/ChatModalMobile';
+import OrderDeliveryModal from '../components/delivery/OrderDeliveryModal';
+import { ENVIRONMENT } from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
+import { adaptiveVideoService } from '../services/adaptiveVideoService';
 import { apiGet, apiPost } from '../services/api';
+import { cdnService } from '../services/cdnService';
 import liveStreamingService from '../services/liveStreamingService';
+import { retryWithBackoff } from '../services/retryService';
 import { studioService } from '../services/studioService';
 import userBehaviorService from '../services/userBehaviorService';
+import { videoCacheService } from '../services/videoCacheService';
+import { videoPreloadService } from '../services/videoPreloadService';
+import { videoRecommendationService } from '../services/videoRecommendationService';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
+import { triggerHaptic } from '../utils/hapticFeedback';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+// ✅ OPTIMISÉ: Détection tablette pour responsivité multi-écrans
+const isTablet = SCREEN_WIDTH > 768;
+const numColumns = isTablet ? 2 : 1; // 2 colonnes sur tablette, 1 sur téléphone
 const formatCount = (value: number): string => {
     if (value >= 1_000_000) {
         return `${(value / 1_000_000).toFixed(1)}M`;
@@ -342,6 +372,7 @@ interface FeedItem {
     savesCount?: number;
     audioLabel?: string;
     sessionId?: string; // ✅ Phase 9 - Amélioration 31 : ID de session pour chaînage vidéos
+    hashtags?: string[]; // ✅ NOUVEAU: Hashtags de la vidéo
 }
 
 interface LiveSession {
@@ -354,6 +385,7 @@ interface LiveSession {
     thumbnail?: string;
     tags?: string[];
     hostName?: string;
+    flashSales?: Array<{ id: string; status: string }>; // ✅ NOUVEAU: Flash sales de la session
 }
 
 interface ContentEngagementResponse {
@@ -364,13 +396,20 @@ interface ContentEngagementResponse {
     saved?: boolean;
 }
 
+// ✅ OPTIMISÉ: viewabilityConfig à 50% pour préchargement plus précoce (comme TikTok)
 const viewabilityConfig = {
-    itemVisiblePercentThreshold: 80,
+    itemVisiblePercentThreshold: 50, // Au lieu de 80% - détection plus précoce
+    minimumViewTime: 100, // 100ms minimum avant changement
+    waitForInteraction: false, // Ne pas attendre interaction utilisateur
 };
 
 const VideoFeedScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    // ✅ NOUVEAU: Accessibilité
+    const { isScreenReaderEnabled, isReduceMotionEnabled } = useAccessibility();
+    // ✅ NOUVEAU: Optimisations batterie
+    const { isBackground, shouldPauseVideos, shouldReducePreload, optimalFPS } = useBatteryOptimization();
     const [loading, setLoading] = useState(true);
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [forYouSource, setForYouSource] = useState<FeedItem[]>([]);
@@ -382,6 +421,9 @@ const VideoFeedScreen: React.FC = () => {
     const [isPaused, setIsPaused] = useState(false);
     const [currentDurationMs, setCurrentDurationMs] = useState(0);
     const videoRefs = useRef<Map<number, Video | null>>(new Map());
+    // ✅ NOUVEAU: Tracking temps de visionnage
+    const lastTrackTimeRef = useRef<Map<string, number>>(new Map()); // contentId -> last tracked time (seconds)
+    const videoDurationsRef = useRef<Map<string, number>>(new Map()); // contentId -> video duration (seconds)
     const currentIndexRef = useRef(0);
     const currentStartTimeRef = useRef<number | null>(null);
     const sessionIdRef = useRef(
@@ -397,7 +439,15 @@ const VideoFeedScreen: React.FC = () => {
     const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
     const [saveCounts, setSaveCounts] = useState<Record<string, number>>({});
     const [commentTarget, setCommentTarget] = useState<FeedItem | null>(null);
+    const [duetTarget, setDuetTarget] = useState<FeedItem | null>(null);
     const [creatorPanelItem, setCreatorPanelItem] = useState<FeedItem | null>(null);
+    // ✅ NOUVEAU: États pour livraison et chat depuis vidéo
+    const [deliveryTarget, setDeliveryTarget] = useState<FeedItem | null>(null);
+    const [chatTarget, setChatTarget] = useState<FeedItem | null>(null);
+    const [serviceDataForDelivery, setServiceDataForDelivery] = useState<any>(null);
+    const [deliveryProductIndex, setDeliveryProductIndex] = useState<number | undefined>(undefined);
+    const [deliveryProductName, setDeliveryProductName] = useState<string | undefined>(undefined);
+    const [serviceDataForChat, setServiceDataForChat] = useState<any>(null);
     const [creationModalVisible, setCreationModalVisible] = useState(false);
     const [creationProducts, setCreationProducts] = useState<ManagedProduct[]>([]);
     const [creationPrimaryProduct, setCreationPrimaryProduct] = useState<ManagedProduct | null>(null);
@@ -407,7 +457,32 @@ const VideoFeedScreen: React.FC = () => {
     const [liveLoading, setLiveLoading] = useState(false);
     const [liveModalSession, setLiveModalSession] = useState<LiveSession | null>(null);
     const [liveReminderMap, setLiveReminderMap] = useState<Record<string, boolean>>({});
+    const [showLiveChat, setShowLiveChat] = useState(false);
+    // ✅ NOUVEAU: États pour améliorations UX
+    const [showDoubleTapLike, setShowDoubleTapLike] = useState(false);
+    const [controlsVisible, setControlsVisible] = useState(true);
     const isFollowingLane = activeLane === 'following';
+
+    // ✅ OPTIMISÉ: Animation de transition fade entre vidéos (comme TikTok)
+    const fadeAnim = useSharedValue(1);
+
+    // ✅ NOUVEAU: Initialiser les services (préchargement, compression adaptative, CDN, cache)
+    useEffect(() => {
+        videoPreloadService.initialize().catch(() => {
+            // Ignorer erreurs silencieusement
+        });
+        adaptiveVideoService.initialize().catch(() => {
+            // Ignorer erreurs silencieusement
+        });
+        cdnService.initialize(ENVIRONMENT.API_URL).catch(() => {
+            // Ignorer erreurs silencieusement
+        });
+        // ✅ NOUVEAU: Initialiser le service de cache vidéo
+        videoCacheService.initialize().catch(() => {
+            // Ignorer erreurs silencieusement
+        });
+    }, []);
+
     useEffect(() => {
         if (Platform.OS === 'android') {
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -432,11 +507,14 @@ const VideoFeedScreen: React.FC = () => {
 
     const playActiveVideo = useCallback(
         async (activeIndex: number) => {
+            // ✅ NOUVEAU: Pause automatique si app en background ou si shouldPauseVideos
+            const shouldPause = isPaused || shouldPauseVideos;
+
             for (const [index, ref] of videoRefs.current.entries()) {
                 if (!ref) continue;
                 try {
                     if (index === activeIndex) {
-                        if (isPaused) {
+                        if (shouldPause) {
                             await ref.pauseAsync();
                         } else {
                             await ref.playAsync();
@@ -449,16 +527,27 @@ const VideoFeedScreen: React.FC = () => {
                 }
             }
         },
-        [isPaused],
+        [isPaused, shouldPauseVideos],
     );
 
     useEffect(() => {
-        playActiveVideo(currentIndex).catch(() => undefined);
-    }, [currentIndex, playActiveVideo]);
+        // ✅ OPTIMISÉ: Animation fade lors du changement de vidéo
+        fadeAnim.value = withTiming(0, { duration: 150 }, () => {
+            playActiveVideo(currentIndex).catch(() => undefined);
+            fadeAnim.value = withTiming(1, { duration: 150 });
+        });
+    }, [currentIndex, playActiveVideo, fadeAnim]);
 
     useEffect(() => {
         playActiveVideo(currentIndexRef.current).catch(() => undefined);
-    }, [isPaused, playActiveVideo]);
+    }, [isPaused, playActiveVideo, shouldPauseVideos]);
+
+    // ✅ NOUVEAU: Pause automatique quand app passe en background
+    useEffect(() => {
+        if (shouldPauseVideos && !isPaused) {
+            setIsPaused(true);
+        }
+    }, [shouldPauseVideos]);
 
     useEffect(() => {
         const nextItem = feed[currentIndex + 1];
@@ -559,6 +648,16 @@ const VideoFeedScreen: React.FC = () => {
                             : 'Audio IA Yukpo',
                     // ✅ Phase 9 - Amélioration 31 : Extraire sessionId pour chaînage vidéos
                     sessionId: item?.data?.studio_session_id ?? item?.data?.session_id ?? undefined,
+                    // ✅ NOUVEAU: Extraire hashtags depuis données API
+                    hashtags: Array.isArray(item?.data?.hashtags)
+                        ? item.data.hashtags
+                        : Array.isArray(item?.hashtags)
+                            ? item.hashtags
+                            : Array.isArray(item?.data?.ai_tags)
+                                ? item.data.ai_tags
+                                : Array.isArray(item?.tags)
+                                    ? item.tags
+                                    : undefined,
                 } as FeedItem;
             })
             .filter(Boolean) as FeedItem[];
@@ -651,18 +750,54 @@ const VideoFeedScreen: React.FC = () => {
         [user?.id]
     );
 
+    // ✅ NOUVEAU: Tracker le temps de visionnage
+    const trackWatchTime = useCallback(
+        async (contentId: string, currentTimeSeconds: number, durationSeconds: number) => {
+            // Envoyer toutes les 5 secondes
+            const lastTracked = lastTrackTimeRef.current.get(contentId) || 0;
+            const timeSinceLastTrack = currentTimeSeconds - lastTracked;
+
+            if (timeSinceLastTrack >= 5 || currentTimeSeconds === 0) {
+                try {
+                    await apiPost(`/api/content/${encodeURIComponent(contentId)}/track-watch`, {
+                        watch_duration_ms: Math.floor(currentTimeSeconds * 1000),
+                        video_duration_ms: Math.floor(durationSeconds * 1000),
+                        device_type: Platform.OS === 'ios' ? 'ios' : 'android',
+                    });
+
+                    // Mettre à jour le dernier temps tracké
+                    lastTrackTimeRef.current.set(contentId, currentTimeSeconds);
+                    videoDurationsRef.current.set(contentId, durationSeconds);
+                } catch (error) {
+                    console.warn('[VideoFeedScreen] Erreur tracking temps visionnage:', error);
+                }
+            }
+        },
+        [],
+    );
+
     const flushCurrentView = useCallback(() => {
         const prevIndex = currentIndexRef.current;
         if (!feed[prevIndex] || currentStartTimeRef.current == null) {
             return;
         }
         const elapsed = Date.now() - currentStartTimeRef.current;
-        logVisibility(feed[prevIndex], prevIndex, {
+        const prevItem = feed[prevIndex];
+
+        // ✅ NOUVEAU: Finaliser tracking temps de visionnage
+        const lastTracked = lastTrackTimeRef.current.get(prevItem.contentId) || 0;
+        const duration = videoDurationsRef.current.get(prevItem.contentId) || 0;
+        if (lastTracked > 0 && duration > 0) {
+            // Envoyer dernière mise à jour avec temps final
+            trackWatchTime(prevItem.contentId, lastTracked, duration).catch(() => undefined);
+        }
+
+        logVisibility(prevItem, prevIndex, {
             viewed: true,
             viewDurationMs: elapsed,
         });
         currentStartTimeRef.current = null;
-    }, [feed, logVisibility]);
+    }, [feed, logVisibility, trackWatchTime]);
 
     const loadFeed = useCallback(async () => {
         try {
@@ -671,7 +806,11 @@ const VideoFeedScreen: React.FC = () => {
             // ✅ NOUVEAU: Charger les vidéos de l'utilisateur depuis le nouvel endpoint
             let myVideos: FeedItem[] = [];
             try {
-                const myVideosResponse = await apiGet('/api/videos/my-videos');
+                // ✅ OPTIMISÉ: Retry intelligent avec backoff exponentiel
+                const myVideosResponse = await retryWithBackoff(
+                    () => apiGet('/api/videos/my-videos'),
+                    { maxRetries: 3, initialDelay: 1000 }
+                );
                 if (myVideosResponse.success && Array.isArray(myVideosResponse.data)) {
                     myVideos = myVideosResponse.data.map((video: any) => ({
                         id: `my-video-${video.id}`,
@@ -705,7 +844,11 @@ const VideoFeedScreen: React.FC = () => {
                 params.append('user_id', String(user.id));
             }
 
-            const response = await apiGet(`/api/content/mixed?${params.toString()}`);
+            // ✅ OPTIMISÉ: Retry intelligent pour chargement feed
+            const response = await retryWithBackoff(
+                () => apiGet(`/api/content/mixed?${params.toString()}`),
+                { maxRetries: 3, initialDelay: 1000 }
+            );
 
             let parsed: FeedItem[] = [];
             if (response.success && Array.isArray(response.data)) {
@@ -716,7 +859,28 @@ const VideoFeedScreen: React.FC = () => {
             // Les vidéos de l'utilisateur sont ajoutées en premier
             const combinedFeed = [...myVideos, ...parsed];
             setForYouSource(combinedFeed);
-            const ordered = reorderFeed(combinedFeed);
+
+            // ✅ OPTIMISÉ: Réordonner avec recommandations ML (comme TikTok)
+            let ordered: FeedItem[];
+            if (user?.id) {
+                try {
+                    const userId = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
+                    if (!isNaN(userId)) {
+                        ordered = await videoRecommendationService.reorderFeedByRecommendations(
+                            userId,
+                            combinedFeed
+                        );
+                    } else {
+                        ordered = reorderFeed(combinedFeed);
+                    }
+                } catch (error) {
+                    console.warn('[VideoFeedScreen] Erreur recommandations ML, fallback basique:', error);
+                    ordered = reorderFeed(combinedFeed);
+                }
+            } else {
+                ordered = reorderFeed(combinedFeed);
+            }
+
             setFeed(ordered);
             feedRef.current = ordered; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
             if (isFollowingLane) {
@@ -1036,6 +1200,13 @@ const VideoFeedScreen: React.FC = () => {
             }
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             const contentId = item.contentId;
+
+            // ✅ OPTIMISÉ: Tracker interaction pour recommandations ML
+            if (user?.id) {
+                videoRecommendationService.trackInteraction(contentId, 'save').catch(() => {
+                    // Ignorer erreurs silencieusement
+                });
+            }
             const next = !(savedMap[contentId] ?? false);
             setSavedMap((previous) => ({ ...previous, [contentId]: next }));
             setSaveCounts((counts) => ({
@@ -1092,6 +1263,146 @@ const VideoFeedScreen: React.FC = () => {
             flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
         }
     }, [feed.length]);
+
+    // ✅ NOUVEAU: Handler pour livraison depuis vidéo
+    const handleDelivery = useCallback(async (item: FeedItem) => {
+        if (!item.serviceId) {
+            Alert.alert('Erreur', 'Service non disponible pour cette vidéo');
+            return;
+        }
+
+        try {
+            // Charger les données du service
+            const response = await apiGet(`/api/services/${item.serviceId}`);
+            const service = response?.data || response;
+
+            if (!service) {
+                Alert.alert('Erreur', 'Impossible de charger les informations du service');
+                return;
+            }
+
+            // Extraire le premier produit disponible
+            const serviceData = service as any;
+            const produits = serviceData?.produits?.valeur || serviceData?.produits || [];
+            let productIndex: number | undefined = undefined;
+            let productName: string | undefined = item.titre;
+
+            if (Array.isArray(produits) && produits.length > 0) {
+                const firstProduct = produits.find((p: any) => {
+                    const nom = p?.nom || p?.name || p?.titre || p?.title;
+                    return nom && typeof nom === 'string' && nom.trim().length > 0;
+                }) || produits[0];
+
+                productIndex = produits.indexOf(firstProduct);
+                productName = firstProduct?.nom || firstProduct?.name || firstProduct?.titre || firstProduct?.title || item.titre;
+            }
+
+            setServiceDataForDelivery(service);
+            setDeliveryProductIndex(productIndex);
+            setDeliveryProductName(productName);
+            setDeliveryTarget(item);
+            triggerHaptic('light');
+        } catch (error) {
+            console.error('[VideoFeedScreen] Erreur chargement service pour livraison:', error);
+            Alert.alert('Erreur', 'Impossible de charger les informations. Veuillez réessayer.');
+        }
+    }, []);
+
+    // ✅ NOUVEAU: Handler pour chat depuis vidéo
+    const handleChat = useCallback(async (item: FeedItem) => {
+        if (!item.serviceId) {
+            Alert.alert('Erreur', 'Service non disponible pour cette vidéo');
+            return;
+        }
+
+        try {
+            // Charger les données du service pour le chat
+            const response = await apiGet(`/api/services/${item.serviceId}`);
+            const service = response?.data || response;
+
+            if (!service) {
+                Alert.alert('Erreur', 'Impossible de charger les informations du service');
+                return;
+            }
+
+            setServiceDataForChat(service);
+            setChatTarget(item);
+            triggerHaptic('light');
+        } catch (error) {
+            console.error('[VideoFeedScreen] Erreur chargement service pour chat:', error);
+            Alert.alert('Erreur', 'Impossible de charger les informations. Veuillez réessayer.');
+        }
+    }, []);
+
+    // ✅ NOUVEAU: Handlers pour navigation par gestes
+    const handleSwipeUp = useCallback(() => {
+        if (currentIndex < feed.length - 1) {
+            const nextIndex = currentIndex + 1;
+            flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+            setCurrentIndex(nextIndex);
+            triggerHaptic('light');
+        }
+    }, [currentIndex, feed.length]);
+
+    const handleSwipeDown = useCallback(() => {
+        if (currentIndex > 0) {
+            const prevIndex = currentIndex - 1;
+            flatListRef.current?.scrollToIndex({ index: prevIndex, animated: true });
+            setCurrentIndex(prevIndex);
+            triggerHaptic('light');
+        }
+    }, [currentIndex]);
+
+    const handleDoubleTapLike = useCallback(() => {
+        const currentItem = feed[currentIndex];
+        if (currentItem) {
+            setShowDoubleTapLike(true);
+            handleLike(currentItem);
+            triggerHaptic('medium');
+        }
+    }, [currentIndex, feed, handleLike]);
+
+    const handleSwipeLeft = useCallback(() => {
+        const currentItem = feed[currentIndex];
+        if (currentItem) {
+            handleLike(currentItem);
+            triggerHaptic('light');
+        }
+    }, [currentIndex, feed, handleLike]);
+
+    const handleSwipeRight = useCallback(() => {
+        const currentItem = feed[currentIndex];
+        if (currentItem) {
+            handleSave(currentItem);
+            triggerHaptic('light');
+        }
+    }, [currentIndex, feed, handleSave]);
+
+    // ✅ NOUVEAU: Préchargement intelligent
+    useEffect(() => {
+        if (feed.length > 0 && currentIndex >= 0) {
+            // ✅ OPTIMISÉ: Préchargement agressif dès que vidéo actuelle visible à 50% (comme TikTok)
+            // Au lieu d'attendre 70% du feed, on précharge dès que la vidéo actuelle est visible
+            if (currentIndex >= 0 && feed.length > currentIndex + 1) {
+                videoPreloadService.preloadNextVideos(
+                    feed.map(item => ({ id: item.id, videoUrl: item.videoUrl, thumbnail: item.thumbnail })),
+                    currentIndex
+                ).catch(() => {
+                    // Ignorer erreurs silencieusement
+                });
+
+                // ✅ OPTIMISÉ: Précharger aussi les thumbnails pour feedback visuel
+                const nextVideos = feed.slice(currentIndex + 1, currentIndex + 6);
+                nextVideos.forEach(video => {
+                    if (video.thumbnail) {
+                        Image.prefetch(video.thumbnail).catch(() => {
+                            // Ignorer erreurs silencieusement
+                        });
+                    }
+                });
+            }
+        }
+    }, [feed, currentIndex]);
 
     const togglePause = useCallback(() => {
         const currentItem = feed[currentIndexRef.current];
@@ -1249,6 +1560,10 @@ const VideoFeedScreen: React.FC = () => {
                                 metadata?.host_name ??
                                 item?.livekit_participant_identity ??
                                 undefined,
+                            // ✅ NOUVEAU: Récupérer les flash sales si disponibles
+                            flashSales: item?.flash_sales
+                                ? item.flash_sales.map((fs: any) => ({ id: String(fs.id), status: fs.status }))
+                                : undefined,
                         } as LiveSession;
                     })
                     .filter((session: LiveSession) => !!session.title);
@@ -1284,10 +1599,15 @@ const VideoFeedScreen: React.FC = () => {
 
     const handleLiveCardPress = useCallback(
         (session: LiveSession) => {
-            setLiveModalSession(session);
+            // ✅ NOUVEAU: Si la session a des flash sales, naviguer directement vers l'écran Flash Sale
+            if (session.flashSales && session.flashSales.length > 0) {
+                navigation.navigate('FlashSale' as never, { sessionId: session.id } as never);
+            } else {
+                setLiveModalSession(session);
+            }
             logLiveInteraction(session, 'view').catch(() => undefined);
         },
-        [logLiveInteraction],
+        [logLiveInteraction, navigation],
     );
 
     const handleLiveReminder = useCallback(
@@ -1424,15 +1744,45 @@ const VideoFeedScreen: React.FC = () => {
         );
     }, [loadFeed]);
 
+    // ✅ OPTIMISÉ: Style animé pour transition fade
+    const animatedFadeStyle = useAnimatedStyle(() => {
+        return {
+            opacity: fadeAnim.value,
+        };
+    });
+
     const renderItem = useCallback(
         ({ item, index }: { item: FeedItem; index: number }) => {
             const hasThumbnail = !!item.thumbnail;
             const isActive = index === currentIndex;
+            const distance = Math.abs(index - currentIndex);
+
+            // ✅ OPTIMISÉ: Nettoyage mémoire proactif - Démonter les vidéos à plus de 2 positions (comme TikTok)
+            if (distance > 2) {
+                // Retourner un placeholder avec thumbnail pour feedback visuel
+                return (
+                    <View style={[styles.slide, { height: SCREEN_HEIGHT }]}>
+                        {hasThumbnail && (
+                            <Image
+                                source={{ uri: item.thumbnail }}
+                                style={StyleSheet.absoluteFill}
+                                resizeMode="cover"
+                            />
+                        )}
+                        <View style={styles.placeholderOverlay}>
+                            <ActivityIndicator size="small" color="#FFF" />
+                        </View>
+                    </View>
+                );
+            }
+
             const overlay = (
                 <>
-                    <Video
-                        ref={(ref) => registerRef(index, ref)}
-                        source={{ uri: item.videoUrl }}
+                    <VideoWithEffects
+                        ref={(ref: Video | null) => registerRef(index, ref)}
+                        originalUri={item.videoUrl}
+                        contentId={item.contentId}
+                        isActive={isActive}
                         style={styles.video}
                         resizeMode={ResizeMode.COVER}
                         shouldPlay={isActive && !isPaused}
@@ -1440,6 +1790,33 @@ const VideoFeedScreen: React.FC = () => {
                         useNativeControls={false}
                         isMuted={false}
                         onPlaybackStatusUpdate={async (status) => {
+                            // ✅ NOUVEAU: Tracker temps de visionnage
+                            if (status.isLoaded && isActive && !isPaused) {
+                                const currentTimeSeconds = status.positionMillis
+                                    ? status.positionMillis / 1000
+                                    : 0;
+                                const durationSeconds = status.durationMillis
+                                    ? status.durationMillis / 1000
+                                    : 0;
+
+                                if (durationSeconds > 0) {
+                                    trackWatchTime(item.contentId, currentTimeSeconds, durationSeconds).catch(
+                                        () => undefined,
+                                    );
+
+                                    // ✅ OPTIMISÉ: Tracker visionnage pour recommandations ML
+                                    if (user?.id && currentTimeSeconds >= 5) {
+                                        videoRecommendationService.trackInteraction(
+                                            item.contentId,
+                                            'view',
+                                            currentTimeSeconds
+                                        ).catch(() => {
+                                            // Ignorer erreurs silencieusement
+                                        });
+                                    }
+                                }
+                            }
+
                             // ✅ Phase 9 - Amélioration 31 : Navigation automatique vers vidéo suivante
                             if (
                                 status.isLoaded &&
@@ -1542,6 +1919,15 @@ const VideoFeedScreen: React.FC = () => {
                                 </Text>
                             )}
 
+                            {/* ✅ NOUVEAU: Hashtags cliquables */}
+                            {item.hashtags && item.hashtags.length > 0 && (
+                                <HashtagsList
+                                    hashtags={item.hashtags}
+                                    maxVisible={5}
+                                    showTrending={false}
+                                />
+                            )}
+
                             <View style={styles.audioBadge}>
                                 <SafeIcon name="music" size={12} color="#0F172A" />
                                 <Text style={styles.audioBadgeText}>
@@ -1617,6 +2003,37 @@ const VideoFeedScreen: React.FC = () => {
                                 <SafeIcon name="share" size={20} color="#FFF" />
                                 <Text style={styles.sideActionCount}>Partage</Text>
                             </TouchableOpacity>
+                            {/* ✅ NOUVEAU: Bouton Duet/Remix */}
+                            <TouchableOpacity
+                                style={styles.sideActionButton}
+                                onPress={() => setDuetTarget(item)}
+                                activeOpacity={0.8}
+                            >
+                                <SafeIcon name="users" size={20} color="#FFF" />
+                                <Text style={styles.sideActionCount}>Duet</Text>
+                            </TouchableOpacity>
+                            {/* ✅ NOUVEAU: Bouton Livrer depuis vidéo */}
+                            {item.serviceId && (
+                                <TouchableOpacity
+                                    style={styles.sideActionButton}
+                                    onPress={() => handleDelivery(item)}
+                                    activeOpacity={0.8}
+                                >
+                                    <SafeIcon name="truck" size={20} color="#FFF" />
+                                    <Text style={styles.sideActionCount}>Livrer</Text>
+                                </TouchableOpacity>
+                            )}
+                            {/* ✅ NOUVEAU: Bouton Chat depuis vidéo */}
+                            {item.serviceId && item.prestataire && (
+                                <TouchableOpacity
+                                    style={styles.sideActionButton}
+                                    onPress={() => handleChat(item)}
+                                    activeOpacity={0.8}
+                                >
+                                    <SafeIcon name="message-circle" size={20} color="#FFF" />
+                                    <Text style={styles.sideActionCount}>Chat</Text>
+                                </TouchableOpacity>
+                            )}
                             <TouchableOpacity
                                 style={styles.sideActionButton}
                                 onPress={() => handleCreatorPress(item)}
@@ -1633,40 +2050,83 @@ const VideoFeedScreen: React.FC = () => {
                                 <SafeIcon name="chevron-down" size={20} color="#FFF" />
                                 <Text style={styles.sideActionCount}>Passer</Text>
                             </TouchableOpacity>
+                            {/* ✅ NOUVEAU: Bouton "Créer vidéo similaire" */}
+                            {item.serviceId && (
+                                <TouchableOpacity
+                                    style={styles.sideActionButton}
+                                    onPress={() => {
+                                        // Naviguer vers création vidéo avec produit pré-sélectionné
+                                        navigation.navigate('VideoCreationIntro', {
+                                            serviceId: item.serviceId,
+                                        });
+                                    }}
+                                    activeOpacity={0.8}
+                                >
+                                    <SafeIcon name="video" size={20} color="#FFF" />
+                                    <Text style={styles.sideActionCount}>Créer</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
                 </>
             );
 
             return (
-                <Pressable
-                    style={{ flex: 1 }}
-                    onLongPress={() => handleLongPress(item)}
-                    delayLongPress={350}
+                <AccessibilityWrapper
+                    accessible={isScreenReaderEnabled}
+                    accessibilityLabel={`Vidéo ${item.titre}. ${item.description || ''}`}
+                    accessibilityHint="Double-tapez pour aimer, balayez vers le haut pour la vidéo suivante"
+                    accessibilityRole="none"
                 >
-                    <Animated.View
-                        style={[
-                            styles.slide,
-                            {
-                                height: SCREEN_HEIGHT,
-                                opacity: isActive ? 1 : 0.55,
-                            },
-                        ]}
+                    <VideoGestureHandler
+                        onSwipeUp={handleSwipeUp}
+                        onSwipeDown={handleSwipeDown}
+                        onSwipeLeft={() => handleLike(item)}
+                        onSwipeRight={() => handleSave(item)}
+                        onDoubleTap={handleDoubleTapLike}
+                        enabled={isActive}
                     >
-                        {hasThumbnail ? (
-                            <ImageBackground
-                                source={{ uri: item.thumbnail! }}
-                                style={styles.videoBackground}
+                        <Pressable
+                            style={{ flex: 1 }}
+                            onLongPress={() => handleLongPress(item)}
+                            delayLongPress={350}
+                            accessible={isScreenReaderEnabled}
+                            accessibilityLabel={`Actions pour ${item.titre}`}
+                            accessibilityRole="button"
+                        >
+                            <AnimatedReanimated.View
+                                style={[
+                                    styles.slide,
+                                    {
+                                        height: isTablet ? SCREEN_HEIGHT / 2 : SCREEN_HEIGHT,
+                                        width: isTablet ? (SCREEN_WIDTH / 2) - 16 : SCREEN_WIDTH,
+                                        opacity: isActive ? 1 : 0.55,
+                                    },
+                                    isActive ? animatedFadeStyle : undefined,
+                                ]}
                             >
-                                {overlay}
-                            </ImageBackground>
-                        ) : (
-                            <View style={[styles.videoBackground, styles.videoBackgroundFallback]}>
-                                {overlay}
-                            </View>
-                        )}
-                    </Animated.View>
-                </Pressable>
+                                {hasThumbnail ? (
+                                    <ImageBackground
+                                        source={{ uri: item.thumbnail! }}
+                                        style={styles.videoBackground}
+                                    >
+                                        {overlay}
+                                    </ImageBackground>
+                                ) : (
+                                    <View style={[styles.videoBackground, styles.videoBackgroundFallback]}>
+                                        {overlay}
+                                    </View>
+                                )}
+
+                                {/* ✅ OPTIMISÉ: DoubleTapLike avec animation cœur (comme TikTok) */}
+                                <DoubleTapLike
+                                    visible={showDoubleTapLike && isActive}
+                                    onAnimationComplete={() => setShowDoubleTapLike(false)}
+                                />
+                            </AnimatedReanimated.View>
+                        </Pressable>
+                    </VideoGestureHandler>
+                </AccessibilityWrapper>
             );
         },
         [
@@ -1688,6 +2148,16 @@ const VideoFeedScreen: React.FC = () => {
     );
 
     const keyExtractor = useCallback((item: FeedItem) => item.id, []);
+
+    // ✅ OPTIMISÉ: getItemLayout pour scroll ultra-fluide (comme TikTok)
+    const getItemLayout = useCallback(
+        (_: any, index: number) => ({
+            length: SCREEN_HEIGHT,
+            offset: SCREEN_HEIGHT * index,
+            index,
+        }),
+        []
+    );
 
     const emptyContent = useMemo(
         () => (
@@ -1888,25 +2358,57 @@ const VideoFeedScreen: React.FC = () => {
                         data={feed}
                         keyExtractor={keyExtractor}
                         renderItem={renderItem}
-                        pagingEnabled
+                        getItemLayout={isTablet ? undefined : getItemLayout}
+                        pagingEnabled={!isTablet}
+                        snapToInterval={isTablet ? undefined : SCREEN_HEIGHT}
+                        snapToAlignment="start"
+                        decelerationRate="fast"
                         showsVerticalScrollIndicator={false}
                         viewabilityConfig={viewabilityConfig}
                         onViewableItemsChanged={handleViewableItemsChanged}
-                        windowSize={3}
-                        initialNumToRender={2}
-                        maxToRenderPerBatch={3}
+                        windowSize={isTablet ? 10 : 5}
+                        initialNumToRender={isTablet ? 4 : 3}
+                        maxToRenderPerBatch={isTablet ? 8 : 5}
+                        updateCellsBatchingPeriod={50}
                         removeClippedSubviews
+                        onEndReachedThreshold={0.3}
+                        numColumns={numColumns}
+                        columnWrapperStyle={isTablet ? styles.tabletRow : undefined}
                     />
                 </>
             )}
             {commentTarget?.serviceId ? (
-                <VideoCommentsModal
+                <Modal
                     visible={true}
-                    serviceId={commentTarget.serviceId}
-                    serviceTitle={commentTarget.titre}
-                    onClose={() => setCommentTarget(null)}
-                />
+                    animationType="slide"
+                    onRequestClose={() => setCommentTarget(null)}
+                >
+                    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
+                            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1E293B' }}>Commentaires</Text>
+                            <TouchableOpacity onPress={() => setCommentTarget(null)}>
+                                <SafeIcon name="x" size={24} color="#1E293B" />
+                            </TouchableOpacity>
+                        </View>
+                        <ProductCommentsSection
+                            serviceId={commentTarget.serviceId}
+                            serviceTitle={commentTarget.titre}
+                            mode="full"
+                        />
+                    </View>
+                </Modal>
             ) : null}
+            {/* ✅ NOUVEAU: Modal Duet/Remix */}
+            <DuetRemixModal
+                visible={!!duetTarget}
+                originalVideo={duetTarget}
+                onClose={() => setDuetTarget(null)}
+                onSuccess={(duetId) => {
+                    console.log('[VideoFeedScreen] Duet créé:', duetId);
+                    setDuetTarget(null);
+                    // Optionnel: Recharger le feed ou naviguer vers le duet
+                }}
+            />
             <Modal
                 visible={!!liveModalSession}
                 transparent
@@ -1919,78 +2421,112 @@ const VideoFeedScreen: React.FC = () => {
                         activeOpacity={1}
                         onPress={() => setLiveModalSession(null)}
                     />
-                    {liveModalSession ? (
-                        <View style={styles.liveModalContainer}>
-                            <View style={styles.liveModalBadgeRow}>
-                                <View style={styles.liveBadge}>
-                                    <Text style={styles.liveBadgeLabel}>LIVE</Text>
-                                </View>
-                                <Text style={styles.liveModalAudience}>
-                                    {formatCount(liveModalSession.audience ?? 0)} intéressés
-                                </Text>
+                    {liveModalSession ? (() => {
+                        const now = Date.now();
+                        const startTime = new Date(liveModalSession.startAt).getTime();
+                        const isLive = now >= startTime;
+
+                        return (
+                            <View style={styles.liveModalContainer}>
+                                {isLive ? (
+                                    // ✅ IMPLÉMENTÉ: Player live streaming HLS si session en cours
+                                    <View style={styles.livePlayerContainer}>
+                                        <LiveStreamPlayer
+                                            sessionId={liveModalSession.id}
+                                            userId={user?.id ? Number(user.id) : undefined}
+                                            autoPlay={true}
+                                            onError={(error) => {
+                                                console.error('[VideoFeedScreen] Erreur live player:', error);
+                                                Alert.alert('Erreur', 'Impossible de charger le live. Veuillez réessayer.');
+                                            }}
+                                        />
+                                        <TouchableOpacity
+                                            style={styles.livePlayerCloseButton}
+                                            onPress={() => {
+                                                setLiveModalSession(null);
+                                                setShowLiveChat(false);
+                                            }}
+                                            activeOpacity={0.85}
+                                        >
+                                            <SafeIcon name="x" size={20} color="#FFF" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    // Session à venir - afficher infos
+                                    <>
+                                        <View style={styles.liveModalBadgeRow}>
+                                            <View style={styles.liveBadge}>
+                                                <Text style={styles.liveBadgeLabel}>LIVE</Text>
+                                            </View>
+                                            <Text style={styles.liveModalAudience}>
+                                                {formatCount(liveModalSession.audience ?? 0)} intéressés
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.liveModalTitle}>{liveModalSession.title}</Text>
+                                        <Text style={styles.liveModalTime}>
+                                            {formatLiveStartRelative(liveModalSession.startAt)} ·{' '}
+                                            {formatLiveStartClock(liveModalSession.startAt)}
+                                        </Text>
+                                        {!!liveModalSession.description && (
+                                            <Text style={styles.liveModalDescription}>
+                                                {liveModalSession.description}
+                                            </Text>
+                                        )}
+                                        <View style={styles.liveModalActions}>
+                                            <TouchableOpacity
+                                                style={styles.liveJoinButton}
+                                                activeOpacity={0.85}
+                                                onPress={() => handleJoinLive(liveModalSession)}
+                                            >
+                                                <SafeIcon name="play" size={16} color="#FFF" />
+                                                <Text style={styles.liveJoinButtonLabel}>Rejoindre le live</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[
+                                                    styles.liveReminderModalButton,
+                                                    liveReminderMap[liveModalSession.id]
+                                                        ? styles.liveReminderModalButtonActive
+                                                        : undefined,
+                                                ]}
+                                                activeOpacity={0.85}
+                                                onPress={() => handleLiveReminder(liveModalSession)}
+                                            >
+                                                <SafeIcon
+                                                    name={liveReminderMap[liveModalSession.id] ? 'bell-ring' : 'bell'}
+                                                    size={15}
+                                                    color={liveReminderMap[liveModalSession.id] ? '#1D4ED8' : '#0F172A'}
+                                                />
+                                                <Text
+                                                    style={[
+                                                        styles.liveReminderModalLabel,
+                                                        liveReminderMap[liveModalSession.id]
+                                                            ? styles.liveReminderModalLabelActive
+                                                            : undefined,
+                                                    ]}
+                                                >
+                                                    {liveReminderMap[liveModalSession.id]
+                                                        ? 'Rappel actif'
+                                                        : 'Être notifié'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.liveStartButton}
+                                                activeOpacity={0.85}
+                                                onPress={() => {
+                                                    setLiveModalSession(null);
+                                                    handleStartLive();
+                                                    handleOpenCreation();
+                                                }}
+                                            >
+                                                <SafeIcon name="video" size={16} color="#0F172A" />
+                                                <Text style={styles.liveStartButtonLabel}>Vendre en live</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </>
+                                )}
                             </View>
-                            <Text style={styles.liveModalTitle}>{liveModalSession.title}</Text>
-                            <Text style={styles.liveModalTime}>
-                                {formatLiveStartRelative(liveModalSession.startAt)} ·{' '}
-                                {formatLiveStartClock(liveModalSession.startAt)}
-                            </Text>
-                            {!!liveModalSession.description && (
-                                <Text style={styles.liveModalDescription}>
-                                    {liveModalSession.description}
-                                </Text>
-                            )}
-                            <View style={styles.liveModalActions}>
-                                <TouchableOpacity
-                                    style={styles.liveJoinButton}
-                                    activeOpacity={0.85}
-                                    onPress={() => handleJoinLive(liveModalSession)}
-                                >
-                                    <SafeIcon name="play" size={16} color="#FFF" />
-                                    <Text style={styles.liveJoinButtonLabel}>Rejoindre le live</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.liveReminderModalButton,
-                                        liveReminderMap[liveModalSession.id]
-                                            ? styles.liveReminderModalButtonActive
-                                            : undefined,
-                                    ]}
-                                    activeOpacity={0.85}
-                                    onPress={() => handleLiveReminder(liveModalSession)}
-                                >
-                                    <SafeIcon
-                                        name={liveReminderMap[liveModalSession.id] ? 'bell-ring' : 'bell'}
-                                        size={15}
-                                        color={liveReminderMap[liveModalSession.id] ? '#1D4ED8' : '#0F172A'}
-                                    />
-                                    <Text
-                                        style={[
-                                            styles.liveReminderModalLabel,
-                                            liveReminderMap[liveModalSession.id]
-                                                ? styles.liveReminderModalLabelActive
-                                                : undefined,
-                                        ]}
-                                    >
-                                        {liveReminderMap[liveModalSession.id]
-                                            ? 'Rappel actif'
-                                            : 'Être notifié'}
-                                    </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.liveStartButton}
-                                    activeOpacity={0.85}
-                                    onPress={() => {
-                                        setLiveModalSession(null);
-                                        handleStartLive();
-                                        handleOpenCreation();
-                                    }}
-                                >
-                                    <SafeIcon name="video" size={16} color="#0F172A" />
-                                    <Text style={styles.liveStartButtonLabel}>Vendre en live</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    ) : null}
+                        );
+                    })() : null}
                 </View>
             </Modal>
             <Modal
@@ -2112,6 +2648,40 @@ const VideoFeedScreen: React.FC = () => {
                 }}
                 onSuccess={handleCreationSuccess}
             />
+            {/* ✅ NOUVEAU: Modal livraison depuis vidéo */}
+            {deliveryTarget && serviceDataForDelivery && (
+                <OrderDeliveryModal
+                    visible={!!deliveryTarget}
+                    onClose={() => {
+                        setDeliveryTarget(null);
+                        setServiceDataForDelivery(null);
+                        setDeliveryProductIndex(undefined);
+                        setDeliveryProductName(undefined);
+                    }}
+                    serviceId={deliveryTarget.serviceId!}
+                    productIndex={deliveryProductIndex}
+                    productName={deliveryProductName}
+                    onSuccess={(deliveryId) => {
+                        console.log('[VideoFeedScreen] Livraison créée:', deliveryId);
+                        setDeliveryTarget(null);
+                        setServiceDataForDelivery(null);
+                        Alert.alert('Succès', 'Votre demande de livraison a été créée avec succès!');
+                    }}
+                />
+            )}
+            {/* ✅ NOUVEAU: Modal chat depuis vidéo */}
+            {chatTarget && serviceDataForChat && chatTarget.prestataire && (
+                <ChatModalMobile
+                    visible={!!chatTarget}
+                    onClose={() => {
+                        setChatTarget(null);
+                        setServiceDataForChat(null);
+                    }}
+                    service={serviceDataForChat}
+                    prestataireInfo={chatTarget.prestataire}
+                    user={user}
+                />
+            )}
         </SafeNativeView>
     );
 };
@@ -2124,6 +2694,11 @@ const LinearGradientOverlay = () => (
 );
 
 const styles = StyleSheet.create({
+    filterModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
     container: {
         flex: 1,
         backgroundColor: 'black',
@@ -2682,6 +3257,26 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 15,
     },
+    livePlayerContainer: {
+        width: '100%',
+        height: 400,
+        borderRadius: 16,
+        overflow: 'hidden',
+        backgroundColor: '#000',
+        marginBottom: 16,
+    },
+    livePlayerCloseButton: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
+    },
     liveReminderModalButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -2800,6 +3395,18 @@ const styles = StyleSheet.create({
     bottomGradient: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    },
+    placeholderOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    tabletRow: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 8,
     },
 });
 

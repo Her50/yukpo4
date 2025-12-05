@@ -82,14 +82,14 @@ pub async fn get_popular_products_similar_to(
     let products: Vec<PopularProduct> = rows
         .iter()
         .map(|row| PopularProduct {
-            product_vector: row.get("product_vector"),
-            product_labels: row.get("product_labels"),
-            usage_count: row.get("usage_count"),
-            prix_moyen: row.get("prix_float"),
-            has_variant: row.get("has_variant"),
-            variant_dimension: row.get("variant_dimension"),
-            variant_value: row.get("variant_value"),
-            is_trending: row.try_get("is_trending").unwrap_or(false),
+            product_vector: row.get::<Vec<String>, _>("product_vector"),
+            product_labels: row.get::<Vec<String>, _>("product_labels"),
+            usage_count: row.get::<i32, _>("usage_count"),
+            prix_moyen: row.get::<Option<f64>, _>("prix_float"),
+            has_variant: row.get::<bool, _>("has_variant"),
+            variant_dimension: row.get::<Option<String>, _>("variant_dimension"),
+            variant_value: row.get::<Option<String>, _>("variant_value"),
+            is_trending: row.get::<Option<bool>, _>("is_trending").unwrap_or(false),
         })
         .collect();
 
@@ -188,14 +188,14 @@ pub async fn get_top_popular_products(
     let products: Vec<PopularProduct> = rows
         .iter()
         .map(|row| PopularProduct {
-            product_vector: row.get("product_vector"),
-            product_labels: row.get("product_labels"),
-            usage_count: row.get("usage_count"),
-            prix_moyen: row.get("prix_float"),
-            has_variant: row.get("has_variant"),
-            variant_dimension: row.get("variant_dimension"),
-            variant_value: row.get("variant_value"),
-            is_trending: row.try_get("is_trending").unwrap_or(false),
+            product_vector: row.get::<Vec<String>, _>("product_vector"),
+            product_labels: row.get::<Vec<String>, _>("product_labels"),
+            usage_count: row.get::<i32, _>("usage_count"),
+            prix_moyen: row.get::<Option<f64>, _>("prix_float"),
+            has_variant: row.get::<bool, _>("has_variant"),
+            variant_dimension: row.get::<Option<String>, _>("variant_dimension"),
+            variant_value: row.get::<Option<String>, _>("variant_value"),
+            is_trending: row.get::<Option<bool>, _>("is_trending").unwrap_or(false),
         })
         .collect();
 

@@ -15,14 +15,37 @@ pub async fn deactivate_expired_products(pool: &PgPool) -> Result<usize, sqlx::E
 
     // Envoyer des notifications aux prestataires
     for row in &rows {
-        let service_id: Option<i32> = row.try_get("service_id").ok();
-        let user_id: Option<i32> = row.try_get("user_id").ok();
-        let product_nom: Option<String> = row.try_get("product_nom").ok();
+        let service_id: Option<i32> = row.get::<Option<_>, _>("service_id");
+        let user_id: Option<i32> = row.get::<Option<_>, _>("user_id");
+        let product_nom: Option<String> = row.get::<Option<_>, _>("product_nom");
+        // ✅ NOUVEAU 2025-01-28: Récupérer la raison de désactivation
+        let deactivation_reason: Option<String> = row.get::<Option<_>, _>("deactivation_reason");
 
         if let (Some(sid), Some(uid), Some(pnom)) = (service_id, user_id, product_nom) {
+            // ✅ NOUVEAU: Adapter le message selon la raison
+            let reason = deactivation_reason.as_deref().unwrap_or("expired_time");
+            let message = if reason == "stock_zero" {
+                format!(
+                    "Votre produit '{}' a été automatiquement désactivé car le stock est épuisé. Réactivez-le pour 1000 FCFA pour le rendre visible à nouveau.",
+                    pnom
+                )
+            } else {
+                format!(
+                    "Votre produit '{}' a été automatiquement désactivé après 30 jours. Réactivez-le pour 1000 FCFA pour le rendre visible à nouveau.",
+                    pnom
+                )
+            };
+
             // Envoyer notification au prestataire
-            match send_product_deactivation_notification(pool, sid, uid, &pnom).await {
-                Ok(_) => info!("📧 Notification envoyée pour produit: {}", pnom),
+            match send_product_deactivation_notification_with_reason(
+                pool, sid, uid, &pnom, reason, &message,
+            )
+            .await
+            {
+                Ok(_) => info!(
+                    "📧 Notification envoyée pour produit: {} (raison: {})",
+                    pnom, reason
+                ),
                 Err(e) => error!("❌ Erreur envoi notification: {}", e),
             }
         }
@@ -38,7 +61,35 @@ async fn send_product_deactivation_notification(
     user_id: i32,
     product_nom: &str,
 ) -> Result<(), sqlx::Error> {
+    send_product_deactivation_notification_with_reason(
+        pool,
+        service_id,
+        user_id,
+        product_nom,
+        "expired_time",
+        &format!(
+            "Votre produit '{}' a été automatiquement désactivé après 30 jours. Réactivez-le pour 1000 FCFA pour le rendre visible à nouveau.",
+            product_nom
+        )
+    ).await
+}
+
+/// ✅ NOUVEAU 2025-01-28: Envoie une notification avec raison spécifique
+async fn send_product_deactivation_notification_with_reason(
+    pool: &PgPool,
+    service_id: i32,
+    user_id: i32,
+    product_nom: &str,
+    reason: &str,
+    message: &str,
+) -> Result<(), sqlx::Error> {
     // Créer une notification dans la table notifications
+    let title = if reason == "stock_zero" {
+        format!("Produit désactivé (stock épuisé): {}", product_nom)
+    } else {
+        format!("Produit désactivé: {}", product_nom)
+    };
+
     sqlx::query(
         r#"
         INSERT INTO notifications (
@@ -58,22 +109,22 @@ async fn send_product_deactivation_notification(
             FALSE,
             NOW()
         )
-        "#
+        "#,
     )
     .bind(user_id)
     .bind("product_deactivated")
-    .bind(format!("Produit désactivé: {}", product_nom))
-    .bind(format!(
-        "Votre produit '{}' a été automatiquement désactivé après 30 jours. Réactivez-le pour 1000 FCFA pour le rendre visible à nouveau.",
-        product_nom
-    ))
-    .bind(serde_json::json!({"service_id": service_id}))
+    .bind(title)
+    .bind(message)
+    .bind(serde_json::json!({
+        "service_id": service_id,
+        "reason": reason
+    }))
     .execute(pool)
     .await?;
 
     info!(
-        "📧 [ProductDeactivation] Notification créée pour user {} - produit: {}",
-        user_id, product_nom
+        "📧 [ProductDeactivation] Notification créée pour user {} - produit: {} (raison: {})",
+        user_id, product_nom, reason
     );
     Ok(())
 }

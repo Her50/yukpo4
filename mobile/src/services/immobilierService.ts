@@ -1,0 +1,288 @@
+// ✅ Service API pour Immobilier (Vente/Location)
+import { apiGet, apiPost } from './api';
+
+// Types pour les réponses
+export interface RealEstateProperty {
+    id: number;
+    service_id: number;
+    titre: string;
+    description?: string;
+    type_bien: string;
+    statut: string;
+    adresse?: string;
+    quartier?: string;
+    ville?: string;
+    gps?: string;
+    superficie_m2?: number;
+    nb_chambres?: number;
+    nb_salles_bain?: number;
+    standing?: string;
+    prix_vente?: number;
+    prix_location_mensuel?: number;
+    photos?: string[];
+    is_available_now?: boolean;
+    distance_km?: number;
+    average_rating?: number;
+    total_ratings?: number;
+}
+
+export interface PropertySearchFilters {
+    ville?: string;
+    quartier?: string | string[]; // Support multiple quartiers
+    lat?: number;
+    lng?: number;
+    max_distance_km?: number;
+    search_zone?: string; // Zone polygonale: "lat1,lng1|lat2,lng2|..."
+    type_bien?: string;
+    statut?: string;
+    prix_min?: number;
+    prix_max?: number;
+    superficie_min?: number;
+    superficie_max?: number;
+    nb_chambres_min?: number;
+    standing?: string;
+}
+
+export interface PriceEstimate {
+    estimated_price: number;
+    price_per_m2: number;
+    price_range_min: number;
+    price_range_max: number;
+    confidence_level: number;
+    reasoning: string;
+    market_analysis: string;
+    factors: string[];
+}
+
+export interface PropertyRecommendation {
+    property_ids: number[];
+    recommendations: string;
+    budget_analysis: string;
+    location_analysis: string;
+    investment_potential?: string;
+}
+
+export interface LoanSimulation {
+    property_price: number;
+    down_payment: number;
+    loan_amount: number;
+    interest_rate: number;
+    loan_duration_years: number;
+    monthly_payment: number;
+    total_interest: number;
+    total_cost: number;
+    affordability_analysis: string;
+    recommendations: string;
+}
+
+export const immobilierService = {
+    // ✅ Recherche de biens immobiliers
+    searchProperties: async (filters: PropertySearchFilters) => {
+        const response = await apiGet<{ success: boolean; data: RealEstateProperty[] }>(
+            '/api/immobilier/biens',
+            filters
+        );
+        return response;
+    },
+
+    // ✅ Détails d'un bien
+    getPropertyDetails: async (id: number) => {
+        const response = await apiGet<{ success: boolean; data: RealEstateProperty }>(
+            `/api/immobilier/biens/${id}`
+        );
+        return response;
+    },
+
+    // ✅ Réserver une visite
+    bookVisit: async (propertyId: number, date: string, heure: string, typeVisite: string) => {
+        const response = await apiPost<{ success: boolean; data: { id: number } }>(
+            `/api/immobilier/biens/${propertyId}/book-visit`,
+            {
+                date_visite: date,
+                heure_visite: heure,
+                type_visite: typeVisite,
+            }
+        );
+        return response;
+    },
+
+    // ✅ Simuler un prêt immobilier
+    simulateLoan: async (
+        propertyId: number,
+        downPaymentPercent: number,
+        loanDurationYears: number,
+        monthlyIncome?: number
+    ) => {
+        const response = await apiPost<{ success: boolean; simulation: LoanSimulation }>(
+            `/api/immobilier/biens/${propertyId}/simulate-loan`,
+            {
+                down_payment_percent: downPaymentPercent,
+                loan_duration_years: loanDurationYears,
+                monthly_income: monthlyIncome,
+            }
+        );
+        return response;
+    },
+
+    // ✅ Mes visites
+    getMyVisits: async () => {
+        const response = await apiGet<{ success: boolean; data: any[] }>('/api/immobilier/my-visits');
+        return response;
+    },
+
+    // ✅ Recommandations IA
+    getAIRecommendations: async (
+        budgetMax: number,
+        typeBien?: string,
+        nbChambresMin?: number,
+        quartier?: string,
+        ville: string = '',
+        preferences?: any
+    ) => {
+        const response = await apiPost<{ success: boolean; recommendation: PropertyRecommendation }>(
+            '/api/immobilier/ai/recommendations',
+            {
+                budget_max: budgetMax,
+                type_bien: typeBien,
+                nb_chambres_min: nbChambresMin,
+                quartier,
+                ville,
+                preferences,
+            }
+        );
+        return response;
+    },
+
+    // ✅ Estimation prix IA
+    estimatePrice: async (
+        typeBien: string,
+        superficieM2: number,
+        nbChambres: number,
+        standing: string,
+        quartier: string,
+        ville: string,
+        equipements?: any
+    ) => {
+        const response = await apiPost<{ success: boolean; estimate: PriceEstimate }>(
+            '/api/immobilier/ai/price-estimate',
+            {
+                type_bien: typeBien,
+                superficie_m2: superficieM2,
+                nb_chambres: nbChambres,
+                standing,
+                quartier,
+                ville,
+                equipements,
+            }
+        );
+        return response;
+    },
+
+    // ✅ Analytics propriétaire
+    getAnalytics: async (propertyId: number) => {
+        const response = await apiGet<{ success: boolean; analytics: any }>(
+            `/api/immobilier/analytics?property_id=${propertyId}`
+        );
+        return response;
+    },
+
+    // ============================================================================
+    // FONCTIONNALITÉS AVANCÉES IMMOBILIER
+    // ============================================================================
+
+    // ✅ Favoris
+    addToFavorites: async (propertyId: number) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            `/api/immobilier/biens/${propertyId}/favorite`,
+            {}
+        );
+        return response;
+    },
+
+    removeFromFavorites: async (propertyId: number) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            `/api/immobilier/biens/${propertyId}/unfavorite`,
+            {}
+        );
+        return response;
+    },
+
+    getMyFavorites: async () => {
+        const response = await apiGet<{ success: boolean; data: RealEstateProperty[] }>(
+            '/api/immobilier/my-favorites'
+        );
+        return response;
+    },
+
+    // ✅ Comparaison
+    compareProperties: async (propertyIds: number[], comparisonName?: string) => {
+        const response = await apiPost<{
+            success: boolean;
+            comparison_id: number;
+            properties: RealEstateProperty[];
+        }>('/api/immobilier/compare', {
+            property_ids: propertyIds,
+            comparison_name: comparisonName,
+        });
+        return response;
+    },
+
+    // ✅ Alertes prix
+    createPriceAlert: async (
+        propertyId?: number,
+        searchCriteria?: any,
+        targetPriceMax?: number,
+        alertType: string = 'price_drop'
+    ) => {
+        const response = await apiPost<{ success: boolean; alert_id: number }>(
+            '/api/immobilier/alerts',
+            {
+                property_id: propertyId,
+                search_criteria: searchCriteria,
+                target_price_max: targetPriceMax,
+                alert_type: alertType,
+            }
+        );
+        return response;
+    },
+
+    getMyPriceAlerts: async () => {
+        const response = await apiGet<{ success: boolean; data: any[] }>(
+            '/api/immobilier/my-alerts'
+        );
+        return response;
+    },
+
+    // ✅ Tracking et Partage
+    trackPropertyView: async (
+        propertyId: number,
+        viewDurationSeconds?: number,
+        viewedSections?: string[],
+        source?: string,
+        sessionId?: string
+    ) => {
+        const response = await apiPost<{ success: boolean }>(
+            `/api/immobilier/biens/${propertyId}/track-view`,
+            {
+                view_duration_seconds: viewDurationSeconds,
+                viewed_sections: viewedSections,
+                source,
+                session_id: sessionId,
+            }
+        );
+        return response;
+    },
+
+    shareProperty: async (propertyId: number, shareType: string = 'link') => {
+        const response = await apiPost<{
+            success: boolean;
+            share_id: number;
+            share_token: string;
+            share_url: string;
+        }>(`/api/immobilier/biens/${propertyId}/share`, {
+            share_type: shareType,
+        });
+        return response;
+    },
+};
+

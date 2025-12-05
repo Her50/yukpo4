@@ -8,10 +8,10 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::controllers::payment_controller::validate_phone_number;
+use crate::services::mobile_money_service::{MobileMoneyService, MobileMoneyWebhook};
 use crate::services::payment_service::{
     PaymentMethod, PaymentReceipt, PaymentRequest, PaymentResponse, PaymentService, PaymentStatus,
 };
-use crate::services::mobile_money_service::{MobileMoneyService, MobileMoneyWebhook};
 use axum::response::IntoResponse;
 use serde_json::json;
 
@@ -285,11 +285,9 @@ pub async fn get_payment_stats(
 }
 
 /// ✅ Phase 10 - Webhook pour MTN Mobile Money
-pub async fn webhook_mtn_money(
-    Json(payload): Json<serde_json::Value>,
-) -> impl IntoResponse {
+pub async fn webhook_mtn_money(Json(payload): Json<serde_json::Value>) -> impl IntoResponse {
     let mobile_money_service = MobileMoneyService::new();
-    
+
     // Parser le webhook MTN
     let webhook = match serde_json::from_value::<MobileMoneyWebhook>(payload.clone()) {
         Ok(w) => w,
@@ -301,7 +299,7 @@ pub async fn webhook_mtn_money(
             }));
         }
     };
-    
+
     match mobile_money_service.process_webhook(webhook).await {
         Ok(_) => Json(json!({
             "success": true,
@@ -318,11 +316,9 @@ pub async fn webhook_mtn_money(
 }
 
 /// ✅ Phase 10 - Webhook pour Orange Money
-pub async fn webhook_orange_money(
-    Json(payload): Json<serde_json::Value>,
-) -> impl IntoResponse {
+pub async fn webhook_orange_money(Json(payload): Json<serde_json::Value>) -> impl IntoResponse {
     let mobile_money_service = MobileMoneyService::new();
-    
+
     // Parser le webhook Orange
     let webhook = match serde_json::from_value::<MobileMoneyWebhook>(payload.clone()) {
         Ok(w) => w,
@@ -334,7 +330,7 @@ pub async fn webhook_orange_money(
             }));
         }
     };
-    
+
     match mobile_money_service.process_webhook(webhook).await {
         Ok(_) => Json(json!({
             "success": true,

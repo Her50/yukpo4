@@ -1,0 +1,128 @@
+# ✅ NOUVEAU 2025-12-02: Configuration Redis Cluster pour scaling horizontal
+# Usage: docker-compose -f docker-compose.redis-cluster.yml up -d
+
+version: '3.8'
+
+services:
+  # ✅ Redis Master 1
+  redis-master-1:
+    image: redis:7-alpine
+    container_name: redis-master-1
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server --cluster-enabled yes --cluster-config-file nodes-master-1.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis-master-1-data:/data
+    networks:
+      - redis-cluster
+
+  # ✅ Redis Master 2
+  redis-master-2:
+    image: redis:7-alpine
+    container_name: redis-master-2
+    ports:
+      - "6380:6379"
+    command: >
+      redis-server --cluster-enabled yes --cluster-config-file nodes-master-2.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis-master-2-data:/data
+    networks:
+      - redis-cluster
+
+  # ✅ Redis Master 3
+  redis-master-3:
+    image: redis:7-alpine
+    container_name: redis-master-3
+    ports:
+      - "6381:6379"
+    command: >
+      redis-server --cluster-config-file nodes-master-3.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis-master-3-data:/data
+    networks:
+      - redis-cluster
+
+  # ✅ Redis Replica 1 (pour haute disponibilité)
+  redis-replica-1:
+    image: redis:7-alpine
+    container_name: redis-replica-1
+    ports:
+      - "6382:6379"
+    command: >
+      redis-server --cluster-enabled yes --cluster-config-file nodes-replica-1.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis-replica-1-data:/data
+    networks:
+      - redis-cluster
+    depends_on:
+      - redis-master-1
+
+  # ✅ Redis Replica 2
+  redis-replica-2:
+    image: redis:7-alpine
+    container_name: redis-replica-2
+    ports:
+      - "6383:6379"
+    command: >
+      redis-server --cluster-enabled yes --cluster-config-file nodes-replica-2.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis-replica-2-data:/data
+    networks:
+      - redis-cluster
+    depends_on:
+      - redis-master-2
+
+  # ✅ Redis Replica 3
+  redis-replica-3:
+    image: redis:7-alpine
+    container_name: redis-replica-3
+    ports:
+      - "6384:6379"
+    command: >
+      redis-server --cluster-enabled yes --cluster-config-file nodes-replica-3.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis-replica-3-data:/data
+    networks:
+      - redis-cluster
+    depends_on:
+      - redis-master-3
+
+  # ✅ Script d'initialisation du cluster
+  redis-cluster-init:
+    image: redis:7-alpine
+    container_name: redis-cluster-init
+    command: >
+      sh -c " sleep 10 && redis-cli --cluster create
+        redis-master-1:6379
+        redis-master-2:6379
+        redis-master-3:6379
+        redis-replica-1:6379
+        redis-replica-2:6379
+        redis-replica-3:6379
+        --cluster-replicas 1
+        -a ${REDIS_PASSWORD:-changeme}
+        --cluster-yes
+      "
+    networks:
+      - redis-cluster
+    depends_on:
+      - redis-master-1
+      - redis-master-2
+      - redis-master-3
+      - redis-replica-1
+      - redis-replica-2
+      - redis-replica-3
+
+volumes:
+  redis-master-1-data:
+  redis-master-2-data:
+  redis-master-3-data:
+  redis-replica-1-data:
+  redis-replica-2-data:
+  redis-replica-3-data:
+
+
+networks:
+  redis-cluster:
+    driver: bridge

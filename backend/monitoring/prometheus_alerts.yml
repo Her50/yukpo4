@@ -1,141 +1,118 @@
+# ✅ Phase 3 - Alertes Prometheus pour optimisations livraison
+# Fichier de règles d'alerte Prometheus
+
 groups:
-  - name: yukpo_pipeline
+  - name: delivery_critical
     interval: 30s
     rules:
-      # Pipeline vidéo en état critique
-      - alert: PipelineCritical
-        expr: pipeline_status == 2
+      # ✅ Phase 1: Pool DB
+      - alert: DeliveryDBPoolExhausted
+        expr: delivery_db_pool_active / delivery_db_pool_size > 0.9
         for: 5m
         labels:
           severity: critical
-          service: video_pipeline
         annotations:
-          summary: "Pipeline vidéo en état CRITICAL"
-          description: "Le pipeline vidéo est en état critique depuis {{ $for }}. Jobs en file: {{ $value }}"
+          summary: "Pool DB presque épuisé"
+          description: "Pool DB à {{ $value | humanizePercentage }} de capacité ({{ $labels.instance }})"
 
-      # Pipeline vidéo dégradé
-      - alert: PipelineDegraded
-        expr: pipeline_status == 1
-        for: 10m
-        labels:
-          severity: warning
-          service: video_pipeline
-        annotations:
-          summary: "Pipeline vidéo dégradé"
-          description: "Le pipeline vidéo est dégradé depuis {{ $for }}. Vérifier les jobs en attente."
-
-      # Trop de jobs en file d'attente
-      - alert: VideoJobsQueueHigh
-        expr: video_jobs_queued > 50
+      - alert: DeliveryDBPoolWaitTimeHigh
+        expr: rate(delivery_db_pool_wait_time_seconds_sum[5m]) > 1.0
         for: 5m
         labels:
           severity: warning
-          service: video_pipeline
         annotations:
-          summary: "File d'attente vidéo saturée"
-          description: "{{ $value }} jobs en file d'attente (seuil: 50)"
+          summary: "Temps d'attente pool DB élevé"
+          description: "Temps d'attente moyen: {{ $value }}s ({{ $labels.instance }})"
 
-      # Taux d'échec élevé
-      - alert: VideoJobsFailureRateHigh
-        expr: rate(video_jobs_failed_last_24h[1h]) > 0.1
+      # ✅ Phase 1: Matching Algorithm
+      - alert: DeliveryMatchingQueueDepthHigh
+        expr: delivery_matching_queue_depth > 1000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "File de matching surchargée"
+          description: "{{ $value }} livraisons en attente de matching ({{ $labels.instance }})"
+
+      - alert: DeliveryMatchingFailureRateHigh
+        expr: |
+          rate(delivery_matching_failed_total[5m]) / 
+          (rate(delivery_matching_started_total[5m]) + 0.001) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taux d'échec matching élevé"
+          description: "{{ $value | humanizePercentage }} d'échecs ({{ $labels.instance }})"
+
+      # ✅ Phase 1: Cache
+      - alert: DeliveryCacheHitRateLow
+        expr: delivery_cache_matching_hit_rate < 0.5
         for: 15m
         labels:
           severity: warning
-          service: video_pipeline
         annotations:
-          summary: "Taux d'échec vidéo élevé"
-          description: "Taux d'échec: {{ $value | humanizePercentage }}"
+          summary: "Cache hit rate faible"
+          description: "Hit rate: {{ $value | humanizePercentage }} ({{ $labels.instance }})"
 
-  - name: yukpo_delivery
-    interval: 30s
+      # ✅ Phase 2: Rate Limiting
+      - alert: DeliveryRateLimitBlockedHigh
+        expr: rate(delivery_rate_limit_blocked_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taux de blocage rate limiting élevé"
+          description: "{{ $value }} requêtes/s bloquées ({{ $labels.instance }})"
+
+      # ✅ Phase 2: WebSocket
+      - alert: DeliveryWebSocketErrorsHigh
+        expr: rate(delivery_ws_errors_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Erreurs WebSocket élevées"
+          description: "{{ $value }} erreurs/s ({{ $labels.instance }})"
+
+      - alert: DeliveryWebSocketConnectionsHigh
+        expr: delivery_ws_connections_current > 100000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nombre de connexions WebSocket élevé"
+          description: "{{ $value }} connexions actives ({{ $labels.instance }})"
+
+      # ✅ Phase 2: Partitionnement
+      - alert: DeliveryArchiveSizeHigh
+        expr: delivery_archive_size > 1000000
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: "Taille archive importante"
+          description: "{{ $value }} livraisons archivées ({{ $labels.instance }})"
+
+  - name: delivery_performance
+    interval: 1m
     rules:
-      # Matching delivery dégradé
-      - alert: DeliveryMatchingDegraded
-        expr: rate(delivery_matching_success_total[5m]) / rate(delivery_matching_started_total[5m]) < 0.7
+      # ✅ Phase 1: Performance Matching
+      - alert: DeliveryMatchingLatencyHigh
+        expr: histogram_quantile(0.95, rate(delivery_matching_duration_seconds_bucket[5m])) > 2.0
         for: 10m
         labels:
           severity: warning
-          service: delivery
         annotations:
-          summary: "Taux de succès matching delivery faible"
-          description: "Taux de succès: {{ $value | humanizePercentage }} (objectif: 70%)"
+          summary: "Latence matching élevée (p95)"
+          description: "P95: {{ $value }}s ({{ $labels.instance }})"
 
-  - name: yukpo_chat_metrics
-    interval: 1m
-    rules:
-      # Alertes métriques chat
-      - alert: ChatMetricsAlert
-        expr: rate(chat_messages_sent_total[5m]) > 100
-        for: 5m
-        labels:
-          severity: info
-          service: chat
-          metric_name: chat_messages_sent_total
-        annotations:
-          summary: "Volume de messages chat élevé"
-          description: "{{ $value }} messages/min (seuil: 100/min)"
-
-      - alert: ChatConversationsHigh
-        expr: chat_conversations_active_total > 500
-        for: 5m
-        labels:
-          severity: info
-          service: chat
-        annotations:
-          summary: "Nombre élevé de conversations actives"
-          description: "{{ $value }} conversations actives (seuil: 500)"
-
-  - name: yukpo_ux_metrics
-    interval: 1m
-    rules:
-      # Métriques scroll produits
-      - alert: ProductScrollMetricsAlert
-        expr: rate(product_carousel_scrolls_total[5m]) > 50
-        for: 5m
-        labels:
-          severity: info
-          service: ux
-          metric_name: product_carousel_scrolls_total
-          threshold: "50/min"
-        annotations:
-          summary: "Volume élevé de scroll produits"
-          description: "{{ $value }} scrolls/min sur les carrousels produits"
-
-      # Métriques scroll vidéos
-      - alert: VideoScrollMetricsAlert
-        expr: rate(video_carousel_scrolls_total[5m]) > 30
-        for: 5m
-        labels:
-          severity: info
-          service: ux
-          metric_name: video_carousel_scrolls_total
-          threshold: "30/min"
-        annotations:
-          summary: "Volume élevé de scroll vidéos"
-          description: "{{ $value }} scrolls/min sur les carrousels vidéos"
-
-      # Métriques navigation ResultatBesoinScreen
-      - alert: NavigationMetricsAlert
-        expr: rate(resulta_besoin_screen_searches_total[5m]) > 20
-        for: 5m
-        labels:
-          severity: info
-          service: ux
-          metric_name: resulta_besoin_screen_searches_total
-          threshold: "20/min"
-        annotations:
-          summary: "Volume élevé de recherches"
-          description: "{{ $value }} recherches/min sur ResultatBesoinScreen"
-
-      # Recherches sans résultats
-      - alert: NavigationNoResultsHigh
-        expr: rate(resulta_besoin_screen_searches_without_results_total[5m]) / rate(resulta_besoin_screen_searches_total[5m]) > 0.5
+      # ✅ Phase 2: Performance WebSocket
+      - alert: DeliveryWebSocketFlushLatencyHigh
+        expr: histogram_quantile(0.95, rate(delivery_ws_flush_duration_seconds_bucket[5m])) > 0.1
         for: 10m
         labels:
           severity: warning
-          service: ux
         annotations:
-          summary: "Taux élevé de recherches sans résultats"
-          description: "{{ $value | humanizePercentage }} des recherches n'ont pas de résultats"
-
-
+          summary: "Latence flush WebSocket élevée"
+          description: "P95: {{ $value }}s ({{ $labels.instance }})"

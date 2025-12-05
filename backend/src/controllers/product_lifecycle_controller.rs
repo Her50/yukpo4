@@ -280,7 +280,7 @@ pub async fn reactivate_product(
         .fetch_one(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération solde: {}", e)))?
-        .try_get::<i64, _>("tokens_balance")
+        .get::<Option<i64>, _>("tokens_balance")
         .unwrap_or(0);
 
     if current_balance < cost {
@@ -303,7 +303,7 @@ pub async fn reactivate_product(
     .fetch_one(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur débit solde: {}", e)))?
-    .try_get::<i64, _>("tokens_balance")
+    .get::<Option<i64>, _>("tokens_balance")
     .unwrap_or(0);
 
     log_info(&format!(

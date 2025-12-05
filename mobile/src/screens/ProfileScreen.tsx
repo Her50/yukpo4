@@ -235,7 +235,7 @@ const ProfileScreen: React.FC = () => {
       title: 'Mes Services Spécialisés',
       icon: 'layout-grid', // ✅ CORRIGÉ: Icône Lucide pour interface de gestion (tablette/grille)
       color: '#6366F1',
-      route: 'MesServicesSpecialises',
+      route: 'SpecializedServicesHub',
       description: 'Gérer vos services de santé et transport'
     },
     {

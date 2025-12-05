@@ -11,13 +11,17 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
 import ModernGPSModal from '../components/ModernGPSModal';
 import { NativeButton } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
+import SavedSearches from '../components/SavedSearches';
+import SearchFilters, { SearchFilters as SearchFiltersType } from '../components/SearchFilters';
+import SearchHistory from '../components/SearchHistory';
+import SpecializedSearchAutocomplete from '../components/SpecializedSearchAutocomplete';
+import VoiceSearchButton from '../components/VoiceSearchButton';
 import { useLocation } from '../contexts/LocationContext';
 import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -58,6 +62,8 @@ const SpecializedSearchScreen: React.FC = () => {
     const [searchRadius, setSearchRadius] = useState(50); // km
     const [searchMoment, setSearchMoment] = useState<'now' | 'later' | 'specific'>('now');
     const [loading, setLoading] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
+    const [filters, setFilters] = useState<SearchFiltersType>({});
 
     // Initialiser le GPS avec la position actuelle si disponible
     useEffect(() => {
@@ -110,6 +116,23 @@ const SpecializedSearchScreen: React.FC = () => {
                 // Pour l'instant, on utilise le moment actuel
             }
 
+            // ✅ NOUVEAU Phase 4.2: Ajouter les filtres avancés
+            if (filters.availability) {
+                payload.availability = filters.availability;
+            }
+            if (filters.minPrice !== undefined) {
+                payload.min_price = filters.minPrice;
+            }
+            if (filters.maxPrice !== undefined) {
+                payload.max_price = filters.maxPrice;
+            }
+            if (filters.services && filters.services.length > 0) {
+                payload.services = filters.services;
+            }
+            if (filters.rating !== undefined) {
+                payload.min_rating = filters.rating;
+            }
+
             console.log('[SpecializedSearchScreen] 🔍 Recherche spécialisée:', {
                 specializedType,
                 searchQuery,
@@ -127,7 +150,20 @@ const SpecializedSearchScreen: React.FC = () => {
             }
 
             // Extraire les résultats
-            const results = response?.resultats?.resultats || response?.resultats || response?.data || [];
+            const responseData = response as any;
+            const results = responseData?.resultats?.resultats || responseData?.resultats || responseData?.data || [];
+
+            // ✅ NOUVEAU Phase 4.4: Sauvegarder dans l'historique
+            try {
+                await apiPost('/api/specialized-services/search-history', {
+                    query: searchQuery.trim(),
+                    specialized_type: specializedType,
+                    filters: filters,
+                    results_count: results.length,
+                });
+            } catch (error) {
+                console.error('Erreur sauvegarde historique:', error);
+            }
 
             // Naviguer vers ResultatBesoin avec les résultats
             (navigation as any).navigate('ResultatBesoin', {
@@ -184,21 +220,66 @@ const SpecializedSearchScreen: React.FC = () => {
                     </View>
                 </View>
 
+                {/* ✅ NOUVEAU Phase 4.4 & 4.5: Historique et recherches sauvegardées */}
+                {!searchQuery && (
+                    <>
+                        <SavedSearches
+                            onSelect={(query, type) => {
+                                setSearchQuery(query);
+                                if (type) {
+                                    // Optionnel: mettre à jour le type si différent
+                                }
+                            }}
+                            specializedType={specializedType}
+                        />
+                        <SearchHistory
+                            onSelect={(query, type) => {
+                                setSearchQuery(query);
+                            }}
+                            specializedType={specializedType}
+                        />
+                    </>
+                )}
+
                 {/* Formulaire de recherche */}
                 <View style={styles.formContainer}>
-                    {/* Champ de recherche texte */}
+                    {/* ✅ NOUVEAU Phase 4.2: Bouton filtres */}
+                    <View style={styles.filtersHeader}>
+                        <Text style={styles.filtersTitle}>Filtres de recherche</Text>
+                        <TouchableOpacity
+                            style={styles.filtersButton}
+                            onPress={() => setShowFilters(true)}
+                        >
+                            <SafeIcon name="filter" size={20} color={modernColors.primary} />
+                            <Text style={styles.filtersButtonText}>
+                                {Object.keys(filters).length > 0
+                                    ? `${Object.keys(filters).length} filtre(s)`
+                                    : 'Filtres'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* ✅ NOUVEAU Phase 4.1: Champ de recherche avec autocomplete */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Que recherchez-vous ?</Text>
-                        <TextInput
-                            style={styles.textInput}
+                        <View style={styles.searchHeader}>
+                            <Text style={styles.label}>Que recherchez-vous ?</Text>
+                            {/* ✅ NOUVEAU Phase 4.3: Bouton recherche vocale */}
+                            <VoiceSearchButton
+                                onTranscript={(text) => {
+                                    setSearchQuery(text);
+                                    // Optionnel: lancer la recherche automatiquement
+                                    // handleSearch();
+                                }}
+                            />
+                        </View>
+                        <SpecializedSearchAutocomplete
+                            specializedType={specializedType}
+                            onSelect={(query) => {
+                                setSearchQuery(query);
+                                // Optionnel: lancer la recherche automatiquement
+                            }}
                             placeholder={getPlaceholderExample(specializedType)}
-                            placeholderTextColor={modernColors.textSecondary}
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                            multiline
-                            numberOfLines={3}
-                            autoCapitalize="none"
-                            autoCorrect={false}
+                            prefillQuery={searchQuery}
                         />
                     </View>
 
@@ -296,10 +377,9 @@ const SpecializedSearchScreen: React.FC = () => {
 
                     {/* Bouton de recherche */}
                     <NativeButton
-                        title="Rechercher"
+                        title={loading ? "Recherche en cours..." : "Rechercher"}
                         onPress={handleSearch}
                         variant="primary"
-                        loading={loading}
                         style={styles.searchButton}
                     />
                 </View>
@@ -312,6 +392,17 @@ const SpecializedSearchScreen: React.FC = () => {
                 onSelect={handleGPSSelect}
                 currentLocation={gpsData || undefined}
                 title="Sélectionner la position GPS"
+            />
+
+            {/* ✅ NOUVEAU Phase 4.2: Modal filtres */}
+            <SearchFilters
+                visible={showFilters}
+                onClose={() => setShowFilters(false)}
+                onApply={(newFilters) => {
+                    setFilters(newFilters);
+                }}
+                initialFilters={filters}
+                specializedType={specializedType}
             />
         </KeyboardAvoidingView>
     );
@@ -459,6 +550,39 @@ const styles = StyleSheet.create({
         color: modernColors.error,
         textAlign: 'center',
         margin: 20,
+    },
+    filtersHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    filtersTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    filtersButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+        backgroundColor: '#EEF2FF',
+    },
+    filtersButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    searchHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
     },
 });
 

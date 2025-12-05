@@ -113,9 +113,15 @@ pub async fn reindex_all_services(pool: &PgPool) -> Result<usize, sqlx::Error> {
             Ok(result) => {
                 if result.rows_affected() == 0 {
                     // Service déjà indexé
-                    info!("ℹ️ Service {} déjà indexé dans autocomplete_characteristics", service_id);
+                    info!(
+                        "ℹ️ Service {} déjà indexé dans autocomplete_characteristics",
+                        service_id
+                    );
                 } else {
-                    info!("✅ Service {} indexé dans autocomplete_characteristics", service_id);
+                    info!(
+                        "✅ Service {} indexé dans autocomplete_characteristics",
+                        service_id
+                    );
                 }
             }
             Err(e) => {
@@ -143,9 +149,15 @@ pub async fn reindex_all_services(pool: &PgPool) -> Result<usize, sqlx::Error> {
         match result_comb {
             Ok(result) => {
                 if result.rows_affected() == 0 {
-                    info!("ℹ️ Service {} déjà indexé dans autocomplete_combinations", service_id);
+                    info!(
+                        "ℹ️ Service {} déjà indexé dans autocomplete_combinations",
+                        service_id
+                    );
                 } else {
-                    info!("✅ Service {} indexé/mis à jour dans autocomplete_combinations", service_id);
+                    info!(
+                        "✅ Service {} indexé/mis à jour dans autocomplete_combinations",
+                        service_id
+                    );
                 }
             }
             Err(e) => {

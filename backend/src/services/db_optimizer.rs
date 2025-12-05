@@ -1,10 +1,10 @@
+use base64::{engine::general_purpose::STANDARD, Engine};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use base64::{engine::general_purpose::STANDARD, Engine};
 
 lazy_static::lazy_static! {
     static ref QUERY_CACHE: Arc<RwLock<HashMap<String, (Vec<u8>, u64)>>> = Arc::new(RwLock::new(HashMap::new()));
@@ -97,7 +97,10 @@ impl DbOptimizer {
             } else {
                 // Service générique : utiliser category
                 param_count += 1;
-                query.push_str(&format!(" AND (data->>'category' = ${} OR category = ${}) AND specialized_type IS NULL", param_count, param_count));
+                query.push_str(&format!(
+                    " AND (data->>'category' = ${} OR category = ${}) AND specialized_type IS NULL",
+                    param_count, param_count
+                ));
                 params.push(cat.to_string());
             }
         }
@@ -145,12 +148,12 @@ impl DbOptimizer {
         let services: Vec<ServiceSummary> = rows
             .into_iter()
             .map(|row| ServiceSummary {
-                id: row.get("id"),
-                user_id: row.get("user_id"),
-                category: row.get("category"),
-                is_active: row.get("is_active"),
-                gps: row.get("gps"),
-                created_at: row.get("created_at"),
+                id: row.get::<i32, _>("id"),
+                user_id: row.get::<i32, _>("user_id"),
+                category: row.get::<Option<String>, _>("category"),
+                is_active: row.get::<bool, _>("is_active"),
+                gps: row.get::<Option<String>, _>("gps"),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
             })
             .collect();
 
@@ -223,7 +226,7 @@ impl DbOptimizer {
         );
 
         let mut bind_value: Option<&str> = None;
-        
+
         if let Some(cat) = category {
             // ✅ NOUVEAU : Si la catégorie correspond à un type spécialisé, utiliser specialized_type
             let specialized_type = Self::map_category_to_specialized_type(cat);
@@ -232,7 +235,9 @@ impl DbOptimizer {
                 bind_value = Some(st);
             } else {
                 // Service générique : utiliser category
-                sql_query.push_str(" AND (data->>'category' = $2 OR category = $2) AND specialized_type IS NULL");
+                sql_query.push_str(
+                    " AND (data->>'category' = $2 OR category = $2) AND specialized_type IS NULL",
+                );
                 bind_value = Some(cat);
             }
         }
@@ -253,12 +258,12 @@ impl DbOptimizer {
         let services: Vec<ServiceSummary> = rows
             .into_iter()
             .map(|row| ServiceSummary {
-                id: row.get("id"),
-                user_id: row.get("user_id"),
-                category: row.get("category"),
-                is_active: row.get("is_active"),
-                gps: row.get("gps"),
-                created_at: row.get("created_at"),
+                id: row.get::<i32, _>("id"),
+                user_id: row.get::<i32, _>("user_id"),
+                category: row.get::<Option<String>, _>("category"),
+                is_active: row.get::<bool, _>("is_active"),
+                gps: row.get::<Option<String>, _>("gps"),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
             })
             .collect();
 
@@ -321,10 +326,17 @@ impl DbOptimizer {
             if let Ok(serialized) = bincode::serialize(data) {
                 // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
                 use crate::utils::redis_helper;
-                
+
                 // Convertir Vec<u8> en String pour le helper
                 let serialized_str = STANDARD.encode(&serialized);
-                if let Err(e) = redis_helper::set_with_retry(redis, key, &serialized_str, Some(CACHE_TTL as u64)).await {
+                if let Err(e) = redis_helper::set_with_retry(
+                    redis,
+                    key,
+                    &serialized_str,
+                    Some(CACHE_TTL as u64),
+                )
+                .await
+                {
                     warn!("[DBOptimizer] Redis indisponible pour cache {}: {}. L'opération continue sans cache.", key, e);
                 }
             }
@@ -359,11 +371,12 @@ impl DbOptimizer {
         if let Some(redis) = &self.redis_client {
             // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
             use crate::utils::redis_helper;
-            
+
             match redis_helper::get_with_retry(redis, key).await {
                 Ok(Some(serialized_str)) => {
                     // Décoder depuis base64
-                    let data = STANDARD.decode(&serialized_str)
+                    let data = STANDARD
+                        .decode(&serialized_str)
                         .map_err(|e| format!("Erreur décodage base64: {}", e))?;
                     let result: T = bincode::deserialize(&data)?;
                     Ok(result)
@@ -419,12 +432,14 @@ impl DbOptimizer {
         if let Some(redis) = &self.redis_client {
             // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
             use crate::utils::redis_helper;
-            
+
             // Vérifier simplement que Redis est disponible (cleanup automatique via TTL)
             if redis_helper::check_redis_health(redis).await {
                 info!("Cache cleanup terminé (Redis disponible)");
             } else {
-                log::debug!("Cache cleanup terminé (Redis non disponible, cleanup mémoire uniquement)");
+                log::debug!(
+                    "Cache cleanup terminé (Redis non disponible, cleanup mémoire uniquement)"
+                );
             }
         }
     }

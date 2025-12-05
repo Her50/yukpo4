@@ -78,13 +78,15 @@ impl ImageSearchService {
 
         let mut search_results = Vec::new();
         for row in results {
-            let media_id: i32 = row.try_get("media_id").unwrap_or(0);
-            let service_id: i32 = row.try_get("service_id").unwrap_or(0);
-            let media_path: String = row.try_get("media_path").unwrap_or_default();
-            let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(0.0);
-            let service_data: serde_json::Value =
-                row.try_get("service_data").unwrap_or(serde_json::json!({}));
-            let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
+            let media_id: i32 = row.get::<Option<_>, _>("media_id").unwrap_or(0);
+            let service_id: i32 = row.get::<Option<_>, _>("service_id").unwrap_or(0);
+            let media_path: String = row.get::<Option<_>, _>("media_path").unwrap_or_default();
+            let similarity_score: f32 = row.get::<Option<_>, _>("similarity_score").unwrap_or(0.0);
+            let service_data: serde_json::Value = row
+                .get::<Option<_>, _>("service_data")
+                .unwrap_or(serde_json::json!({}));
+            let image_metadata: Option<serde_json::Value> =
+                row.get::<Option<_>, _>("image_metadata");
 
             search_results.push(ImageSearchResult {
                 service_id,
@@ -138,13 +140,15 @@ impl ImageSearchService {
 
         let mut search_results = Vec::new();
         for row in results {
-            let media_id: i32 = row.try_get("media_id").unwrap_or(0);
-            let service_id: i32 = row.try_get("service_id").unwrap_or(0);
-            let media_path: String = row.try_get("media_path").unwrap_or_default();
-            let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(1.0);
-            let service_data: serde_json::Value =
-                row.try_get("service_data").unwrap_or(serde_json::json!({}));
-            let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
+            let media_id: i32 = row.get::<Option<_>, _>("media_id").unwrap_or(0);
+            let service_id: i32 = row.get::<Option<_>, _>("service_id").unwrap_or(0);
+            let media_path: String = row.get::<Option<_>, _>("media_path").unwrap_or_default();
+            let similarity_score: f32 = row.get::<Option<_>, _>("similarity_score").unwrap_or(1.0);
+            let service_data: serde_json::Value = row
+                .get::<Option<_>, _>("service_data")
+                .unwrap_or(serde_json::json!({}));
+            let image_metadata: Option<serde_json::Value> =
+                row.get::<Option<_>, _>("image_metadata");
 
             search_results.push(ImageSearchResult {
                 service_id,
@@ -229,13 +233,15 @@ impl ImageSearchService {
 
         let mut search_results = Vec::new();
         for row in results {
-            let media_id: i32 = row.try_get("media_id").unwrap_or(0);
-            let service_id: i32 = row.try_get("service_id").unwrap_or(0);
-            let media_path: String = row.try_get("media_path").unwrap_or_default();
-            let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(0.0);
-            let service_data: serde_json::Value =
-                row.try_get("service_data").unwrap_or(serde_json::json!({}));
-            let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
+            let media_id: i32 = row.get::<Option<_>, _>("media_id").unwrap_or(0);
+            let service_id: i32 = row.get::<Option<_>, _>("service_id").unwrap_or(0);
+            let media_path: String = row.get::<Option<_>, _>("media_path").unwrap_or_default();
+            let similarity_score: f32 = row.get::<Option<_>, _>("similarity_score").unwrap_or(0.0);
+            let service_data: serde_json::Value = row
+                .get::<Option<_>, _>("service_data")
+                .unwrap_or(serde_json::json!({}));
+            let image_metadata: Option<serde_json::Value> =
+                row.get::<Option<_>, _>("image_metadata");
 
             search_results.push(ImageSearchResult {
                 service_id,

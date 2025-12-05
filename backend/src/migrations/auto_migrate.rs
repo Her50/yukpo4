@@ -1108,6 +1108,140 @@ pub async fn ensure_live_flash_sales_tables(pool: &PgPool) -> Result<(), sqlx::E
     Ok(())
 }
 
+/// Optimisations de scalabilité pour Flash Sales et Black Friday (index et vues matérialisées)
+pub async fn ensure_flash_blackfriday_scalability_optimizations(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
+    info!("🔍 Application des optimisations de scalabilité Flash Sales et Black Friday...");
+
+    // Index pour flash sales
+    sqlx::query(
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_flash_sales_status_start 
+         ON live_flash_sales(status, start_at) 
+         WHERE status IN ('scheduled', 'live')",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_flash_reservations_sale_user 
+         ON live_flash_sale_reservations(flash_sale_id, user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_flash_reservations_sale_quantity 
+         ON live_flash_sale_reservations(flash_sale_id, quantity)",
+    )
+    .execute(pool)
+    .await?;
+
+    // Index pour Black Friday / Global Promo
+    sqlx::query(
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_global_promo_entries_event_status 
+         ON global_promo_entries(event_id, status) 
+         WHERE status IN ('approved', 'published')",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_global_promo_entries_service 
+         ON global_promo_entries(service_id) 
+         WHERE status IN ('approved', 'published')",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_global_promo_products_highlighted_priority 
+         ON global_promo_products(highlighted DESC, priority_score DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_global_promo_events_status_dates 
+         ON global_promo_events(status, starts_at, ends_at) 
+         WHERE status IN ('scheduled', 'live')",
+    )
+    .execute(pool)
+    .await?;
+
+    // Index full-text pour recherche (si PostgreSQL >= 12)
+    sqlx::query(
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_global_promo_events_search 
+         ON global_promo_events USING gin(to_tsvector('french', display_name || ' ' || COALESCE(theme, '')))"
+    )
+    .execute(pool)
+    .await?;
+
+    // Vue matérialisée pour le catalogue (refresh toutes les 30 secondes)
+    sqlx::query(
+        "CREATE MATERIALIZED VIEW IF NOT EXISTS global_promo_catalog_cache AS
+         SELECT
+             e.id AS entry_id,
+             e.event_id,
+             e.service_id,
+             e.discount_percentage,
+             e.promo_price_cfa,
+             e.stock_cap,
+             e.availability,
+             e.status AS entry_status,
+             ev.id AS event_id_alias,
+             ev.slug AS event_slug,
+             ev.theme AS event_theme,
+             ev.display_name AS event_display_name,
+             ev.starts_at AS event_starts_at,
+             ev.ends_at AS event_ends_at,
+             ev.status AS event_status,
+             gp.id AS product_id,
+             gp.priority_score AS product_priority_score,
+             gp.highlighted AS product_highlighted,
+             gp.snapshot AS product_snapshot
+         FROM global_promo_entries e
+         JOIN global_promo_events ev ON ev.id = e.event_id
+         LEFT JOIN global_promo_products gp ON gp.promo_entry_id = e.id
+         WHERE ev.status IN ('scheduled', 'live')
+           AND e.status IN ('approved', 'published')
+           AND ev.ends_at >= NOW()",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_global_promo_catalog_cache_entry_id 
+         ON global_promo_catalog_cache(entry_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_global_promo_catalog_cache_highlighted_priority 
+         ON global_promo_catalog_cache(product_highlighted DESC, product_priority_score DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_global_promo_catalog_cache_starts_at 
+         ON global_promo_catalog_cache(event_starts_at)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_global_promo_catalog_cache_ends_at 
+         ON global_promo_catalog_cache(event_ends_at)",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Optimisations de scalabilité Flash Sales et Black Friday appliquées");
+    Ok(())
+}
+
 /// Vérifie et crée la fonction deactivate_expired_products() si elle n'existe pas
 pub async fn ensure_deactivate_expired_products_function(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la fonction deactivate_expired_products()...");
@@ -1210,7 +1344,7 @@ pub async fn ensure_deactivate_expired_products_function(pool: &PgPool) -> Resul
     .execute(pool)
     .await?;
 
-    // Créer la fonction
+    // Créer la fonction (✅ MODIFIÉ 2025-01-28: inclut vérification stock = 0)
     sqlx::query(
         r#"
         CREATE OR REPLACE FUNCTION deactivate_expired_products()
@@ -1218,7 +1352,8 @@ pub async fn ensure_deactivate_expired_products_function(pool: &PgPool) -> Resul
             service_id INTEGER,
             product_index INTEGER,
             product_nom TEXT,
-            user_id INTEGER
+            user_id INTEGER,
+            deactivation_reason TEXT
         ) AS $$
         BEGIN
             RETURN QUERY
@@ -1230,15 +1365,55 @@ pub async fn ensure_deactivate_expired_products_function(pool: &PgPool) -> Resul
             FROM services s
             WHERE pl.service_id = s.id
                 AND pl.is_active = TRUE
-                AND pl.auto_deactivate_at <= NOW()
+                AND (
+                    -- Critère 1: Délai expiré (existant)
+                    pl.auto_deactivate_at <= NOW()
+                    OR
+            -- ✅ NOUVEAU Critère 2: Stock = 0 (uniquement pour les produits)
+            (
+                s.is_tarissable = TRUE  -- Uniquement pour les produits
+                AND EXISTS (
+                    SELECT 1 
+                    FROM autocomplete_combinations ac
+                    WHERE ac.service_id = s.id
+                        AND ac.stock IS NOT NULL
+                        AND ac.stock <= 0
+                )
+            )
+                )
             RETURNING 
                 pl.service_id,
                 pl.product_index,
                 pl.product_nom,
-                s.user_id;
+                s.user_id,
+                CASE 
+                    WHEN pl.auto_deactivate_at <= NOW() THEN 'expired_time'
+                    ELSE 'stock_zero'
+                END::TEXT;
         END;
         $$ LANGUAGE plpgsql
     "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // ✅ NOUVEAU 2025-01-28: Créer index pour optimiser les vérifications de stock
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_autocomplete_combinations_stock_check 
+        ON autocomplete_combinations(service_id, stock) 
+        WHERE stock IS NOT NULL AND stock <= 0
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_services_is_tarissable 
+        ON services(is_tarissable) 
+        WHERE is_tarissable = TRUE
+        "#,
     )
     .execute(pool)
     .await?;
@@ -1378,6 +1553,666 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             info!("✅ Colonne 'frequency_ratio' ajoutée");
         }
 
+        // ✅ NOUVEAU 2025-01-01: Vérifier les colonnes pour fonctionnalités avancées (100% parité)
+        let has_targeting = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'publicites' AND column_name = 'targeting')"
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !has_targeting {
+            warn!("⚠️ Colonnes fonctionnalités avancées manquantes, ajout en cours...");
+            sqlx::query(
+                "ALTER TABLE publicites ADD COLUMN IF NOT EXISTS targeting JSONB DEFAULT '{}'",
+            )
+            .execute(pool)
+            .await?;
+            sqlx::query(
+                "ALTER TABLE publicites ADD COLUMN IF NOT EXISTS ab_testing JSONB DEFAULT '{}'",
+            )
+            .execute(pool)
+            .await?;
+            sqlx::query(
+                "ALTER TABLE publicites ADD COLUMN IF NOT EXISTS schedule JSONB DEFAULT NULL",
+            )
+            .execute(pool)
+            .await?;
+            sqlx::query(
+                "ALTER TABLE publicites ADD COLUMN IF NOT EXISTS placements JSONB DEFAULT '[]'",
+            )
+            .execute(pool)
+            .await?;
+            sqlx::query(
+                "ALTER TABLE publicites ADD COLUMN IF NOT EXISTS bid_strategy JSONB DEFAULT '{}'",
+            )
+            .execute(pool)
+            .await?;
+            sqlx::query(
+                "ALTER TABLE publicites ADD COLUMN IF NOT EXISTS retargeting JSONB DEFAULT '{}'",
+            )
+            .execute(pool)
+            .await?;
+            sqlx::query("ALTER TABLE publicites ADD COLUMN IF NOT EXISTS variant_performance JSONB DEFAULT '{}'")
+                .execute(pool)
+                .await?;
+
+            // Créer les index GIN
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_targeting_gin ON publicites USING GIN(targeting)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_ab_testing_gin ON publicites USING GIN(ab_testing)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_placements_gin ON publicites USING GIN(placements)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_retargeting_gin ON publicites USING GIN(retargeting)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_schedule_start ON publicites((schedule->>'start_date')) WHERE schedule IS NOT NULL")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_schedule_end ON publicites((schedule->>'end_date')) WHERE schedule IS NOT NULL")
+                .execute(pool)
+                .await?;
+
+            // Créer les fonctions SQL
+            sqlx::query(r#"
+                CREATE OR REPLACE FUNCTION is_publicite_scheduled_active(pub_id INTEGER)
+                RETURNS BOOLEAN AS $$
+                DECLARE
+                    pub_schedule JSONB;
+                    start_date TIMESTAMPTZ;
+                    end_date TIMESTAMPTZ;
+                    pause_weekends BOOLEAN;
+                    current_day INTEGER;
+                BEGIN
+                    SELECT schedule INTO pub_schedule FROM publicites WHERE id = pub_id;
+                    IF pub_schedule IS NULL OR pub_schedule = '{}'::jsonb THEN RETURN TRUE; END IF;
+                    IF pub_schedule->>'start_date' IS NOT NULL THEN
+                        start_date := (pub_schedule->>'start_date')::timestamptz;
+                        IF NOW() < start_date THEN RETURN FALSE; END IF;
+                    END IF;
+                    IF pub_schedule->>'end_date' IS NOT NULL THEN
+                        end_date := (pub_schedule->>'end_date')::timestamptz;
+                        IF NOW() > end_date THEN RETURN FALSE; END IF;
+                    END IF;
+                    pause_weekends := COALESCE((pub_schedule->>'pause_on_weekends')::boolean, FALSE);
+                    IF pause_weekends THEN
+                        current_day := EXTRACT(DOW FROM NOW())::integer;
+                        IF current_day = 0 OR current_day = 6 THEN RETURN FALSE; END IF;
+                    END IF;
+                    RETURN TRUE;
+                END;
+                $$ LANGUAGE plpgsql
+            "#)
+                .execute(pool)
+                .await?;
+
+            sqlx::query(r#"
+                CREATE OR REPLACE FUNCTION matches_targeting(pub_targeting JSONB, user_age INTEGER, user_gender TEXT, user_interests TEXT[], user_behaviors TEXT[])
+                RETURNS BOOLEAN AS $$
+                DECLARE
+                    target_age_min INTEGER;
+                    target_age_max INTEGER;
+                    target_gender TEXT;
+                    target_interests JSONB;
+                    target_behaviors JSONB;
+                BEGIN
+                    IF pub_targeting IS NULL OR pub_targeting = '{}'::jsonb THEN RETURN TRUE; END IF;
+                    IF pub_targeting->'age_range' IS NOT NULL THEN
+                        target_age_min := COALESCE((pub_targeting->'age_range'->>'min')::integer, 0);
+                        target_age_max := COALESCE((pub_targeting->'age_range'->>'max')::integer, 999);
+                        IF user_age < target_age_min OR user_age > target_age_max THEN RETURN FALSE; END IF;
+                    END IF;
+                    target_gender := pub_targeting->>'gender';
+                    IF target_gender IS NOT NULL AND target_gender != 'all' THEN
+                        IF target_gender != user_gender THEN RETURN FALSE; END IF;
+                    END IF;
+                    target_interests := pub_targeting->'interests';
+                    IF target_interests IS NOT NULL AND jsonb_array_length(target_interests) > 0 THEN
+                        IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(target_interests) AS interest WHERE interest = ANY(user_interests)) THEN
+                            RETURN FALSE;
+                        END IF;
+                    END IF;
+                    target_behaviors := pub_targeting->'behaviors';
+                    IF target_behaviors IS NOT NULL AND jsonb_array_length(target_behaviors) > 0 THEN
+                        IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(target_behaviors) AS behavior WHERE behavior = ANY(user_behaviors)) THEN
+                            RETURN FALSE;
+                        END IF;
+                    END IF;
+                    RETURN TRUE;
+                END;
+                $$ LANGUAGE plpgsql
+            "#)
+                .execute(pool)
+                .await?;
+
+            sqlx::query(r#"
+                CREATE OR REPLACE FUNCTION matches_retargeting(pub_retargeting JSONB, user_id INTEGER)
+                RETURNS BOOLEAN AS $$
+                DECLARE
+                    retargeting_rules JSONB;
+                    rule JSONB;
+                    rule_type TEXT;
+                    days_since INTEGER;
+                    match_found BOOLEAN := FALSE;
+                BEGIN
+                    IF pub_retargeting IS NULL OR pub_retargeting = '{}'::jsonb THEN RETURN TRUE; END IF;
+                    retargeting_rules := pub_retargeting->'rules';
+                    IF retargeting_rules IS NULL OR jsonb_array_length(retargeting_rules) = 0 THEN RETURN TRUE; END IF;
+                    FOR rule IN SELECT * FROM jsonb_array_elements(retargeting_rules) LOOP
+                        rule_type := rule->>'type';
+                        days_since := COALESCE((rule->>'days_since')::integer, 7);
+                        CASE rule_type
+                            WHEN 'viewed_product' THEN
+                                SELECT EXISTS (SELECT 1 FROM user_behavior WHERE user_id = user_id AND behavior_type = 'product_view' AND created_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+                            WHEN 'abandoned_cart' THEN
+                                SELECT EXISTS (SELECT 1 FROM shopping_baskets WHERE user_id = user_id AND status = 'abandoned' AND updated_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+                            WHEN 'visited_service' THEN
+                                SELECT EXISTS (SELECT 1 FROM user_behavior WHERE user_id = user_id AND behavior_type = 'service_view' AND created_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+                            WHEN 'searched' THEN
+                                SELECT EXISTS (SELECT 1 FROM search_history WHERE user_id = user_id AND created_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+                            ELSE match_found := FALSE;
+                        END CASE;
+                        IF match_found THEN RETURN TRUE; END IF;
+                    END LOOP;
+                    RETURN FALSE;
+                END;
+                $$ LANGUAGE plpgsql
+            "#)
+                .execute(pool)
+                .await?;
+
+            info!("✅ Colonnes fonctionnalités avancées ajoutées avec index et fonctions SQL");
+        }
+
+        // ✅ NOUVEAU 2025-01-XX: Vérifier la table publicite_impressions pour la fréquence
+        let has_impressions_table = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'publicite_impressions')"
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !has_impressions_table {
+            info!("📊 Création table publicite_impressions pour gestion fréquence...");
+
+            // Créer la table
+            sqlx::query(
+                r#"
+                CREATE TABLE IF NOT EXISTS publicite_impressions (
+                    id SERIAL PRIMARY KEY,
+                    publicite_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    placement VARCHAR(50) NOT NULL,
+                    viewed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (publicite_id) REFERENCES publicites(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+                "#,
+            )
+            .execute(pool)
+            .await?;
+
+            // Créer les index
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_impressions_publicite_user ON publicite_impressions(publicite_id, user_id)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_impressions_user_date ON publicite_impressions(user_id, viewed_at DESC)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_impressions_publicite_date ON publicite_impressions(publicite_id, viewed_at DESC)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_impressions_placement ON publicite_impressions(placement)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_impressions_user_publicite_date ON publicite_impressions(user_id, publicite_id, viewed_at DESC)")
+                .execute(pool)
+                .await?;
+
+            // Créer les fonctions SQL
+            sqlx::query(r#"
+                CREATE OR REPLACE FUNCTION check_publicite_frequency(
+                    p_publicite_id INTEGER,
+                    p_user_id INTEGER,
+                    p_frequency_type VARCHAR(20) DEFAULT 'daily'
+                ) RETURNS BOOLEAN AS $$
+                DECLARE
+                    v_count INTEGER;
+                    v_frequency_limit INTEGER;
+                    v_frequency_config JSONB;
+                BEGIN
+                    SELECT frequency_config INTO v_frequency_config FROM publicites WHERE id = p_publicite_id;
+                    IF v_frequency_config IS NULL OR v_frequency_config = '{}'::jsonb THEN RETURN TRUE; END IF;
+                    IF p_frequency_type = 'daily' THEN
+                        v_frequency_limit := COALESCE((v_frequency_config->>'max_per_day')::INTEGER, 999999);
+                        SELECT COUNT(*) INTO v_count FROM publicite_impressions WHERE publicite_id = p_publicite_id AND user_id = p_user_id AND viewed_at >= CURRENT_DATE;
+                    ELSIF p_frequency_type = 'weekly' THEN
+                        v_frequency_limit := COALESCE((v_frequency_config->>'max_per_week')::INTEGER, 999999);
+                        SELECT COUNT(*) INTO v_count FROM publicite_impressions WHERE publicite_id = p_publicite_id AND user_id = p_user_id AND viewed_at >= DATE_TRUNC('week', CURRENT_DATE);
+                    ELSE RETURN TRUE;
+                    END IF;
+                    RETURN v_count < v_frequency_limit;
+                END;
+                $$ LANGUAGE plpgsql
+            "#)
+                .execute(pool)
+                .await?;
+
+            sqlx::query(
+                r#"
+                CREATE OR REPLACE FUNCTION record_publicite_impression(
+                    p_publicite_id INTEGER,
+                    p_user_id INTEGER,
+                    p_placement VARCHAR(50) DEFAULT 'feed'
+                ) RETURNS INTEGER AS $$
+                DECLARE
+                    v_impression_id INTEGER;
+                BEGIN
+                    INSERT INTO publicite_impressions (publicite_id, user_id, placement)
+                    VALUES (p_publicite_id, p_user_id, p_placement)
+                    RETURNING id INTO v_impression_id;
+                    RETURN v_impression_id;
+                END;
+                $$ LANGUAGE plpgsql
+            "#,
+            )
+            .execute(pool)
+            .await?;
+
+            info!("✅ Table publicite_impressions créée avec fonctions SQL");
+        }
+
+        // ✅ NOUVEAU 2025-01-XX: Vérifier la table pixel_events pour le tracking avancé
+        let has_pixel_events_table = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'pixel_events')"
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !has_pixel_events_table {
+            warn!("⚠️ Table 'pixel_events' manquante, création en cours...");
+
+            sqlx::query(
+                r#"
+                CREATE TABLE IF NOT EXISTS pixel_events (
+                    id SERIAL PRIMARY KEY,
+                    event_name VARCHAR(100) NOT NULL,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    event_id VARCHAR(255) UNIQUE NOT NULL,
+                    event_time BIGINT NOT NULL,
+                    action_source VARCHAR(50) NOT NULL DEFAULT 'app',
+                    custom_data JSONB DEFAULT '{}',
+                    user_data JSONB DEFAULT '{}',
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            "#,
+            )
+            .execute(pool)
+            .await?;
+
+            sqlx::query(
+                "CREATE INDEX IF NOT EXISTS idx_pixel_events_user_id ON pixel_events(user_id)",
+            )
+            .execute(pool)
+            .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_pixel_events_event_name ON pixel_events(event_name)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_pixel_events_event_time ON pixel_events(event_time DESC)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_pixel_events_user_event ON pixel_events(user_id, event_name)")
+                .execute(pool)
+                .await?;
+            sqlx::query(
+                "CREATE INDEX IF NOT EXISTS idx_pixel_events_event_id ON pixel_events(event_id)",
+            )
+            .execute(pool)
+            .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_pixel_events_custom_data_gin ON pixel_events USING GIN(custom_data)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_pixel_events_user_data_gin ON pixel_events USING GIN(user_data)")
+                .execute(pool)
+                .await?;
+
+            info!("✅ Table pixel_events créée");
+        }
+
+        // ✅ NOUVEAU 2025-01-XX: Vérifier la table publicite_audiences améliorée
+        let has_audiences_table = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'publicite_audiences')"
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !has_audiences_table {
+            warn!("⚠️ Table 'publicite_audiences' manquante, création en cours...");
+
+            sqlx::query(r#"
+                CREATE TABLE IF NOT EXISTS publicite_audiences (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    name VARCHAR(255) NOT NULL,
+                    type VARCHAR(50) NOT NULL,
+                    source_audience_id INTEGER REFERENCES publicite_audiences(id) ON DELETE SET NULL,
+                    similarity DECIMAL(3,2),
+                    user_ids JSONB DEFAULT '[]',
+                    metadata JSONB DEFAULT '{}',
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            "#)
+                .execute(pool)
+                .await?;
+
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_audiences_user_id ON publicite_audiences(user_id)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_audiences_type ON publicite_audiences(type)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_audiences_user_ids_gin ON publicite_audiences USING GIN(user_ids)")
+                .execute(pool)
+                .await?;
+
+            sqlx::query(
+                r#"
+                CREATE OR REPLACE FUNCTION update_publicite_audiences_updated_at()
+                RETURNS TRIGGER AS $$
+                BEGIN
+                    NEW.updated_at = NOW();
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql
+            "#,
+            )
+            .execute(pool)
+            .await?;
+
+            sqlx::query(r#"
+                DROP TRIGGER IF EXISTS trigger_publicite_audiences_updated_at ON publicite_audiences;
+                CREATE TRIGGER trigger_publicite_audiences_updated_at
+                    BEFORE UPDATE ON publicite_audiences
+                    FOR EACH ROW
+                    EXECUTE FUNCTION update_publicite_audiences_updated_at()
+            "#)
+                .execute(pool)
+                .await?;
+
+            info!("✅ Table publicite_audiences créée");
+        }
+
+        // ✅ NOUVEAU 2025-01-XX: Vérifier la table automated_reports
+        let has_automated_reports_table = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'automated_reports')"
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !has_automated_reports_table {
+            warn!("⚠️ Table 'automated_reports' manquante, création en cours...");
+
+            sqlx::query(
+                r#"
+                CREATE TABLE IF NOT EXISTS automated_reports (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    frequency VARCHAR(20) NOT NULL,
+                    format VARCHAR(20) NOT NULL,
+                    email VARCHAR(255),
+                    metrics JSONB DEFAULT '[]',
+                    is_active BOOLEAN DEFAULT true,
+                    last_sent_at TIMESTAMP,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            "#,
+            )
+            .execute(pool)
+            .await?;
+
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_automated_reports_user_id ON automated_reports(user_id)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_automated_reports_frequency ON automated_reports(frequency)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_automated_reports_active ON automated_reports(is_active)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_automated_reports_last_sent ON automated_reports(last_sent_at)")
+                .execute(pool)
+                .await?;
+
+            sqlx::query(
+                r#"
+                CREATE OR REPLACE FUNCTION update_automated_reports_updated_at()
+                RETURNS TRIGGER AS $$
+                BEGIN
+                    NEW.updated_at = NOW();
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql
+            "#,
+            )
+            .execute(pool)
+            .await?;
+
+            sqlx::query(
+                r#"
+                DROP TRIGGER IF EXISTS trigger_automated_reports_updated_at ON automated_reports;
+                CREATE TRIGGER trigger_automated_reports_updated_at
+                    BEFORE UPDATE ON automated_reports
+                    FOR EACH ROW
+                    EXECUTE FUNCTION update_automated_reports_updated_at()
+            "#,
+            )
+            .execute(pool)
+            .await?;
+
+            info!("✅ Table automated_reports créée");
+        }
+
+        // ✅ NOUVEAU 2025-01-01: Vérifier la table publicite_versions pour le versioning
+        let has_versions_table = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'publicite_versions')"
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !has_versions_table {
+            warn!("⚠️ Table 'publicite_versions' manquante, création en cours...");
+
+            // Créer la table
+            sqlx::query(
+                r#"
+                CREATE TABLE IF NOT EXISTS publicite_versions (
+                    id SERIAL PRIMARY KEY,
+                    publicite_id INTEGER NOT NULL REFERENCES publicites(id) ON DELETE CASCADE,
+                    version_number INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    data_snapshot JSONB NOT NULL,
+                    change_type VARCHAR(50) NOT NULL,
+                    changed_by INTEGER REFERENCES users(id),
+                    change_description TEXT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    CONSTRAINT unique_publicite_version UNIQUE (publicite_id, version_number)
+                )
+                "#,
+            )
+            .execute(pool)
+            .await?;
+
+            // Créer les index
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_versions_publicite_id ON publicite_versions(publicite_id)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_versions_user_id ON publicite_versions(user_id)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_versions_created_at ON publicite_versions(created_at DESC)")
+                .execute(pool)
+                .await?;
+            sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicite_versions_change_type ON publicite_versions(change_type)")
+                .execute(pool)
+                .await?;
+
+            // Créer la fonction et le trigger
+            sqlx::query(
+                r#"
+                CREATE OR REPLACE FUNCTION create_publicite_version()
+                RETURNS TRIGGER AS $$
+                DECLARE
+                    next_version INTEGER;
+                    snapshot_data JSONB;
+                    change_type_val VARCHAR(50);
+                BEGIN
+                    SELECT COALESCE(MAX(version_number), 0) + 1
+                    INTO next_version
+                    FROM publicite_versions
+                    WHERE publicite_id = NEW.id;
+                    
+                    snapshot_data := jsonb_build_object(
+                        'id', NEW.id,
+                        'user_id', NEW.user_id,
+                        'titre', NEW.titre,
+                        'description', NEW.description,
+                        'produits_indexes', NEW.produits_indexes,
+                        'videos', NEW.videos,
+                        'thumbnails', NEW.thumbnails,
+                        'duree_jours', NEW.duree_jours,
+                        'cout', NEW.cout,
+                        'devise_utilisateur', NEW.devise_utilisateur,
+                        'zone_geographique', NEW.zone_geographique,
+                        'rayon_km', NEW.rayon_km,
+                        'status', NEW.status,
+                        'date_debut', NEW.date_debut,
+                        'date_fin', NEW.date_fin,
+                        'vues', NEW.vues,
+                        'clics', NEW.clics,
+                        'impressions', NEW.impressions,
+                        'targeting', NEW.targeting,
+                        'ab_testing', NEW.ab_testing,
+                        'schedule', NEW.schedule,
+                        'placements', NEW.placements,
+                        'bid_strategy', NEW.bid_strategy,
+                        'retargeting', NEW.retargeting,
+                        'variant_performance', NEW.variant_performance,
+                        'created_at', NEW.created_at,
+                        'updated_at', NEW.updated_at
+                    );
+                    
+                    IF TG_OP = 'INSERT' THEN
+                        change_type_val := 'created';
+                    ELSIF TG_OP = 'UPDATE' THEN
+                        IF OLD.status != NEW.status THEN
+                            IF NEW.status = 'paused' THEN
+                                change_type_val := 'paused';
+                            ELSIF NEW.status = 'active' AND OLD.status = 'paused' THEN
+                                change_type_val := 'resumed';
+                            ELSE
+                                change_type_val := 'updated';
+                            END IF;
+                        ELSE
+                            change_type_val := 'updated';
+                        END IF;
+                    END IF;
+                    
+                    INSERT INTO publicite_versions (
+                        publicite_id, version_number, user_id, data_snapshot,
+                        change_type, changed_by, change_description
+                    )
+                    VALUES (
+                        NEW.id, next_version, NEW.user_id, snapshot_data,
+                        change_type_val, NEW.user_id,
+                        CASE 
+                            WHEN TG_OP = 'INSERT' THEN 'Création de la publicité'
+                            WHEN TG_OP = 'UPDATE' THEN 'Modification de la publicité'
+                            ELSE 'Changement inconnu'
+                        END
+                    );
+                    
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+                "#,
+            )
+            .execute(pool)
+            .await?;
+
+            sqlx::query(
+                r#"
+                DROP TRIGGER IF EXISTS trigger_create_publicite_version ON publicites;
+                CREATE TRIGGER trigger_create_publicite_version
+                    AFTER INSERT OR UPDATE ON publicites
+                    FOR EACH ROW
+                    EXECUTE FUNCTION create_publicite_version();
+                "#,
+            )
+            .execute(pool)
+            .await?;
+
+            // Créer la fonction de restauration
+            sqlx::query(
+                r#"
+                CREATE OR REPLACE FUNCTION restore_publicite_version(
+                    p_publicite_id INTEGER,
+                    p_version_number INTEGER
+                )
+                RETURNS BOOLEAN AS $$
+                DECLARE
+                    version_data JSONB;
+                BEGIN
+                    SELECT data_snapshot
+                    INTO version_data
+                    FROM publicite_versions
+                    WHERE publicite_id = p_publicite_id
+                    AND version_number = p_version_number;
+                    
+                    IF version_data IS NULL THEN
+                        RETURN FALSE;
+                    END IF;
+                    
+                    UPDATE publicites
+                    SET
+                        titre = (version_data->>'titre')::VARCHAR,
+                        description = (version_data->>'description')::TEXT,
+                        produits_indexes = ARRAY(SELECT jsonb_array_elements_text(version_data->'produits_indexes')),
+                        videos = ARRAY(SELECT jsonb_array_elements_text(version_data->'videos')),
+                        thumbnails = ARRAY(SELECT jsonb_array_elements_text(version_data->'thumbnails')),
+                        duree_jours = (version_data->>'duree_jours')::INTEGER,
+                        cout = (version_data->>'cout')::INTEGER,
+                        devise_utilisateur = (version_data->>'devise_utilisateur')::VARCHAR,
+                        zone_geographique = (version_data->>'zone_geographique')::VARCHAR,
+                        rayon_km = (version_data->>'rayon_km')::INTEGER,
+                        status = (version_data->>'status')::VARCHAR,
+                        date_debut = (version_data->>'date_debut')::TIMESTAMPTZ,
+                        date_fin = (version_data->>'date_fin')::TIMESTAMPTZ,
+                        targeting = version_data->'targeting',
+                        ab_testing = version_data->'ab_testing',
+                        schedule = version_data->'schedule',
+                        placements = version_data->'placements',
+                        bid_strategy = version_data->'bid_strategy',
+                        retargeting = version_data->'retargeting',
+                        variant_performance = version_data->'variant_performance',
+                        updated_at = NOW()
+                    WHERE id = p_publicite_id;
+                    
+                    RETURN TRUE;
+                END;
+                $$ LANGUAGE plpgsql;
+                "#,
+            )
+            .execute(pool)
+            .await?;
+
+            info!("✅ Table 'publicite_versions' et fonctions créées");
+        }
+
         return Ok(());
     }
 
@@ -1430,6 +2265,15 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             
+            -- ✅ NOUVEAU: Fonctionnalités avancées pour 100% parité avec les géants
+            targeting JSONB DEFAULT '{}',
+            ab_testing JSONB DEFAULT '{}',
+            schedule JSONB DEFAULT NULL,
+            placements JSONB DEFAULT '[]',
+            bid_strategy JSONB DEFAULT '{}',
+            retargeting JSONB DEFAULT '{}',
+            variant_performance JSONB DEFAULT '{}',
+            
             -- Contraintes
             CONSTRAINT check_date_fin_after_debut CHECK (date_fin > date_debut),
             CONSTRAINT check_produits_not_empty CHECK (array_length(produits_indexes, 1) > 0)
@@ -1466,6 +2310,26 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
 
     // Index GIN pour recherche dans produits_indexes
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_produits_gin ON publicites USING GIN(produits_indexes)")
+        .execute(pool)
+        .await?;
+
+    // ✅ NOUVEAU: Index GIN pour fonctionnalités avancées
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_targeting_gin ON publicites USING GIN(targeting)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_ab_testing_gin ON publicites USING GIN(ab_testing)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_placements_gin ON publicites USING GIN(placements)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_retargeting_gin ON publicites USING GIN(retargeting)")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_schedule_start ON publicites((schedule->>'start_date')) WHERE schedule IS NOT NULL")
+        .execute(pool)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_publicites_schedule_end ON publicites((schedule->>'end_date')) WHERE schedule IS NOT NULL")
         .execute(pool)
         .await?;
 
@@ -1551,6 +2415,120 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             
             GET DIAGNOSTICS affected_count = ROW_COUNT;
             RETURN affected_count;
+        END;
+        $$ LANGUAGE plpgsql
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // ✅ NOUVEAU: Fonctions pour fonctionnalités avancées
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION is_publicite_scheduled_active(pub_id INTEGER)
+        RETURNS BOOLEAN AS $$
+        DECLARE
+            pub_schedule JSONB;
+            start_date TIMESTAMPTZ;
+            end_date TIMESTAMPTZ;
+            pause_weekends BOOLEAN;
+            current_day INTEGER;
+        BEGIN
+            SELECT schedule INTO pub_schedule FROM publicites WHERE id = pub_id;
+            IF pub_schedule IS NULL OR pub_schedule = '{}'::jsonb THEN RETURN TRUE; END IF;
+            IF pub_schedule->>'start_date' IS NOT NULL THEN
+                start_date := (pub_schedule->>'start_date')::timestamptz;
+                IF NOW() < start_date THEN RETURN FALSE; END IF;
+            END IF;
+            IF pub_schedule->>'end_date' IS NOT NULL THEN
+                end_date := (pub_schedule->>'end_date')::timestamptz;
+                IF NOW() > end_date THEN RETURN FALSE; END IF;
+            END IF;
+            pause_weekends := COALESCE((pub_schedule->>'pause_on_weekends')::boolean, FALSE);
+            IF pause_weekends THEN
+                current_day := EXTRACT(DOW FROM NOW())::integer;
+                IF current_day = 0 OR current_day = 6 THEN RETURN FALSE; END IF;
+            END IF;
+            RETURN TRUE;
+        END;
+        $$ LANGUAGE plpgsql
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION matches_targeting(pub_targeting JSONB, user_age INTEGER, user_gender TEXT, user_interests TEXT[], user_behaviors TEXT[])
+        RETURNS BOOLEAN AS $$
+        DECLARE
+            target_age_min INTEGER;
+            target_age_max INTEGER;
+            target_gender TEXT;
+            target_interests JSONB;
+            target_behaviors JSONB;
+        BEGIN
+            IF pub_targeting IS NULL OR pub_targeting = '{}'::jsonb THEN RETURN TRUE; END IF;
+            IF pub_targeting->'age_range' IS NOT NULL THEN
+                target_age_min := COALESCE((pub_targeting->'age_range'->>'min')::integer, 0);
+                target_age_max := COALESCE((pub_targeting->'age_range'->>'max')::integer, 999);
+                IF user_age < target_age_min OR user_age > target_age_max THEN RETURN FALSE; END IF;
+            END IF;
+            target_gender := pub_targeting->>'gender';
+            IF target_gender IS NOT NULL AND target_gender != 'all' THEN
+                IF target_gender != user_gender THEN RETURN FALSE; END IF;
+            END IF;
+            target_interests := pub_targeting->'interests';
+            IF target_interests IS NOT NULL AND jsonb_array_length(target_interests) > 0 THEN
+                IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(target_interests) AS interest WHERE interest = ANY(user_interests)) THEN
+                    RETURN FALSE;
+                END IF;
+            END IF;
+            target_behaviors := pub_targeting->'behaviors';
+            IF target_behaviors IS NOT NULL AND jsonb_array_length(target_behaviors) > 0 THEN
+                IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(target_behaviors) AS behavior WHERE behavior = ANY(user_behaviors)) THEN
+                    RETURN FALSE;
+                END IF;
+            END IF;
+            RETURN TRUE;
+        END;
+        $$ LANGUAGE plpgsql
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION matches_retargeting(pub_retargeting JSONB, user_id INTEGER)
+        RETURNS BOOLEAN AS $$
+        DECLARE
+            retargeting_rules JSONB;
+            rule JSONB;
+            rule_type TEXT;
+            days_since INTEGER;
+            match_found BOOLEAN := FALSE;
+        BEGIN
+            IF pub_retargeting IS NULL OR pub_retargeting = '{}'::jsonb THEN RETURN TRUE; END IF;
+            retargeting_rules := pub_retargeting->'rules';
+            IF retargeting_rules IS NULL OR jsonb_array_length(retargeting_rules) = 0 THEN RETURN TRUE; END IF;
+            FOR rule IN SELECT * FROM jsonb_array_elements(retargeting_rules) LOOP
+                rule_type := rule->>'type';
+                days_since := COALESCE((rule->>'days_since')::integer, 7);
+                CASE rule_type
+                    WHEN 'viewed_product' THEN
+                        SELECT EXISTS (SELECT 1 FROM user_behavior WHERE user_id = user_id AND behavior_type = 'product_view' AND created_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+                    WHEN 'abandoned_cart' THEN
+                        SELECT EXISTS (SELECT 1 FROM shopping_baskets WHERE user_id = user_id AND status = 'abandoned' AND updated_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+                    WHEN 'visited_service' THEN
+                        SELECT EXISTS (SELECT 1 FROM user_behavior WHERE user_id = user_id AND behavior_type = 'service_view' AND created_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+                    WHEN 'searched' THEN
+                        SELECT EXISTS (SELECT 1 FROM search_history WHERE user_id = user_id AND created_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+                    ELSE match_found := FALSE;
+                END CASE;
+                IF match_found THEN RETURN TRUE; END IF;
+            END LOOP;
+            RETURN FALSE;
         END;
         $$ LANGUAGE plpgsql
     "#,
@@ -2853,6 +3831,38 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
     .execute(pool)
     .await?;
 
+    // ✅ FINALISÉ 100%: Vérifier et ajouter colonne media_urls
+    let has_media_urls = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'product_comments' AND column_name = 'media_urls')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !has_media_urls {
+        info!("⚠️ Colonne 'media_urls' manquante sur product_comments, ajout en cours...");
+        sqlx::query(
+            "ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS media_urls JSONB DEFAULT '[]'::jsonb",
+        )
+        .execute(pool)
+        .await?;
+
+        // ✅ FINALISÉ 100%: Créer index GIN pour recherche rapide
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_product_comments_media_urls ON product_comments USING GIN (media_urls)",
+        )
+        .execute(pool)
+        .await?;
+
+        // ✅ FINALISÉ 100%: Index pour filtrer commentaires avec médias
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_product_comments_has_media ON product_comments (service_id, created_at DESC) WHERE jsonb_array_length(media_urls) > 0",
+        )
+        .execute(pool)
+        .await?;
+
+        info!("✅ Colonne media_urls et index créés avec succès !");
+    }
+
     // Index
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_comments_service ON product_comments(service_id)",
@@ -3071,8 +4081,9 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
     let _ = sqlx::query("DROP FUNCTION IF EXISTS get_product_reactions_count(INTEGER, TEXT)")
         .execute(pool)
         .await;
-    
-    sqlx::query(r#"
+
+    sqlx::query(
+        r#"
         CREATE OR REPLACE FUNCTION get_product_reactions_count(
             p_service_id INTEGER,
             p_product_id TEXT
@@ -3096,7 +4107,8 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
             ORDER BY count DESC, pr.reaction_type;
         END;
         $$ LANGUAGE plpgsql STABLE;
-    "#)
+    "#,
+    )
     .execute(pool)
     .await?;
 
@@ -3245,6 +4257,39 @@ pub async fn ensure_geo_hierarchy_table(pool: &PgPool) -> Result<(), sqlx::Error
 
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_geo_hierarchy_coordinates ON geo_hierarchy(lat, lng)",
+    )
+    .execute(pool)
+    .await?;
+
+    // ✅ CORRIGÉ 2025-12-01: Ajouter la contrainte unique pour ON CONFLICT
+    // Cette contrainte est nécessaire pour places_controller.rs enrich_location
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            -- Créer la contrainte unique si elle n'existe pas
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint 
+                WHERE conname = 'geo_hierarchy_place_name_parent_country_key'
+                AND conrelid = 'geo_hierarchy'::regclass
+            ) THEN
+                ALTER TABLE geo_hierarchy 
+                ADD CONSTRAINT geo_hierarchy_place_name_parent_country_key 
+                UNIQUE (place_name, parent_country);
+                RAISE NOTICE 'Contrainte unique geo_hierarchy_place_name_parent_country_key créée';
+            END IF;
+            
+            -- Créer l'index unique si la contrainte n'existe toujours pas
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_indexes 
+                WHERE indexname = 'idx_geo_hierarchy_place_parent_unique'
+            ) THEN
+                CREATE UNIQUE INDEX idx_geo_hierarchy_place_parent_unique 
+                ON geo_hierarchy (place_name, parent_country);
+                RAISE NOTICE 'Index unique idx_geo_hierarchy_place_parent_unique créé';
+            END IF;
+        END $$;
+        "#,
     )
     .execute(pool)
     .await?;
@@ -3821,6 +4866,7 @@ pub async fn ensure_delivery_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             CREATE TYPE delivery_engine_type AS ENUM (
                 'moto',
                 'scooter',
+                'tricycle',
                 'voiture',
                 'camionnette',
                 'velo_cargo',
@@ -5040,7 +6086,7 @@ async fn ensure_staging_demo_delivery(pool: &PgPool) -> Result<(), sqlx::Error> 
 /// ✅ NOUVEAU : Système de temps de préparation et disponibilité par jour
 pub async fn ensure_order_preparation_system(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification du système de préparation de commandes...");
-    
+
     // 1. Ajouter colonnes à product_delivery_config
     sqlx::query(
         r#"
@@ -5063,14 +6109,14 @@ pub async fn ensure_order_preparation_system(pool: &PgPool) -> Result<(), sqlx::
     )
     .execute(pool)
     .await?;
-    
+
     // 2. Index pour availability_days
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_delivery_config_availability_days ON product_delivery_config USING GIN(availability_days)",
     )
     .execute(pool)
     .await?;
-    
+
     // 3. Table category_preparation_stats
     sqlx::query(
         r#"
@@ -5088,13 +6134,13 @@ pub async fn ensure_order_preparation_system(pool: &PgPool) -> Result<(), sqlx::
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_category_preparation_stats_category ON category_preparation_stats(category)",
     )
     .execute(pool)
     .await?;
-    
+
     // 4. Table product_orders
     sqlx::query(
         r#"
@@ -5120,45 +6166,45 @@ pub async fn ensure_order_preparation_system(pool: &PgPool) -> Result<(), sqlx::
     )
     .execute(pool)
     .await?;
-    
+
     // 5. Index pour product_orders (séparés)
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_orders_status ON product_orders(status, created_at)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_orders_provider ON product_orders(provider_user_id, status)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_orders_delivery ON product_orders(delivery_id) WHERE delivery_id IS NOT NULL",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_orders_estimated_ready ON product_orders(estimated_ready_at) WHERE estimated_ready_at IS NOT NULL",
     )
     .execute(pool)
     .await?;
-    
+
     // 6. Ajouter colonne validation_deadline
     sqlx::query(
-        "ALTER TABLE product_orders ADD COLUMN IF NOT EXISTS validation_deadline TIMESTAMPTZ"
+        "ALTER TABLE product_orders ADD COLUMN IF NOT EXISTS validation_deadline TIMESTAMPTZ",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_orders_validation_deadline ON product_orders(validation_deadline) WHERE status = 'pending' AND validation_deadline IS NOT NULL"
     )
     .execute(pool)
     .await?;
-    
+
     // 7. Table order_cancellations
     sqlx::query(
         r#"
@@ -5177,19 +6223,19 @@ pub async fn ensure_order_preparation_system(pool: &PgPool) -> Result<(), sqlx::
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_order_cancellations_provider ON order_cancellations(provider_user_id, cancelled_at)"
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_order_cancellations_service_product ON order_cancellations(service_id, product_index, cancellation_type)"
     )
     .execute(pool)
     .await?;
-    
+
     // 8. Table product_cancellation_stats
     sqlx::query(
         r#"
@@ -5207,17 +6253,17 @@ pub async fn ensure_order_preparation_system(pool: &PgPool) -> Result<(), sqlx::
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             UNIQUE(service_id, product_index)
         )
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_cancellation_stats_rate ON product_cancellation_stats(cancellation_rate DESC)"
     )
     .execute(pool)
     .await?;
-    
+
     // 9. Table pour vérification d'identité du coursier
     sqlx::query(
         r#"
@@ -5234,36 +6280,36 @@ pub async fn ensure_order_preparation_system(pool: &PgPool) -> Result<(), sqlx::
             verification_method VARCHAR(50),
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_courier_verification_delivery ON courier_verification_codes(delivery_id)"
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_courier_verification_code ON courier_verification_codes(verification_code) WHERE verified_at IS NULL"
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_courier_verification_courier ON courier_verification_codes(courier_id, delivery_id)"
     )
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
 /// ✅ NOUVEAU : Gestion de stock en temps réel
 pub async fn ensure_product_stock_management(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification du système de gestion de stock...");
-    
+
     // 1. Table product_stock_locations
     sqlx::query(
         r#"
@@ -5282,20 +6328,20 @@ pub async fn ensure_product_stock_management(pool: &PgPool) -> Result<(), sqlx::
     )
     .execute(pool)
     .await?;
-    
+
     // 2. Index pour product_stock_locations
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_stock_locations_config ON product_stock_locations(product_delivery_config_id)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_stock_locations_available ON product_stock_locations(is_available, quantity_available) WHERE is_available = TRUE",
     )
     .execute(pool)
     .await?;
-    
+
     // 3. Table stock_reservations
     sqlx::query(
         r#"
@@ -5312,20 +6358,20 @@ pub async fn ensure_product_stock_management(pool: &PgPool) -> Result<(), sqlx::
     )
     .execute(pool)
     .await?;
-    
+
     // 4. Index pour stock_reservations
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_stock_reservations_order ON stock_reservations(order_id)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_stock_reservations_expires ON stock_reservations(expires_at) WHERE released_at IS NULL",
     )
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
@@ -5397,6 +6443,198 @@ pub async fn ensure_google_places_data_table(pool: &PgPool) -> Result<(), sqlx::
 
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_google_places_data_cuisine ON google_places_data USING GIN(serves_cuisine)",
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-01-27: Vérifie et crée la table effects si elle n'existe pas
+pub async fn ensure_effects_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table effects...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS effects (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL UNIQUE,
+            category VARCHAR(50) NOT NULL CHECK (category IN ('transitions', 'visual_effects', 'animations', 'special')),
+            description TEXT NOT NULL,
+            ffmpeg_filter TEXT NOT NULL,
+            parameters JSONB NOT NULL DEFAULT '{}'::jsonb,
+            tags TEXT[] NOT NULL DEFAULT '{}',
+            is_premium BOOLEAN NOT NULL DEFAULT FALSE,
+            popularity_score DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_effects_category ON effects(category)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_effects_tags ON effects USING GIN(tags)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_effects_popularity ON effects(popularity_score DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_effects_name ON effects(name)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_effects_category_popularity ON effects(category, popularity_score DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION update_effects_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DROP TRIGGER IF EXISTS trigger_update_effects_updated_at ON effects;
+        CREATE TRIGGER trigger_update_effects_updated_at
+            BEFORE UPDATE ON effects
+            FOR EACH ROW
+            EXECUTE FUNCTION update_effects_updated_at();
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // ✅ NOUVEAU 2025-01-27: Insérer les effets enrichis si la table est vide ou presque
+    let effects_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM effects")
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
+
+    if effects_count < 100 {
+        info!(
+            "📦 Enrichissement de la bibliothèque d'effets (actuellement: {})",
+            effects_count
+        );
+
+        // Insérer les effets enrichis (50 effets supplémentaires)
+        // Note: Les INSERT sont dans la migration SQL séparée, mais on peut aussi les insérer ici
+        // Pour l'instant, on laisse la migration SQL séparée faire le travail
+        info!("✅ Enrichissement effets: Utiliser la migration SQL 20250127_002_enrich_effects_to_100.sql");
+    }
+
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-01-27: Vérifie et crée la table video_templates si elle n'existe pas
+pub async fn ensure_templates_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table video_templates...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS video_templates (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL UNIQUE,
+            industry VARCHAR(50) NOT NULL CHECK (industry IN ('ecommerce', 'services', 'creators', 'business', 'social_media')),
+            subcategory VARCHAR(100),
+            description TEXT NOT NULL,
+            timeline JSONB NOT NULL,
+            effects JSONB NOT NULL DEFAULT '[]'::jsonb,
+            transitions JSONB NOT NULL DEFAULT '[]'::jsonb,
+            style JSONB NOT NULL DEFAULT '{}'::jsonb,
+            duration DOUBLE PRECISION NOT NULL DEFAULT 30.0,
+            format VARCHAR(10) NOT NULL DEFAULT '16:9' CHECK (format IN ('16:9', '9:16', '1:1', '4:5')),
+            tags TEXT[] NOT NULL DEFAULT '{}',
+            thumbnail_url VARCHAR(500),
+            preview_url VARCHAR(500),
+            is_premium BOOLEAN NOT NULL DEFAULT FALSE,
+            popularity_score DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+            usage_count BIGINT NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_templates_industry ON video_templates(industry)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_templates_subcategory ON video_templates(subcategory)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_templates_tags ON video_templates USING GIN(tags)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_templates_popularity ON video_templates(popularity_score DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_templates_usage ON video_templates(usage_count DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_templates_name ON video_templates(name)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_templates_industry_popularity ON video_templates(industry, popularity_score DESC)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION update_templates_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DROP TRIGGER IF EXISTS trigger_update_templates_updated_at ON video_templates;
+        CREATE TRIGGER trigger_update_templates_updated_at
+            BEFORE UPDATE ON video_templates
+            FOR EACH ROW
+            EXECUTE FUNCTION update_templates_updated_at();
+        "#,
     )
     .execute(pool)
     .await?;
@@ -5481,6 +6719,33 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto global promo tables: {}", e),
     }
 
+    match ensure_effects_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: effects table OK"),
+        Err(e) => error!("❌ Erreur migration auto effects table: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-01-27: Table video_templates pour bibliothèque de templates par industrie
+    match ensure_templates_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: video_templates table OK"),
+        Err(e) => error!("❌ Erreur migration auto video_templates table: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-01-27: Enrichir les templates si la table est vide ou presque
+    let templates_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM video_templates")
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
+
+    if templates_count < 1000 {
+        info!(
+            "📦 Enrichissement de la bibliothèque de templates (actuellement: {})",
+            templates_count
+        );
+        info!(
+            "✅ Enrichissement templates: Utiliser les migrations SQL 20250127_003 et 20250127_004"
+        );
+    }
+
     match ensure_product_delivery_config_table(pool).await {
         Ok(_) => info!("✅ Migration auto: product_delivery_config OK"),
         Err(e) => error!("❌ Erreur migration auto product_delivery_config: {}", e),
@@ -5488,12 +6753,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
 
     match ensure_client_delivery_preferences_table(pool).await {
         Ok(_) => info!("✅ Migration auto: client_delivery_preferences OK"),
-        Err(e) => error!("❌ Erreur migration auto client_delivery_preferences: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto client_delivery_preferences: {}",
+            e
+        ),
     }
 
     match ensure_external_delivery_providers_table(pool).await {
         Ok(_) => info!("✅ Migration auto: external_delivery_providers OK"),
-        Err(e) => error!("❌ Erreur migration auto external_delivery_providers: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto external_delivery_providers: {}",
+            e
+        ),
     }
 
     // TODO: Fonction ensure_public_tracking_tokens_table à implémenter
@@ -5504,7 +6775,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
 
     match ensure_delivery_payment_reservations_table(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_payment_reservations OK"),
-        Err(e) => error!("❌ Erreur migration auto delivery_payment_reservations: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto delivery_payment_reservations: {}",
+            e
+        ),
     }
 
     match ensure_payment_methods_matching_columns(pool).await {
@@ -5527,7 +6801,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ NOUVEAU : Table delivery_proximity_suggestions
     match ensure_delivery_proximity_suggestions_table(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_proximity_suggestions OK"),
-        Err(e) => error!("❌ Erreur migration auto delivery_proximity_suggestions: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto delivery_proximity_suggestions: {}",
+            e
+        ),
     }
 
     // ✅ NOUVEAU : Table negotiated_prices
@@ -5559,6 +6836,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto delivery_proof_media: {}", e),
     }
 
+    // ✅ NOUVEAU : Table delivery_engine_pricing pour calcul coût par type d'engin
+    match ensure_delivery_engine_pricing_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery_engine_pricing OK"),
+        Err(e) => error!("❌ Erreur migration auto delivery_engine_pricing: {}", e),
+    }
+
     // ✅ Phase 9 - Amélioration : Table product_delivery_zones
     match ensure_product_delivery_zones_table(pool).await {
         Ok(_) => info!("✅ Migration auto: product_delivery_zones OK"),
@@ -5574,7 +6857,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ 2025-11-25 : Correction de l'index idx_services_search_optimized (suppression INCLUDE data)
     match ensure_services_search_optimized_index_fix(pool).await {
         Ok(_) => info!("✅ Migration auto: services_search_optimized index fix OK"),
-        Err(e) => error!("❌ Erreur migration auto services_search_optimized index fix: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto services_search_optimized index fix: {}",
+            e
+        ),
     }
 
     // ✅ 2025-11-25 : Fonctions helper GPS pour recherche
@@ -5598,13 +6884,19 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ 2025-11-25 : Fonctions de recherche avec planification (pharmacie/hôpital)
     match ensure_scheduling_search_functions(pool).await {
         Ok(_) => info!("✅ Migration auto: scheduling search functions OK"),
-        Err(e) => error!("❌ Erreur migration auto scheduling search functions: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto scheduling search functions: {}",
+            e
+        ),
     }
 
     // ✅ 2025-11-26 : Tables pour services spécialisés (Santé et Transport)
     match ensure_specialized_services_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: specialized services tables OK"),
-        Err(e) => error!("❌ Erreur migration auto specialized services tables: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto specialized services tables: {}",
+            e
+        ),
     }
 
     // ✅ 2025-01-28 : Champ specialized_type pour identification sans ambiguïté
@@ -5617,6 +6909,151 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_specialized_type_triggers(pool).await {
         Ok(_) => info!("✅ Migration auto: specialized_type triggers OK"),
         Err(e) => error!("❌ Erreur migration auto specialized_type triggers: {}", e),
+    }
+
+    // ✅ 2025-01-28 : Contraintes de validation pour services spécialisés
+    match ensure_specialized_services_constraints(pool).await {
+        Ok(_) => info!("✅ Migration auto: specialized services constraints OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto specialized services constraints: {}",
+            e
+        ),
+    }
+
+    // ✅ 2025-01-28 : Table pour brouillons de services spécialisés
+    match ensure_specialized_services_drafts_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: specialized services drafts table OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto specialized services drafts: {}",
+            e
+        ),
+    }
+
+    // ✅ 2025-01-28 : Tables pour historique et recherches sauvegardées
+    match ensure_search_history_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: search history tables OK"),
+        Err(e) => error!("❌ Erreur migration auto search history tables: {}", e),
+    }
+
+    // ✅ 2025-01-28 : Index scalabilité Taxi/Covoiturage
+    match ensure_taxi_covoit_scalability_indexes(pool).await {
+        Ok(_) => info!("✅ Migration auto: taxi/covoit scalability indexes OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto taxi/covoit scalability indexes: {}",
+            e
+        ),
+    }
+
+    // ✅ 2025-01-28 : Index de scalabilité pour hôpitaux et laboratoires
+    match ensure_hospital_lab_scalability_indexes(pool).await {
+        Ok(_) => info!("✅ Migration auto: hospital/lab scalability indexes OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto hospital/lab scalability indexes: {}",
+            e
+        ),
+    }
+
+    // ✅ 2025-01-27 : Tables avancées pour Hôpitaux/Cliniques
+    match ensure_hospital_advanced_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: hospital advanced tables OK"),
+        Err(e) => error!("❌ Erreur migration auto hospital advanced tables: {}", e),
+    }
+
+    // ✅ 2025-01-27 : Tables avancées pour Pharmacies
+    match ensure_pharmacy_advanced_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: pharmacy advanced tables OK"),
+        Err(e) => error!("❌ Erreur migration auto pharmacy advanced tables: {}", e),
+    }
+
+    // ✅ 2025-01-27 : Tables avancées pour Laboratoires/Imagerie
+    match ensure_lab_advanced_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: lab advanced tables OK"),
+        Err(e) => error!("❌ Erreur migration auto lab advanced tables: {}", e),
+    }
+
+    // ✅ 2025-01-27 : Tables avancées pour Bourse du Livre, Orientation Scolaire et Offres d'Emploi
+    match ensure_bourse_livre_advanced_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: bourse livre advanced tables OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto bourse livre advanced tables: {}",
+            e
+        ),
+    }
+
+    match ensure_orientation_scolaire_advanced_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: orientation scolaire advanced tables OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto orientation scolaire advanced tables: {}",
+            e
+        ),
+    }
+
+    match ensure_offres_emploi_advanced_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: offres emploi advanced tables OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto offres emploi advanced tables: {}",
+            e
+        ),
+    }
+
+    // ✅ 2025-01-27 : Tables complètes pour Service Immobilier
+    match ensure_immobilier_complete_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: immobilier complete tables OK"),
+        Err(e) => error!("❌ Erreur migration auto immobilier complete tables: {}", e),
+    }
+
+    // ✅ 2025-01-27 : Tables pour service Planification Menus
+    match ensure_menu_planning_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: menu planning tables OK"),
+        Err(e) => error!("❌ Erreur migration auto menu planning tables: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-01-27 Phase 2: Tables plugin marketplace
+    match ensure_plugin_marketplace_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: plugin marketplace tables OK"),
+        Err(e) => error!("❌ Erreur migration auto plugin marketplace tables: {}", e),
+    }
+
+    // ✅ 2025-01-28 : Tables pour bourse du livre scolaire et troc intelligent
+    match ensure_livres_scolaires_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: livres scolaires tables OK"),
+        Err(e) => error!("❌ Erreur migration auto livres scolaires: {}", e),
+    }
+
+    // ✅ 2025-01-28 : Tables pour système d'offres d'emploi avec matching intelligent
+    match ensure_offres_emploi_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: offres d'emploi tables OK"),
+        Err(e) => error!("❌ Erreur migration auto offres d'emploi: {}", e),
+    }
+
+    // ✅ 2025-01-28 : Tables pour système d'orientation scolaire et établissements
+    match ensure_orientation_scolaire_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: orientation scolaire tables OK"),
+        Err(e) => error!("❌ Erreur migration auto orientation scolaire: {}", e),
+    }
+
+    // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
+    match ensure_delivery_chat_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
+        Err(e) => error!("❌ Erreur migration auto delivery chat: {}", e),
+    }
+
+    // ✅ 2025-01-29 : Table user_documents pour KYC
+    match ensure_user_documents_table(pool).await {
+        Ok(_) => info!("✅ Migration user_documents réussie"),
+        Err(e) => error!("❌ Erreur migration user_documents: {}", e),
+    }
+
+    // ✅ LEADER MONDIAL 2025-01-29: Assurance + QR code
+    match ensure_insurance_qr_tables(pool).await {
+        Ok(_) => info!("✅ Migration assurance + QR code réussie"),
+        Err(e) => error!("❌ Erreur migration assurance + QR code: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-01-27: Tables programme fidélité, chat support et avis tickets
+    match ensure_loyalty_chat_rating_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: loyalty_chat_rating tables OK"),
+        Err(e) => error!("❌ Erreur migration auto loyalty_chat_rating: {}", e),
     }
 
     // ✅ 2025-11-27 : Table banques de sang (service spécialisé isolé)
@@ -5640,19 +7077,91 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ 2025-11-26 : Correction signature search_services_gps_final
     match ensure_search_services_gps_final_signature_fix(pool).await {
         Ok(_) => info!("✅ Migration auto: search_services_gps_final signature fix OK"),
-        Err(e) => error!("❌ Erreur migration auto search_services_gps_final signature fix: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto search_services_gps_final signature fix: {}",
+            e
+        ),
+    }
+
+    // ✅ 2025-12-01 : Optimisation CRITIQUE search_services_gps_final (élimine calculs redondants)
+    match ensure_search_services_gps_final_optimization(pool).await {
+        Ok(_) => info!("✅ Migration auto: search_services_gps_final optimization OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto search_services_gps_final optimization: {}",
+            e
+        ),
     }
 
     // ✅ 2025-11-26 : Optimisation index pour recherche
     match ensure_search_indexes_optimization(pool).await {
         Ok(_) => info!("✅ Migration auto: search indexes optimization OK"),
-        Err(e) => error!("❌ Erreur migration auto search indexes optimization: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto search indexes optimization: {}",
+            e
+        ),
     }
 
     // ✅ 2025-11-27 : Optimisation performance get_services_for_prestataire
     match ensure_get_services_performance_indexes(pool).await {
         Ok(_) => info!("✅ Migration auto: get_services performance indexes OK"),
-        Err(e) => error!("❌ Erreur migration auto get_services performance indexes: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto get_services performance indexes: {}",
+            e
+        ),
+    }
+
+    // ✅ 2025-12-01 : Optimisations de scalabilité pour millions d'interactions
+    match ensure_scalability_indexes(pool).await {
+        Ok(_) => info!("✅ Migration auto: scalability indexes OK"),
+        Err(e) => error!("❌ Erreur migration auto scalability indexes: {}", e),
+    }
+
+    // ✅ 2025-12-03 : Table videos avec hashtags pour VideoFeed
+    match ensure_videos_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: videos table with hashtags OK"),
+        Err(e) => error!("❌ Erreur migration auto videos table: {}", e),
+    }
+
+    // ✅ 2025-12-03 : Optimisations de scalabilité hashtags (millions d'interactions)
+    match ensure_hashtags_scalability_optimizations(pool).await {
+        Ok(_) => info!("✅ Migration auto: hashtags scalability optimizations OK"),
+        Err(e) => error!("❌ Erreur migration auto hashtags scalability: {}", e),
+    }
+
+    // ✅ 2025-12-03 : Amélioration algorithme recommandations (signaux enrichis)
+    match ensure_recommendations_enhancement(pool).await {
+        Ok(_) => info!("✅ Migration auto: recommendations enhancement OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto recommendations enhancement: {}",
+            e
+        ),
+    }
+
+    // ✅ Phase 1 - 2025-01-27 : Optimisations critiques livraison (index, fonction SQL, cache)
+    match ensure_delivery_phase1_optimizations(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery Phase 1 optimizations OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto delivery Phase 1 optimizations: {}",
+            e
+        ),
+    }
+
+    // ✅ Phase 2 - 2025-01-27 : Partitionnement et archivage livraison
+    match ensure_delivery_phase2_partitioning(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery Phase 2 partitioning OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto delivery Phase 2 partitioning: {}",
+            e
+        ),
+    }
+
+    // ✅ 2025-01-01 : Améliorations de scalabilité vidéo (millions de créations simultanées)
+    match ensure_video_scalability_improvements(pool).await {
+        Ok(_) => info!("✅ Migration auto: video scalability improvements OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto video scalability improvements: {}",
+            e
+        ),
     }
 
     // ✅ 2025-11-27 : Système validation tickets bus
@@ -5676,7 +7185,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ 2025-11-27 : Tables token_consumption_logs et purchase_history
     match ensure_token_consumption_and_purchase_history_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: token_consumption_logs et purchase_history OK"),
-        Err(e) => error!("❌ Erreur migration auto token_consumption/purchase_history: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto token_consumption/purchase_history: {}",
+            e
+        ),
     }
 
     // ✅ 2025-11-27 : Table products (critique)
@@ -5695,6 +7207,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: chat tables OK"),
         Err(e) => error!("❌ Erreur migration auto chat tables: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-01-27 : Table message_reactions (réactions aux messages)
+    match ensure_message_reactions_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: message_reactions OK"),
+        Err(e) => error!("❌ Erreur migration auto message_reactions: {}", e),
     }
 
     // ✅ 2025-11-27 : Table user_push_tokens (critique)
@@ -5738,25 +7256,25 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Ok(_) => info!("✅ Migration auto: bus_return_trips OK"),
         Err(e) => error!("❌ Erreur migration auto bus_return_trips: {}", e),
     }
-    
+
     // ✅ 2025-11-27 : Table agency_departure_schedules (horaires par agence/ville)
     match ensure_agency_departure_schedules(pool).await {
         Ok(_) => info!("✅ Migration auto: agency_departure_schedules OK"),
         Err(e) => error!("❌ Erreur migration auto agency_departure_schedules: {}", e),
     }
-    
+
     // ✅ 2025-11-27 : Colonnes return_date et return_time dans bus_ticket_payments
     match ensure_return_time_columns(pool).await {
         Ok(_) => info!("✅ Migration auto: return_time columns OK"),
         Err(e) => error!("❌ Erreur migration auto return_time columns: {}", e),
     }
-    
+
     // ✅ 2025-11-27 : Amélioration fonction matching avec heure
     match ensure_improved_return_matching(pool).await {
         Ok(_) => info!("✅ Migration auto: improved return matching OK"),
         Err(e) => error!("❌ Erreur migration auto improved return matching: {}", e),
     }
-    
+
     // ✅ 2025-11-27 : Ajout champ groupe_sanguin dans users
     match ensure_blood_group_column_in_users(pool).await {
         Ok(_) => info!("✅ Migration auto: blood_group column in users OK"),
@@ -5771,6 +7289,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_live_flash_sales_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: live flash sales tables OK"),
         Err(e) => error!("❌ Erreur migration auto live flash sales: {}", e),
+    }
+
+    // Optimisations de scalabilité Flash Sales et Black Friday
+    match ensure_flash_blackfriday_scalability_optimizations(pool).await {
+        Ok(_) => info!("✅ Migration auto: optimisations scalabilité Flash/BlackFriday OK"),
+        Err(e) => error!("❌ Erreur migration auto optimisations scalabilité: {}", e),
     }
 
     // Migration 0.5: Table african_locations (✅ NOUVEAU 2025-11-06)
@@ -7053,7 +8577,7 @@ pub async fn ensure_product_delivery_config_table(pool: &PgPool) -> Result<(), s
 /// ✅ Phase 3 - Amélioration 7 : Vérifie et crée la table client_delivery_preferences si elle n'existe pas
 pub async fn ensure_client_delivery_preferences_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table client_delivery_preferences...");
-    
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS client_delivery_preferences (
@@ -7084,32 +8608,32 @@ pub async fn ensure_client_delivery_preferences_table(pool: &PgPool) -> Result<(
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_client_delivery_preferences_user ON client_delivery_preferences(user_id)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_client_delivery_preferences_delivery ON client_delivery_preferences(delivery_id)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_client_delivery_preferences_date ON client_delivery_preferences(preferred_delivery_date)",
     )
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
 /// ✅ Phase 4 - Amélioration 8 : Vérifie et crée la table external_delivery_providers si elle n'existe pas
 pub async fn ensure_external_delivery_providers_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table external_delivery_providers...");
-    
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS external_delivery_providers (
@@ -7132,19 +8656,19 @@ pub async fn ensure_external_delivery_providers_table(pool: &PgPool) -> Result<(
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_external_providers_api_key ON external_delivery_providers(api_key)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_external_providers_active ON external_delivery_providers(is_active) WHERE is_active = TRUE",
     )
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
@@ -7213,270 +8737,390 @@ pub async fn ensure_delivery_payment_reservations_table(pool: &PgPool) -> Result
 }
 
 /// Vérifie et crée les tables token_consumption_logs et purchase_history si elles n'existent pas
-pub async fn ensure_token_consumption_and_purchase_history_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn ensure_token_consumption_and_purchase_history_tables(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables token_consumption_logs et purchase_history...");
-    
+
     let token_consumption_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'token_consumption_logs')"
     )
     .fetch_one(pool)
     .await?;
-    
+
     let purchase_history_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'purchase_history')"
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !token_consumption_exists || !purchase_history_exists {
         warn!("⚠️ Tables token_consumption_logs ou purchase_history manquantes (seront créées par 0000_create_all_tables.sql)");
     } else {
         info!("✅ Tables token_consumption_logs et purchase_history présentes");
     }
-    
+
     Ok(())
 }
 
 /// Vérifie que la table products existe (créée via 0000_create_all_tables.sql)
 pub async fn ensure_products_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table products...");
-    
+
     let products_lifecycle_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'products_lifecycle')"
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !products_lifecycle_exists {
         warn!("⚠️ Table products_lifecycle manquante (sera créée par 0000_create_all_tables.sql)");
     } else {
         info!("✅ Table products_lifecycle présente");
     }
-    
+
     Ok(())
 }
 
 /// Vérifie que la table echanges existe (créée via 0000_create_all_tables.sql)
 pub async fn ensure_echanges_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table echanges...");
-    
+
     let echanges_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'echanges')"
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'echanges')",
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !echanges_exists {
         warn!("⚠️ Table echanges manquante (sera créée par 0000_create_all_tables.sql)");
     } else {
         info!("✅ Table echanges présente");
     }
-    
+
     Ok(())
 }
 
 /// Vérifie que les tables de chat existent (créées via 0000_create_all_tables.sql)
 pub async fn ensure_chat_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables de chat...");
-    
+
     let conversations_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'conversations')"
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'conversations')",
     )
     .fetch_one(pool)
     .await?;
-    
+
     let chat_messages_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'chat_messages')"
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'chat_messages')",
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !conversations_exists || !chat_messages_exists {
         warn!("⚠️ Tables de chat manquantes (seront créées par 0000_create_all_tables.sql)");
     } else {
         info!("✅ Tables de chat présentes");
     }
-    
+
     Ok(())
 }
 
-/// Vérifie que la table user_push_tokens existe (créée via 0000_create_all_tables.sql)
+/// ✅ NOUVEAU 2025-01-27 : Vérifie et crée la table message_reactions pour les réactions aux messages
+/// Optimisé pour scalabilité avec index et contraintes
+/// Migration: 20250127_add_message_reactions.sql
+pub async fn ensure_message_reactions_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création de la table message_reactions...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250127_add_message_reactions.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Table message_reactions créée avec succès");
+    Ok(())
+}
+
+/// Vérifie et crée/corrige la table user_push_tokens avec le bon schéma
+/// ✅ 2025-12-01 : Migration pour corriger le schéma (id SERIAL, device_type, device_id, last_used_at)
 pub async fn ensure_push_tokens_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table user_push_tokens...");
-    
-    let push_tokens_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'user_push_tokens')"
+    info!("🔍 Vérification et correction de la table user_push_tokens...");
+
+    // Créer la table si elle n'existe pas
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS user_push_tokens (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            push_token VARCHAR(500) NOT NULL UNIQUE,
+            device_type VARCHAR(20) NOT NULL,
+            device_id VARCHAR(255),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            last_used_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        )
+        "#,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
-    
-    if !push_tokens_exists {
-        warn!("⚠️ Table user_push_tokens manquante (sera créée par 0000_create_all_tables.sql)");
-    } else {
-        info!("✅ Table user_push_tokens présente");
-    }
-    
+
+    // Vérifier et corriger le schéma si nécessaire (migration depuis ancien schéma)
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            -- Renommer platform en device_type si elle existe
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'user_push_tokens' AND column_name = 'platform'
+            ) THEN
+                ALTER TABLE user_push_tokens RENAME COLUMN platform TO device_type;
+                RAISE NOTICE 'Colonne platform renommée en device_type';
+            END IF;
+            
+            -- Ajouter device_id si manquant
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'user_push_tokens' AND column_name = 'device_id'
+            ) THEN
+                ALTER TABLE user_push_tokens ADD COLUMN device_id VARCHAR(255);
+            END IF;
+            
+            -- Ajouter last_used_at si manquant
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'user_push_tokens' AND column_name = 'last_used_at'
+            ) THEN
+                ALTER TABLE user_push_tokens 
+                ADD COLUMN last_used_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Créer les index
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_user_push_tokens_user_id ON user_push_tokens(user_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_user_push_tokens_push_token ON user_push_tokens(push_token)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_user_push_tokens_is_active ON user_push_tokens(is_active)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_user_push_tokens_device ON user_push_tokens(device_id)",
+    )
+    .execute(pool)
+    .await?;
+
+    // Créer le trigger pour updated_at
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION update_updated_at_column()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = CURRENT_TIMESTAMP;
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql';
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_user_push_tokens_updated_at') THEN
+                CREATE TRIGGER update_user_push_tokens_updated_at 
+                    BEFORE UPDATE ON user_push_tokens 
+                    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+            END IF;
+        END $$;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table user_push_tokens vérifiée et corrigée si nécessaire");
     Ok(())
 }
 
 /// Vérifie que la table image_analyses existe (créée via 0000_create_all_tables.sql)
 pub async fn ensure_image_analyses_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table image_analyses...");
-    
+
     let image_analyses_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'image_analyses')"
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !image_analyses_exists {
         warn!("⚠️ Table image_analyses manquante (sera créée par 0000_create_all_tables.sql)");
     } else {
         info!("✅ Table image_analyses présente");
     }
-    
+
     Ok(())
 }
 
 /// Vérifie que la table programmes_scolaires existe (créée via 0000_create_all_tables.sql)
 pub async fn ensure_programmes_scolaires_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table programmes_scolaires...");
-    
+
     let programmes_scolaires_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'programmes_scolaires')"
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !programmes_scolaires_exists {
-        warn!("⚠️ Table programmes_scolaires manquante (sera créée par 0000_create_all_tables.sql)");
+        warn!(
+            "⚠️ Table programmes_scolaires manquante (sera créée par 0000_create_all_tables.sql)"
+        );
     } else {
         info!("✅ Table programmes_scolaires présente");
     }
-    
+
     Ok(())
 }
 
 /// Vérifie que les tables de modèles produits existent (créées via 0000_create_all_tables.sql)
 pub async fn ensure_product_models_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables de modèles produits...");
-    
+
     let product_models_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'product_models')"
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !product_models_exists {
         warn!("⚠️ Tables de modèles produits manquantes (seront créées par 0000_create_all_tables.sql)");
     } else {
         info!("✅ Tables de modèles produits présentes");
     }
-    
+
     Ok(())
 }
 
 /// Vérifie que la table visibility_tracking existe (créée via 0000_create_all_tables.sql)
 pub async fn ensure_visibility_tracking_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table visibility_tracking...");
-    
+
     let visibility_tracking_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'content_visibility_tracking')"
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !visibility_tracking_exists {
         warn!("⚠️ Table visibility_tracking manquante (sera créée par 0000_create_all_tables.sql)");
     } else {
         info!("✅ Table visibility_tracking présente");
     }
-    
+
     Ok(())
 }
 
 /// Vérifie que les tables service_team_management existent (créées via 0000_create_all_tables.sql)
 pub async fn ensure_service_team_management_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables service_team_management...");
-    
+
     let service_team_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'service_team_members')"
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !service_team_exists {
         warn!("⚠️ Tables service_team_management manquantes (seront créées par 0000_create_all_tables.sql)");
     } else {
         info!("✅ Tables service_team_management présentes");
     }
-    
+
     Ok(())
 }
 
 /// Vérifie que la table bus_return_trips existe (créée via 0000_create_all_tables.sql)
 pub async fn ensure_bus_return_trips_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table bus_return_trips...");
-    
+
     let bus_return_trips_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'return_trip_requests')"
     )
     .fetch_one(pool)
     .await?;
-    
+
     if !bus_return_trips_exists {
         warn!("⚠️ Table bus_return_trips manquante (sera créée par 0000_create_all_tables.sql)");
     } else {
         info!("✅ Table bus_return_trips présente");
     }
-    
+
     Ok(())
 }
 
 /// ✅ Phase 5 - Matching Intelligent : Ajoute les colonnes pour matching modes de paiement
 pub async fn ensure_payment_methods_matching_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des colonnes payment_methods_matching...");
-    
+
     // Ajouter colonne payment_methods dans users
     sqlx::query(
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_methods JSONB DEFAULT '{}'::jsonb"
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_methods JSONB DEFAULT '{}'::jsonb",
     )
     .execute(pool)
     .await?;
-    
+
     // Ajouter colonnes dans delivery_payment_reservations
     sqlx::query(
         "ALTER TABLE delivery_payment_reservations ADD COLUMN IF NOT EXISTS client_payment_method JSONB"
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "ALTER TABLE delivery_payment_reservations ADD COLUMN IF NOT EXISTS merchant_payment_method JSONB"
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "ALTER TABLE delivery_payment_reservations ADD COLUMN IF NOT EXISTS payout_method_used VARCHAR(50)"
     )
     .execute(pool)
     .await?;
-    
+
     // Créer index pour users.payment_methods
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_users_payment_methods ON users USING GIN (payment_methods) WHERE payment_methods != '{}'::jsonb"
     )
     .execute(pool)
     .await?;
-    
+
     // Créer index pour delivery_payment_reservations.payout_method_used
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_delivery_payment_reservations_payout_method ON delivery_payment_reservations(payout_method_used)"
     )
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
@@ -7502,25 +9146,25 @@ pub async fn ensure_delivery_proximity_suggestions_table(pool: &PgPool) -> Resul
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_delivery_proximity_suggestions_delivery ON delivery_proximity_suggestions(delivery_id)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_delivery_proximity_suggestions_status ON delivery_proximity_suggestions(status) WHERE status = 'pending'",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_delivery_proximity_suggestions_created ON delivery_proximity_suggestions(created_at)",
     )
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
@@ -7549,38 +9193,38 @@ pub async fn ensure_negotiated_prices_table(pool: &PgPool) -> Result<(), sqlx::E
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_negotiated_prices_conversation ON negotiated_prices(conversation_id)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_negotiated_prices_service ON negotiated_prices(service_id)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_negotiated_prices_status ON negotiated_prices(status) WHERE status = 'pending'",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_negotiated_prices_client ON negotiated_prices(client_user_id, status) WHERE status = 'accepted'",
     )
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
 /// ✅ Phase 9 - Amélioration 31 : Crée la table video_dependencies pour chaînage vidéos
 pub async fn ensure_video_dependencies_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table video_dependencies...");
-    
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS video_dependencies (
@@ -7595,28 +9239,28 @@ pub async fn ensure_video_dependencies_table(pool: &PgPool) -> Result<(), sqlx::
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_video_dependencies_parent ON video_dependencies(parent_session_id, order_index)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_video_dependencies_child ON video_dependencies(child_session_id)",
     )
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
 /// ✅ Phase 9 - Amélioration 32 : Crée la table merchant_storage_locations pour plusieurs lieux de stock
 pub async fn ensure_merchant_storage_locations_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table merchant_storage_locations...");
-    
-        sqlx::query(
-            r#"
+
+    sqlx::query(
+        r#"
             CREATE TABLE IF NOT EXISTS merchant_storage_locations (
                 id SERIAL PRIMARY KEY,
                 merchant_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -7630,23 +9274,23 @@ pub async fn ensure_merchant_storage_locations_table(pool: &PgPool) -> Result<()
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             )
             "#,
-        )
-        .execute(pool)
-        .await?;
-    
-        sqlx::query(
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_merchant_storage_locations_merchant ON merchant_storage_locations(merchant_user_id, is_active) WHERE is_active = TRUE",
         )
         .execute(pool)
         .await?;
-        
-        // ✅ Phase 9 - Amélioration : Index pour zone_id
-        sqlx::query(
+
+    // ✅ Phase 9 - Amélioration : Index pour zone_id
+    sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_merchant_storage_locations_zone ON merchant_storage_locations(zone_id) WHERE zone_id IS NOT NULL",
         )
         .execute(pool)
         .await?;
-    
+
     // ✅ Phase 9 - Amélioration 32 : Ajouter storage_location_id à product_delivery_config
     sqlx::query(
         r#"
@@ -7656,20 +9300,20 @@ pub async fn ensure_merchant_storage_locations_table(pool: &PgPool) -> Result<()
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_delivery_config_storage_location ON product_delivery_config(storage_location_id) WHERE storage_location_id IS NOT NULL",
     )
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
 /// ✅ Phase 9 - Amélioration : Crée la table product_delivery_zones pour associer des zones de livraison aux produits
 pub async fn ensure_product_delivery_zones_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table product_delivery_zones...");
-    
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS product_delivery_zones (
@@ -7684,26 +9328,26 @@ pub async fn ensure_product_delivery_zones_table(pool: &PgPool) -> Result<(), sq
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_delivery_zones_service ON product_delivery_zones(service_id, product_index)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_product_delivery_zones_zone ON product_delivery_zones(zone_id)",
     )
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
 /// ✅ Phase 10 - Optimisations : Crée les index géographiques pour optimiser les requêtes GPS
 pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des index géographiques...");
-    
+
     // 1. Index GIST pour services.gps (TEXT format "latitude,longitude")
     // Créer un index fonctionnel qui convertit le TEXT en GEOGRAPHY Point
     sqlx::query(
@@ -7725,7 +9369,7 @@ pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error>
     )
     .execute(pool)
     .await?;
-    
+
     // 2. Index GIST pour merchant_storage_locations (latitude, longitude)
     sqlx::query(
         r#"
@@ -7739,7 +9383,7 @@ pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error>
     )
     .execute(pool)
     .await?;
-    
+
     // 3. Index GIST pour african_locations (latitude, longitude)
     sqlx::query(
         r#"
@@ -7753,7 +9397,7 @@ pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error>
     )
     .execute(pool)
     .await?;
-    
+
     // 4. Index B-tree pour services.gps (pour recherches exactes et LIKE)
     sqlx::query(
         r#"
@@ -7764,7 +9408,7 @@ pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error>
     )
     .execute(pool)
     .await?;
-    
+
     // 5. Index composite pour merchant_storage_locations (merchant + location)
     sqlx::query(
         r#"
@@ -7775,7 +9419,7 @@ pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error>
     )
     .execute(pool)
     .await?;
-    
+
     info!("✅ Index géographiques créés avec succès");
     Ok(())
 }
@@ -7783,7 +9427,7 @@ pub async fn ensure_geographic_indexes(pool: &PgPool) -> Result<(), sqlx::Error>
 /// ✅ Phase 9 - Amélioration : Crée le type enum pour les raisons de refus de colis
 pub async fn ensure_parcel_rejection_reason_type(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification du type parcel_rejection_reason...");
-    
+
     sqlx::query(
         r#"
         DO $$ BEGIN
@@ -7802,34 +9446,34 @@ pub async fn ensure_parcel_rejection_reason_type(pool: &PgPool) -> Result<(), sq
         EXCEPTION
             WHEN duplicate_object THEN null;
         END $$;
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     // ✅ Phase 9 - Amélioration : Ajouter rejection_reason à shopping_order_items
     sqlx::query(
         r#"
         ALTER TABLE shopping_order_items 
         ADD COLUMN IF NOT EXISTS rejection_reason parcel_rejection_reason
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_shopping_order_items_rejection_reason ON shopping_order_items(rejection_reason) WHERE rejection_reason IS NOT NULL",
     )
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
 /// ✅ Phase 9 - Amélioration : Crée la table delivery_proof_media pour stocker les médias de preuve (pickup/delivery)
 pub async fn ensure_delivery_proof_media_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table delivery_proof_media...");
-    
+
     sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS delivery_proof_media (
@@ -7847,19 +9491,101 @@ pub async fn ensure_delivery_proof_media_table(pool: &PgPool) -> Result<(), sqlx
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_delivery_proof_media_delivery ON delivery_proof_media(delivery_id, proof_type)",
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_delivery_proof_media_uploaded_by ON delivery_proof_media(uploaded_by)",
     )
     .execute(pool)
     .await?;
-    
+
+    Ok(())
+}
+
+/// ✅ NOUVEAU : Crée la table delivery_engine_pricing pour paramétrer les coûts par type d'engin
+pub async fn ensure_delivery_engine_pricing_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table delivery_engine_pricing...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS delivery_engine_pricing (
+            engine_type delivery_engine_type PRIMARY KEY,
+            cost_per_km_fcfa NUMERIC(10, 2) NOT NULL,
+            minimum_cost_fcfa NUMERIC(10, 2) NOT NULL,
+            fuel_consumption_l_per_km NUMERIC(6, 3),
+            description TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_delivery_engine_pricing_type ON delivery_engine_pricing(engine_type)",
+    )
+    .execute(pool)
+    .await?;
+
+    // Insérer les valeurs par défaut (prix ajustés selon demande)
+    sqlx::query(
+        r#"
+        INSERT INTO delivery_engine_pricing (engine_type, cost_per_km_fcfa, minimum_cost_fcfa, fuel_consumption_l_per_km, description)
+        VALUES
+            ('pieton', 200.00, 500.00, NULL, 'Livraison à pied - Pas de carburant'),
+            ('velo_cargo', 200.00, 800.00, NULL, 'Vélo cargo - Pas de carburant (réduit)'),
+            ('scooter', 225.00, 1000.00, 0.030, 'Scooter - Consommation ~3L/100km (réduit de moitié, aligné avec moto)'),
+            ('moto', 225.00, 1000.00, 0.040, 'Moto - Consommation ~4L/100km (réduit de moitié, aligné avec scooter)'),
+            ('tricycle', 250.00, 1000.00, 0.035, 'Tricycle - Consommation ~3.5L/100km'),
+            ('voiture', 600.00, 1500.00, 0.080, 'Voiture - Consommation ~8L/100km'),
+            ('camionnette', 1000.00, 5000.00, 0.100, 'Camionnette/Pickup - Consommation ~10L/100km (base 1000, min 5000)'),
+            ('camion_leger', 2000.00, 10000.00, 0.120, 'Camion léger - Consommation ~12L/100km (base 2000, min 10000)'),
+            ('autre', 500.00, 1000.00, NULL, 'Autre type d''engin - Prix par défaut')
+        ON CONFLICT (engine_type) 
+        DO UPDATE SET 
+            cost_per_km_fcfa = EXCLUDED.cost_per_km_fcfa,
+            minimum_cost_fcfa = EXCLUDED.minimum_cost_fcfa,
+            fuel_consumption_l_per_km = EXCLUDED.fuel_consumption_l_per_km,
+            description = EXCLUDED.description,
+            updated_at = NOW()
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Créer le trigger pour updated_at
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION update_delivery_engine_pricing_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        DROP TRIGGER IF EXISTS trigger_update_delivery_engine_pricing_updated_at ON delivery_engine_pricing;
+        CREATE TRIGGER trigger_update_delivery_engine_pricing_updated_at
+            BEFORE UPDATE ON delivery_engine_pricing
+            FOR EACH ROW
+            EXECUTE FUNCTION update_delivery_engine_pricing_updated_at()
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
     Ok(())
 }
 
@@ -7868,14 +9594,12 @@ pub async fn ensure_delivery_proof_media_table(pool: &PgPool) -> Result<(), sqlx
 /// Migration: 20251125_fix_idx_services_search_optimized.sql
 pub async fn ensure_services_search_optimized_index_fix(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/correction de l'index idx_services_search_optimized...");
-    
+
     // 1. Supprimer l'ancien index problématique s'il existe avec INCLUDE (data)
-    sqlx::query(
-        "DROP INDEX IF EXISTS idx_services_search_optimized"
-    )
-    .execute(pool)
-    .await?;
-    
+    sqlx::query("DROP INDEX IF EXISTS idx_services_search_optimized")
+        .execute(pool)
+        .await?;
+
     // 2. Recréer l'index sans INCLUDE (data) pour éviter l'erreur de taille
     //    On garde seulement user_id dans INCLUDE car c'est un INTEGER (petit, ~4 bytes)
     sqlx::query(
@@ -7884,11 +9608,11 @@ pub async fn ensure_services_search_optimized_index_fix(pool: &PgPool) -> Result
         ON services (is_active, created_at DESC) 
         INCLUDE (user_id)
         WHERE is_active = true
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     // 3. Ajouter un commentaire pour documenter la modification
     sqlx::query(
         r#"
@@ -7899,7 +9623,7 @@ pub async fn ensure_services_search_optimized_index_fix(pool: &PgPool) -> Result
     )
     .execute(pool)
     .await?;
-    
+
     info!("✅ Index idx_services_search_optimized corrigé (sans INCLUDE data)");
     Ok(())
 }
@@ -7908,7 +9632,7 @@ pub async fn ensure_services_search_optimized_index_fix(pool: &PgPool) -> Result
 /// Migration: 20250119003_enhance_product_search_gps.sql, 20250830002_002_add_postgis_geospatial.sql
 pub async fn ensure_gps_helper_functions(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création des fonctions helper GPS...");
-    
+
     // 1. Fonction get_best_gps_for_service (priorité GPS produit)
     sqlx::query(
         r#"
@@ -7978,7 +9702,7 @@ pub async fn ensure_gps_helper_functions(pool: &PgPool) -> Result<(), sqlx::Erro
     )
     .execute(pool)
     .await?;
-    
+
     // 2. Fonction calculate_intelligent_radius (version double precision)
     sqlx::query(
         r#"
@@ -7990,11 +9714,11 @@ pub async fn ensure_gps_helper_functions(pool: &PgPool) -> Result<(), sqlx::Erro
             RETURN base_radius;
         END;
         $$ LANGUAGE plpgsql IMMUTABLE;
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     // 3. Fonction calculate_distance_km (surcharge avec 2 paramètres TEXT)
     sqlx::query(
         r#"
@@ -8049,11 +9773,11 @@ pub async fn ensure_gps_helper_functions(pool: &PgPool) -> Result<(), sqlx::Erro
                 RETURN 999999.0;
         END;
         $$ LANGUAGE plpgsql IMMUTABLE;
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     info!("✅ Fonctions helper GPS créées/mises à jour");
     Ok(())
 }
@@ -8062,7 +9786,7 @@ pub async fn ensure_gps_helper_functions(pool: &PgPool) -> Result<(), sqlx::Erro
 /// Migration: 20251123_filter_active_products_in_search_gps_final.sql
 pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création de search_services_gps_final...");
-    
+
     // 1. Fonction get_active_products
     sqlx::query(
         r#"
@@ -8109,7 +9833,7 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
     )
     .execute(pool)
     .await?;
-    
+
     // 2. Fonction search_services_gps_final (version simplifiée pour auto_migrate)
     // Note: La version complète est dans la migration 20251123
     // Cette version crée la fonction de base, la migration SQLx l'améliorera
@@ -8334,7 +10058,7 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
     )
     .execute(pool)
     .await?;
-    
+
     // 3. Commentaires
     sqlx::query(
         r#"
@@ -8343,7 +10067,7 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
     )
     .execute(pool)
     .await?;
-    
+
     sqlx::query(
         r#"
         COMMENT ON FUNCTION search_services_gps_final IS 'Recherche dans les PRODUITS actifs (via products_lifecycle), pas dans les services. Retourne uniquement les services qui ont au moins un produit actif correspondant à la recherche.';
@@ -8351,7 +10075,7 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
     )
     .execute(pool)
     .await?;
-    
+
     info!("✅ Fonction search_services_gps_final créée/mise à jour");
     Ok(())
 }
@@ -8360,7 +10084,7 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
 /// Migration: 20251027003_create_hybrid_image_search_function.sql
 pub async fn ensure_hybrid_image_search(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création de hybrid_image_search...");
-    
+
     // 1. Fonction helper calculate_gps_distance_km_simple
     sqlx::query(
         r#"
@@ -8388,11 +10112,11 @@ pub async fn ensure_hybrid_image_search(pool: &PgPool) -> Result<(), sqlx::Error
                 RETURN NULL;
         END;
         $$ LANGUAGE plpgsql IMMUTABLE;
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     // 2. Fonction hybrid_image_search (version simplifiée - la migration SQLx complète l'améliorera)
     // Note: Cette fonction est complexe, la migration SQLx 20251027003 contient la version complète
     sqlx::query(
@@ -8440,7 +10164,7 @@ pub async fn ensure_hybrid_image_search(pool: &PgPool) -> Result<(), sqlx::Error
     )
     .execute(pool)
     .await?;
-    
+
     info!("✅ Fonction hybrid_image_search créée/mise à jour (version de base - migration SQLx complétera)");
     Ok(())
 }
@@ -8449,7 +10173,7 @@ pub async fn ensure_hybrid_image_search(pool: &PgPool) -> Result<(), sqlx::Error
 /// Migration: 20251020003_add_pharmacy_hospital_scheduling_search.sql
 pub async fn ensure_scheduling_search_functions(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création des fonctions de recherche avec planification...");
-    
+
     // 1. Fonction is_pharmacy_on_duty
     sqlx::query(
         r#"
@@ -8514,11 +10238,11 @@ pub async fn ensure_scheduling_search_functions(pool: &PgPool) -> Result<(), sql
             RETURN is_garde_day AND is_garde_hour;
         END;
         $$ LANGUAGE plpgsql IMMUTABLE;
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     // 2. Fonction is_medical_service_available
     sqlx::query(
         r#"
@@ -8582,11 +10306,11 @@ pub async fn ensure_scheduling_search_functions(pool: &PgPool) -> Result<(), sql
             RETURN service_available AND time_available;
         END;
         $$ LANGUAGE plpgsql IMMUTABLE;
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     // 3. Fonction search_products_with_scheduling (version simplifiée)
     // Note: La migration SQLx 20251020003 contient la version complète
     sqlx::query(
@@ -8619,11 +10343,11 @@ pub async fn ensure_scheduling_search_functions(pool: &PgPool) -> Result<(), sql
             WHERE FALSE;
         END;
         $$ LANGUAGE plpgsql;
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     info!("✅ Fonctions de recherche avec planification créées/mises à jour");
     Ok(())
 }
@@ -8637,17 +10361,17 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
     let mut current = String::new();
     let mut in_dollar_block = false;
     let mut dollar_tag = String::new();
-    
+
     for line in sql.lines() {
         let trimmed = line.trim();
-        
+
         // Ignorer les lignes vides et les commentaires seuls
         if trimmed.is_empty() || trimmed.starts_with("--") {
             if !in_dollar_block {
                 continue;
             }
         }
-        
+
         // Détecter début d'un bloc avec $$
         if trimmed.contains("$$") && !in_dollar_block {
             // Détecter le tag $$ (peut être $$, $tag$, etc.)
@@ -8661,7 +10385,7 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                     // Tag personnalisé $tag$
                     let tag_start = trimmed[..start].rfind('$');
                     if let Some(ts) = tag_start {
-                        dollar_tag = trimmed[ts..=start+1].to_string();
+                        dollar_tag = trimmed[ts..=start + 1].to_string();
                         in_dollar_block = true;
                     } else {
                         dollar_tag = "$$".to_string();
@@ -8670,10 +10394,10 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                 }
             }
         }
-        
+
         current.push_str(line);
         current.push_str("\n");
-        
+
         // Détecter fin du bloc $$
         if in_dollar_block {
             // Vérifier si la ligne contient la fin du bloc ($$ LANGUAGE ou END $$;)
@@ -8691,14 +10415,17 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                         // LANGUAGE sur une ligne, point-virgule sur la suivante
                         // On continue à accumuler jusqu'au prochain ;
                     }
-                } else if trimmed.contains("END") && trimmed.ends_with(&format!("{};", dollar_tag)) {
+                } else if trimmed.contains("END") && trimmed.ends_with(&format!("{};", dollar_tag))
+                {
                     // Bloc DO $$ se termine par END $$;
                     commands.push(current.trim().to_string());
                     current.clear();
                     in_dollar_block = false;
                     dollar_tag.clear();
                     continue;
-                } else if trimmed.ends_with(&format!("{};", dollar_tag)) && !trimmed.contains("LANGUAGE") {
+                } else if trimmed.ends_with(&format!("{};", dollar_tag))
+                    && !trimmed.contains("LANGUAGE")
+                {
                     // Fin de bloc simple $$;
                     commands.push(current.trim().to_string());
                     current.clear();
@@ -8708,7 +10435,11 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                 }
             }
             // Si on est dans un bloc et qu'on trouve un point-virgule après LANGUAGE
-            if in_dollar_block && current.contains("LANGUAGE") && trimmed.ends_with(';') && !trimmed.contains(&dollar_tag) {
+            if in_dollar_block
+                && current.contains("LANGUAGE")
+                && trimmed.ends_with(';')
+                && !trimmed.contains(&dollar_tag)
+            {
                 // Le point-virgule final de la fonction
                 commands.push(current.trim().to_string());
                 current.clear();
@@ -8727,7 +10458,7 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
             }
         }
     }
-    
+
     // Ajouter la dernière commande si elle existe
     if !current.trim().is_empty() {
         let cmd = current.trim();
@@ -8735,23 +10466,33 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
             commands.push(cmd.to_string());
         }
     }
-    
+
     // Exécuter chaque commande avec gestion d'erreur gracieuse
     for cmd in commands {
         let trimmed_cmd = cmd.trim();
         if !trimmed_cmd.is_empty() && !trimmed_cmd.starts_with("--") {
             // Ignorer les erreurs pour les commandes qui peuvent échouer si l'objet existe déjà
-            if trimmed_cmd.to_uppercase().contains("DROP INDEX") && !trimmed_cmd.to_uppercase().contains("IF EXISTS") {
+            if trimmed_cmd.to_uppercase().contains("DROP INDEX")
+                && !trimmed_cmd.to_uppercase().contains("IF EXISTS")
+            {
                 // Convertir DROP INDEX en DROP INDEX IF EXISTS
                 let fixed_cmd = trimmed_cmd.replace("DROP INDEX", "DROP INDEX IF EXISTS");
                 if let Err(e) = sqlx::query(&fixed_cmd).execute(pool).await {
-                    warn!("⚠️ Erreur lors de l'exécution de DROP INDEX (ignorée): {}", e);
+                    warn!(
+                        "⚠️ Erreur lors de l'exécution de DROP INDEX (ignorée): {}",
+                        e
+                    );
                 }
-            } else if trimmed_cmd.to_uppercase().contains("DROP TABLE") && !trimmed_cmd.to_uppercase().contains("IF EXISTS") {
+            } else if trimmed_cmd.to_uppercase().contains("DROP TABLE")
+                && !trimmed_cmd.to_uppercase().contains("IF EXISTS")
+            {
                 // Convertir DROP TABLE en DROP TABLE IF EXISTS
                 let fixed_cmd = trimmed_cmd.replace("DROP TABLE", "DROP TABLE IF EXISTS");
                 if let Err(e) = sqlx::query(&fixed_cmd).execute(pool).await {
-                    warn!("⚠️ Erreur lors de l'exécution de DROP TABLE (ignorée): {}", e);
+                    warn!(
+                        "⚠️ Erreur lors de l'exécution de DROP TABLE (ignorée): {}",
+                        e
+                    );
                 }
             } else {
                 if let Err(e) = sqlx::query(trimmed_cmd).execute(pool).await {
@@ -8768,7 +10509,7 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -8776,68 +10517,73 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
 /// Compatible SQLx offline mode
 pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification et création des tables services spécialisés...");
-    
+
     // ✅ CORRECTION: Vérifier toutes les tables spécialisées individuellement
     let pharmacies_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'pharmacies')"
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'pharmacies')",
     )
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     let hopitaux_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'hopitaux_cliniques')"
     )
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     let laboratoires_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'laboratoires_imagerie')"
     )
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     let agences_exists = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'agences_voyage')"
     )
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     let covoiturages_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'covoiturages')"
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'covoiturages')",
     )
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     let taxis_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'taxis_ville')"
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'taxis_ville')",
     )
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     // Si au moins une table manque, exécuter la migration complète
-    let any_missing = !pharmacies_exists || !hopitaux_exists || !laboratoires_exists 
-        || !agences_exists || !covoiturages_exists || !taxis_exists;
-    
+    let any_missing = !pharmacies_exists
+        || !hopitaux_exists
+        || !laboratoires_exists
+        || !agences_exists
+        || !covoiturages_exists
+        || !taxis_exists;
+
     if any_missing {
         // Lire le contenu de la migration SQL
-        let migration_sql = include_str!("../../migrations/20251126_create_specialized_services_tables.sql");
-        
+        let migration_sql =
+            include_str!("../../migrations/20251126_create_specialized_services_tables.sql");
+
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_multiple_sql_commands(pool, migration_sql).await?;
         info!("✅ Tables services spécialisés créées via migration complète");
     } else {
         info!("✅ Toutes les tables services spécialisés déjà présentes");
     }
-    
+
     // ✅ CORRECTION: Vérifications supplémentaires et créations individuelles si nécessaire
     // (au cas où la migration complète échouerait partiellement)
-    
+
     // Créer la fonction update_specialized_service_timestamp si elle n'existe pas
     sqlx::query(
         r#"
@@ -8848,11 +10594,11 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     // 1. PHARMACIES
     if !pharmacies_exists {
         warn!("⚠️ Table pharmacies manquante, création directe...");
@@ -8882,19 +10628,31 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CONSTRAINT unique_pharmacy_service UNIQUE(service_id)
             )
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_user_id ON pharmacies(user_id)").execute(pool).await?;
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_service_id ON pharmacies(service_id)").execute(pool).await?;
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_is_active ON pharmacies(is_active)").execute(pool).await?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_user_id ON pharmacies(user_id)")
+            .execute(pool)
+            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_pharmacies_service_id ON pharmacies(service_id)",
+        )
+        .execute(pool)
+        .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_is_active ON pharmacies(is_active)")
+            .execute(pool)
+            .await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_is_on_duty ON pharmacies(is_on_duty_now) WHERE is_on_duty_now = TRUE").execute(pool).await?;
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_ville ON pharmacies(ville)").execute(pool).await?;
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_quartier ON pharmacies(quartier)").execute(pool).await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_ville ON pharmacies(ville)")
+            .execute(pool)
+            .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_quartier ON pharmacies(quartier)")
+            .execute(pool)
+            .await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_services_gin ON pharmacies USING GIN(services)").execute(pool).await?;
-        
+
         sqlx::query(
             r#"
             DROP TRIGGER IF EXISTS trigger_pharmacies_updated_at ON pharmacies;
@@ -8902,14 +10660,14 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
                 BEFORE UPDATE ON pharmacies
                 FOR EACH ROW
                 EXECUTE FUNCTION update_specialized_service_timestamp();
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
+
         info!("✅ Table pharmacies créée directement");
     }
-    
+
     // 2. HOPITAUX_CLINIQUES
     if !hopitaux_exists {
         warn!("⚠️ Table hopitaux_cliniques manquante, création directe...");
@@ -8941,19 +10699,31 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CONSTRAINT unique_hospital_service UNIQUE(service_id)
             )
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_user_id ON hopitaux_cliniques(user_id)").execute(pool).await?;
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_service_id ON hopitaux_cliniques(service_id)").execute(pool).await?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_hopitaux_user_id ON hopitaux_cliniques(user_id)",
+        )
+        .execute(pool)
+        .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_hopitaux_service_id ON hopitaux_cliniques(service_id)",
+        )
+        .execute(pool)
+        .await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_type ON hopitaux_cliniques(type_etablissement)").execute(pool).await?;
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_is_active ON hopitaux_cliniques(is_active)").execute(pool).await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_hopitaux_is_active ON hopitaux_cliniques(is_active)",
+        )
+        .execute(pool)
+        .await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_is_available ON hopitaux_cliniques(is_available_now) WHERE is_available_now = TRUE").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_prestations_gin ON hopitaux_cliniques USING GIN(prestations_medicales)").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_planning_gin ON hopitaux_cliniques USING GIN(planning_hebdomadaire)").execute(pool).await?;
-        
+
         sqlx::query(
             r#"
             DROP TRIGGER IF EXISTS trigger_hopitaux_updated_at ON hopitaux_cliniques;
@@ -8961,14 +10731,14 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
                 BEFORE UPDATE ON hopitaux_cliniques
                 FOR EACH ROW
                 EXECUTE FUNCTION update_specialized_service_timestamp();
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
+
         info!("✅ Table hopitaux_cliniques créée directement");
     }
-    
+
     // 3. LABORATOIRES_IMAGERIE
     if !laboratoires_exists {
         warn!("⚠️ Table laboratoires_imagerie manquante, création directe...");
@@ -8998,18 +10768,22 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CONSTRAINT unique_laboratory_service UNIQUE(service_id)
             )
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_user_id ON laboratoires_imagerie(user_id)").execute(pool).await?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_laboratoires_user_id ON laboratoires_imagerie(user_id)",
+        )
+        .execute(pool)
+        .await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_service_id ON laboratoires_imagerie(service_id)").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_type ON laboratoires_imagerie(type_laboratoire)").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_analyses_gin ON laboratoires_imagerie USING GIN(analyses_disponibles)").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_imagerie_gin ON laboratoires_imagerie USING GIN(imagerie_disponible)").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_is_available ON laboratoires_imagerie(is_available_now) WHERE is_available_now = TRUE").execute(pool).await?;
-        
+
         sqlx::query(
             r#"
             DROP TRIGGER IF EXISTS trigger_laboratoires_updated_at ON laboratoires_imagerie;
@@ -9017,14 +10791,14 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
                 BEFORE UPDATE ON laboratoires_imagerie
                 FOR EACH ROW
                 EXECUTE FUNCTION update_specialized_service_timestamp();
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
+
         info!("✅ Table laboratoires_imagerie créée directement");
     }
-    
+
     // 4. AGENCES_VOYAGE
     if !agences_exists {
         warn!("⚠️ Table agences_voyage manquante, création directe...");
@@ -9056,18 +10830,24 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CONSTRAINT unique_agency_service UNIQUE(service_id)
             )
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_user_id ON agences_voyage(user_id)").execute(pool).await?;
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_service_id ON agences_voyage(service_id)").execute(pool).await?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_user_id ON agences_voyage(user_id)")
+            .execute(pool)
+            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_agences_service_id ON agences_voyage(service_id)",
+        )
+        .execute(pool)
+        .await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_tickets_bus ON agences_voyage(peut_emettre_tickets_bus) WHERE peut_emettre_tickets_bus = TRUE").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_services_gin ON agences_voyage USING GIN(services_voyage)").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_compagnies_gin ON agences_voyage USING GIN(compagnies_bus)").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_destinations_gin ON agences_voyage USING GIN(destinations)").execute(pool).await?;
-        
+
         sqlx::query(
             r#"
             DROP TRIGGER IF EXISTS trigger_agences_updated_at ON agences_voyage;
@@ -9075,14 +10855,14 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
                 BEFORE UPDATE ON agences_voyage
                 FOR EACH ROW
                 EXECUTE FUNCTION update_specialized_service_timestamp();
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
+
         info!("✅ Table agences_voyage créée directement");
     }
-    
+
     // 5. COVOITURAGES
     if !covoiturages_exists {
         warn!("⚠️ Table covoiturages manquante, création directe...");
@@ -9119,14 +10899,20 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
         )
         .execute(pool)
         .await?;
-        
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_user_id ON covoiturages(user_id)").execute(pool).await?;
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_service_id ON covoiturages(service_id)").execute(pool).await?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_user_id ON covoiturages(user_id)")
+            .execute(pool)
+            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_covoiturages_service_id ON covoiturages(service_id)",
+        )
+        .execute(pool)
+        .await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_date_depart ON covoiturages(date_depart) WHERE is_active = TRUE AND statut = 'ouvert'").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_statut ON covoiturages(statut) WHERE statut = 'ouvert'").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_depart_destination ON covoiturages(depart, destination)").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_places_disponibles ON covoiturages(places_disponibles) WHERE places_disponibles > 0").execute(pool).await?;
-        
+
         sqlx::query(
             r#"
             DROP TRIGGER IF EXISTS trigger_covoiturages_updated_at ON covoiturages;
@@ -9134,14 +10920,14 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
                 BEFORE UPDATE ON covoiturages
                 FOR EACH ROW
                 EXECUTE FUNCTION update_specialized_service_timestamp();
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
+
         info!("✅ Table covoiturages créée directement");
     }
-    
+
     // 6. TAXIS_VILLE
     if !taxis_exists {
         warn!("⚠️ Table taxis_ville manquante, création directe...");
@@ -9176,17 +10962,21 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CONSTRAINT unique_taxi_service UNIQUE(service_id)
             )
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_user_id ON taxis_ville(user_id)").execute(pool).await?;
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_service_id ON taxis_ville(service_id)").execute(pool).await?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_user_id ON taxis_ville(user_id)")
+            .execute(pool)
+            .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_service_id ON taxis_ville(service_id)")
+            .execute(pool)
+            .await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_is_available ON taxis_ville(is_available_now) WHERE is_available_now = TRUE").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_is_on_duty ON taxis_ville(is_on_duty) WHERE is_on_duty = TRUE").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_zone_gin ON taxis_ville USING GIN(zone_intervention)").execute(pool).await?;
-        
+
         sqlx::query(
             r#"
             DROP TRIGGER IF EXISTS trigger_taxis_updated_at ON taxis_ville;
@@ -9194,29 +10984,28 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
                 BEFORE UPDATE ON taxis_ville
                 FOR EACH ROW
                 EXECUTE FUNCTION update_specialized_service_timestamp();
-            "#
+            "#,
         )
         .execute(pool)
         .await?;
-        
+
         info!("✅ Table taxis_ville créée directement");
     }
-    
+
     Ok(())
 }
 
 /// ✅ NOUVEAU 2025-11-26 : Créer les fonctions de recherche spécialisées avec moment
 pub async fn ensure_specialized_search_functions(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création des fonctions de recherche spécialisées avec moment...");
-    
+
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251126_search_specialized_services_with_moment.sql");
-    
+    let migration_sql =
+        include_str!("../../migrations/20251126_search_specialized_services_with_moment.sql");
+
     // Exécuter la migration
-    sqlx::query(migration_sql)
-        .execute(pool)
-        .await?;
-    
+    sqlx::query(migration_sql).execute(pool).await?;
+
     info!("✅ Fonctions de recherche spécialisées créées/mises à jour");
     Ok(())
 }
@@ -9225,26 +11014,26 @@ pub async fn ensure_specialized_search_functions(pool: &PgPool) -> Result<(), sq
 /// Compatible SQLx offline mode
 pub async fn ensure_banques_sang_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification et création de la table banques_sang...");
-    
+
     // Vérifier d'abord si la table existe déjà
     let banques_sang_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'banques_sang')"
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'banques_sang')",
     )
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     if !banques_sang_exists {
         // Lire le contenu de la migration SQL
         let migration_sql = include_str!("../../migrations/20251127_create_banques_sang_table.sql");
-        
+
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_multiple_sql_commands(pool, migration_sql).await?;
         info!("✅ Table banques_sang créée");
     } else {
         info!("✅ Table banques_sang déjà présente");
     }
-    
+
     Ok(())
 }
 
@@ -9252,13 +11041,14 @@ pub async fn ensure_banques_sang_table(pool: &PgPool) -> Result<(), sqlx::Error>
 /// Compatible SQLx offline mode
 pub async fn ensure_bus_tickets_integration(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification et intégration tickets bus avec agences_voyage...");
-    
+
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251127_integrate_bus_tickets_with_agences_voyage.sql");
-    
+    let migration_sql =
+        include_str!("../../migrations/20251127_integrate_bus_tickets_with_agences_voyage.sql");
+
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
-    
+
     info!("✅ Intégration tickets bus avec agences_voyage créée/mise à jour");
     Ok(())
 }
@@ -9266,13 +11056,14 @@ pub async fn ensure_bus_tickets_integration(pool: &PgPool) -> Result<(), sqlx::E
 /// Vérifie et crée le système de commission et reversement pour tickets bus
 pub async fn ensure_bus_ticket_commission_system(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification système commission et reversement tickets bus...");
-    
+
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251127_add_commission_to_bus_payments.sql");
-    
+    let migration_sql =
+        include_str!("../../migrations/20251127_add_commission_to_bus_payments.sql");
+
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
-    
+
     info!("✅ Système commission et reversement tickets bus créé/mis à jour");
     Ok(())
 }
@@ -9280,7 +11071,7 @@ pub async fn ensure_bus_ticket_commission_system(pool: &PgPool) -> Result<(), sq
 /// Vérifie et crée le système de validation de tickets bus
 pub async fn ensure_bus_ticket_validation_system(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification système validation tickets bus...");
-    
+
     // Vérifier d'abord si la table existe déjà
     let bus_boarding_status_exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'bus_boarding_status')"
@@ -9288,25 +11079,26 @@ pub async fn ensure_bus_ticket_validation_system(pool: &PgPool) -> Result<(), sq
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     if !bus_boarding_status_exists {
         // Lire le contenu de la migration SQL
-        let migration_sql = include_str!("../../migrations/20251127_bus_ticket_validation_system.sql");
-        
+        let migration_sql =
+            include_str!("../../migrations/20251127_bus_ticket_validation_system.sql");
+
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_multiple_sql_commands(pool, migration_sql).await?;
         info!("✅ Système validation tickets bus créé");
     } else {
         info!("✅ Système validation tickets bus déjà présent");
     }
-    
+
     Ok(())
 }
 
 /// Vérifie et crée le système de gestion manuelle des places non disponibles
 pub async fn ensure_bus_seat_blocks_system(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification système blocage places bus...");
-    
+
     // Vérifier d'abord si la table existe déjà
     let bus_seat_blocks_exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'bus_seat_blocks')"
@@ -9314,18 +11106,18 @@ pub async fn ensure_bus_seat_blocks_system(pool: &PgPool) -> Result<(), sqlx::Er
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     if !bus_seat_blocks_exists {
         // Lire le contenu de la migration SQL
         let migration_sql = include_str!("../../migrations/20251127_bus_manual_seat_blocks.sql");
-        
+
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_multiple_sql_commands(pool, migration_sql).await?;
         info!("✅ Système blocage places bus créé");
     } else {
         info!("✅ Système blocage places bus déjà présent");
     }
-    
+
     Ok(())
 }
 
@@ -9333,7 +11125,7 @@ pub async fn ensure_bus_seat_blocks_system(pool: &PgPool) -> Result<(), sqlx::Er
 /// Compatible SQLx offline mode
 pub async fn ensure_blood_donation_matching_system(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification système matching intelligent banque de sang...");
-    
+
     // Vérifier d'abord si la table existe déjà
     let user_blood_groups_exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'user_blood_groups')"
@@ -9341,18 +11133,19 @@ pub async fn ensure_blood_donation_matching_system(pool: &PgPool) -> Result<(), 
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     if !user_blood_groups_exists {
         // Lire le contenu de la migration SQL
-        let migration_sql = include_str!("../../migrations/20251127_blood_donation_matching_system.sql");
-        
+        let migration_sql =
+            include_str!("../../migrations/20251127_blood_donation_matching_system.sql");
+
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_multiple_sql_commands(pool, migration_sql).await?;
         info!("✅ Système matching intelligent banque de sang créé");
     } else {
         info!("✅ Système matching intelligent banque de sang déjà présent");
     }
-    
+
     Ok(())
 }
 
@@ -9360,7 +11153,7 @@ pub async fn ensure_blood_donation_matching_system(pool: &PgPool) -> Result<(), 
 /// Compatible SQLx offline mode
 pub async fn ensure_agency_departure_schedules(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification table agency_departure_schedules...");
-    
+
     // Vérifier d'abord si la table existe déjà
     let table_exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'agency_departure_schedules')"
@@ -9368,18 +11161,19 @@ pub async fn ensure_agency_departure_schedules(pool: &PgPool) -> Result<(), sqlx
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     if !table_exists {
         // Lire le contenu de la migration SQL
-        let migration_sql = include_str!("../../migrations/20251127_agency_departure_schedules.sql");
-        
+        let migration_sql =
+            include_str!("../../migrations/20251127_agency_departure_schedules.sql");
+
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_multiple_sql_commands(pool, migration_sql).await?;
         info!("✅ Table agency_departure_schedules créée");
     } else {
         info!("✅ Table agency_departure_schedules déjà présente");
     }
-    
+
     Ok(())
 }
 
@@ -9387,7 +11181,7 @@ pub async fn ensure_agency_departure_schedules(pool: &PgPool) -> Result<(), sqlx
 /// Compatible SQLx offline mode
 pub async fn ensure_return_time_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification colonnes return_date et return_time...");
-    
+
     // Vérifier si les colonnes existent déjà
     let return_date_exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'bus_ticket_payments' AND column_name = 'return_date')"
@@ -9395,18 +11189,19 @@ pub async fn ensure_return_time_columns(pool: &PgPool) -> Result<(), sqlx::Error
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     if !return_date_exists {
         // Lire le contenu de la migration SQL
-        let migration_sql = include_str!("../../migrations/20251127_add_return_time_to_bus_payments.sql");
-        
+        let migration_sql =
+            include_str!("../../migrations/20251127_add_return_time_to_bus_payments.sql");
+
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_multiple_sql_commands(pool, migration_sql).await?;
         info!("✅ Colonnes return_date et return_time ajoutées");
     } else {
         info!("✅ Colonnes return_date et return_time déjà présentes");
     }
-    
+
     Ok(())
 }
 
@@ -9414,19 +11209,20 @@ pub async fn ensure_return_time_columns(pool: &PgPool) -> Result<(), sqlx::Error
 /// Compatible SQLx offline mode
 pub async fn ensure_improved_return_matching(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification fonction match_return_trip_requests améliorée...");
-    
+
     // ✅ CORRIGÉ: DROP la fonction avant de la recréer pour éviter l'erreur "cannot change return type"
     let _ = sqlx::query("DROP FUNCTION IF EXISTS match_return_trip_requests(TEXT)")
         .execute(pool)
         .await;
-    
+
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251127_improve_return_trip_matching_with_time.sql");
-    
+    let migration_sql =
+        include_str!("../../migrations/20251127_improve_return_trip_matching_with_time.sql");
+
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Fonction match_return_trip_requests améliorée avec matching par heure");
-    
+
     Ok(())
 }
 
@@ -9434,7 +11230,7 @@ pub async fn ensure_improved_return_matching(pool: &PgPool) -> Result<(), sqlx::
 /// Compatible SQLx offline mode
 pub async fn ensure_blood_group_column_in_users(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification colonne groupe_sanguin dans users...");
-    
+
     // Vérifier si la colonne existe déjà
     let column_exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'groupe_sanguin')"
@@ -9442,18 +11238,18 @@ pub async fn ensure_blood_group_column_in_users(pool: &PgPool) -> Result<(), sql
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     if !column_exists {
         // Lire le contenu de la migration SQL
         let migration_sql = include_str!("../../migrations/20251127_add_blood_group_to_users.sql");
-        
+
         // Exécuter la migration SQL en divisant en commandes individuelles
         execute_multiple_sql_commands(pool, migration_sql).await?;
         info!("✅ Colonne groupe_sanguin ajoutée dans users");
     } else {
         info!("✅ Colonne groupe_sanguin déjà présente dans users");
     }
-    
+
     Ok(())
 }
 
@@ -9461,7 +11257,7 @@ pub async fn ensure_blood_group_column_in_users(pool: &PgPool) -> Result<(), sql
 /// Compatible SQLx offline mode
 pub async fn ensure_services_specialized_type(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création du champ specialized_type dans services...");
-    
+
     // Vérifier si la colonne existe déjà
     let column_exists: bool = sqlx::query_scalar(
         r#"
@@ -9469,27 +11265,25 @@ pub async fn ensure_services_specialized_type(pool: &PgPool) -> Result<(), sqlx:
             SELECT 1 FROM information_schema.columns 
             WHERE table_name = 'services' AND column_name = 'specialized_type'
         )
-        "#
+        "#,
     )
     .fetch_one(pool)
     .await
     .unwrap_or(false);
-    
+
     if !column_exists {
         info!("📝 Ajout de la colonne specialized_type...");
-        
+
         // Ajouter la colonne
-        sqlx::query(
-            "ALTER TABLE services ADD COLUMN specialized_type VARCHAR(50)"
-        )
-        .execute(pool)
-        .await?;
-        
+        sqlx::query("ALTER TABLE services ADD COLUMN specialized_type VARCHAR(50)")
+            .execute(pool)
+            .await?;
+
         info!("✅ Colonne specialized_type ajoutée");
     } else {
         info!("✅ Colonne specialized_type déjà présente");
     }
-    
+
     // Remplir depuis les tables spécialisées existantes (vérifier existence d'abord)
     let tables_to_check = vec![
         ("pharmacies", "pharmacie"),
@@ -9502,16 +11296,14 @@ pub async fn ensure_services_specialized_type(pool: &PgPool) -> Result<(), sqlx:
     ];
 
     for (table_name, specialized_type) in tables_to_check {
-        let table_exists: bool = sqlx::query_scalar(
-            &format!(
-                "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = '{}')",
-                table_name
-            )
-        )
+        let table_exists: bool = sqlx::query_scalar(&format!(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = '{}')",
+            table_name
+        ))
         .fetch_one(pool)
         .await
         .unwrap_or(false);
-        
+
         if table_exists {
             sqlx::query(&format!(
                 r#"
@@ -9528,7 +11320,7 @@ pub async fn ensure_services_specialized_type(pool: &PgPool) -> Result<(), sqlx:
             .await?;
         }
     }
-    
+
     // Ajouter contrainte CHECK si elle n'existe pas
     sqlx::query(
         r#"
@@ -9556,18 +11348,18 @@ pub async fn ensure_services_specialized_type(pool: &PgPool) -> Result<(), sqlx:
             END IF;
         END
         $$;
-        "#
+        "#,
     )
     .execute(pool)
     .await?;
-    
+
     // Créer index si il n'existe pas
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_services_specialized_type ON services(specialized_type) WHERE specialized_type IS NOT NULL"
     )
     .execute(pool)
     .await?;
-    
+
     info!("✅ Migration specialized_type terminée");
     Ok(())
 }
@@ -9576,13 +11368,13 @@ pub async fn ensure_services_specialized_type(pool: &PgPool) -> Result<(), sqlx:
 /// Compatible SQLx offline mode
 pub async fn ensure_specialized_type_triggers(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création des triggers specialized_type...");
-    
+
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20250128_add_specialized_type_triggers.sql");
-    
+
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
-    
+
     info!("✅ Triggers specialized_type créés");
     Ok(())
 }
@@ -9590,16 +11382,39 @@ pub async fn ensure_specialized_type_triggers(pool: &PgPool) -> Result<(), sqlx:
 /// ✅ 2025-11-26 : Correction de la signature de search_services_gps_final
 /// Pour résoudre l'erreur: "structure of query does not match function result type"
 /// Migration: 20251126_fix_search_services_gps_final_signature.sql
-pub async fn ensure_search_services_gps_final_signature_fix(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn ensure_search_services_gps_final_signature_fix(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/correction de la signature de search_services_gps_final...");
-    
+
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251126_fix_search_services_gps_final_signature.sql");
-    
+    let migration_sql =
+        include_str!("../../migrations/20251126_fix_search_services_gps_final_signature.sql");
+
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
-    
+
     info!("✅ Signature de search_services_gps_final corrigée");
+    Ok(())
+}
+
+/// ✅ 2025-12-01 : Optimisation CRITIQUE de search_services_gps_final
+/// Élimine les calculs de distance GPS redondants (calculé 2 fois → 1 fois via CTE)
+/// Réduit le temps d'exécution de ~17s à <2s
+/// Migration: 20251201_OPTIMIZE_SEARCH_GPS_FINAL_CRITICAL.sql
+pub async fn ensure_search_services_gps_final_optimization(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
+    info!("🔍 Application de l'optimisation CRITIQUE de search_services_gps_final...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20251201_OPTIMIZE_SEARCH_GPS_FINAL_CRITICAL.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Optimisation CRITIQUE de search_services_gps_final appliquée (réduction ~17s → <2s)");
     Ok(())
 }
 
@@ -9608,13 +11423,13 @@ pub async fn ensure_search_services_gps_final_signature_fix(pool: &PgPool) -> Re
 /// Migration: 20251126_optimize_search_indexes.sql
 pub async fn ensure_search_indexes_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création des index d'optimisation de recherche...");
-    
+
     // Lire le contenu de la migration SQL
     let migration_sql = include_str!("../../migrations/20251126_optimize_search_indexes.sql");
-    
+
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
-    
+
     info!("✅ Index d'optimisation de recherche créés");
     Ok(())
 }
@@ -9624,13 +11439,460 @@ pub async fn ensure_search_indexes_optimization(pool: &PgPool) -> Result<(), sql
 /// Migration: 20251127_optimize_get_services_performance.sql
 pub async fn ensure_get_services_performance_indexes(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création des index d'optimisation get_services_for_prestataire...");
-    
+
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251127_optimize_get_services_performance.sql");
-    
+    let migration_sql =
+        include_str!("../../migrations/20251127_optimize_get_services_performance.sql");
+
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
-    
+
     info!("✅ Index d'optimisation get_services_for_prestataire créés");
+    Ok(())
+}
+
+/// ✅ 2025-12-01 : Optimisations de scalabilité pour millions d'interactions
+/// Crée les index, vues matérialisées et fonctions pour performance maximale
+/// Migration: 20251201_scalability_indexes.sql
+pub async fn ensure_scalability_indexes(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des index et vues matérialisées de scalabilité...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251201_scalability_indexes.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Index et vues matérialisées de scalabilité créés");
+    Ok(())
+}
+
+/// ✅ Phase 1 - 2025-01-27 : Optimisations critiques pour scalabilité livraison
+/// Crée les index optimisés, fonction SQL find_nearby_couriers et vues matérialisées
+/// Migration: 20250127_phase1_delivery_optimizations.sql
+pub async fn ensure_delivery_phase1_optimizations(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des optimisations Phase 1 livraison...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250127_phase1_delivery_optimizations.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Optimisations Phase 1 livraison créées (index, fonction SQL, vues matérialisées)");
+    Ok(())
+}
+
+/// ✅ Phase 2 - 2025-01-27 : Partitionnement et archivage pour scalabilité long terme
+/// Crée les partitions, table d'archive et fonctions d'archivage automatique
+/// Migration: 20250127_phase2_delivery_partitioning.sql
+pub async fn ensure_delivery_phase2_partitioning(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des optimisations Phase 2 livraison (partitionnement)...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250127_phase2_delivery_partitioning.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Optimisations Phase 2 livraison créées (partitions, archivage)");
+    Ok(())
+}
+
+/// ✅ 2025-01-01 : Migrations de scalabilité pour millions de créations vidéo simultanées
+/// Crée les tables, index, partitions et vues matérialisées pour la scalabilité
+/// Migration: 20250101_scalability_improvements.sql
+pub async fn ensure_video_scalability_improvements(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application des améliorations de scalabilité vidéo (millions de créations simultanées)...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250101_scalability_improvements.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Améliorations de scalabilité vidéo appliquées");
+    Ok(())
+}
+
+/// ✅ 2025-12-03 : Table videos avec hashtags pour VideoFeed
+/// Crée la table videos, index, triggers et vue hashtag_stats
+/// Migration: 20251203_create_videos_table_with_hashtags.sql
+pub async fn ensure_videos_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création de la table videos avec hashtags...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20251203_create_videos_table_with_hashtags.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Table videos avec hashtags créée");
+    Ok(())
+}
+
+/// ✅ 2025-12-03 : Optimisations de scalabilité pour hashtags
+/// Crée les index, vues matérialisées et fonctions optimisées
+/// Migration: 20251203_optimize_hashtags_scalability.sql
+pub async fn ensure_hashtags_scalability_optimizations(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application des optimisations de scalabilité hashtags...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251203_optimize_hashtags_scalability.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Optimisations de scalabilité hashtags appliquées (support millions d'interactions)");
+    Ok(())
+}
+
+/// ✅ 2025-12-03 : Amélioration algorithme recommandations avec signaux enrichis
+/// Ajoute colonnes watch_duration, user_preferences, et fonctions de scoring améliorées
+/// Migration: 20251203_enhance_recommendations_algorithm.sql
+pub async fn ensure_recommendations_enhancement(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création améliorations algorithme recommandations...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20251203_enhance_recommendations_algorithm.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Améliorations algorithme recommandations appliquées");
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Contraintes de validation pour services spécialisés
+/// Ajoute CHECK constraints pour valider heures, dates, prix, GPS, email
+/// Migration: 20250128_add_specialized_services_constraints.sql
+pub async fn ensure_specialized_services_constraints(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/application des contraintes de validation services spécialisés...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250128_add_specialized_services_constraints.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Contraintes de validation services spécialisés appliquées");
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Table pour brouillons de services spécialisés
+/// Permet la sauvegarde automatique pendant la création
+/// Migration: 20250128_create_specialized_services_drafts.sql
+pub async fn ensure_specialized_services_drafts_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création de la table specialized_services_drafts...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250128_create_specialized_services_drafts.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Table specialized_services_drafts créée");
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Tables pour historique et recherches sauvegardées
+/// Permet de sauvegarder l'historique et les recherches favorites
+/// Migration: 20250128_create_search_history_and_saved_searches.sql
+pub async fn ensure_search_history_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables search_history et saved_searches...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250128_create_search_history_and_saved_searches.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables search_history et saved_searches créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Index de scalabilité pour recherche taxis et covoiturages
+/// Optimise les recherches avec filtres multiples pour scalabilité horizontale
+/// Migration: 20250128_add_taxi_covoit_scalability_indexes.sql
+pub async fn ensure_taxi_covoit_scalability_indexes(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des index de scalabilité Taxi/Covoiturage...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250128_add_taxi_covoit_scalability_indexes.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Index de scalabilité Taxi/Covoiturage créés");
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Index de scalabilité pour recherche hôpitaux et laboratoires
+/// Optimise les recherches avec filtres multiples pour scalabilité horizontale
+/// Migration: 20250128_add_hospital_lab_scalability_indexes.sql
+pub async fn ensure_hospital_lab_scalability_indexes(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des index de scalabilité Hôpitaux/Laboratoires...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250128_add_hospital_lab_scalability_indexes.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Index de scalabilité Hôpitaux/Laboratoires créés");
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Tables pour bourse du livre scolaire et troc intelligent
+/// Migration: 20250128_create_livres_scolaires_troc.sql
+pub async fn ensure_livres_scolaires_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables livres scolaires et troc...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250128_create_livres_scolaires_troc.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables livres scolaires et troc créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Tables pour système d'offres d'emploi avec matching intelligent
+/// Migration: 20250128_create_offres_emploi.sql
+pub async fn ensure_offres_emploi_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables offres d'emploi...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250128_create_offres_emploi.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables offres d'emploi créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Tables pour système d'orientation scolaire et établissements
+/// Migration: 20250128_create_orientation_scolaire.sql
+pub async fn ensure_orientation_scolaire_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables orientation scolaire...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250128_create_orientation_scolaire.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables orientation scolaire créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Tables pour chat de livraison et gamification
+/// Migration: 20250128_create_delivery_chat_tables.sql
+pub async fn ensure_delivery_chat_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables chat de livraison et gamification...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250128_create_delivery_chat_tables.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables chat de livraison et gamification créées");
+    Ok(())
+}
+
+// ✅ 2025-01-29 : Table user_documents pour KYC (vérification identité conducteur)
+/// Migration: 20250129_create_user_documents.sql
+pub async fn ensure_user_documents_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création de la table user_documents...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250129_create_user_documents.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Table user_documents créée");
+    Ok(())
+}
+
+// ✅ 2025-01-29 : Tables assurance + QR code pour covoiturage
+/// Migration: 20250129_add_insurance_qr_covoiturage.sql
+pub async fn ensure_insurance_qr_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables assurance + QR code covoiturage...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250129_add_insurance_qr_covoiturage.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables assurance + QR code créées");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-01-27: Créer les tables pour programme fidélité, chat support et avis tickets
+async fn ensure_loyalty_chat_rating_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification des tables loyalty, chat_support et bus_ticket_ratings...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250127_loyalty_chat_rating_tables.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables loyalty, chat_support et bus_ticket_ratings créées/vérifiées");
+    Ok(())
+}
+
+/// ✅ 2025-01-27 : Tables avancées pour Hôpitaux/Cliniques (consultations, urgences, créneaux, analytics)
+/// Migration: 20250127_create_hospital_advanced_tables.sql
+pub async fn ensure_hospital_advanced_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables avancées hôpitaux (consultations, urgences, créneaux, analytics)...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250127_create_hospital_advanced_tables.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables avancées hôpitaux créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-27 : Tables avancées pour Pharmacies (commandes, réservations, analytics)
+/// Migration: 20250127_create_pharmacy_advanced_tables.sql
+pub async fn ensure_pharmacy_advanced_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables avancées pharmacies (commandes, réservations, analytics)...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250127_create_pharmacy_advanced_tables.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables avancées pharmacies créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-27 : Tables avancées pour Laboratoires/Imagerie (examens, types d'examens, analytics)
+/// Migration: 20250127_create_lab_advanced_tables.sql
+pub async fn ensure_lab_advanced_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!(
+        "🔍 Vérification/création des tables avancées laboratoires (examens, types, analytics)..."
+    );
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250127_create_lab_advanced_tables.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables avancées laboratoires créées");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-01-27 Phase 2: Tables pour système plugins marketplace
+/// Migration: 20250127_012_create_plugin_marketplace.sql
+pub async fn ensure_plugin_marketplace_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables plugin marketplace...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250127_012_create_plugin_marketplace.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables plugin marketplace créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-27 : Tables avancées pour Bourse du Livre (échanges, recommandations IA, prix, analytics)
+/// Migration: 20250127_create_bourse_livre_advanced_tables.sql
+pub async fn ensure_bourse_livre_advanced_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables avancées bourse du livre (échanges, recommandations IA, prix, analytics)...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250127_create_bourse_livre_advanced_tables.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables avancées bourse du livre créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-27 : Tables avancées pour Orientation Scolaire (profils étudiants, recommandations IA, comparaisons, analytics)
+/// Migration: 20250127_create_orientation_scolaire_advanced_tables.sql
+pub async fn ensure_orientation_scolaire_advanced_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables avancées orientation scolaire (profils, recommandations IA, comparaisons, analytics)...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250127_create_orientation_scolaire_advanced_tables.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables avancées orientation scolaire créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-27 : Tables complètes pour Service Immobilier (vente/location, terrains, décoration, déménagement)
+/// Migration: 20250127_create_immobilier_complete_tables.sql
+pub async fn ensure_immobilier_complete_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables immobilier complet (vente/location, terrains, décoration, déménagement)...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250127_create_immobilier_complete_tables.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables immobilier complet créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-27 : Tables avancées pour Offres d'Emploi (matching IA amélioré, analyse CV, prédictions salaires, formations)
+/// Migration: 20250127_create_offres_emploi_advanced_tables.sql
+pub async fn ensure_offres_emploi_advanced_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables avancées offres d'emploi (matching IA, analyse CV, prédictions, formations)...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250127_create_offres_emploi_advanced_tables.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables avancées offres d'emploi créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-27 : Tables pour service Planification Menus
+/// Migration: 20250127_create_menu_planning_tables.sql
+pub async fn ensure_menu_planning_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables planification menus...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250127_create_menu_planning_tables.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables planification menus créées");
     Ok(())
 }

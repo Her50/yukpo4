@@ -57,7 +57,7 @@ pub async fn get_weather(
     Query(params): Query<WeatherParams>,
     State(_state): State<Arc<AppState>>,
 ) -> Json<WeatherResponse> {
-    let api_key = match std::env::var("OPENWEATHER_API_KEY") {
+    let api_key = match std::env::var("OPENWEATHERMAP_API_KEY") {
         Ok(key) => key,
         Err(_) => {
             return Json(WeatherResponse {
@@ -158,8 +158,8 @@ pub async fn get_weather(
 pub async fn get_weather_config(
     State(_state): State<Arc<AppState>>,
 ) -> Result<Json<Value>, StatusCode> {
-    let api_key = std::env::var("OPENWEATHER_API_KEY")
-        .unwrap_or_else(|_| "YOUR_OPENWEATHER_API_KEY".to_string());
+    let api_key = std::env::var("OPENWEATHERMAP_API_KEY")
+        .unwrap_or_else(|_| "YOUR_OPENWEATHERMAP_API_KEY".to_string());
 
     Ok(Json(json!({
         "apiKey": api_key,

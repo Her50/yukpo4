@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 // ✅ CORRECTION: expo-video n'est pas installé, on le remplace par un placeholder
 // import { getThumbnailAsync } from 'expo-video';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -17,9 +17,24 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { ABTestingVariants } from '../components/ABTestingVariants';
+import { AdCreationStepper } from '../components/AdCreationStepper';
+import { AdPreviewCard } from '../components/AdPreviewCard';
+import { AdTemplates } from '../components/AdTemplates';
+import { AdvancedABTesting } from '../components/AdvancedABTesting';
+import { AdvancedTargeting } from '../components/AdvancedTargeting';
+import { AISuggestionsGenerator } from '../components/AISuggestionsGenerator';
+import { AssetLibrary } from '../components/AssetLibrary';
+import { AutoOptimizationSettings } from '../components/AutoOptimizationSettings';
+import { BidStrategySelector, BidStrategyType } from '../components/BidStrategySelector';
+import { BudgetSlider } from '../components/BudgetSlider';
+import { CampaignScheduler } from '../components/CampaignScheduler';
+import { CustomAudienceManager } from '../components/CustomAudienceManager';
 import { NativeButton, NativeCard, NativeInput } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
+import { PlacementSelector, PlacementType } from '../components/PlacementSelector';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
+import { RetargetingOptions } from '../components/RetargetingOptions';
 import SafeIcon from '../components/SafeIcon';
 import { config } from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
@@ -177,6 +192,13 @@ const pickSquareThumbnail = async (
     return null;
 };
 
+const STEPS = [
+    { id: 'info', label: 'Infos', icon: 'file-text' },
+    { id: 'products', label: 'Produits', icon: 'package' },
+    { id: 'media', label: 'Médias', icon: 'video' },
+    { id: 'budget', label: 'Budget', icon: 'dollar-sign' },
+];
+
 const CreatePubliciteScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -206,6 +228,58 @@ const CreatePubliciteScreen: React.FC = () => {
     const [videoCreatorVisible, setVideoCreatorVisible] = useState(false);
     const [primaryProduct, setPrimaryProduct] = useState<ManagedProduct | null>(null);
     const [isConvertingVideo, setIsConvertingVideo] = useState(false);
+
+    // ✅ NOUVEAU: États pour l'UX améliorée
+    const [currentStep, setCurrentStep] = useState(0);
+    const [showPreview, setShowPreview] = useState(true);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+    const [showTemplates, setShowTemplates] = useState(false);
+
+    // ✅ NOUVEAU: États pour fonctionnalités avancées (100% parité)
+    const [targeting, setTargeting] = useState({
+        ageRange: { min: 18, max: 65 },
+        gender: 'all' as 'all' | 'male' | 'female' | 'other',
+        interests: [] as string[],
+        behaviors: [] as string[],
+        locations: [] as string[],
+    });
+    const [abVariants, setAbVariants] = useState<any[]>([
+        { id: '1', titre: '', description: '', isActive: true },
+    ]);
+    const [schedule, setSchedule] = useState({
+        startDate: null as Date | null,
+        endDate: null as Date | null,
+        startTime: null as Date | null,
+        endTime: null as Date | null,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        pauseOnWeekends: false,
+        pauseHours: null as { start: number; end: number } | null,
+    });
+    const [placements, setPlacements] = useState([
+        { type: 'feed' as PlacementType, label: 'Feed Principal', icon: 'grid', description: '', enabled: true, budget: 0 },
+        { type: 'stories' as PlacementType, label: 'Stories', icon: 'circle', description: '', enabled: false, budget: 0 },
+        { type: 'carousel' as PlacementType, label: 'Carousel', icon: 'layers', description: '', enabled: false, budget: 0 },
+        { type: 'search' as PlacementType, label: 'Résultats de recherche', icon: 'search', description: '', enabled: false, budget: 0 },
+        { type: 'reels' as PlacementType, label: 'Reels', icon: 'video', description: '', enabled: false, budget: 0 },
+        { type: 'sidebar' as PlacementType, label: 'Barre latérale', icon: 'sidebar', description: '', enabled: false, budget: 0 },
+    ]);
+    const [bidStrategy, setBidStrategy] = useState({
+        type: 'auto' as BidStrategyType,
+        label: 'Optimisation automatique',
+        description: '',
+        icon: 'zap',
+        bidAmount: undefined as number | undefined,
+    });
+    const [retargetingRules, setRetargetingRules] = useState([
+        { id: '1', type: 'viewed_product' as const, label: 'A vu un produit', description: '', enabled: false, daysSince: 7 },
+        { id: '2', type: 'abandoned_cart' as const, label: 'Panier abandonné', description: '', enabled: false, daysSince: 7 },
+        { id: '3', type: 'visited_service' as const, label: 'A visité un service', description: '', enabled: false, daysSince: 7 },
+        { id: '4', type: 'searched' as const, label: 'A recherché', description: '', enabled: false, daysSince: 7 },
+    ]);
+    const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
+    const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
 
     // Charger les services et produits de l'utilisateur
     useEffect(() => {
@@ -332,6 +406,149 @@ const CreatePubliciteScreen: React.FC = () => {
 
         setCoutEstime(totalInUserCurrency);
     }, [duree, userCurrency, videos]);
+
+    // ✅ NOUVEAU: Calculer les métriques estimées (portée, impressions)
+    const estimatedMetrics = useMemo(() => {
+        const nbJours = parseInt(duree) || 7;
+        const baseReach = 1000; // Base de 1000 personnes par jour
+        const baseImpressions = 3000; // Base de 3000 impressions par jour
+
+        // Multiplicateurs selon la zone
+        const zoneMultiplier = {
+            local: 1,
+            regional: 2.5,
+            international: 5,
+        }[zoneGeographique] || 1;
+
+        const estimatedReach = Math.round(baseReach * nbJours * zoneMultiplier);
+        const estimatedImpressions = Math.round(baseImpressions * nbJours * zoneMultiplier);
+
+        return { estimatedReach, estimatedImpressions };
+    }, [duree, zoneGeographique]);
+
+    // ✅ NOUVEAU: Générer des suggestions intelligentes pour titre/description via IA
+    const generateSuggestions = useCallback(async (field: 'titre' | 'description') => {
+        if (selectedProduits.length === 0 || isLoadingSuggestions) return;
+
+        try {
+            setIsLoadingSuggestions(true);
+            const selectedProducts = produitsList.filter(p => selectedProduits.includes(p.id));
+
+            // Utiliser le nouveau composant AISuggestionsGenerator via l'API backend
+            const response = await apiPost('/api/publicites/ai/generate-suggestions', {
+                field,
+                products: selectedProducts.map(p => ({
+                    nom: p.nom,
+                    nom_produit: p.nom,
+                    name: p.nom,
+                    prix: p.prix,
+                    description: p.description,
+                    category_key: p.category_key,
+                })),
+                target_audience: targeting.gender !== 'all' ? {
+                    ageRange: targeting.ageRange,
+                    gender: targeting.gender,
+                    interests: targeting.interests,
+                } : undefined,
+                campaign_goal: 'conversion', // Par défaut
+                count: 5,
+            });
+
+            if (response.success && response.data?.suggestions) {
+                setSuggestions(response.data.suggestions.map((s: any) => s.text));
+            } else {
+                // Fallback si l'IA échoue
+                const productNames = selectedProducts.map(p => p.nom).join(', ');
+                const suggestionsMap: Record<string, string[]> = {
+                    titre: [
+                        `Promotion ${productNames} - Offre spéciale`,
+                        `Découvrez ${productNames} - Prix réduits`,
+                        `${productNames} - Promotion limitée`,
+                        `Offre exclusive sur ${productNames}`,
+                    ],
+                    description: [
+                        `Profitez de nos produits ${productNames} à prix réduits. Offre limitée dans le temps !`,
+                        `Découvrez notre sélection ${productNames}. Qualité garantie et livraison rapide.`,
+                        `Ne manquez pas cette opportunité sur ${productNames}. Commandez maintenant !`,
+                    ],
+                };
+                setSuggestions(suggestionsMap[field] || []);
+            }
+        } catch (error) {
+            console.error('[CreatePublicite] Erreur génération suggestions:', error);
+            // Fallback en cas d'erreur
+            const selectedProducts = produitsList.filter(p => selectedProduits.includes(p.id));
+            const productNames = selectedProducts.map(p => p.nom).join(', ');
+            const suggestionsMap: Record<string, string[]> = {
+                titre: [`Promotion ${productNames} - Offre spéciale`],
+                description: [`Profitez de nos produits ${productNames} à prix réduits.`],
+            };
+            setSuggestions(suggestionsMap[field] || []);
+        } finally {
+            setIsLoadingSuggestions(false);
+        }
+    }, [selectedProduits, produitsList, isLoadingSuggestions, targeting]);
+
+    // ✅ NOUVEAU: Validation en temps réel
+    useEffect(() => {
+        const errors: Record<string, string> = {};
+
+        if (titre.trim().length < 5) {
+            errors.titre = 'Le titre doit contenir au moins 5 caractères';
+        }
+
+        if (titre.trim().length > 100) {
+            errors.titre = 'Le titre ne peut pas dépasser 100 caractères';
+        }
+
+        setValidationErrors(errors);
+    }, [titre, description]);
+
+    // ✅ NOUVEAU: Appliquer un template
+    const handleTemplateSelect = useCallback((template: any) => {
+        switch (template.id) {
+            case 'promo':
+                setTitre('Promotion Flash - Offre limitée !');
+                setDescription('Profitez de nos prix réduits pour une durée limitée. Ne manquez pas cette opportunité !');
+                setDuree('7');
+                break;
+            case 'new_product':
+                setTitre('Nouveau Produit - Découvrez maintenant !');
+                setDescription('Soyez parmi les premiers à découvrir notre nouveau produit. Qualité garantie !');
+                setDuree('14');
+                break;
+            case 'seasonal':
+                setTitre('Offre Saisonnière - Spécial événement');
+                setDescription('Célébrez avec nous ! Offres spéciales pour cette occasion unique.');
+                setDuree('30');
+                break;
+            case 'testimonial':
+                setTitre('Nos clients recommandent - Avis vérifiés');
+                setDescription('Rejoignez nos clients satisfaits. Découvrez pourquoi ils nous font confiance.');
+                setDuree('14');
+                break;
+        }
+        setShowTemplates(false);
+    }, []);
+
+    // ✅ NOUVEAU: Obtenir la miniature pour la prévisualisation
+    const previewThumbnail = useMemo(() => {
+        if (videos.length > 0 && videos[0].thumbnail) {
+            return `data:image/jpeg;base64,${videos[0].thumbnail}`;
+        }
+        if (selectedProduits.length > 0) {
+            const product = produitsList.find(p => selectedProduits.includes(p.id));
+            if (product?.images && product.images.length > 0) {
+                const img = product.images[0];
+                if (typeof img === 'string') {
+                    if (img.startsWith('data:image')) return img;
+                    if (img.startsWith('http')) return img;
+                    return buildMediaUrl(img) || null;
+                }
+            }
+        }
+        return undefined;
+    }, [videos, selectedProduits, produitsList]);
 
     // Sélection de vidéos
     const handleSelectVideo = async () => {
@@ -488,7 +705,45 @@ const CreatePubliciteScreen: React.FC = () => {
                                     duree_jours: parseInt(duree),
                                     cout: coutEnFCFA, // Toujours en FCFA côté backend
                                     zone_geographique: zoneGeographique,
-                                    devise_utilisateur: userCurrency
+                                    devise_utilisateur: userCurrency,
+                                    // ✅ NOUVEAU: Données avancées pour 100% parité
+                                    targeting: {
+                                        age_range: { min: targeting.ageRange.min, max: targeting.ageRange.max },
+                                        gender: targeting.gender,
+                                        interests: targeting.interests,
+                                        behaviors: targeting.behaviors,
+                                        locations: targeting.locations,
+                                    },
+                                    ab_testing: {
+                                        variants: abVariants.map(v => ({
+                                            titre: v.titre,
+                                            description: v.description,
+                                            is_active: v.isActive,
+                                        })),
+                                    },
+                                    schedule: schedule.startDate ? {
+                                        start_date: schedule.startDate.toISOString(),
+                                        end_date: schedule.endDate?.toISOString() || null,
+                                        start_time: schedule.startTime?.toISOString() || null,
+                                        end_time: schedule.endTime?.toISOString() || null,
+                                        timezone: schedule.timezone,
+                                        pause_on_weekends: schedule.pauseOnWeekends,
+                                        pause_hours: schedule.pauseHours,
+                                    } : null,
+                                    placements: placements.filter(p => p.enabled).map(p => ({
+                                        type: p.type,
+                                        budget: p.budget || 0,
+                                    })),
+                                    bid_strategy: {
+                                        type: bidStrategy.type,
+                                        bid_amount: bidStrategy.bidAmount,
+                                    },
+                                    retargeting: {
+                                        rules: retargetingRules.filter(r => r.enabled).map(r => ({
+                                            type: r.type,
+                                            days_since: r.daysSince || 7,
+                                        })),
+                                    },
                                 };
 
                                 // ✅ Appel API selon le mode
@@ -504,7 +759,10 @@ const CreatePubliciteScreen: React.FC = () => {
                                         [
                                             {
                                                 text: 'OK',
-                                                onPress: () => navigation.goBack()
+                                                onPress: () => {
+                                                    // Rediriger vers le dashboard des publicités
+                                                    (navigation as any).navigate('PubliciteDashboard');
+                                                }
                                             }
                                         ]
                                     );
@@ -631,6 +889,23 @@ const CreatePubliciteScreen: React.FC = () => {
         return labels[zone] || zone;
     };
 
+    // ✅ NOUVEAU: Déterminer l'étape actuelle basée sur la progression
+    useEffect(() => {
+        if (titre.trim().length > 0 && description.trim().length > 0) {
+            if (selectedProduits.length > 0) {
+                if (videos.length > 0) {
+                    setCurrentStep(3); // Budget
+                } else {
+                    setCurrentStep(2); // Médias
+                }
+            } else {
+                setCurrentStep(1); // Produits
+            }
+        } else {
+            setCurrentStep(0); // Infos
+        }
+    }, [titre, description, selectedProduits, videos]);
+
     return (
         <View style={styles.container}>
             <LinearGradient colors={modernColors.primaryGradient} style={styles.header}>
@@ -644,7 +919,70 @@ const CreatePubliciteScreen: React.FC = () => {
                 />
             </LinearGradient>
 
+            {/* ✅ NOUVEAU: Stepper de progression */}
+            <View style={styles.stepperContainer}>
+                <AdCreationStepper currentStep={currentStep} steps={STEPS} />
+            </View>
+
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                {/* ✅ NOUVEAU: Section Templates */}
+                {!titre && !showTemplates && (
+                    <NativeCard style={styles.templatesCard}>
+                        <TouchableOpacity
+                            style={styles.templatesToggle}
+                            onPress={() => setShowTemplates(true)}
+                        >
+                            <SafeIcon name="sparkles" size={20} color={modernColors.primary} />
+                            <Text style={styles.templatesToggleText}>
+                                Utiliser un template
+                            </Text>
+                            <SafeIcon name="chevron-right" size={16} color={modernColors.textSecondary} />
+                        </TouchableOpacity>
+                    </NativeCard>
+                )}
+
+                {showTemplates && (
+                    <NativeCard style={styles.templatesCard}>
+                        <View style={styles.templatesHeader}>
+                            <Text style={styles.templatesTitle}>Templates</Text>
+                            <TouchableOpacity onPress={() => setShowTemplates(false)}>
+                                <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                        <AdTemplates onSelectTemplate={handleTemplateSelect} />
+                    </NativeCard>
+                )}
+
+                {/* ✅ NOUVEAU: Prévisualisation en temps réel */}
+                {showPreview && (titre || videos.length > 0 || selectedProduits.length > 0) && (
+                    <NativeCard style={styles.previewCard}>
+                        <View style={styles.previewHeader}>
+                            <Text style={styles.previewTitle}>Aperçu en temps réel</Text>
+                            <TouchableOpacity onPress={() => setShowPreview(false)}>
+                                <SafeIcon name="x" size={16} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                        <AdPreviewCard
+                            titre={titre || 'Titre de votre publicité'}
+                            description={description}
+                            thumbnail={previewThumbnail}
+                            videoCount={videos.length}
+                            productCount={selectedProduits.length}
+                            zone={zoneGeographique}
+                            duree={parseInt(duree) || 7}
+                        />
+                    </NativeCard>
+                )}
+
+                {!showPreview && (
+                    <TouchableOpacity
+                        style={styles.showPreviewButton}
+                        onPress={() => setShowPreview(true)}
+                    >
+                        <SafeIcon name="eye" size={16} color={modernColors.primary} />
+                        <Text style={styles.showPreviewText}>Afficher l'aperçu</Text>
+                    </TouchableOpacity>
+                )}
                 {/* Info facturation */}
                 <NativeCard style={styles.infoCard}>
                     <View style={styles.infoHeader}>
@@ -662,13 +1000,41 @@ const CreatePubliciteScreen: React.FC = () => {
                     <Text style={styles.sectionTitle}>📝 Informations générales</Text>
 
                     <View style={styles.fieldContainer}>
-                        <Text style={styles.fieldLabel}>{t('publicite.title')} <Text style={styles.required}>*</Text></Text>
+                        <View style={styles.fieldLabelRow}>
+                            <Text style={styles.fieldLabel}>
+                                {t('publicite.title')} <Text style={styles.required}>*</Text>
+                            </Text>
+                        </View>
                         <NativeInput
                             placeholder="Ex: Promotion Immobilier - 20% de remise"
                             value={titre}
                             onChangeText={setTitre}
-                            style={styles.input}
+                            style={[
+                                styles.input,
+                                validationErrors.titre && styles.inputError,
+                            ]}
                         />
+                        {validationErrors.titre && (
+                            <Text style={styles.errorText}>{validationErrors.titre}</Text>
+                        )}
+                        {/* ✅ NOUVEAU: Composant IA Suggestions */}
+                        {selectedProduits.length > 0 && (
+                            <AISuggestionsGenerator
+                                field="titre"
+                                products={produitsList.filter(p => selectedProduits.includes(p.id))}
+                                targetAudience={{
+                                    ageRange: targeting.ageRange,
+                                    gender: targeting.gender,
+                                    interests: targeting.interests,
+                                }}
+                                campaignGoal="conversion"
+                                onSuggestionSelect={(suggestion) => {
+                                    setTitre(suggestion);
+                                    setSuggestions([]);
+                                }}
+                                currentValue={titre}
+                            />
+                        )}
                     </View>
 
                     <View style={styles.fieldContainer}>
@@ -681,6 +1047,23 @@ const CreatePubliciteScreen: React.FC = () => {
                             multiline
                             numberOfLines={3}
                         />
+                        {/* ✅ NOUVEAU: Composant IA Suggestions pour description */}
+                        {selectedProduits.length > 0 && (
+                            <AISuggestionsGenerator
+                                field="description"
+                                products={produitsList.filter(p => selectedProduits.includes(p.id))}
+                                targetAudience={{
+                                    ageRange: targeting.ageRange,
+                                    gender: targeting.gender,
+                                    interests: targeting.interests,
+                                }}
+                                campaignGoal="conversion"
+                                onSuggestionSelect={(suggestion) => {
+                                    setDescription(suggestion);
+                                }}
+                                currentValue={description}
+                            />
+                        )}
                     </View>
 
                     <View style={styles.fieldContainer}>
@@ -836,9 +1219,37 @@ const CreatePubliciteScreen: React.FC = () => {
                     )}
                 </NativeCard>
 
-                {/* Résumé et coût */}
+                {/* ✅ AMÉLIORÉ: Budget avec slider interactif */}
                 <NativeCard style={[styles.sectionCard, styles.summaryCard]}>
-                    <Text style={styles.sectionTitle}>💰 {t('publicite.summary')}</Text>
+                    <Text style={styles.sectionTitle}>💰 Budget & Performance</Text>
+
+                    <BudgetSlider
+                        value={coutEstime}
+                        min={Math.max(100, Math.round(coutEstime * 0.5))}
+                        max={Math.round(coutEstime * 3)}
+                        step={100}
+                        currency={userCurrency}
+                        onValueChange={(value) => {
+                            // Ajuster la durée pour correspondre au budget
+                            const exchangeRate = EXCHANGE_RATES[userCurrency] || 1;
+                            const valueFCFA = Math.round(value * exchangeRate);
+                            const baseCost = 2000 * videos.length;
+                            const daysFromBudget = Math.max(1, Math.round((valueFCFA - baseCost) / PRICE_PER_DAY_FCFA));
+                            if (daysFromBudget <= 90) {
+                                setDuree(daysFromBudget.toString());
+                            }
+                        }}
+                        estimatedReach={estimatedMetrics.estimatedReach}
+                        estimatedImpressions={estimatedMetrics.estimatedImpressions}
+                    />
+
+                    {/* ✅ NOUVEAU: Stratégie d'enchères */}
+                    <BidStrategySelector
+                        strategy={bidStrategy}
+                        onStrategyChange={setBidStrategy}
+                    />
+
+                    <View style={styles.divider} />
 
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>{t('publicite.products_selected')}</Text>
@@ -862,6 +1273,116 @@ const CreatePubliciteScreen: React.FC = () => {
                         <Text style={styles.totalValue}>{coutEstime.toLocaleString()} {userCurrency}</Text>
                     </View>
                 </NativeCard>
+
+                {/* ✅ NOUVEAU: Ciblage avancé */}
+                <AdvancedTargeting
+                    targeting={targeting}
+                    onTargetingChange={setTargeting}
+                />
+
+                {/* ✅ NOUVEAU: A/B Testing Basique */}
+                <ABTestingVariants
+                    variants={abVariants}
+                    onVariantsChange={setAbVariants}
+                    onAddVariant={() => {
+                        setAbVariants([
+                            ...abVariants,
+                            {
+                                id: Date.now().toString(),
+                                titre: '',
+                                description: '',
+                                isActive: false,
+                            },
+                        ]);
+                    }}
+                    onRemoveVariant={(id) => {
+                        setAbVariants(abVariants.filter(v => v.id !== id));
+                    }}
+                />
+
+                {/* ✅ NOUVEAU: A/B Testing Avancé avec Statistiques */}
+                {abVariants.length > 0 && (
+                    <AdvancedABTesting
+                        campaignId={publiciteId || undefined}
+                        variants={abVariants}
+                        onVariantsChange={setAbVariants}
+                        onAddVariant={() => {
+                            setAbVariants([
+                                ...abVariants,
+                                {
+                                    id: Date.now().toString(),
+                                    titre: '',
+                                    description: '',
+                                    isActive: false,
+                                },
+                            ]);
+                        }}
+                        onRemoveVariant={(id) => {
+                            setAbVariants(abVariants.filter(v => v.id !== id));
+                        }}
+                        userId={user ? parseInt(user.id) : undefined}
+                    />
+                )}
+
+                {/* ✅ NOUVEAU: Optimisation Automatique */}
+                <AutoOptimizationSettings
+                    userId={user ? parseInt(user.id) : undefined}
+                    campaignId={publiciteId || undefined}
+                    onSettingsChange={(settings) => {
+                        console.log('[CreatePubliciteScreen] Auto optimization settings changed:', settings);
+                    }}
+                />
+
+                {/* ✅ NOUVEAU: Planification */}
+                <CampaignScheduler
+                    schedule={schedule}
+                    onScheduleChange={setSchedule}
+                />
+
+                {/* ✅ NOUVEAU: Placements */}
+                <PlacementSelector
+                    placements={placements}
+                    onPlacementsChange={setPlacements}
+                    totalBudget={coutEstime}
+                />
+
+                {/* ✅ NOUVEAU: Retargeting */}
+                <RetargetingOptions
+                    rules={retargetingRules}
+                    onRulesChange={setRetargetingRules}
+                />
+
+                {/* ✅ NOUVEAU: Audiences Personnalisées */}
+                <CustomAudienceManager
+                    selectedAudiences={selectedAudiences}
+                    onAudiencesChange={setSelectedAudiences}
+                    userId={user ? parseInt(user.id) : undefined}
+                />
+
+                {/* ✅ NOUVEAU: Bibliothèque de Médias */}
+                <AssetLibrary
+                    type="all"
+                    onSelectAsset={(asset) => {
+                        if (asset.type === 'video') {
+                            // Ajouter la vidéo à la liste
+                            setVideos((prev) => [
+                                ...prev,
+                                {
+                                    uri: asset.url,
+                                    base64: '', // Sera chargé depuis l'URL
+                                    thumbnail: asset.thumbnail || '',
+                                    duration: 0,
+                                    source: 'library',
+                                    format: 'video',
+                                    ai_generated: false,
+                                },
+                            ]);
+                        }
+                        setSelectedAssets([...selectedAssets, asset.id]);
+                    }}
+                    userId={user ? parseInt(user.id) : undefined}
+                    selectedAssets={selectedAssets}
+                />
 
                 {/* Bouton de création/modification */}
                 <NativeButton
@@ -1210,6 +1731,127 @@ const styles = StyleSheet.create({
     createButton: {
         marginTop: 8,
         marginBottom: 16,
+    },
+    // ✅ NOUVEAU: Styles pour les nouvelles fonctionnalités
+    stepperContainer: {
+        backgroundColor: modernColors.surface,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    templatesCard: {
+        marginBottom: 16,
+    },
+    templatesHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    templatesTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    templatesToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: modernColors.surfaceVariant,
+    },
+    templatesToggleText: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    previewCard: {
+        marginBottom: 16,
+    },
+    previewHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    previewTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    showPreviewButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 12,
+        marginBottom: 16,
+        borderRadius: 12,
+        backgroundColor: modernColors.surfaceVariant,
+    },
+    showPreviewText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    fieldLabelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    suggestionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+        backgroundColor: modernColors.surfaceVariant,
+    },
+    suggestionButtonText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    inputError: {
+        borderColor: modernColors.error,
+        borderWidth: 1,
+    },
+    errorText: {
+        fontSize: 11,
+        color: modernColors.error,
+        marginTop: 4,
+    },
+    suggestionsContainer: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: modernColors.surfaceVariant,
+        borderRadius: 12,
+        gap: 8,
+    },
+    suggestionsTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 4,
+    },
+    suggestionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 10,
+        borderRadius: 8,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    suggestionText: {
+        flex: 1,
+        fontSize: 12,
+        color: modernColors.text,
     },
 });
 

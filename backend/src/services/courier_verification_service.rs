@@ -173,7 +173,7 @@ impl CourierVerificationService {
             nom: Option<String>,
             prenom: Option<String>,
         }
-        
+
         let verification: Option<VerificationRow> = sqlx::query(
             r#"
             SELECT 
@@ -200,15 +200,15 @@ impl CourierVerificationService {
         .map(|row: sqlx::postgres::PgRow| VerificationRow {
             id: row.get::<Uuid, _>("id"),
             delivery_id: row.get::<Uuid, _>("delivery_id"),
-            order_id: row.try_get("order_id").ok(),
-            courier_id: row.try_get("courier_id").ok(),
+            order_id: row.get::<Option<_>, _>("order_id"),
+            courier_id: row.get::<Option<_>, _>("courier_id"),
             verification_code: row.get::<String, _>("verification_code"),
-            expires_at: row.try_get("expires_at").ok(),
-            verified_at: row.try_get("verified_at").ok(),
-            user_id: row.try_get("user_id").ok(),
-            nom_complet: row.try_get("nom_complet").ok(),
-            nom: row.try_get("nom").ok(),
-            prenom: row.try_get("prenom").ok(),
+            expires_at: row.get::<Option<_>, _>("expires_at"),
+            verified_at: row.get::<Option<_>, _>("verified_at"),
+            user_id: row.get::<Option<_>, _>("user_id"),
+            nom_complet: row.get::<Option<_>, _>("nom_complet"),
+            nom: row.get::<Option<_>, _>("nom"),
+            prenom: row.get::<Option<_>, _>("prenom"),
         })
         .fetch_optional(&self.pool)
         .await?;
@@ -324,14 +324,15 @@ impl CourierVerificationService {
         .execute(&self.pool)
         .await?;
 
-        let courier_name = verification.nom_complet.or_else(|| {
-            match (verification.nom, verification.prenom) {
-                (Some(n), Some(p)) => Some(format!("{} {}", p, n)),
-                (Some(n), None) => Some(n),
-                (None, Some(p)) => Some(p),
-                (None, None) => None,
-            }
-        });
+        let courier_name =
+            verification
+                .nom_complet
+                .or_else(|| match (verification.nom, verification.prenom) {
+                    (Some(n), Some(p)) => Some(format!("{} {}", p, n)),
+                    (Some(n), None) => Some(n),
+                    (None, Some(p)) => Some(p),
+                    (None, None) => None,
+                });
 
         info!(
             "[CourierVerification] ✅ Coursier vérifié: courier_id={:?}, name={:?}",
@@ -376,14 +377,14 @@ impl CourierVerificationService {
         .map(|row: sqlx::postgres::PgRow| CourierVerificationCode {
             id: row.get::<Uuid, _>("id"),
             delivery_id: row.get::<Uuid, _>("delivery_id"),
-            order_id: row.try_get("order_id").ok(),
+            order_id: row.get::<Option<_>, _>("order_id"),
             courier_id: row.get::<i32, _>("courier_id"),
             verification_code: row.get::<String, _>("verification_code"),
-            qr_code_data: row.try_get("qr_code_data").ok(),
+            qr_code_data: row.get::<Option<_>, _>("qr_code_data"),
             expires_at: row.get::<DateTime<Utc>, _>("expires_at"),
-            verified_at: row.try_get("verified_at").ok(),
-            verified_by: row.try_get("verified_by").ok(),
-            verification_method: row.try_get("verification_method").ok(),
+            verified_at: row.get::<Option<_>, _>("verified_at"),
+            verified_by: row.get::<Option<_>, _>("verified_by"),
+            verification_method: row.get::<Option<_>, _>("verification_method"),
             created_at: row.get::<DateTime<Utc>, _>("created_at"),
         })
         .fetch_optional(&self.pool)
@@ -416,14 +417,14 @@ impl CourierVerificationService {
         .map(|row: sqlx::postgres::PgRow| CourierVerificationCode {
             id: row.get::<Uuid, _>("id"),
             delivery_id: row.get::<Uuid, _>("delivery_id"),
-            order_id: row.try_get("order_id").ok(),
+            order_id: row.get::<Option<_>, _>("order_id"),
             courier_id: row.get::<i32, _>("courier_id"),
             verification_code: row.get::<String, _>("verification_code"),
-            qr_code_data: row.try_get("qr_code_data").ok(),
+            qr_code_data: row.get::<Option<_>, _>("qr_code_data"),
             expires_at: row.get::<DateTime<Utc>, _>("expires_at"),
-            verified_at: row.try_get("verified_at").ok(),
-            verified_by: row.try_get("verified_by").ok(),
-            verification_method: row.try_get("verification_method").ok(),
+            verified_at: row.get::<Option<_>, _>("verified_at"),
+            verified_by: row.get::<Option<_>, _>("verified_by"),
+            verification_method: row.get::<Option<_>, _>("verification_method"),
             created_at: row.get::<DateTime<Utc>, _>("created_at"),
         })
         .fetch_one(&self.pool)
@@ -463,4 +464,3 @@ impl CourierVerificationService {
         Ok(verification.is_some())
     }
 }
-

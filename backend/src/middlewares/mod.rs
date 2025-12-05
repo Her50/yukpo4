@@ -1,3 +1,4 @@
+pub mod adaptive_rate_limit; // ✅ NOUVEAU 2025-12-02: Rate limiting adaptatif premium/free
 pub mod anti_bruteforce;
 pub mod audit_log;
 pub mod auth;
@@ -7,6 +8,7 @@ pub mod check_tokens;
 pub mod cors;
 pub mod csrf;
 pub mod hide_headers;
+pub mod ia_rate_limit; // ✅ NOUVEAU 2025-01-27: Rate limiting strict pour appels IA
 pub mod jwt;
 pub mod monitoring;
 pub mod rate_limit;
@@ -18,6 +20,6 @@ pub use audit_log::audit_log;
 pub use cors::{cors_middleware, cors_preflight_handler};
 pub use hide_headers::hide_headers;
 pub use monitoring::monitoring;
-pub use rate_limit::rate_limit;
+pub use rate_limit::rate_limit_middleware as rate_limit;
 pub use request_size_limit::request_size_limit;
 // pub use catch_unwind::CatchUnwindLayer;

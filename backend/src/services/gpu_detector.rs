@@ -17,7 +17,20 @@ impl GPUDetector {
 
         let gpu_type = env::var("GPU_TYPE").ok().or_else(|| {
             if has_gpu {
-                Some("nvidia".to_string())
+                // Détecter le type de GPU selon les variables d'environnement
+                if env::var("CUDA_VISIBLE_DEVICES").is_ok()
+                    || env::var("NVIDIA_VISIBLE_DEVICES").is_ok()
+                {
+                    Some("nvidia".to_string())
+                } else if env::var("INTEL_QUICKSYNC").is_ok() {
+                    Some("intel".to_string())
+                } else if env::var("APPLE_METAL").is_ok() || cfg!(target_os = "macos") {
+                    Some("apple".to_string())
+                } else if env::var("VAAPI_DEVICE").is_ok() {
+                    Some("vaapi".to_string())
+                } else {
+                    Some("nvidia".to_string()) // Par défaut NVIDIA
+                }
             } else {
                 None
             }
@@ -57,6 +70,10 @@ impl GPUDetector {
     pub fn is_production_environment(&self) -> bool {
         env::var("RUST_ENV").unwrap_or_default() == "production"
             || env::var("ENVIRONMENT").unwrap_or_default() == "production"
+    }
+
+    pub fn is_nvidia_gpu(&self) -> bool {
+        self.gpu_type.as_deref() == Some("nvidia") && self.cuda_available
     }
 }
 

@@ -11,6 +11,7 @@ use serde_json::{json, Value};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
+use crate::controllers::video_ml_controller::get_enhanced_recommendations;
 use crate::core::types::{AppError, AppResult};
 use crate::state::AppState;
 use crate::utils::log::{log_error, log_info};
@@ -69,6 +70,7 @@ pub async fn get_mixed_content(
     ));
 
     // 2️⃣ Récupérer les produits organiques selon comportement
+    // ✅ NOUVEAU: Utiliser recommandations ML personnalisées si user_id fourni
     let categories: Vec<String> = params
         .categories
         .unwrap_or_default()
@@ -77,7 +79,33 @@ pub async fn get_mixed_content(
         .map(|s| s.trim().to_string())
         .collect();
 
-    let organic_content = fetch_organic_content(pool, &categories, params.limit).await?;
+    let organic_content = if let Some(user_id_str) = &params.user_id {
+        // ✅ Utiliser recommandations ML personnalisées
+        if let Ok(user_id) = user_id_str.parse::<i32>() {
+            match fetch_ml_recommended_content(pool, user_id, &categories, params.limit).await {
+                Ok(ml_content) => {
+                    log_info(&format!(
+                        "[MixedContent] 🤖 {} recommandations ML récupérées pour user {}",
+                        ml_content.len(),
+                        user_id
+                    ));
+                    ml_content
+                }
+                Err(e) => {
+                    log_error(&format!(
+                        "[MixedContent] Erreur recommandations ML, fallback organique: {}",
+                        e
+                    ));
+                    fetch_organic_content(pool, &categories, params.limit).await?
+                }
+            }
+        } else {
+            fetch_organic_content(pool, &categories, params.limit).await?
+        }
+    } else {
+        // Pas de user_id, utiliser contenu organique classique
+        fetch_organic_content(pool, &categories, params.limit).await?
+    };
     log_info(&format!(
         "[MixedContent] 📦 {} produits organiques récupérés",
         organic_content.len()
@@ -136,8 +164,10 @@ async fn fetch_paid_content(pool: &PgPool, limit: i32) -> AppResult<Vec<ContentI
 
     for row in rows {
         let service_id: i32 = row.try_get("id")?;
-        let data: Value = row.try_get("data").unwrap_or(json!({}));
-        let publicite_config: Value = row.try_get("publicite_config").unwrap_or(json!({}));
+        let data: Value = row.get::<Option<_>, _>("data").unwrap_or(json!({}));
+        let publicite_config: Value = row
+            .get::<Option<_>, _>("publicite_config")
+            .unwrap_or(json!({}));
 
         // Extraire le boost level
         let boost_level = publicite_config
@@ -252,7 +282,7 @@ async fn fetch_organic_content(
 
     for row in rows {
         let service_id: i32 = row.try_get("id")?;
-        let data: Value = row.try_get("data").unwrap_or(json!({}));
+        let data: Value = row.get::<Option<_>, _>("data").unwrap_or(json!({}));
 
         // Extraire les produits du service
         if let Some(produits) = data.get("produits").and_then(|p| p.as_array()) {
@@ -296,6 +326,78 @@ async fn fetch_organic_content(
                 frequency_ratio: None,
             });
         }
+    }
+
+    Ok(content)
+}
+
+/// ✅ NOUVEAU: Récupérer contenu via recommandations ML personnalisées
+async fn fetch_ml_recommended_content(
+    pool: &PgPool,
+    user_id: i32,
+    categories: &[String],
+    limit: i32,
+) -> AppResult<Vec<ContentItem>> {
+    use crate::controllers::video_ml_controller::{
+        get_enhanced_recommendations, MLRecommendedVideo,
+    };
+
+    // Appeler la fonction de recommandations ML améliorée
+    let ml_videos = get_enhanced_recommendations(pool, None, user_id, limit, categories, &[]).await;
+
+    // Convertir les MLRecommendedVideo en ContentItem
+    let mut content = Vec::new();
+    for video in ml_videos {
+        // Récupérer les détails du service si service_id disponible
+        let service_data = if let Some(service_id) = video.service_id {
+            sqlx::query(
+                r#"
+                SELECT data, category
+                FROM services
+                WHERE id = $1
+                "#,
+            )
+            .bind(service_id)
+            .fetch_optional(pool)
+            .await
+            .ok()
+            .flatten()
+        } else {
+            None
+        };
+
+        let (service_json, category) = if let Some(row) = service_data {
+            let data: Value = row.get::<Option<_>, _>("data").unwrap_or(json!({}));
+            let cat: Option<String> = row.get::<Option<_>, _>("category");
+            (data, cat)
+        } else {
+            (json!({}), None)
+        };
+
+        content.push(ContentItem {
+            content_type: "organic".to_string(),
+            is_paid: false,
+            data: json!({
+                "id": video.service_id,
+                "service_id": video.service_id,
+                "content_id": video.content_id,
+                "nom": video.titre,
+                "titre": video.titre,
+                "description": video.description,
+                "videos": vec![video.video_url],
+                "images": if let Some(thumb) = video.thumbnail {
+                    vec![thumb]
+                } else {
+                    vec![]
+                },
+                "category": category,
+                "hashtags": video.hashtags,
+                "ml_score": video.total_score,
+                "engagement_score": video.engagement_score,
+            }),
+            boost_level: None,
+            frequency_ratio: None,
+        });
     }
 
     Ok(content)

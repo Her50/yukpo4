@@ -66,11 +66,12 @@ pub async fn get_appliance_models(
     let models: Vec<ApplianceModel> = rows
         .iter()
         .map(|row| {
-            let created_at: chrono::NaiveDateTime = row.get("created_at");
+            let created_at: chrono::NaiveDateTime =
+                row.get::<chrono::NaiveDateTime, _>("created_at");
             ApplianceModel {
-                id: row.get("id"),
-                brand: row.get("brand"),
-                model: row.get("model"),
+                id: row.get::<i32, _>("id"),
+                brand: row.get::<String, _>("brand"),
+                model: row.get::<String, _>("model"),
                 created_at: created_at.to_string(),
             }
         })
@@ -148,11 +149,11 @@ pub async fn create_appliance_model(
     })?;
 
     use sqlx::Row;
-    let created_at: chrono::NaiveDateTime = row.get("created_at");
+    let created_at: chrono::NaiveDateTime = row.get::<chrono::NaiveDateTime, _>("created_at");
     let model = ApplianceModel {
-        id: row.get("id"),
-        brand: row.get("brand"),
-        model: row.get("model"),
+        id: row.get::<i32, _>("id"),
+        brand: row.get::<String, _>("brand"),
+        model: row.get::<String, _>("model"),
         created_at: created_at.to_string(),
     };
 

@@ -1,22 +1,32 @@
 // @ts-nocheck
-// Design moderne inspiré du frontend
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// Design moderne inspiré du frontend - Version améliorée UX niveau géant
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, DeviceEventEmitter, Dimensions, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, DeviceEventEmitter, Dimensions, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BreadcrumbItem, Breadcrumbs } from '../components/Breadcrumbs';
+import { BulkActionsBar } from '../components/BulkActionsBar';
 import GlobalDeliveryConfigModal from '../components/delivery/GlobalDeliveryConfigModal';
-import { NativeButton, NativeCard } from '../components/NativeDesign';
+import { ErrorBoundaryWithRetry } from '../components/ErrorBoundaryWithRetry';
+import { NativeButton } from '../components/NativeDesign';
 import ProductGalleryModal from '../components/ProductGalleryModal';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
 import ServiceCardModern from '../components/ServiceCardModern';
 import ServiceProductSelector from '../components/ServiceProductSelector';
 import ServiceTeamManager from '../components/ServiceTeamManager';
+import { SidebarNavigation } from '../components/SidebarNavigation';
+import { SkeletonLoader } from '../components/SkeletonLoader';
+import { StatsCard } from '../components/StatsCard';
+import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
+import { useDeviceType } from '../hooks/useDeviceType';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../services/api';
-import { modernColors, modernStyles } from '../theme/modernTheme';
+import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
 import { CacheManager, createCacheKey } from '../utils/cache';
@@ -43,18 +53,29 @@ interface Service {
 const MesServicesScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { colors } = useTheme(); // ✅ NOUVEAU: Support thème
+  const toaster = useToaster(); // ✅ NOUVEAU: Toast notifications au lieu de Alert
+  const deviceType = useDeviceType(); // ✅ NOUVEAU: Responsive design
+  const { isLandscape } = useDeviceOrientation(); // ✅ NOUVEAU: Orientation
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'tous' | 'actif' | 'inactif'>('tous');
+  // ✅ NOUVEAU: Optimistic updates - stocker l'état original pour rollback
+  const [optimisticStates, setOptimisticStates] = useState<Map<string, any>>(new Map());
   // ✅ États pour gestion d'équipe globale (depuis menu)
   const [showTeamManager, setShowTeamManager] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [showProductSelector, setShowProductSelector] = useState(false);
   const [productSelectorMode, setProductSelectorMode] = useState<'team' | 'delivery' | null>(null); // Mode du sélecteur
   const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
-  // ✅ État pour le menu global
+  // ✅ État pour le menu global (remplacé par Sidebar)
   const [showGlobalMenu, setShowGlobalMenu] = useState(false);
+  // ✅ NOUVEAU: Sidebar navigation
+  const [showSidebar, setShowSidebar] = useState(false);
+  // ✅ NOUVEAU: Bulk Actions - sélection multiple
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
   // ✅ NOUVEAU: États pour configuration globale de livraison
   const [showGlobalDeliveryConfig, setShowGlobalDeliveryConfig] = useState(false);
   const [selectedProductsForDelivery, setSelectedProductsForDelivery] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
@@ -340,7 +361,7 @@ const MesServicesScreen: React.FC = () => {
       }
     } catch (error) {
       logger.error('Erreur chargement produits:', error);
-      Alert.alert('Erreur', 'Impossible de charger vos produits');
+      toaster.error('Impossible de charger vos produits');
       setServices([]);
     } finally {
       setLoading(false);
@@ -495,7 +516,7 @@ const MesServicesScreen: React.FC = () => {
       });
     } catch (error) {
       logger.error('[MesServicesScreen] Erreur handleAddProduct:', error);
-      Alert.alert('Erreur', 'Impossible d\'ouvrir le formulaire d\'ajout de produit');
+      toaster.error('Impossible d\'ouvrir le formulaire d\'ajout de produit');
     }
   }, [rawServices, services, navigation, loading, loadServices]);
 
@@ -518,7 +539,7 @@ const MesServicesScreen: React.FC = () => {
       });
     } catch (error) {
       logger.error('Erreur navigation modification:', error);
-      Alert.alert('Erreur', 'Impossible d\'ouvrir la modification du service');
+      toaster.error('Impossible d\'ouvrir la modification du service');
     }
   };
 
@@ -540,7 +561,7 @@ const MesServicesScreen: React.FC = () => {
       });
     } catch (error) {
       logger.error('Erreur navigation visualisation:', error);
-      Alert.alert('Erreur', 'Impossible d\'ouvrir la visualisation du service');
+      toaster.error('Impossible d\'ouvrir la visualisation du service');
     }
   };
 
@@ -576,19 +597,30 @@ const MesServicesScreen: React.FC = () => {
 
       if (result.action === Share.sharedAction) {
         logger.log('[MesServicesScreen] Service partagé:', serviceUrl);
-        Alert.alert('Succès', 'Service partagé avec succès !');
+        toaster.success('Service partagé avec succès !');
       }
     } catch (error) {
       logger.error('Erreur lors du partage:', error);
-      Alert.alert('Erreur', 'Impossible de partager le service');
+      toaster.error('Impossible de partager le service');
     }
   };
 
   const handleToggleServiceStatus = async (service: any) => {
     try {
-      const token = await AsyncStorage.getItem('auth_token');
       const currentStatus = service.status === 'active';
       const newStatus = !currentStatus;
+
+      // ✅ OPTIMISTIC UPDATE: Mettre à jour l'UI immédiatement
+      const previousState = { ...service };
+      setOptimisticStates(prev => new Map(prev).set(service.id, previousState));
+
+      setServices(prevServices =>
+        prevServices.map(s =>
+          s.id === service.id
+            ? { ...s, status: newStatus ? 'active' : 'inactive' }
+            : s
+        )
+      );
 
       // Si on réactive un service (passage de inactif à actif), facturer 1000 FCFA
       if (!currentStatus) {
@@ -601,9 +633,20 @@ const MesServicesScreen: React.FC = () => {
           const activationCost = 1000; // 1000 FCFA pour réactivation
 
           if (currentBalance < activationCost) {
-            Alert.alert(
-              'Solde insuffisant',
-              `Solde actuel: ${currentBalance} FCFA\nCoût de réactivation: ${activationCost} FCFA\n\nVeuillez recharger votre compte.`
+            // ✅ ROLLBACK optimistic update
+            setServices(prevServices =>
+              prevServices.map(s =>
+                s.id === service.id ? previousState : s
+              )
+            );
+            setOptimisticStates(prev => {
+              const newMap = new Map(prev);
+              newMap.delete(service.id);
+              return newMap;
+            });
+
+            toaster.error(
+              `Solde insuffisant (${currentBalance} FCFA). Coût: ${activationCost} FCFA`
             );
             return;
           }
@@ -616,16 +659,16 @@ const MesServicesScreen: React.FC = () => {
 
           if (deductResponse.success) {
             const newBalance = currentBalance - activationCost;
-
-            // Déclencher un rafraîchissement du solde dans l'interface
-            // Cela mettra à jour le solde affiché dans HomeScreen
+            toaster.success(`Service réactivé ! Coût: ${activationCost} FCFA (Solde: ${newBalance} FCFA)`);
             loadServices(true);
-
-            Alert.alert(
-              'Service réactivé !',
-              `Coût: ${activationCost} FCFA\nNouveau solde: ${newBalance} FCFA`,
-              [{ text: 'OK' }]
+          } else {
+            // Rollback
+            setServices(prevServices =>
+              prevServices.map(s =>
+                s.id === service.id ? previousState : s
+              )
             );
+            toaster.error('Erreur lors de la réactivation');
           }
         }
       }
@@ -636,31 +679,49 @@ const MesServicesScreen: React.FC = () => {
       });
 
       if (response.success) {
-        // Mettre à jour l'état local
-        setServices(prevServices =>
-          prevServices.map(s =>
-            s.id === service.id
-              ? { ...s, status: newStatus ? 'active' : 'inactive' }
-              : s
-          )
-        );
-
-        // Rafraîchir la liste des services
-        loadServices(true);
+        setOptimisticStates(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(service.id);
+          return newMap;
+        });
 
         if (currentStatus) {
-          Alert.alert('Succès', 'Service désactivé avec succès');
-        } else {
-          // Message déjà affiché plus haut pour la réactivation
+          toaster.success('Service désactivé avec succès');
         }
+        // Rafraîchir la liste des services
+        loadServices(true);
       } else {
-        const errorText = await response.text();
-        logger.error('[MesServicesScreen] Erreur API toggle status:', response.status, errorText);
-        Alert.alert('Erreur', `Impossible de changer le statut (Code: ${response.status})`);
+        // ✅ ROLLBACK en cas d'erreur
+        setServices(prevServices =>
+          prevServices.map(s =>
+            s.id === service.id ? previousState : s
+          )
+        );
+        setOptimisticStates(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(service.id);
+          return newMap;
+        });
+
+        logger.error('[MesServicesScreen] Erreur API toggle status:', response.status);
+        toaster.error(`Impossible de changer le statut (Code: ${response.status})`);
       }
     } catch (error: any) {
+      // ✅ ROLLBACK en cas d'exception
+      const previousState = optimisticStates.get(service.id) || service;
+      setServices(prevServices =>
+        prevServices.map(s =>
+          s.id === service.id ? previousState : s
+        )
+      );
+      setOptimisticStates(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(service.id);
+        return newMap;
+      });
+
       logger.error('[MesServicesScreen] Erreur toggle status:', error);
-      Alert.alert('Erreur', error.message || 'Impossible de changer le statut du service');
+      toaster.error(error.message || 'Impossible de changer le statut du service');
     }
   };
 
@@ -676,40 +737,45 @@ const MesServicesScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await AsyncStorage.getItem('auth_token');
+              // ✅ OPTIMISTIC UPDATE: Supprimer de l'UI immédiatement
+              const previousState = [...services];
+              setServices(prevServices => prevServices.filter(s => s.id !== service.id));
 
               // ✅ CORRIGÉ: Supprimer avec apiDelete
               const response = await apiDelete(`/api/services/${service.id}/delete`);
 
               if (response.ok) {
-                // Supprimer de l'état local
-                setServices(prevServices => prevServices.filter(s => s.id !== service.id));
-
+                toaster.success('Service supprimé avec succès');
                 // Déclencher un rafraîchissement pour mettre à jour l'interface
                 loadServices(true);
-
-                Alert.alert('✅ Succès', 'Service supprimé avec succès');
               } else {
+                // ✅ ROLLBACK optimistic update
+                setServices(previousState);
+
                 // ✅ NOUVEAU 2025-11-01: Objectif #4 - Blocage suppression si >= 2 produits
                 const errorData = await response.json().catch(() => ({}));
 
                 if (response.status === 400 && errorData.message?.includes('2 or more products')) {
-                  Alert.alert(
-                    '⚠️ Suppression impossible',
-                    `Ce service contient 2 produits ou plus.\n\nVous devez d'abord supprimer les produits individuellement avant de pouvoir supprimer le service.\n\n💡 Gardez au minimum 1 produit par service.`,
-                    [{ text: 'OK' }]
+                  toaster.warning(
+                    'Ce service contient 2 produits ou plus. Supprimez-les individuellement d\'abord.'
                   );
                 } else {
                   throw new Error(errorData.message || 'Erreur lors de la suppression');
                 }
               }
             } catch (error: any) {
+              // ✅ ROLLBACK en cas d'erreur
+              const previousState = optimisticStates.get(service.id);
+              if (previousState) {
+                setServices(prevServices => [...prevServices, previousState]);
+              }
+
               logger.error('Erreur suppression:', error);
-              // ✅ AMÉLIORATION: Message d'erreur plus précis
+              // ✅ AMÉLIORATION: Message d'erreur plus précis avec Toast
               const message = error.response?.data?.message ||
                 error.message ||
                 'Impossible de supprimer le service. Vérifiez votre connexion.';
-              Alert.alert('❌ Erreur', message);
+              toaster.error(message);
             }
           }
         }
@@ -775,7 +841,7 @@ const MesServicesScreen: React.FC = () => {
 
     // ✅ CORRECTION: S'assurer que services est un tableau avant filter
     if (!Array.isArray(services)) {
-      Alert.alert('Erreur', 'Impossible de créer une vidéo : données de services invalides');
+      toaster.error('Impossible de créer une vidéo : données de services invalides');
       return;
     }
 
@@ -789,6 +855,7 @@ const MesServicesScreen: React.FC = () => {
     logger.log('[MesServicesScreen] handleCreateVideo - Produits du service trouvés:', produitsDuService.length);
 
     if (produitsDuService.length === 0) {
+      // Utiliser Alert pour confirmation avec actions multiples
       Alert.alert(
         'Produit requis',
         'Aucun produit trouvé pour ce service. Créez d\'abord un produit pour pouvoir créer une vidéo.',
@@ -807,7 +874,7 @@ const MesServicesScreen: React.FC = () => {
 
     // ✅ CORRECTION: S'assurer que produitsDuService est un tableau avant map
     if (!Array.isArray(produitsDuService) || produitsDuService.length === 0) {
-      Alert.alert('Erreur', 'Aucun produit trouvé pour ce service');
+      toaster.error('Aucun produit trouvé pour ce service');
       return;
     }
 
@@ -848,7 +915,7 @@ const MesServicesScreen: React.FC = () => {
     setShowVideoCreationModal(false);
     setProductsForVideoCreation([]);
     setSelectedServiceForVideo(null);
-    Alert.alert('✅ Succès', 'Votre vidéo a été créée avec succès !');
+    toaster.success('Votre vidéo a été créée avec succès !');
   };
 
   const handlePromotionService = (service: any) => {
@@ -926,158 +993,818 @@ const MesServicesScreen: React.FC = () => {
     })
     : [];
 
-  if (loading) {
+  // ✅ NOUVEAU: Calculer les statistiques pour les cards visuelles
+  const stats = useMemo(() => {
+    const totalProducts = services.length;
+    const activeProducts = services.filter(s => s && s.status === 'active').length;
+    const inactiveProducts = services.filter(s => s && s.status === 'inactive').length;
+    const categories = new Set<string>();
+    services.forEach(s => {
+      const cat = s.data?.category?.valeur || s.data?.categorie?.valeur || s.data?.type || null;
+      if (cat) categories.add(cat);
+    });
+    const totalViews = services.reduce((sum, s) => sum + (s.views || 0), 0);
+
+    return {
+      totalProducts,
+      activeProducts,
+      inactiveProducts,
+      categoriesCount: categories.size,
+      totalViews,
+    };
+  }, [services]);
+
+  if (loading && services.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[dynamicStyles.container, { backgroundColor: colors.background }]}>
         <LinearGradient
           colors={modernColors.primaryGradient}
-          style={styles.loadingContainer}
+          style={dynamicStyles.header}
         >
-          <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color="#fff" />
-            <Text style={styles.loadingText}>Chargement de vos services...</Text>
+          <View style={dynamicStyles.headerContent}>
+            <View style={dynamicStyles.headerTop}>
+              <View style={dynamicStyles.logoContainer}>
+                <SafeIcon name="briefcase" size={22} color="#fff" />
+                <View style={dynamicStyles.titleContainer}>
+                  <Text style={dynamicStyles.title}>Mes Produits</Text>
+                </View>
+              </View>
+            </View>
           </View>
         </LinearGradient>
+        <View style={dynamicStyles.scrollView}>
+          <SkeletonLoader type="stats" count={4} />
+          <SkeletonLoader type="card" count={3} />
+        </View>
       </View>
     );
   }
 
+  // ✅ NOUVEAU: Créer les styles dynamiquement avec le thème
+  const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
+
+  // ✅ NOUVEAU: Breadcrumbs navigation
+  const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
+    const items: BreadcrumbItem[] = [
+      {
+        label: 'Accueil',
+        onPress: () => navigation.navigate('Home' as never),
+      },
+      {
+        label: 'Mes Produits',
+      },
+    ];
+    return items;
+  }, [navigation]);
+
   return (
-    <View style={styles.container}>
-      {/* Header moderne avec gradient */}
-      <LinearGradient
-        colors={modernColors.primaryGradient}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.headerTop}>
-            <View style={styles.logoContainer}>
-              <SafeIcon name="briefcase" size={24} color="#fff" />
-              <Text style={styles.title}>Mes Produits</Text>
-              <Text style={styles.subtitle}>{services.length} produit{services.length !== 1 ? 's' : ''}</Text>
-            </View>
-            <View style={styles.headerActions}>
-              {/* Bouton Vidéo */}
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={() => (navigation as any).navigate('Video')}
-              >
-                <SafeIcon name="video" size={20} color="#fff" />
-              </TouchableOpacity>
-
-              {/* ✅ BOUTON GALERIE PRODUITS - Maintenant visible */}
-              <TouchableOpacity
-                style={[styles.headerButton, { backgroundColor: 'rgba(16, 185, 129, 0.3)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' }]}
-                onPress={() => setShowProductGallery(true)}
-                accessibilityLabel="Galerie Médias Produits"
-              >
-                <SafeIcon name="image" size={20} color="#fff" />
-              </TouchableOpacity>
-
-              {/* ✅ Menu global avec actions (contient les autres options) */}
-              <TouchableOpacity
-                style={[styles.headerButton, styles.menuButton]}
-                onPress={() => setShowGlobalMenu(!showGlobalMenu)}
-              >
-                <SafeIcon name="more-vertical" size={20} color="#fff" />
-              </TouchableOpacity>
+    <ErrorBoundaryWithRetry
+      maxRetries={3}
+      retryDelay={2000}
+      onRetry={() => {
+        loadServices(true);
+      }}
+    >
+      <View style={dynamicStyles.container}>
+        {/* Header moderne avec gradient */}
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark || colors.primary]}
+          style={dynamicStyles.header}
+        >
+          <View style={dynamicStyles.headerContent}>
+            <View style={dynamicStyles.headerTop}>
+              <View style={dynamicStyles.logoContainer}>
+                <SafeIcon name="briefcase" size={22} color="#fff" />
+                <View style={dynamicStyles.titleContainer}>
+                  <Text style={dynamicStyles.title}>Mes Produits</Text>
+                </View>
+              </View>
+              {/* ✅ AMÉLIORÉ: Bouton Sidebar + Bulk Mode */}
+              <View style={dynamicStyles.headerActions}>
+                {filteredServices.length > 0 && (
+                  <TouchableOpacity
+                    style={[dynamicStyles.headerButton, bulkMode && { backgroundColor: 'rgba(255, 255, 255, 0.4)' }]}
+                    onPress={() => {
+                      setBulkMode(!bulkMode);
+                      if (bulkMode) {
+                        setSelectedItems(new Set());
+                      }
+                    }}
+                    accessibilityLabel={bulkMode ? "Désactiver sélection multiple" : "Activer sélection multiple"}
+                    accessibilityRole="button"
+                  >
+                    <SafeIcon name={bulkMode ? "check-square" : "square"} size={20} color="#fff" />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={[dynamicStyles.headerButton, dynamicStyles.menuButton]}
+                  onPress={() => setShowSidebar(true)}
+                  accessibilityLabel="Menu navigation"
+                  accessibilityRole="button"
+                >
+                  <SafeIcon name="menu" size={22} color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
+
+          {/* ✅ Menu global déroulant */}
+          {showGlobalMenu && (
+            <View style={dynamicStyles.globalMenu}>
+              {/* ✅ NOUVEAU: Galerie Médias Produits - Déplacé ici pour être visible */}
+              <TouchableOpacity
+                style={[dynamicStyles.menuItem, { backgroundColor: colors.surfaceVariant }]}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  setShowProductGallery(true);
+                }}
+              >
+                <SafeIcon name="image" size={18} color={colors.success} />
+                <Text style={[dynamicStyles.menuItemText, { color: colors.success }]}>Galerie Médias</Text>
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU: Configuration de livraison globale */}
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  // ✅ Préparer la liste des produits et ouvrir le sélecteur
+                  const productsList = prepareProductsForSelector();
+                  if (productsList.length === 0) {
+                    toaster.warning('Vous devez d\'abord créer des produits avant de configurer la livraison.');
+                    return;
+                  }
+                  setProductsForSelection(productsList);
+                  setProductSelectorMode('delivery');
+                  setShowProductSelector(true);
+                }}
+              >
+                <SafeIcon name="truck" size={18} color="#10B981" />
+                <Text style={dynamicStyles.menuItemText}>Configuration livraison</Text>
+              </TouchableOpacity>
+
+              {/* ✅ Bouton Membres existant - amélioré pour sélection produits/services */}
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  // ✅ Préparer la liste des produits et ouvrir le sélecteur
+                  const productsList = prepareProductsForSelector();
+                  if (productsList.length === 0) {
+                    toaster.warning('Vous devez d\'abord créer des produits avant de gérer l\'équipe.');
+                    return;
+                  }
+                  setProductsForSelection(productsList);
+                  setProductSelectorMode('team');
+                  setShowProductSelector(true);
+                }}
+              >
+                <SafeIcon name="users" size={18} color="#6366F1" />
+                <Text style={dynamicStyles.menuItemText}>Membres</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  handleAddProduct();
+                }}
+              >
+                <SafeIcon name="plus-circle" size={18} color="#10B981" />
+                <Text style={dynamicStyles.menuItemText}>Créer produit</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  (navigation as any).navigate('AnalyticsDashboard');
+                }}
+              >
+                <SafeIcon name="bar-chart-3" size={18} color="#3B82F6" />
+                <Text style={dynamicStyles.menuItemText}>Statistiques</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  (navigation as any).navigate('CreatePublicite');
+                }}
+              >
+                <SafeIcon name="megaphone" size={18} color="#EC4899" />
+                <Text style={dynamicStyles.menuItemText}>Créer Publicité</Text>
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU: Accès au Dashboard Publicités */}
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  (navigation as any).navigate('PubliciteDashboard');
+                }}
+              >
+                <SafeIcon name="bar-chart-2" size={18} color="#8B5CF6" />
+                <Text style={dynamicStyles.menuItemText}>Dashboard Publicités</Text>
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU: Mes Vidéos - Créées */}
+              <TouchableOpacity
+                style={[dynamicStyles.menuItem, { backgroundColor: colors.surfaceVariant }]}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  try {
+                    const parent = (navigation as any).getParent();
+                    if (parent) {
+                      parent.navigate('VideoFeed');
+                    } else {
+                      (navigation as any).navigate('VideoFeed');
+                    }
+                  } catch (error) {
+                    logger.error('Erreur navigation vers VideoFeed:', error);
+                    toaster.error('Impossible d\'ouvrir Mes Vidéos');
+                  }
+                }}
+              >
+                <SafeIcon name="video" size={18} color={colors.primary} />
+                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>Mes Vidéos Créées</Text>
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU: Participation Black Friday */}
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  (navigation as any).navigate('GlobalPromoSubmission');
+                }}
+              >
+                <SafeIcon name="dollar-sign" size={18} color="#F59E0B" />
+                <Text style={dynamicStyles.menuItemText}>Black Friday</Text>
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU: Analytiques Vidéos */}
+              <TouchableOpacity
+                style={[dynamicStyles.menuItem, { backgroundColor: colors.surfaceVariant }]}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  try {
+                    const parent = (navigation as any).getParent();
+                    if (parent) {
+                      parent.navigate('VideoAnalytics');
+                    } else {
+                      (navigation as any).navigate('VideoAnalytics');
+                    }
+                  } catch (error) {
+                    logger.error('Erreur navigation vers VideoAnalytics:', error);
+                    toaster.error('Impossible d\'ouvrir Analytiques Vidéos');
+                  }
+                }}
+              >
+                <SafeIcon name="bar-chart" size={18} color={colors.primary} />
+                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>Analytiques Vidéos</Text>
+              </TouchableOpacity>
+
+              {/* ✅ Bouton Paramètres */}
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  (navigation as any).navigate('Settings');
+                }}
+              >
+                <SafeIcon name="settings" size={18} color="#6B7280" />
+                <Text style={dynamicStyles.menuItemText}>Paramètres</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  onRefresh();
+                }}
+              >
+                <SafeIcon name="refresh-cw" size={18} color="#6B7280" />
+                <Text style={dynamicStyles.menuItemText}>Actualiser</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </LinearGradient>
+
+        {/* Overlay pour fermer le menu quand on clique ailleurs */}
+        {showGlobalMenu && (
+          <TouchableOpacity
+            style={styles.menuOverlay}
+            activeOpacity={1}
+            onPress={() => setShowGlobalMenu(false)}
+          />
+        )}
+
+        {/* ✅ NOUVEAU: Breadcrumbs navigation */}
+        <Breadcrumbs items={breadcrumbItems} />
+
+        {/* ✅ NOUVEAU: Cards de statistiques visuelles (comme Shopify/Amazon) - Responsive */}
+        <View style={dynamicStyles.statsSection}>
+          {deviceType.isTablet ? (
+            // ✅ NOUVEAU: Grid layout pour tablette (2 colonnes)
+            <View style={dynamicStyles.statsGrid}>
+              <View style={dynamicStyles.statsRow}>
+                <StatsCard
+                  icon="package"
+                  value={stats.totalProducts}
+                  label="Produits totaux"
+                  gradient={modernColors.primaryGradient}
+                  onPress={() => setFilter('tous')}
+                />
+                <StatsCard
+                  icon="check-circle"
+                  value={stats.activeProducts}
+                  label="Actifs"
+                  color={modernColors.success}
+                  onPress={() => setFilter('actif')}
+                />
+              </View>
+              <View style={dynamicStyles.statsRow}>
+                <StatsCard
+                  icon="pause-circle"
+                  value={stats.inactiveProducts}
+                  label="Inactifs"
+                  color={modernColors.warning}
+                  onPress={() => setFilter('inactif')}
+                />
+                {stats.categoriesCount > 0 ? (
+                  <StatsCard
+                    icon="tag"
+                    value={stats.categoriesCount}
+                    label="Catégories"
+                    color={modernColors.info}
+                  />
+                ) : (
+                  stats.totalViews > 0 && (
+                    <StatsCard
+                      icon="eye"
+                      value={stats.totalViews.toLocaleString()}
+                      label="Vues totales"
+                      color={modernColors.secondary}
+                    />
+                  )
+                )}
+              </View>
+            </View>
+          ) : (
+            // Mobile: Scroll horizontal
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={dynamicStyles.statsScrollContent}
+            >
+              <StatsCard
+                icon="package"
+                value={stats.totalProducts}
+                label="Produits totaux"
+                gradient={modernColors.primaryGradient}
+                onPress={() => setFilter('tous')}
+              />
+              <StatsCard
+                icon="check-circle"
+                value={stats.activeProducts}
+                label="Actifs"
+                color={modernColors.success}
+                onPress={() => setFilter('actif')}
+              />
+              <StatsCard
+                icon="pause-circle"
+                value={stats.inactiveProducts}
+                label="Inactifs"
+                color={modernColors.warning}
+                onPress={() => setFilter('inactif')}
+              />
+              {stats.categoriesCount > 0 && (
+                <StatsCard
+                  icon="tag"
+                  value={stats.categoriesCount}
+                  label="Catégories"
+                  color={modernColors.info}
+                />
+              )}
+              {stats.totalViews > 0 && (
+                <StatsCard
+                  icon="eye"
+                  value={stats.totalViews.toLocaleString()}
+                  label="Vues totales"
+                  color={modernColors.secondary}
+                />
+              )}
+            </ScrollView>
+          )}
         </View>
 
-        {/* ✅ Menu global déroulant */}
-        {showGlobalMenu && (
-          <View style={styles.globalMenu}>
-            {/* ✅ NOUVEAU: Galerie Médias Produits - Déplacé ici pour être visible */}
+        <View style={dynamicStyles.scrollView}>
+          {/* ✅ OPTIMISÉ: Filtres sur une seule ligne avec scroll horizontal */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={dynamicStyles.filtersScrollView}
+            contentContainerStyle={dynamicStyles.filtersContainer}
+          >
             <TouchableOpacity
-              style={[styles.menuItem, { backgroundColor: '#F0FDF4' }]}
-              onPress={() => {
-                setShowGlobalMenu(false);
-                setShowProductGallery(true);
-              }}
+              style={[
+                dynamicStyles.filterChip,
+                filter === 'tous' && dynamicStyles.filterChipActive
+              ]}
+              onPress={() => setFilter('tous')}
             >
-              <SafeIcon name="image" size={18} color="#10B981" />
-              <Text style={[styles.menuItemText, { color: '#059669' }]}>Galerie Médias</Text>
+              <SafeIcon
+                name="package"
+                size={16}
+                color={filter === 'tous' ? '#fff' : '#6366F1'}
+              />
+              <Text style={[
+                dynamicStyles.filterChipText,
+                filter === 'tous' && dynamicStyles.filterChipTextActive
+              ]}>
+                Tous ({services.length})
+              </Text>
             </TouchableOpacity>
 
-            {/* ✅ NOUVEAU: Configuration de livraison globale */}
             <TouchableOpacity
-              style={styles.menuItem}
+              style={[
+                dynamicStyles.filterChip,
+                filter === 'actif' && dynamicStyles.filterChipActive
+              ]}
+              onPress={() => setFilter('actif')}
+            >
+              <SafeIcon
+                name="check-circle"
+                size={16}
+                color={filter === 'actif' ? '#fff' : '#10B981'}
+              />
+              <Text style={[
+                dynamicStyles.filterChipText,
+                filter === 'actif' && dynamicStyles.filterChipTextActive
+              ]}>
+                Actifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'active').length : 0})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                dynamicStyles.filterChip,
+                filter === 'inactif' && dynamicStyles.filterChipActive
+              ]}
+              onPress={() => setFilter('inactif')}
+            >
+              <SafeIcon
+                name="pause-circle"
+                size={16}
+                color={filter === 'inactif' ? '#fff' : '#F97316'}
+              />
+              <Text style={[
+                dynamicStyles.filterChipText,
+                filter === 'inactif' && dynamicStyles.filterChipTextActive
+              ]}>
+                Inactifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'inactive').length : 0})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={dynamicStyles.filterChip}
               onPress={() => {
-                setShowGlobalMenu(false);
-                // ✅ Préparer la liste des produits et ouvrir le sélecteur
+                // TODO: Implémenter le filtre par catégorie
+                toaster.info('Filtre par catégorie - Fonctionnalité à venir');
+              }}
+            >
+              <SafeIcon name="tag" size={16} color={colors.primary} />
+              <Text style={dynamicStyles.filterChipText}>
+                Toutes catégories
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          {/* ✅ AMÉLIORÉ: FlashList pour virtualisation (performance +50%) */}
+          {filteredServices.length === 0 ? (
+            <View style={dynamicStyles.emptyContainer}>
+              <SafeIcon name="briefcase" size={64} color={colors.textSecondary} />
+              <Text style={dynamicStyles.emptyTitle}>
+                {filter === 'tous' ? 'Aucun produit créé' : `Aucun produit ${filter}`}
+              </Text>
+              <Text style={dynamicStyles.emptyText}>
+                {filter === 'tous'
+                  ? 'Créez votre premier produit pour commencer à proposer vos produits.'
+                  : `Aucun produit ${filter} pour le moment.`
+                }
+              </Text>
+              <NativeButton
+                title="➕ Créer un nouveau produit"
+                onPress={() => handleAddProduct()}
+                variant="primary"
+                size="medium"
+                style={styles.createButton}
+              />
+            </View>
+          ) : (
+            <FlashList
+              data={filteredServices.filter(service => service != null)}
+              estimatedItemSize={200}
+              numColumns={deviceType.isTablet ? deviceType.columns : 1}
+              // ✅ NOUVEAU: Responsive design - Grid layout pour tablette/desktop
+              columnWrapperStyle={deviceType.isTablet && deviceType.columns > 1 ? { gap: 16, paddingHorizontal: 16 } : undefined}
+              renderItem={({ item: service }) => {
+                const serviceId = service?.id?.toString() || '';
+                const isSelected = selectedItems.has(serviceId);
+
+                return (
+                  <View style={[
+                    { paddingBottom: 16 },
+                    !deviceType.isTablet && { paddingHorizontal: 16 },
+                    deviceType.isTablet && deviceType.columns > 1 && { flex: 1, marginHorizontal: 8 }
+                  ]}>
+                    <ServiceCardModern
+                      key={service?.id || `service-${Math.random()}`}
+                      service={service}
+                      onEdit={handleEditService}
+                      onView={handleViewService}
+                      onShare={handleShareService}
+                      onToggleStatus={handleToggleServiceStatus}
+                      onDelete={handleDeleteService}
+                      onPromotion={handlePromotionService}
+                      onViewProducts={() => navigation.navigate('MesProduits' as never)}
+                      bulkMode={bulkMode}
+                      selected={isSelected}
+                      onSelect={(id) => {
+                        const newSelected = new Set(selectedItems);
+                        if (newSelected.has(id.toString())) {
+                          newSelected.delete(id.toString());
+                        } else {
+                          newSelected.add(id.toString());
+                        }
+                        setSelectedItems(newSelected);
+                      }}
+                    />
+                  </View>
+                );
+              }}
+              keyExtractor={(item) => item?.id?.toString() || `service-${Math.random()}`}
+              contentContainerStyle={dynamicStyles.flashListContent}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              }
+              ListFooterComponent={
+                <View style={dynamicStyles.footerContainer}>
+                  <NativeButton
+                    title="📊 Analytics Dashboard"
+                    onPress={() => (navigation as any).navigate('AnalyticsDashboard')}
+                    variant="primary"
+                    size="large"
+                    style={styles.analyticsFooterButton}
+                  />
+                  <NativeButton
+                    title="📦 Gérer mes produits"
+                    onPress={() => navigation.navigate('MesProduits' as never)}
+                    variant="outline"
+                    size="large"
+                    style={styles.productsButton}
+                  />
+                  <NativeButton
+                    title="🏠 Retour à l'accueil"
+                    onPress={() => navigation.navigate('Home' as never)}
+                    variant="outline"
+                    size="large"
+                    style={styles.homeButton}
+                  />
+                </View>
+              }
+              ListEmptyComponent={
+                <View style={dynamicStyles.emptyContainer}>
+                  <SafeIcon name="briefcase" size={64} color={colors.textSecondary} />
+                  <Text style={dynamicStyles.emptyTitle}>
+                    {filter === 'tous' ? 'Aucun produit créé' : `Aucun produit ${filter}`}
+                  </Text>
+                  <NativeButton
+                    title="➕ Créer un nouveau produit"
+                    onPress={() => handleAddProduct()}
+                    variant="primary"
+                    size="medium"
+                    style={styles.createButton}
+                  />
+                </View>
+              }
+            />
+          )}
+        </View>
+
+        {/* ✅ NOUVEAU : Modal Gestion d'équipe */}
+        {showTeamManager && (
+          <Modal
+            visible={showTeamManager}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            onRequestClose={() => setShowTeamManager(false)}
+          >
+            <ServiceTeamManager
+              serviceId={selectedService ? (selectedService.id?.toString() || selectedService.service_id?.toString() || undefined) : undefined}
+              onClose={() => {
+                setShowTeamManager(false);
+                setSelectedService(null);
+              }}
+              onMemberAdded={() => {
+                toaster.success('Membre ajouté à l\'équipe avec succès');
+                loadServices(true);
+              }}
+              onMemberRemoved={() => {
+                toaster.success('Membre retiré de l\'équipe avec succès');
+                loadServices(true);
+              }}
+            />
+          </Modal>
+        )}
+
+        {/* ✅ Sélecteur de produit - Mode multiple pour livraison/équipe ou unique pour vidéo */}
+        <ServiceProductSelector
+          visible={showProductSelector}
+          products={productsForSelection}
+          allowMultiple={productSelectorMode !== null} // ✅ Mode multiple pour livraison/équipe
+          onSelect={(product) => {
+            // ✅ Mode unique (vidéo)
+            if (!productSelectorMode) {
+              navigateToVideoWizard(navigation, product);
+            }
+            setShowProductSelector(false);
+            setProductsForSelection([]);
+            setProductSelectorMode(null);
+          }}
+          onSelectMultiple={(selectedProducts) => {
+            // ✅ Mode multiple (livraison ou équipe)
+            if (productSelectorMode === 'delivery') {
+              // ✅ SÉCURISÉ: Normaliser les produits pour garantir que productName et serviceName sont des strings
+              const normalizedProducts = (Array.isArray(selectedProducts) ? selectedProducts : []).map(product => ({
+                serviceId: product?.serviceId || 0,
+                productIndex: product?.productIndex ?? 0,
+                productName: typeof product?.productName === 'string' ? product.productName.trim() :
+                  (product?.productName && typeof product.productName === 'object' && 'valeur' in product.productName && typeof product.productName.valeur === 'string' ? product.productName.valeur.trim() :
+                    String(product?.productName || 'Produit sans nom')),
+                serviceName: typeof product?.serviceName === 'string' ? product.serviceName.trim() :
+                  (product?.serviceName && typeof product.serviceName === 'object' && 'valeur' in product.serviceName && typeof product.serviceName.valeur === 'string' ? product.serviceName.valeur.trim() :
+                    String(product?.serviceName || 'Service sans nom')),
+              })).filter(p => p.serviceId > 0);
+
+              // ✅ Stocker les produits sélectionnés normalisés et ouvrir le modal de configuration livraison
+              setSelectedProductsForDelivery(normalizedProducts);
+              setShowGlobalDeliveryConfig(true);
+            } else if (productSelectorMode === 'team') {
+              // ✅ CORRECTION: Vérifier que selectedProducts est un tableau valide
+              if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
+                toaster.warning('Aucun produit sélectionné');
+                setShowProductSelector(false);
+                setProductSelectorMode(null);
+                return;
+              }
+              // Extraire les serviceIds uniques et ouvrir le gestionnaire d'équipe
+              const validProducts = selectedProducts.filter(p => p && p.serviceId != null);
+              const uniqueServiceIds = [...new Set(validProducts.map(p => String(p.serviceId || '')))].filter(id => id);
+              if (uniqueServiceIds.length === 1) {
+                // Un seul service : ouvrir avec ce serviceId
+                setSelectedService({ id: uniqueServiceIds[0], service_id: uniqueServiceIds[0] } as Service);
+              } else {
+                // Plusieurs services : ouvrir en mode global (tous services)
+                setSelectedService(null);
+              }
+              setShowTeamManager(true);
+            }
+            setShowProductSelector(false);
+            setProductsForSelection([]);
+            setProductSelectorMode(null);
+          }}
+          onClose={() => {
+            setShowProductSelector(false);
+            setProductsForSelection([]);
+            setProductSelectorMode(null);
+          }}
+        />
+
+        {/* ✅ NOUVEAU: Modal de configuration de livraison globale */}
+        <GlobalDeliveryConfigModal
+          visible={showGlobalDeliveryConfig}
+          selectedProducts={selectedProductsForDelivery}
+          onClose={() => {
+            setShowGlobalDeliveryConfig(false);
+            setSelectedProductsForDelivery([]);
+          }}
+          onSuccess={() => {
+            setShowGlobalDeliveryConfig(false);
+            setSelectedProductsForDelivery([]);
+            loadServices(true); // Recharger les produits après configuration
+          }}
+        />
+
+        {/* ✅ NOUVEAU: Modal de création de vidéo avec produits */}
+        {showVideoCreationModal && productsForVideoCreation.length > 0 && (
+          <ProductVideoCreationModal
+            visible={showVideoCreationModal}
+            primaryProduct={productsForVideoCreation[0]}
+            products={productsForVideoCreation}
+            onClose={() => {
+              setShowVideoCreationModal(false);
+              setProductsForVideoCreation([]);
+              setSelectedServiceForVideo(null);
+            }}
+            onSuccess={handleVideoCreationSuccess}
+          />
+        )}
+
+        {/* ✅ NOUVEAU : Modal de galerie produits */}
+        <ProductGalleryModal
+          visible={showProductGallery}
+          services={services}
+          onClose={() => setShowProductGallery(false)}
+        />
+
+        {/* ✅ NOUVEAU: Sidebar Navigation (remplace menu dropdown) */}
+        <SidebarNavigation
+          visible={showSidebar}
+          onClose={() => setShowSidebar(false)}
+          currentRoute="MesServices"
+          items={[
+            {
+              id: 'create-product',
+              label: 'Créer produit',
+              icon: 'plus-circle',
+              section: 'Actions',
+              color: modernColors.success,
+              onPress: () => handleAddProduct(),
+            },
+            {
+              id: 'gallery',
+              label: 'Galerie Médias',
+              icon: 'image',
+              section: 'Actions',
+              color: modernColors.success,
+              onPress: () => setShowProductGallery(true),
+            },
+            {
+              id: 'delivery',
+              label: 'Configuration livraison',
+              icon: 'truck',
+              section: 'Actions',
+              color: '#10B981',
+              onPress: () => {
                 const productsList = prepareProductsForSelector();
                 if (productsList.length === 0) {
-                  Alert.alert('Aucun produit', 'Vous devez d\'abord créer des produits avant de configurer la livraison.');
+                  toaster.warning('Vous devez d\'abord créer des produits avant de configurer la livraison.');
                   return;
                 }
                 setProductsForSelection(productsList);
                 setProductSelectorMode('delivery');
                 setShowProductSelector(true);
-              }}
-            >
-              <SafeIcon name="truck" size={18} color="#10B981" />
-              <Text style={styles.menuItemText}>Configuration livraison</Text>
-            </TouchableOpacity>
-
-            {/* ✅ Bouton Membres existant - amélioré pour sélection produits/services */}
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowGlobalMenu(false);
-                // ✅ Préparer la liste des produits et ouvrir le sélecteur
+              },
+            },
+            {
+              id: 'team',
+              label: 'Gérer équipe',
+              icon: 'users',
+              section: 'Actions',
+              color: modernColors.primary,
+              onPress: () => {
                 const productsList = prepareProductsForSelector();
                 if (productsList.length === 0) {
-                  Alert.alert('Aucun produit', 'Vous devez d\'abord créer des produits avant de gérer l\'équipe.');
+                  toaster.warning('Vous devez d\'abord créer des produits avant de gérer l\'équipe.');
                   return;
                 }
                 setProductsForSelection(productsList);
                 setProductSelectorMode('team');
                 setShowProductSelector(true);
-              }}
-            >
-              <SafeIcon name="users" size={18} color="#6366F1" />
-              <Text style={styles.menuItemText}>Membres</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowGlobalMenu(false);
-                handleAddProduct();
-              }}
-            >
-              <SafeIcon name="plus-circle" size={18} color="#10B981" />
-              <Text style={styles.menuItemText}>Créer produit</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowGlobalMenu(false);
-                (navigation as any).navigate('AnalyticsDashboard');
-              }}
-            >
-              <SafeIcon name="bar-chart-3" size={18} color="#3B82F6" />
-              <Text style={styles.menuItemText}>Statistiques</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowGlobalMenu(false);
-                (navigation as any).navigate('CreatePublicite');
-              }}
-            >
-              <SafeIcon name="megaphone" size={18} color="#EC4899" />
-              <Text style={styles.menuItemText}>Publicité</Text>
-            </TouchableOpacity>
-
-            {/* ✅ NOUVEAU: Mes Vidéos - Créées */}
-            <TouchableOpacity
-              style={[styles.menuItem, { backgroundColor: '#FDF2F8' }]}
-              onPress={() => {
-                setShowGlobalMenu(false);
+              },
+            },
+            {
+              id: 'analytics',
+              label: 'Statistiques',
+              icon: 'bar-chart-3',
+              section: 'Analytics',
+              color: '#3B82F6',
+              onPress: () => (navigation as any).navigate('AnalyticsDashboard'),
+            },
+            {
+              id: 'publicite',
+              label: 'Créer Publicité',
+              icon: 'megaphone',
+              section: 'Marketing',
+              color: '#EC4899',
+              onPress: () => (navigation as any).navigate('CreatePublicite'),
+            },
+            {
+              id: 'publicite-dashboard',
+              label: 'Dashboard Publicités',
+              icon: 'bar-chart-2',
+              section: 'Marketing',
+              color: '#8B5CF6',
+              onPress: () => (navigation as any).navigate('PubliciteDashboard'),
+            },
+            {
+              id: 'videos',
+              label: 'Mes Vidéos',
+              icon: 'video',
+              section: 'Contenu',
+              color: modernColors.primary,
+              onPress: () => {
                 try {
                   const parent = (navigation as any).getParent();
                   if (parent) {
@@ -1086,32 +1813,17 @@ const MesServicesScreen: React.FC = () => {
                     (navigation as any).navigate('VideoFeed');
                   }
                 } catch (error) {
-                  logger.error('Erreur navigation vers VideoFeed:', error);
-                  Alert.alert('Erreur', 'Impossible d\'ouvrir Mes Vidéos');
+                  toaster.error('Impossible d\'ouvrir Mes Vidéos');
                 }
-              }}
-            >
-              <SafeIcon name="video" size={18} color="#EC4899" />
-              <Text style={[styles.menuItemText, { color: '#BE185D' }]}>Mes Vidéos Créées</Text>
-            </TouchableOpacity>
-
-            {/* ✅ NOUVEAU: Participation Black Friday */}
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowGlobalMenu(false);
-                (navigation as any).navigate('GlobalPromoSubmission');
-              }}
-            >
-              <SafeIcon name="dollar-sign" size={18} color="#F59E0B" />
-              <Text style={styles.menuItemText}>Black Friday</Text>
-            </TouchableOpacity>
-
-            {/* ✅ NOUVEAU: Analytiques Vidéos */}
-            <TouchableOpacity
-              style={[styles.menuItem, { backgroundColor: '#F5F3FF' }]}
-              onPress={() => {
-                setShowGlobalMenu(false);
+              },
+            },
+            {
+              id: 'video-analytics',
+              label: 'Analytiques Vidéos',
+              icon: 'bar-chart',
+              section: 'Contenu',
+              color: modernColors.primary,
+              onPress: () => {
                 try {
                   const parent = (navigation as any).getParent();
                   if (parent) {
@@ -1120,370 +1832,119 @@ const MesServicesScreen: React.FC = () => {
                     (navigation as any).navigate('VideoAnalytics');
                   }
                 } catch (error) {
-                  logger.error('Erreur navigation vers VideoAnalytics:', error);
-                  Alert.alert('Erreur', 'Impossible d\'ouvrir Analytiques Vidéos');
+                  toaster.error('Impossible d\'ouvrir Analytiques Vidéos');
                 }
-              }}
-            >
-              <SafeIcon name="bar-chart" size={18} color="#8B5CF6" />
-              <Text style={[styles.menuItemText, { color: '#6D28D9' }]}>Analytiques Vidéos</Text>
-            </TouchableOpacity>
-
-            {/* ✅ Bouton Paramètres */}
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowGlobalMenu(false);
-                (navigation as any).navigate('Settings');
-              }}
-            >
-              <SafeIcon name="settings" size={18} color="#6B7280" />
-              <Text style={styles.menuItemText}>Paramètres</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowGlobalMenu(false);
-                onRefresh();
-              }}
-            >
-              <SafeIcon name="refresh-cw" size={18} color="#6B7280" />
-              <Text style={styles.menuItemText}>Actualiser</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </LinearGradient>
-
-      {/* Overlay pour fermer le menu quand on clique ailleurs */}
-      {showGlobalMenu && (
-        <TouchableOpacity
-          style={styles.menuOverlay}
-          activeOpacity={1}
-          onPress={() => setShowGlobalMenu(false)}
+              },
+            },
+            {
+              id: 'black-friday',
+              label: 'Black Friday',
+              icon: 'dollar-sign',
+              section: 'Promotions',
+              color: '#F59E0B',
+              onPress: () => (navigation as any).navigate('GlobalPromoSubmission'),
+            },
+            {
+              id: 'settings',
+              label: 'Paramètres',
+              icon: 'settings',
+              section: 'Autres',
+              color: '#6B7280',
+              onPress: () => (navigation as any).navigate('Settings'),
+            },
+          ]}
         />
-      )}
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* ✅ NOUVEAU: Cartes de statistiques */}
-        <View style={styles.statsContainer}>
-          <NativeCard style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#3B82F6' }]}>
-              {services.length}
-            </Text>
-            <Text style={styles.statLabel}>Produits</Text>
-          </NativeCard>
-
-          <NativeCard style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#10B981' }]}>
-              {String(Array.isArray(services) ? services.filter(s => s && s.status === 'active').length : 0)}
-            </Text>
-            <Text style={styles.statLabel}>Actifs</Text>
-          </NativeCard>
-
-          <NativeCard style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#F97316' }]}>
-              {String(Array.isArray(services) ? services.filter(s => s && s.status === 'inactive').length : 0)}
-            </Text>
-            <Text style={styles.statLabel}>En pause</Text>
-          </NativeCard>
-
-          <NativeCard style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#6366F1' }]}>
-              {(() => {
-                const categories = new Set<string>();
-                services.forEach(s => {
-                  const cat = s.data?.category?.valeur ||
-                    s.data?.categorie?.valeur ||
-                    s.data?.type ||
-                    null;
-                  if (cat) categories.add(cat);
-                });
-                return categories.size;
-              })()}
-            </Text>
-            <Text style={styles.statLabel}>Catégories</Text>
-          </NativeCard>
-        </View>
-
-        {/* ✅ AMÉLIORÉ: Filtres avec design moderne */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filtersScrollView}
-          contentContainerStyle={styles.filtersContainer}
-        >
-          <TouchableOpacity
-            style={[
-              styles.filterChip,
-              filter === 'tous' && styles.filterChipActive
-            ]}
-            onPress={() => setFilter('tous')}
-          >
-            <SafeIcon
-              name="package"
-              size={16}
-              color={filter === 'tous' ? '#fff' : '#6366F1'}
-            />
-            <Text style={[
-              styles.filterChipText,
-              filter === 'tous' && styles.filterChipTextActive
-            ]}>
-              Tous ({services.length})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.filterChip,
-              filter === 'actif' && styles.filterChipActive
-            ]}
-            onPress={() => setFilter('actif')}
-          >
-            <SafeIcon
-              name="check-circle"
-              size={16}
-              color={filter === 'actif' ? '#fff' : '#10B981'}
-            />
-            <Text style={[
-              styles.filterChipText,
-              filter === 'actif' && styles.filterChipTextActive
-            ]}>
-              Actifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'active').length : 0})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.filterChip,
-              filter === 'inactif' && styles.filterChipActive
-            ]}
-            onPress={() => setFilter('inactif')}
-          >
-            <SafeIcon
-              name="pause-circle"
-              size={16}
-              color={filter === 'inactif' ? '#fff' : '#F97316'}
-            />
-            <Text style={[
-              styles.filterChipText,
-              filter === 'inactif' && styles.filterChipTextActive
-            ]}>
-              Inactifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'inactive').length : 0})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.filterChip}
-            onPress={() => {
-              // TODO: Implémenter le filtre par catégorie
-              Alert.alert('Filtre catégories', 'Fonctionnalité à venir');
-            }}
-          >
-            <SafeIcon name="tag" size={16} color="#8B5CF6" />
-            <Text style={styles.filterChipText}>
-              Toutes catégories
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-        {/* Liste des services */}
-        {filteredServices.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <SafeIcon name="briefcase" size={64} color={modernColors.textSecondary} />
-            <Text style={styles.emptyTitle}>
-              {filter === 'tous' ? 'Aucun produit créé' : `Aucun produit ${filter}`}
-            </Text>
-            <Text style={styles.emptyText}>
-              {filter === 'tous'
-                ? 'Créez votre premier produit pour commencer à proposer vos produits.'
-                : `Aucun produit ${filter} pour le moment.`
-              }
-            </Text>
-            <NativeButton
-              title="➕ Créer un nouveau produit"
-              onPress={() => handleAddProduct()}
-              variant="primary"
-              size="medium"
-              style={styles.createButton}
-            />
-          </View>
-        ) : (
-          <View style={styles.servicesContainer}>
-            {Array.isArray(filteredServices) && filteredServices.length > 0 ? filteredServices.filter(service => service != null).map((service) => (
-              <ServiceCardModern
-                key={service?.id || `service-${Math.random()}`}
-                service={service}
-                onEdit={handleEditService}
-                onView={handleViewService}
-                onShare={handleShareService}
-                onToggleStatus={handleToggleServiceStatus}
-                onDelete={handleDeleteService}
-                onPromotion={handlePromotionService}
-                onViewProducts={() => navigation.navigate('MesProduits' as never)}
-              />
-            )) : null}
-          </View>
-        )}
-
-        {/* Boutons de navigation */}
-        <View style={styles.footerContainer}>
-          <NativeButton
-            title="📊 Analytics Dashboard"
-            onPress={() => (navigation as any).navigate('AnalyticsDashboard')}
-            variant="primary"
-            size="large"
-            style={styles.analyticsFooterButton}
-          />
-          <NativeButton
-            title="📦 Gérer mes produits"
-            onPress={() => navigation.navigate('MesProduits' as never)}
-            variant="outline"
-            size="large"
-            style={styles.productsButton}
-          />
-          <NativeButton
-            title="🏠 Retour à l'accueil"
-            onPress={() => navigation.navigate('Home' as never)}
-            variant="outline"
-            size="large"
-            style={styles.homeButton}
-          />
-        </View>
-      </ScrollView>
-
-      {/* ✅ NOUVEAU : Modal Gestion d'équipe */}
-      {showTeamManager && (
-        <Modal
-          visible={showTeamManager}
-          animationType="slide"
-          presentationStyle="fullScreen"
-          onRequestClose={() => setShowTeamManager(false)}
-        >
-          <ServiceTeamManager
-            serviceId={selectedService ? (selectedService.id?.toString() || selectedService.service_id?.toString() || undefined) : undefined}
-            onClose={() => {
-              setShowTeamManager(false);
-              setSelectedService(null);
-            }}
-            onMemberAdded={() => {
-              Alert.alert('✅ Succès', 'Membre ajouté à l\'équipe avec succès');
-              loadServices(true);
-            }}
-            onMemberRemoved={() => {
-              Alert.alert('✅ Succès', 'Membre retiré de l\'équipe avec succès');
-              loadServices(true);
-            }}
-          />
-        </Modal>
-      )}
-
-      {/* ✅ Sélecteur de produit - Mode multiple pour livraison/équipe ou unique pour vidéo */}
-      <ServiceProductSelector
-        visible={showProductSelector}
-        products={productsForSelection}
-        allowMultiple={productSelectorMode !== null} // ✅ Mode multiple pour livraison/équipe
-        onSelect={(product) => {
-          // ✅ Mode unique (vidéo)
-          if (!productSelectorMode) {
-            navigateToVideoWizard(navigation, product);
-          }
-          setShowProductSelector(false);
-          setProductsForSelection([]);
-          setProductSelectorMode(null);
-        }}
-        onSelectMultiple={(selectedProducts) => {
-          // ✅ Mode multiple (livraison ou équipe)
-          if (productSelectorMode === 'delivery') {
-            // ✅ SÉCURISÉ: Normaliser les produits pour garantir que productName et serviceName sont des strings
-            const normalizedProducts = (Array.isArray(selectedProducts) ? selectedProducts : []).map(product => ({
-              serviceId: product?.serviceId || 0,
-              productIndex: product?.productIndex ?? 0,
-              productName: typeof product?.productName === 'string' ? product.productName.trim() :
-                (product?.productName && typeof product.productName === 'object' && 'valeur' in product.productName && typeof product.productName.valeur === 'string' ? product.productName.valeur.trim() :
-                  String(product?.productName || 'Produit sans nom')),
-              serviceName: typeof product?.serviceName === 'string' ? product.serviceName.trim() :
-                (product?.serviceName && typeof product.serviceName === 'object' && 'valeur' in product.serviceName && typeof product.serviceName.valeur === 'string' ? product.serviceName.valeur.trim() :
-                  String(product?.serviceName || 'Service sans nom')),
-            })).filter(p => p.serviceId > 0);
-
-            // ✅ Stocker les produits sélectionnés normalisés et ouvrir le modal de configuration livraison
-            setSelectedProductsForDelivery(normalizedProducts);
-            setShowGlobalDeliveryConfig(true);
-          } else if (productSelectorMode === 'team') {
-            // ✅ CORRECTION: Vérifier que selectedProducts est un tableau valide
-            if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
-              Alert.alert('Erreur', 'Aucun produit sélectionné');
-              setShowProductSelector(false);
-              setProductSelectorMode(null);
-              return;
-            }
-            // Extraire les serviceIds uniques et ouvrir le gestionnaire d'équipe
-            const validProducts = selectedProducts.filter(p => p && p.serviceId != null);
-            const uniqueServiceIds = [...new Set(validProducts.map(p => String(p.serviceId || '')))].filter(id => id);
-            if (uniqueServiceIds.length === 1) {
-              // Un seul service : ouvrir avec ce serviceId
-              setSelectedService({ id: uniqueServiceIds[0], service_id: uniqueServiceIds[0] } as Service);
-            } else {
-              // Plusieurs services : ouvrir en mode global (tous services)
-              setSelectedService(null);
-            }
-            setShowTeamManager(true);
-          }
-          setShowProductSelector(false);
-          setProductsForSelection([]);
-          setProductSelectorMode(null);
-        }}
-        onClose={() => {
-          setShowProductSelector(false);
-          setProductsForSelection([]);
-          setProductSelectorMode(null);
-        }}
-      />
-
-      {/* ✅ NOUVEAU: Modal de configuration de livraison globale */}
-      <GlobalDeliveryConfigModal
-        visible={showGlobalDeliveryConfig}
-        selectedProducts={selectedProductsForDelivery}
-        onClose={() => {
-          setShowGlobalDeliveryConfig(false);
-          setSelectedProductsForDelivery([]);
-        }}
-        onSuccess={() => {
-          setShowGlobalDeliveryConfig(false);
-          setSelectedProductsForDelivery([]);
-          loadServices(true); // Recharger les produits après configuration
-        }}
-      />
-
-      {/* ✅ NOUVEAU: Modal de création de vidéo avec produits */}
-      {showVideoCreationModal && productsForVideoCreation.length > 0 && (
-        <ProductVideoCreationModal
-          visible={showVideoCreationModal}
-          primaryProduct={productsForVideoCreation[0]}
-          products={productsForVideoCreation}
-          onClose={() => {
-            setShowVideoCreationModal(false);
-            setProductsForVideoCreation([]);
-            setSelectedServiceForVideo(null);
+        {/* ✅ NOUVEAU: Bulk Actions Bar */}
+        <BulkActionsBar
+          visible={bulkMode && selectedItems.size > 0}
+          selectedCount={selectedItems.size}
+          totalCount={filteredServices.length}
+          onSelectAll={() => {
+            const allIds = new Set(filteredServices.map(s => s.id?.toString() || ''));
+            setSelectedItems(allIds);
           }}
-          onSuccess={handleVideoCreationSuccess}
+          onDeselectAll={() => setSelectedItems(new Set())}
+          onClose={() => {
+            setBulkMode(false);
+            setSelectedItems(new Set());
+          }}
+          actions={[
+            {
+              id: 'activate',
+              label: 'Activer',
+              icon: 'play-circle',
+              color: modernColors.success,
+              onPress: async (selectedIds) => {
+                const selectedCount = selectedItems.size;
+                const promises = Array.from(selectedItems).map(id => {
+                  const service = services.find(s => s.id?.toString() === id);
+                  if (service && service.status !== 'active') {
+                    return handleToggleServiceStatus(service);
+                  }
+                  return Promise.resolve();
+                });
+                await Promise.all(promises);
+                setSelectedItems(new Set());
+                toaster.success(`${selectedCount} produit(s) activé(s)`);
+              },
+            },
+            {
+              id: 'deactivate',
+              label: 'Désactiver',
+              icon: 'pause-circle',
+              color: modernColors.warning,
+              onPress: async (selectedIds) => {
+                const selectedCount = selectedItems.size;
+                const promises = Array.from(selectedItems).map(id => {
+                  const service = services.find(s => s.id?.toString() === id);
+                  if (service && service.status === 'active') {
+                    return handleToggleServiceStatus(service);
+                  }
+                  return Promise.resolve();
+                });
+                await Promise.all(promises);
+                setSelectedItems(new Set());
+                toaster.success(`${selectedCount} produit(s) désactivé(s)`);
+              },
+            },
+            {
+              id: 'delete',
+              label: 'Supprimer',
+              icon: 'trash-2',
+              color: modernColors.error,
+              destructive: true,
+              onPress: (selectedIds) => {
+                const selectedCount = selectedItems.size;
+                Alert.alert(
+                  'Supprimer plusieurs produits',
+                  `Êtes-vous sûr de vouloir supprimer ${selectedCount} produit(s) ?\n\nCette action est irréversible.`,
+                  [
+                    { text: 'Annuler', style: 'cancel' },
+                    {
+                      text: 'Supprimer',
+                      style: 'destructive',
+                      onPress: async () => {
+                        const promises = Array.from(selectedItems).map(id => {
+                          const service = services.find(s => s.id?.toString() === id);
+                          if (service) {
+                            return handleDeleteService(service);
+                          }
+                          return Promise.resolve();
+                        });
+                        await Promise.all(promises);
+                        setSelectedItems(new Set());
+                        toaster.success(`${selectedCount} produit(s) supprimé(s)`);
+                      },
+                    },
+                  ]
+                );
+              },
+            },
+          ]}
         />
-      )}
-
-      {/* ✅ NOUVEAU : Modal de galerie produits */}
-      <ProductGalleryModal
-        visible={showProductGallery}
-        services={services}
-        onClose={() => setShowProductGallery(false)}
-      />
-    </View>
+      </View>
+    </ErrorBoundaryWithRetry>
   );
 };
 
@@ -1509,9 +1970,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16, // ✅ RÉDUIT: 20 → 16 pour plus de compacité
     paddingTop: 50,
-    paddingBottom: 20,
+    paddingBottom: 16, // ✅ RÉDUIT: 20 → 16 pour économiser l'espace
   },
   headerContent: {
     flex: 1,
@@ -1526,17 +1987,26 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10, // ✅ RÉDUIT: 12 → 10
+    flex: 1,
+  },
+  titleContainer: {
+    flex: 1,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22, // ✅ RÉDUIT: 24 → 22 pour plus de compacité
+    fontWeight: '700', // ✅ RÉDUIT: 'bold' → '700'
     color: '#fff',
+  },
+  subtitleCompact: {
+    fontSize: 11, // ✅ RÉDUIT: 12 → 11
+    color: 'rgba(255, 255, 255, 0.85)', // ✅ LÉGÈREMENT PLUS CLAIR
+    marginTop: 2,
+    fontWeight: '500',
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 8, // ✅ RÉDUIT: 12 → 8 pour économiser l'espace
-    flexWrap: 'wrap', // ✅ AJOUTÉ: Permet le retour à la ligne si nécessaire
+    gap: 8,
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
@@ -1545,12 +2015,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10, // ✅ RÉDUIT: 12 → 10 pour économiser l'espace
-    paddingVertical: 8,
-    borderRadius: modernStyles.borderRadius.medium,
-    gap: 4, // ✅ RÉDUIT: 6 → 4
-    minWidth: 40, // ✅ AJOUTÉ: Largeur minimale pour garantir la visibilité
-    minHeight: 40, // ✅ AJOUTÉ: Hauteur minimale pour garantir la visibilité
+    paddingHorizontal: 12, // ✅ OPTIMISÉ: 12px pour meilleur touch target
+    paddingVertical: 10, // ✅ OPTIMISÉ: 10px pour meilleur touch target
+    borderRadius: 12, // ✅ MODERNE: Border radius plus arrondi
+    minWidth: 44, // ✅ OPTIMAL: 44px minimum pour touch target (Apple/Google guidelines)
+    minHeight: 44, // ✅ OPTIMAL: 44px minimum
   },
   analyticsButton: {
     backgroundColor: 'rgba(99, 102, 241, 0.3)', // Indigo pour Analytics
@@ -1572,6 +2041,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
+  // ✅ ANCIEN subtitle remplacé par subtitleCompact
   menuButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
   },
@@ -1579,10 +2049,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 90,
     right: 20,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface, // ✅ NOUVEAU: Support thème
     borderRadius: 12,
     padding: 8,
-    shadowColor: '#000',
+    shadowColor: colors.shadow, // ✅ NOUVEAU: Support thème
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1590,6 +2060,8 @@ const styles = StyleSheet.create({
     minWidth: 220,
     maxWidth: 280,
     zIndex: 10000,
+    borderWidth: 1,
+    borderColor: colors.border, // ✅ NOUVEAU: Support thème
   },
   menuItem: {
     flexDirection: 'row',
@@ -1602,7 +2074,7 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1F2937',
+    color: colors.text, // ✅ NOUVEAU: Support thème
   },
   menuOverlay: {
     position: 'absolute',
@@ -1619,62 +2091,38 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 120,
+    backgroundColor: colors.background, // ✅ NOUVEAU: Support thème
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    gap: 8,
-  },
-  statCard: {
-    flex: 1,
-    padding: 16,
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: modernColors.textSecondary,
-    textAlign: 'center',
-  },
+  // ✅ SUPPRIMÉ: statsContainer, statCard, statNumber, statLabel (statistiques intégrées dans l'en-tête)
   filtersScrollView: {
-    marginBottom: 20,
+    marginBottom: 16, // ✅ RÉDUIT: 20 → 16
   },
   filtersContainer: {
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 4,
+    paddingVertical: 4, // ✅ AJOUTÉ: Padding vertical pour meilleur espacement
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14, // ✅ RÉDUIT: 16 → 14 pour compacité
+    paddingVertical: 8, // ✅ RÉDUIT: 10 → 8 pour compacité
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface, // ✅ NOUVEAU: Support thème
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border, // ✅ NOUVEAU: Support thème
     gap: 6,
+    minHeight: 36, // ✅ AJOUTÉ: Hauteur minimale pour touch target
   },
   filterChipActive: {
-    backgroundColor: '#6366F1',
-    borderColor: '#6366F1',
+    backgroundColor: colors.primary, // ✅ NOUVEAU: Support thème
+    borderColor: colors.primary, // ✅ NOUVEAU: Support thème
   },
   filterChipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
+    fontSize: 13, // ✅ RÉDUIT: 14 → 13 pour compacité
+    fontWeight: '600', // ✅ AUGMENTÉ: '500' → '600' pour meilleure lisibilité
+    color: colors.textSecondary, // ✅ NOUVEAU: Support thème
   },
   filterChipTextActive: {
     color: '#fff',
@@ -1690,14 +2138,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: modernColors.text,
+    color: colors.text, // ✅ NOUVEAU: Support thème
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
     fontSize: 16,
-    color: modernColors.textSecondary,
+    color: colors.textSecondary, // ✅ NOUVEAU: Support thème
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 24,
@@ -1709,7 +2157,7 @@ const styles = StyleSheet.create({
     marginTop: 32,
     paddingTop: 24,
     borderTopWidth: 1,
-    borderTopColor: modernColors.border,
+    borderTopColor: colors.border, // ✅ NOUVEAU: Support thème
     gap: 12,
   },
   analyticsFooterButton: {
@@ -1723,6 +2171,262 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 });
+
+// ✅ NOUVEAU: Fonction createStyles pour styles dynamiques avec thème
+const createStyles = (colors: any) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background || modernColors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContent: {
+    alignItems: 'center',
+    padding: 30,
+  },
+  loadingText: {
+    marginTop: 20,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 50,
+    paddingBottom: 16,
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  titleContainer: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  subtitleCompact: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  headerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    minWidth: 44,
+    minHeight: 44,
+  },
+  analyticsButton: {
+    backgroundColor: 'rgba(99, 102, 241, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  publiciteButton: {
+    backgroundColor: 'rgba(236, 72, 153, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  headerButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  subtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  menuButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  globalMenu: {
+    position: 'absolute',
+    top: 90,
+    right: 20,
+    backgroundColor: colors.surface || modernColors.surface,
+    borderRadius: 12,
+    padding: 8,
+    shadowColor: colors.shadow || modernColors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    minWidth: 220,
+    maxWidth: 280,
+    zIndex: 10000,
+    borderWidth: 1,
+    borderColor: colors.border || modernColors.border,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 12,
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text || modernColors.text,
+  },
+  menuOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 999,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 120,
+    backgroundColor: colors.background || modernColors.background,
+  },
+  // ✅ NOUVEAU: Styles pour les cards de statistiques
+  statsSection: {
+    backgroundColor: colors.background || modernColors.background,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  statsScrollContent: {
+    gap: 12,
+    paddingRight: 16,
+  },
+  // ✅ NOUVEAU: Grid layout pour tablette
+  statsGrid: {
+    gap: 12,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  // ✅ NOUVEAU: FlashList content style
+  flashListContent: {
+    padding: 16,
+    paddingBottom: 120,
+  },
+  filtersScrollView: {
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  filtersContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surface || modernColors.surface,
+    borderWidth: 1,
+    borderColor: colors.border || modernColors.border,
+    gap: 6,
+    minHeight: 36,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary || modernColors.primary,
+    borderColor: colors.primary || modernColors.primary,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary || modernColors.textSecondary,
+  },
+  filterChipTextActive: {
+    color: '#fff',
+  },
+  servicesContainer: {
+    gap: 16,
+  },
+  // ✅ NOUVEAU: Styles pour FlashList
+  flashListContent: {
+    padding: 16,
+    paddingBottom: 120,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text || modernColors.text,
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: colors.textSecondary || modernColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  createButton: {
+    marginTop: 10,
+  },
+  footerContainer: {
+    marginTop: 32,
+    paddingTop: 24,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border || modernColors.border,
+    gap: 12,
+  },
+  analyticsFooterButton: {
+    alignSelf: 'stretch',
+    marginBottom: 8,
+  },
+  productsButton: {
+    alignSelf: 'stretch',
+  },
+  homeButton: {
+    alignSelf: 'center',
+  },
+});
+
+// ✅ Styles par défaut (pour compatibilité)
+const styles = createStyles(modernColors);
 
 export default MesServicesScreen;
 

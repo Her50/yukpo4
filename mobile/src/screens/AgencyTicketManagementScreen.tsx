@@ -6,18 +6,20 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
+import SkeletonCard from '../components/SkeletonCard';
+import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { requireAgency } from '../utils/navigationGuards';
 
 interface AgencyTicket {
     payment_id: string;
@@ -47,6 +49,7 @@ interface AgencyTicket {
 
 const AgencyTicketManagementScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [tickets, setTickets] = useState<AgencyTicket[]>([]);
@@ -60,19 +63,24 @@ const AgencyTicketManagementScreen: React.FC = () => {
     });
 
     useEffect(() => {
+        // Vérifier l'accès agence
+        if (!requireAgency(user, navigation)) {
+            return;
+        }
         loadTickets();
-    }, []);
+    }, [user]);
 
     const loadTickets = async () => {
         try {
             setLoading(true);
             const response = await apiGet('/api/bus-tickets/agency/tickets');
 
-            if (response.success && response.tickets) {
-                setTickets(response.tickets);
-                calculateStats(response.tickets);
+            if (response.success) {
+                const ticketsData = (response as any).tickets || [];
+                setTickets(ticketsData);
+                calculateStats(ticketsData);
             } else {
-                Alert.alert('Erreur', response.error || 'Impossible de charger les tickets');
+                Alert.alert('Erreur', (response as any).error || 'Impossible de charger les tickets');
             }
         } catch (error: any) {
             console.error('Erreur chargement tickets:', error);
@@ -289,10 +297,9 @@ const AgencyTicketManagementScreen: React.FC = () => {
 
             {/* Liste des tickets */}
             {loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={modernColors.primary} />
-                    <Text style={styles.loadingText}>Chargement...</Text>
-                </View>
+                <ScrollView style={styles.content} contentContainerStyle={{ padding: 16 }}>
+                    <SkeletonCard count={3} />
+                </ScrollView>
             ) : filteredTickets.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="ticket" size={64} color="#D1D5DB" />

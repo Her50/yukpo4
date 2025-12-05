@@ -49,10 +49,14 @@ pub struct AudioLayer {
 pub async fn has_audio_stream(video_path: &Path) -> AppResult<bool> {
     let output = Command::new("ffprobe")
         .args(&[
-            "-v", "error",
-            "-select_streams", "a:0",
-            "-show_entries", "stream=codec_type",
-            "-of", "csv=p=0",
+            "-v",
+            "error",
+            "-select_streams",
+            "a:0",
+            "-show_entries",
+            "stream=codec_type",
+            "-of",
+            "csv=p=0",
             video_path.to_string_lossy().as_ref(),
         ])
         .output()
@@ -86,7 +90,7 @@ pub async fn mix_media_audio_tracks(
 ) -> AppResult<PathBuf> {
     // ✅ CORRECTION: Vérifier si la vidéo a un stream audio avant de l'utiliser
     let video_has_audio = has_audio_stream(base_video_path).await.unwrap_or(false);
-    
+
     if !video_has_audio {
         warn!(
             "[AudioPipeline] La vidéo {} n'a pas de stream audio, création d'un stream silencieux",
@@ -122,7 +126,7 @@ pub async fn mix_media_audio_tracks(
     let mut filter_parts: Vec<String> = Vec::new();
     let mut inputs_count = 0;
     let mut mix_inputs: Vec<String> = Vec::new();
-    
+
     // ✅ CORRECTION: Ajouter l'audio de la vidéo seulement si elle en a un
     if video_has_audio {
         mix_inputs.push("[0:a]".to_string());
@@ -349,7 +353,28 @@ pub async fn mux_video_with_audio(
     audio_path: &Path,
     output_path: &Path,
 ) -> AppResult<()> {
-    let status = Command::new("ffmpeg")
+    // ✅ VALIDATION CRITIQUE: Vérifier que les fichiers source existent
+    if !base_video_path.exists() {
+        return Err(AppError::Internal(format!(
+            "Fichier vidéo source introuvable pour muxage: {:?}",
+            base_video_path
+        )));
+    }
+
+    if !audio_path.exists() {
+        return Err(AppError::Internal(format!(
+            "Fichier audio source introuvable pour muxage: {:?}",
+            audio_path
+        )));
+    }
+
+    let command_str = format!(
+        "ffmpeg -y -i {:?} -i {:?} -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k {:?}",
+        base_video_path, audio_path, output_path
+    );
+    log::info!("[AudioPipeline] Muxage vidéo+audio: {}", command_str);
+
+    let output = Command::new("ffmpeg")
         .args([
             "-y",
             "-i",
@@ -368,16 +393,44 @@ pub async fn mux_video_with_audio(
             "192k",
             output_path.to_string_lossy().as_ref(),
         ])
-        .status()
+        .output()
         .await
-        .map_err(|err| AppError::Internal(format!("Échec mux video/audio via ffmpeg: {err}")))?;
+        .map_err(|err| {
+            log::error!("[AudioPipeline] ❌ Impossible d'exécuter ffmpeg: {:?}", err);
+            AppError::Internal(format!("Échec mux video/audio via ffmpeg: {err}"))
+        })?;
 
-    if !status.success() {
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let exit_code = output.status.code().unwrap_or(-1);
+
+        log::error!(
+            "[AudioPipeline] ❌ FFmpeg muxage a échoué (code: {})",
+            exit_code
+        );
+        log::error!("[AudioPipeline] Commande: {}", command_str);
+        log::error!("[AudioPipeline] STDERR: {}", stderr);
+        if !stdout.is_empty() {
+            log::error!("[AudioPipeline] STDOUT: {}", stdout);
+        }
+
         return Err(AppError::Internal(format!(
-            "Mux video/audio a échoué (code={:?})",
-            status.code()
+            "Mux video/audio a échoué (code={}). Vérifiez les logs pour plus de détails. Erreur: {}",
+            exit_code,
+            if stderr.len() > 500 { format!("{}...", &stderr[..500]) } else { stderr.to_string() }
         )));
     }
+
+    // ✅ VALIDATION CRITIQUE: Vérifier que le fichier de sortie a été créé
+    if !output_path.exists() {
+        return Err(AppError::Internal(format!(
+            "Le muxage semble avoir réussi mais le fichier de sortie n'existe pas: {:?}",
+            output_path
+        )));
+    }
+
+    log::info!("[AudioPipeline] ✅ Muxage réussi: {:?}", output_path);
 
     Ok(())
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { modernColors } from '../theme/modernTheme';
 import { theme } from '../theme/theme';
 import SafeIcon from './SafeIcon';
 
@@ -23,6 +24,10 @@ interface ServiceCardModernProps {
     onDelete: (service: any) => void;
     onPromotion?: (service: any) => void;
     onViewProducts?: (service: any) => void;
+    // ✅ NOUVEAU: Support sélection multiple (Bulk Actions)
+    bulkMode?: boolean;
+    selected?: boolean;
+    onSelect?: (serviceId: string | number) => void;
 }
 
 const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
@@ -33,7 +38,10 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
     onToggleStatus,
     onDelete,
     onPromotion,
-    onViewProducts
+    onViewProducts,
+    bulkMode = false,
+    selected = false,
+    onSelect,
 }) => {
     const getStatusColor = (status: string | undefined | null) => {
         if (!status || typeof status !== 'string') return '#9E9E9E';
@@ -85,7 +93,24 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
     };
 
     return (
-        <View style={styles.container}>
+        <TouchableOpacity
+            style={[
+                styles.container,
+                bulkMode && styles.containerBulkMode,
+                selected && styles.containerSelected,
+            ]}
+            activeOpacity={bulkMode ? 0.7 : 1}
+            onPress={bulkMode && onSelect ? () => onSelect(service.id) : undefined}
+        >
+            {/* ✅ NOUVEAU: Checkbox de sélection en mode bulk */}
+            {bulkMode && (
+                <View style={styles.checkboxContainer}>
+                    <View style={[styles.checkbox, selected && styles.checkboxChecked]}>
+                        {selected && <SafeIcon name="check" size={16} color="#fff" />}
+                    </View>
+                </View>
+            )}
+
             {/* Header avec titre et statut */}
             <View style={styles.header}>
                 <View style={styles.titleContainer}>
@@ -250,7 +275,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                     </TouchableOpacity>
                 </View>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 };
 
@@ -270,6 +295,35 @@ const styles = StyleSheet.create({
         elevation: 3,
         borderWidth: 1,
         borderColor: '#f0f0f0',
+        position: 'relative',
+    },
+    containerBulkMode: {
+        borderWidth: 2,
+        borderColor: '#e0e0e0',
+    },
+    containerSelected: {
+        borderColor: modernColors.primary,
+        backgroundColor: modernColors.primary + '05',
+    },
+    checkboxContainer: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        zIndex: 10,
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: '#9CA3AF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+    checkboxChecked: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
     },
     header: {
         marginBottom: 12,

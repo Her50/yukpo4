@@ -73,10 +73,26 @@ export async function fetchFlashSales(sessionId: string): Promise<LiveFlashSale[
     return response.data?.data ?? [];
 }
 
-export async function reserveFlashSaleSlot(flashSaleId: string, quantity = 1): Promise<LiveFlashSale> {
+export interface FlashSaleReservationTicket {
+    ticket_id: string;
+    status: 'pending' | 'confirmed' | 'failed' | 'out_of_stock';
+    estimated_wait_time_seconds?: number;
+    message?: string;
+    flash_sale_id?: string;
+    quantity?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export async function reserveFlashSaleSlot(flashSaleId: string, quantity = 1): Promise<FlashSaleReservationTicket> {
     const response = await axios.post(`/api/live/flash-sales/${flashSaleId}/reservations`, {
         quantity,
     });
+    return response.data?.data;
+}
+
+export async function getFlashSaleTicketStatus(ticketId: string): Promise<FlashSaleReservationTicket> {
+    const response = await axios.get(`/api/live/flash-sales/tickets/${ticketId}`);
     return response.data?.data;
 }
 

@@ -243,7 +243,7 @@ pub async fn search_combinations(
     Json(request): Json<SearchCombinationsRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     use crate::utils::log::log_info;
-    
+
     let pool = &state.pg;
     let query = request.query.trim();
     let user_location = request.user_location.as_deref();
@@ -270,7 +270,7 @@ pub async fn search_combinations(
                 "[AutocompleteController] ✅ {} combinaisons trouvées",
                 results.len()
             ));
-            
+
             // ✅ NOUVEAU: Log détaillé des combinaisons retournées pour déboguer sous_caracteristiques
             for (idx, result) in results.iter().take(3).enumerate() {
                 log_info(&format!(
@@ -284,7 +284,7 @@ pub async fn search_combinations(
                     result.final_score
                 ));
             }
-            
+
             info!("✅ {} résultats trouvés", results.len());
             Ok(Json(serde_json::json!({
                 "success": true,

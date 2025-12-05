@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 pub struct ValidateTicketRequest {
-    pub qr_code_data: Value, // JSON décodé du QR code
+    pub qr_code_data: Value,        // JSON décodé du QR code
     pub product_id: Option<String>, // Optionnel, pour vérification
 }
 
@@ -74,7 +74,10 @@ pub struct PassengerInfo {
 /// Valider un ticket bus via QR code
 pub async fn validate_ticket_qr(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: validator_user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: validator_user_id,
+        ..
+    }): Extension<AuthenticatedUser>,
     Json(payload): Json<ValidateTicketRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
@@ -86,18 +89,16 @@ pub async fn validate_ticket_qr(
     // (Cette vérification sera faite dans la fonction SQL si nécessaire)
 
     // Appeler la fonction SQL de validation
-    let result: Value = sqlx::query_scalar(
-        "SELECT validate_bus_ticket($1, $2, $3)"
-    )
-    .bind(&payload.qr_code_data)
-    .bind(validator_user_id)
-    .bind(&payload.product_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[validate_ticket_qr] Erreur validation: {}", e);
-        AppError::Internal(format!("Erreur validation ticket: {}", e))
-    })?;
+    let result: Value = sqlx::query_scalar("SELECT validate_bus_ticket($1, $2, $3)")
+        .bind(&payload.qr_code_data)
+        .bind(validator_user_id)
+        .bind(&payload.product_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[validate_ticket_qr] Erreur validation: {}", e);
+            AppError::Internal(format!("Erreur validation ticket: {}", e))
+        })?;
 
     let success = result
         .get("success")
@@ -109,7 +110,7 @@ pub async fn validate_ticket_qr(
             .get("error")
             .and_then(|v| v.as_str())
             .unwrap_or("Erreur validation ticket");
-        
+
         let already_boarded = result
             .get("already_boarded")
             .and_then(|v| v.as_bool())
@@ -117,7 +118,10 @@ pub async fn validate_ticket_qr(
 
         let response = ValidateTicketResponse {
             success: false,
-            reservation_id: result.get("reservation_id").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            reservation_id: result
+                .get("reservation_id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
             passenger_name: None,
             seat_id: None,
             seat_number: None,
@@ -131,10 +135,22 @@ pub async fn validate_ticket_qr(
 
     let response = ValidateTicketResponse {
         success: true,
-        reservation_id: result.get("reservation_id").and_then(|v| v.as_str()).map(|s| s.to_string()),
-        passenger_name: result.get("passenger_name").and_then(|v| v.as_str()).map(|s| s.to_string()),
-        seat_id: result.get("seat_id").and_then(|v| v.as_str()).map(|s| s.to_string()),
-        seat_number: result.get("seat_number").and_then(|v| v.as_i64()).map(|v| v as i32),
+        reservation_id: result
+            .get("reservation_id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        passenger_name: result
+            .get("passenger_name")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        seat_id: result
+            .get("seat_id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        seat_number: result
+            .get("seat_number")
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32),
         validated_at: result
             .get("validated_at")
             .and_then(|v| v.as_str())
@@ -156,7 +172,10 @@ pub async fn get_boarding_summary(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(product_id): Path<String>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_boarding_summary] User ID: {}, Product ID: {}", user_id, product_id);
+    info!(
+        "[get_boarding_summary] User ID: {}, Product ID: {}",
+        user_id, product_id
+    );
 
     // Vérifier que l'utilisateur est propriétaire de l'agence
     let is_owner: bool = sqlx::query_scalar(
@@ -167,32 +186,35 @@ pub async fn get_boarding_summary(
             WHERE p.id::text = $1
                 AND s.user_id = $2
         )
-        "#
+        "#,
     )
     .bind(&product_id)
     .bind(user_id)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
-        error!("[get_boarding_summary] Erreur vérification propriété: {}", e);
+        error!(
+            "[get_boarding_summary] Erreur vérification propriété: {}",
+            e
+        );
         AppError::Internal(format!("Erreur vérification: {}", e))
     })?;
 
     if !is_owner {
-        return Err(AppError::Forbidden("Vous n'êtes pas propriétaire de cette agence".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de cette agence".to_string(),
+        ));
     }
 
     // Appeler la fonction SQL
-    let summary: Value = sqlx::query_scalar(
-        "SELECT get_bus_boarding_summary($1)"
-    )
-    .bind(&product_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[get_boarding_summary] Erreur: {}", e);
-        AppError::Internal(format!("Erreur récupération résumé: {}", e))
-    })?;
+    let summary: Value = sqlx::query_scalar("SELECT get_bus_boarding_summary($1)")
+        .bind(&product_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[get_boarding_summary] Erreur: {}", e);
+            AppError::Internal(format!("Erreur récupération résumé: {}", e))
+        })?;
 
     let boarding_summary = BoardingSummary {
         total_reservations: summary
@@ -221,7 +243,10 @@ pub async fn get_boarding_summary(
             .unwrap_or(false),
     };
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "summary": boarding_summary }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "summary": boarding_summary })),
+    ))
 }
 
 // ============================================================================
@@ -234,7 +259,10 @@ pub async fn get_bus_passengers_list(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(product_id): Path<String>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_bus_passengers_list] User ID: {}, Product ID: {}", user_id, product_id);
+    info!(
+        "[get_bus_passengers_list] User ID: {}, Product ID: {}",
+        user_id, product_id
+    );
 
     // Vérifier que l'utilisateur est propriétaire de l'agence
     let is_owner: bool = sqlx::query_scalar(
@@ -245,19 +273,24 @@ pub async fn get_bus_passengers_list(
             WHERE p.id::text = $1
                 AND s.user_id = $2
         )
-        "#
+        "#,
     )
     .bind(&product_id)
     .bind(user_id)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
-        error!("[get_bus_passengers_list] Erreur vérification propriété: {}", e);
+        error!(
+            "[get_bus_passengers_list] Erreur vérification propriété: {}",
+            e
+        );
         AppError::Internal(format!("Erreur vérification: {}", e))
     })?;
 
     if !is_owner {
-        return Err(AppError::Forbidden("Vous n'êtes pas propriétaire de cette agence".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de cette agence".to_string(),
+        ));
     }
 
     // Récupérer la liste depuis la vue
@@ -282,7 +315,7 @@ pub async fn get_bus_passengers_list(
         FROM bus_passengers_with_boarding
         WHERE product_id = $1
         ORDER BY seat_number ASC
-        "#
+        "#,
     )
     .bind(&product_id)
     .fetch_all(&state.pg)
@@ -303,7 +336,9 @@ pub async fn get_bus_passengers_list(
             passenger_name: row.get::<Option<String>, _>("passenger_name"),
             payment_id: row.get::<Option<String>, _>("payment_id"),
             total_amount: row.get::<Option<i32>, _>("total_amount"),
-            boarding_status: row.get::<Option<String>, _>("boarding_status").unwrap_or_else(|| "pending".to_string()),
+            boarding_status: row
+                .get::<Option<String>, _>("boarding_status")
+                .unwrap_or_else(|| "pending".to_string()),
             is_validated: row.get::<bool, _>("is_validated"),
             validated_at: row
                 .get::<Option<chrono::DateTime<chrono::Utc>>, _>("validated_at")
@@ -311,12 +346,17 @@ pub async fn get_bus_passengers_list(
             validated_by: row.get::<Option<i32>, _>("validated_by"),
             validation_method: row.get::<Option<String>, _>("validation_method"),
             validator_name: row.get::<Option<String>, _>("validator_name"),
-            display_status: row.get::<Option<String>, _>("display_status").unwrap_or_else(|| "pending".to_string()),
+            display_status: row
+                .get::<Option<String>, _>("display_status")
+                .unwrap_or_else(|| "pending".to_string()),
         };
         passengers.push(passenger);
     }
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "passengers": passengers }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "passengers": passengers })),
+    ))
 }
 
 // ============================================================================
@@ -332,7 +372,10 @@ pub struct ManualValidationRequest {
 /// Valider manuellement un passager (si QR code ne fonctionne pas)
 pub async fn validate_passenger_manual(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: validator_user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: validator_user_id,
+        ..
+    }): Extension<AuthenticatedUser>,
     Json(payload): Json<ManualValidationRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
@@ -346,7 +389,7 @@ pub async fn validate_passenger_manual(
         SELECT product_id, status
         FROM bus_reservations
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(&payload.reservation_id)
     .fetch_optional(&state.pg)
@@ -364,7 +407,9 @@ pub async fn validate_passenger_manual(
     };
 
     if status != "confirmed" {
-        return Err(AppError::BadRequest("Réservation non confirmée".to_string()));
+        return Err(AppError::BadRequest(
+            "Réservation non confirmée".to_string(),
+        ));
     }
 
     // Vérifier si le ticket est déjà validé
@@ -374,19 +419,22 @@ pub async fn validate_passenger_manual(
             SELECT 1 FROM bus_boarding_status
             WHERE reservation_id = $1 AND is_validated = TRUE
         )
-        "#
+        "#,
     )
     .bind(&payload.reservation_id)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
-        error!("[validate_passenger_manual] Erreur vérification validation: {}", e);
+        error!(
+            "[validate_passenger_manual] Erreur vérification validation: {}",
+            e
+        );
         AppError::Internal(format!("Erreur vérification: {}", e))
     })?;
 
     if already_validated {
         return Err(AppError::BadRequest(
-            "Ce ticket a déjà été validé et ne peut plus être utilisé".to_string()
+            "Ce ticket a déjà été validé et ne peut plus être utilisé".to_string(),
         ));
     }
 
@@ -399,19 +447,24 @@ pub async fn validate_passenger_manual(
             WHERE p.id::text = $1
                 AND s.user_id = $2
         )
-        "#
+        "#,
     )
     .bind(&product_id)
     .bind(validator_user_id)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
-        error!("[validate_passenger_manual] Erreur vérification propriété: {}", e);
+        error!(
+            "[validate_passenger_manual] Erreur vérification propriété: {}",
+            e
+        );
         AppError::Internal(format!("Erreur vérification: {}", e))
     })?;
 
     if !is_owner {
-        return Err(AppError::Forbidden("Vous n'êtes pas propriétaire de cette agence".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de cette agence".to_string(),
+        ));
     }
 
     // Créer ou mettre à jour le statut d'embarquement
@@ -437,7 +490,7 @@ pub async fn validate_passenger_manual(
             validation_method = 'manual',
             notes = $4,
             updated_at = NOW()
-        "#
+        "#,
     )
     .bind(&payload.reservation_id)
     .bind(&product_id)
@@ -450,6 +503,8 @@ pub async fn validate_passenger_manual(
         AppError::Internal(format!("Erreur validation manuelle: {}", e))
     })?;
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "message": "Passager validé avec succès" }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "message": "Passager validé avec succès" })),
+    ))
 }
-

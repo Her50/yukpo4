@@ -1,0 +1,30 @@
+# ✅ Phase 2: ConfigMap pour variables d'environnement Kubernetes
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yukpomnang-config
+  namespace: yukpomnang
+data:
+  # ✅ Application
+  RUST_LOG: "info"
+  PORT: "3000"
+  MAX_CONCURRENT_JOBS: "10000"
+  
+  # ✅ Database (à remplacer par Secret en production)
+  DB_MAX_CONNECTIONS: "100"
+  DB_MIN_CONNECTIONS: "10"
+  DB_ACQUIRE_TIMEOUT: "30"
+  DB_IDLE_TIMEOUT: "600"
+  DB_MAX_LIFETIME: "1800"
+  
+  # ✅ Redis (à remplacer par Secret en production)
+  REDIS_MAX_CONNECTIONS: "100"
+  REDIS_POOL_SIZE: "50"
+  REDIS_CONNECTION_TIMEOUT: "10"
+  REDIS_CLUSTER_MODE: "false"
+  
+  # ✅ Scalability
+  ENABLE_REDIS: "true"
+  ENABLE_DISTRIBUTED_PROCESSING: "true"
+

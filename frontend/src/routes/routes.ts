@@ -70,6 +70,7 @@ export enum ROUTES {
   TRANSLATE_TEST_ADMIN = "/admin/translate/test",
   ADMIN_MODERATION = "/admin/moderation",
   ADMIN_LOAD_TEST = "/admin/load-test",
+  ADMIN_KYC_VERIFICATION = "/admin/kyc-verification", // ✅ NOUVEAU 2025-01-29: Vérification KYC
 }
 
 export type Role = "public" | "user" | "admin" | "client";

@@ -454,7 +454,7 @@ impl LiveStreamingService {
             JOIN live_session_analytics lsa ON lsa.live_session_id = ls.id
             ORDER BY lsa.last_synced_at DESC
             LIMIT $1
-            "#
+            "#,
         )
         .bind(limit.max(1))
         .fetch_all(pool)

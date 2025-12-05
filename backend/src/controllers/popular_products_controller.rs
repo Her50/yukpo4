@@ -24,12 +24,12 @@ pub async fn get_popular_products(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     use crate::utils::log::log_info;
-    
+
     log_info(&format!(
         "[PopularProductsController] 🔍 GET /api/products/popular - search: {:?}, category: {:?}, limit: {:?}",
         query.search, query.category, query.limit
     ));
-    
+
     let pool = &state.pg;
     let limit = query.limit.unwrap_or(20);
 
@@ -56,7 +56,7 @@ pub async fn get_popular_products(
                 "[PopularProductsController] ✅ {} produits populaires récupérés",
                 products.len()
             ));
-            
+
             // ✅ NOUVEAU: Log détaillé des produits retournés pour déboguer sous_caracteristiques
             for (idx, product) in products.iter().take(3).enumerate() {
                 log_info(&format!(
@@ -68,7 +68,7 @@ pub async fn get_popular_products(
                     product.prix_moyen
                 ));
             }
-            
+
             Ok(Json(serde_json::json!({
                 "success": true,
                 "data": products,

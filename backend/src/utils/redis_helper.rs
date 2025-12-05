@@ -24,7 +24,7 @@ impl RedisHealthCache {
         let now = Instant::now();
         let state_changed = self.last_status != current_status;
         let time_elapsed = now.duration_since(self.last_check).as_secs() > 300; // 5 minutes
-        
+
         if state_changed || time_elapsed {
             self.last_status = current_status;
             self.last_check = now;
@@ -71,14 +71,17 @@ pub async fn get_redis_connection(
         match client.get_multiplexed_async_connection().await {
             Ok(conn) => {
                 if attempt > 1 {
-                    log::info!("✅ [Redis] Connexion réussie après {} tentative(s)", attempt);
+                    log::info!(
+                        "✅ [Redis] Connexion réussie après {} tentative(s)",
+                        attempt
+                    );
                 }
                 return Ok(conn);
             }
             Err(e) => {
                 let err_msg = format!("{}", e);
                 last_error = Some(err_msg.clone());
-                
+
                 if attempt < max_retries {
                     // ✅ CORRECTION 2025-11-28: Réduire les logs Redis (seulement en debug ou toutes les 10 tentatives)
                     if attempt % 10 == 0 || log::log_enabled!(log::Level::Debug) {
@@ -134,20 +137,27 @@ where
                 match operation(conn).await {
                     Ok(result) => {
                         if attempt > 1 {
-                            log::info!("✅ [Redis] Opération réussie après {} tentative(s)", attempt);
+                            log::info!(
+                                "✅ [Redis] Opération réussie après {} tentative(s)",
+                                attempt
+                            );
                         }
                         return Ok(result);
                     }
                     Err(e) => {
                         let err_msg = format!("{}", e);
                         last_error = Some(err_msg.clone());
-                        
+
                         // Si c'est une erreur de connexion, réessayer
                         if err_msg.contains("connection") || err_msg.contains("Connection") {
                             if attempt < max_retries {
                                 // ✅ CORRECTION 2025-11-28: Timeout réduit à 100ms pour éviter les lenteurs
-                                let fast_retry_delay = if retry_delay_ms > 100 { 100 } else { retry_delay_ms };
-                                
+                                let fast_retry_delay = if retry_delay_ms > 100 {
+                                    100
+                                } else {
+                                    retry_delay_ms
+                                };
+
                                 // ✅ CORRECTION 2025-11-28: Réduire les logs Redis (seulement toutes les 5 tentatives)
                                 if attempt % 5 == 0 || log::log_enabled!(log::Level::Debug) {
                                     log::debug!(
@@ -170,24 +180,28 @@ where
             Err(e) => {
                 let err_msg = format!("{}", e);
                 last_error = Some(err_msg.clone());
-                
-                    if attempt < max_retries {
-                        // ✅ CORRECTION 2025-11-28: Timeout réduit à 100ms pour éviter les lenteurs
-                        // Si Redis n'est pas disponible, ne pas bloquer les requêtes
-                        let fast_retry_delay = if retry_delay_ms > 100 { 100 } else { retry_delay_ms };
-                        
-                        // ✅ CORRECTION 2025-11-28: Réduire les logs Redis (seulement toutes les 5 tentatives)
-                        if attempt % 5 == 0 || log::log_enabled!(log::Level::Debug) {
-                            log::debug!(
+
+                if attempt < max_retries {
+                    // ✅ CORRECTION 2025-11-28: Timeout réduit à 100ms pour éviter les lenteurs
+                    // Si Redis n'est pas disponible, ne pas bloquer les requêtes
+                    let fast_retry_delay = if retry_delay_ms > 100 {
+                        100
+                    } else {
+                        retry_delay_ms
+                    };
+
+                    // ✅ CORRECTION 2025-11-28: Réduire les logs Redis (seulement toutes les 5 tentatives)
+                    if attempt % 5 == 0 || log::log_enabled!(log::Level::Debug) {
+                        log::debug!(
                                 "⚠️ [Redis] Impossible d'obtenir une connexion (tentative {}/{}): {}. Nouvelle tentative dans {}ms...",
                                 attempt,
                                 max_retries,
                                 err_msg,
                                 fast_retry_delay
                             );
-                        }
-                        sleep(Duration::from_millis(fast_retry_delay)).await;
                     }
+                    sleep(Duration::from_millis(fast_retry_delay)).await;
+                }
             }
         }
     }
@@ -199,16 +213,28 @@ where
 
 /// Vérifie si Redis est disponible avec cache pour réduire les logs
 /// Ne log que les changements d'état (UP → DOWN, DOWN → UP) ou toutes les 5 minutes
+/// Retourne un tuple (disponible, erreur_option) pour permettre un diagnostic détaillé
 pub async fn check_redis_health(client: &RedisClient) -> bool {
-    let is_available = match get_redis_connection(client, 1, 0).await {
+    check_redis_health_with_error(client).await.0
+}
+
+/// Version améliorée qui retourne aussi l'erreur pour diagnostic
+pub async fn check_redis_health_with_error(client: &RedisClient) -> (bool, Option<String>) {
+    let (is_available, error_msg) = match get_redis_connection(client, 3, 1000).await {
         Ok(mut conn) => {
-            // Tester avec une opération simple (GET sur une clé inexistante)
-            match conn.get::<&str, Option<String>>("__health_check__").await {
-                Ok(_) => true,
-                Err(_) => false,
+            // Tester avec une opération PING (plus fiable que GET)
+            match conn.ping::<String>().await {
+                Ok(_) => (true, None),
+                Err(e) => {
+                    let err_msg = format!("PING failed: {}", e);
+                    (false, Some(err_msg))
+                }
             }
         }
-        Err(_) => false,
+        Err(e) => {
+            let err_msg = format!("Connection failed: {}", e);
+            (false, Some(err_msg))
+        }
     };
 
     // Logger seulement les changements d'état ou toutes les 5 minutes
@@ -222,22 +248,23 @@ pub async fn check_redis_health(client: &RedisClient) -> bool {
         if is_available {
             log::info!("✅ [Redis] Health check réussi - Redis disponible");
         } else {
-            log::warn!("⚠️ [Redis] Health check échoué - Redis non disponible (fallback gracieux activé)");
+            let error_detail = error_msg.as_ref().map(|e| format!(" - {}", e)).unwrap_or_default();
+            log::warn!(
+                "⚠️ [Redis] Health check échoué - Redis non disponible{} (fallback gracieux activé)",
+                error_detail
+            );
         }
     }
 
-    is_available
+    (is_available, error_msg)
 }
 
 /// Obtient une valeur depuis Redis avec retry
-pub async fn get_with_retry(
-    client: &RedisClient,
-    key: &str,
-) -> RedisResult<Option<String>> {
+pub async fn get_with_retry(client: &RedisClient, key: &str) -> RedisResult<Option<String>> {
     execute_with_retry(
         client,
         |mut conn| async move { conn.get::<_, Option<String>>(key).await },
-        3, // 3 tentatives
+        3,   // 3 tentatives
         500, // 500ms entre les tentatives
     )
     .await
@@ -260,7 +287,7 @@ pub async fn set_with_retry(
             }
             Ok(())
         },
-        3, // 3 tentatives
+        3,   // 3 tentatives
         500, // 500ms entre les tentatives
     )
     .await
@@ -271,9 +298,35 @@ pub async fn del_with_retry(client: &RedisClient, key: &str) -> RedisResult<u64>
     execute_with_retry(
         client,
         |mut conn| async move { conn.del::<_, u64>(key).await },
-        3, // 3 tentatives
+        3,   // 3 tentatives
         500, // 500ms entre les tentatives
     )
     .await
 }
 
+/// Alias pour del_with_retry (compatibilité)
+pub async fn delete_with_retry(client: &RedisClient, key: &str) -> RedisResult<u64> {
+    del_with_retry(client, key).await
+}
+
+/// Supprime plusieurs clés Redis correspondant à un pattern
+pub async fn delete_pattern(client: &RedisClient, pattern: &str) -> RedisResult<usize> {
+    execute_with_retry(
+        client,
+        |mut conn| async move {
+            let keys: Vec<String> = redis::cmd("KEYS")
+                .arg(pattern)
+                .query_async(&mut conn)
+                .await?;
+            if keys.is_empty() {
+                Ok(0)
+            } else {
+                conn.del::<_, ()>(keys.clone()).await?;
+                Ok(keys.len())
+            }
+        },
+        3,
+        500,
+    )
+    .await
+}

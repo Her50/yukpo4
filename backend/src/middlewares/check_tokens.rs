@@ -47,14 +47,13 @@ pub async fn update_jwt_with_new_balance(
         role: String,
         nom_complet: Option<String>,
     }
-    
+
     // R?cup?rer les informations utilisateur
-    let user_data: UserDataRow = sqlx::query_as(
-        "SELECT email, role, nom_complet FROM users WHERE id = $1"
-    )
-    .bind(user_id)
-    .fetch_one(&state.pg)
-    .await?;
+    let user_data: UserDataRow =
+        sqlx::query_as("SELECT email, role, nom_complet FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(&state.pg)
+            .await?;
 
     // G?n?rer un nouveau JWT avec le solde mis ? jour
     let secret = std::env::var("JWT_SECRET").map_err(|_| "JWT_SECRET manquant")?;
@@ -257,12 +256,13 @@ pub async fn check_tokens(
     struct UserBalanceRow {
         tokens_balance: i64,
     }
-    
+
     // V?rifier le solde avant traitement
-    let solde_result: Result<UserBalanceRow, _> = sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
-        .bind(user_id)
-        .fetch_one(&state.pg)
-        .await;
+    let solde_result: Result<UserBalanceRow, _> =
+        sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(&state.pg)
+            .await;
 
     match solde_result {
         Ok(user_data) => {
@@ -342,24 +342,22 @@ pub async fn check_tokens(
             struct UserBalanceFinalRow {
                 tokens_balance: i64,
             }
-            let solde_final_result: Result<UserBalanceFinalRow, _> = sqlx::query_as(
-                "SELECT tokens_balance FROM users WHERE id = $1"
-            )
-            .bind(user_id)
-            .fetch_one(&state.pg)
-            .await;
+            let solde_final_result: Result<UserBalanceFinalRow, _> =
+                sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
+                    .bind(user_id)
+                    .fetch_one(&state.pg)
+                    .await;
 
             if let Ok(user_final) = solde_final_result {
                 if user_final.tokens_balance >= cout_en_tokens {
                     // D?duire le co?t en tokens (pas en XAF)
                     let nouveau_solde = user_final.tokens_balance - cout_en_tokens;
-                    let update_result = sqlx::query(
-                        "UPDATE users SET tokens_balance = $1 WHERE id = $2"
-                    )
-                    .bind(nouveau_solde)
-                    .bind(user_id)
-                    .execute(&state.pg)
-                    .await;
+                    let update_result =
+                        sqlx::query("UPDATE users SET tokens_balance = $1 WHERE id = $2")
+                            .bind(nouveau_solde)
+                            .bind(user_id)
+                            .execute(&state.pg)
+                            .await;
 
                     match update_result {
                         Ok(_) => {

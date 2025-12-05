@@ -11,8 +11,8 @@ use crate::state::AppState;
 use crate::{
     core::types::AppResult, middlewares::jwt::AuthenticatedUser, models::user_model::User,
 };
-use sqlx::FromRow;
 use chrono::{DateTime, Utc};
+use sqlx::FromRow;
 
 #[derive(FromRow)]
 struct UserTokensBalanceRow {
@@ -230,7 +230,7 @@ pub async fn deduct_balance(
 
     // Mettre à jour le solde
     let update_result: Result<UserBalanceUpdateRow, _> = sqlx::query_as(
-        "UPDATE users SET tokens_balance = $1 WHERE id = $2 RETURNING tokens_balance"
+        "UPDATE users SET tokens_balance = $1 WHERE id = $2 RETURNING tokens_balance",
     )
     .bind(new_balance)
     .bind(user.id)
@@ -417,23 +417,106 @@ pub async fn update_gps_location(
 }
 
 /// RGPD : Export des données utilisateur
+/// ✅ RGPD : Export des données utilisateur avec URL pré-signée
+/// Génère un fichier JSON avec toutes les données utilisateur, l'uploade vers Wasabi,
+/// et retourne une URL pré-signée valide 7 jours
 pub async fn export_user_data(
     Extension(user): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<serde_json::Value>> {
-    let row: UserProfileRow = sqlx::query_as(
-        "SELECT id, email, created_at, gps_consent FROM users WHERE id = $1"
+    use chrono::Utc;
+    use uuid::Uuid;
+
+    log::info!(
+        "[UserController] 📤 Export données utilisateur pour user_id={}",
+        user.id
+    );
+
+    // 1. Récupérer toutes les données utilisateur
+    let row: UserProfileRow =
+        sqlx::query_as("SELECT id, email, created_at, gps_consent FROM users WHERE id = $1")
+            .bind(user.id)
+            .fetch_one(&state.pg)
+            .await?;
+
+    // 2. Collecter les données supplémentaires (services, commandes, etc.)
+    let services: Vec<serde_json::Value> = sqlx::query(
+        "SELECT id, data, created_at FROM services WHERE creator_id = $1 ORDER BY created_at DESC LIMIT 100"
     )
     .bind(user.id)
-    .fetch_one(&state.pg)
-    .await?;
-    let user_json = serde_json::json!({
-        "id": row.id,
-        "email": row.email,
-        "created_at": row.created_at,
-        "gps_consent": row.gps_consent
+    .fetch_all(&state.pg)
+    .await
+    .map(|rows| {
+        rows.into_iter().map(|row| {
+            serde_json::json!({
+                "id": row.get::<i32, _>(0),
+                "data": row.get::<serde_json::Value, _>(1),
+                "created_at": row.get::<chrono::DateTime<Utc>, _>(2),
+            })
+        }).collect()
+    })
+    .unwrap_or_default();
+
+    // 3. Construire le JSON complet
+    let export_data = serde_json::json!({
+        "user": {
+            "id": row.id,
+            "email": row.email,
+            "created_at": row.created_at,
+            "gps_consent": row.gps_consent
+        },
+        "services": services,
+        "export_date": Utc::now(),
+        "export_version": "1.0"
     });
-    Ok(Json(user_json))
+
+    // 4. Convertir en JSON string
+    let json_string = serde_json::to_string_pretty(&export_data).map_err(|e| {
+        crate::core::types::AppError::Internal(format!("Erreur sérialisation JSON: {}", e))
+    })?;
+
+    // 5. Générer un nom de fichier unique
+    let file_id = Uuid::new_v4();
+    let filename = format!("user_exports/{}/export_{}.json", user.id, file_id);
+
+    // 6. Uploader vers Wasabi via MediaStorageService
+    let stored_location = state
+        .media_storage
+        .store_bytes(json_string.as_bytes(), &filename, Some("application/json"))
+        .await
+        .map_err(|e| {
+            log::error!("[UserController] Erreur upload export vers Wasabi: {}", e);
+            crate::core::types::AppError::Internal(format!("Erreur upload export: {}", e))
+        })?;
+
+    // 7. Générer URL pré-signée (7 jours de validité)
+    let presigned_url = state
+        .media_storage
+        .generate_presigned_url(
+            &stored_location.storage_path,
+            7 * 24 * 3600, // 7 jours
+        )
+        .await
+        .map_err(|e| {
+            log::error!("[UserController] Erreur génération URL pré-signée: {}", e);
+            crate::core::types::AppError::Internal(format!(
+                "Erreur génération URL pré-signée: {}",
+                e
+            ))
+        })?;
+
+    log::info!(
+        "[UserController] ✅ Export généré pour user_id={}, URL pré-signée valide 7 jours",
+        user.id
+    );
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "export_url": presigned_url,
+        "expires_in_days": 7,
+        "export_date": Utc::now(),
+        "file_size_bytes": json_string.len()
+    })))
 }
 
 /// RGPD : Suppression des données utilisateur
@@ -465,7 +548,7 @@ pub async fn get_user_by_id(
         SELECT id, email, role, is_provider, gps, gps_consent,
                nom, prenom, nom_complet, photo_profil, avatar_url, created_at
         FROM users WHERE id = $1
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_optional(&state.pg)
@@ -556,14 +639,16 @@ pub async fn get_consumption_history(
     match rows {
         Ok(rows) => {
             for row in rows {
-                let id: String = row.try_get("id").unwrap_or_else(|_| "unknown".to_string());
+                let id: String = row
+                    .get::<Option<String>, _>("id")
+                    .unwrap_or_else(|| "unknown".to_string());
                 let created_at: chrono::DateTime<chrono::Utc> = row
                     .try_get("created_at")
                     .unwrap_or_else(|_| chrono::Utc::now());
                 let service_name: String = row
                     .try_get("service_name")
                     .unwrap_or_else(|_| "Service inconnu".to_string());
-                let amount_consumed: i64 = row.try_get("amount_consumed").unwrap_or(0);
+                let amount_consumed: i64 = row.get::<Option<_>, _>("amount_consumed").unwrap_or(0);
                 let description: String = row
                     .try_get("description")
                     .unwrap_or_else(|_| "Consommation de tokens".to_string());
@@ -609,14 +694,16 @@ pub async fn get_consumption_history(
     match recharge_rows {
         Ok(rows) => {
             for row in rows {
-                let id: String = row.try_get("id").unwrap_or_else(|_| "unknown".to_string());
+                let id: String = row
+                    .get::<Option<String>, _>("id")
+                    .unwrap_or_else(|| "unknown".to_string());
                 let created_at: chrono::DateTime<chrono::Utc> = row
                     .try_get("created_at")
                     .unwrap_or_else(|_| chrono::Utc::now());
                 let service_name: String = row
                     .try_get("service_name")
                     .unwrap_or_else(|_| "Recharge".to_string());
-                let amount_paid: i64 = row.try_get("amount_paid").unwrap_or(0);
+                let amount_paid: i64 = row.get::<Option<_>, _>("amount_paid").unwrap_or(0);
                 let description: String = row
                     .try_get("description")
                     .unwrap_or_else(|_| "Recharge de tokens".to_string());
@@ -705,18 +792,20 @@ pub async fn get_payment_history(
     match rows {
         Ok(rows) => {
             for row in rows {
-                let id: String = row.try_get("id").unwrap_or_else(|_| "unknown".to_string());
+                let id: String = row
+                    .get::<Option<String>, _>("id")
+                    .unwrap_or_else(|| "unknown".to_string());
                 let created_at: chrono::DateTime<chrono::Utc> = row
                     .try_get("created_at")
                     .unwrap_or_else(|_| chrono::Utc::now());
-                let amount_paid: i64 = row.try_get("amount_paid").unwrap_or(0);
+                let amount_paid: i64 = row.get::<Option<_>, _>("amount_paid").unwrap_or(0);
                 let payment_method: String = row
                     .try_get("payment_method")
                     .unwrap_or_else(|_| "Inconnu".to_string());
                 let status: String = row
                     .try_get("status")
                     .unwrap_or_else(|_| "completed".to_string());
-                let transaction_id: Option<String> = row.try_get("transaction_id").ok();
+                let transaction_id: Option<String> = row.get::<Option<_>, _>("transaction_id");
                 let description: String = row
                     .try_get("description")
                     .unwrap_or_else(|_| "Paiement".to_string());
@@ -873,7 +962,7 @@ pub async fn get_user_profile(
             tokens_balance, created_at
         FROM users 
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(user.id)
     .fetch_one(&state.pg)

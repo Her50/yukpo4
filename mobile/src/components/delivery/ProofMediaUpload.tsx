@@ -7,16 +7,20 @@ import {
     Alert,
     FlatList,
     Image,
+    Modal,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { ENVIRONMENT } from '../../config/environment';
 import { deliveryApi } from '../../services/api';
+import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliveryProofMedia } from '../../types/delivery';
 import { NativeCard } from '../NativeDesign';
 import SafeIcon from '../SafeIcon';
+import DeliveryProofVideoRecorder from './DeliveryProofVideoRecorder';
 
 interface ProofMediaUploadProps {
     deliveryId: string;
@@ -34,6 +38,14 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
     const [media, setMedia] = useState<DeliveryProofMedia[]>([]);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [showVideoRecorder, setShowVideoRecorder] = useState(false);
+
+    // ✅ NOUVEAU 2025-12-03: Initialiser mediaService pour CDN avec fallback
+    useEffect(() => {
+        mediaService.initialize(ENVIRONMENT.API_URL).catch(() => {
+            // Ignorer erreurs d'initialisation
+        });
+    }, []);
 
     useEffect(() => {
         loadMedia();
@@ -102,22 +114,19 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                 },
                 {
                     text: 'Vidéo',
-                    onPress: async () => {
-                        // ✅ CORRIGÉ: Utiliser 'videos' as any pour compatibilité avec toutes les versions d'expo-image-picker
-                        const result = await ImagePicker.launchCameraAsync({
-                            mediaTypes: 'videos' as any,
-                            allowsEditing: true,
-                            quality: 0.8,
-                            videoMaxDuration: 60, // Max 60 secondes
-                        });
-                        if (!result.canceled && result.assets[0]) {
-                            await uploadMedia(result.assets[0].uri, result.assets[0].type || 'video');
-                        }
+                    onPress: () => {
+                        // ✅ NOUVEAU: Utiliser le système évolué DeliveryProofVideoRecorder
+                        setShowVideoRecorder(true);
                     },
                 },
                 { text: 'Annuler', style: 'cancel' },
             ]
         );
+    };
+
+    const handleVideoRecorded = async (videoUri: string) => {
+        setShowVideoRecorder(false);
+        await uploadMedia(videoUri, 'video');
     };
 
     const uploadMedia = async (uri: string, type: string) => {
@@ -255,7 +264,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                                     source={{
                                         uri: item.media_url.startsWith('http')
                                             ? item.media_url
-                                            : `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}${item.media_url.startsWith('/') ? '' : '/'}${item.media_url}`
+                                            : mediaService.getImageUrl(item.media_url)
                                     }}
                                     style={styles.mediaImage}
                                 />
@@ -264,7 +273,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                                     source={{
                                         uri: item.media_url.startsWith('http')
                                             ? item.media_url
-                                            : `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}${item.media_url.startsWith('/') ? '' : '/'}${item.media_url}`
+                                            : mediaService.getVideoUrl(item.media_url)
                                     }}
                                     style={styles.mediaVideo}
                                     useNativeControls
@@ -301,7 +310,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                                     source={{
                                         uri: pickupMedia[0].media_url.startsWith('http')
                                             ? pickupMedia[0].media_url
-                                            : `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}${pickupMedia[0].media_url.startsWith('/') ? '' : '/'}${pickupMedia[0].media_url}`
+                                            : mediaService.getImageUrl(pickupMedia[0].media_url)
                                     }}
                                     style={styles.comparisonImage}
                                 />
@@ -310,7 +319,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                                     source={{
                                         uri: pickupMedia[0].media_url.startsWith('http')
                                             ? pickupMedia[0].media_url
-                                            : `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}${pickupMedia[0].media_url.startsWith('/') ? '' : '/'}${pickupMedia[0].media_url}`
+                                            : mediaService.getVideoUrl(pickupMedia[0].media_url)
                                     }}
                                     style={styles.comparisonVideo}
                                     useNativeControls
@@ -325,7 +334,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                                     source={{
                                         uri: deliveryMedia[0].media_url.startsWith('http')
                                             ? deliveryMedia[0].media_url
-                                            : `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}${deliveryMedia[0].media_url.startsWith('/') ? '' : '/'}${deliveryMedia[0].media_url}`
+                                            : mediaService.getImageUrl(deliveryMedia[0].media_url)
                                     }}
                                     style={styles.comparisonImage}
                                 />
@@ -334,7 +343,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                                     source={{
                                         uri: deliveryMedia[0].media_url.startsWith('http')
                                             ? deliveryMedia[0].media_url
-                                            : `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}${deliveryMedia[0].media_url.startsWith('/') ? '' : '/'}${deliveryMedia[0].media_url}`
+                                            : mediaService.getVideoUrl(deliveryMedia[0].media_url)
                                     }}
                                     style={styles.comparisonVideo}
                                     useNativeControls
@@ -345,6 +354,21 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                     </View>
                 </View>
             )}
+
+            {/* ✅ NOUVEAU: Modal pour enregistrement vidéo avec système évolué */}
+            <Modal
+                visible={showVideoRecorder}
+                animationType="slide"
+                presentationStyle="fullScreen"
+                onRequestClose={() => setShowVideoRecorder(false)}
+            >
+                <DeliveryProofVideoRecorder
+                    proofType={proofType}
+                    onRecordingComplete={handleVideoRecorded}
+                    onCancel={() => setShowVideoRecorder(false)}
+                    maxDuration={30}
+                />
+            </Modal>
         </NativeCard>
     );
 };

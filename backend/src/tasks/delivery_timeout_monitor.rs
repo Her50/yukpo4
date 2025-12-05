@@ -39,14 +39,17 @@ pub async fn start_delivery_timeout_monitor(state: Arc<AppState>) {
         .unwrap_or_else(|_| "60".to_string())
         .parse()
         .unwrap_or(60);
-    
+
     let mut interval_timer = interval(TokioDuration::from_secs(interval_secs));
 
     loop {
         interval_timer.tick().await;
 
         if let Err(e) = check_delivery_timeouts(state.clone()).await {
-            error!("❌ Erreur lors de la vérification des timeouts de livraison: {}", e);
+            error!(
+                "❌ Erreur lors de la vérification des timeouts de livraison: {}",
+                e
+            );
         }
     }
 }
@@ -123,37 +126,34 @@ async fn check_expired_proximity_suggestions(
             )
             .await
         {
-                error!(
-                    "❌ Erreur auto-confirmation pour livraison {}: {:?}",
-                    suggestion.delivery_id, e
-                );
-            } else {
-                // Marquer la suggestion comme confirmée
-                sqlx::query(
+            error!(
+                "❌ Erreur auto-confirmation pour livraison {}: {:?}",
+                suggestion.delivery_id, e
+            );
+        } else {
+            // Marquer la suggestion comme confirmée
+            sqlx::query(
                     "UPDATE delivery_proximity_suggestions SET status = 'auto_confirmed', confirmed_at = NOW() WHERE delivery_id = $1"
                 )
                 .bind(suggestion.delivery_id)
                 .execute(pool)
                 .await?;
 
-                info!("✅ Auto-confirmation réussie pour livraison {}", suggestion.delivery_id);
-            }
+            info!(
+                "✅ Auto-confirmation réussie pour livraison {}",
+                suggestion.delivery_id
+            );
+        }
     }
 
     Ok(())
 }
 
 /// Vérifie les livraisons en attente de confirmation depuis trop longtemps
-async fn check_pending_confirmations(
-    pool: &PgPool,
-    _service: &DeliveryService,
-) -> AppResult<()> {
+async fn check_pending_confirmations(pool: &PgPool, _service: &DeliveryService) -> AppResult<()> {
     // Statuts qui nécessitent une confirmation rapide
-    let statuses_requiring_confirmation = vec![
-        "arrival_pickup",
-        "arrival_destination",
-        "picked_up",
-    ];
+    let statuses_requiring_confirmation =
+        vec!["arrival_pickup", "arrival_destination", "picked_up"];
 
     // Délai maximum avant alerte (2 minutes)
     let max_delay_minutes = 2;
@@ -254,4 +254,3 @@ async fn check_pending_confirmations(
 
     Ok(())
 }
-

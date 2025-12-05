@@ -27,7 +27,7 @@ pub async fn enqueue_distribution_job(
     let payload_value = serde_json::to_value(payload).unwrap_or(Value::Null);
     sqlx::query(
         "INSERT INTO social_publication_jobs (media_id, platform, payload, scheduled_for)
-         VALUES ($1, $2, $3, COALESCE($4, NOW()))"
+         VALUES ($1, $2, $3, COALESCE($4, NOW()))",
     )
     .bind(media_id)
     .bind(platform)
@@ -62,7 +62,7 @@ pub async fn fetch_due_jobs(
          FROM social_publication_jobs
          WHERE status = 'queued' AND scheduled_for <= NOW()
          ORDER BY scheduled_for ASC
-         LIMIT $1"#
+         LIMIT $1"#,
     )
     .bind(limit)
     .fetch_all(&state.pg)
@@ -92,7 +92,7 @@ pub async fn mark_job_done(
     let mut tx = state.pg.begin().await.map_err(AppError::from)?;
 
     sqlx::query(
-        "UPDATE social_publication_jobs SET status = 'completed', updated_at = NOW() WHERE id = $1"
+        "UPDATE social_publication_jobs SET status = 'completed', updated_at = NOW() WHERE id = $1",
     )
     .bind(job.id)
     .execute(&mut *tx)

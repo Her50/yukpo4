@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import OptimizedImage from './OptimizedImage';
 import SafeIcon from './SafeIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -26,6 +27,8 @@ interface ProductMediaCarouselProps {
     videos: string[];
     variantImage?: string; // Image spécifique à la variation sélectionnée
     onImagePress?: (index: number) => void;
+    onMediaChange?: (currentIndex: number, totalMedia: number) => void; // ✅ NOUVEAU: Callback pour tracker navigation médias
+    onAllMediaViewed?: () => void; // ✅ NOUVEAU: Callback quand tous les médias ont été vus
 }
 
 const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
@@ -33,10 +36,14 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
     videos,
     variantImage,
     onImagePress,
+    onMediaChange,
+    onAllMediaViewed,
 }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [playingVideoIndex, setPlayingVideoIndex] = useState<number | null>(null);
     const [fullscreenMedia, setFullscreenMedia] = useState<{ type: 'image' | 'video'; uri: string } | null>(null);
+    const [viewedMediaIndices, setViewedMediaIndices] = useState<Set<number>>(new Set([0])); // ✅ NOUVEAU: Tracker les médias vus
+    const [preloadedIndices, setPreloadedIndices] = useState<Set<number>>(new Set([0, 1])); // ✅ NOUVEAU: Précharger les 2 premiers médias
     const scrollViewRef = useRef<ScrollView>(null);
     const fullscreenVideoRef = useRef<Video | null>(null);
     // ✅ CORRIGÉ: Références pour chaque vidéo du carousel pour contrôler la lecture
@@ -79,7 +86,21 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         const index = Math.round(contentOffsetX / CAROUSEL_WIDTH);
         setCurrentIndex(index);
 
-        // Arrêter la vidéo si on change de slide
+        // ✅ NOUVEAU: Marquer ce média comme vu
+        setViewedMediaIndices(prev => {
+            const newSet = new Set(prev);
+            newSet.add(index);
+            // ✅ NOUVEAU: Vérifier si tous les médias ont été vus
+            if (newSet.size === allMedia.length) {
+                onAllMediaViewed?.();
+            }
+            return newSet;
+        });
+
+        // ✅ NOUVEAU: Notifier le changement de média
+        onMediaChange?.(index, allMedia.length);
+
+        // Arrêter la vidéo précédente si on change de slide
         if (playingVideoIndex !== null && playingVideoIndex !== index) {
             const previousVideoRef = videoRefs.current.get(playingVideoIndex);
             if (previousVideoRef) {
@@ -87,20 +108,36 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             }
             setPlayingVideoIndex(null);
         }
+
+        // ✅ NOUVEAU: Démarrer automatiquement la vidéo si c'est une vidéo qui devient visible
+        if (allMedia[index]?.type === 'video' && playingVideoIndex !== index) {
+            playVideo(index).catch(() => undefined);
+        }
     };
 
     const playVideo = async (index: number) => {
-        if (allMedia[index].type === 'video') {
+        if (allMedia[index]?.type === 'video') {
             // ✅ CORRIGÉ: Utiliser la ref pour démarrer la lecture de la vidéo
             const videoRef = videoRefs.current.get(index);
             if (videoRef) {
                 try {
+                    // ✅ CORRIGÉ: S'assurer que la vidéo est chargée avant de jouer
+                    await videoRef.setStatusAsync({ shouldPlay: true, isMuted: false });
                     await videoRef.playAsync();
                     setPlayingVideoIndex(index);
+                    console.log('[ProductMediaCarousel] ✅ Vidéo démarrée avec succès, index:', index);
                 } catch (error) {
-                    console.error('[ProductMediaCarousel] Erreur lecture vidéo:', error);
+                    console.error('[ProductMediaCarousel] ❌ Erreur lecture vidéo:', error);
+                    // ✅ FALLBACK: Essayer de recharger la vidéo
+                    try {
+                        await videoRef.loadAsync({ uri: allMedia[index].uri }, { shouldPlay: true, isMuted: false });
+                        setPlayingVideoIndex(index);
+                    } catch (retryError) {
+                        console.error('[ProductMediaCarousel] ❌ Erreur retry lecture vidéo:', retryError);
+                    }
                 }
             } else {
+                console.warn('[ProductMediaCarousel] ⚠️ Ref vidéo non disponible pour index:', index);
                 // Si la ref n'est pas encore disponible, marquer comme devant jouer
                 setPlayingVideoIndex(index);
             }
@@ -131,6 +168,54 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         }
     }, [fullscreenMedia]);
 
+    // ✅ NOUVEAU: Démarrer automatiquement la vidéo quand elle devient visible
+    useEffect(() => {
+        if (allMedia.length > 0 && allMedia[currentIndex]?.type === 'video') {
+            // Démarrer la vidéo automatiquement après un court délai pour s'assurer qu'elle est montée
+            const timer = setTimeout(() => {
+                if (playingVideoIndex !== currentIndex) {
+                    playVideo(currentIndex).catch(() => undefined);
+                }
+            }, 300); // Petit délai pour s'assurer que le composant est monté
+
+            return () => clearTimeout(timer);
+        }
+    }, [currentIndex, allMedia.length]);
+
+    // ✅ GÉANT-LEVEL: Préchargement agressif (3-5 images suivantes comme TikTok)
+    useEffect(() => {
+        if (allMedia.length === 0) return;
+
+        // Précharger le média actuel + les 5 suivants (niveau géant)
+        const indicesToPreload = new Set<number>();
+        indicesToPreload.add(currentIndex);
+
+        // ✅ GÉANT-LEVEL: Précharger 5 suivants au lieu de 2
+        for (let i = 1; i <= 5; i++) {
+            const nextIndex = currentIndex + i;
+            if (nextIndex < allMedia.length) {
+                indicesToPreload.add(nextIndex);
+            }
+        }
+
+        // Précharger aussi le précédent si on n'est pas au début
+        if (currentIndex > 0) {
+            indicesToPreload.add(currentIndex - 1);
+        }
+
+        setPreloadedIndices(indicesToPreload);
+
+        // Précharger les images avec Image.prefetch
+        indicesToPreload.forEach((index) => {
+            const media = allMedia[index];
+            if (media && media.type === 'image') {
+                Image.prefetch(media.uri).catch(() => {
+                    // Ignorer les erreurs de préchargement
+                });
+            }
+        });
+    }, [currentIndex, allMedia]);
+
     if (allMedia.length === 0) {
         return (
             <View style={styles.placeholder}>
@@ -156,73 +241,104 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                     snapToInterval={CAROUSEL_WIDTH}
                     snapToAlignment="start"
                 >
-                    {allMedia.map((media, index) => (
-                        <View key={index} style={styles.slide}>
-                            {media.type === 'image' ? (
-                                <TouchableOpacity
-                                    activeOpacity={0.9}
-                                    onPress={() => openFullscreen(media)}
-                                    style={styles.imageContainer}
-                                >
-                                    <Image
-                                        source={{ uri: media.uri }}
-                                        style={styles.media}
-                                        resizeMode="cover"
-                                    />
-                                    <LinearGradient
-                                        colors={['transparent', 'rgba(0,0,0,0.3)']}
-                                        style={styles.gradient}
-                                    />
-                                </TouchableOpacity>
-                            ) : (
-                                <View style={styles.videoContainer}>
-                                    <Video
-                                        ref={(ref) => {
-                                            // ✅ CORRIGÉ: Enregistrer la ref pour chaque vidéo
-                                            if (ref) {
-                                                videoRefs.current.set(index, ref);
-                                            } else {
-                                                videoRefs.current.delete(index);
-                                            }
-                                        }}
-                                        source={{ uri: media.uri }}
-                                        style={styles.media}
-                                        resizeMode={ResizeMode.COVER}
-                                        shouldPlay={playingVideoIndex === index}
-                                        isLooping
-                                        isMuted={false}
-                                        useNativeControls
-                                        onPlaybackStatusUpdate={(status) => {
-                                            // ✅ CORRIGÉ: S'assurer que la vidéo continue à jouer
-                                            if (status.isLoaded && !status.isPlaying && playingVideoIndex === index && status.shouldPlay) {
-                                                // Relancer si elle devrait jouer mais ne joue pas
-                                                const videoRef = videoRefs.current.get(index);
-                                                if (videoRef) {
-                                                    videoRef.playAsync().catch(() => undefined);
-                                                }
-                                            }
-                                        }}
-                                    />
+                    {allMedia.map((media, index) => {
+                        // ✅ NOUVEAU: Ne rendre que les médias préchargés ou proches
+                        const shouldRender = preloadedIndices.has(index) ||
+                            Math.abs(index - currentIndex) <= 1;
+
+                        if (!shouldRender) {
+                            return <View key={index} style={styles.slide} />;
+                        }
+
+                        return (
+                            <View key={index} style={styles.slide}>
+                                {media.type === 'image' ? (
                                     <TouchableOpacity
-                                        style={styles.fullscreenButton}
+                                        activeOpacity={0.9}
                                         onPress={() => openFullscreen(media)}
-                                        activeOpacity={0.8}
+                                        style={styles.imageContainer}
                                     >
-                                        <SafeIcon name="maximize" size={18} color="#FFF" />
+                                        <OptimizedImage
+                                            uri={media.uri}
+                                            style={styles.media}
+                                            priority={index === currentIndex ? "high" : preloadedIndices.has(index) ? "normal" : "low"}
+                                            cachePolicy="memory-disk"
+                                        />
+                                        <LinearGradient
+                                            colors={['transparent', 'rgba(0,0,0,0.3)']}
+                                            style={styles.gradient}
+                                        />
                                     </TouchableOpacity>
-                                    {playingVideoIndex !== index && (
+                                ) : (
+                                    <View style={styles.videoContainer}>
+                                        <Video
+                                            ref={(ref) => {
+                                                // ✅ CORRIGÉ: Enregistrer la ref pour chaque vidéo
+                                                if (ref) {
+                                                    videoRefs.current.set(index, ref);
+                                                    // ✅ NOUVEAU: Si la vidéo doit jouer, démarrer immédiatement
+                                                    if (playingVideoIndex === index) {
+                                                        ref.playAsync().catch(() => undefined);
+                                                    }
+                                                } else {
+                                                    videoRefs.current.delete(index);
+                                                }
+                                            }}
+                                            source={{ uri: media.uri }}
+                                            style={styles.media}
+                                            resizeMode={ResizeMode.COVER}
+                                            shouldPlay={playingVideoIndex === index}
+                                            isLooping
+                                            isMuted={false}
+                                            useNativeControls={true}
+                                            onPlaybackStatusUpdate={(status) => {
+                                                // ✅ CORRIGÉ: S'assurer que la vidéo continue à jouer
+                                                if (status.isLoaded) {
+                                                    if (!status.isPlaying && playingVideoIndex === index && status.shouldPlay) {
+                                                        // Relancer si elle devrait jouer mais ne joue pas
+                                                        const videoRef = videoRefs.current.get(index);
+                                                        if (videoRef) {
+                                                            videoRef.playAsync().catch(() => undefined);
+                                                        }
+                                                    }
+                                                    // ✅ NOUVEAU: Marquer la vidéo comme vue quand elle commence à jouer
+                                                    if (status.isPlaying && !viewedMediaIndices.has(index)) {
+                                                        setViewedMediaIndices(prev => {
+                                                            const newSet = new Set(prev);
+                                                            newSet.add(index);
+                                                            if (newSet.size === allMedia.length) {
+                                                                onAllMediaViewed?.();
+                                                            }
+                                                            return newSet;
+                                                        });
+                                                    }
+                                                }
+                                            }}
+                                            onError={(error) => {
+                                                console.error('[ProductMediaCarousel] ❌ Erreur vidéo:', error);
+                                            }}
+                                        />
                                         <TouchableOpacity
-                                            style={styles.playButton}
-                                            onPress={() => playVideo(index)}
+                                            style={styles.fullscreenButton}
+                                            onPress={() => openFullscreen(media)}
                                             activeOpacity={0.8}
                                         >
-                                            <SafeIcon name="play" size={48} color="#FFF" />
+                                            <SafeIcon name="maximize" size={18} color="#FFF" />
                                         </TouchableOpacity>
-                                    )}
-                                </View>
-                            )}
-                        </View>
-                    ))}
+                                        {playingVideoIndex !== index && (
+                                            <TouchableOpacity
+                                                style={styles.playButton}
+                                                onPress={() => playVideo(index)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <SafeIcon name="play" size={48} color="#FFF" />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                )}
+                            </View>
+                        );
+                    })}
                 </ScrollView>
 
                 {/* Indicateurs */}
@@ -280,10 +396,11 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             <SafeIcon name="x" size={24} color="#FFF" />
                         </TouchableOpacity>
                         {fullscreenMedia.type === 'image' ? (
-                            <Image
-                                source={{ uri: fullscreenMedia.uri }}
+                            <OptimizedImage
+                                uri={fullscreenMedia.uri}
                                 style={styles.fullscreenImage}
-                                resizeMode="contain"
+                                priority="high"
+                                cachePolicy="memory-disk"
                             />
                         ) : (
                             <Video

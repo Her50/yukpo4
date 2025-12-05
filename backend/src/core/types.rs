@@ -4,6 +4,8 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use prometheus;
+use redis;
 use serde_json::json;
 use std::convert::Infallible;
 use thiserror::Error;
@@ -32,11 +34,17 @@ pub enum AppError {
     #[error("?? Bad Request: {0}")]
     BadRequest(String),
 
+    #[error("?? Too Many Requests: {0}")]
+    TooManyRequests(String),
+
     #[error("?? Database error: {0}")]
     Database(String),
 
     #[error("?? Internal error: {0}")]
     Internal(String),
+
+    #[error("?? Not Implemented: {0}")]
+    NotImplemented(String),
 }
 
 impl AppError {
@@ -54,13 +62,15 @@ impl IntoResponse for AppError {
             AppError::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
             AppError::Conflict(_) => (StatusCode::CONFLICT, "CONFLICT"),
             AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
+            AppError::TooManyRequests(_) => (StatusCode::TOO_MANY_REQUESTS, "TOO_MANY_REQUESTS"),
             AppError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR"),
             AppError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
+            AppError::NotImplemented(_) => (StatusCode::NOT_IMPLEMENTED, "NOT_IMPLEMENTED"),
         };
 
         let msg = self.to_string();
         // ✅ CORRECTION: Format d'erreur structuré avec code et message
-        let body = Json(json!({ 
+        let body = Json(json!({
             "error": msg,
             "code": error_code,
             "status": status.as_u16()
@@ -136,5 +146,17 @@ impl From<MultipartError> for AppError {
 impl From<serde_json::Error> for AppError {
     fn from(e: serde_json::Error) -> Self {
         AppError::Internal(format!("Erreur de JSON: {}", e))
+    }
+}
+
+impl From<prometheus::Error> for AppError {
+    fn from(e: prometheus::Error) -> Self {
+        AppError::Internal(format!("Prometheus error: {}", e))
+    }
+}
+
+impl From<redis::RedisError> for AppError {
+    fn from(e: redis::RedisError) -> Self {
+        AppError::Internal(format!("Redis error: {}", e))
     }
 }

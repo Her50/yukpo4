@@ -1,0 +1,173 @@
+{
+    "panels": [
+        {
+            "id": 100,
+            "title": "Video Queue Length",
+            "type": "graph",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "video_queue_length{job=\"yukpo-backend\"}",
+                    "legendFormat": "Queue Length",
+                    "refId": "A"
+                }
+            ],
+            "alert": {
+                "conditions": [
+                    {
+                        "evaluator": {
+                            "params": [
+                                10000
+                            ],
+                            "type": "gt"
+                        },
+                        "operator": {
+                            "type": "and"
+                        },
+                        "query": {
+                            "params": [
+                                "A",
+                                "5m",
+                                "now"
+                            ]
+                        },
+                        "reducer": {
+                            "params": [],
+                            "type": "last"
+                        },
+                        "type": "query"
+                    }
+                ],
+                "executionErrorState": "alerting",
+                "for": "5m",
+                "frequency": "10s",
+                "name": "High Queue Length",
+                "noDataState": "no_data"
+            }
+        },
+        {
+            "id": 101,
+            "title": "Jobs Processed Rate",
+            "type": "graph",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "rate(video_jobs_processed_total{job=\"yukpo-backend\"}[5m])",
+                    "legendFormat": "Jobs/sec",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "id": 102,
+            "title": "Job Duration (p95)",
+            "type": "graph",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 8
+            },
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.95, rate(video_job_duration_seconds_bucket{job=\"yukpo-backend\"}[5m]))",
+                    "legendFormat": "p95 Duration (seconds)",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "id": 103,
+            "title": "Error Rate",
+            "type": "graph",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 8
+            },
+            "targets": [
+                {
+                    "expr": "rate(video_jobs_failed_total{job=\"yukpo-backend\"}[5m]) / rate(video_jobs_processed_total{job=\"yukpo-backend\"}[5m])",
+                    "legendFormat": "Error Rate",
+                    "refId": "A"
+                }
+            ],
+            "alert": {
+                "conditions": [
+                    {
+                        "evaluator": {
+                            "params": [
+                                0.01
+                            ],
+                            "type": "gt"
+                        },
+                        "operator": {
+                            "type": "and"
+                        },
+                        "query": {
+                            "params": [
+                                "A",
+                                "5m",
+                                "now"
+                            ]
+                        },
+                        "reducer": {
+                            "params": [],
+                            "type": "last"
+                        },
+                        "type": "query"
+                    }
+                ],
+                "name": "High Error Rate",
+                "for": "5m"
+            }
+        },
+        {
+            "id": 104,
+            "title": "Active Workers",
+            "type": "stat",
+            "gridPos": {
+                "h": 4,
+                "w": 6,
+                "x": 0,
+                "y": 16
+            },
+            "targets": [
+                {
+                    "expr": "video_active_workers{job=\"yukpo-backend\"}",
+                    "legendFormat": "Active Workers",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "id": 105,
+            "title": "Cache Hit Rate",
+            "type": "graph",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 6,
+                "y": 16
+            },
+            "targets": [
+                {
+                    "expr": "rate(video_cache_hits{job=\"yukpo-backend\"}[5m]) / (rate(video_cache_hits{job=\"yukpo-backend\"}[5m]) + rate(video_cache_misses{job=\"yukpo-backend\"}[5m]))",
+                    "legendFormat": "Cache Hit Rate",
+                    "refId": "A"
+                }
+            ]
+        }
+    ]
+}

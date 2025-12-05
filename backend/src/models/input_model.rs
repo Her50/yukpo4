@@ -39,7 +39,7 @@ pub struct MultiModalInput {
 
     /// Coordonn?es GPS mobiles
     pub gps_mobile: Option<String>,
-    
+
     /// Type de service spécialisé (pour recherche spécialisée dédiée)
     /// Valeurs possibles: "pharmacie", "hopital_clinique", "laboratoire_imagerie", etc.
     pub specialized_type: Option<String>,

@@ -1,0 +1,270 @@
+// ✅ Worker de traitement des réservations Flash Sales
+// Traite les réservations par batch depuis Redis Streams
+
+use crate::core::types::AppResult;
+use crate::services::{
+    flash_sale_cache::FlashSaleCache, flash_sale_queue::FlashSaleReservationRequest,
+    live_flash_sale_service::LiveFlashSaleService,
+};
+use crate::utils::redis_helper;
+use redis::{AsyncCommands, Client as RedisClient};
+use sqlx::PgPool;
+use std::sync::Arc;
+
+const BATCH_SIZE: usize = 100;
+const POLL_INTERVAL_MS: u64 = 100; // 100ms entre les polls
+
+pub struct FlashSaleQueueWorker {
+    redis: Arc<RedisClient>,
+    pool: Arc<PgPool>,
+    cache: FlashSaleCache,
+    stream_name: String,
+    consumer_group: String,
+    consumer_name: String,
+}
+
+impl FlashSaleQueueWorker {
+    pub fn new(redis: Arc<RedisClient>, pool: Arc<PgPool>, cache: FlashSaleCache) -> Self {
+        Self {
+            redis,
+            pool,
+            cache,
+            stream_name: "flash_sale:reservations".to_string(),
+            consumer_group: "reservation_workers".to_string(),
+            consumer_name: format!("worker_{}", uuid::Uuid::new_v4()),
+        }
+    }
+
+    pub async fn start(&self) -> AppResult<()> {
+        // Créer le consumer group si nécessaire
+        self.ensure_consumer_group().await?;
+
+        log::info!("🚀 Flash Sale Queue Worker démarré: {}", self.consumer_name);
+
+        loop {
+            if let Err(e) = self.process_batch().await {
+                log::error!("Erreur traitement batch: {:?}", e);
+                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+            } else {
+                tokio::time::sleep(tokio::time::Duration::from_millis(POLL_INTERVAL_MS)).await;
+            }
+        }
+    }
+
+    async fn ensure_consumer_group(&self) -> AppResult<()> {
+        let mut conn = redis_helper::get_redis_connection(&self.redis, 3, 100)
+            .await
+            .map_err(|e| {
+                crate::core::types::AppError::Internal(format!("Redis connection failed: {}", e))
+            })?;
+
+        // XGROUP CREATE avec MKSTREAM si nécessaire
+        // Note: Utiliser xgroup_create_mkstream de redis-rs
+        let _: Result<(), _> = conn
+            .xgroup_create_mkstream(&self.stream_name, &self.consumer_group, "0")
+            .await;
+
+        // Si le groupe existe déjà, on ignore l'erreur
+
+        // Ignorer l'erreur si le groupe existe déjà
+        Ok(())
+    }
+
+    async fn process_batch(&self) -> AppResult<()> {
+        let mut conn = redis_helper::get_redis_connection(&self.redis, 3, 100)
+            .await
+            .map_err(|e| {
+                crate::core::types::AppError::Internal(format!("Redis connection failed: {}", e))
+            })?;
+
+        // Lire un batch de messages depuis le stream
+        // Note: Utiliser xreadgroup de redis-rs avec AsyncCommands
+        let messages_result: Result<Vec<redis::streams::StreamReadReply>, _> = conn
+            .xreadgroup(
+                &self.consumer_group,
+                &self.consumer_name,
+                &[&self.stream_name],
+                &[">"],
+            )
+            .await;
+
+        let messages = match messages_result {
+            Ok(msgs) => msgs,
+            Err(e) if e.kind() == redis::ErrorKind::TypeError => {
+                // Stream vide ou pas de messages
+                return Ok(());
+            }
+            Err(e) => {
+                return Err(crate::core::types::AppError::Internal(format!(
+                    "Redis XREADGROUP failed: {}",
+                    e
+                )));
+            }
+        };
+
+        if messages.is_empty() {
+            return Ok(());
+        }
+
+        let stream_reply = &messages[0];
+        let mut processed = 0;
+        let mut failed = 0;
+
+        for stream_id in &stream_reply.keys {
+            for message in &stream_id.ids {
+                let message_id = &message.id;
+
+                // Parser les champs du message
+                let mut ticket_id = None;
+                let mut request_json = None;
+
+                for (key, value) in &message.map {
+                    if key == "ticket_id" {
+                        if let redis::Value::Data(data) = value {
+                            ticket_id = Some(String::from_utf8_lossy(data).to_string());
+                        }
+                    } else if key == "request" {
+                        if let redis::Value::Data(data) = value {
+                            request_json = Some(String::from_utf8_lossy(data).to_string());
+                        }
+                    }
+                }
+
+                if let (Some(ticket_id), Some(request_json)) = (ticket_id, request_json) {
+                    match self.process_reservation(&ticket_id, &request_json).await {
+                        Ok(_) => {
+                            // ACK le message
+                            self.ack_message(message_id).await?;
+                            processed += 1;
+                        }
+                        Err(e) => {
+                            log::error!("Erreur traitement réservation {}: {:?}", ticket_id, e);
+                            failed += 1;
+                            // Ne pas ACK, le message sera retraité
+                        }
+                    }
+                }
+            }
+        }
+
+        if processed > 0 || failed > 0 {
+            log::info!("Batch traité: {} succès, {} échecs", processed, failed);
+        }
+
+        Ok(())
+    }
+
+    async fn process_reservation(&self, ticket_id: &str, request_json: &str) -> AppResult<()> {
+        // Parser la requête
+        let request: FlashSaleReservationRequest =
+            serde_json::from_str(request_json).map_err(|e| {
+                crate::core::types::AppError::Internal(format!("Deserialization failed: {}", e))
+            })?;
+
+        // Mettre à jour le statut du ticket
+        self.update_ticket_status(ticket_id, "processing").await?;
+
+        // Vérifier le stock dans le cache (fast path)
+        if let Some(available_stock) = self
+            .cache
+            .get_available_stock(request.flash_sale_id)
+            .await?
+        {
+            if available_stock < request.quantity {
+                self.update_ticket_status(ticket_id, "failed").await?;
+                return Err(crate::core::types::AppError::BadRequest(
+                    "Stock insuffisant".into(),
+                ));
+            }
+        }
+
+        // Traiter la réservation dans la DB (avec transaction)
+        match LiveFlashSaleService::reserve_slot(
+            &self.pool,
+            request.flash_sale_id,
+            request.user_id,
+            request.quantity,
+        )
+        .await
+        {
+            Ok(summary) => {
+                // Mettre à jour le cache
+                let available =
+                    (summary.stock_target as i64 - summary.reserved_quantity).max(0) as i32;
+                self.cache
+                    .set_available_stock(request.flash_sale_id, available)
+                    .await?;
+                self.cache
+                    .set_flash_sale_summary(request.flash_sale_id, &summary)
+                    .await?;
+
+                // ✅ NOUVEAU: Diffuser la mise à jour de stock via Redis pub/sub
+                LiveFlashSaleService::broadcast_stock_update(
+                    &self.redis,
+                    request.flash_sale_id,
+                    available,
+                    summary.reserved_quantity,
+                )
+                .await;
+
+                // Mettre à jour le statut du ticket
+                self.update_ticket_status(ticket_id, "completed").await?;
+
+                Ok(())
+            }
+            Err(e) => {
+                self.update_ticket_status(ticket_id, "failed").await?;
+                Err(e)
+            }
+        }
+    }
+
+    async fn update_ticket_status(&self, ticket_id: &str, status: &str) -> AppResult<()> {
+        let mut conn = redis_helper::get_redis_connection(&self.redis, 3, 100)
+            .await
+            .map_err(|e| {
+                crate::core::types::AppError::Internal(format!("Redis connection failed: {}", e))
+            })?;
+
+        let ticket_key = format!("flash_sale:ticket:{}", ticket_id);
+        let ticket_json: Option<String> = conn.get(&ticket_key).await.map_err(|e| {
+            crate::core::types::AppError::Internal(format!("Redis GET failed: {}", e))
+        })?;
+
+        if let Some(mut json) = ticket_json {
+            // Mettre à jour le statut dans le JSON
+            let mut ticket: serde_json::Value = serde_json::from_str(&json).map_err(|e| {
+                crate::core::types::AppError::Internal(format!("Deserialization failed: {}", e))
+            })?;
+            ticket["status"] = serde_json::Value::String(status.to_string());
+
+            json = serde_json::to_string(&ticket).map_err(|e| {
+                crate::core::types::AppError::Internal(format!("Serialization failed: {}", e))
+            })?;
+
+            conn.set_ex::<_, _, ()>(&ticket_key, json, 300)
+                .await
+                .map_err(|e| {
+                    crate::core::types::AppError::Internal(format!("Redis SET failed: {}", e))
+                })?;
+        }
+
+        Ok(())
+    }
+
+    async fn ack_message(&self, message_id: &str) -> AppResult<()> {
+        let mut conn = redis_helper::get_redis_connection(&self.redis, 3, 100)
+            .await
+            .map_err(|e| {
+                crate::core::types::AppError::Internal(format!("Redis connection failed: {}", e))
+            })?;
+
+        conn.xack::<_, _, i64>(&self.stream_name, &self.consumer_group, &[message_id])
+            .await
+            .map_err(|e| {
+                crate::core::types::AppError::Internal(format!("Redis XACK failed: {}", e))
+            })?;
+
+        Ok(())
+    }
+}

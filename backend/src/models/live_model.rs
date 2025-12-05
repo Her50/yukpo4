@@ -107,7 +107,7 @@ pub struct ConfigureFlashSalesRequest {
     pub items: Vec<LiveFlashSaleInput>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LiveFlashSaleSummary {
     pub id: Uuid,
     pub live_session_id: Uuid,

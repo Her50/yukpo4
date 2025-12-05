@@ -10,9 +10,9 @@ use axum::{
 };
 use log::{error, info, warn};
 use serde::Deserialize;
+use serde_json::Value as JsonValue;
 use serde_json::{json, Value};
 use sqlx::{FromRow, Row};
-use serde_json::Value as JsonValue;
 
 // use crate::services::mongo_history_service::MongoHistoryService;
 // use crate::services::scoring_service::compute_score;
@@ -24,7 +24,8 @@ struct UserBalanceRow {
 
 #[derive(FromRow)]
 struct ServiceIdRow {
-    #[allow(dead_code)] // Champ récupéré de la DB mais seulement utilisé pour vérifier existence (is_some())
+    #[allow(dead_code)]
+    // Champ récupéré de la DB mais seulement utilisé pour vérifier existence (is_some())
     id: i32,
 }
 
@@ -104,6 +105,7 @@ pub async fn creer_service(
         payload.user_id,
         &payload.data,
         &state.redis_client,
+        Some(state.scalability.clone()), // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour contrôle du parallélisme
     )
     .await
     {
@@ -123,13 +125,12 @@ pub async fn creer_service(
 
             // ✅ CORRECTION : Le débit du solde est déjà fait dans creer_service.rs
             // On récupère juste le solde actuel pour mettre à jour le JWT
-            let current_balance_result: Option<UserBalanceRow> = sqlx::query_as(
-                "SELECT tokens_balance FROM users WHERE id = $1"
-            )
-            .bind(payload.user_id)
-            .fetch_optional(&state.pg)
-            .await
-            .unwrap_or(None);
+            let current_balance_result: Option<UserBalanceRow> =
+                sqlx::query_as("SELECT tokens_balance FROM users WHERE id = $1")
+                    .bind(payload.user_id)
+                    .fetch_optional(&state.pg)
+                    .await
+                    .unwrap_or(None);
 
             if let Some(user_data) = current_balance_result {
                 let nouveau_solde = user_data.tokens_balance;
@@ -140,13 +141,12 @@ pub async fn creer_service(
                 );
 
                 // Mettre à jour le JWT avec le nouveau solde
-                if let Ok(new_jwt) =
-                    crate::middlewares::check_tokens::update_jwt_with_new_balance(
-                        payload.user_id,
-                        nouveau_solde,
-                        &state,
-                    )
-                    .await
+                if let Ok(new_jwt) = crate::middlewares::check_tokens::update_jwt_with_new_balance(
+                    payload.user_id,
+                    nouveau_solde,
+                    &state,
+                )
+                .await
                 {
                     response.headers_mut().insert(
                         "x-new-jwt",
@@ -161,15 +161,16 @@ pub async fn creer_service(
             }
 
             // ✅ CORRIGÉ : Calculer le coût depuis les tokens IA du payload
-            let ia_tokens_consumed = payload.data
+            let ia_tokens_consumed = payload
+                .data
                 .get("tokens_ia_externe")
                 .and_then(|v| v.as_u64())
                 .or_else(|| payload.data.get("tokens_consumed").and_then(|v| v.as_u64()))
                 .unwrap_or(0) as i64;
-            
+
             // Déterminer si c'est le premier produit (si tokens IA > 0)
             let is_first_product = ia_tokens_consumed > 0;
-            
+
             // Calculer le coût en utilisant la même logique que creer_service
             let cost_xaf = if is_first_product {
                 let cost = (ia_tokens_consumed as f64) * 0.004 * 100.0;
@@ -250,7 +251,7 @@ pub async fn reactivate_service(
         SET is_active = TRUE,
             last_reactivated_at = NOW()
         WHERE id = $1 AND user_id = $2
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(user_id)
@@ -287,7 +288,7 @@ pub async fn insert_user(
         r#"
         INSERT INTO users (email, password_hash, preferred_lang)
         VALUES ($1, $2, $3)
-        "#
+        "#,
     )
     .bind(&payload.email)
     .bind(&payload.password_hash)
@@ -362,26 +363,29 @@ pub async fn filter_services(
 
     let mut result: Vec<_> = Vec::new();
     for r in rows {
-        let service_id = r.try_get::<i32, _>("id").unwrap_or_default();
-        let mut data = r.try_get::<Value, _>("data").unwrap_or(Value::Null);
-        
+        let service_id = r.get::<Option<i32>, _>("id").unwrap_or_default();
+        let mut data = r.get::<Option<Value>, _>("data").unwrap_or(Value::Null);
+
         // ✅ NOUVEAU: Enrichir avec les données Google Places complètes
-        if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
-            &pg_pool_clone,
-            service_id,
-            &mut data
-        ).await {
+        if let Err(e) =
+            crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                &pg_pool_clone,
+                service_id,
+                &mut data,
+            )
+            .await
+        {
             log::warn!(
                 "[filter_services] Erreur enrichissement Google Places pour service {}: {}",
                 service_id,
                 e
             );
         }
-        
+
         result.push(json!({
             "id": service_id,
             "data": data,
-            "is_active": r.try_get::<bool, _>("is_active").unwrap_or(false)
+            "is_active": r.get::<Option<bool>, _>("is_active").unwrap_or(false)
         }));
     }
 
@@ -401,7 +405,7 @@ pub async fn get_related_services(
         WHERE id != $1
         ORDER BY created_at DESC
         LIMIT 5
-        "#
+        "#,
     )
     .bind(id)
     .fetch_all(pg_pool)
@@ -420,20 +424,21 @@ pub async fn get_related_services(
     let mut result: Vec<_> = Vec::new();
     for r in rows {
         let mut data = serde_json::from_value(r.data).unwrap_or(Value::Null);
-        
+
         // ✅ NOUVEAU: Enrichir avec les données Google Places complètes
-        if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
-            pg_pool,
-            r.id,
-            &mut data
-        ).await {
+        if let Err(e) =
+            crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                pg_pool, r.id, &mut data,
+            )
+            .await
+        {
             log::warn!(
                 "[get_related_services] Erreur enrichissement Google Places pour service {}: {}",
                 r.id,
                 e
             );
         }
-        
+
         result.push(json!({
             "id": r.id,
             "data": data
@@ -503,23 +508,23 @@ pub async fn modifier_service(
     let pg_pool = &state.pg;
 
     // V?rifier que le service appartient ? l'utilisateur
-    let service_exists: Option<ServiceIdRow> = match sqlx::query_as(
-        "SELECT id FROM services WHERE id = $1 AND user_id = $2"
-    )
-    .bind(service_id)
-    .bind(user_id)
-    .fetch_optional(pg_pool)
-    .await {
-        Ok(row) => row,
-        Err(e) => {
-            error!("[modifier_service] Erreur v?rification service: {}", e);
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "Erreur base de donn?es"})),
-            )
-                .into_response();
-        }
-    };
+    let service_exists: Option<ServiceIdRow> =
+        match sqlx::query_as("SELECT id FROM services WHERE id = $1 AND user_id = $2")
+            .bind(service_id)
+            .bind(user_id)
+            .fetch_optional(pg_pool)
+            .await
+        {
+            Ok(row) => row,
+            Err(e) => {
+                error!("[modifier_service] Erreur v?rification service: {}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({"error": "Erreur base de donn?es"})),
+                )
+                    .into_response();
+            }
+        };
 
     if service_exists.is_none() {
         return (
@@ -536,13 +541,14 @@ pub async fn modifier_service(
         SET data = $1, updated_at = NOW()
         WHERE id = $2 AND user_id = $3
         RETURNING id
-        "#
+        "#,
     )
     .bind(&payload.data)
     .bind(service_id)
     .bind(user_id)
     .fetch_optional(pg_pool)
-    .await {
+    .await
+    {
         Ok(row) => row,
         Err(e) => {
             error!("[modifier_service] Erreur mise ? jour service: {}", e);
@@ -637,23 +643,23 @@ pub async fn supprimer_service(
     let pg_pool = &state.pg;
 
     // V?rifier que le service appartient ? l'utilisateur ET récupérer son titre pour la notification
-    let service_data: Option<ServiceDataIdRow> = match sqlx::query_as(
-        "SELECT id, data FROM services WHERE id = $1 AND user_id = $2"
-    )
-    .bind(service_id)
-    .bind(user_id)
-    .fetch_optional(pg_pool)
-    .await {
-        Ok(row) => row,
-        Err(e) => {
-            error!("[supprimer_service] Erreur v?rification service: {}", e);
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "Erreur base de donn?es"})),
-            )
-                .into_response();
-        }
-    };
+    let service_data: Option<ServiceDataIdRow> =
+        match sqlx::query_as("SELECT id, data FROM services WHERE id = $1 AND user_id = $2")
+            .bind(service_id)
+            .bind(user_id)
+            .fetch_optional(pg_pool)
+            .await
+        {
+            Ok(row) => row,
+            Err(e) => {
+                error!("[supprimer_service] Erreur v?rification service: {}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({"error": "Erreur base de donn?es"})),
+                )
+                    .into_response();
+            }
+        };
 
     let service_title = match &service_data {
         Some(row) => row
@@ -721,14 +727,13 @@ pub async fn supprimer_service(
     }
 
     // Supprimer le service
-    let result: Option<ServiceIdRow> = sqlx::query_as(
-        "DELETE FROM services WHERE id = $1 AND user_id = $2 RETURNING id"
-    )
-    .bind(service_id)
-    .bind(user_id)
-    .fetch_optional(pg_pool)
-    .await
-    .unwrap_or(None);
+    let result: Option<ServiceIdRow> =
+        sqlx::query_as("DELETE FROM services WHERE id = $1 AND user_id = $2 RETURNING id")
+            .bind(service_id)
+            .bind(user_id)
+            .fetch_optional(pg_pool)
+            .await
+            .unwrap_or(None);
 
     match result {
         Some(_) => {
@@ -901,7 +906,7 @@ pub async fn get_last_service_for_user(
     let pg_pool = &state.pg;
     // On r?cup?re le dernier service cr?? par l?utilisateur
     let row: Option<ServiceDataOnlyRow> = match sqlx::query_as(
-        r#"SELECT data FROM services WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1"#
+        r#"SELECT data FROM services WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1"#,
     )
     .bind(user_id)
     .fetch_optional(pg_pool)
@@ -965,7 +970,7 @@ pub async fn toggle_service_status(
         .unwrap_or(false);
 
     let result: Option<ServiceIdRow> = sqlx::query_as(
-        r#"UPDATE services SET is_active = $1 WHERE id = $2 AND user_id = $3 RETURNING id"#
+        r#"UPDATE services SET is_active = $1 WHERE id = $2 AND user_id = $3 RETURNING id"#,
     )
     .bind(is_active)
     .bind(service_id)
@@ -1116,19 +1121,26 @@ pub async fn get_services_for_prestataire(
     Query(query): Query<PrestataireServicesQuery>,
 ) -> axum::response::Response {
     let user_id = user.id;
-    
+
     // ✅ NOUVEAU: Pagination avec valeurs par défaut
     let page = query.page.unwrap_or(0);
     let limit = query.limit.unwrap_or(20).min(100); // Max 100 par page pour éviter surcharge
     let offset = page * limit;
-    
+
     // ✅ NOUVEAU 2025-11-27: Cache Redis avec TTL de 60 secondes pour réduire les requêtes SQL lentes
     // Inclure page et limit dans la clé de cache pour éviter collisions
-    let cache_key = format!("services:prestataire:{}:page:{}:limit:{}", user_id, page, limit);
+    let cache_key = format!(
+        "services:prestataire:{}:page:{}:limit:{}",
+        user_id, page, limit
+    );
     let cache_ttl = std::time::Duration::from_secs(60);
-    
+
     // Tentative de récupération depuis le cache
-    match state.cache_service.get::<serde_json::Value>(&cache_key).await {
+    match state
+        .cache_service
+        .get::<serde_json::Value>(&cache_key)
+        .await
+    {
         Ok(Some(cached_result)) => {
             info!(
                 "[get_services_for_prestataire] ✅ Résultat depuis cache Redis pour user {} (page {}, limit {})",
@@ -1151,7 +1163,7 @@ pub async fn get_services_for_prestataire(
             // En cas d'erreur Redis, continuer avec SQL (degradation gracieuse)
         }
     }
-    
+
     let pg_pool = &state.pg;
 
     info!(
@@ -1165,7 +1177,7 @@ pub async fn get_services_for_prestataire(
     // - Limite l'extraction de données produits (seulement nom, prix, devise)
     // - Utilise l'index idx_services_user_id_created_at_desc pour le tri
     use crate::utils::db_retry::retry_query;
-    
+
     let user_id_param = user_id; // Clone pour éviter les problèmes de lifetime
     let pool_clone = pg_pool.clone();
     let rows = match retry_query(
@@ -1303,16 +1315,16 @@ pub async fn get_services_for_prestataire(
     let result: Vec<_> = rows
         .into_iter()
         .map(|row| {
-            let id: i32 = row.get("id");
-            let is_active: bool = row.get("is_active");
+            let id: i32 = row.get::<i32, _>("id");
+            let is_active: bool = row.get::<bool, _>("is_active");
             // ✅ CORRECTION: Utiliser DateTime<Utc> au lieu de NaiveDateTime car la colonne est TIMESTAMPTZ
-            let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
-            let category: Option<String> = row.get("category");
-            let titre_service: Option<String> = row.get("titre_service");
-            let description_preview: Option<String> = row.get("description_preview");
-            let produits_light: Option<serde_json::Value> = row.get("produits_light");
-            let produits_count: Option<i64> = row.get("produits_count");
-            let google_place_id: Option<String> = row.get("google_place_id");
+            let created_at: chrono::DateTime<chrono::Utc> = row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+            let category: Option<String> = row.get::<Option<String>, _>("category");
+            let titre_service: Option<String> = row.get::<Option<String>, _>("titre_service");
+            let description_preview: Option<String> = row.get::<Option<String>, _>("description_preview");
+            let produits_light: Option<serde_json::Value> = row.get::<Option<serde_json::Value>, _>("produits_light");
+            let produits_count: Option<i64> = row.get::<Option<i64>, _>("produits_count");
+            let google_place_id: Option<String> = row.get::<Option<String>, _>("google_place_id");
 
             // ✅ LOG: Vérifier si produits_light contient des sous_caracteristiques
             if let Some(ref produits) = produits_light {
@@ -1361,29 +1373,29 @@ pub async fn get_services_for_prestataire(
 
     // ✅ OPTIMISATION: Compter le total de services pour la pagination
     // Utilise l'index idx_services_user_id_created_at_desc_optimized pour un COUNT rapide
-    let total_count: i64 = match sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM services WHERE user_id = $1"
-    )
-    .bind(user_id)
-    .fetch_one(pg_pool)
-    .await {
-        Ok(count) => count,
-        Err(e) => {
-            warn!(
-                "[get_services_for_prestataire] Erreur comptage total pour user {}: {}",
-                user_id, e
-            );
-            result.len() as i64 // Fallback sur le nombre de résultats actuels
-        }
-    };
-    
+    let total_count: i64 =
+        match sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM services WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_one(pg_pool)
+            .await
+        {
+            Ok(count) => count,
+            Err(e) => {
+                warn!(
+                    "[get_services_for_prestataire] Erreur comptage total pour user {}: {}",
+                    user_id, e
+                );
+                result.len() as i64 // Fallback sur le nombre de résultats actuels
+            }
+        };
+
     let total_pages = (total_count as f64 / limit as f64).ceil() as usize;
-    
+
     info!(
         "[get_services_for_prestataire] Réponse allégée envoyée avec {} services (page {}/{}, total: {})",
         result.len(), page + 1, total_pages.max(1), total_count
     );
-    
+
     let json_result = json!({
         "data": result,
         "pagination": {
@@ -1395,9 +1407,13 @@ pub async fn get_services_for_prestataire(
             "has_prev": page > 0
         }
     });
-    
+
     // ✅ NOUVEAU 2025-11-27: Mettre en cache pour 60 secondes
-    if let Err(e) = state.cache_service.set_with_ttl(&cache_key, &json_result, cache_ttl).await {
+    if let Err(e) = state
+        .cache_service
+        .set_with_ttl(&cache_key, &json_result, cache_ttl)
+        .await
+    {
         warn!(
             "[get_services_for_prestataire] Erreur mise en cache pour user {}: {}",
             user_id, e
@@ -1409,7 +1425,7 @@ pub async fn get_services_for_prestataire(
             user_id
         );
     }
-    
+
     (StatusCode::OK, Json(json_result)).into_response()
 }
 
@@ -1440,12 +1456,13 @@ pub async fn get_services_list(
         WHERE is_active = TRUE
         ORDER BY created_at DESC
         LIMIT $1 OFFSET $2
-        "#
+        "#,
     )
     .bind(limit as i64)
     .bind(offset as i64)
     .fetch_all(pg_pool)
-    .await {
+    .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             error!("[get_services_list] ❌ Erreur: {}", e);
@@ -1477,11 +1494,16 @@ pub async fn get_services_list(
         .collect();
 
     {
-
         // ✅ NOUVEAU : Enrichir les produits avec les données de disponibilité
-        let enrichment_service = crate::services::product_enrichment_service::ProductEnrichmentService::new(pg_pool.clone());
+        let enrichment_service =
+            crate::services::product_enrichment_service::ProductEnrichmentService::new(
+                pg_pool.clone(),
+            );
         if let Err(e) = enrichment_service.enrich_services(&mut services).await {
-            error!("[get_services_list] ⚠️ Erreur enrichissement produits: {}", e);
+            error!(
+                "[get_services_list] ⚠️ Erreur enrichissement produits: {}",
+                e
+            );
             // Continuer même en cas d'erreur d'enrichissement
         }
 
@@ -1526,11 +1548,12 @@ pub async fn get_services_recent(
         AND created_at >= NOW() - INTERVAL '30 days'
         ORDER BY created_at DESC
         LIMIT $1
-        "#
+        "#,
     )
     .bind(limit as i64)
     .fetch_all(pg_pool)
-    .await {
+    .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             error!("[get_services_recent] ❌ Erreur: {}", e);
@@ -1561,9 +1584,13 @@ pub async fn get_services_recent(
         .collect();
 
     // ✅ NOUVEAU : Enrichir les produits avec les données de disponibilité
-    let enrichment_service = crate::services::product_enrichment_service::ProductEnrichmentService::new(pg_pool.clone());
+    let enrichment_service =
+        crate::services::product_enrichment_service::ProductEnrichmentService::new(pg_pool.clone());
     if let Err(e) = enrichment_service.enrich_services(&mut services).await {
-        error!("[get_services_recent] ⚠️ Erreur enrichissement produits: {}", e);
+        error!(
+            "[get_services_recent] ⚠️ Erreur enrichissement produits: {}",
+            e
+        );
         // Continuer même en cas d'erreur d'enrichissement
     }
 
@@ -1645,28 +1672,34 @@ pub async fn get_shared_service(
     let service_row = match service_row {
         Some(row) => row,
         None => {
-            warn!("[get_shared_service] Service {} non trouvé ou inactif", service_id);
-            return (StatusCode::NOT_FOUND, Json(json!({"error": "Service non trouvé ou inactif"}))).into_response();
+            warn!(
+                "[get_shared_service] Service {} non trouvé ou inactif",
+                service_id
+            );
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "Service non trouvé ou inactif"})),
+            )
+                .into_response();
         }
     };
 
     // Récupérer les informations du prestataire (limitées)
-    let prestataire_info: Option<UserInfoRow> = match sqlx::query_as(
-        r#"SELECT nom, prenom, photo_profil FROM users WHERE id = $1"#
-    )
-    .bind(service_row.user_id)
-    .fetch_optional(pg_pool)
-    .await
-    {
-        Ok(user) => user,
-        Err(e) => {
-            error!(
-                "[get_shared_service] Erreur récupération prestataire: {}",
-                e
-            );
-            None
-        }
-    };
+    let prestataire_info: Option<UserInfoRow> =
+        match sqlx::query_as(r#"SELECT nom, prenom, photo_profil FROM users WHERE id = $1"#)
+            .bind(service_row.user_id)
+            .fetch_optional(pg_pool)
+            .await
+        {
+            Ok(user) => user,
+            Err(e) => {
+                error!(
+                    "[get_shared_service] Erreur récupération prestataire: {}",
+                    e
+                );
+                None
+            }
+        };
 
     let prestataire_info = match prestataire_info {
         Some(user) => {
@@ -1686,7 +1719,7 @@ pub async fn get_shared_service(
             "id": service_row.user_id,
             "name": "Prestataire",
             "photo": null
-        })
+        }),
     };
 
     // Masquer les champs sensibles dans les données du service

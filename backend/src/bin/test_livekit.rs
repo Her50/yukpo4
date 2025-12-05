@@ -6,8 +6,7 @@ use reqwest::Client;
 use serde_json::json;
 
 use yukpomnang_backend::{
-    config::live_streaming::LiveStreamingConfig,
-    utils::livekit::generate_server_access_token,
+    config::live_streaming::LiveStreamingConfig, utils::livekit::generate_server_access_token,
 };
 
 #[tokio::main]
@@ -22,7 +21,7 @@ async fn main() -> Result<()> {
 
     // 1. Vérifier la configuration
     println!("1️⃣ Vérification de la configuration...");
-    
+
     if !config.is_livekit_enabled() {
         println!("   ❌ LiveKit n'est pas configuré");
         println!("   Variables requises:");
@@ -62,7 +61,12 @@ async fn main() -> Result<()> {
     println!("   GET {}", health_url);
 
     let client = Client::new();
-    match client.get(&health_url).timeout(std::time::Duration::from_secs(10)).send().await {
+    match client
+        .get(&health_url)
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await
+    {
         Ok(response) => {
             let status = response.status();
             if status.is_success() {
@@ -76,7 +80,9 @@ async fn main() -> Result<()> {
         }
         Err(e) => {
             println!("   ❌ Erreur: {}", e);
-            if e.to_string().contains("Connection refused") || e.to_string().contains("tcp connect error") {
+            if e.to_string().contains("Connection refused")
+                || e.to_string().contains("tcp connect error")
+            {
                 println!("   💡 Le serveur LiveKit n'est pas accessible à cette URL");
                 println!("   💡 Vérifiez que le serveur est démarré et que l'URL est correcte");
             } else if e.to_string().contains("Name or service not known") {
@@ -90,8 +96,11 @@ async fn main() -> Result<()> {
     println!("3️⃣ Test d'authentification API (ListRooms)...");
     let api_key = config.livekit_api_key.as_ref().unwrap();
     let api_secret = config.livekit_api_secret.as_ref().unwrap();
-    
-    let list_rooms_url = format!("{}/twirp/livekit.RoomService/ListRooms", base_url.trim_end_matches('/'));
+
+    let list_rooms_url = format!(
+        "{}/twirp/livekit.RoomService/ListRooms",
+        base_url.trim_end_matches('/')
+    );
     println!("   POST {}", list_rooms_url);
 
     // Générer un token d'accès serveur
@@ -127,7 +136,10 @@ async fn main() -> Result<()> {
                                 println!("   Rooms:");
                                 for room in rooms.iter().take(5) {
                                     if let Some(name) = room.get("name").and_then(|v| v.as_str()) {
-                                        let participants = room.get("num_participants").and_then(|v| v.as_i64()).unwrap_or(0);
+                                        let participants = room
+                                            .get("num_participants")
+                                            .and_then(|v| v.as_i64())
+                                            .unwrap_or(0);
                                         println!("     - {} ({} participants)", name, participants);
                                     }
                                 }
@@ -153,7 +165,10 @@ async fn main() -> Result<()> {
 
     // 4. Tester ListIngress
     println!("4️⃣ Test API ListIngress...");
-    let list_ingress_url = format!("{}/twirp/livekit.Ingress/ListIngress", base_url.trim_end_matches('/'));
+    let list_ingress_url = format!(
+        "{}/twirp/livekit.Ingress/ListIngress",
+        base_url.trim_end_matches('/')
+    );
     println!("   POST {}", list_ingress_url);
 
     match client
@@ -170,7 +185,11 @@ async fn main() -> Result<()> {
                 println!("   ✅ ListIngress accessible (Status: {})", status);
                 match response.json::<serde_json::Value>().await {
                     Ok(data) => {
-                        if let Some(items) = data.get("items").or_else(|| data.get("ingress")).and_then(|v| v.as_array()) {
+                        if let Some(items) = data
+                            .get("items")
+                            .or_else(|| data.get("ingress"))
+                            .and_then(|v| v.as_array())
+                        {
                             println!("   📊 Nombre d'ingress actifs: {}", items.len());
                         }
                     }
@@ -198,4 +217,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

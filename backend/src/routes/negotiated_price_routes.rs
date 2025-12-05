@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
-use crate::services::negotiated_price_service::{NegotiatedPriceService, NegotiatedPriceOffer};
+use crate::services::negotiated_price_service::{NegotiatedPriceOffer, NegotiatedPriceService};
 use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -43,46 +43,48 @@ async fn create_negotiated_price(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateNegotiatedPriceRequest>,
 ) -> AppResult<Json<CreateNegotiatedPriceResponse>> {
-    // Vérifier que l'utilisateur est le prestataire du service
-    let service_row = sqlx::query(
-        "SELECT user_id FROM services WHERE id = $1"
-    )
-    .bind(payload.service_id)
-    .fetch_optional(&state.pg)
-    .await?;
+    // ✅ CORRIGÉ: Vérifier que le service existe
+    let service_row = sqlx::query("SELECT user_id FROM services WHERE id = $1")
+        .bind(payload.service_id)
+        .fetch_optional(&state.pg)
+        .await?;
 
     let service_owner_id: i32 = service_row
         .ok_or_else(|| AppError::NotFound("Service introuvable".into()))?
         .try_get("user_id")?;
-    
-    if service_owner_id != user.id {
-        return Err(AppError::Forbidden(
-            "Seul le prestataire peut créer une offre de prix négocié".into(),
-        ));
-    }
 
     // Récupérer le client de la conversation
-    let conversation_row = sqlx::query(
-        "SELECT client_id, prestataire_id FROM conversations WHERE id = $1"
-    )
-    .bind(&payload.conversation_id)
-    .fetch_optional(&state.pg)
-    .await?;
+    let conversation_row =
+        sqlx::query("SELECT client_id, prestataire_id FROM conversations WHERE id = $1")
+            .bind(&payload.conversation_id)
+            .fetch_optional(&state.pg)
+            .await?;
 
-    let conv_row = conversation_row.ok_or_else(|| AppError::NotFound("Conversation introuvable".into()))?;
-    
+    let conv_row =
+        conversation_row.ok_or_else(|| AppError::NotFound("Conversation introuvable".into()))?;
+
     let client_id: i32 = conv_row.try_get("client_id")?;
     let prestataire_id: i32 = conv_row.try_get("prestataire_id")?;
-    
-    let client_user_id = if prestataire_id == user.id {
-        client_id
+
+    // ✅ CORRIGÉ: Déterminer qui est le client et qui est le prestataire
+    let (merchant_user_id, client_user_id) = if prestataire_id == user.id {
+        // L'utilisateur actuel est le prestataire
+        (prestataire_id, client_id)
     } else if client_id == user.id {
-        prestataire_id
+        // L'utilisateur actuel est le client - il peut créer une offre
+        (prestataire_id, client_id)
     } else {
         return Err(AppError::Forbidden(
             "Vous n'êtes pas participant à cette conversation".into(),
         ));
     };
+
+    // ✅ CORRIGÉ: Vérifier que le prestataire correspond au propriétaire du service
+    if merchant_user_id != service_owner_id {
+        return Err(AppError::BadRequest(
+            "Le prestataire de la conversation ne correspond pas au propriétaire du service".into(),
+        ));
+    }
 
     let service = NegotiatedPriceService::new(state.pg.clone());
     let id = service
@@ -90,7 +92,7 @@ async fn create_negotiated_price(
             payload.conversation_id,
             payload.service_id,
             payload.product_index,
-            user.id,
+            merchant_user_id,
             client_user_id,
             payload.original_price_cents,
             payload.negotiated_price_cents,
@@ -113,28 +115,32 @@ async fn get_pending_offer(
 ) -> AppResult<Json<Option<NegotiatedPriceOffer>>> {
     // Vérifier que l'utilisateur participe à la conversation
     let conversation_id = params.conversation_id.clone();
-    let conversation_row = sqlx::query(
-        "SELECT client_id, prestataire_id FROM conversations WHERE id = $1"
-    )
-    .bind(&conversation_id)
-    .fetch_optional(&state.pg)
-    .await?;
+    let conversation_row =
+        sqlx::query("SELECT client_id, prestataire_id FROM conversations WHERE id = $1")
+            .bind(&conversation_id)
+            .fetch_optional(&state.pg)
+            .await?;
 
-    let conv_row = conversation_row.ok_or_else(|| AppError::NotFound("Conversation introuvable".into()))?;
-    
+    let conv_row =
+        conversation_row.ok_or_else(|| AppError::NotFound("Conversation introuvable".into()))?;
+
     let client_id: i32 = conv_row.try_get("client_id")?;
     let prestataire_id: i32 = conv_row.try_get("prestataire_id")?;
-    
+
     if prestataire_id != user.id && client_id != user.id {
         return Err(AppError::Forbidden(
             "Vous n'êtes pas participant à cette conversation".into(),
         ));
     }
 
+    // ✅ CORRIGÉ: Déterminer le client_user_id (celui qui a créé l'offre)
+    // Le client_user_id est toujours celui qui n'est pas le prestataire du service
     let client_user_id = if prestataire_id == user.id {
+        // L'utilisateur actuel est le prestataire, donc le client est client_id
         client_id
     } else {
-        prestataire_id
+        // L'utilisateur actuel est le client, donc le client_user_id est client_id
+        client_id
     };
 
     let service = NegotiatedPriceService::new(state.pg.clone());
@@ -182,12 +188,28 @@ async fn reject_offer(
     })))
 }
 
+/// ✅ NOUVEAU : POST /api/negotiated-prices/:id/cancel
+/// Annule une offre de prix négocié (pour le client)
+async fn cancel_offer(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(offer_id): Path<i32>,
+) -> AppResult<Json<Value>> {
+    let service = NegotiatedPriceService::new(state.pg.clone());
+    service.cancel_offer(offer_id, user.id).await?;
+
+    Ok(Json(serde_json::json!({
+        "status": "ok",
+        "message": "Offre annulée avec succès"
+    })))
+}
+
 pub fn negotiated_price_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/negotiated-prices", post(create_negotiated_price))
         .route("/negotiated-prices/pending", get(get_pending_offer))
         .route("/negotiated-prices/{id}/accept", post(accept_offer))
         .route("/negotiated-prices/{id}/reject", post(reject_offer))
+        .route("/negotiated-prices/{id}/cancel", post(cancel_offer)) // ✅ NOUVEAU: Route pour annuler
         .with_state(state)
 }
-

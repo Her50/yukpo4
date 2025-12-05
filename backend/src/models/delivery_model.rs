@@ -57,16 +57,16 @@ pub enum DeliveryCancelReason {
 #[sqlx(type_name = "parcel_rejection_reason", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum ParcelRejectionReason {
-    Damaged,              // Produit endommagé
-    WrongItem,            // Mauvais produit
-    Expired,              // Produit périmé
-    WrongQuantity,        // Mauvaise quantité
-    WrongSize,            // Mauvaise taille
-    WrongColor,           // Mauvaise couleur
-    QualityIssue,         // Problème de qualité
-    NotOrdered,           // Non commandé
-    Duplicate,            // Doublon
-    Other,                // Autre raison
+    Damaged,       // Produit endommagé
+    WrongItem,     // Mauvais produit
+    Expired,       // Produit périmé
+    WrongQuantity, // Mauvaise quantité
+    WrongSize,     // Mauvaise taille
+    WrongColor,    // Mauvaise couleur
+    QualityIssue,  // Problème de qualité
+    NotOrdered,    // Non commandé
+    Duplicate,     // Doublon
+    Other,         // Autre raison
 }
 
 /// Type d'engin disponible pour un coursier
@@ -76,6 +76,7 @@ pub enum ParcelRejectionReason {
 pub enum DeliveryEngineType {
     Moto,
     Scooter,
+    Tricycle,
     Voiture,
     Camionnette,
     VeloCargo,
@@ -490,35 +491,35 @@ pub struct ProductDeliveryConfig {
     pub id: i32,
     pub service_id: i32,
     pub product_index: i32,
-    
+
     // Pickup (obligatoire)
     pub pickup_address: String,
     pub pickup_latitude: f64,
     pub pickup_longitude: f64,
-    
+
     // ✅ Phase 9 - Amélioration 32 : Référence vers un lieu de stock
     pub storage_location_id: Option<i32>,
-    
+
     // Type véhicule (obligatoire)
     pub required_vehicle_type_id: i32,
     pub weight_kg: Option<f64>,
     pub volume_cm3: Option<f64>,
     pub requires_isothermal: bool,
     pub requires_fragile_handling: bool,
-    
+
     // Plages horaires de récupération (obligatoire)
     pub pickup_availability_schedule: Value,
-    
+
     // Informations additionnelles
     pub pickup_instructions: Option<String>,
     pub billing_mode: String,
     pub billing_partner_label: Option<String>,
-    
+
     // Statut
     pub is_configured: bool,
     pub configured_at: Option<DateTime<Utc>>,
     pub configured_by: Option<i32>,
-    
+
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -528,15 +529,15 @@ pub struct ProductDeliveryConfig {
 pub struct ProductDeliveryConfigInput {
     pub service_id: i32,
     pub product_index: i32,
-    
+
     // Pickup
     pub pickup_address: String,
     pub pickup_latitude: f64,
     pub pickup_longitude: f64,
-    
+
     // ✅ Phase 9 - Amélioration 32 : Référence vers un lieu de stock
     pub storage_location_id: Option<i32>,
-    
+
     // Type véhicule
     pub required_vehicle_type_id: i32,
     // ✅ NOUVEAU : Type de véhicule requis (aligné avec formulaire de commande)
@@ -546,10 +547,10 @@ pub struct ProductDeliveryConfigInput {
     pub volume_cm3: Option<f64>,
     pub requires_isothermal: Option<bool>,
     pub requires_fragile_handling: Option<bool>,
-    
+
     // Plages horaires
     pub pickup_availability_schedule: Value,
-    
+
     // Informations additionnelles
     pub pickup_instructions: Option<String>,
     pub billing_mode: Option<String>,
@@ -614,21 +615,21 @@ pub struct ClientDeliveryPreferences {
     pub id: i32,
     pub user_id: i32,
     pub delivery_id: Option<Uuid>,
-    
+
     // Préférences de livraison
     pub preferred_delivery_date: Option<chrono::NaiveDate>,
     pub preferred_delivery_time_start: Option<chrono::NaiveTime>,
     pub preferred_delivery_time_end: Option<chrono::NaiveTime>,
     pub preferred_delivery_window_hours: i32,
-    
+
     // Contraintes
-    pub avoid_days: Option<Vec<i32>>,  // Jours à éviter (1=Lundi, 7=Dimanche)
-    pub urgency_level: String,  // 'standard', 'urgent', 'scheduled'
-    
+    pub avoid_days: Option<Vec<i32>>, // Jours à éviter (1=Lundi, 7=Dimanche)
+    pub urgency_level: String,        // 'standard', 'urgent', 'scheduled'
+
     // Flexibilité
     pub is_flexible: bool,
     pub flexibility_window_days: i32,
-    
+
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -637,9 +638,9 @@ pub struct ClientDeliveryPreferences {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientDeliveryPreferencesInput {
     pub delivery_id: Option<Uuid>,
-    pub preferred_delivery_date: Option<String>,  // Format: "YYYY-MM-DD"
-    pub preferred_delivery_time_start: Option<String>,  // Format: "HH:MM"
-    pub preferred_delivery_time_end: Option<String>,  // Format: "HH:MM"
+    pub preferred_delivery_date: Option<String>, // Format: "YYYY-MM-DD"
+    pub preferred_delivery_time_start: Option<String>, // Format: "HH:MM"
+    pub preferred_delivery_time_end: Option<String>, // Format: "HH:MM"
     pub preferred_delivery_window_hours: Option<i32>,
     pub avoid_days: Option<Vec<i32>>,
     pub urgency_level: Option<String>,
@@ -692,7 +693,7 @@ pub struct ExternalDeliveryRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExternalParcelInput {
-    pub vehicle_type: String,  // "moto", "tricycle", "fourgonnette", etc.
+    pub vehicle_type: String, // "moto", "tricycle", "fourgonnette", etc.
     pub weight_kg: Option<f64>,
     pub description: Option<String>,
 }

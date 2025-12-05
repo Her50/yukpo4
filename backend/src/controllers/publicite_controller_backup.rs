@@ -216,7 +216,7 @@ pub async fn create_publicite(
     match result {
         Ok(record) => {
             use sqlx::Row;
-            let pub_id: i32 = record.try_get("id").unwrap_or(0);
+            let pub_id: i32 = record.get::<Option<_>, _>("id").unwrap_or(0);
             
             log::info!("✅ Publicité créée: ID {}", pub_id);
             

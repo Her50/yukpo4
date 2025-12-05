@@ -90,18 +90,18 @@ pub async fn search_product_suggestions(
     let suggestions: Vec<ProductSuggestion> = rows
         .iter()
         .map(|row| ProductSuggestion {
-            service_id: row.get("service_id"),
-            product_vector: row.get("product_vector"),
-            product_labels: row.get("product_labels"),
-            location_vector: row.get("location_vector"),
-            full_vector: row.get("full_vector"),
-            chosen_location: row.get("chosen_location"), // ✅ RESTAURÉ: chosen_location ajouté dans auto_migrate.rs
-            usage_count: row.get("usage_count"),
-            has_variant: row.get("has_variant"),
-            variant_dimension: row.get("variant_dimension"),
-            prix: row.get("prix"),
-            devise: row.get("devise"),
-            final_score: row.get("relevance_score"),
+            service_id: row.get::<i32, _>("service_id"),
+            product_vector: row.get::<Vec<String>, _>("product_vector"),
+            product_labels: row.get::<Vec<String>, _>("product_labels"),
+            location_vector: row.get::<Vec<String>, _>("location_vector"),
+            full_vector: row.get::<Vec<String>, _>("full_vector"),
+            chosen_location: row.get::<Option<String>, _>("chosen_location"), // ✅ RESTAURÉ: chosen_location ajouté dans auto_migrate.rs
+            usage_count: row.get::<i32, _>("usage_count"),
+            has_variant: row.get::<bool, _>("has_variant"),
+            variant_dimension: row.get::<Option<String>, _>("variant_dimension"),
+            prix: row.get::<Option<f64>, _>("prix"),
+            devise: row.get::<Option<String>, _>("devise"),
+            final_score: row.get::<f64, _>("relevance_score"),
         })
         .collect();
 

@@ -230,7 +230,7 @@ impl VoiceProfileService {
             return Ok(None);
         };
 
-        let path: String = record.try_get("path").unwrap_or_default();
+        let path: String = record.get::<Option<_>, _>("path").unwrap_or_default();
         if path.is_empty() {
             return Ok(None);
         }

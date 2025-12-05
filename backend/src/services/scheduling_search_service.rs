@@ -87,12 +87,12 @@ impl SchedulingSearchService {
         let mut results = Vec::new();
         for row in rows {
             let result = SchedulingSearchResult {
-                service_id: row.get("service_id"),
-                product_data: row.get("product_data"),
-                relevance_score: row.get("relevance_score"),
-                distance_km: row.get("distance_km"),
-                is_available_now: row.get("is_available_now"),
-                availability_info: row.get("availability_info"),
+                service_id: row.get::<i32, _>("service_id"),
+                product_data: row.get::<serde_json::Value, _>("product_data"),
+                relevance_score: row.get::<f64, _>("relevance_score"),
+                distance_km: row.get::<Option<f64>, _>("distance_km"),
+                is_available_now: row.get::<bool, _>("is_available_now"),
+                availability_info: row.get::<String, _>("availability_info"),
             };
             results.push(result);
         }
@@ -170,15 +170,15 @@ impl SchedulingSearchService {
         let mut results = Vec::new();
         for row in rows {
             let result = PharmacyOnDuty {
-                service_id: row.get("service_id"),
-                service_title: row.get("service_title"),
-                latitude: row.get("latitude"),
-                longitude: row.get("longitude"),
-                is_on_duty: row.get("is_on_duty"),
-                garde_days: row.get("garde_days"),
-                opening_hours: row.get("opening_hours"),
-                closing_hours: row.get("closing_hours"),
-                emergency_phone: row.get("emergency_phone"),
+                service_id: row.get::<i32, _>("service_id"),
+                service_title: row.get::<String, _>("service_title"),
+                latitude: row.get::<Option<f64>, _>("latitude"),
+                longitude: row.get::<Option<f64>, _>("longitude"),
+                is_on_duty: row.get::<bool, _>("is_on_duty"),
+                garde_days: row.get::<Option<String>, _>("garde_days"),
+                opening_hours: row.get::<Option<String>, _>("opening_hours"),
+                closing_hours: row.get::<Option<String>, _>("closing_hours"),
+                emergency_phone: row.get::<Option<String>, _>("emergency_phone"),
             };
             results.push(result);
         }
@@ -281,8 +281,10 @@ impl SchedulingSearchService {
 
         let mut results = Vec::new();
         for row in rows {
-            let available_services: Option<serde_json::Value> = row.get("available_services");
-            let current_schedule: Option<serde_json::Value> = row.get("current_schedule");
+            let available_services: Option<serde_json::Value> =
+                row.get::<Option<serde_json::Value>, _>("available_services");
+            let current_schedule: Option<serde_json::Value> =
+                row.get::<Option<serde_json::Value>, _>("current_schedule");
 
             let services_vec = if let Some(services) = available_services {
                 if services.is_array() {
@@ -316,12 +318,12 @@ impl SchedulingSearchService {
             };
 
             let result = MedicalServiceAvailability {
-                service_id: row.get("service_id"),
-                service_title: row.get("service_title"),
+                service_id: row.get::<i32, _>("service_id"),
+                service_title: row.get::<String, _>("service_title"),
                 available_services: services_vec,
                 current_schedule: Some(schedule_map),
-                is_24h: row.get("is_24h"),
-                has_blood_bank: row.get("has_blood_bank"),
+                is_24h: row.get::<bool, _>("is_24h"),
+                has_blood_bank: row.get::<bool, _>("has_blood_bank"),
             };
             results.push(result);
         }
@@ -389,11 +391,16 @@ impl SchedulingSearchService {
 
         // ✅ OPTIMISÉ : Détection spécialisée plus précise (exige plus de contexte)
         // Pharmacie : doit être le mot principal ou accompagné de mots-clés spécifiques
-        if query_lower.contains("pharmacie") && !query_lower.contains("garde") && !query_lower.contains("urgent") {
+        if query_lower.contains("pharmacie")
+            && !query_lower.contains("garde")
+            && !query_lower.contains("urgent")
+        {
             // Vérifier que "pharmacie" n'est pas dans un contexte de produit général
-            let is_product_context = query_lower.contains("produit") || query_lower.contains("acheter") 
-                || query_lower.contains("vendre") || query_lower.contains("prix");
-            
+            let is_product_context = query_lower.contains("produit")
+                || query_lower.contains("acheter")
+                || query_lower.contains("vendre")
+                || query_lower.contains("prix");
+
             // Si "pharmacie" est le mot principal (dans les 3 premiers mots) ou pas dans contexte produit
             let pharmacy_index = query_words.iter().position(|w| w.contains("pharmacie"));
             if !is_product_context && (pharmacy_index.is_none() || pharmacy_index.unwrap() < 3) {
@@ -402,13 +409,21 @@ impl SchedulingSearchService {
         }
 
         // Hôpital/Clinique : doit être le mot principal (pas "clinique vétérinaire" ou "hôpital pour animaux")
-        if query_lower.contains("hôpital") || query_lower.contains("hopital") || query_lower.contains("clinique") {
+        if query_lower.contains("hôpital")
+            || query_lower.contains("hopital")
+            || query_lower.contains("clinique")
+        {
             // Exclure les contextes non-médicaux
-            let is_non_medical = query_lower.contains("vétérinaire") || query_lower.contains("veterinaire")
-                || query_lower.contains("animal") || query_lower.contains("chien") || query_lower.contains("chat");
-            
+            let is_non_medical = query_lower.contains("vétérinaire")
+                || query_lower.contains("veterinaire")
+                || query_lower.contains("animal")
+                || query_lower.contains("chien")
+                || query_lower.contains("chat");
+
             if !is_non_medical {
-                let hospital_index = query_words.iter().position(|w| w.contains("hopital") || w.contains("hôpital") || w.contains("clinique"));
+                let hospital_index = query_words.iter().position(|w| {
+                    w.contains("hopital") || w.contains("hôpital") || w.contains("clinique")
+                });
                 if hospital_index.is_none() || hospital_index.unwrap() < 3 {
                     return SearchIntent::SpecializedHospital;
                 }
@@ -417,12 +432,18 @@ impl SchedulingSearchService {
 
         // Laboratoire/Imagerie : doit être accompagné de contexte médical ou être le mot principal
         if query_lower.contains("laboratoire") || query_lower.contains("imagerie") {
-            let is_medical_context = query_lower.contains("médical") || query_lower.contains("medical")
-                || query_lower.contains("sang") || query_lower.contains("radio") || query_lower.contains("scanner");
-            
+            let is_medical_context = query_lower.contains("médical")
+                || query_lower.contains("medical")
+                || query_lower.contains("sang")
+                || query_lower.contains("radio")
+                || query_lower.contains("scanner");
+
             // "analyse" seul n'est pas assez spécifique, doit être "analyse de sang" ou "analyse médicale"
             if query_lower.contains("analyse") {
-                if is_medical_context || query_lower.contains("analyse de") || query_lower.contains("analyse du") {
+                if is_medical_context
+                    || query_lower.contains("analyse de")
+                    || query_lower.contains("analyse du")
+                {
                     return SearchIntent::SpecializedLaboratory;
                 }
             } else {
@@ -432,7 +453,11 @@ impl SchedulingSearchService {
         }
 
         // Agence de voyage / Ticket bus : doit contenir "agence" ET ("voyage" OU "bus" OU "ticket")
-        if query_lower.contains("agence") && (query_lower.contains("voyage") || query_lower.contains("bus") || query_lower.contains("ticket")) {
+        if query_lower.contains("agence")
+            && (query_lower.contains("voyage")
+                || query_lower.contains("bus")
+                || query_lower.contains("ticket"))
+        {
             return SearchIntent::SpecializedTravelAgency;
         }
 
@@ -444,7 +469,9 @@ impl SchedulingSearchService {
         // Taxi : mot spécifique, mais vérifier qu'il n'est pas dans un contexte général
         if query_lower.contains("taxi") {
             // Exclure "taxi moto" ou "taxi vélo" qui sont des produits, pas des services
-            let is_product = query_lower.contains("moto") || query_lower.contains("vélo") || query_lower.contains("velo");
+            let is_product = query_lower.contains("moto")
+                || query_lower.contains("vélo")
+                || query_lower.contains("velo");
             if !is_product {
                 return SearchIntent::SpecializedTaxi;
             }
@@ -454,13 +481,17 @@ impl SchedulingSearchService {
         if query_lower.contains("banque de sang")
             || query_lower.contains("don de sang")
             || query_lower.contains("groupe sanguin")
-            || (query_lower.contains("sang") && (
-                query_lower.contains("o+") || query_lower.contains("o-")
-                || query_lower.contains("a+") || query_lower.contains("a-")
-                || query_lower.contains("b+") || query_lower.contains("b-")
-                || query_lower.contains("ab+") || query_lower.contains("ab-")
-                || query_lower.contains("rh+") || query_lower.contains("rh-")
-            ))
+            || (query_lower.contains("sang")
+                && (query_lower.contains("o+")
+                    || query_lower.contains("o-")
+                    || query_lower.contains("a+")
+                    || query_lower.contains("a-")
+                    || query_lower.contains("b+")
+                    || query_lower.contains("b-")
+                    || query_lower.contains("ab+")
+                    || query_lower.contains("ab-")
+                    || query_lower.contains("rh+")
+                    || query_lower.contains("rh-")))
         {
             return SearchIntent::SpecializedBloodBank;
         }
@@ -524,61 +555,120 @@ impl SchedulingSearchService {
         query: &str,
     ) -> Result<Option<String>, String> {
         use crate::utils::log::log_info;
-        
+
         let query_lower = query.to_lowercase();
-        
+
         // ✅ Mapping étendu avec variations et racines pour détection flexible
         // Inclut les variantes tronquées, fautes de frappe courantes, etc.
         let keyword_variations: Vec<(Vec<&str>, &str)> = vec![
             // Pharmacie : variations avec fautes de frappe courantes et textes tronqués
-            (vec!["pharmacie", "pharmaci", "pharm", "pharma", "pharmac"], "pharmacie"),
+            (
+                vec!["pharmacie", "pharmaci", "pharm", "pharma", "pharmac"],
+                "pharmacie",
+            ),
             // Hôpital/Clinique : variations multiples + spécialités médicales
-            (vec![
-                "hopital", "hôpital", "hopit", "hospital", 
-                "clinique", "cliniqu", "clin",
-                // ✅ NOUVEAU: Spécialités médicales (mappées vers hopital_clinique)
-                "urologue", "urologie", "urolog", 
-                "dermatologue", "dermatologie", "dermatolog",
-                "cardiologue", "cardiologie", "cardiolog",
-                "gynécologue", "gynecologue", "gynéco", "gyneco", "gynecol",
-                "pédiatre", "pediatre", "pediatri",
-                "ophtalmologue", "ophtalmo", "ophtalmolog",
-                "orthopédiste", "orthopediste", "orthoped",
-                "neurologue", "neurologie", "neurolog",
-                "médecin", "medecin", "docteur",
-                "urgences", "urgence"
-            ], "hopital_clinique"),
+            (
+                vec![
+                    "hopital",
+                    "hôpital",
+                    "hopit",
+                    "hospital",
+                    "clinique",
+                    "cliniqu",
+                    "clin",
+                    // ✅ NOUVEAU: Spécialités médicales (mappées vers hopital_clinique)
+                    "urologue",
+                    "urologie",
+                    "urolog",
+                    "dermatologue",
+                    "dermatologie",
+                    "dermatolog",
+                    "cardiologue",
+                    "cardiologie",
+                    "cardiolog",
+                    "gynécologue",
+                    "gynecologue",
+                    "gynéco",
+                    "gyneco",
+                    "gynecol",
+                    "pédiatre",
+                    "pediatre",
+                    "pediatri",
+                    "ophtalmologue",
+                    "ophtalmo",
+                    "ophtalmolog",
+                    "orthopédiste",
+                    "orthopediste",
+                    "orthoped",
+                    "neurologue",
+                    "neurologie",
+                    "neurolog",
+                    "médecin",
+                    "medecin",
+                    "docteur",
+                    "urgences",
+                    "urgence",
+                ],
+                "hopital_clinique",
+            ),
             // Laboratoire/Imagerie
-            (vec!["laboratoire", "laboratoir", "labo", "lab", "imagerie", "imag", "imager"], "laboratoire_imagerie"),
+            (
+                vec![
+                    "laboratoire",
+                    "laboratoir",
+                    "labo",
+                    "lab",
+                    "imagerie",
+                    "imag",
+                    "imager",
+                ],
+                "laboratoire_imagerie",
+            ),
             // Agence de voyage (nécessite contexte)
-            (vec!["agence", "voyage", "voyag", "bus", "billet"], "agence_voyage"),
+            (
+                vec!["agence", "voyage", "voyag", "bus", "billet"],
+                "agence_voyage",
+            ),
             // Covoiturage
-            (vec!["covoiturage", "covoit", "covoiturag", "covoitura"], "covoiturage"),
+            (
+                vec!["covoiturage", "covoit", "covoiturag", "covoitura"],
+                "covoiturage",
+            ),
             // Taxi
             (vec!["taxi", "taxis", "tax"], "taxi_ville"),
             // Banque de sang (phrases complètes)
-            (vec!["banque de sang", "banque sang", "don de sang", "don sang", "groupe sanguin", "sang"], "banque_sang"),
+            (
+                vec![
+                    "banque de sang",
+                    "banque sang",
+                    "don de sang",
+                    "don sang",
+                    "groupe sanguin",
+                    "sang",
+                ],
+                "banque_sang",
+            ),
         ];
 
         // Détecter le type potentiel avec recherche flexible (sans doublons)
         let mut potential_types: std::collections::HashSet<&str> = std::collections::HashSet::new();
-        
+
         for (variations, specialized_type) in keyword_variations.iter() {
             // Vérifier si au moins une variation est présente dans la requête
-            let matches = variations.iter().any(|variation| {
-                query_lower.contains(variation)
-            });
-            
+            let matches = variations
+                .iter()
+                .any(|variation| query_lower.contains(variation));
+
             if matches {
                 // Cas spéciaux pour agence_voyage (nécessite contexte)
                 if *specialized_type == "agence_voyage" {
                     let has_agence = query_lower.contains("agence");
-                    let has_voyage_context = query_lower.contains("voyage") 
+                    let has_voyage_context = query_lower.contains("voyage")
                         || query_lower.contains("voyag")
                         || query_lower.contains("bus")
                         || query_lower.contains("billet")
                         || query_lower.contains("ticket");
-                    
+
                     if has_agence && has_voyage_context {
                         potential_types.insert(specialized_type);
                     }
@@ -596,7 +686,7 @@ impl SchedulingSearchService {
                 "[SchedulingSearchService] 🔍 Aucun mot-clé spécialisé détecté directement, tentative fuzzy matching pour: '{}'",
                 query
             ));
-            
+
             // Recherche fuzzy en base avec similarity() de pg_trgm
             let fuzzy_match: Option<String> = sqlx::query_scalar(
                 r#"
@@ -649,7 +739,7 @@ impl SchedulingSearchService {
             WHERE specialized_type = ANY($1::text[])
             AND is_active = TRUE
             LIMIT 1
-            "#
+            "#,
         )
         .bind(&specialized_types_vec)
         .fetch_optional(&self.pool)
@@ -718,13 +808,14 @@ impl SchedulingSearchService {
 
         let mut results = Vec::new();
         for row in rows {
-            let service_id: i32 = row.get("service_id");
-            let nom: String = row.get("nom");
-            let distance: Option<f64> = row.get("distance_km");
-            let score: f64 = row.get("relevance_score");
-            let is_available: bool = row.get("is_available_now");
-            let stocks: serde_json::Value = row.get("stocks_groupes_sanguins");
-            let urgence_24h: bool = row.get("urgence_24h");
+            let service_id: i32 = row.get::<i32, _>("service_id");
+            let nom: String = row.get::<String, _>("nom");
+            let distance: Option<f64> = row.get::<Option<f64>, _>("distance_km");
+            let score: f64 = row.get::<f64, _>("relevance_score");
+            let is_available: bool = row.get::<bool, _>("is_available_now");
+            let stocks: serde_json::Value =
+                row.get::<serde_json::Value, _>("stocks_groupes_sanguins");
+            let urgence_24h: bool = row.get::<bool, _>("urgence_24h");
 
             let data = serde_json::json!({
                 "titre_service": {"valeur": nom},

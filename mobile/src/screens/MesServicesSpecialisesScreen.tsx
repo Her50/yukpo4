@@ -1,17 +1,20 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Dimensions,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
+import { NativeButton } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { servicesApi } from '../services/api';
+import { modernColors } from '../theme/modernTheme';
 
 const { width } = Dimensions.get('window');
 const CARD_PADDING = 16; // Padding horizontal du conteneur
@@ -32,6 +35,15 @@ const MesServicesSpecialisesScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
     const [creatingService, setCreatingService] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterCategory, setFilterCategory] = useState<'tous' | 'sante' | 'transport'>('tous');
+
+    // ✅ NOUVEAU : Rediriger vers le hub unifié si disponible
+    // Sinon, garder l'ancien comportement pour compatibilité
+    useEffect(() => {
+        // Optionnel : rediriger automatiquement vers le hub
+        // (navigation as any).navigate('SpecializedServicesHub');
+    }, []);
 
     // ✅ Créer automatiquement un service avant la navigation
     const handleServicePress = async (service: ServiceSpecialise) => {
@@ -315,6 +327,21 @@ const MesServicesSpecialisesScreen: React.FC = () => {
         },
     ];
 
+    // Filtrer les services selon la recherche et la catégorie
+    const filteredSante = servicesSante.filter((service) => {
+        const matchesSearch = searchQuery === '' ||
+            service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            service.description.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch && (filterCategory === 'tous' || filterCategory === 'sante');
+    });
+
+    const filteredTransport = servicesTransport.filter((service) => {
+        const matchesSearch = searchQuery === '' ||
+            service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            service.description.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch && (filterCategory === 'tous' || filterCategory === 'transport');
+    });
+
     return (
         <ScrollView
             style={styles.container}
@@ -328,71 +355,190 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                 </Text>
             </View>
 
-            {/* Groupe Santé */}
-            <View style={styles.group}>
-                <View style={styles.groupHeader}>
-                    <SafeIcon name="heart-pulse" size={20} color="#EF4444" type="lucide" />
-                    <Text style={styles.groupTitle}>Santé</Text>
-                </View>
-                <View style={styles.servicesGrid}>
-                    {servicesSante.map((service) => (
-                        <TouchableOpacity
-                            key={service.id}
-                            style={[styles.serviceCard, { borderLeftColor: service.color }]}
-                            onPress={() => handleServicePress(service)}
-                            disabled={creatingService === service.id}
-                        >
-                            <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '15' }]}>
-                                <SafeIcon
-                                    name={service.icon}
-                                    size={20}
-                                    color={service.color}
-                                    type="lucide"
-                                />
-                            </View>
-                            <Text style={styles.serviceTitle} numberOfLines={2}>
-                                {service.title}
-                            </Text>
-                            <Text style={styles.serviceDescription} numberOfLines={2}>
-                                {service.description}
-                            </Text>
+            {/* ✅ NOUVEAU: Barre de recherche globale */}
+            <View style={styles.searchContainer}>
+                <View style={styles.searchBar}>
+                    <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Rechercher un service..."
+                        placeholderTextColor={modernColors.textSecondary}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
                         </TouchableOpacity>
-                    ))}
+                    )}
                 </View>
             </View>
 
-            {/* Groupe Transport */}
-            <View style={styles.group}>
-                <View style={styles.groupHeader}>
-                    <SafeIcon name="car" size={20} color="#3B82F6" type="lucide" />
-                    <Text style={styles.groupTitle}>Transport</Text>
-                </View>
-                <View style={styles.servicesGrid}>
-                    {servicesTransport.map((service) => (
-                        <TouchableOpacity
-                            key={service.id}
-                            style={[styles.serviceCard, { borderLeftColor: service.color }]}
-                            onPress={() => handleServicePress(service)}
-                            disabled={creatingService === service.id}
-                        >
-                            <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '15' }]}>
-                                <SafeIcon
-                                    name={service.icon}
-                                    size={20}
-                                    color={service.color}
-                                    type="lucide"
-                                />
-                            </View>
-                            <Text style={styles.serviceTitle} numberOfLines={2}>
-                                {service.title}
-                            </Text>
-                            <Text style={styles.serviceDescription} numberOfLines={2}>
-                                {service.description}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+            {/* ✅ NOUVEAU: Filtres visuels */}
+            <View style={styles.filtersContainer}>
+                <TouchableOpacity
+                    style={[
+                        styles.filterButton,
+                        filterCategory === 'tous' && styles.filterButtonActive,
+                    ]}
+                    onPress={() => setFilterCategory('tous')}
+                >
+                    <Text
+                        style={[
+                            styles.filterButtonText,
+                            filterCategory === 'tous' && styles.filterButtonTextActive,
+                        ]}
+                    >
+                        Tous
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[
+                        styles.filterButton,
+                        filterCategory === 'sante' && styles.filterButtonActive,
+                    ]}
+                    onPress={() => setFilterCategory('sante')}
+                >
+                    <SafeIcon
+                        name="heart-pulse"
+                        size={16}
+                        color={filterCategory === 'sante' ? '#fff' : '#EF4444'}
+                        type="lucide"
+                    />
+                    <Text
+                        style={[
+                            styles.filterButtonText,
+                            filterCategory === 'sante' && styles.filterButtonTextActive,
+                        ]}
+                    >
+                        Santé
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[
+                        styles.filterButton,
+                        filterCategory === 'transport' && styles.filterButtonActive,
+                    ]}
+                    onPress={() => setFilterCategory('transport')}
+                >
+                    <SafeIcon
+                        name="car"
+                        size={16}
+                        color={filterCategory === 'transport' ? '#fff' : '#3B82F6'}
+                        type="lucide"
+                    />
+                    <Text
+                        style={[
+                            styles.filterButtonText,
+                            filterCategory === 'transport' && styles.filterButtonTextActive,
+                        ]}
+                    >
+                        Transport
+                    </Text>
+                </TouchableOpacity>
             </View>
+
+            {/* ✅ NOUVEAU: Bouton pour accéder au hub unifié */}
+            <View style={styles.hubButtonContainer}>
+                <NativeButton
+                    title="📊 Voir le Hub Unifié"
+                    variant="primary"
+                    onPress={() => {
+                        (navigation as any).navigate('SpecializedServicesHub');
+                    }}
+                />
+            </View>
+
+            {/* Groupe Santé */}
+            {filteredSante.length > 0 && (
+                <View style={styles.group}>
+                    <View style={styles.groupHeader}>
+                        <SafeIcon name="heart-pulse" size={20} color="#EF4444" type="lucide" />
+                        <Text style={styles.groupTitle}>Santé</Text>
+                        {filteredSante.length < servicesSante.length && (
+                            <Text style={styles.filteredCount}>
+                                ({filteredSante.length}/{servicesSante.length})
+                            </Text>
+                        )}
+                    </View>
+                    <View style={styles.servicesGrid}>
+                        {filteredSante.map((service) => (
+                            <TouchableOpacity
+                                key={service.id}
+                                style={[styles.serviceCard, { borderLeftColor: service.color }]}
+                                onPress={() => handleServicePress(service)}
+                                disabled={creatingService === service.id}
+                            >
+                                <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '15' }]}>
+                                    <SafeIcon
+                                        name={service.icon}
+                                        size={20}
+                                        color={service.color}
+                                        type="lucide"
+                                    />
+                                </View>
+                                <Text style={styles.serviceTitle} numberOfLines={2}>
+                                    {service.title}
+                                </Text>
+                                <Text style={styles.serviceDescription} numberOfLines={2}>
+                                    {service.description}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            )}
+
+            {/* Groupe Transport */}
+            {filteredTransport.length > 0 && (
+                <View style={styles.group}>
+                    <View style={styles.groupHeader}>
+                        <SafeIcon name="car" size={20} color="#3B82F6" type="lucide" />
+                        <Text style={styles.groupTitle}>Transport</Text>
+                        {filteredTransport.length < servicesTransport.length && (
+                            <Text style={styles.filteredCount}>
+                                ({filteredTransport.length}/{servicesTransport.length})
+                            </Text>
+                        )}
+                    </View>
+                    <View style={styles.servicesGrid}>
+                        {filteredTransport.map((service) => (
+                            <TouchableOpacity
+                                key={service.id}
+                                style={[styles.serviceCard, { borderLeftColor: service.color }]}
+                                onPress={() => handleServicePress(service)}
+                                disabled={creatingService === service.id}
+                            >
+                                <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '15' }]}>
+                                    <SafeIcon
+                                        name={service.icon}
+                                        size={20}
+                                        color={service.color}
+                                        type="lucide"
+                                    />
+                                </View>
+                                <Text style={styles.serviceTitle} numberOfLines={2}>
+                                    {service.title}
+                                </Text>
+                                <Text style={styles.serviceDescription} numberOfLines={2}>
+                                    {service.description}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            )}
+
+            {/* Message si aucun résultat */}
+            {filteredSante.length === 0 && filteredTransport.length === 0 && (
+                <View style={styles.emptyContainer}>
+                    <SafeIcon name="search-x" size={48} color={modernColors.textSecondary} type="lucide" />
+                    <Text style={styles.emptyText}>Aucun service trouvé</Text>
+                    <Text style={styles.emptySubtext}>
+                        Essayez de modifier votre recherche ou vos filtres
+                    </Text>
+                </View>
+            )}
         </ScrollView>
     );
 };
@@ -477,6 +623,84 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#6B7280',
         lineHeight: 16,
+    },
+    searchContainer: {
+        padding: 16,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#111827',
+    },
+    filtersContainer: {
+        flexDirection: 'row',
+        padding: 16,
+        gap: 8,
+        backgroundColor: '#fff',
+    },
+    filterButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 6,
+    },
+    filterButtonActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    filterButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    filterButtonTextActive: {
+        color: '#fff',
+    },
+    hubButtonContainer: {
+        padding: 16,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    filteredCount: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginLeft: 8,
+    },
+    emptyContainer: {
+        padding: 40,
+        alignItems: 'center',
+    },
+    emptyText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginTop: 16,
+    },
+    emptySubtext: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        marginTop: 8,
+        textAlign: 'center',
     },
 });
 

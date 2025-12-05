@@ -65,7 +65,19 @@ RUN apt-get update && apt-get install -y \
     libmariadb3 \
     libsqlite3-0 \
     curl \
+    wget \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
+
+# 🎨 Installer Blender pour rendu 3D AR (production cloud)
+RUN wget https://download.blender.org/release/Blender4.0/blender-4.0.0-linux-x64.tar.xz \
+    && tar -xf blender-4.0.0-linux-x64.tar.xz \
+    && mv blender-4.0.0-linux-x64 /opt/blender \
+    && rm blender-4.0.0-linux-x64.tar.xz \
+    && ln -s /opt/blender/blender /usr/local/bin/blender \
+    && chmod +x /opt/blender/blender \
+    && blender --version \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Créer l'utilisateur non-root
 RUN groupadd -r appuser && useradd -r -g appuser appuser

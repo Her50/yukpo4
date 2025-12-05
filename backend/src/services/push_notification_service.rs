@@ -45,13 +45,15 @@ pub async fn register_push_token(
     device_id: Option<String>,
 ) -> Result<i32, sqlx::Error> {
     info!(
-        "[PushService] Enregistrement token push pour user {}: {}",
+        "[PushService] Enregistrement token push pour user {}: {} (device_type: {}, device_id: {:?})",
         user_id,
-        &push_token[..20]
+        &push_token[..20.min(push_token.len())],
+        device_type,
+        device_id
     );
 
     // Vérifier si le token existe déjà
-    let existing: Option<(i32,)> = sqlx::query_as(
+    let existing: Option<(i32,)> = match sqlx::query_as(
         r#"
         SELECT id FROM user_push_tokens
         WHERE push_token = $1
@@ -59,11 +61,21 @@ pub async fn register_push_token(
     )
     .bind(&push_token)
     .fetch_optional(pool)
-    .await?;
+    .await
+    {
+        Ok(result) => result,
+        Err(e) => {
+            error!(
+                "[PushService] ❌ Erreur SQL lors de la vérification du token: {:?}",
+                e
+            );
+            return Err(e);
+        }
+    };
 
     if let Some(row) = existing {
         // Mettre à jour le token existant
-        sqlx::query(
+        match sqlx::query(
             r#"
             UPDATE user_push_tokens
             SET user_id = $1, device_type = $2, device_id = $3, is_active = TRUE, last_used_at = CURRENT_TIMESTAMP
@@ -75,13 +87,24 @@ pub async fn register_push_token(
         .bind(&device_id)
         .bind(&push_token)
         .execute(pool)
-        .await?;
-
-        info!("[PushService] ✅ Token push mis à jour: {}", row.0);
-        Ok(row.0)
+        .await
+        {
+            Ok(_) => {
+                info!("[PushService] ✅ Token push mis à jour: {}", row.0);
+                Ok(row.0)
+            }
+            Err(e) => {
+                let device_type_clone = device_type.clone();
+                let device_id_clone = device_id.clone();
+                error!("[PushService] ❌ Erreur SQL lors de la mise à jour du token: {:?}", e);
+                error!("[PushService] Détails: user_id={}, device_type={}, device_id={:?}, push_token={}...", 
+                    user_id, device_type_clone, device_id_clone, &push_token[..20.min(push_token.len())]);
+                Err(e)
+            }
+        }
     } else {
         // Insérer un nouveau token
-        let result: (i32,) = sqlx::query_as(
+        match sqlx::query_as::<_, (i32,)>(
             r#"
             INSERT INTO user_push_tokens (user_id, push_token, device_type, device_id, is_active)
             VALUES ($1, $2, $3, $4, TRUE)
@@ -93,13 +116,27 @@ pub async fn register_push_token(
         .bind(&device_type)
         .bind(&device_id)
         .fetch_one(pool)
-        .await?;
-
-        info!(
-            "[PushService] ✅ Nouveau token push enregistré: {}",
-            result.0
-        );
-        Ok(result.0)
+        .await
+        {
+            Ok(result) => {
+                info!(
+                    "[PushService] ✅ Nouveau token push enregistré: {}",
+                    result.0
+                );
+                Ok(result.0)
+            }
+            Err(e) => {
+                let device_type_clone = device_type.clone();
+                let device_id_clone = device_id.clone();
+                error!(
+                    "[PushService] ❌ Erreur SQL lors de l'insertion du token: {:?}",
+                    e
+                );
+                error!("[PushService] Détails: user_id={}, device_type={}, device_id={:?}, push_token={}...", 
+                    user_id, device_type_clone, device_id_clone, &push_token[..20.min(push_token.len())]);
+                Err(e)
+            }
+        }
     }
 }
 

@@ -6,14 +6,15 @@ import axios from 'axios';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { buildUrl } from '../config/api.config';
 
 export default function CovoiturageForm() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { serviceId: serviceIdParam } = useParams<{ serviceId?: string }>();
     const { user } = useUser();
-    const serviceId = location.state?.serviceId;
+    const serviceId = serviceIdParam ? parseInt(serviceIdParam, 10) : (location.state?.serviceId as number | undefined);
 
     const [formData, setFormData] = useState({
         point_depart: '',
@@ -88,7 +89,8 @@ export default function CovoiturageForm() {
 
             if (response.data) {
                 toast.success('Trajet de covoiturage créé avec succès !');
-                navigate(-1);
+                // Rediriger vers mes trajets après création
+                navigate('/covoiturages/my-trips');
             }
         } catch (error: any) {
             console.error('Erreur création covoiturage:', error);

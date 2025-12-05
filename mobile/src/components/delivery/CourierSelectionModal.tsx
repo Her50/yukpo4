@@ -10,10 +10,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeIcon } from '../SafeIcon';
-import { NativeButton } from '../NativeDesign';
 import { deliveryApi } from '../../services/api';
+import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
+import { NativeButton } from '../NativeDesign';
+import { SafeIcon } from '../SafeIcon';
 
 interface CourierSelectionModalProps {
     visible: boolean;
@@ -102,7 +103,7 @@ const CourierSelectionModal: React.FC<CourierSelectionModalProps> = ({
             <View style={styles.courierHeader}>
                 {/* Avatar */}
                 {item.avatar_url ? (
-                    <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+                    <Image source={{ uri: mediaService.getImageUrl(item.avatar_url) }} style={styles.avatar} />
                 ) : (
                     <View style={styles.avatarPlaceholder}>
                         <Text style={styles.avatarText}>

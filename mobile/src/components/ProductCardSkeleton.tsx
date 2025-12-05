@@ -1,141 +1,80 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
+/**
+ * Skeleton loading pour ProductCard - Niveau géant (Instagram/TikTok)
+ * Shimmer effect premium avec LinearGradient
+ */
+
+import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
+import { Animated, Dimensions, StyleSheet, View } from 'react-native';
 
 const { width } = Dimensions.get('window');
+const CARD_WIDTH = width * 0.85;
 
-/**
- * ✅ OPTIMISATION 8: Skeleton Loader pour ProductCard
- * Améliore l'UX perçue pendant le chargement des produits
- */
 const ProductCardSkeleton: React.FC = () => {
-    const shimmerAnimation = useRef(new Animated.Value(0)).current;
+    const shimmerAnim = React.useRef(new Animated.Value(0)).current;
 
-    useEffect(() => {
-        // Animation de shimmer (effet de brillance)
+    React.useEffect(() => {
         Animated.loop(
-            Animated.timing(shimmerAnimation, {
+            Animated.timing(shimmerAnim, {
                 toValue: 1,
-                duration: 1500,
-                easing: Easing.linear,
+                duration: 1500, // ✅ GÉANT-LEVEL: Réduit de 2000 → 1500 pour plus de fluidité
                 useNativeDriver: true,
             })
         ).start();
-    }, []);
+    }, [shimmerAnim]);
 
-    const shimmerTranslate = shimmerAnimation.interpolate({
+    const translateX = shimmerAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [-width, width],
+        outputRange: [-CARD_WIDTH, CARD_WIDTH],
     });
+
+    const ShimmerOverlay = ({ style }: { style: any }) => (
+        <Animated.View
+            style={[
+                StyleSheet.absoluteFill,
+                {
+                    transform: [{ translateX }],
+                },
+            ]}
+        >
+            <LinearGradient
+                colors={['transparent', 'rgba(255,255,255,0.5)', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+            />
+        </Animated.View>
+    );
 
     return (
         <View style={styles.container}>
-            <View style={styles.card}>
-                {/* Image principale */}
-                <View style={styles.imagePlaceholder}>
-                    <Animated.View
-                        style={[
-                            styles.shimmer,
-                            {
-                                transform: [{ translateX: shimmerTranslate }],
-                            },
-                        ]}
-                    />
+            {/* Image placeholder avec shimmer */}
+            <View style={styles.imagePlaceholder}>
+                <ShimmerOverlay />
+            </View>
+
+            {/* Content placeholder */}
+            <View style={styles.contentContainer}>
+                {/* Title avec shimmer */}
+                <View style={styles.titlePlaceholder}>
+                    <ShimmerOverlay />
                 </View>
 
-                {/* Contenu */}
-                <View style={styles.content}>
-                    {/* Badge type */}
-                    <View style={styles.badge}>
-                        <Animated.View
-                            style={[
-                                styles.shimmer,
-                                {
-                                    transform: [{ translateX: shimmerTranslate }],
-                                },
-                            ]}
-                        />
-                    </View>
+                {/* Description lines avec shimmer */}
+                <View style={styles.descriptionLine1}>
+                    <ShimmerOverlay />
+                </View>
+                <View style={styles.descriptionLine2}>
+                    <ShimmerOverlay />
+                </View>
 
-                    {/* Titre */}
-                    <View style={styles.titlePlaceholder}>
-                        <Animated.View
-                            style={[
-                                styles.shimmer,
-                                {
-                                    transform: [{ translateX: shimmerTranslate }],
-                                },
-                            ]}
-                        />
+                {/* Footer */}
+                <View style={styles.footer}>
+                    <View style={styles.pricePlaceholder}>
+                        <ShimmerOverlay />
                     </View>
-
-                    {/* Sous-titre */}
-                    <View style={styles.subtitlePlaceholder}>
-                        <Animated.View
-                            style={[
-                                styles.shimmer,
-                                {
-                                    transform: [{ translateX: shimmerTranslate }],
-                                },
-                            ]}
-                        />
-                    </View>
-
-                    {/* Tags */}
-                    <View style={styles.tagsRow}>
-                        <View style={styles.tagPlaceholder}>
-                            <Animated.View
-                                style={[
-                                    styles.shimmer,
-                                    {
-                                        transform: [{ translateX: shimmerTranslate }],
-                                    },
-                                ]}
-                            />
-                        </View>
-                        <View style={styles.tagPlaceholder}>
-                            <Animated.View
-                                style={[
-                                    styles.shimmer,
-                                    {
-                                        transform: [{ translateX: shimmerTranslate }],
-                                    },
-                                ]}
-                            />
-                        </View>
-                        <View style={styles.tagPlaceholder}>
-                            <Animated.View
-                                style={[
-                                    styles.shimmer,
-                                    {
-                                        transform: [{ translateX: shimmerTranslate }],
-                                    },
-                                ]}
-                            />
-                        </View>
-                    </View>
-
-                    {/* Footer (prix + bouton) */}
-                    <View style={styles.footer}>
-                        <View style={styles.pricePlaceholder}>
-                            <Animated.View
-                                style={[
-                                    styles.shimmer,
-                                    {
-                                        transform: [{ translateX: shimmerTranslate }],
-                                    },
-                                ]}
-                            />
-                        </View>
-                        <View style={styles.buttonPlaceholder}>
-                            <Animated.View
-                                style={[
-                                    styles.shimmer,
-                                    {
-                                        transform: [{ translateX: shimmerTranslate }],
-                                    },
-                                ]}
-                            />
-                        </View>
+                    <View style={styles.badgePlaceholder}>
+                        <ShimmerOverlay />
                     </View>
                 </View>
             </View>
@@ -145,89 +84,72 @@ const ProductCardSkeleton: React.FC = () => {
 
 const styles = StyleSheet.create({
     container: {
-        marginHorizontal: 16,
-        marginVertical: 8,
-    },
-    card: {
+        width: CARD_WIDTH,
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
+        borderRadius: 16,
+        overflow: 'hidden',
+        marginRight: 12,
+        height: 320,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
-        overflow: 'hidden',
     },
     imagePlaceholder: {
         width: '100%',
         height: 180,
         backgroundColor: '#E5E7EB',
-        overflow: 'hidden',
+        overflow: 'hidden', // ✅ GÉANT-LEVEL: Pour shimmer effect
     },
-    content: {
-        padding: 16,
-    },
-    badge: {
-        width: 100,
-        height: 24,
-        backgroundColor: '#E5E7EB',
-        borderRadius: 12,
-        marginBottom: 12,
-        overflow: 'hidden',
+    contentContainer: {
+        padding: 12,
+        flex: 1,
     },
     titlePlaceholder: {
-        width: '80%',
         height: 20,
         backgroundColor: '#E5E7EB',
         borderRadius: 4,
-        marginBottom: 10,
-        overflow: 'hidden',
+        marginBottom: 8,
+        width: '70%',
+        overflow: 'hidden', // ✅ GÉANT-LEVEL: Pour shimmer effect
     },
-    subtitlePlaceholder: {
-        width: '60%',
-        height: 16,
-        backgroundColor: '#E5E7EB',
+    descriptionLine1: {
+        height: 14,
+        backgroundColor: '#F3F4F6',
         borderRadius: 4,
-        marginBottom: 16,
-        overflow: 'hidden',
+        marginBottom: 6,
+        width: '100%',
+        overflow: 'hidden', // ✅ GÉANT-LEVEL: Pour shimmer effect
     },
-    tagsRow: {
-        flexDirection: 'row',
-        gap: 8,
-        marginBottom: 16,
-    },
-    tagPlaceholder: {
-        width: 70,
-        height: 28,
-        backgroundColor: '#E5E7EB',
-        borderRadius: 14,
-        overflow: 'hidden',
+    descriptionLine2: {
+        height: 14,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 4,
+        marginBottom: 12,
+        width: '80%',
+        overflow: 'hidden', // ✅ GÉANT-LEVEL: Pour shimmer effect
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        marginTop: 'auto',
     },
     pricePlaceholder: {
-        width: 100,
-        height: 28,
+        height: 24,
+        width: 80,
         backgroundColor: '#E5E7EB',
         borderRadius: 6,
-        overflow: 'hidden',
+        overflow: 'hidden', // ✅ GÉANT-LEVEL: Pour shimmer effect
     },
-    buttonPlaceholder: {
-        width: 120,
-        height: 40,
-        backgroundColor: '#E5E7EB',
-        borderRadius: 8,
-        overflow: 'hidden',
-    },
-    shimmer: {
-        width: '100%',
-        height: '100%',
-        backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    badgePlaceholder: {
+        height: 24,
+        width: 60,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 12,
+        overflow: 'hidden', // ✅ GÉANT-LEVEL: Pour shimmer effect
     },
 });
 
 export default ProductCardSkeleton;
-

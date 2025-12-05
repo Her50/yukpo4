@@ -1,0 +1,9 @@
+# Répertoire pour modèles ML ONNX
+# Les modèles seront chargés automatiquement par DeliveryMLModelsService
+# Format: .onnx
+# Noms attendus:
+# - ETAPrediction.onnx
+# - DemandForecasting.onnx
+# - RouteOptimization.onnx
+# - FraudDetection.onnx
+

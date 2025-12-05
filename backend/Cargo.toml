@@ -15,11 +15,44 @@ name = "cleanup_ghost_embeddings"
 path = "cleanup_ghost_embeddings.rs"
 required-features = ["maintenance-tools"]
 
+[[bin]]
+name = "test_redis"
+path = "src/bin/test_redis.rs"
+
+[[bin]]
+name = "test_redis_standalone"
+path = "src/bin/test_redis_standalone.rs"
+
+[[bin]]
+name = "test_redis_minimal"
+path = "test_redis_minimal.rs"
+
+[[bin]]
+name = "recurring_trips_cron"
+path = "src/bin/recurring_trips_cron.rs"
+
+[[bin]]
+name = "preview_performance_benchmark"
+path = "src/bin/preview_performance_benchmark.rs"
+
+[[bin]]
+name = "check_counts"
+path = "scripts/check_counts.rs"
+
+[[bin]]
+name = "test_ml_dir"
+path = "src/bin/test_ml_dir.rs"
+
+[[bin]]
+name = "init_ml_models"
+path = "src/bin/init_ml_models.rs"
+
 [features]
 mock = []
 gpu = ["image"]
 image_search = ["image"]
 maintenance-tools = []
+# Feature onnx supprimée - ONNX toujours activé maintenant
 
 [dependencies]
 # ðŸŒ Web / Serveur
@@ -29,7 +62,7 @@ hyper = { version = "0.14.28", features = ["full"] }
 http = "1.3.1"
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.4", features = ["full"] }
-tower-http = { version = "0.5", features = ["cors", "trace", "limit", "fs"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "limit", "fs", "compression-gzip", "compression-br"] }
 reqwest = { version = "0.11", features = ["json", "multipart"] }
 http-body = "1.0.1"
 
@@ -38,7 +71,8 @@ sqlx = { version = "0.8", features = ["postgres", "sqlite", "runtime-tokio-rustl
 rust_decimal = "1.33"
 bigdecimal = { version = "0.4", features = ["serde"] }
 mongodb = { version = "2.8", features = ["tokio-runtime"] }
-redis = { version = "0.26", features = ["tokio-native-tls-comp", "aio"] }
+redis = { version = "0.26", features = ["tokio-native-tls-comp", "aio", "cluster"] }
+deadpool-redis = "0.15"
 
 # ðŸ” Auth / SÃ©rialisation
 serde = { version = "1.0", features = ["derive"] }
@@ -85,4 +119,17 @@ toml = "0.8"
 rand = "0.8"
 urlencoding = "2.1"
 aws-sdk-s3 = { version = "1.23.0", features = ["behavior-version-latest"] }
+
+# ✅ Phase 4: Prometheus pour monitoring
+prometheus = "0.13"
+
+# ✅ Phase 2: Compression pour WebSocket
+flate2 = "1.0"
+lru = "0.12"
+
+# Phase 3: ML & Optimisation pour livraisons
+# Pour VRP et optimisations geographiques (geo deja present)
+# Pour ML: Support ONNX avec apprentissage automatique
+ort = "2.0.0-rc.10"  # ✅ ONNX Runtime pour inference ML (toujours activé)
+ndarray = "0.15"  # Arrays pour features ML (toujours activé)
 

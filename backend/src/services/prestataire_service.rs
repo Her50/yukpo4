@@ -139,7 +139,7 @@ pub async fn update_user_name(
             nom_complet = COALESCE($3, nom_complet),
             updated_at = NOW()
         WHERE id = $4
-        "#
+        "#,
     )
     .bind(nom.as_deref())
     .bind(prenom.as_deref())

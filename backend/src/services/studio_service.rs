@@ -288,7 +288,7 @@ impl StudioService {
                    MAX(created_at) AS last_preview_at
             FROM studio_preview_events
             WHERE session_id = $1
-            "#
+            "#,
         )
         .bind(session_id)
         .fetch_one(&self.pool)
@@ -305,7 +305,7 @@ impl StudioService {
             WHERE session_id = $1
             GROUP BY template
             ORDER BY COUNT(*) DESC
-            "#
+            "#,
         )
         .bind(session_id)
         .fetch_all(&self.pool)
@@ -995,10 +995,7 @@ impl StudioService {
     }
 
     /// ✅ Phase 9 - Amélioration 31 : Récupérer la vidéo suivante dans la chaîne
-    pub async fn get_next_video(
-        &self,
-        session_id: Uuid,
-    ) -> AppResult<NextVideoResponse> {
+    pub async fn get_next_video(&self, session_id: Uuid) -> AppResult<NextVideoResponse> {
         let next = sqlx::query_as::<_, (Option<Uuid>, Option<i32>)>(
             r#"
             SELECT child_session_id, order_index
@@ -1026,10 +1023,7 @@ impl StudioService {
     }
 
     /// ✅ Phase 9 - Amélioration 31 : Récupérer toutes les dépendances d'une session
-    pub async fn get_dependencies(
-        &self,
-        session_id: Uuid,
-    ) -> AppResult<Vec<VideoDependency>> {
+    pub async fn get_dependencies(&self, session_id: Uuid) -> AppResult<Vec<VideoDependency>> {
         let deps = sqlx::query_as::<_, VideoDependency>(
             r#"
             SELECT id, parent_session_id, child_session_id, order_index, created_at

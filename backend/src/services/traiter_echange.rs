@@ -128,7 +128,7 @@ pub async fn traiter_echange(
     if let Some(redis) = redis_client {
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         use crate::utils::redis_helper;
-        
+
         let cache_key_clone = cache_key.clone();
         match redis_helper::execute_with_retry(
             redis,
@@ -138,7 +138,9 @@ pub async fn traiter_echange(
             },
             3,
             500,
-        ).await {
+        )
+        .await
+        {
             Ok(true) => {
                 return Ok(
                     serde_json::json!({"error": "Un échange identique existe déjà pour cet utilisateur."}),
@@ -169,8 +171,10 @@ pub async fn traiter_echange(
         if let Some(redis) = redis_client {
             // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
             use crate::utils::redis_helper;
-            
-            if let Err(e) = redis_helper::set_with_retry(redis, &cache_key, "1", Some(CACHE_TTL as u64)).await {
+
+            if let Err(e) =
+                redis_helper::set_with_retry(redis, &cache_key, "1", Some(CACHE_TTL as u64)).await
+            {
                 log::warn!("[TRAITER_ECHANGE] Redis indisponible pour mise en cache doublon: {}. L'opération continue.", e);
             }
         }
@@ -185,7 +189,7 @@ pub async fn traiter_echange(
         INSERT INTO echanges (user_id, offre, besoin, statut, don)
         VALUES ($1, $2, $3, 'en_attente', $4)
         RETURNING id
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(&offre)
@@ -286,7 +290,7 @@ pub async fn traiter_echange(
                FROM echanges 
                WHERE statut = 'en_attente' AND id != $1 
                ORDER BY created_at DESC 
-               LIMIT $2 OFFSET $3"#
+               LIMIT $2 OFFSET $3"#,
         )
         .bind(echange_id)
         .bind(BATCH_SIZE as i64)
@@ -409,7 +413,7 @@ pub async fn traiter_echange(
         if best_score >= get_match_threshold() {
             // Mise à jour atomique des deux échanges
             let result1 = sqlx::query(
-                "UPDATE echanges SET statut = 'matché', matched_with = $1 WHERE id = $2"
+                "UPDATE echanges SET statut = 'matché', matched_with = $1 WHERE id = $2",
             )
             .bind(matched_id)
             .bind(echange_id)
@@ -417,7 +421,7 @@ pub async fn traiter_echange(
             .await;
 
             let result2 = sqlx::query(
-                "UPDATE echanges SET statut = 'matché', matched_with = $1 WHERE id = $2"
+                "UPDATE echanges SET statut = 'matché', matched_with = $1 WHERE id = $2",
             )
             .bind(echange_id)
             .bind(matched_id)

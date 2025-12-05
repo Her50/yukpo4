@@ -105,7 +105,7 @@ impl DynamicPreparationTimeService {
             preparation_time_minutes: Option<i32>,
             actual_minutes: Option<f64>,
         }
-        
+
         let preparation_times: Vec<PreparationTimeRow> = sqlx::query(
             r#"
             SELECT 
@@ -125,8 +125,8 @@ impl DynamicPreparationTimeService {
         )
         .bind(category)
         .map(|row: sqlx::postgres::PgRow| PreparationTimeRow {
-            preparation_time_minutes: row.try_get("preparation_time_minutes").ok(),
-            actual_minutes: row.try_get("actual_minutes").ok(),
+            preparation_time_minutes: row.get::<Option<_>, _>("preparation_time_minutes"),
+            actual_minutes: row.get::<Option<_>, _>("actual_minutes"),
         })
         .fetch_all(&self.pool)
         .await?;
@@ -175,7 +175,8 @@ impl DynamicPreparationTimeService {
         };
 
         // Mettre à jour les stats
-        self.upsert_category_stats(category, avg, median, count as i32).await?;
+        self.upsert_category_stats(category, avg, median, count as i32)
+            .await?;
 
         Ok(())
     }
@@ -247,4 +248,3 @@ impl DynamicPreparationTimeService {
         Ok(row)
     }
 }
-

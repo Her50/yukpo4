@@ -40,7 +40,7 @@ pub async fn process_expired_services_intelligently(
           AND s.is_tarissable = FALSE
           AND s.auto_deactivate_at IS NOT NULL
           AND s.auto_deactivate_at < $1
-        "#
+        "#,
     )
     .bind(now)
     .fetch_all(pool)
@@ -74,7 +74,10 @@ pub async fn process_expired_services_intelligently(
             .map_err(AppError::from)?;
 
             // Logger l'action
-            let reason = format!("Renouvellement automatique pour {} FCFA", COUT_REACTIVATION_BASE);
+            let reason = format!(
+                "Renouvellement automatique pour {} FCFA",
+                COUT_REACTIVATION_BASE
+            );
             sqlx::query(
                 "INSERT INTO service_logs (service_id, user_id, action, reason, created_at) VALUES ($1, $2, $3, $4, $5)"
             )
@@ -94,16 +97,17 @@ pub async fn process_expired_services_intelligently(
                   service.id, service.user_id, COUT_REACTIVATION_BASE, updated_balance);
         } else {
             // 🚫 Solde insuffisant : Désactivation
-            sqlx::query(
-                "UPDATE services SET is_active = FALSE, updated_at = NOW() WHERE id = $1"
-            )
-            .bind(service.id)
-            .execute(pool)
-            .await
-            .map_err(AppError::from)?;
+            sqlx::query("UPDATE services SET is_active = FALSE, updated_at = NOW() WHERE id = $1")
+                .bind(service.id)
+                .execute(pool)
+                .await
+                .map_err(AppError::from)?;
 
             // Logger l'action
-            let reason = format!("Solde insuffisant ({} FCFA < {} FCFA requis)", balance, COUT_REACTIVATION_BASE);
+            let reason = format!(
+                "Solde insuffisant ({} FCFA < {} FCFA requis)",
+                balance, COUT_REACTIVATION_BASE
+            );
             sqlx::query(
                 "INSERT INTO service_logs (service_id, user_id, action, reason, created_at) VALUES ($1, $2, $3, $4, $5)"
             )
@@ -136,7 +140,7 @@ pub async fn process_expired_services_intelligently(
           AND vitesse_tarissement = 'rapide'
           AND updated_at < NOW() - INTERVAL '7 days'
         RETURNING id
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await
@@ -160,7 +164,7 @@ pub async fn process_expired_services_intelligently(
           AND vitesse_tarissement = 'moyenne'
           AND updated_at < NOW() - INTERVAL '14 days'
         RETURNING id
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await
@@ -184,7 +188,7 @@ pub async fn process_expired_services_intelligently(
           AND vitesse_tarissement = 'lente'
           AND updated_at < NOW() - INTERVAL '30 days'
         RETURNING id
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await

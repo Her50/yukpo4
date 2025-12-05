@@ -20,7 +20,7 @@ pub async fn start_category_stats_recalculation_task(pool: Arc<PgPool>) {
     let now = chrono::Utc::now();
     let _next_hour = (now.hour() + 1) as u64;
     let seconds_until_next_hour = (3600 - (now.minute() * 60 + now.second()) as u64) % 3600;
-    
+
     if seconds_until_next_hour > 0 {
         info!(
             "⏰ [StatsRecalculation] Attente de {} secondes avant le premier recalcul",
@@ -63,7 +63,7 @@ async fn recalculate_all_product_cancellation_stats(pool: &PgPool) -> AppResult<
         service_id: i32,
         product_index: i32,
     }
-    
+
     let products: Vec<ProductInfo> = sqlx::query(
         r#"
         SELECT DISTINCT 
@@ -84,12 +84,7 @@ async fn recalculate_all_product_cancellation_stats(pool: &PgPool) -> AppResult<
     let mut updated_count = 0;
 
     for row in products {
-        match recalculate_product_cancellation_stats(
-            pool,
-            row.service_id,
-            row.product_index,
-        )
-        .await
+        match recalculate_product_cancellation_stats(pool, row.service_id, row.product_index).await
         {
             Ok(_) => {
                 updated_count += 1;
@@ -142,7 +137,7 @@ async fn recalculate_product_cancellation_stats(
         // Pas de commandes, ne pas créer d'entrée
         return Ok(());
     }
-    
+
     let total_orders_i32 = total_orders as i32;
 
     // Compter les annulations par type
@@ -190,7 +185,7 @@ async fn recalculate_product_cancellation_stats(
     } else {
         0.0
     };
-    
+
     let total_cancellations_i32 = total_cancellations as i32;
     let timeout_cancellations_i32 = timeout_cancellations as i32;
     let rejected_cancellations_i32 = rejected_cancellations as i32;
@@ -280,4 +275,3 @@ pub async fn start_product_cancellation_stats_recalculation_task(pool: Arc<PgPoo
         }
     }
 }
-

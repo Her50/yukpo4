@@ -12,6 +12,7 @@ use axum::{
     Extension, Router,
 };
 use chrono::{DateTime, Utc};
+use futures::future;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
@@ -89,7 +90,7 @@ pub async fn notify_new_message(
     {
         Ok(count) => {
             log::info!("[ChatController] ✅ {} push notifications envoyées", count);
-            
+
             // Incrémenter métriques chat
             crate::metrics::CHAT_METRICS
                 .messages_sent_total
@@ -97,7 +98,7 @@ pub async fn notify_new_message(
             crate::metrics::CHAT_METRICS
                 .notifications_sent_total
                 .fetch_add(count as u64, std::sync::atomic::Ordering::Relaxed);
-            
+
             Ok(Json(json!({
                 "success": true,
                 "notifications_sent": count
@@ -196,26 +197,28 @@ pub async fn get_user_conversations(
         Ok(rows) => {
             for row in rows {
                 conversations.push(Conversation {
-                    id: row.try_get("id").unwrap_or_default(),
-                    client_id: row.try_get("client_id").unwrap_or_default(),
-                    prestataire_id: row.try_get("prestataire_id").unwrap_or_default(),
+                    id: row.get::<Option<_>, _>("id").unwrap_or_default(),
+                    client_id: row.get::<Option<_>, _>("client_id").unwrap_or_default(),
+                    prestataire_id: row
+                        .get::<Option<_>, _>("prestataire_id")
+                        .unwrap_or_default(),
                     client_name: row
                         .try_get("client_name")
                         .unwrap_or_else(|_| "Client".to_string()),
                     prestataire_name: row
                         .try_get("prestataire_name")
                         .unwrap_or_else(|_| "Prestataire".to_string()),
-                    client_photo: row.try_get("client_photo").ok(),
-                    prestataire_photo: row.try_get("prestataire_photo").ok(),
+                    client_photo: row.get::<Option<_>, _>("client_photo"),
+                    prestataire_photo: row.get::<Option<_>, _>("prestataire_photo"),
                     last_message: row
                         .try_get("last_message")
                         .unwrap_or_else(|_| "".to_string()),
                     last_message_time: row
                         .try_get("last_message_at")
                         .unwrap_or_else(|_| Utc::now()),
-                    unread_count: row.try_get("unread_count").unwrap_or(0),
-                    is_active: row.try_get("is_active").unwrap_or(true),
-                    service_title: row.try_get("service_title").ok(),
+                    unread_count: row.get::<Option<_>, _>("unread_count").unwrap_or(0),
+                    is_active: row.get::<Option<_>, _>("is_active").unwrap_or(true),
+                    service_title: row.get::<Option<_>, _>("service_title"),
                     status: row
                         .try_get("status")
                         .unwrap_or_else(|_| "active".to_string()),
@@ -291,25 +294,94 @@ pub async fn get_conversation_messages(
 
     match rows {
         Ok(rows) => {
+            // ✅ Collecter les données des messages d'abord
+            let mut raw_messages = Vec::new();
             for row in rows {
-                let from_user_id: i32 = row.try_get("from_user_id").unwrap_or(0);
+                let from_user_id: i32 = row.get::<Option<_>, _>("from_user_id").unwrap_or(0);
                 let from = if from_user_id == user.id {
                     "prestataire"
                 } else {
                     "client"
                 };
 
-                messages.push(ChatMessage {
-                    id: row.try_get("id").unwrap_or_default(),
-                    conversation_id: row.try_get("conversation_id").unwrap_or_default(),
-                    from: from.to_string(),
-                    content: row.try_get("content").unwrap_or_default(),
-                    created_at: row.try_get("created_at").unwrap_or_else(|_| Utc::now()),
-                    is_from_client: from == "client",
-                    r#type: row.try_get("type").unwrap_or_else(|_| "text".to_string()),
-                    metadata: row.try_get("metadata").ok(),
-                });
+                raw_messages.push((
+                    row.get::<Option<_>, _>("id").unwrap_or_default(),
+                    row.get::<Option<_>, _>("conversation_id")
+                        .unwrap_or_default(),
+                    from.to_string(),
+                    row.get::<Option<_>, _>("content").unwrap_or_default(),
+                    row.get::<Option<_>, _>("created_at")
+                        .unwrap_or_else(|_| Utc::now()),
+                    from == "client",
+                    row.get::<Option<_>, _>("type")
+                        .unwrap_or_else(|| "text".to_string()),
+                    row.get::<Option<_>, _>("metadata"),
+                ));
             }
+
+            // ✅ Traiter les métadonnées en parallèle pour générer URLs pré-signées
+            let message_futures: Vec<_> = raw_messages.into_iter().map(|(id, conv_id, from, content, created_at, is_from_client, msg_type, metadata)| {
+                let state_clone = state.clone();
+                async move {
+                    let mut final_metadata = metadata;
+                    
+                    // ✅ Générer URL pré-signée pour les médias dans les métadonnées (7 jours de validité)
+                    if let Some(ref mut meta) = final_metadata {
+                        // Chercher l'URL dans différents champs possibles
+                        let media_url_keys = ["url", "media_url", "file_url", "image_url", "video_url", "audio_url"];
+                        for key in &media_url_keys {
+                            if let Some(media_url) = meta.get(key) {
+                                if let Some(url_str) = media_url.as_str() {
+                                    // Extraire le chemin de stockage depuis l'URL
+                                    let storage_path_clean = if url_str.starts_with("http://") || url_str.starts_with("https://") {
+                                        if let Some(path_start) = url_str.find("/uploads/") {
+                                            url_str[path_start + 1..].to_string()
+                                        } else {
+                                            url_str.split('/').last().unwrap_or(url_str).to_string()
+                                        }
+                                    } else {
+                                        if !url_str.starts_with("uploads/") {
+                                            format!("uploads/{}", url_str.trim_start_matches('/'))
+                                        } else {
+                                            url_str.to_string()
+                                        }
+                                    };
+
+                                    // Générer URL pré-signée (7 jours = 7 * 24 * 3600 secondes)
+                                    match state_clone.media_storage.generate_presigned_url(&storage_path_clean, 7 * 24 * 3600).await {
+                                        Ok(presigned_url) => {
+                                            // Remplacer l'URL dans les métadonnées
+                                            if meta.is_object() {
+                                                if let Some(obj) = meta.as_object_mut() {
+                                                    obj.insert(key.to_string(), Value::String(presigned_url));
+                                                }
+                                            }
+                                            break; // Traiter seulement la première URL trouvée par message
+                                        }
+                                        Err(e) => {
+                                            log::warn!("[ChatController] Erreur génération URL pré-signée pour {}: {}", storage_path_clean, e);
+                                            // Garder l'URL originale en cas d'erreur
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    ChatMessage {
+                        id,
+                        conversation_id: conv_id,
+                        from,
+                        content,
+                        created_at,
+                        is_from_client,
+                        r#type: msg_type,
+                        metadata: final_metadata,
+                    }
+                }
+            }).collect();
+
+            messages = future::join_all(message_futures).await;
 
             // ✅ Marquer les messages comme lus
             let _ = sqlx::query(
@@ -383,7 +455,7 @@ pub async fn send_message(
         .await;
 
         match insert_result {
-            Ok(Some(row)) => row.try_get("id").unwrap_or(new_conv_id.clone()),
+            Ok(Some(row)) => row.get::<Option<_>, _>("id").unwrap_or(new_conv_id.clone()),
             _ => new_conv_id,
         }
     };
@@ -426,7 +498,7 @@ pub async fn send_message(
     crate::metrics::CHAT_METRICS
         .messages_sent_total
         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    
+
     // Si message audio
     if message_type == "audio" {
         crate::metrics::CHAT_METRICS

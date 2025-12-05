@@ -1,7 +1,7 @@
 // Rust: Pipeline de matching dynamique Yukpo (pseudo-code simplifi?)
 use crate::utils::embedding_client::{EmbeddingClient, SearchEmbeddingPineconeRequest};
-use sqlx::{FromRow, PgPool};
 use serde_json::Value;
+use sqlx::{FromRow, PgPool};
 // use crate::services::semantic_exclusion::is_excluded_semantic_field;
 
 #[derive(FromRow)]
@@ -141,12 +141,11 @@ pub async fn match_services(
     // Fetch real service data and interaction score
     let mut results = Vec::new();
     for (&service_id, &semantic_score) in &best_scores {
-        let rec: Option<ServiceDataGpsRow> = sqlx::query_as(
-            "SELECT id, data, gps FROM services WHERE id = $1"
-        )
-        .bind(service_id)
-        .fetch_optional(pool)
-        .await?;
+        let rec: Option<ServiceDataGpsRow> =
+            sqlx::query_as("SELECT id, data, gps FROM services WHERE id = $1")
+                .bind(service_id)
+                .fetch_optional(pool)
+                .await?;
         if let Some(svc) = rec {
             // R?cup?rer le score depuis MongoDB au lieu de PostgreSQL
             let interaction_score = 1.0; // Valeur par d?faut, sera calcul?e via le service de scoring MongoDB

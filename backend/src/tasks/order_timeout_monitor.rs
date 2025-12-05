@@ -19,14 +19,17 @@ pub async fn start_order_timeout_monitor(state: Arc<AppState>) {
         .unwrap_or_else(|_| "60".to_string())
         .parse()
         .unwrap_or(60);
-    
+
     let mut interval_timer = interval(TokioDuration::from_secs(interval_secs));
 
     loop {
         interval_timer.tick().await;
 
         if let Err(e) = check_order_timeouts(state.clone()).await {
-            error!("❌ Erreur lors de la vérification des timeouts de commandes: {}", e);
+            error!(
+                "❌ Erreur lors de la vérification des timeouts de commandes: {}",
+                e
+            );
         }
     }
 }
@@ -44,7 +47,7 @@ async fn check_order_timeouts(state: Arc<AppState>) -> AppResult<()> {
         client_user_id: i32,
         provider_user_id: i32,
     }
-    
+
     let expired_orders: Vec<ExpiredOrder> = sqlx::query(
         r#"
         SELECT 
@@ -173,4 +176,3 @@ async fn handle_validation_timeout(
 
     Ok(())
 }
-

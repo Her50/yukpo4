@@ -454,25 +454,28 @@ impl HybridImageSearchService {
 
         let mut results = Vec::new();
         for row in rows {
-            let analysis_id: Option<i32> = row.try_get("analysis_id").ok();
-            let service_id: i32 = row.try_get("service_id").unwrap_or(0);
-            let media_id: Option<i32> = row.try_get("media_id").ok();
-            let product_description: String =
-                row.try_get("product_description").unwrap_or_default();
+            let analysis_id: Option<i32> = row.get::<Option<_>, _>("analysis_id");
+            let service_id: i32 = row.get::<Option<_>, _>("service_id").unwrap_or(0);
+            let media_id: Option<i32> = row.get::<Option<_>, _>("media_id");
+            let product_description: String = row
+                .get::<Option<_>, _>("product_description")
+                .unwrap_or_default();
 
             let product_tags: Vec<String> = row
                 .try_get::<Vec<String>, _>("product_tags")
                 .unwrap_or_default();
 
-            let product_marque: Option<String> = row.try_get("product_marque").ok();
+            let product_marque: Option<String> = row.get::<Option<_>, _>("product_marque");
 
             let product_couleurs: Vec<String> = row
                 .try_get::<Vec<String>, _>("product_couleurs")
                 .unwrap_or_default();
 
-            let match_score: f64 = row.try_get("match_score").unwrap_or(0.0);
-            let distance_km: Option<f64> = row.try_get("distance_km").ok();
-            let service_data: Value = row.try_get("service_data").unwrap_or(serde_json::json!({}));
+            let match_score: f64 = row.get::<Option<_>, _>("match_score").unwrap_or(0.0);
+            let distance_km: Option<f64> = row.get::<Option<_>, _>("distance_km");
+            let service_data: Value = row
+                .get::<Option<_>, _>("service_data")
+                .unwrap_or(serde_json::json!({}));
 
             results.push(HybridSearchResult {
                 service_id,
@@ -562,19 +565,24 @@ impl HybridImageSearchService {
 
         let mut history = Vec::new();
         for row in rows {
-            let caracteristiques_cles_value: serde_json::Value = row.get("caracteristiques_cles");
+            let caracteristiques_cles_value: serde_json::Value =
+                row.get::<serde_json::Value, _>("caracteristiques_cles");
             let caracteristiques_cles: std::collections::HashMap<String, String> =
                 serde_json::from_value(caracteristiques_cles_value).unwrap_or_default();
 
-            let description: String = row.get("description");
-            let tags: Vec<String> = row.get("tags");
-            let category_detected: Option<String> = row.get("category_detected");
-            let marque: Option<String> = row.get("marque");
-            let couleurs: Vec<String> = row.get("couleurs");
-            let confiance: Option<f64> = row.get("confiance");
-            let search_query_exact: Option<String> = row.get("search_query_exact");
-            let search_query_broad: Option<String> = row.get("search_query_broad");
-            let search_query_semantic: Option<String> = row.get("search_query_semantic");
+            let description: String = row.get::<String, _>("description");
+            let tags: Vec<String> = row.get::<Vec<String>, _>("tags");
+            let category_detected: Option<String> =
+                row.get::<Option<String>, _>("category_detected");
+            let marque: Option<String> = row.get::<Option<String>, _>("marque");
+            let couleurs: Vec<String> = row.get::<Vec<String>, _>("couleurs");
+            let confiance: Option<f64> = row.get::<Option<f64>, _>("confiance");
+            let search_query_exact: Option<String> =
+                row.get::<Option<String>, _>("search_query_exact");
+            let search_query_broad: Option<String> =
+                row.get::<Option<String>, _>("search_query_broad");
+            let search_query_semantic: Option<String> =
+                row.get::<Option<String>, _>("search_query_semantic");
 
             history.push(ImageAnalysis {
                 description,
@@ -616,11 +624,11 @@ impl HybridImageSearchService {
         let stats_json: Vec<Value> = stats
             .into_iter()
             .map(|row| {
-                let analysis_type: String = row.get("analysis_type");
-                let total: Option<i64> = row.get("total");
-                let avg_confiance: Option<f64> = row.get("avg_confiance");
-                let avg_tokens: Option<f64> = row.get("avg_tokens");
-                let model_used: Option<String> = row.get("model_used");
+                let analysis_type: String = row.get::<String, _>("analysis_type");
+                let total: Option<i64> = row.get::<Option<i64>, _>("total");
+                let avg_confiance: Option<f64> = row.get::<Option<f64>, _>("avg_confiance");
+                let avg_tokens: Option<f64> = row.get::<Option<f64>, _>("avg_tokens");
+                let model_used: Option<String> = row.get::<Option<String>, _>("model_used");
 
                 serde_json::json!({
                     "analysis_type": analysis_type,

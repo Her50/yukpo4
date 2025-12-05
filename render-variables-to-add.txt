@@ -3,6 +3,12 @@
 
 GOOGLE_MAPS_API_KEY=AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ
 GOOGLE_TRANSLATE_API_KEY=AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ
+
+# Services Météo (Module de Livraison)
+OPENWEATHERMAP_API_KEY=your-openweathermap-api-key-here
+
+# Modèles ML (Module de Livraison)
+ML_MODELS_DIR=models
 YUKPO_API_KEY=yukpo_embedding_key_2024
 EMBEDDING_API_KEY=yukpo_embedding_key_2024
 ENABLE_AI_OPTIMIZATIONS=true

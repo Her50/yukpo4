@@ -53,7 +53,7 @@ impl Default for ProductionConfig {
                 std::env::var("CUDA_VISIBLE_DEVICES").is_ok()
                     || std::env::var("NVIDIA_VISIBLE_DEVICES").is_ok()
             });
-        
+
         Self {
             database_url: std::env::var("DATABASE_URL").unwrap_or_default(),
             redis_url: std::env::var("REDIS_URL").unwrap_or_default(),

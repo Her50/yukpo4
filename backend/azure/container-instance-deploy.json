@@ -1,0 +1,65 @@
+{
+    "apiVersion": "2021-10-01",
+    "type": "Microsoft.ContainerInstance/containerGroups",
+    "name": "yukpomnang-backend",
+    "location": "eastus",
+    "properties": {
+        "containers": [
+            {
+                "name": "yukpomnang-backend",
+                "properties": {
+                    "image": "YOUR_ACR/yukpomnang-backend:latest",
+                    "ports": [
+                        {
+                            "port": 3001,
+                            "protocol": "TCP"
+                        }
+                    ],
+                    "environmentVariables": [
+                        {
+                            "name": "RUST_LOG",
+                            "value": "info"
+                        },
+                        {
+                            "name": "ENVIRONMENT",
+                            "value": "production"
+                        },
+                        {
+                            "name": "BLENDER_PATH",
+                            "value": "/usr/local/bin/blender"
+                        },
+                        {
+                            "name": "BLENDER_RENDER_SAMPLES",
+                            "value": "256"
+                        },
+                        {
+                            "name": "BLENDER_USE_GPU",
+                            "value": "true"
+                        },
+                        {
+                            "name": "AR_RENDER_OUTPUT_DIR",
+                            "value": "/tmp/ar_renders"
+                        }
+                    ],
+                    "resources": {
+                        "requests": {
+                            "cpu": 2,
+                            "memoryInGb": 4
+                        }
+                    }
+                }
+            }
+        ],
+        "osType": "Linux",
+        "restartPolicy": "Always",
+        "ipAddress": {
+            "type": "Public",
+            "ports": [
+                {
+                    "port": 3001,
+                    "protocol": "TCP"
+                }
+            ]
+        }
+    }
+}

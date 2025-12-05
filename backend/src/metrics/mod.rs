@@ -1,11 +1,11 @@
 //! Module centralisé pour les métriques Prometheus
-//! 
+//!
 //! Ce module expose toutes les métriques Prometheus utilisées dans l'application.
 //! Les métriques sont formatées manuellement pour être compatibles avec le système existant.
 
-use std::sync::atomic::{AtomicU64, AtomicI64, Ordering};
-use std::sync::Arc;
 use once_cell::sync::Lazy;
+use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
+use std::sync::Arc;
 
 /// Métriques pour les promotions globales (Black Friday, etc.)
 pub struct GlobalPromoMetrics {
@@ -41,7 +41,7 @@ impl GlobalPromoMetrics {
     /// Formate les métriques au format Prometheus
     pub fn format_prometheus(&self) -> String {
         let mut output = String::new();
-        
+
         output.push_str("# HELP global_promo_events_active Number of active global promo events\n");
         output.push_str("# TYPE global_promo_events_active gauge\n");
         output.push_str(&format!(
@@ -84,7 +84,8 @@ impl GlobalPromoMetrics {
             self.catalog_searches_total.load(Ordering::Relaxed)
         ));
 
-        output.push_str("# HELP global_promo_revenue_cents_total Total revenue generated in cents\n");
+        output
+            .push_str("# HELP global_promo_revenue_cents_total Total revenue generated in cents\n");
         output.push_str("# TYPE global_promo_revenue_cents_total counter\n");
         output.push_str(&format!(
             "global_promo_revenue_cents_total {}\n",
@@ -131,7 +132,7 @@ impl ProductCarouselMetrics {
 
     pub fn format_prometheus(&self) -> String {
         let mut output = String::new();
-        
+
         output.push_str("# HELP product_carousel_scrolls_total Total product carousel scrolls\n");
         output.push_str("# TYPE product_carousel_scrolls_total counter\n");
         output.push_str(&format!(
@@ -139,7 +140,9 @@ impl ProductCarouselMetrics {
             self.scrolls_total.load(Ordering::Relaxed)
         ));
 
-        output.push_str("# HELP product_carousel_auto_scroll_events_total Total auto scroll events\n");
+        output.push_str(
+            "# HELP product_carousel_auto_scroll_events_total Total auto scroll events\n",
+        );
         output.push_str("# TYPE product_carousel_auto_scroll_events_total counter\n");
         output.push_str(&format!(
             "product_carousel_auto_scroll_events_total {}\n",
@@ -214,7 +217,7 @@ impl VideoCarouselMetrics {
 
     pub fn format_prometheus(&self) -> String {
         let mut output = String::new();
-        
+
         output.push_str("# HELP video_carousel_scrolls_total Total video carousel scrolls\n");
         output.push_str("# TYPE video_carousel_scrolls_total counter\n");
         output.push_str(&format!(
@@ -222,7 +225,8 @@ impl VideoCarouselMetrics {
             self.scrolls_total.load(Ordering::Relaxed)
         ));
 
-        output.push_str("# HELP video_carousel_auto_scroll_events_total Total auto scroll events\n");
+        output
+            .push_str("# HELP video_carousel_auto_scroll_events_total Total auto scroll events\n");
         output.push_str("# TYPE video_carousel_auto_scroll_events_total counter\n");
         output.push_str(&format!(
             "video_carousel_auto_scroll_events_total {}\n",
@@ -250,7 +254,9 @@ impl VideoCarouselMetrics {
             self.pause_events_total.load(Ordering::Relaxed)
         ));
 
-        output.push_str("# HELP video_carousel_engagement_total Total engagement (likes, shares, comments)\n");
+        output.push_str(
+            "# HELP video_carousel_engagement_total Total engagement (likes, shares, comments)\n",
+        );
         output.push_str("# TYPE video_carousel_engagement_total counter\n");
         output.push_str(&format!(
             "video_carousel_engagement_total {}\n",
@@ -306,7 +312,7 @@ impl ChatMetrics {
 
     pub fn format_prometheus(&self) -> String {
         let mut output = String::new();
-        
+
         output.push_str("# HELP chat_conversations_active_total Active chat conversations\n");
         output.push_str("# TYPE chat_conversations_active_total gauge\n");
         output.push_str(&format!(
@@ -342,7 +348,9 @@ impl ChatMetrics {
             self.conversations_resolved_total.load(Ordering::Relaxed)
         ));
 
-        output.push_str("# HELP chat_conversations_unresolved_total Total unresolved conversations\n");
+        output.push_str(
+            "# HELP chat_conversations_unresolved_total Total unresolved conversations\n",
+        );
         output.push_str("# TYPE chat_conversations_unresolved_total counter\n");
         output.push_str(&format!(
             "chat_conversations_unresolved_total {}\n",
@@ -416,7 +424,7 @@ impl NavigationMetrics {
 
     pub fn format_prometheus(&self) -> String {
         let mut output = String::new();
-        
+
         output.push_str("# HELP resulta_besoin_screen_views_total Total screen views\n");
         output.push_str("# TYPE resulta_besoin_screen_views_total counter\n");
         output.push_str(&format!(
@@ -431,14 +439,17 @@ impl NavigationMetrics {
             self.searches_total.load(Ordering::Relaxed)
         ));
 
-        output.push_str("# HELP resulta_besoin_screen_results_displayed_total Total results displayed\n");
+        output.push_str(
+            "# HELP resulta_besoin_screen_results_displayed_total Total results displayed\n",
+        );
         output.push_str("# TYPE resulta_besoin_screen_results_displayed_total counter\n");
         output.push_str(&format!(
             "resulta_besoin_screen_results_displayed_total {}\n",
             self.results_displayed_total.load(Ordering::Relaxed)
         ));
 
-        output.push_str("# HELP resulta_besoin_screen_filters_applied_total Total filters applied\n");
+        output
+            .push_str("# HELP resulta_besoin_screen_filters_applied_total Total filters applied\n");
         output.push_str("# TYPE resulta_besoin_screen_filters_applied_total counter\n");
         output.push_str(&format!(
             "resulta_besoin_screen_filters_applied_total {}\n",
@@ -459,14 +470,18 @@ impl NavigationMetrics {
             self.searches_without_results_total.load(Ordering::Relaxed)
         ));
 
-        output.push_str("# HELP resulta_besoin_screen_geolocation_searches_total Total geolocation searches\n");
+        output.push_str(
+            "# HELP resulta_besoin_screen_geolocation_searches_total Total geolocation searches\n",
+        );
         output.push_str("# TYPE resulta_besoin_screen_geolocation_searches_total counter\n");
         output.push_str(&format!(
             "resulta_besoin_screen_geolocation_searches_total {}\n",
             self.geolocation_searches_total.load(Ordering::Relaxed)
         ));
 
-        output.push_str("# HELP resulta_besoin_screen_map_interactions_total Total map interactions\n");
+        output.push_str(
+            "# HELP resulta_besoin_screen_map_interactions_total Total map interactions\n",
+        );
         output.push_str("# TYPE resulta_besoin_screen_map_interactions_total counter\n");
         output.push_str(&format!(
             "resulta_besoin_screen_map_interactions_total {}\n",
@@ -485,30 +500,54 @@ impl Default for NavigationMetrics {
 
 /// Instance globale des métriques
 pub static GLOBAL_PROMO_METRICS: Lazy<GlobalPromoMetrics> = Lazy::new(GlobalPromoMetrics::new);
-pub static PRODUCT_CAROUSEL_METRICS: Lazy<ProductCarouselMetrics> = Lazy::new(ProductCarouselMetrics::new);
-pub static VIDEO_CAROUSEL_METRICS: Lazy<VideoCarouselMetrics> = Lazy::new(VideoCarouselMetrics::new);
+pub static PRODUCT_CAROUSEL_METRICS: Lazy<ProductCarouselMetrics> =
+    Lazy::new(ProductCarouselMetrics::new);
+pub static VIDEO_CAROUSEL_METRICS: Lazy<VideoCarouselMetrics> =
+    Lazy::new(VideoCarouselMetrics::new);
 pub static CHAT_METRICS: Lazy<ChatMetrics> = Lazy::new(ChatMetrics::new);
 pub static NAVIGATION_METRICS: Lazy<NavigationMetrics> = Lazy::new(NavigationMetrics::new);
+
+// ✅ NOUVEAU 2025-01-27 : Métriques pour création de produits
+pub mod product_creation_metrics;
 
 /// Formate toutes les métriques additionnelles au format Prometheus
 pub fn format_all_additional_metrics() -> String {
     let mut output = String::new();
-    
+
     output.push_str("\n# === Global Promo Metrics ===\n");
     output.push_str(&GLOBAL_PROMO_METRICS.format_prometheus());
-    
+
     output.push_str("\n# === Product Carousel Metrics ===\n");
     output.push_str(&PRODUCT_CAROUSEL_METRICS.format_prometheus());
-    
+
     output.push_str("\n# === Video Carousel Metrics ===\n");
     output.push_str(&VIDEO_CAROUSEL_METRICS.format_prometheus());
-    
+
     output.push_str("\n# === Chat Metrics ===\n");
     output.push_str(&CHAT_METRICS.format_prometheus());
-    
+
     output.push_str("\n# === Navigation Metrics ===\n");
     output.push_str(&NAVIGATION_METRICS.format_prometheus());
-    
+
+    // ✅ NOUVEAU : Métriques création de produits
+    if let Ok(metrics) = product_creation_metrics::ProductCreationMetrics::new() {
+        output.push_str("\n# === Product Creation Metrics ===\n");
+        output.push_str(&format_product_creation_metrics(&metrics));
+    }
+
     output
 }
 
+/// Formate les métriques de création de produits
+fn format_product_creation_metrics(
+    metrics: &product_creation_metrics::ProductCreationMetrics,
+) -> String {
+    use prometheus::Encoder;
+    let encoder = prometheus::TextEncoder::new();
+    let metric_families = prometheus::gather();
+    let mut buffer = Vec::new();
+    encoder
+        .encode(&metric_families, &mut buffer)
+        .unwrap_or_default();
+    String::from_utf8(buffer).unwrap_or_default()
+}

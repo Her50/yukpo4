@@ -44,6 +44,11 @@ services:
       - DATABASE_URL=postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
       - JWT_SECRET=c1daf37cdbc083d458dadf8510af6722929d17bd931e9dfda90ee4ed74d6f2b6
       - CORS_ORIGIN=*
+      # 🎨 Blender Configuration (pour rendu 3D AR)
+      - BLENDER_PATH=/usr/local/bin/blender
+      - BLENDER_RENDER_SAMPLES=256
+      - BLENDER_USE_GPU=true
+      - AR_RENDER_OUTPUT_DIR=/tmp/ar_renders
     ports:
       - "3001:3001"
     depends_on:

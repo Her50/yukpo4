@@ -23,7 +23,7 @@ pub async fn check_and_update_service_status(pool: &PgPool) -> Result<(), AppErr
           AND auto_deactivate_at < $1
           -- OPTIONNEL : filtrer par type ou cat?gorie
           -- AND category = 'premium'
-        "#
+        "#,
     )
     .bind(now)
     .fetch_all(pool)
@@ -38,7 +38,7 @@ pub async fn check_and_update_service_status(pool: &PgPool) -> Result<(), AppErr
         WHERE is_active = TRUE
           AND auto_deactivate_at IS NOT NULL
           AND auto_deactivate_at < $1
-        "#
+        "#,
     )
     .bind(now)
     .execute(pool)
@@ -54,7 +54,7 @@ pub async fn check_and_update_service_status(pool: &PgPool) -> Result<(), AppErr
             r#"
             INSERT INTO service_logs (service_id, user_id, action, reason, created_at)
             VALUES ($1, $2, 'auto_deactivation', 'Expiration de la période active', NOW())
-            "#
+            "#,
         )
         .bind(service.id)
         .bind(service.user_id)

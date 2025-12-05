@@ -1,0 +1,19 @@
+{
+  "model_type": "ETAPrediction",
+  "version": "1.0.0",
+  "created": "2025-12-04T18:00:39.077757",
+  "features": [
+    "distance_km",
+    "hour_of_day",
+    "day_of_week",
+    "is_weekend",
+    "weather_factor",
+    "traffic_factor",
+    "courier_rating",
+    "historical_avg_duration",
+    "route_complexity"
+  ],
+  "target": "estimated_minutes",
+  "accuracy_estimated": 0.9,
+  "training_samples": 1000
+}

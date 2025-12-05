@@ -30,7 +30,10 @@ pub async fn upload_files(
     Extension(user): Extension<AuthenticatedUser>,
     multipart: Multipart,
 ) -> AppResult<impl IntoResponse> {
-    info!("[upload_controller] Upload préalable demandé par user_id={}", user.id);
+    info!(
+        "[upload_controller] Upload préalable demandé par user_id={}",
+        user.id
+    );
 
     let files = handle_multipart_upload(&state.pg, user.id, multipart).await?;
 
@@ -39,7 +42,10 @@ pub async fn upload_files(
         Json(UploadResponse {
             success: true,
             files,
-            message: Some("Fichiers uploadés avec succès. Utilisez les URLs dans la création de service.".to_string()),
+            message: Some(
+                "Fichiers uploadés avec succès. Utilisez les URLs dans la création de service."
+                    .to_string(),
+            ),
         }),
     ))
 }
@@ -51,8 +57,8 @@ pub async fn serve_temp_file(
     axum::extract::Path(path): axum::extract::Path<String>,
 ) -> AppResult<impl IntoResponse> {
     // Construire le chemin du fichier
-    let storage_root = std::env::var("UPLOAD_STORAGE_PATH")
-        .unwrap_or_else(|_| "uploads".to_string());
+    let storage_root =
+        std::env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "uploads".to_string());
     let file_path = std::path::Path::new(&storage_root)
         .join("temp")
         .join(user.id.to_string())
@@ -66,11 +72,13 @@ pub async fn serve_temp_file(
     }
 
     // Sécurité: vérifier que le chemin est dans uploads/temp/user_id/
-    let canonical_path = file_path.canonicalize()
+    let canonical_path = file_path
+        .canonicalize()
         .map_err(|_| crate::core::types::AppError::NotFound("Fichier non trouvé".to_string()))?;
-    let storage_path = std::path::Path::new(&storage_root).canonicalize()
+    let storage_path = std::path::Path::new(&storage_root)
+        .canonicalize()
         .map_err(|_| crate::core::types::AppError::Internal("Erreur système".to_string()))?;
-    
+
     if !canonical_path.starts_with(storage_path.join("temp").join(user.id.to_string())) {
         return Err(crate::core::types::AppError::Unauthorized(
             "Accès non autorisé".to_string(),
@@ -78,8 +86,9 @@ pub async fn serve_temp_file(
     }
 
     // Lire le fichier
-    let bytes = tokio::fs::read(&file_path).await
-        .map_err(|_| crate::core::types::AppError::Internal("Erreur lecture fichier".to_string()))?;
+    let bytes = tokio::fs::read(&file_path).await.map_err(|_| {
+        crate::core::types::AppError::Internal("Erreur lecture fichier".to_string())
+    })?;
 
     // Déterminer le Content-Type
     let content_type_str = infer_content_type(&path);
@@ -88,7 +97,7 @@ pub async fn serve_temp_file(
     let content_type = HeaderValue::from_static(content_type_str);
     let content_length = HeaderValue::from_str(&bytes.len().to_string())
         .unwrap_or_else(|_| HeaderValue::from_static("0"));
-    
+
     Ok((
         StatusCode::OK,
         [
@@ -113,4 +122,3 @@ fn infer_content_type(filename: &str) -> &'static str {
         _ => "application/octet-stream",
     }
 }
-

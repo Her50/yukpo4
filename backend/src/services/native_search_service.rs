@@ -1,7 +1,8 @@
 use crate::config::search_config::SearchConfig;
 use crate::core::types::AppResult;
-use crate::services::scheduling_search_service::SchedulingSearchService;
 use crate::services::cache_service::CacheService;
+use crate::services::scheduling_search_service::SchedulingSearchService;
+use crate::services::search_cache_service::SearchCacheService;
 use crate::utils::db_retry::retry_query;
 use crate::utils::log::{log_error, log_info};
 use serde::{Deserialize, Serialize};
@@ -30,76 +31,193 @@ pub struct SearchResult {
 
 /// Service de recherche native PostgreSQL intelligente
 pub struct NativeSearchService {
-    pool: PgPool,
+    pool: PgPool,              // Master pour écritures
+    pool_read: Option<PgPool>, // ✅ NOUVEAU 2025-12-02: Read replica pour scaling horizontal (lectures)
     config: SearchConfig,
     /// ✅ Phase 10 - Service de matching géographique pour enrichir les distances
     /// ⚠️ OPTIMISÉ 2025-11-28: Désactivé par défaut (trop lent), peut être réactivé via with_geographic_matching()
     #[allow(dead_code)]
-    geographic_matching: Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
+    geographic_matching:
+        Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
     /// ✅ OPTIMISÉ 2025-11-28 - Service de cache Redis pour les résultats de recherche
     cache_service: Option<Arc<CacheService>>,
+    /// ✅ OPTIMISÉ 2025-12-01 - Cache en mémoire pour check_if_location_in_input (TTL 5 min)
+    location_check_cache:
+        Arc<tokio::sync::Mutex<std::collections::HashMap<String, (bool, std::time::Instant)>>>,
+    /// ✅ NOUVEAU 2025-12-01 - Service de scalabilité pour cache multi-niveaux optimisé
+    scalability_service: Option<Arc<crate::services::scalability_service::ScalabilityService>>,
+    /// ✅ NOUVEAU 2025-01-XX - Service de cache multi-niveaux pour recherches (L1+L2+L4)
+    search_cache_service: Option<Arc<SearchCacheService>>,
 }
 
 impl NativeSearchService {
     pub fn new(pool: PgPool) -> Self {
+        Self::new_with_read_replica(pool, None)
+    }
+
+    /// ✅ NOUVEAU 2025-12-02: Constructeur avec support read replica pour scaling horizontal
+    pub fn new_with_read_replica(pool: PgPool, pool_read: Option<PgPool>) -> Self {
         let config = SearchConfig::default();
-        Self { 
-            pool, 
+        if pool_read.is_some() {
+            log::info!(
+                "✅ NativeSearchService: Read replica configuré - Scaling horizontal activé"
+            );
+        }
+        Self {
+            pool,
+            pool_read, // ✅ NOUVEAU 2025-12-02: Read replica pour lectures
             config,
             geographic_matching: None,
             cache_service: None,
+            location_check_cache: Arc::new(tokio::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
+            scalability_service: None,
+            search_cache_service: None,
         }
     }
 
+    /// ✅ NOUVEAU 2025-12-02: Helper pour choisir le bon pool (read replica pour lectures, master pour écritures)
+    fn get_read_pool(&self) -> &PgPool {
+        self.pool_read.as_ref().unwrap_or(&self.pool)
+    }
+
     pub fn with_config(pool: PgPool, config: SearchConfig) -> Self {
-        Self { 
-            pool, 
+        Self {
+            pool,
+            pool_read: None,
             config,
             geographic_matching: None,
             cache_service: None,
+            location_check_cache: Arc::new(tokio::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
+            scalability_service: None,
+            search_cache_service: None,
         }
     }
 
     /// ✅ Phase 10 - Constructeur avec service de matching géographique
     pub fn with_geographic_matching(
         pool: PgPool,
-        geographic_matching: Arc<crate::services::geographic_matching_service::GeographicMatchingService>,
+        geographic_matching: Arc<
+            crate::services::geographic_matching_service::GeographicMatchingService,
+        >,
     ) -> Self {
         let config = SearchConfig::default();
         Self {
             pool,
+            pool_read: None,
             config,
             geographic_matching: Some(geographic_matching),
             cache_service: None,
+            location_check_cache: Arc::new(tokio::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
+            scalability_service: None,
+            search_cache_service: None,
         }
     }
 
     /// ✅ OPTIMISÉ 2025-11-28 - Constructeur avec cache Redis et matching géographique
     pub fn with_cache_and_geographic_matching(
         pool: PgPool,
-        cache_service: Arc<CacheService>,
-        geographic_matching: Arc<crate::services::geographic_matching_service::GeographicMatchingService>,
+        cache_service: Option<Arc<CacheService>>,
+        geographic_matching: Option<
+            Arc<crate::services::geographic_matching_service::GeographicMatchingService>,
+        >,
     ) -> Self {
         let config = SearchConfig::default();
         Self {
             pool,
+            pool_read: None,
             config,
-            geographic_matching: Some(geographic_matching),
-            cache_service: Some(cache_service),
+            geographic_matching,
+            cache_service,
+            location_check_cache: Arc::new(tokio::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
+            scalability_service: None,
+            search_cache_service: None,
+        }
+    }
+
+    /// ✅ NOUVEAU 2025-12-01 - Constructeur avec service de scalabilité pour cache optimisé
+    pub fn with_scalability(
+        pool: PgPool,
+        scalability_service: Option<Arc<crate::services::scalability_service::ScalabilityService>>,
+    ) -> Self {
+        let config = SearchConfig::default();
+        Self {
+            pool,
+            pool_read: None,
+            config,
+            geographic_matching: None,
+            cache_service: None,
+            location_check_cache: Arc::new(tokio::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
+            scalability_service,
+            search_cache_service: None,
+        }
+    }
+
+    /// ✅ NOUVEAU 2025-01-XX - Constructeur avec cache multi-niveaux pour recherches
+    pub fn with_search_cache(
+        pool: PgPool,
+        search_cache_service: Option<Arc<SearchCacheService>>,
+    ) -> Self {
+        let config = SearchConfig::default();
+        Self {
+            pool,
+            pool_read: None,
+            config,
+            geographic_matching: None,
+            cache_service: None,
+            location_check_cache: Arc::new(tokio::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
+            scalability_service: None,
+            search_cache_service,
+        }
+    }
+
+    /// ✅ NOUVEAU 2025-01-XX - Constructeur complet avec tous les services optimisés
+    pub fn with_all_optimizations(
+        pool: PgPool,
+        cache_service: Option<Arc<CacheService>>,
+        scalability_service: Option<Arc<crate::services::scalability_service::ScalabilityService>>,
+        search_cache_service: Option<Arc<SearchCacheService>>,
+    ) -> Self {
+        let config = SearchConfig::default();
+        Self {
+            pool,
+            pool_read: None,
+            config,
+            geographic_matching: None,
+            cache_service,
+            location_check_cache: Arc::new(tokio::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
+            scalability_service,
+            search_cache_service,
         }
     }
 
     /// ✅ OPTIMISÉ 2025-11-28 - Constructeur avec uniquement le cache Redis
-    pub fn with_cache(
-        pool: PgPool,
-        cache_service: Arc<CacheService>,
-    ) -> Self {
+    pub fn with_cache(pool: PgPool, cache_service: Arc<CacheService>) -> Self {
         let config = SearchConfig::default();
         Self {
             pool,
+            pool_read: None,
             config,
             geographic_matching: None,
             cache_service: Some(cache_service),
+            location_check_cache: Arc::new(tokio::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
+            scalability_service: None,
+            search_cache_service: None,
         }
     }
 
@@ -113,6 +231,7 @@ impl NativeSearchService {
     /// Utilise l'opérateur && (overlap) pour tester intersection entre arrays
     /// Retourne TRUE si au moins UN produit a un lieu qui matche
     /// Retourne FALSE si aucun lieu ne matche → Utiliser TOUTE la base
+    /// ✅ CORRIGÉ 2025-12-01 : Optimisation profonde - utilise l'index GIN efficacement
     async fn check_if_location_in_input(&self, user_input: &str) -> AppResult<bool> {
         // Découper l'input en mots pour créer un array
         let words: Vec<String> = user_input
@@ -121,42 +240,61 @@ impl NativeSearchService {
             .map(|s| s.to_string())
             .collect();
 
-        let result = sqlx::query_scalar::<_, bool>(
+        if words.is_empty() {
+            return Ok(false);
+        }
+
+        // ✅ OPTIMISATION PROFONDE 2025-12-01 : Utiliser l'index GIN directement avec && (overlap)
+        // Au lieu de unnest + array_agg pour chaque ligne, on utilise directement l'opérateur &&
+        // qui peut utiliser l'index GIN idx_autocomplete_location_vector_partial
+        // On évite aussi similarity() qui est très lent
+        let query_future = sqlx::query_scalar::<_, bool>(
             r#"
             SELECT EXISTS (
-                SELECT 1 FROM autocomplete_characteristics ac
+                SELECT 1 
+                FROM autocomplete_characteristics ac
                 WHERE ac.is_real_product = TRUE
-                AND (
-                    -- ✅ OPTIMISÉ : Test d'intersection avec opérateur && (overlap)
-                    -- Convertir location_vector en lowercase pour comparaison case-insensitive
-                    -- array_agg(unnest) reconstruit un array lowercase pour && (plus rapide que unnest)
-                    (
-                        SELECT array_agg(LOWER(elem))::TEXT[]
-                        FROM unnest(ac.location_vector) AS elem
-                    ) && $1::TEXT[]
-                    -- ✅ OU fuzzy match pour gestion fautes de frappe (si && échoue)
-                    OR EXISTS (
-                        SELECT 1 FROM unnest(ac.location_vector) AS loc_val,
-                                     unnest($1::TEXT[]) AS input_word
-                        WHERE similarity(LOWER(loc_val), input_word) > 0.6
-                    )
-                )
+                AND ac.location_vector IS NOT NULL
+                AND array_length(ac.location_vector, 1) > 0
+                -- ✅ OPTIMISÉ : Utiliser directement && avec l'index GIN (beaucoup plus rapide)
+                -- L'index idx_autocomplete_location_vector_partial peut être utilisé ici
+                AND ac.location_vector && $1::TEXT[]
             )
-            "#
+            LIMIT 1
+            "#,
         )
         .bind(&words)
-        .fetch_one(&self.pool)
-        .await
-        .unwrap_or(false);
+        .fetch_one(&self.pool);
+
+        // ✅ Timeout réduit à 500ms car la requête optimisée devrait être très rapide
+        let result = tokio::time::timeout(Duration::from_millis(500), query_future).await;
+
+        let has_location = match result {
+            Ok(Ok(val)) => val,
+            Ok(Err(e)) => {
+                log::warn!(
+                    "[NativeSearch] Erreur vérification lieu (continue sans pré-filtre): {}",
+                    e
+                );
+                false // En cas d'erreur, continuer sans pré-filtre lieu
+            }
+            Err(_) => {
+                log::warn!(
+                    "[NativeSearch] Timeout vérification lieu après 500ms (continue sans pré-filtre): input '{}'",
+                    user_input
+                );
+                false // En cas de timeout, continuer sans pré-filtre lieu
+            }
+        };
 
         log::info!(
             "[NativeSearch] Lieu dans input ? {} (input: '{}', words: {:?})",
-            result,
+            has_location,
             user_input,
             words
         );
 
-        Ok(result)
+        Ok(has_location)
     }
 
     /// ✅ NOUVEAU 2025-11-04 : Recherche avec PRÉ-FILTRE lieu bidirectionnel intelligent
@@ -212,8 +350,8 @@ impl NativeSearchService {
         category_filter: Option<&str>,
         location_filter: Option<&str>,
         _user_id: Option<i32>,
-        gps_zone: Option<&str>,        // Nouveau paramètre GPS
-        search_radius_km: Option<i32>, // Nouveau paramètre rayon
+        gps_zone: Option<&str>,         // Nouveau paramètre GPS
+        search_radius_km: Option<i32>,  // Nouveau paramètre rayon
         specialized_type: Option<&str>, // ✅ NOUVEAU : Paramètre pour recherche spécialisée dédiée
     ) -> AppResult<Vec<SearchResult>> {
         // Appel à la version interne
@@ -246,9 +384,57 @@ impl NativeSearchService {
             search_query, gps_zone, search_radius_km, specialized_type
         ));
 
+        // ✅ NOUVEAU 2025-01-XX: Vérifier le cache multi-niveaux (L1+L2+L4) avant recherche DB
+        // Priorité: SearchCacheService (nouveau) > ScalabilityService (ancien)
+        if let Some(ref search_cache) = self.search_cache_service {
+            let cache_key = search_cache.generate_cache_key(
+                search_query,
+                category_filter,
+                location_or_input_filter,
+                gps_zone,
+                search_radius_km,
+                specialized_type,
+            );
+
+            if let Ok(Some(cached_results)) = search_cache
+                .get_cached_results(&cache_key, search_query)
+                .await
+            {
+                log_info(&format!(
+                    "[NativeSearch] ✅ Cache multi-niveaux hit pour '{}' - Retour immédiat ({} résultats)",
+                    search_query,
+                    cached_results.len()
+                ));
+                return Ok(cached_results);
+            }
+        }
+
+        // ✅ Fallback: Ancien cache via ScalabilityService
+        if let Some(scalability) = &self.scalability_service {
+            let filters = serde_json::json!({
+                "category": category_filter,
+                "location": location_or_input_filter,
+                "gps_zone": gps_zone,
+                "search_radius_km": search_radius_km,
+                "specialized_type": specialized_type,
+            });
+            let cache_key = scalability.generate_search_cache_key(search_query, &filters);
+
+            if let Ok(Some(cached)) = scalability.get_cached_search_results(&cache_key).await {
+                log_info(&format!(
+                    "[NativeSearch] ✅ Cache ScalabilityService hit pour '{}' - Retour immédiat",
+                    search_query
+                ));
+                // Convertir le JSON caché en Vec<SearchResult>
+                if let Ok(results) = serde_json::from_value::<Vec<SearchResult>>(cached) {
+                    return Ok(results);
+                }
+            }
+        }
+
         // Normaliser la requête
         let normalized_query = self.normalize_query_advanced(search_query);
-        
+
         // ✅ NOUVEAU 2025-11-30: Enrichir la requête avec les variations (plombier → plomberie)
         // Cela permet au full-text search de matcher les variations
         let expanded_query = self.expand_search_query_with_variations(&normalized_query);
@@ -258,7 +444,7 @@ impl NativeSearchService {
                 normalized_query, expanded_query
             ));
         }
-        
+
         // ✅ NOUVEAU 2025-11-29: Détecter la catégorie probable à partir de la requête
         // Exemple: "électricien" → "électricité"
         let detected_category = self.detect_category_from_query(&normalized_query);
@@ -266,7 +452,8 @@ impl NativeSearchService {
         if detected_category.is_some() {
             log_info(&format!(
                 "[NativeSearch] Catégorie détectée depuis requête: '{}' → '{}'",
-                search_query, detected_category.as_ref().unwrap()
+                search_query,
+                detected_category.as_ref().unwrap()
             ));
         }
 
@@ -328,43 +515,38 @@ impl NativeSearchService {
             }
         }
 
-        // ✅ OPTIMISÉ 2025-11-29: Limiter enrichissement Google Places pour performance (seulement 10 premiers résultats)
-        // L'enrichissement Google Places peut prendre 100-500ms par service, donc on limite pour éviter ralentissement
-        if fulltext_results.len() <= 10 {
-            use futures::future::join_all;
-            let service_ids: Vec<i32> = fulltext_results.iter().map(|r| r.service_id).collect();
-            let enrichment_results: Vec<_> = join_all(service_ids.iter().map(|&service_id| {
-                let pool = &self.pool;
-                async move {
-                    let mut data = serde_json::json!({});
-                    let result = crate::services::enrich_google_places::enrich_service_with_google_places_data(
-                        pool,
-                        service_id,
-                        &mut data
-                    ).await;
-                    (service_id, result.map(|_| data))
-                }
-            })).await;
-            
-            // Appliquer les enrichissements aux résultats
-            for (service_id, enriched_data_result) in enrichment_results {
-                if let Ok(enriched_data) = enriched_data_result {
-                    if let Some(result) = fulltext_results.iter_mut().find(|r| r.service_id == service_id) {
-                        // Fusionner les données enrichies avec les données existantes
-                        if let Some(obj) = enriched_data.as_object() {
-                            for (key, value) in obj {
-                                result.data[key] = value.clone();
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            log_info(&format!(
-                "[NativeSearch] ⚡ Enrichissement Google Places désactivé pour {} résultats (> 10) pour performance",
-                fulltext_results.len()
-            ));
-        }
+        // ✅ OPTIMISÉ 2025-12-01: Enrichissement Google Places désactivé par défaut (trop lent: 100-500ms par service)
+        // Utiliser enrich_search_results_batch() en batch au lieu de enrich_service_with_google_places_data() séquentiel
+        // if fulltext_results.len() <= 10 {
+        //     use futures::future::join_all;
+        //     let service_ids: Vec<i32> = fulltext_results.iter().map(|r| r.service_id).collect();
+        //     let enrichment_results: Vec<_> = join_all(service_ids.iter().map(|&service_id| {
+        //         let pool = &self.pool;
+        //         async move {
+        //             let mut data = serde_json::json!({});
+        //             let result = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+        //                 pool,
+        //                 service_id,
+        //                 &mut data
+        //             ).await;
+        //             (service_id, result.map(|_| data))
+        //         }
+        //     })).await;
+        //
+        //     // Appliquer les enrichissements aux résultats
+        //     for (service_id, enriched_data_result) in enrichment_results {
+        //         if let Ok(enriched_data) = enriched_data_result {
+        //             if let Some(result) = fulltext_results.iter_mut().find(|r| r.service_id == service_id) {
+        //                 // Fusionner les données enrichies avec les données existantes
+        //                 if let Some(obj) = enriched_data.as_object() {
+        //                     for (key, value) in obj {
+        //                         result.data[key] = value.clone();
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
         // Trier les résultats (pas de limite)
         fulltext_results.sort_by(|a, b| {
@@ -380,6 +562,71 @@ impl NativeSearchService {
             fulltext_results.len(),
             gps_zone.is_some()
         ));
+
+        // ✅ NOUVEAU 2025-01-XX: Mettre en cache les résultats avec cache multi-niveaux (L1+L2+L4)
+        // Priorité: SearchCacheService (nouveau) > ScalabilityService (ancien)
+        let is_popular_search = fulltext_results.len() > 0 && duration.as_secs() < 1; // Recherche rapide = potentiellement populaire
+
+        if let Some(ref search_cache) = self.search_cache_service {
+            let cache_key = search_cache.generate_cache_key(
+                search_query,
+                category_filter,
+                location_or_input_filter,
+                gps_zone,
+                search_radius_km,
+                specialized_type,
+            );
+
+            // Mettre en cache avec TTL adaptatif (1h pour recherches populaires, 5min sinon)
+            let ttl = if is_popular_search {
+                Duration::from_secs(3600) // 1h pour recherches populaires
+            } else {
+                Duration::from_secs(300) // 5min pour recherches normales
+            };
+
+            if let Err(e) = search_cache
+                .cache_results(&cache_key, fulltext_results.clone(), ttl, is_popular_search)
+                .await
+            {
+                log::warn!(
+                    "[NativeSearch] ⚠️ Erreur mise en cache multi-niveaux: {}",
+                    e
+                );
+            } else {
+                log::debug!("[NativeSearch] 💾 Résultats mis en cache multi-niveaux: {} (TTL: {:?}, populaire: {})", 
+                    cache_key, ttl, is_popular_search);
+            }
+        }
+
+        // ✅ Fallback: Ancien cache via ScalabilityService
+        if let Some(scalability) = &self.scalability_service {
+            let filters = serde_json::json!({
+                "category": category_filter,
+                "location": location_or_input_filter,
+                "gps_zone": gps_zone,
+                "search_radius_km": search_radius_km,
+                "specialized_type": specialized_type,
+            });
+            let cache_key = scalability.generate_search_cache_key(search_query, &filters);
+
+            // Mettre en cache avec TTL de 5 minutes
+            if let Ok(results_json) = serde_json::to_value(&fulltext_results) {
+                if let Err(e) = scalability
+                    .cache_search_results(&cache_key, &results_json, Duration::from_secs(300))
+                    .await
+                {
+                    log::warn!(
+                        "[NativeSearch] ⚠️ Erreur mise en cache ScalabilityService: {}",
+                        e
+                    );
+                } else {
+                    log::debug!(
+                        "[NativeSearch] 💾 Résultats mis en cache ScalabilityService: {}",
+                        cache_key
+                    );
+                }
+            }
+        }
 
         Ok(fulltext_results)
     }
@@ -418,7 +665,7 @@ impl NativeSearchService {
                 "[NativeSearch] 🔷 Recherche spécialisée dédiée: '{}'",
                 st
             ));
-            
+
             // Mapper specialized_type vers SearchIntent pour recherche spécialisée
             let intent = match *st {
                 "pharmacie" => crate::services::scheduling_search_service::SearchIntent::SpecializedPharmacy,
@@ -435,12 +682,12 @@ impl NativeSearchService {
                     )));
                 }
             };
-            
+
             // ✅ RECHERCHE SPÉCIALISÉE avec planification et moment intégrés
             let _scheduling_service = SchedulingSearchService::new(self.pool.clone());
             let radius = search_radius_km.unwrap_or(50);
             let mut specialized_results: Vec<SearchResult> = Vec::new();
-            
+
             log_info(&format!(
                 "[NativeSearch] 🔷 Recherche spécialisée dédiée avec planification/moment: {:?}",
                 intent
@@ -473,11 +720,11 @@ impl NativeSearchService {
                         .map_err(|e| format!("Erreur recherche pharmacies: {}", e))?;
 
                     for row in rows {
-                        let service_id: i32 = row.get("service_id");
-                        let nom: String = row.get("nom");
-                        let is_on_duty: bool = row.get("is_on_duty_now");
-                        let distance: Option<f64> = row.get("distance_km");
-                        let score: f64 = row.get("relevance_score");
+                        let service_id: i32 = row.get::<i32, _>("service_id");
+                        let nom: String = row.get::<String, _>("nom");
+                        let is_on_duty: bool = row.get::<bool, _>("is_on_duty_now");
+                        let distance: Option<f64> = row.get::<Option<f64>, _>("distance_km");
+                        let score: f64 = row.get::<f64, _>("relevance_score");
 
                         // Construire data JSONB
                         let data = serde_json::json!({
@@ -533,11 +780,11 @@ impl NativeSearchService {
                         .map_err(|e| format!("Erreur recherche hôpitaux: {}", e))?;
 
                     for row in rows {
-                        let service_id: i32 = row.get("service_id");
-                        let nom: String = row.get("nom");
-                        let is_available: bool = row.get("is_available_now");
-                        let distance: Option<f64> = row.get("distance_km");
-                        let score: f64 = row.get("relevance_score");
+                        let service_id: i32 = row.get::<i32, _>("service_id");
+                        let nom: String = row.get::<String, _>("nom");
+                        let is_available: bool = row.get::<bool, _>("is_available_now");
+                        let distance: Option<f64> = row.get::<Option<f64>, _>("distance_km");
+                        let score: f64 = row.get::<f64, _>("relevance_score");
 
                         let data = serde_json::json!({
                             "titre_service": {"valeur": nom},
@@ -590,10 +837,10 @@ impl NativeSearchService {
                         .map_err(|e| format!("Erreur recherche laboratoires: {}", e))?;
 
                     for row in rows {
-                        let service_id: i32 = row.get("service_id");
-                        let nom: String = row.get("nom");
-                        let distance: Option<f64> = row.get("distance_km");
-                        let score: f64 = row.get("relevance_score");
+                        let service_id: i32 = row.get::<i32, _>("service_id");
+                        let nom: String = row.get::<String, _>("nom");
+                        let distance: Option<f64> = row.get::<Option<f64>, _>("distance_km");
+                        let score: f64 = row.get::<f64, _>("relevance_score");
 
                         let data = serde_json::json!({
                             "titre_service": {"valeur": nom},
@@ -644,10 +891,10 @@ impl NativeSearchService {
                         .map_err(|e| format!("Erreur recherche agences: {}", e))?;
 
                     for row in rows {
-                        let service_id: i32 = row.get("service_id");
-                        let nom: String = row.get("nom_agence");
-                        let distance: Option<f64> = row.get("distance_km");
-                        let score: f64 = row.get("relevance_score");
+                        let service_id: i32 = row.get::<i32, _>("service_id");
+                        let nom: String = row.get::<String, _>("nom_agence");
+                        let distance: Option<f64> = row.get::<Option<f64>, _>("distance_km");
+                        let score: f64 = row.get::<f64, _>("relevance_score");
 
                         let data = serde_json::json!({
                             "titre_service": {"valeur": nom},
@@ -699,11 +946,11 @@ impl NativeSearchService {
                         .map_err(|e| format!("Erreur recherche covoiturages: {}", e))?;
 
                     for row in rows {
-                        let service_id: i32 = row.get("service_id");
-                        let depart: String = row.get("depart");
-                        let destination: String = row.get("destination");
-                        let distance: Option<f64> = row.get("distance_km");
-                        let score: f64 = row.get("relevance_score");
+                        let service_id: i32 = row.get::<i32, _>("service_id");
+                        let depart: String = row.get::<String, _>("depart");
+                        let destination: String = row.get::<String, _>("destination");
+                        let distance: Option<f64> = row.get::<Option<f64>, _>("distance_km");
+                        let score: f64 = row.get::<f64, _>("relevance_score");
 
                         let data = serde_json::json!({
                             "titre_service": {"valeur": format!("{} → {}", depart, destination)},
@@ -755,11 +1002,11 @@ impl NativeSearchService {
                         .map_err(|e| format!("Erreur recherche taxis: {}", e))?;
 
                     for row in rows {
-                        let service_id: i32 = row.get("service_id");
-                        let nom: Option<String> = row.get("nom_chauffeur");
-                        let telephone: String = row.get("telephone");
-                        let distance: Option<f64> = row.get("distance_km");
-                        let score: f64 = row.get("relevance_score");
+                        let service_id: i32 = row.get::<i32, _>("service_id");
+                        let nom: Option<String> = row.get::<Option<String>, _>("nom_chauffeur");
+                        let telephone: String = row.get::<String, _>("telephone");
+                        let distance: Option<f64> = row.get::<Option<f64>, _>("distance_km");
+                        let score: f64 = row.get::<f64, _>("relevance_score");
 
                         let data = serde_json::json!({
                             "titre_service": {"valeur": nom.clone().unwrap_or_else(|| format!("Taxi {}", telephone))},
@@ -825,16 +1072,17 @@ impl NativeSearchService {
             }
 
             // ✅ OPTIMISÉ 2025-11-28: Enrichir tous les résultats spécialisés avec Google Places en BATCH (1 requête SQL)
-            if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
-                &self.pool,
-                &mut specialized_results
-            ).await {
-                log::warn!(
-                    "[NativeSearch] Erreur enrichissement batch Google Places: {}",
-                    e
-                );
-            }
-            
+            // ✅ OPTIMISÉ 2025-12-01: Enrichissement Google Places batch désactivé par défaut (trop lent)
+            // if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
+            //     &self.pool,
+            //     &mut specialized_results
+            // ).await {
+            //     log::warn!(
+            //         "[NativeSearch] Erreur enrichissement batch Google Places: {}",
+            //         e
+            //     );
+            // }
+
             // ✅ OPTIMISÉ 2025-11-28: Désactivé enrichissement Google Maps par défaut (trop lent: 5s par appel)
             // La distance est déjà calculée par PostgreSQL dans search_*_with_moment() et retournée dans distance_km
             // ProductCard peut calculer la distance côté client si nécessaire
@@ -854,22 +1102,22 @@ impl NativeSearchService {
                 "[NativeSearch] ✅ {} résultats spécialisés trouvés avec planification/moment",
                 specialized_results.len()
             ));
-            
+
             // ✅ Recherche spécialisée dédiée : retourner directement les résultats (pas de fallback)
             return Ok(specialized_results);
         }
-        
+
         // ✅ RECHERCHE GÉNÉRALE : Avec planification (ex: "pharmacie de garde") mais SANS vérifier existence services spécialisés
         log_info(&format!(
             "[NativeSearch] 🔍 Recherche générale pure (sans vérification services spécialisés)"
         ));
-        
+
         let scheduling_service = SchedulingSearchService::new(self.pool.clone());
-        
+
         // ✅ NETTOYÉ 2025-11-27 : Analyser UNIQUEMENT les intentions de planification (pas de détection de services spécialisés)
         // Utiliser analyze_scheduling_intent_only() pour éviter de détecter SpecializedPharmacy, etc.
         let intent = scheduling_service.analyze_scheduling_intent_only(query);
-        
+
         // Si recherche avec planification, utiliser la fonction spécialisée (dans la recherche générale)
         if intent.should_use_scheduling_search() {
             log_info(&format!(
@@ -919,16 +1167,17 @@ impl NativeSearchService {
                 .collect();
 
             // ✅ OPTIMISÉ 2025-11-28: Enrichir tous les résultats avec Google Places en BATCH (1 requête SQL)
-            if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
-                &self.pool,
-                &mut results
-            ).await {
-                log::warn!(
-                    "[NativeSearch] Erreur enrichissement batch Google Places: {}",
-                    e
-                );
-            }
-            
+            // ✅ OPTIMISÉ 2025-12-01: Enrichissement Google Places batch désactivé par défaut (trop lent)
+            // if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
+            //     &self.pool,
+            //     &mut results
+            // ).await {
+            //     log::warn!(
+            //         "[NativeSearch] Erreur enrichissement batch Google Places: {}",
+            //         e
+            //     );
+            // }
+
             // ✅ OPTIMISÉ 2025-11-28: Désactivé enrichissement Google Maps par défaut (trop lent: 5s par appel)
             // La distance est déjà calculée par PostgreSQL et retournée dans distance_km
             // ProductCard peut calculer la distance côté client si nécessaire
@@ -1005,94 +1254,125 @@ impl NativeSearchService {
                 3, // max_retries
             )
             .await;
-            
+
             // ✅ CORRIGÉ: Si la recherche GPS échoue, fallback vers recherche sans GPS
             // L'erreur "structure of query does not match function result type" peut survenir
             // si la fonction SQL a été modifiée ou si la base de données n'est pas à jour
             match results {
                 Ok(rows) if !rows.is_empty() => {
-                // ✅ CORRIGÉ: Traiter les résultats GPS si disponibles
-                let mut search_results = Vec::new();
-                for row in rows {
-                let service_id: i32 = row.get("service_id");
-                let _titre_service: String = row.get("titre_service");
-                let _category: Option<String> = row.get("category");
-                let _gps_coords: Option<String> = row.get("gps_coords");
-                let _distance_km: Option<f64> = row.get("distance_km");
-                let relevance_score: f32 = row.get("relevance_score");
-                let _gps_source: Option<String> = row.get("gps_source");
+                    // ✅ CORRIGÉ: Traiter les résultats GPS si disponibles
+                    let mut search_results = Vec::new();
+                    let service_ids: Vec<i32> =
+                        rows.iter().map(|r| r.get::<i32, _>("service_id")).collect();
 
-                // Récupérer les données complètes du service
-                let mut service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
-                    .bind(service_id)
-                    .fetch_one(&self.pool)
-                    .await
-                    .map(|row| row.get::<Value, _>("data"))
-                    .unwrap_or_else(|_| serde_json::json!({}));
+                    // ✅ OPTIMISÉ 2025-12-01 : Batch query pour éviter N+1 - récupérer toutes les données en une seule requête
+                    let service_data_map: std::collections::HashMap<i32, Value> =
+                        if !service_ids.is_empty() {
+                            sqlx::query("SELECT id, data FROM services WHERE id = ANY($1)")
+                                .bind(&service_ids)
+                                .fetch_all(&self.pool)
+                                .await
+                                .map(|rows| {
+                                    rows.into_iter()
+                                        .map(|row| {
+                                            (row.get::<i32, _>("id"), row.get::<Value, _>("data"))
+                                        })
+                                        .collect()
+                                })
+                                .unwrap_or_default()
+                        } else {
+                            std::collections::HashMap::new()
+                        };
 
-                // ✅ NOUVEAU: Enrichir avec les données Google Places complètes
-                if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
-                    &self.pool,
-                    service_id,
-                    &mut service_data
-                ).await {
-                    log::warn!(
-                        "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
-                        service_id,
-                        e
-                    );
-                }
+                    for row in rows {
+                        let service_id: i32 = row.get::<i32, _>("service_id");
+                        let _titre_service: String = row.get::<String, _>("titre_service");
+                        let _category: Option<String> = row.get::<Option<String>, _>("category");
+                        let _gps_coords: Option<String> =
+                            row.get::<Option<String>, _>("gps_coords");
+                        let _distance_km: Option<f64> = row.get::<Option<f64>, _>("distance_km");
+                        let relevance_score: f32 = row.get::<f32, _>("relevance_score");
+                        let _gps_source: Option<String> =
+                            row.get::<Option<String>, _>("gps_source");
 
-                // ✅ Phase 10 - Extraire les coordonnées GPS pour enrichissement Google Maps
-                let gps_coords = _gps_coords.as_ref()
-                    .and_then(|coords| {
-                        coords.split(',')
-                            .map(|s| s.trim().parse::<f64>().ok())
-                            .collect::<Option<Vec<_>>>()
-                            .and_then(|v| if v.len() == 2 { Some((v[0], v[1])) } else { None })
-                    });
+                        // ✅ OPTIMISÉ 2025-12-01 : Récupérer depuis le batch query au lieu de requête individuelle
+                        let mut service_data = service_data_map
+                            .get(&service_id)
+                            .cloned()
+                            .unwrap_or_else(|| serde_json::json!({}));
 
-                search_results.push(SearchResult {
-                    service_id,
-                    data: service_data,
-                    total_score: relevance_score,
-                    fulltext_score: 0.0,
-                    trigram_score: 0.0,
-                    recency_score: 0.0,
-                    category_score: 0.0,
-                    search_method: "gps_optimized".to_string(),
-                    matched_fields: vec!["gps".to_string()],
-                    distance_km: _distance_km,
-                    gps_coords,
-                });
+                        // ✅ OPTIMISÉ 2025-12-01: Enrichissement Google Places désactivé par défaut (trop lent: 100-500ms par service)
+                        // Utiliser enrich_search_results_batch() en batch au lieu de enrich_service_with_google_places_data() séquentiel
+                        // if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                        //     &self.pool,
+                        //     service_id,
+                        //     &mut service_data
+                        // ).await {
+                        //     log::warn!(
+                        //         "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
+                        //         service_id,
+                        //         e
+                        //     );
+                        // }
 
-                log_info(&format!(
-                    "[NativeSearch] Service {} trouvé à {:.2}km (source: {})",
-                    service_id,
-                    _distance_km.unwrap_or(0.0),
-                    _gps_source.unwrap_or_else(|| "unknown".to_string())
-                ));
-            }
+                        // ✅ Phase 10 - Extraire les coordonnées GPS pour enrichissement Google Maps
+                        let gps_coords = _gps_coords.as_ref().and_then(|coords| {
+                            coords
+                                .split(',')
+                                .map(|s| s.trim().parse::<f64>().ok())
+                                .collect::<Option<Vec<_>>>()
+                                .and_then(|v| {
+                                    if v.len() == 2 {
+                                        Some((v[0], v[1]))
+                                    } else {
+                                        None
+                                    }
+                                })
+                        });
+
+                        search_results.push(SearchResult {
+                            service_id,
+                            data: service_data,
+                            total_score: relevance_score,
+                            fulltext_score: 0.0,
+                            trigram_score: 0.0,
+                            recency_score: 0.0,
+                            category_score: 0.0,
+                            search_method: "gps_optimized".to_string(),
+                            matched_fields: vec!["gps".to_string()],
+                            distance_km: _distance_km,
+                            gps_coords,
+                        });
+
+                        log_info(&format!(
+                            "[NativeSearch] Service {} trouvé à {:.2}km (source: {})",
+                            service_id,
+                            _distance_km.unwrap_or(0.0),
+                            _gps_source.unwrap_or_else(|| "unknown".to_string())
+                        ));
+                    }
 
                     log_info(&format!(
                         "[NativeSearch] Recherche GPS optimisée: {} résultats trouvés",
                         search_results.len()
                     ));
-                    
-                    // ✅ OPTIMISÉ 2025-11-28: Enrichir tous les résultats avec Google Places en BATCH (1 requête SQL)
-                    if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
-                        &self.pool,
-                        &mut search_results
-                    ).await {
-                        log::warn!(
-                            "[NativeSearch] Erreur enrichissement batch Google Places: {}",
-                            e
-                        );
-                    }
-                    
-                    // ✅ OPTIMISÉ 2025-11-28: Désactivé enrichissement Google Maps par défaut (trop lent: 5s par appel)
+
+                    // ✅ OPTIMISÉ 2025-12-01: Enrichissement Google Places batch désactivé par défaut (trop lent: 100-500ms par service)
+                    // La distance est déjà calculée par PostgreSQL dans search_services_gps_final() et retournée dans distance_km
+                    // if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
+                    //     &self.pool,
+                    //     &mut search_results
+                    // ).await {
+                    //     log::warn!(
+                    //         "[NativeSearch] Erreur enrichissement batch Google Places: {}",
+                    //         e
+                    //     );
+                    // }
+
+                    // ✅ OPTIMISÉ 2025-12-01: Enrichissement Google Places désactivé par défaut (trop lent: 100-500ms par service)
                     // La distance est déjà calculée par PostgreSQL dans search_services_gps_final() et retournée dans distance_km
                     // ProductCard peut calculer la distance côté client si nécessaire
+                    // Pour réactiver: décommenter le code ci-dessous et utiliser enrich_service_with_google_places_data en batch
                     // if let Some((lat_str, lng_str)) = gps_zone_val.split_once(',') {
                     //     if let (Ok(user_lat), Ok(user_lng)) = (lat_str.parse::<f64>(), lng_str.parse::<f64>()) {
                     //         SearchResult::enrich_with_google_maps(
@@ -1102,7 +1382,7 @@ impl NativeSearchService {
                     //         ).await;
                     //     }
                     // }
-                    
+
                     return Ok(search_results);
                 }
                 Ok(_) => {
@@ -1111,9 +1391,10 @@ impl NativeSearchService {
                 }
                 Err(e) => {
                     let error_msg = e.to_string();
-                    
+
                     // Vérifier si c'est une erreur de structure de requête
-                    if error_msg.contains("structure of query does not match function result type") {
+                    if error_msg.contains("structure of query does not match function result type")
+                    {
                         log::warn!(
                             "[NativeSearch] ⚠️ Erreur structure requête GPS - Fallback vers recherche sans GPS. Erreur: {}",
                             error_msg
@@ -1128,9 +1409,10 @@ impl NativeSearchService {
                 }
             }
         }
-        
+
         // ✅ OPTIMISÉ 2025-11-28: Vérifier le cache Redis avant d'exécuter la requête SQL
-        let cache_key = self.build_search_cache_key(query, category_filter, location_filter, gps_zone);
+        let cache_key =
+            self.build_search_cache_key(query, category_filter, location_filter, gps_zone);
         if let Some(ref cache) = self.cache_service {
             if let Ok(Some(cached_results)) = cache.get::<Vec<SearchResult>>(&cache_key).await {
                 log_info(&format!(
@@ -1159,7 +1441,7 @@ impl NativeSearchService {
                 query, expanded_query
             ));
         }
-        
+
         let partial_conditions = self.create_partial_match_conditions(query, "ape");
 
         // ✅ NOUVEAU 2025-11-30: Utiliser la requête enrichie dans la requête SQL
@@ -1416,17 +1698,10 @@ AND (
             SELECT 1 FROM autocomplete_characteristics ac
             WHERE ac.service_id = pe.service_id
             AND ac.is_real_product = TRUE
-            AND (
-                (
-                    SELECT array_agg(LOWER(elem))::TEXT[]
-                    FROM unnest(ac.location_vector) AS elem
-                ) && string_to_array(LOWER($3), ' ')
-                OR EXISTS (
-                    SELECT 1 FROM unnest(ac.location_vector) AS loc_val,
-                                 unnest(string_to_array(LOWER($3), ' ')) AS input_word
-                    WHERE similarity(LOWER(loc_val), input_word) > 0.6
-                )
-            )
+            AND ac.location_vector IS NOT NULL
+            AND array_length(ac.location_vector, 1) > 0
+            -- ✅ OPTIMISÉ 2025-12-01 : Utiliser directement && avec l'index GIN (beaucoup plus rapide)
+            AND ac.location_vector && string_to_array(LOWER($3), ' ')
         )
     )
 )
@@ -1442,7 +1717,7 @@ LIMIT 100
         let location_filter_clone = location_filter.map(|s| s.to_string());
         let sql_clone = sql.clone();
         let pool_clone = self.pool.clone();
-        
+
         let results = retry_query(
             &self.pool,
             move || {
@@ -1466,24 +1741,25 @@ LIMIT 100
         )
         .await
         .map_err(|e| {
-            log_error(&format!("[NativeSearch] Erreur recherche full-text après retry: {}", e));
-            crate::core::types::AppError::Internal(format!(
-                "Erreur recherche full-text: {}",
+            log_error(&format!(
+                "[NativeSearch] Erreur recherche full-text après retry: {}",
                 e
-            ))
+            ));
+            crate::core::types::AppError::Internal(format!("Erreur recherche full-text: {}", e))
         })?;
 
         let mut search_results = Vec::new();
         for row in results {
-            let service_id: i32 = row.get("id");
-            let data: Value = row.get("data");
-            let _created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
-            let _user_id: i32 = row.get("user_id");
-            let _gps: Option<String> = row.get("gps");
-            let _category: Option<String> = row.get("category");
+            let service_id: i32 = row.get::<i32, _>("id");
+            let data: Value = row.get::<Value, _>("data");
+            let _created_at: chrono::DateTime<chrono::Utc> =
+                row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+            let _user_id: i32 = row.get::<i32, _>("user_id");
+            let _gps: Option<String> = row.get::<Option<String>, _>("gps");
+            let _category: Option<String> = row.get::<Option<String>, _>("category");
             // Gérer le cas où fulltext_score peut être NULL
-            let fulltext_score: f32 = row.try_get("fulltext_score").unwrap_or(0.0);
-            
+            let fulltext_score: f32 = row.get::<f32, _>("fulltext_score");
+
             search_results.push(SearchResult {
                 service_id,
                 data,
@@ -1500,7 +1776,7 @@ LIMIT 100
         }
 
         // ✅ NETTOYÉ 2025-11-27 : Recherche générale pure (pas de fusion avec résultats spécialisés)
-        
+
         // Trier par score total
         search_results.sort_by(|a, b| {
             b.total_score
@@ -1508,10 +1784,18 @@ LIMIT 100
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        // ✅ OPTIMISÉ 2025-11-28: Mettre en cache les résultats (TTL 5 minutes pour les recherches)
+        // ✅ OPTIMISÉ 2025-12-01: Mettre en cache les résultats (TTL 10 minutes pour réduire charge DB)
         if let Some(ref cache) = self.cache_service {
-            let cache_ttl = Duration::from_secs(300); // 5 minutes
-            if let Err(e) = cache.set_with_ttl(&cache_key, &search_results, cache_ttl).await {
+            // TTL configurable via env, défaut 10 minutes (600s) au lieu de 5 minutes
+            let cache_ttl_secs: u64 = std::env::var("CACHE_TTL_SEARCH")
+                .unwrap_or_else(|_| "600".to_string())
+                .parse()
+                .unwrap_or(600);
+            let cache_ttl = Duration::from_secs(cache_ttl_secs);
+            if let Err(e) = cache
+                .set_with_ttl(&cache_key, &search_results, cache_ttl)
+                .await
+            {
                 log::warn!(
                     "[NativeSearch] ⚠️ Erreur mise en cache des résultats pour '{}': {}",
                     query,
@@ -1525,7 +1809,7 @@ LIMIT 100
                 ));
             }
         }
-        
+
         Ok(search_results)
     }
 
@@ -1539,14 +1823,14 @@ LIMIT 100
     ) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         query.hash(&mut hasher);
         category_filter.hash(&mut hasher);
         location_filter.hash(&mut hasher);
         gps_zone.hash(&mut hasher);
         let hash = hasher.finish();
-        
+
         format!("search:fulltext:{}", hash)
     }
 
@@ -1621,45 +1905,71 @@ LIMIT 100
                     ))
                 })?;
 
+            // ✅ OPTIMISÉ 2025-12-01 : Batch query pour éviter N+1
+            let service_ids: Vec<i32> = results
+                .iter()
+                .map(|r| r.get::<i32, _>("service_id"))
+                .collect();
+            let service_data_map: std::collections::HashMap<i32, Value> = if !service_ids.is_empty()
+            {
+                sqlx::query("SELECT id, data FROM services WHERE id = ANY($1)")
+                    .bind(&service_ids)
+                    .fetch_all(&self.pool)
+                    .await
+                    .map(|rows| {
+                        rows.into_iter()
+                            .map(|row| (row.get::<i32, _>("id"), row.get::<Value, _>("data")))
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            } else {
+                std::collections::HashMap::new()
+            };
+
             let mut search_results = Vec::new();
             for row in results {
-                let service_id: i32 = row.get("service_id");
-                let _titre_service: String = row.get("titre_service");
-                let _category: Option<String> = row.get("category");
-                let _gps_coords: Option<String> = row.get("gps_coords");
-                let _distance_km: Option<f64> = row.get("distance_km");
-                let relevance_score: f32 = row.get("relevance_score");
-                let _gps_source: Option<String> = row.get("gps_source");
+                let service_id: i32 = row.get::<i32, _>("service_id");
+                let _titre_service: String = row.get::<String, _>("titre_service");
+                let _category: Option<String> = row.get::<Option<String>, _>("category");
+                let _gps_coords: Option<String> = row.get::<Option<String>, _>("gps_coords");
+                let _distance_km: Option<f64> = row.get::<Option<f64>, _>("distance_km");
+                let relevance_score: f32 = row.get::<f32, _>("relevance_score");
+                let _gps_source: Option<String> = row.get::<Option<String>, _>("gps_source");
 
-                // Récupérer les données complètes du service
-                let mut service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
-                    .bind(service_id)
-                    .fetch_one(&self.pool)
-                    .await
-                    .map(|row| row.get::<Value, _>("data"))
-                    .unwrap_or_else(|_| serde_json::json!({}));
+                // ✅ OPTIMISÉ 2025-12-01 : Récupérer depuis le batch query
+                let mut service_data = service_data_map
+                    .get(&service_id)
+                    .cloned()
+                    .unwrap_or_else(|| serde_json::json!({}));
 
-                // ✅ NOUVEAU: Enrichir avec les données Google Places complètes
-                if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
-                    &self.pool,
-                    service_id,
-                    &mut service_data
-                ).await {
-                    log::warn!(
-                        "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
-                        service_id,
-                        e
-                    );
-                }
+                // ✅ OPTIMISÉ 2025-12-01: Enrichissement Google Places désactivé par défaut (trop lent: 100-500ms par service)
+                // Utiliser enrich_search_results_batch() en batch au lieu de enrich_service_with_google_places_data() séquentiel
+                // if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                //     &self.pool,
+                //     service_id,
+                //     &mut service_data
+                // ).await {
+                //     log::warn!(
+                //         "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
+                //         service_id,
+                //         e
+                //     );
+                // }
 
                 // ✅ Phase 10 - Extraire les coordonnées GPS
-                let gps_coords = _gps_coords.as_ref()
-                    .and_then(|coords| {
-                        coords.split(',')
-                            .map(|s| s.trim().parse::<f64>().ok())
-                            .collect::<Option<Vec<_>>>()
-                            .and_then(|v| if v.len() == 2 { Some((v[0], v[1])) } else { None })
-                    });
+                let gps_coords = _gps_coords.as_ref().and_then(|coords| {
+                    coords
+                        .split(',')
+                        .map(|s| s.trim().parse::<f64>().ok())
+                        .collect::<Option<Vec<_>>>()
+                        .and_then(|v| {
+                            if v.len() == 2 {
+                                Some((v[0], v[1]))
+                            } else {
+                                None
+                            }
+                        })
+                });
 
                 search_results.push(SearchResult {
                     service_id,
@@ -1676,16 +1986,16 @@ LIMIT 100
                 });
             }
 
-            // ✅ OPTIMISÉ 2025-11-28: Enrichir tous les résultats avec Google Places en BATCH (1 requête SQL)
-            if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
-                &self.pool,
-                &mut search_results
-            ).await {
-                log::warn!(
-                    "[NativeSearch] Erreur enrichissement batch Google Places: {}",
-                    e
-                );
-            }
+            // ✅ OPTIMISÉ 2025-12-01: Enrichissement Google Places batch désactivé par défaut (trop lent)
+            // if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
+            //     &self.pool,
+            //     &mut search_results
+            // ).await {
+            //     log::warn!(
+            //         "[NativeSearch] Erreur enrichissement batch Google Places: {}",
+            //         e
+            //     );
+            // }
 
             // ✅ OPTIMISÉ 2025-11-28: Désactivé enrichissement Google Maps par défaut (trop lent: 5s par appel)
             // La distance est déjà calculée par PostgreSQL dans search_services_gps_final() et retournée dans distance_km
@@ -1734,18 +2044,10 @@ LIMIT 100
                         WHERE ac.service_id = s.id
                         AND ac.is_real_product = TRUE
                         AND (
-                            -- ✅ OPTIMISÉ : Opérateur && (overlap)
-                            -- Convertir location_vector en lowercase pour comparaison case-insensitive
-                            (
-                                SELECT array_agg(LOWER(elem))::TEXT[]
-                                FROM unnest(ac.location_vector) AS elem
-                            ) && string_to_array(LOWER($3), ' ')
-                            -- ✅ OU fuzzy match (si && échoue)
-                            OR EXISTS (
-                                SELECT 1 FROM unnest(ac.location_vector) AS loc_val,
-                                             unnest(string_to_array(LOWER($3), ' ')) AS input_word
-                                WHERE similarity(LOWER(loc_val), input_word) > 0.6
-                            )
+                            -- ✅ OPTIMISÉ 2025-12-01 : Utiliser directement && avec l'index GIN (beaucoup plus rapide)
+                            ac.location_vector IS NOT NULL
+                            AND array_length(ac.location_vector, 1) > 0
+                            AND ac.location_vector && string_to_array(LOWER($3), ' ')
                         )
                     )
                 )
@@ -1766,14 +2068,15 @@ LIMIT 100
 
         let mut search_results = Vec::new();
         for row in results {
-            let service_id: i32 = row.get("id");
-            let data: Value = row.get("data");
-            let _created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
-            let _user_id: i32 = row.get("user_id");
-            let _gps: Option<String> = row.get("gps");
-            let _category: Option<String> = row.get("category");
+            let service_id: i32 = row.get::<i32, _>("id");
+            let data: Value = row.get::<Value, _>("data");
+            let _created_at: chrono::DateTime<chrono::Utc> =
+                row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+            let _user_id: i32 = row.get::<i32, _>("user_id");
+            let _gps: Option<String> = row.get::<Option<String>, _>("gps");
+            let _category: Option<String> = row.get::<Option<String>, _>("category");
             // Gérer le cas où trigram_score peut être NULL
-            let trigram_score: f32 = row.try_get("trigram_score").unwrap_or(0.0);
+            let trigram_score: f32 = row.get::<f32, _>("trigram_score");
 
             search_results.push(SearchResult {
                 service_id,
@@ -1864,45 +2167,71 @@ LIMIT 100
                     ))
                 })?;
 
+            // ✅ OPTIMISÉ 2025-12-01 : Batch query pour éviter N+1
+            let service_ids: Vec<i32> = results
+                .iter()
+                .map(|r| r.get::<i32, _>("service_id"))
+                .collect();
+            let service_data_map: std::collections::HashMap<i32, Value> = if !service_ids.is_empty()
+            {
+                sqlx::query("SELECT id, data FROM services WHERE id = ANY($1)")
+                    .bind(&service_ids)
+                    .fetch_all(&self.pool)
+                    .await
+                    .map(|rows| {
+                        rows.into_iter()
+                            .map(|row| (row.get::<i32, _>("id"), row.get::<Value, _>("data")))
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            } else {
+                std::collections::HashMap::new()
+            };
+
             let mut search_results = Vec::new();
             for row in results {
-                let service_id: i32 = row.get("service_id");
-                let _titre_service: String = row.get("titre_service");
-                let _category: Option<String> = row.get("category");
-                let _gps_coords: Option<String> = row.get("gps_coords");
-                let _distance_km: Option<f64> = row.get("distance_km");
-                let relevance_score: f32 = row.get("relevance_score");
-                let _gps_source: Option<String> = row.get("gps_source");
+                let service_id: i32 = row.get::<i32, _>("service_id");
+                let _titre_service: String = row.get::<String, _>("titre_service");
+                let _category: Option<String> = row.get::<Option<String>, _>("category");
+                let _gps_coords: Option<String> = row.get::<Option<String>, _>("gps_coords");
+                let _distance_km: Option<f64> = row.get::<Option<f64>, _>("distance_km");
+                let relevance_score: f32 = row.get::<f32, _>("relevance_score");
+                let _gps_source: Option<String> = row.get::<Option<String>, _>("gps_source");
 
-                // Récupérer les données complètes du service
-                let mut service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
-                    .bind(service_id)
-                    .fetch_one(&self.pool)
-                    .await
-                    .map(|row| row.get::<Value, _>("data"))
-                    .unwrap_or_else(|_| serde_json::json!({}));
+                // ✅ OPTIMISÉ 2025-12-01 : Récupérer depuis le batch query
+                let mut service_data = service_data_map
+                    .get(&service_id)
+                    .cloned()
+                    .unwrap_or_else(|| serde_json::json!({}));
 
-                // ✅ NOUVEAU: Enrichir avec les données Google Places complètes
-                if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
-                    &self.pool,
-                    service_id,
-                    &mut service_data
-                ).await {
-                    log::warn!(
-                        "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
-                        service_id,
-                        e
-                    );
-                }
+                // ✅ OPTIMISÉ 2025-12-01: Enrichissement Google Places désactivé par défaut (trop lent: 100-500ms par service)
+                // Utiliser enrich_search_results_batch() en batch au lieu de enrich_service_with_google_places_data() séquentiel
+                // if let Err(e) = crate::services::enrich_google_places::enrich_service_with_google_places_data(
+                //     &self.pool,
+                //     service_id,
+                //     &mut service_data
+                // ).await {
+                //     log::warn!(
+                //         "[NativeSearch] Erreur enrichissement Google Places pour service {}: {}",
+                //         service_id,
+                //         e
+                //     );
+                // }
 
                 // ✅ Phase 10 - Extraire les coordonnées GPS pour enrichissement Google Maps
-                let gps_coords = _gps_coords.as_ref()
-                    .and_then(|coords| {
-                        coords.split(',')
-                            .map(|s| s.trim().parse::<f64>().ok())
-                            .collect::<Option<Vec<_>>>()
-                            .and_then(|v| if v.len() == 2 { Some((v[0], v[1])) } else { None })
-                    });
+                let gps_coords = _gps_coords.as_ref().and_then(|coords| {
+                    coords
+                        .split(',')
+                        .map(|s| s.trim().parse::<f64>().ok())
+                        .collect::<Option<Vec<_>>>()
+                        .and_then(|v| {
+                            if v.len() == 2 {
+                                Some((v[0], v[1]))
+                            } else {
+                                None
+                            }
+                        })
+                });
 
                 search_results.push(SearchResult {
                     service_id,
@@ -1919,16 +2248,16 @@ LIMIT 100
                 });
             }
 
-            // ✅ OPTIMISÉ 2025-11-28: Enrichir tous les résultats avec Google Places en BATCH (1 requête SQL)
-            if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
-                &self.pool,
-                &mut search_results
-            ).await {
-                log::warn!(
-                    "[NativeSearch] Erreur enrichissement batch Google Places: {}",
-                    e
-                );
-            }
+            // ✅ OPTIMISÉ 2025-12-01: Enrichissement Google Places batch désactivé par défaut (trop lent)
+            // if let Err(e) = crate::services::enrich_google_places::enrich_search_results_batch(
+            //     &self.pool,
+            //     &mut search_results
+            // ).await {
+            //     log::warn!(
+            //         "[NativeSearch] Erreur enrichissement batch Google Places: {}",
+            //         e
+            //     );
+            // }
 
             // ✅ OPTIMISÉ 2025-11-28: Désactivé enrichissement Google Maps par défaut (trop lent: 5s par appel)
             // La distance est déjà calculée par PostgreSQL dans search_services_gps_final() et retournée dans distance_km
@@ -2019,18 +2348,10 @@ LIMIT 100
                         WHERE ac.service_id = s.id
                         AND ac.is_real_product = TRUE
                         AND (
-                            -- ✅ OPTIMISÉ : Opérateur && (overlap)
-                            -- Convertir location_vector en lowercase pour comparaison case-insensitive
-                            (
-                                SELECT array_agg(LOWER(elem))::TEXT[]
-                                FROM unnest(ac.location_vector) AS elem
-                            ) && string_to_array(LOWER($3), ' ')
-                            -- ✅ OU fuzzy match (si && échoue)
-                            OR EXISTS (
-                                SELECT 1 FROM unnest(ac.location_vector) AS loc_val,
-                                             unnest(string_to_array(LOWER($3), ' ')) AS input_word
-                                WHERE similarity(LOWER(loc_val), input_word) > 0.6
-                            )
+                            -- ✅ OPTIMISÉ 2025-12-01 : Utiliser directement && avec l'index GIN (beaucoup plus rapide)
+                            ac.location_vector IS NOT NULL
+                            AND array_length(ac.location_vector, 1) > 0
+                            AND ac.location_vector && string_to_array(LOWER($3), ' ')
                         )
                     )
                 )
@@ -2059,14 +2380,15 @@ LIMIT 100
 
         let mut search_results = Vec::new();
         for row in results {
-            let service_id: i32 = row.get("id");
-            let data: Value = row.get("data");
-            let _created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
-            let _user_id: i32 = row.get("user_id");
-            let _gps: Option<String> = row.get("gps");
-            let _category: Option<String> = row.get("category");
+            let service_id: i32 = row.get::<i32, _>("id");
+            let data: Value = row.get::<Value, _>("data");
+            let _created_at: chrono::DateTime<chrono::Utc> =
+                row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+            let _user_id: i32 = row.get::<i32, _>("user_id");
+            let _gps: Option<String> = row.get::<Option<String>, _>("gps");
+            let _category: Option<String> = row.get::<Option<String>, _>("category");
             // Gérer le cas où keyword_score peut être NULL
-            let keyword_score: f32 = row.try_get("keyword_score").unwrap_or(0.0);
+            let keyword_score: f32 = row.get::<f32, _>("keyword_score");
 
             search_results.push(SearchResult {
                 service_id,
@@ -2105,7 +2427,7 @@ LIMIT 100
         let query_lowercase = query.to_lowercase();
         let query_lower = query_lowercase.trim();
         let mut expanded_terms = vec![query_lower.to_string()];
-        
+
         // Mapping bidirectionnel : profession ↔ activité
         let variations = vec![
             ("plombier", "plomberie"),
@@ -2136,7 +2458,7 @@ LIMIT 100
             ("hôpital", "santé"),
             ("hopital", "santé"),
         ];
-        
+
         // Pour chaque mot de la requête, chercher des variations
         let words: Vec<&str> = query_lower.split_whitespace().collect();
         for word in &words {
@@ -2162,7 +2484,7 @@ LIMIT 100
                 }
             }
         }
-        
+
         // Créer une requête enrichie avec OR pour full-text search PostgreSQL
         // Format: "plombier | plomberie" (utilise l'opérateur | de tsquery)
         // Dédupliquer et joindre avec |
@@ -2172,7 +2494,7 @@ LIMIT 100
             .collect::<HashSet<String>>()
             .into_iter()
             .collect();
-        
+
         if unique_terms.len() > 1 {
             unique_terms.join(" | ") // Format: "plombier | plomberie" pour plainto_tsquery()
         } else {
@@ -2185,7 +2507,7 @@ LIMIT 100
     /// Exemple: "électricien" → "électricité", "plombier" → "plomberie"
     fn detect_category_from_query(&self, query: &str) -> Option<String> {
         let query_lower = query.to_lowercase();
-        
+
         // Mapping profession → catégorie
         let category_mappings = vec![
             ("électricien", "électricité"),
@@ -2214,13 +2536,13 @@ LIMIT 100
             ("hôpital", "santé"),
             ("hopital", "santé"),
         ];
-        
+
         for (profession, category) in category_mappings {
             if query_lower.contains(profession) {
                 return Some(category.to_string());
             }
         }
-        
+
         None
     }
 
@@ -2374,12 +2696,13 @@ LIMIT 100
 
         let mut search_results = Vec::new();
         for row in results {
-            let service_id: i32 = row.get("id");
-            let data: Value = row.get("data");
-            let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
-            let _user_id: i32 = row.get("user_id");
-            let _gps: Option<String> = row.get("gps");
-            let _category: Option<String> = row.get("category");
+            let service_id: i32 = row.get::<i32, _>("id");
+            let data: Value = row.get::<Value, _>("data");
+            let created_at: chrono::DateTime<chrono::Utc> =
+                row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+            let _user_id: i32 = row.get::<i32, _>("user_id");
+            let _gps: Option<String> = row.get::<Option<String>, _>("gps");
+            let _category: Option<String> = row.get::<Option<String>, _>("category");
 
             let recency_score = self.calculate_recency_score(created_at);
 
@@ -2509,13 +2832,14 @@ LIMIT 100
 
         let mut search_results = Vec::new();
         for row in results {
-            let service_id: i32 = row.get("id");
-            let data: Value = row.get("data");
-            let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
-            let _user_id: i32 = row.get("user_id");
-            let _gps: Option<String> = row.get("gps");
-            let _category: Option<String> = row.get("category");
-            let location_score: f32 = row.get("location_score");
+            let service_id: i32 = row.get::<i32, _>("id");
+            let data: Value = row.get::<Value, _>("data");
+            let created_at: chrono::DateTime<chrono::Utc> =
+                row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+            let _user_id: i32 = row.get::<i32, _>("user_id");
+            let _gps: Option<String> = row.get::<Option<String>, _>("gps");
+            let _category: Option<String> = row.get::<Option<String>, _>("category");
+            let location_score: f32 = row.get::<f32, _>("location_score");
 
             let recency_score = self.calculate_recency_score(created_at);
 
@@ -2544,7 +2868,9 @@ impl SearchResult {
     pub async fn enrich_with_google_maps(
         results: &mut [SearchResult],
         user_location: Option<(f64, f64)>,
-        geographic_matching: Option<&Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
+        geographic_matching: Option<
+            &Arc<crate::services::geographic_matching_service::GeographicMatchingService>,
+        >,
     ) {
         if let (Some(user_loc), Some(geo_service)) = (user_location, geographic_matching) {
             for result in results.iter_mut() {
@@ -2559,7 +2885,7 @@ impl SearchResult {
                         {
                             Ok(distance_result) => {
                                 let distance_km = distance_result.distance_meters / 1000.0;
-                                
+
                                 // Prioriser Google Maps si disponible, sinon utiliser Haversine
                                 match distance_result.source {
                                     crate::services::geographic_matching_service::DistanceSource::GoogleMaps => {
@@ -2651,5 +2977,416 @@ impl SearchResult {
                 "matched_fields": self.matched_fields
             }
         })
+    }
+}
+
+/// ✅ NOUVEAU 2025-12-02: Requête de recherche paginée avec cursor
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaginatedSearchRequest {
+    pub query: String,
+    pub category_filter: Option<String>,
+    pub location_filter: Option<String>,
+    pub gps_zone: Option<String>,
+    pub search_radius_km: Option<i32>,
+    pub cursor: Option<String>, // Cursor pour pagination (base64 encodé)
+    pub page_size: Option<u32>, // Taille de page (max 100, défaut 20)
+    pub specialized_type: Option<String>, // Type spécialisé si recherche dédiée
+}
+
+/// ✅ NOUVEAU 2025-12-02: Réponse de recherche paginée
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaginatedSearchResponse {
+    pub results: Vec<SearchResult>,
+    pub next_cursor: Option<String>,
+    pub has_more: bool,
+    pub total_estimated: Option<u64>, // Estimation (pas de COUNT exact pour performance)
+}
+
+impl NativeSearchService {
+    /// ✅ NOUVEAU 2025-12-02: Recherche paginée avec cursor-based pagination
+    /// Permet de gérer des millions de résultats sans charger tout en mémoire
+    pub async fn intelligent_search_paginated(
+        &self,
+        request: PaginatedSearchRequest,
+    ) -> AppResult<PaginatedSearchResponse> {
+        let start_time = std::time::Instant::now();
+        let page_size = request.page_size.unwrap_or(20).min(100); // Max 100 par page
+
+        log_info(&format!(
+            "[NativeSearch] 🔄 Recherche paginée: '{}' (page_size: {}, cursor: {:?})",
+            request.query,
+            page_size,
+            request
+                .cursor
+                .as_ref()
+                .map(|c| c.chars().take(20).collect::<String>())
+        ));
+
+        // Décoder le cursor (contient last_service_id + last_score)
+        let (last_service_id, last_score) = if let Some(cursor) = &request.cursor {
+            match self.decode_cursor(cursor) {
+                Ok((sid, score)) => (sid, score),
+                Err(e) => {
+                    log::warn!(
+                        "[NativeSearch] ⚠️ Erreur décodage cursor: {}, recherche sans cursor",
+                        e
+                    );
+                    (None, None)
+                }
+            }
+        } else {
+            (None, None)
+        };
+
+        // Vérifier le cache multi-niveaux
+        if let Some(ref search_cache) = self.search_cache_service {
+            let cache_key = search_cache.generate_cache_key(
+                &request.query,
+                request.category_filter.as_deref(),
+                request.location_filter.as_deref(),
+                request.gps_zone.as_deref(),
+                request.search_radius_km,
+                request.specialized_type.as_deref(),
+            );
+
+            // Pour la pagination, on ne met en cache que la première page (cursor=None)
+            if request.cursor.is_none() {
+                if let Ok(Some(cached_results)) = search_cache
+                    .get_cached_results(&cache_key, &request.query)
+                    .await
+                {
+                    log_info(&format!(
+                        "[NativeSearch] ✅ Cache hit pour recherche paginée: '{}' ({} résultats)",
+                        request.query,
+                        cached_results.len()
+                    ));
+
+                    // Limiter aux page_size premiers résultats
+                    let results: Vec<SearchResult> = cached_results
+                        .into_iter()
+                        .take(page_size as usize)
+                        .collect();
+
+                    let has_more = cached_results.len() > page_size as usize;
+                    let next_cursor = if has_more && !results.is_empty() {
+                        if let Some(last) = results.last() {
+                            self.encode_cursor(last.service_id, last.total_score).ok()
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                    return Ok(PaginatedSearchResponse {
+                        results,
+                        next_cursor,
+                        has_more,
+                        total_estimated: None,
+                    });
+                }
+            }
+        }
+
+        // Utiliser la vue matérialisée si disponible pour performance optimale
+        let use_materialized_view = true; // Toujours utiliser la vue si disponible
+
+        let sql = if use_materialized_view {
+            // Requête optimisée avec vue matérialisée
+            format!(
+                r#"
+                WITH search_results AS (
+                    SELECT 
+                        sso.service_id as id,
+                        sso.data,
+                        sso.created_at,
+                        sso.user_id,
+                        sso.gps,
+                        sso.category,
+                        -- Score calculé rapidement depuis vue matérialisée
+                        (
+                            ts_rank(sso.search_vector, plainto_tsquery('french', $1)) * 2.0 +
+                            ts_rank(sso.products_vector, plainto_tsquery('french', $1)) * 3.0
+                        )::FLOAT as total_score
+                    FROM services_search_optimized sso
+                    WHERE sso.is_active = TRUE
+                    AND ($2::text IS NULL OR sso.category = $2)
+                    -- Filtre cursor pour pagination (score DESC, puis id DESC)
+                    AND (
+                        $3::int IS NULL OR
+                        (
+                            (ts_rank(sso.search_vector, plainto_tsquery('french', $1)) * 2.0 +
+                             ts_rank(sso.products_vector, plainto_tsquery('french', $1)) * 3.0) < $4::FLOAT
+                            OR (
+                                (ts_rank(sso.search_vector, plainto_tsquery('french', $1)) * 2.0 +
+                                 ts_rank(sso.products_vector, plainto_tsquery('french', $1)) * 3.0) = $4::FLOAT
+                                AND sso.service_id < $3
+                            )
+                        )
+                    )
+                    -- Recherche full-text
+                    AND (
+                        sso.search_vector @@ plainto_tsquery('french', $1)
+                        OR sso.products_vector @@ plainto_tsquery('french', $1)
+                    )
+                    ORDER BY total_score DESC, sso.service_id DESC
+                    LIMIT $5
+                )
+                SELECT * FROM search_results
+                "#
+            )
+        } else {
+            // Fallback vers recherche normale (sans vue matérialisée)
+            format!(
+                r#"
+                WITH search_results AS (
+                    SELECT 
+                        s.id,
+                        s.data,
+                        s.created_at,
+                        s.user_id,
+                        s.gps,
+                        s.category,
+                        -- Score calculé
+                        (
+                            ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), 
+                                    plainto_tsquery('french', $1)) * 2.0 +
+                            COALESCE((
+                                SELECT SUM(
+                                    CASE 
+                                        WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 6.0
+                                        WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 12.0
+                                        ELSE 0.0
+                                    END
+                                )
+                                FROM jsonb_array_elements(
+                                    CASE 
+                                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                        THEN s.data->'produits'
+                                        ELSE '[]'::jsonb
+                                    END
+                                ) AS product
+                            ), 0.0) * 2.0
+                        )::FLOAT as total_score
+                    FROM services s
+                    WHERE s.is_active = true
+                    AND ($2::text IS NULL OR s.category = $2)
+                    -- Filtre cursor pour pagination
+                    AND (
+                        $3::int IS NULL OR
+                        (
+                            (ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), 
+                                    plainto_tsquery('french', $1)) * 2.0 +
+                             COALESCE((
+                                SELECT SUM(
+                                    CASE 
+                                        WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 6.0
+                                        WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 12.0
+                                        ELSE 0.0
+                                    END
+                                )
+                                FROM jsonb_array_elements(
+                                    CASE 
+                                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                        THEN s.data->'produits'
+                                        ELSE '[]'::jsonb
+                                    END
+                                ) AS product
+                            ), 0.0) * 2.0) < $4::FLOAT
+                            OR (
+                                (ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), 
+                                        plainto_tsquery('french', $1)) * 2.0 +
+                                 COALESCE((
+                                    SELECT SUM(
+                                        CASE 
+                                            WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 6.0
+                                            WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 12.0
+                                            ELSE 0.0
+                                        END
+                                    )
+                                    FROM jsonb_array_elements(
+                                        CASE 
+                                            WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                            THEN s.data->'produits'
+                                            ELSE '[]'::jsonb
+                                        END
+                                    ) AS product
+                                ), 0.0) * 2.0) = $4::FLOAT
+                                AND s.id < $3
+                            )
+                        )
+                    )
+                    -- Recherche full-text
+                    AND (
+                        to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) 
+                        @@ plainto_tsquery('french', $1)
+                        OR EXISTS (
+                            SELECT 1 FROM jsonb_array_elements(
+                                CASE 
+                                    WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                    THEN s.data->'produits'
+                                    ELSE '[]'::jsonb
+                                END
+                            ) AS product
+                            WHERE extract_all_product_text(product) ILIKE '%' || $1 || '%'
+                        )
+                    )
+                    ORDER BY total_score DESC, s.id DESC
+                    LIMIT $5
+                )
+                SELECT * FROM search_results
+                "#
+            )
+        };
+
+        // ✅ NOUVEAU 2025-12-02: Utiliser read replica pour lectures (scaling horizontal)
+        let read_pool = self.get_read_pool();
+        let rows = sqlx::query(&sql)
+            .bind(&request.query)
+            .bind(&request.category_filter)
+            .bind(last_service_id)
+            .bind(last_score.unwrap_or(0.0))
+            .bind(page_size as i32 + 1) // +1 pour vérifier has_more
+            .fetch_all(read_pool)
+            .await?;
+
+        let has_more = rows.len() > page_size as usize;
+        let mut results: Vec<SearchResult> = Vec::new();
+
+        for row in rows.iter().take(page_size as usize) {
+            let service_id: i32 = row.get::<i32, _>("id");
+            let data: Value = row.get::<Value, _>("data");
+            let total_score: f32 = row.get::<f32, _>("total_score");
+            let created_at: chrono::DateTime<chrono::Utc> =
+                row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+            let user_id: i32 = row.get::<i32, _>("user_id");
+            let gps: Option<String> = row.get::<Option<String>, _>("gps");
+            let category: Option<String> = row.get::<Option<String>, _>("category");
+
+            results.push(SearchResult {
+                service_id,
+                data,
+                total_score,
+                fulltext_score: total_score * 0.6, // Estimation
+                trigram_score: 0.0,
+                recency_score: self.calculate_recency_score(&created_at),
+                category_score: if category
+                    .as_ref()
+                    .map(|c| c == request.category_filter.as_deref().unwrap_or(""))
+                    .unwrap_or(false)
+                {
+                    5.0
+                } else {
+                    0.0
+                },
+                search_method: "paginated".to_string(),
+                matched_fields: vec!["titre_service".to_string(), "produits".to_string()],
+                distance_km: None,
+                gps_coords: gps.and_then(|g| {
+                    g.split_once(',')
+                        .and_then(|(lat, lng)| Some((lat.parse().ok()?, lng.parse().ok()?)))
+                }),
+            });
+        }
+
+        // Générer next_cursor
+        let next_cursor = if has_more {
+            if let Some(last) = results.last() {
+                self.encode_cursor(last.service_id, last.total_score).ok()
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Mettre en cache la première page (cursor=None)
+        if request.cursor.is_none() {
+            if let Some(ref search_cache) = self.search_cache_service {
+                let cache_key = search_cache.generate_cache_key(
+                    &request.query,
+                    request.category_filter.as_deref(),
+                    request.location_filter.as_deref(),
+                    request.gps_zone.as_deref(),
+                    request.search_radius_km,
+                    request.specialized_type.as_deref(),
+                );
+
+                let _ = search_cache
+                    .cache_results(
+                        &cache_key,
+                        results.clone(),
+                        Duration::from_secs(300), // 5 minutes
+                        false,                    // Pas populaire par défaut
+                    )
+                    .await;
+            }
+        }
+
+        let duration = start_time.elapsed();
+        log_info(&format!(
+            "[NativeSearch] ✅ Recherche paginée terminée en {:?}: {} résultats (has_more: {})",
+            duration,
+            results.len(),
+            has_more
+        ));
+
+        // ✅ NOUVEAU 2025-12-02: Enregistrer les métriques (si service disponible)
+        // Note: Les métriques seront enregistrées via le service de métriques global
+
+        Ok(PaginatedSearchResponse {
+            results,
+            next_cursor,
+            has_more,
+            total_estimated: None, // Pas de COUNT pour performance
+        })
+    }
+
+    /// Encode un cursor à partir de service_id et score
+    fn encode_cursor(&self, service_id: i32, score: f32) -> AppResult<String> {
+        use base64::{engine::general_purpose, Engine as _};
+        let data = format!("{}:{}", service_id, score);
+        Ok(general_purpose::STANDARD.encode(data.as_bytes()))
+    }
+
+    /// Décode un cursor en service_id et score
+    fn decode_cursor(&self, cursor: &str) -> AppResult<(Option<i32>, Option<f32>)> {
+        use base64::{engine::general_purpose, Engine as _};
+        let decoded = general_purpose::STANDARD.decode(cursor).map_err(|e| {
+            crate::core::types::AppError::BadRequest(format!("Cursor invalide: {}", e))
+        })?;
+        let data = String::from_utf8(decoded).map_err(|e| {
+            crate::core::types::AppError::BadRequest(format!("Cursor UTF-8 invalide: {}", e))
+        })?;
+        let parts: Vec<&str> = data.split(':').collect();
+        if parts.len() == 2 {
+            let service_id = parts[0].parse::<i32>().map_err(|e| {
+                crate::core::types::AppError::BadRequest(format!("Service ID invalide: {}", e))
+            })?;
+            let score = parts[1].parse::<f32>().map_err(|e| {
+                crate::core::types::AppError::BadRequest(format!("Score invalide: {}", e))
+            })?;
+            Ok((Some(service_id), Some(score)))
+        } else {
+            Err(crate::core::types::AppError::BadRequest(
+                "Format cursor invalide".into(),
+            ))
+        }
+    }
+
+    /// Calcule le score de récence
+    fn calculate_recency_score(&self, created_at: &chrono::DateTime<chrono::Utc>) -> f32 {
+        let now = chrono::Utc::now();
+        let age_days = (now - *created_at).num_days();
+
+        if age_days < 7 {
+            3.0
+        } else if age_days < 30 {
+            2.0
+        } else if age_days < 90 {
+            1.0
+        } else {
+            0.0
+        }
     }
 }

@@ -38,7 +38,7 @@ async fn fetch_recent_audience(
         GROUP BY user_id
         ORDER BY last_interaction DESC
         LIMIT $4
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(exclude_user_id)

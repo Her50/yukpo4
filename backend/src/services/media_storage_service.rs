@@ -2,10 +2,12 @@ use std::path::{Path, PathBuf};
 
 use aws_sdk_s3::{
     config::{Builder as S3ConfigBuilder, Credentials, Region},
+    presigning::PresigningConfig,
     primitives::ByteStream,
     Client,
 };
 use log::{debug, info, warn};
+use std::time::Duration;
 use tokio::fs;
 
 use crate::{
@@ -282,7 +284,8 @@ impl MediaStorageService {
         Ok(())
     }
 
-    fn build_public_url(&self, storage_path: &str) -> String {
+    /// ✅ Construit l'URL publique pour un fichier stocké (S3/Wasabi ou local)
+    pub fn build_public_url(&self, storage_path: &str) -> String {
         let candidate_base = self
             .config
             .upload_base_url
@@ -304,6 +307,68 @@ impl MediaStorageService {
         } else {
             storage_path.to_string()
         }
+    }
+
+    /// ✅ Génère une URL pré-signée pour un objet Wasabi/S3
+    /// Permet un accès temporaire sécurisé sans nécessiter d'accès public sur le bucket
+    ///
+    /// # Arguments
+    /// * `storage_path` - Chemin de l'objet dans le bucket (ex: "uploads/delivery/proof_123.mp4")
+    /// * `expires_in_seconds` - Durée de validité de l'URL en secondes (ex: 48 * 3600 pour 48 heures)
+    ///
+    /// # Returns
+    /// URL pré-signée complète avec signature AWS
+    ///
+    /// # Erreurs
+    /// Retourne une erreur si le client S3 n'est pas configuré ou si la génération échoue
+    pub async fn generate_presigned_url(
+        &self,
+        storage_path: &str,
+        expires_in_seconds: u64,
+    ) -> AppResult<String> {
+        let client = self.client.as_ref().ok_or_else(|| {
+            AppError::Internal(
+                "Client S3 non configuré pour génération d'URL pré-signée".to_string(),
+            )
+        })?;
+
+        let bucket = self.bucket.as_ref().ok_or_else(|| {
+            AppError::Internal(
+                "Bucket S3 non configuré pour génération d'URL pré-signée".to_string(),
+            )
+        })?;
+
+        // Normaliser le chemin (enlever le préfixe "uploads/" si présent car il est déjà dans storage_path)
+        let object_key = storage_path.trim_start_matches('/');
+
+        // Créer la configuration de présignature
+        let presigning_config =
+            PresigningConfig::expires_in(Duration::from_secs(expires_in_seconds)).map_err(|e| {
+                AppError::Internal(format!("Erreur configuration présignature: {}", e))
+            })?;
+
+        // Générer l'URL pré-signée
+        let presigned_request = client
+            .get_object()
+            .bucket(bucket)
+            .key(object_key)
+            .presigned(presigning_config)
+            .await
+            .map_err(|e| {
+                AppError::Internal(format!(
+                    "Erreur génération URL pré-signée pour {}: {}",
+                    object_key, e
+                ))
+            })?;
+
+        let presigned_url = presigned_request.uri().to_string();
+
+        debug!(
+            "[MediaStorage] URL pré-signée générée pour {} (expire dans {}s)",
+            object_key, expires_in_seconds
+        );
+
+        Ok(presigned_url)
     }
 
     fn build_client(config: &MediaStorageConfig) -> Option<Client> {

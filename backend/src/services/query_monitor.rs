@@ -1,12 +1,12 @@
 // Service de monitoring avancé des requêtes SQL
 // Détecte les requêtes lentes et collecte des métriques de performance
 
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 
 /// Métriques d'une requête SQL
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,8 +73,9 @@ impl QueryMonitor {
         let query_hash = self.hash_query(query_summary);
 
         let mut metrics_map = self.metrics.write().await;
-        let metrics = metrics_map.entry(query_hash.clone()).or_insert_with(|| {
-            QueryMetrics {
+        let metrics = metrics_map
+            .entry(query_hash.clone())
+            .or_insert_with(|| QueryMetrics {
                 query_hash: query_hash.clone(),
                 query_summary: query_summary.to_string(),
                 execution_count: 0,
@@ -84,8 +85,7 @@ impl QueryMonitor {
                 max_duration_ms: 0.0,
                 last_executed: chrono::Utc::now(),
                 slow_count: 0,
-            }
-        });
+            });
 
         metrics.execution_count += 1;
         metrics.total_duration_ms += duration_ms;
@@ -114,7 +114,7 @@ impl QueryMonitor {
     /// Obtenir les statistiques de performance
     pub async fn get_stats(&self) -> PerformanceStats {
         let metrics_map = self.metrics.read().await;
-        
+
         let mut total_queries = 0u64;
         let mut slow_queries = 0u64;
         let mut total_duration = 0.0;
@@ -181,7 +181,7 @@ impl QueryMonitor {
     fn hash_query(&self, query: &str) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         // Normaliser la requête (enlever les valeurs pour avoir un hash stable)
         let normalized = query
@@ -196,7 +196,7 @@ impl QueryMonitor {
     async fn log_explain_analyze(&self, query: &str) {
         // Extraire la requête principale (avant le premier ;)
         let main_query = query.split(';').next().unwrap_or(query);
-        
+
         // Ne pas exécuter EXPLAIN ANALYZE sur les requêtes qui modifient les données
         if main_query.trim_start().to_uppercase().starts_with("INSERT")
             || main_query.trim_start().to_uppercase().starts_with("UPDATE")
@@ -269,4 +269,3 @@ impl Drop for QueryTimer {
         });
     }
 }
-

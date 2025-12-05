@@ -8,8 +8,8 @@ use axum::{
 
 use crate::{
     controllers::live_controller::{
-        configure_flash_sales, create_flash_sale_commentary, get_join_information,
-        get_live_session, get_lives_analytics, list_flash_sale_commentaries,
+        configure_flash_sales, create_flash_sale_commentary, get_flash_sale_ticket_status,
+        get_join_information, get_live_session, get_lives_analytics, list_flash_sale_commentaries,
         list_flash_sale_reservations, list_flash_sales, list_upcoming_sessions, register_replay,
         reserve_flash_sale, start_live_session,
     },
@@ -25,6 +25,10 @@ pub fn live_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/live/flash-sales/{flash_sale_id}/reservations",
             get(list_flash_sale_reservations).post(reserve_flash_sale),
+        )
+        .route(
+            "/api/live/flash-sales/tickets/{ticket_id}",
+            get(get_flash_sale_ticket_status),
         )
         .route(
             "/api/live/flash-sales/{flash_sale_id}/commentaries",

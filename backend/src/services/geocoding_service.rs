@@ -452,7 +452,7 @@ impl GeocodingService {
         };
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         use crate::utils::redis_helper;
-        
+
         match redis_helper::get_with_retry(client, key).await {
             Ok(Some(payload)) => match serde_json::from_str::<T>(&payload) {
                 Ok(value) => Ok(Some(value)),
@@ -466,7 +466,10 @@ impl GeocodingService {
             },
             Ok(None) => Ok(None),
             Err(e) => {
-                warn!("[Geocoding] Redis indisponible pour {}: {}. Retour None.", key, e);
+                warn!(
+                    "[Geocoding] Redis indisponible pour {}: {}. Retour None.",
+                    key, e
+                );
                 Ok(None)
             }
         }
@@ -493,9 +496,10 @@ impl GeocodingService {
 
         // ✅ CORRIGÉ: Utiliser le helper Redis avec retry automatique
         use crate::utils::redis_helper;
-        
+
         let ttl_seconds = min(self.cache_ttl.as_secs(), i64::MAX as u64);
-        if let Err(e) = redis_helper::set_with_retry(client, key, &payload, Some(ttl_seconds)).await {
+        if let Err(e) = redis_helper::set_with_retry(client, key, &payload, Some(ttl_seconds)).await
+        {
             warn!(
                 "[Geocoding] Redis indisponible pour set {}: {}. L'opération continue sans cache.",
                 key, e

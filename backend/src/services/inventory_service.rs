@@ -45,13 +45,12 @@ impl InventoryService {
     }
 
     pub async fn ensure_service_owner(&self, user_id: i32, service_id: i32) -> AppResult<()> {
-        let record: Option<ServiceUserIdRow> = sqlx::query_as(
-            "SELECT user_id FROM services WHERE id = $1"
-        )
-        .bind(service_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(AppError::from)?;
+        let record: Option<ServiceUserIdRow> =
+            sqlx::query_as("SELECT user_id FROM services WHERE id = $1")
+                .bind(service_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::from)?;
 
         let Some(row) = record else {
             return Err(AppError::NotFound("Service introuvable.".into()));

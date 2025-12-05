@@ -78,6 +78,12 @@ export const API_ENDPOINTS = {
     WEBRTC: {
         NOTIFY_CALL: '/api/webrtc/notify-call',
     },
+
+    // Delivery Chat
+    DELIVERY_CHAT: {
+        MESSAGES: (deliveryId: string) => `/api/delivery/${deliveryId}/chat/messages`,
+        SEND_MESSAGE: (deliveryId: string) => `/api/delivery/${deliveryId}/chat/send`,
+    },
 };
 
 // URLs WebSocket

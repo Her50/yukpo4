@@ -35,8 +35,9 @@ const LaboratoireResultCard: React.FC<LaboratoireResultCardProps> = ({ laborator
         if (onPress) {
             onPress();
         } else {
-            (navigation as any).navigate('ServiceDetail', {
+            (navigation as any).navigate('ServiceDetailSpecialized', {
                 serviceId: laboratory.service_id,
+                serviceType: 'laboratoire',
             });
         }
     };
@@ -85,6 +86,39 @@ const LaboratoireResultCard: React.FC<LaboratoireResultCardProps> = ({ laborator
                     ))}
                 </View>
             )}
+
+            <View style={styles.actionsRow}>
+                <TouchableOpacity
+                    style={[styles.actionButton, styles.rdvButton]}
+                    onPress={() => {
+                        (navigation as any).navigate('Reservation', {
+                            serviceId: laboratory.service_id,
+                            serviceType: 'laboratoire',
+                            serviceName: laboratory.nom,
+                            reservationType: 'rdv',
+                        });
+                    }}
+                >
+                    <SafeIcon name="calendar-plus" size={18} color="#fff" />
+                    <Text style={[styles.actionButtonText, styles.rdvButtonText]}>
+                        Prendre RDV
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.actionButton, styles.chatButton]}
+                    onPress={() => {
+                        (navigation as any).navigate('ServiceDetailSpecialized', {
+                            serviceId: laboratory.service_id,
+                            serviceType: 'laboratoire',
+                        });
+                    }}
+                >
+                    <SafeIcon name="message-circle" size={18} color="#fff" />
+                    <Text style={[styles.actionButtonText, styles.chatButtonText]}>
+                        Contacter
+                    </Text>
+                </TouchableOpacity>
+            </View>
 
             <View style={styles.footer}>
                 {laboratory.distance_km && (

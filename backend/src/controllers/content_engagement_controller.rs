@@ -32,6 +32,14 @@ pub struct ContentAnalyticsQuery {
     pub content_type: Option<String>,
 }
 
+#[derive(Deserialize)]
+pub struct TrackWatchTimePayload {
+    pub watch_duration_ms: i32,
+    pub video_duration_ms: Option<i32>,
+    pub device_type: Option<String>,
+    pub location_gps: Option<String>,
+}
+
 pub async fn toggle_content_engagement(
     Path(content_id): Path<String>,
     State(state): State<Arc<AppState>>,
@@ -235,7 +243,7 @@ pub async fn get_content_analytics(
 
     let content_ids: Vec<String> = top_rows
         .iter()
-        .filter_map(|row| row.try_get::<String, _>("content_id").ok())
+        .filter_map(|row| row.get::<Option<String>, _>("content_id"))
         .collect();
 
     let engagement_rows = if content_ids.is_empty() {
@@ -263,15 +271,9 @@ pub async fn get_content_analytics(
     let engagement_map: HashMap<String, (i64, i64)> = engagement_rows
         .into_iter()
         .filter_map(|row| {
-            let cid = row.try_get::<String, _>("content_id").ok()?;
-            let likes = row
-                .try_get::<Option<i64>, _>("likes")
-                .unwrap_or(Some(0))
-                .unwrap_or(0);
-            let saves = row
-                .try_get::<Option<i64>, _>("saves")
-                .unwrap_or(Some(0))
-                .unwrap_or(0);
+            let cid = row.get::<Option<String>, _>("content_id")?;
+            let likes = row.get::<Option<i64>, _>("likes").unwrap_or(0);
+            let saves = row.get::<Option<i64>, _>("saves").unwrap_or(0);
             Some((cid, (likes, saves)))
         })
         .collect();
@@ -279,8 +281,8 @@ pub async fn get_content_analytics(
     let top_content: Vec<serde_json::Value> = top_rows
         .into_iter()
         .filter_map(|row| {
-            let content_id = row.try_get::<String, _>("content_id").ok()?;
-            let content_type = row.try_get::<String, _>("content_type").ok()?;
+            let content_id = row.get::<Option<String>, _>("content_id")?;
+            let content_type = row.get::<Option<String>, _>("content_type")?;
             let impressions = row
                 .try_get::<Option<i64>, _>("impressions")
                 .unwrap_or(Some(0))
@@ -332,4 +334,88 @@ pub async fn get_content_analytics(
             "top_content": top_content,
         }
     })))
+}
+
+/// ✅ NOUVEAU: Tracker le temps de visionnage d'une vidéo
+pub async fn track_watch_time(
+    Path(content_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<TrackWatchTimePayload>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    // Valider les données
+    if payload.watch_duration_ms < 0 {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    if let Some(video_duration) = payload.video_duration_ms {
+        if video_duration <= 0 || payload.watch_duration_ms > video_duration {
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    }
+
+    // Mettre à jour ou créer l'engagement avec temps de visionnage
+    let result = sqlx::query(
+        r#"
+        INSERT INTO content_engagement (
+            user_id, 
+            content_id, 
+            watch_duration_ms, 
+            video_duration_ms,
+            device_type,
+            location_gps,
+            created_at,
+            updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+        ON CONFLICT (user_id, content_id) 
+        DO UPDATE SET
+            watch_duration_ms = GREATEST(
+                EXCLUDED.watch_duration_ms,
+                content_engagement.watch_duration_ms
+            ),
+            video_duration_ms = COALESCE(EXCLUDED.video_duration_ms, content_engagement.video_duration_ms),
+            device_type = COALESCE(EXCLUDED.device_type, content_engagement.device_type),
+            location_gps = COALESCE(EXCLUDED.location_gps, content_engagement.location_gps),
+            updated_at = NOW()
+        RETURNING 
+            watch_duration_ms,
+            video_duration_ms,
+            completion_rate
+        "#,
+    )
+    .bind(user.id)
+    .bind(&content_id)
+    .bind(payload.watch_duration_ms)
+    .bind(payload.video_duration_ms)
+    .bind(payload.device_type.as_deref())
+    .bind(payload.location_gps.as_deref())
+    .fetch_one(&state.pg)
+    .await;
+
+    match result {
+        Ok(row) => {
+            let watch_duration: i32 = row.try_get("watch_duration_ms").unwrap_or(0);
+            let video_duration: Option<i32> = row.try_get("video_duration_ms").ok();
+            let completion_rate: Option<f64> = row.try_get("completion_rate").ok();
+
+            // Mettre à jour les préférences utilisateur si nécessaire (toutes les 10 interactions)
+            let _ = sqlx::query("SELECT update_user_preferences($1)")
+                .bind(user.id)
+                .execute(&state.pg)
+                .await;
+
+            Ok(Json(json!({
+                "success": true,
+                "content_id": content_id,
+                "watch_duration_ms": watch_duration,
+                "video_duration_ms": video_duration,
+                "completion_rate": completion_rate,
+            })))
+        }
+        Err(e) => {
+            log::error!("[TrackWatchTime] Error: {:?}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }

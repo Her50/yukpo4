@@ -3,8 +3,8 @@
 // ✅ NOUVEAU 2025-11-06: Lit depuis la table PostgreSQL african_locations
 
 use log::warn;
-use sqlx::{PgPool, Row};
 use serde::{Deserialize, Serialize};
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LocalLocationData {
@@ -138,7 +138,7 @@ impl AfricanLocationsService {
         country_hint: Option<&str>,
     ) -> Result<Option<LocalLocationData>, sqlx::Error> {
         let place_lower = place_name.to_lowercase();
-        
+
         // Construire la requête SQL avec filtrage par pays si fourni
         let row = if let Some(country) = country_hint {
             let country_lower = country.to_lowercase();
@@ -153,7 +153,7 @@ impl AfricanLocationsService {
                  FROM african_locations 
                  WHERE (LOWER(quartier) = $1 OR LOWER(ville) = $1 OR LOWER(pays) = $1)
                    AND LOWER(pays) = $2
-                 LIMIT 1"
+                 LIMIT 1",
             )
             .bind(&place_lower)
             .bind(&country_lower)
@@ -170,7 +170,7 @@ impl AfricanLocationsService {
                     lng
                  FROM african_locations 
                  WHERE LOWER(quartier) = $1 OR LOWER(ville) = $1 OR LOWER(pays) = $1
-                 LIMIT 1"
+                 LIMIT 1",
             )
             .bind(&place_lower)
             .fetch_optional(pool)
@@ -178,13 +178,13 @@ impl AfricanLocationsService {
         };
 
         if let Some(row) = row {
-            let display_name: String = row.get(0);
-            let quartier: Option<String> = row.get(1);
-            let ville: Option<String> = row.get(2);
-            let pays: Option<String> = row.get(3);
-            let lat: Option<f64> = row.get(4);
-            let lng: Option<f64> = row.get(5);
-            
+            let display_name: String = row.get::<String, _>(0);
+            let quartier: Option<String> = row.get::<Option<String>, _>(1);
+            let ville: Option<String> = row.get::<Option<String>, _>(2);
+            let pays: Option<String> = row.get::<Option<String>, _>(3);
+            let lat: Option<f64> = row.get::<Option<f64>, _>(4);
+            let lng: Option<f64> = row.get::<Option<f64>, _>(5);
+
             // Construire le location_vector
             let mut location_vector = Vec::new();
             if let Some(q) = &quartier {
@@ -195,15 +195,15 @@ impl AfricanLocationsService {
                     location_vector.push(v.clone());
                 }
             }
-            
+
             let country = pays
                 .or_else(|| country_hint.map(|c| c.to_string()))
                 .unwrap_or_else(|| "Inconnu".to_string());
-            
+
             if !location_vector.contains(&country) {
                 location_vector.push(country.clone());
             }
-            
+
             // Déterminer admin_level et is_leaf
             let admin_level = if quartier.is_some() {
                 8 // Quartier
@@ -212,9 +212,9 @@ impl AfricanLocationsService {
             } else {
                 0 // Pays
             };
-            
+
             let is_leaf = admin_level >= 7;
-            
+
             Ok(Some(LocalLocationData {
                 display_name,
                 location_vector,

@@ -12,7 +12,8 @@ use std::sync::Arc;
 pub struct SimilarProductsService {
     pool: PgPool,
     /// ✅ NOUVEAU : Service géographique pour calcul de distance Google Maps (priorité) + fallback local
-    geographic_matching: Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
+    geographic_matching:
+        Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,7 +36,7 @@ pub struct SimilarProduct {
 
 impl SimilarProductsService {
     pub fn new(pool: PgPool) -> Self {
-        Self { 
+        Self {
             pool,
             geographic_matching: None,
         }
@@ -44,7 +45,9 @@ impl SimilarProductsService {
     /// ✅ NOUVEAU : Constructeur avec service géographique pour calcul de distance Google Maps
     pub fn with_geographic_matching(
         pool: PgPool,
-        geographic_matching: Arc<crate::services::geographic_matching_service::GeographicMatchingService>,
+        geographic_matching: Arc<
+            crate::services::geographic_matching_service::GeographicMatchingService,
+        >,
     ) -> Self {
         Self {
             pool,
@@ -61,7 +64,8 @@ impl SimilarProductsService {
         limit: i32,
     ) -> AppResult<Vec<SimilarProduct>> {
         // Appeler la version avec GPS (None par défaut pour compatibilité)
-        self.find_similar_products_with_location(service_id, product_index, limit, None, None).await
+        self.find_similar_products_with_location(service_id, product_index, limit, None, None)
+            .await
     }
 
     /// Recherche des produits similaires avec prise en compte de la proximité
@@ -91,7 +95,7 @@ impl SimilarProductsService {
             _price: Option<String>,
             _pickup_address: Option<String>,
         }
-        
+
         let original_characteristics: Option<OriginalCharacteristicsRow> = sqlx::query_as(
             r#"
             SELECT 
@@ -131,7 +135,9 @@ impl SimilarProductsService {
                     service_id, product_index
                 );
                 // Fallback : récupérer depuis services directement
-                return self.find_similar_products_fallback(service_id, product_index, limit).await;
+                return self
+                    .find_similar_products_fallback(service_id, product_index, limit)
+                    .await;
             }
         };
 
@@ -152,12 +158,12 @@ impl SimilarProductsService {
         // ✅ AMÉLIORATION : Construire la requête avec calcul de distance si GPS fourni
         // Utiliser la même approche que NativeSearchService avec les fonctions existantes
         let has_gps = client_latitude.is_some() && client_longitude.is_some();
-        
+
         let similar_products = if has_gps {
             // Requête avec calcul de distance (utilise la même logique que NativeSearchService)
             let client_lat = client_latitude.unwrap();
             let client_lng = client_longitude.unwrap();
-            
+
             // Struct pour mapper les résultats de la requête avec distance
             #[derive(sqlx::FromRow)]
             struct SimilarProductRowWithDistance {
@@ -175,7 +181,7 @@ impl SimilarProductsService {
                 distance_km: Option<f64>,
                 similarity_score: Option<f64>,
             }
-            
+
             let rows: Vec<SimilarProductRowWithDistance> = sqlx::query_as(
                 r#"
                 WITH product_data AS (
@@ -422,32 +428,35 @@ impl SimilarProductsService {
             .bind(client_lng)
             .fetch_all(&self.pool)
             .await?;
-            
-            let similar_products: Vec<_> = rows.into_iter().map(|row| {
-                let price = row.price.and_then(|p| p.parse::<f64>().ok());
-                let availability_days = row.availability_days;
-                let is_available = availability_days
-                    .as_ref()
-                    .map(|days| days.is_empty() || days.contains(&current_weekday))
-                    .unwrap_or(true);
-                
-                SimilarProduct {
-                    service_id: row.service_id,
-                    product_index: row.product_index,
-                    product_id: row.product_id,
-                    name: row.product_name.unwrap_or_default(),
-                    description: row.product_description,
-                    category: row.category,
-                    price,
-                    similarity_score: row.similarity_score.unwrap_or(0.0),
-                    is_available,
-                    is_immediately_available: row.is_immediately_available.unwrap_or(false),
-                    preparation_time_minutes: row.preparation_time_minutes,
-                    pickup_address: row.pickup_address,
-                    distance_km: row.distance_km,
-                }
-            }).collect();
-            
+
+            let similar_products: Vec<_> = rows
+                .into_iter()
+                .map(|row| {
+                    let price = row.price.and_then(|p| p.parse::<f64>().ok());
+                    let availability_days = row.availability_days;
+                    let is_available = availability_days
+                        .as_ref()
+                        .map(|days| days.is_empty() || days.contains(&current_weekday))
+                        .unwrap_or(true);
+
+                    SimilarProduct {
+                        service_id: row.service_id,
+                        product_index: row.product_index,
+                        product_id: row.product_id,
+                        name: row.product_name.unwrap_or_default(),
+                        description: row.product_description,
+                        category: row.category,
+                        price,
+                        similarity_score: row.similarity_score.unwrap_or(0.0),
+                        is_available,
+                        is_immediately_available: row.is_immediately_available.unwrap_or(false),
+                        preparation_time_minutes: row.preparation_time_minutes,
+                        pickup_address: row.pickup_address,
+                        distance_km: row.distance_km,
+                    }
+                })
+                .collect();
+
             similar_products
         } else {
             // Requête sans calcul de distance (version originale)
@@ -467,7 +476,7 @@ impl SimilarProductsService {
                 distance_km: Option<f64>,
                 similarity_score: Option<f64>,
             }
-            
+
             let rows: Vec<SimilarProductRowNoDistance> = sqlx::query_as(
                 r#"
                 WITH product_data AS (
@@ -598,51 +607,56 @@ impl SimilarProductsService {
             .bind(limit)
             .fetch_all(&self.pool)
             .await?;
-            
-            let similar_products: Vec<_> = rows.into_iter().map(|row| {
-                let price = row.price.and_then(|p| p.parse::<f64>().ok());
-                let availability_days = row.availability_days;
-                let is_available = availability_days
-                    .as_ref()
-                    .map(|days| days.is_empty() || days.contains(&current_weekday))
-                    .unwrap_or(true);
-                
-                SimilarProduct {
-                    service_id: row.service_id,
-                    product_index: row.product_index,
-                    product_id: row.product_id,
-                    name: row.product_name.unwrap_or_default(),
-                description: row.product_description,
-                category: row.category,
-                price,
-                similarity_score: row.similarity_score.unwrap_or(0.0) as f64,
-                is_available,
-                is_immediately_available: row.is_immediately_available.unwrap_or(false),
-                preparation_time_minutes: row.preparation_time_minutes,
-                pickup_address: row.pickup_address,
-                    distance_km: row.distance_km, // ✅ NOUVEAU : Distance en km
-                }
-            }).collect();
-            
+
+            let similar_products: Vec<_> = rows
+                .into_iter()
+                .map(|row| {
+                    let price = row.price.and_then(|p| p.parse::<f64>().ok());
+                    let availability_days = row.availability_days;
+                    let is_available = availability_days
+                        .as_ref()
+                        .map(|days| days.is_empty() || days.contains(&current_weekday))
+                        .unwrap_or(true);
+
+                    SimilarProduct {
+                        service_id: row.service_id,
+                        product_index: row.product_index,
+                        product_id: row.product_id,
+                        name: row.product_name.unwrap_or_default(),
+                        description: row.product_description,
+                        category: row.category,
+                        price,
+                        similarity_score: row.similarity_score.unwrap_or(0.0) as f64,
+                        is_available,
+                        is_immediately_available: row.is_immediately_available.unwrap_or(false),
+                        preparation_time_minutes: row.preparation_time_minutes,
+                        pickup_address: row.pickup_address,
+                        distance_km: row.distance_km, // ✅ NOUVEAU : Distance en km
+                    }
+                })
+                .collect();
+
             similar_products
         };
-        
+
         let mut results = similar_products;
 
         // ✅ AMÉLIORATION : Enrichir les distances avec Google Maps si disponible (priorité)
         // Sinon, utiliser les distances calculées localement (fallback)
-        if let (Some(client_lat), Some(client_lng), Some(geo_service)) = 
-            (client_latitude, client_longitude, self.geographic_matching.as_ref()) 
-        {
+        if let (Some(client_lat), Some(client_lng), Some(geo_service)) = (
+            client_latitude,
+            client_longitude,
+            self.geographic_matching.as_ref(),
+        ) {
             info!("[SimilarProducts] Enrichissement des distances avec Google Maps (priorité) + fallback local");
-            
+
             for product in &mut results {
                 // Récupérer les coordonnées GPS du service/produit
                 #[derive(sqlx::FromRow)]
                 struct ServiceGpsRow {
                     gps_coords: Option<String>,
                 }
-                
+
                 let service_gps: Option<ServiceGpsRow> = sqlx::query_as(
                     r#"
                     SELECT 
@@ -659,18 +673,22 @@ impl SimilarProductsService {
                     if let Some(gps_str) = gps_row.gps_coords {
                         // Parser les coordonnées GPS (format: "lat,lng")
                         if let Some((lat_str, lng_str)) = gps_str.split_once(',') {
-                            if let (Ok(service_lat), Ok(service_lng)) = 
-                                (lat_str.trim().parse::<f64>(), lng_str.trim().parse::<f64>()) 
+                            if let (Ok(service_lat), Ok(service_lng)) =
+                                (lat_str.trim().parse::<f64>(), lng_str.trim().parse::<f64>())
                             {
                                 // ✅ PRIORITÉ : Utiliser Google Maps pour calcul de distance routière précise
                                 // Fallback automatique vers Haversine si Google Maps échoue
-                                match geo_service.calculate_distance(
-                                    (client_lat, client_lng),
-                                    (service_lat, service_lng),
-                                ).await {
+                                match geo_service
+                                    .calculate_distance(
+                                        (client_lat, client_lng),
+                                        (service_lat, service_lng),
+                                    )
+                                    .await
+                                {
                                     Ok(distance_result) => {
                                         // Convertir mètres en km
-                                        product.distance_km = Some(distance_result.distance_meters / 1000.0);
+                                        product.distance_km =
+                                            Some(distance_result.distance_meters / 1000.0);
                                         info!(
                                             "[SimilarProducts] Distance {} calculée via {}: {:.2}km",
                                             product.product_id,
@@ -690,12 +708,13 @@ impl SimilarProductsService {
                                         // Garder la distance locale calculée par SQL si disponible
                                         if product.distance_km.is_none() {
                                             // Calcul Haversine de secours
-                                            product.distance_km = Some(
-                                                Self::haversine_distance_fallback(
-                                                    client_lat, client_lng,
-                                                    service_lat, service_lng
-                                                )
-                                            );
+                                            product.distance_km =
+                                                Some(Self::haversine_distance_fallback(
+                                                    client_lat,
+                                                    client_lng,
+                                                    service_lat,
+                                                    service_lng,
+                                                ));
                                         }
                                     }
                                 }
@@ -709,9 +728,15 @@ impl SimilarProductsService {
         // Trier par score de similarité décroissant, puis par distance (si disponible)
         results.sort_by(|a, b| {
             // Priorité aux produits proches (< 10km) si distance disponible
-            let a_priority = a.distance_km.map(|d| if d <= 10.0 { 0 } else { 1 }).unwrap_or(1);
-            let b_priority = b.distance_km.map(|d| if d <= 10.0 { 0 } else { 1 }).unwrap_or(1);
-            
+            let a_priority = a
+                .distance_km
+                .map(|d| if d <= 10.0 { 0 } else { 1 })
+                .unwrap_or(1);
+            let b_priority = b
+                .distance_km
+                .map(|d| if d <= 10.0 { 0 } else { 1 })
+                .unwrap_or(1);
+
             match a_priority.cmp(&b_priority) {
                 std::cmp::Ordering::Equal => {
                     // Ensuite par score de similarité
@@ -719,7 +744,9 @@ impl SimilarProductsService {
                         Some(std::cmp::Ordering::Equal) => {
                             // Enfin par distance (plus proche d'abord)
                             match (a.distance_km, b.distance_km) {
-                                (Some(a_dist), Some(b_dist)) => a_dist.partial_cmp(&b_dist).unwrap_or(std::cmp::Ordering::Equal),
+                                (Some(a_dist), Some(b_dist)) => a_dist
+                                    .partial_cmp(&b_dist)
+                                    .unwrap_or(std::cmp::Ordering::Equal),
                                 _ => std::cmp::Ordering::Equal,
                             }
                         }
@@ -769,7 +796,7 @@ impl SimilarProductsService {
             product_description: Option<String>,
             category: Option<String>,
         }
-        
+
         let original_product: Option<OriginalProductRow> = sqlx::query_as(
             r#"
             SELECT 
@@ -818,7 +845,7 @@ impl SimilarProductsService {
             availability_days: Option<Vec<i32>>,
             similarity_score: Option<f64>,
         }
-        
+
         // ✅ OPTIMISÉ: Utiliser une sous-requête avec LIMIT précoce pour éviter de déplier tous les produits
         // Cela réduit le temps d'exécution de ~1.5s à <200ms
         let rows: Vec<SimilarProductRowFallback> = sqlx::query_as(
@@ -921,15 +948,17 @@ impl SimilarProductsService {
             .bind(current_weekday)
             .fetch_all(&self.pool)
             .await?;
-            
-            let similar_products: Vec<_> = rows.into_iter().map(|row| {
+
+        let similar_products: Vec<_> = rows
+            .into_iter()
+            .map(|row| {
                 let price = row.price.and_then(|p| p.parse::<f64>().ok());
                 let availability_days = row.availability_days;
                 let is_available = availability_days
                     .as_ref()
                     .map(|days| days.is_empty() || days.contains(&current_weekday))
                     .unwrap_or(true);
-                
+
                 SimilarProduct {
                     service_id: row.service_id,
                     product_index: row.product_index,
@@ -945,17 +974,18 @@ impl SimilarProductsService {
                     pickup_address: row.pickup_address,
                     distance_km: None, // Fallback n'a pas de calcul de distance
                 }
-            }).collect();
-            
-            let mut results = similar_products;
+            })
+            .collect();
 
-            results.sort_by(|a, b| {
-                b.similarity_score
-                    .partial_cmp(&a.similarity_score)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
+        let mut results = similar_products;
 
-            Ok(results)
+        results.sort_by(|a, b| {
+            b.similarity_score
+                .partial_cmp(&a.similarity_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        Ok(results)
     }
 
     /// Recherche des produits similaires avec filtres supplémentaires
@@ -973,13 +1003,15 @@ impl SimilarProductsService {
         client_longitude: Option<f64>,
     ) -> AppResult<Vec<SimilarProduct>> {
         // Utiliser la méthode avec proximité puis appliquer les filtres
-        let mut results = self.find_similar_products_with_location(
-            service_id, 
-            product_index, 
-            limit * 2,
-            client_latitude,
-            client_longitude,
-        ).await?;
+        let mut results = self
+            .find_similar_products_with_location(
+                service_id,
+                product_index,
+                limit * 2,
+                client_latitude,
+                client_longitude,
+            )
+            .await?;
 
         // Appliquer les filtres
         if let Some(min) = min_price {
@@ -998,9 +1030,7 @@ impl SimilarProductsService {
         }
         // ✅ NOUVEAU : Filtrer par distance maximale
         if let Some(max_dist) = max_distance_km {
-            results.retain(|p| {
-                p.distance_km.map(|d| d <= max_dist).unwrap_or(true)
-            });
+            results.retain(|p| p.distance_km.map(|d| d <= max_dist).unwrap_or(true));
         }
 
         // Limiter les résultats
@@ -1009,4 +1039,3 @@ impl SimilarProductsService {
         Ok(results)
     }
 }
-

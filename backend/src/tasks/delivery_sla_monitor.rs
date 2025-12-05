@@ -88,7 +88,7 @@ impl DeliverySlaMonitor {
             FROM deliveries
             WHERE delivered_at IS NOT NULL
               AND delivered_at >= NOW() - ($1::int * INTERVAL '1 minute')
-            "#
+            "#,
         )
         .bind(self.config.lookback_minutes as i32)
         .fetch_all(&self.state.pg)

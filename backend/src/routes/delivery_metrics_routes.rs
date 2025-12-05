@@ -8,8 +8,7 @@ use axum::{
 use std::sync::Arc;
 
 use crate::{
-    services::delivery_service::get_delivery_metrics_snapshot,
-    state::AppState,
+    services::delivery_service::get_delivery_metrics_snapshot, state::AppState,
     websocket::delivery_tracking::get_delivery_ws_metrics_snapshot,
 };
 
@@ -37,9 +36,7 @@ async fn delivery_metrics_handler(State(state): State<Arc<AppState>>) -> Respons
         Ok(Some(count)) => count,
         Ok(None) => 0,
         Err(err) => {
-            log::warn!(
-                "[DeliveryMetrics] Impossible de récupérer la profondeur de file: {err:?}"
-            );
+            log::warn!("[DeliveryMetrics] Impossible de récupérer la profondeur de file: {err:?}");
             0
         }
     };

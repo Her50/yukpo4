@@ -1,8 +1,8 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     path::{Path, PathBuf},
-    sync::Arc,
     sync::atomic::{AtomicI64, AtomicU64, Ordering},
+    sync::Arc,
     time::Instant,
 };
 
@@ -62,6 +62,7 @@ use crate::{
         video_job_service::try_store_progress,
         video_renderer::{RenderExecutionMode, RenderJobRequest, RenderJobResponse},
         voice_profile_service::ResolvedVoiceProfile,
+        watermark_service,
     },
     state::AppState,
 };
@@ -148,6 +149,8 @@ pub struct VideoGenerationPayload {
     pub media_descriptions: Option<Vec<MediaDescriptionInput>>,
     /// ✅ Génération automatique d'images par IA si aucune image locale n'est disponible
     pub auto_generate_images: Option<bool>,
+    /// ✅ NOUVEAU 2025-01-27: Activer/désactiver le watermark Yukpo (défaut: true pour branding)
+    pub enable_watermark: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -260,17 +263,18 @@ pub async fn estimate_video_cost(
     product_index: i32,
     payload: VideoGenerationPayload,
 ) -> AppResult<CostEstimation> {
-    let svc = sqlx::query_as::<_, ServiceDataRow>(
-        "SELECT user_id, data FROM services WHERE id = $1"
-    )
-    .bind(service_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|err| {
-        error!("[VideoGeneration] Erreur récupération service {service_id}: {err:?}");
-        AppError::from(err)
-    })?
-    .ok_or_else(|| AppError::NotFound("Service introuvable pour ce prestataire.".to_string()))?;
+    let svc =
+        sqlx::query_as::<_, ServiceDataRow>("SELECT user_id, data FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|err| {
+                error!("[VideoGeneration] Erreur récupération service {service_id}: {err:?}");
+                AppError::from(err)
+            })?
+            .ok_or_else(|| {
+                AppError::NotFound("Service introuvable pour ce prestataire.".to_string())
+            })?;
 
     if svc.user_id != user.id {
         return Err(AppError::Unauthorized(
@@ -376,13 +380,13 @@ pub async fn validate_video_generation_prerequisites(
     let include_publicite_assets = payload.include_publicite_assets.unwrap_or(true);
 
     let mut has_images = false;
-    let mut checked_sources = Vec::new();  // ✅ Pour tracking des sources vérifiées
+    let mut checked_sources = Vec::new(); // ✅ Pour tracking des sources vérifiées
 
     // Vérifier les médias sélectionnés explicitement
     if let Some(selected_ids) = &payload.selected_media_ids {
         if !selected_ids.is_empty() {
             let count: i64 = sqlx::query_scalar(
-                "SELECT COUNT(*) FROM media WHERE service_id = $1 AND id = ANY($2)"
+                "SELECT COUNT(*) FROM media WHERE service_id = $1 AND id = ANY($2)",
             )
             .bind(service_id)
             .bind(selected_ids)
@@ -396,7 +400,10 @@ pub async fn validate_video_generation_prerequisites(
             checked_sources.push(format!("médias sélectionnés ({} trouvés)", count));
             if count > 0 {
                 has_images = true;
-                info!("[VideoGeneration] ✅ Images trouvées dans médias sélectionnés: {}", count);
+                info!(
+                    "[VideoGeneration] ✅ Images trouvées dans médias sélectionnés: {}",
+                    count
+                );
             }
         }
     }
@@ -407,7 +414,7 @@ pub async fn validate_video_generation_prerequisites(
             "SELECT COUNT(*) FROM media 
              WHERE service_id = $1 
              AND (product_index = $2 OR (product_index IS NULL AND type = 'image'))
-             LIMIT 1"
+             LIMIT 1",
         )
         .bind(service_id)
         .bind(product_index)
@@ -421,7 +428,10 @@ pub async fn validate_video_generation_prerequisites(
         checked_sources.push(format!("galerie produit ({} trouvées)", count));
         if count > 0 {
             has_images = true;
-            info!("[VideoGeneration] ✅ Images trouvées dans galerie produit: {}", count);
+            info!(
+                "[VideoGeneration] ✅ Images trouvées dans galerie produit: {}",
+                count
+            );
         }
     }
 
@@ -431,7 +441,7 @@ pub async fn validate_video_generation_prerequisites(
             "SELECT COUNT(*) FROM media 
              WHERE service_id = $1 
              AND (product_index IS NULL OR product_index != $2)
-             LIMIT 1"
+             LIMIT 1",
         )
         .bind(service_id)
         .bind(product_index)
@@ -445,7 +455,10 @@ pub async fn validate_video_generation_prerequisites(
         checked_sources.push(format!("médiathèque service ({} trouvées)", count));
         if count > 0 {
             has_images = true;
-            info!("[VideoGeneration] ✅ Images trouvées dans médiathèque service: {}", count);
+            info!(
+                "[VideoGeneration] ✅ Images trouvées dans médiathèque service: {}",
+                count
+            );
         }
     }
 
@@ -460,7 +473,7 @@ pub async fn validate_video_generation_prerequisites(
                 OR path ILIKE '%publicite%'
                 OR path ILIKE '%banner%'
              )
-             LIMIT 1"
+             LIMIT 1",
         )
         .bind(service_id)
         .fetch_one(&state.pg)
@@ -473,7 +486,10 @@ pub async fn validate_video_generation_prerequisites(
         checked_sources.push(format!("assets publicité ({} trouvés)", count));
         if count > 0 {
             has_images = true;
-            info!("[VideoGeneration] ✅ Images trouvées dans assets publicité: {}", count);
+            info!(
+                "[VideoGeneration] ✅ Images trouvées dans assets publicité: {}",
+                count
+            );
         }
     }
 
@@ -489,7 +505,7 @@ pub async fn validate_video_generation_prerequisites(
             } else {
                 checked_sources.join(", ")
             };
-            
+
             // ✅ CORRECTION: Message d'erreur amélioré avec guidance claire
             let error_msg = format!(
                 "Impossible de générer la vidéo : Aucune image trouvée.\n\n\
@@ -502,7 +518,7 @@ pub async fn validate_video_generation_prerequisites(
                 sources_checked,
                 product_index
             );
-            
+
             warn!(
                 "[VideoGeneration] ❌ Validation échouée pour service_id={}, product_index={}, auto_generate_images={}:\n{}", 
                 service_id, 
@@ -510,7 +526,7 @@ pub async fn validate_video_generation_prerequisites(
                 payload.auto_generate_images.unwrap_or(false),
                 error_msg
             );
-            
+
             return Err(AppError::BadRequest(error_msg));
         }
     }
@@ -531,7 +547,7 @@ async fn ensure_product_in_lifecycle(
 ) -> AppResult<()> {
     // Vérifier si le produit existe déjà
     let exists: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM products_lifecycle WHERE service_id = $1 AND product_index = $2"
+        "SELECT id FROM products_lifecycle WHERE service_id = $1 AND product_index = $2",
     )
     .bind(service_id)
     .bind(product_index)
@@ -558,7 +574,7 @@ async fn ensure_product_in_lifecycle(
         )
         VALUES ($1, $2, $3, $4, TRUE)
         ON CONFLICT (service_id, product_index) DO NOTHING
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(product_index)
@@ -589,17 +605,21 @@ pub async fn generate_product_video(
 ) -> AppResult<VideoGenerationResult> {
     let overall_start = Instant::now();
 
-    let svc = sqlx::query_as::<_, ServiceDataRow>(
-        "SELECT user_id, data FROM services WHERE id = $1"
-    )
-    .bind(service_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|err| {
-        error!("[VideoGeneration] Erreur récupération service {service_id}: {err:?}");
-        AppError::from(err)
-    })?
-    .ok_or_else(|| AppError::NotFound("Service introuvable pour ce prestataire.".to_string()))?;
+    // ✅ NOUVEAU 2025-12-01: Contrôler le parallélisme avec le sémaphore de scalabilité
+    let _permit = state.scalability.acquire_permit().await?;
+
+    let svc =
+        sqlx::query_as::<_, ServiceDataRow>("SELECT user_id, data FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|err| {
+                error!("[VideoGeneration] Erreur récupération service {service_id}: {err:?}");
+                AppError::from(err)
+            })?
+            .ok_or_else(|| {
+                AppError::NotFound("Service introuvable pour ce prestataire.".to_string())
+            })?;
 
     if svc.user_id != user.id {
         warn!(
@@ -720,7 +740,7 @@ pub async fn generate_product_video(
 
     // ✅ NOUVEAU: Vérifier si une timeline structurée est fournie
     let has_timeline = payload.timeline.is_some();
-    
+
     let mut script_outline: Vec<String> = if has_timeline {
         // Si timeline fournie, extraire le script_outline depuis la timeline
         payload
@@ -776,6 +796,61 @@ pub async fn generate_product_video(
 
     if script_outline.len() > 6 {
         script_outline.truncate(6);
+    }
+
+    // ✅ NOUVEAU 2025-01-28: Vérifier le stock des produits liés et adapter le style
+    if let Some(product_indices) = &payload.related_product_indices {
+        let mut stock_info: Vec<(i32, i32)> = Vec::new();
+
+        for &related_index in product_indices {
+            // ✅ NOUVEAU 2025-01-28: Vérifier le stock depuis autocomplete_combinations
+            let stock: Option<i32> = sqlx::query_scalar(
+                r#"
+                SELECT MIN(ac.stock)
+                FROM autocomplete_combinations ac
+                JOIN services s ON s.id = ac.service_id
+                WHERE ac.service_id = $1
+                    AND s.is_tarissable = TRUE
+                    AND ac.stock IS NOT NULL
+                "#,
+            )
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|err| {
+                error!(
+                    "[VideoGeneration] Erreur vérification stock produit {}:{}: {err:?}",
+                    service_id, related_index
+                );
+                AppError::from(err)
+            })?;
+
+            if let Some(stock_value) = stock {
+                stock_info.push((related_index, stock_value));
+
+                // ✅ Bloquer la génération si stock = 0
+                if stock_value == 0 {
+                    return Err(AppError::BadRequest(
+                        format!(
+                            "Impossible de générer une vidéo marketing pour le produit index {} car le stock est épuisé.",
+                            related_index
+                        )
+                    ));
+                }
+            }
+        }
+
+        // ✅ Adapter le style selon le stock
+        if !stock_info.is_empty() {
+            let has_low_stock = stock_info.iter().any(|(_, stock)| *stock <= 5);
+
+            if has_low_stock {
+                // Stock faible → Style "urgence" ou "dernière chance"
+                info!("[VideoGeneration] Stock faible détecté - Application style 'urgence'");
+                // Note: Le style sera appliqué via style_effects dans le payload
+                // On peut ajouter des effets visuels d'urgence si nécessaire
+            }
+        }
     }
 
     let cost_estimation = state
@@ -904,9 +979,7 @@ pub async fn generate_product_video(
 
     // ✅ PRIORITÉ 2 : Si pas d'images locales et génération IA activée, générer des images
     if media_sources.is_empty() && payload.auto_generate_images.unwrap_or(false) {
-        info!(
-            "[VideoGeneration] Aucune image locale trouvée, génération d'images IA en cours..."
-        );
+        info!("[VideoGeneration] Aucune image locale trouvée, génération d'images IA en cours...");
 
         // Construire une description pour la génération IA
         let product_description = format!(
@@ -948,9 +1021,9 @@ pub async fn generate_product_video(
                     service_id,
                     product_index,
                     Some(media_ids_clone), // Utiliser les IDs des images générées
-                    true,  // use_product_gallery
-                    true,  // use_service_mediatech
-                    false, // include_publicite_assets (pas nécessaire)
+                    true,                  // use_product_gallery
+                    true,                  // use_service_mediatech
+                    false,                 // include_publicite_assets (pas nécessaire)
                 )
                 .await?;
 
@@ -962,7 +1035,7 @@ pub async fn generate_product_video(
                     for media_id in media_ids {
                         // Récupérer le path depuis la base
                         if let Ok(Some(path)) = sqlx::query_scalar::<_, Option<String>>(
-                            "SELECT path FROM media WHERE id = $1"
+                            "SELECT path FROM media WHERE id = $1",
                         )
                         .bind(media_id)
                         .fetch_optional(&state.pg)
@@ -971,17 +1044,17 @@ pub async fn generate_product_video(
                             if let Some(p) = path {
                                 // Créer un MediaSource basique
                                 // Note: Cette partie nécessite d'adapter selon la structure de MediaSource
-                                info!("[VideoGeneration] Image IA récupérée: media_id={}, path={}", media_id, p);
+                                info!(
+                                    "[VideoGeneration] Image IA récupérée: media_id={}, path={}",
+                                    media_id, p
+                                );
                             }
                         }
                     }
                 }
             }
             Err(err) => {
-                error!(
-                    "[VideoGeneration] ❌ Erreur génération images IA: {}",
-                    err
-                );
+                error!("[VideoGeneration] ❌ Erreur génération images IA: {}", err);
                 return Err(AppError::Internal(format!(
                     "Impossible de générer des images avec l'IA: {}. Veuillez ajouter des images manuellement.",
                     err
@@ -1163,18 +1236,22 @@ pub async fn generate_product_video(
         }
 
         // ✅ CORRECTION: Détecter si le média est une vidéo ou une image pour utiliser la bonne option FFmpeg
-        let is_video = media.path.extension()
+        let is_video = media
+            .path
+            .extension()
             .and_then(|ext| ext.to_str())
             .map(|ext| {
                 let ext_lower = ext.to_lowercase();
-                ext_lower == "mp4" || ext_lower == "mov" || ext_lower == "avi" || 
-                ext_lower == "mkv" || ext_lower == "webm" || ext_lower == "m4v"
+                ext_lower == "mp4"
+                    || ext_lower == "mov"
+                    || ext_lower == "avi"
+                    || ext_lower == "mkv"
+                    || ext_lower == "webm"
+                    || ext_lower == "m4v"
             })
             .unwrap_or(false);
 
-        let mut args = vec![
-            "-y".to_string(),
-        ];
+        let mut args = vec!["-y".to_string()];
 
         // ✅ CORRECTION: Utiliser -stream_loop -1 pour les vidéos, -loop 1 pour les images
         if is_video {
@@ -1200,7 +1277,42 @@ pub async fn generate_product_video(
         ]);
 
         run_ffmpeg(&session_dir, args).await?;
+
+        // ✅ VALIDATION CRITIQUE: Vérifier que le slide a bien été créé
+        let slide_path = session_dir.join(&slide_name);
+        if !slide_path.exists() {
+            let error_msg = format!(
+                "Le slide {} n'a pas été créé. Vérifiez les logs FFmpeg pour plus de détails.",
+                slide_name
+            );
+            error!("[VideoGeneration] ❌ {}", error_msg);
+            return Err(AppError::Internal(error_msg));
+        }
+
+        // Vérifier que le fichier n'est pas vide
+        if let Ok(metadata) = fs::metadata(&slide_path).await {
+            if metadata.len() == 0 {
+                let error_msg =
+                    format!("Le slide {} a été créé mais est vide (0 bytes)", slide_name);
+                error!("[VideoGeneration] ❌ {}", error_msg);
+                return Err(AppError::Internal(error_msg));
+            }
+            info!(
+                "[VideoGeneration] ✅ Slide créé: {} ({} bytes)",
+                slide_name,
+                metadata.len()
+            );
+        }
+
         slide_filenames.push(slide_name);
+    }
+
+    // ✅ VALIDATION CRITIQUE: Vérifier qu'au moins un slide a été créé
+    if slide_filenames.is_empty() {
+        return Err(AppError::Internal(
+            "Aucun slide vidéo n'a été généré. Vérifiez que les médias sources sont valides."
+                .to_string(),
+        ));
     }
 
     let timeline_broll_assets: Vec<TimelineBrollAsset> = broll_clips
@@ -1352,9 +1464,7 @@ pub async fn generate_product_video(
     // ✅ NOUVEAU: Si timeline structurée fournie, la convertir en ImmersiveTimeline
     let mut immersive_timeline: Option<ImmersiveTimeline> = None;
     if let Some(timeline_json) = &payload.timeline {
-        info!(
-            "[VideoGeneration] Timeline structurée fournie, conversion en ImmersiveTimeline"
-        );
+        info!("[VideoGeneration] Timeline structurée fournie, conversion en ImmersiveTimeline");
         // Utiliser le convertisseur dédié
         match convert_timeline_json_to_immersive(timeline_json, 30) {
             Ok(timeline) => {
@@ -1433,13 +1543,10 @@ pub async fn generate_product_video(
                     );
                     orchestration_warnings.push(format!("sfx_directory_creation_failed: {}", err));
                 } else {
-                    info!(
-                        "[VideoGeneration] Dossier SFX créé: {}",
-                        sfx_root.display()
-                    );
+                    info!("[VideoGeneration] Dossier SFX créé: {}", sfx_root.display());
                 }
             }
-            
+
             if sfx_root.exists() && sfx_root.is_dir() {
                 match audio_pipeline::build_sfx_layers_from_timeline(&result.timeline, sfx_root) {
                     Ok(layers) => {
@@ -1467,7 +1574,10 @@ pub async fn generate_product_video(
         }
         Err(err) => {
             error!("[VideoGeneration] ❌ Orchestrateur immersif indisponible: {err}");
-            error!("[VideoGeneration] Service ID: {}, Product Index: {}", service_id, product_index);
+            error!(
+                "[VideoGeneration] Service ID: {}, Product Index: {}",
+                service_id, product_index
+            );
             orchestration_warnings.push(format!("orchestrator_error: {err}"));
             // Ne pas faire échouer la génération, continuer avec fallback
         }
@@ -1513,8 +1623,10 @@ pub async fn generate_product_video(
                         "[VideoGeneration] ❌ Renderer dispatcher indisponible (mode={:?}): {}",
                         err.mode, err.message
                     );
-                    error!("[VideoGeneration] Service ID: {}, Product Index: {}, Job ID: {:?}", 
-                        service_id, product_index, job_id);
+                    error!(
+                        "[VideoGeneration] Service ID: {}, Product Index: {}, Job ID: {:?}",
+                        service_id, product_index, job_id
+                    );
                     orchestration_warnings.push(format!(
                         "renderer_error: mode={:?} message={}",
                         err.mode, err.message
@@ -1541,6 +1653,19 @@ pub async fn generate_product_video(
             })
             .cloned()
     });
+
+    // ✅ VALIDATION CRITIQUE: Vérifier que tous les slides existent avant concaténation
+    for slide_name in &slide_filenames {
+        let slide_path = session_dir.join(slide_name);
+        if !slide_path.exists() {
+            let error_msg = format!(
+                "Slide {} manquant avant concaténation. Chemin: {:?}",
+                slide_name, slide_path
+            );
+            error!("[VideoGeneration] ❌ {}", error_msg);
+            return Err(AppError::Internal(error_msg));
+        }
+    }
 
     if let Some(ttype) = transition_type {
         apply_crossfade_transitions(&session_dir, &slide_filenames, &slide_durations, &ttype)
@@ -1575,6 +1700,30 @@ pub async fn generate_product_video(
         .await?;
     }
 
+    // ✅ VALIDATION CRITIQUE: Vérifier que combined.mp4 a été créé
+    let combined_path = session_dir.join("combined.mp4");
+    if !combined_path.exists() {
+        let error_msg = format!(
+            "La concaténation a échoué: combined.mp4 n'existe pas. Chemin: {:?}",
+            combined_path
+        );
+        error!("[VideoGeneration] ❌ {}", error_msg);
+        return Err(AppError::Internal(error_msg));
+    }
+
+    // Vérifier que combined.mp4 n'est pas vide
+    if let Ok(metadata) = fs::metadata(&combined_path).await {
+        if metadata.len() == 0 {
+            let error_msg = "combined.mp4 a été créé mais est vide (0 bytes)".to_string();
+            error!("[VideoGeneration] ❌ {}", error_msg);
+            return Err(AppError::Internal(error_msg));
+        }
+        info!(
+            "[VideoGeneration] ✅ Concaténation réussie: combined.mp4 ({} bytes)",
+            metadata.len()
+        );
+    }
+
     let music_track = if payload.music_mode.as_deref() == Some("none") {
         None
     } else if let Some(track_id) = payload.music_track_id {
@@ -1598,12 +1747,15 @@ pub async fn generate_product_video(
     };
 
     // Injecte les beats synthétiques dans la timeline immersive si un track musical est disponible
-    if let (Some(ref music_track_path), Some(ref mut timeline)) = (music_track.as_ref(), &mut immersive_timeline) {
-        if let Err(err) = crate::services::audio_analysis_service::inject_synthetic_beats_for_timeline(
-            music_track_path,
-            timeline,
-        )
-        .await
+    if let (Some(ref music_track_path), Some(ref mut timeline)) =
+        (music_track.as_ref(), &mut immersive_timeline)
+    {
+        if let Err(err) =
+            crate::services::audio_analysis_service::inject_synthetic_beats_for_timeline(
+                music_track_path,
+                timeline,
+            )
+            .await
         {
             warn!("[VideoGeneration] Injection des beats synthétiques échouée: {err}");
             orchestration_warnings.push(format!("audio_beat_analysis_failed: {err}"));
@@ -1720,12 +1872,74 @@ pub async fn generate_product_video(
 
         let final_audio_source = mastered_audio_path.as_ref().unwrap_or(&mixed_audio_path);
 
+        let combined_path = session_dir.join("combined.mp4");
+        let final_path = session_dir.join("final.mp4");
+
+        // ✅ VALIDATION CRITIQUE: Vérifier que combined.mp4 existe avant muxage
+        if !combined_path.exists() {
+            let error_msg = format!(
+                "combined.mp4 introuvable avant muxage audio. Chemin: {:?}",
+                combined_path
+            );
+            error!("[VideoGeneration] ❌ {}", error_msg);
+            return Err(AppError::Internal(error_msg));
+        }
+
+        // ✅ VALIDATION CRITIQUE: Vérifier que l'audio existe avant muxage
+        if !final_audio_source.exists() {
+            let error_msg = format!(
+                "Fichier audio introuvable avant muxage. Chemin: {:?}",
+                final_audio_source
+            );
+            error!("[VideoGeneration] ❌ {}", error_msg);
+            return Err(AppError::Internal(error_msg));
+        }
+
+        info!(
+            "[VideoGeneration] Muxage vidéo+audio: combined={:?}, audio={:?}, output={:?}",
+            combined_path, final_audio_source, final_path
+        );
+
         audio_pipeline::mux_video_with_audio(
-            &session_dir.join("combined.mp4"),
+            &combined_path,
             final_audio_source,
-            &session_dir.join("final.mp4"),
+            &final_path,
         )
-        .await?;
+        .await
+        .map_err(|err| {
+            error!(
+                "[VideoGeneration] ❌ Échec muxage vidéo+audio: {}. Combined: {:?}, Audio: {:?}",
+                err, combined_path, final_audio_source
+            );
+            AppError::Internal(format!(
+                "Échec muxage vidéo+audio: {}. Vérifiez que les fichiers source existent et sont valides.",
+                err
+            ))
+        })?;
+
+        // ✅ VALIDATION CRITIQUE: Vérifier que final.mp4 a été créé après muxage
+        if !final_path.exists() {
+            let error_msg = format!(
+                "Le muxage a échoué: final.mp4 n'existe pas. Chemin: {:?}",
+                final_path
+            );
+            error!("[VideoGeneration] ❌ {}", error_msg);
+            return Err(AppError::Internal(error_msg));
+        }
+
+        // Vérifier que final.mp4 n'est pas vide
+        if let Ok(metadata) = fs::metadata(&final_path).await {
+            if metadata.len() == 0 {
+                let error_msg = "final.mp4 a été créé mais est vide (0 bytes)".to_string();
+                error!("[VideoGeneration] ❌ {}", error_msg);
+                return Err(AppError::Internal(error_msg));
+            }
+            info!(
+                "[VideoGeneration] ✅ Muxage réussi: final.mp4 ({} bytes, {:.2} MB)",
+                metadata.len(),
+                metadata.len() as f64 / 1_048_576.0
+            );
+        }
         progress_steps.push(ProgressStep::completed(
             "video_mux",
             "Vidéo master finalisée",
@@ -1738,10 +1952,46 @@ pub async fn generate_product_video(
 
     let final_filename = format!("product_video_{}.mp4", session_id);
     let storage_key = format!("services/{}", final_filename);
-    let source_master_path = renderer_response
+    let mut source_master_path = renderer_response
         .as_ref()
         .map(|resp| resp.master_video.clone())
         .unwrap_or_else(|| session_dir.join("final.mp4"));
+
+    // ✅ Application du watermark Yukpo (si activé)
+    if payload.enable_watermark.unwrap_or(true) {
+        let watermark_service = watermark_service::WatermarkService::new();
+        let watermarked_path = session_dir.join("final_with_watermark.mp4");
+
+        match watermark_service
+            .apply_watermark(
+                &source_master_path,
+                &watermarked_path,
+                None, // Utilise config par défaut
+            )
+            .await
+        {
+            Ok(path) => {
+                info!("[VideoGeneration] ✅ Watermark Yukpo appliqué: {:?}", path);
+                progress_steps.push(ProgressStep::completed(
+                    "watermark",
+                    "Watermark Yukpo appliqué",
+                    Some("Branding automatique".to_string()),
+                ));
+                if let Some(job_id) = job_id {
+                    try_store_progress(&state, job_id, "running", &progress_steps).await;
+                }
+                // Utiliser la vidéo avec watermark pour le stockage
+                source_master_path = path;
+            }
+            Err(err) => {
+                warn!(
+                    "[VideoGeneration] ⚠️ Échec watermark, vidéo sans watermark: {}. La vidéo sera stockée sans branding.",
+                    err
+                );
+                // Continuer sans watermark (fallback gracieux)
+            }
+        }
+    }
 
     let remote_location = renderer_response.as_ref().and_then(|resp| {
         if let Some(storage_path) = resp.storage_path.clone() {
@@ -1766,14 +2016,11 @@ pub async fn generate_product_video(
     } else {
         // Vérifier que le fichier source existe avant de le stocker
         if !source_master_path.exists() {
-            let error_msg = format!(
-                "Fichier vidéo source introuvable: {:?}",
-                source_master_path
-            );
+            let error_msg = format!("Fichier vidéo source introuvable: {:?}", source_master_path);
             error!("[VideoGeneration] ❌ {}", error_msg);
             return Err(AppError::Internal(error_msg));
         }
-        
+
         // Vérifier la taille du fichier
         if let Ok(metadata) = fs::metadata(&source_master_path).await {
             let file_size = metadata.len();
@@ -1783,7 +2030,7 @@ pub async fn generate_product_video(
                 file_size,
                 file_size as f64 / 1_048_576.0
             );
-            
+
             if file_size == 0 {
                 let error_msg = "Fichier vidéo généré est vide (0 bytes)".to_string();
                 error!("[VideoGeneration] ❌ {}", error_msg);
@@ -1792,7 +2039,7 @@ pub async fn generate_product_video(
         } else {
             warn!("[VideoGeneration] Impossible de lire les métadonnées du fichier vidéo");
         }
-        
+
         state
             .media_storage
             .store_file(&source_master_path, &storage_key, Some("video/mp4"))
@@ -2054,7 +2301,7 @@ pub async fn generate_product_video(
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), $12, $13
         )
         RETURNING id
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(product_identifier)
@@ -2220,7 +2467,7 @@ async fn gather_media_sources(
                 "SELECT id, path, type, ai_description
                  FROM media
                  WHERE service_id = $1
-                 AND id = ANY($2)"
+                 AND id = ANY($2)",
             )
             .bind(service_id)
             .bind(ids)
@@ -2253,7 +2500,7 @@ async fn gather_media_sources(
              WHERE service_id = $1
              AND (product_index = $2 OR (product_index IS NULL AND type = 'image'))
              ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC
-             LIMIT 16"
+             LIMIT 16",
         )
         .bind(service_id)
         .bind(product_index)
@@ -2285,7 +2532,7 @@ async fn gather_media_sources(
              WHERE service_id = $1
              AND (product_index IS NULL OR product_index != $2)
              ORDER BY uploaded_at DESC
-             LIMIT 12"
+             LIMIT 12",
         )
         .bind(service_id)
         .bind(product_index)
@@ -2322,7 +2569,7 @@ async fn gather_media_sources(
                 OR path ILIKE '%banner%'
              )
              ORDER BY uploaded_at DESC
-             LIMIT 6"
+             LIMIT 6",
         )
         .bind(service_id)
         .fetch_all(&state.pg)
@@ -2670,7 +2917,8 @@ fn build_ffmpeg_filter(
         }
     }
 
-    filter_parts.push("format=yuv420p".to_string());
+    // Note: format=yuv420p n'est pas nécessaire ici car -pix_fmt yuv420p est déjà spécifié
+    // dans les arguments FFmpeg. L'ajouter ici cause une erreur de parsing FFmpeg.
     filter_parts.join(",")
 }
 
@@ -2744,17 +2992,15 @@ async fn append_video_to_service_data(
         }
     }
 
-    sqlx::query(
-        "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2"
-    )
-    .bind(serde_json::Value::clone(service_data))
-    .bind(service_id)
-    .execute(&state.pg)
-    .await
-    .map_err(|err| {
-        error!("[VideoGeneration] Erreur mise à jour service: {err:?}");
-        AppError::from(err)
-    })?;
+    sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
+        .bind(serde_json::Value::clone(service_data))
+        .bind(service_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|err| {
+            error!("[VideoGeneration] Erreur mise à jour service: {err:?}");
+            AppError::from(err)
+        })?;
 
     Ok(())
 }
@@ -2765,14 +3011,13 @@ async fn append_video_variants_to_service_data(
     product_index: i32,
     variant_urls: &[(String, String)],
 ) -> AppResult<()> {
-    let service_row = sqlx::query_as::<_, ServiceDataValueRow>(
-        "SELECT data FROM services WHERE id = $1"
-    )
-    .bind(service_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|err| AppError::from(err))?
-    .ok_or_else(|| AppError::NotFound("Service introuvable".to_string()))?;
+    let service_row =
+        sqlx::query_as::<_, ServiceDataValueRow>("SELECT data FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|err| AppError::from(err))?
+            .ok_or_else(|| AppError::NotFound("Service introuvable".to_string()))?;
 
     let mut data_value = service_row.data;
     if let Some(array) = locate_product_array_mut(&mut data_value) {
@@ -2799,14 +3044,12 @@ async fn append_video_variants_to_service_data(
         }
     }
 
-    sqlx::query(
-        "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2"
-    )
-    .bind(data_value)
-    .bind(service_id)
-    .execute(&state.pg)
-    .await
-    .map_err(|err| AppError::from(err))?;
+    sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
+        .bind(data_value)
+        .bind(service_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|err| AppError::from(err))?;
 
     Ok(())
 }
@@ -2814,7 +3057,7 @@ async fn append_video_variants_to_service_data(
 async fn run_ffmpeg(working_dir: &Path, args: Vec<String>) -> AppResult<()> {
     let command_str = format!("ffmpeg {}", args.join(" "));
     info!("[VideoGeneration] Exécution FFmpeg: {}", command_str);
-    
+
     let output = Command::new("ffmpeg")
         .current_dir(working_dir)
         .args(&args)
@@ -2834,14 +3077,14 @@ async fn run_ffmpeg(working_dir: &Path, args: Vec<String>) -> AppResult<()> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let exit_code = output.status.code().unwrap_or(-1);
-        
+
         error!("[VideoGeneration] ❌ FFmpeg a échoué (code: {})", exit_code);
         error!("[VideoGeneration] Commande: {}", command_str);
         error!("[VideoGeneration] STDERR: {}", stderr);
         if !stdout.is_empty() {
             error!("[VideoGeneration] STDOUT: {}", stdout);
         }
-        
+
         // Extraire les erreurs pertinentes de stderr
         let error_summary = if stderr.contains("No such file") {
             "Fichier source introuvable"
@@ -2854,7 +3097,7 @@ async fn run_ffmpeg(working_dir: &Path, args: Vec<String>) -> AppResult<()> {
         } else {
             "Erreur inconnue FFmpeg"
         };
-        
+
         return Err(AppError::Internal(format!(
             "La génération de la vidéo a échoué (FFmpeg): {}. Code de sortie: {}. Vérifiez les logs pour plus de détails.",
             error_summary, exit_code
@@ -2934,10 +3177,12 @@ async fn apply_crossfade_transitions(
         // ✅ CORRECTION À LA SOURCE: Vérifier si la vidéo unique a un stream audio, sinon en ajouter un
         let source = session_dir.join(&slide_filenames[0]);
         let target = session_dir.join("combined.mp4");
-        
+
         // Vérifier si la source a un stream audio
-        let has_audio = audio_pipeline::has_audio_stream(&source).await.unwrap_or(false);
-        
+        let has_audio = audio_pipeline::has_audio_stream(&source)
+            .await
+            .unwrap_or(false);
+
         if has_audio {
             // Si elle a déjà de l'audio, juste renommer
             fs::rename(&source, &target).await.map_err(|err| {
@@ -2955,7 +3200,10 @@ async fn apply_crossfade_transitions(
                 "-f".to_string(),
                 "lavfi".to_string(),
                 "-i".to_string(),
-                format!("anullsrc=channel_layout=stereo:sample_rate=44100:duration={}", duration),
+                format!(
+                    "anullsrc=channel_layout=stereo:sample_rate=44100:duration={}",
+                    duration
+                ),
                 "-c:v".to_string(),
                 "copy".to_string(), // Copier la vidéo sans ré-encoder
                 "-c:a".to_string(),
@@ -3574,7 +3822,7 @@ async fn generate_background_music(
     // ✅ CORRECTION: Utiliser un format de sortie compatible (WAV au lieu de MP3 pour éviter les problèmes de codec)
     // On génère d'abord en WAV, puis on convertit en MP3 si nécessaire
     let wav_path = session_dir.join(format!("temp_music_{}.wav", uuid::Uuid::new_v4()));
-    
+
     // Générer la musique en WAV d'abord (plus fiable)
     let filter_complex = format!(
         "asetrate=44100*0.8,atempo=1.25,aresample=44100,afade=t=in:st=0:d=3,afade=t=out:st={fade_start}:d=4,volume=0.35",
@@ -3614,50 +3862,61 @@ async fn generate_background_music(
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        error!("[VideoGeneration] Génération musique WAV échouée: {}", stderr);
-        return Err(AppError::Internal(
-            format!("Génération de la musique impossible: {}", stderr)
-        ));
+        error!(
+            "[VideoGeneration] Génération musique WAV échouée: {}",
+            stderr
+        );
+        return Err(AppError::Internal(format!(
+            "Génération de la musique impossible: {}",
+            stderr
+        )));
     }
 
     // ✅ CORRECTION: Convertir WAV en MP3 si le fichier de sortie est en MP3
-    let file_ext = track_path.extension().and_then(|s| s.to_str()).unwrap_or("mp3");
+    let file_ext = track_path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("mp3");
     if file_ext == "mp3" {
         let output = Command::new("ffmpeg")
             .current_dir(session_dir)
             .args([
                 "-y",
                 "-i",
-                wav_path.file_name().unwrap_or_default().to_string_lossy().as_ref(),
+                wav_path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .as_ref(),
                 "-c:a",
                 "libmp3lame",
-            "-b:a",
-            "160k",
+                "-b:a",
+                "160k",
                 "-q:a",
                 "2",
-            track_path
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .as_ref(),
-        ])
-        .output()
-        .await
-        .map_err(|err| {
+                track_path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .as_ref(),
+            ])
+            .output()
+            .await
+            .map_err(|err| {
                 error!("[VideoGeneration] Impossible de convertir WAV en MP3: {err:?}");
                 AppError::Internal("Conversion WAV->MP3 impossible.".to_string())
-        })?;
+            })?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
             error!("[VideoGeneration] Conversion MP3 échouée: {}", stderr);
             // Fallback: utiliser le WAV si la conversion échoue
             warn!("[VideoGeneration] Utilisation du WAV comme fallback");
             if let Err(e) = tokio::fs::copy(&wav_path, &track_path).await {
                 error!("[VideoGeneration] Impossible de copier WAV: {}", e);
-        return Err(AppError::Internal(
-                    format!("Génération musique impossible: conversion MP3 échouée et copie WAV échouée")
-                ));
+                return Err(AppError::Internal(format!(
+                    "Génération musique impossible: conversion MP3 échouée et copie WAV échouée"
+                )));
             }
         } else {
             // Nettoyer le fichier WAV temporaire
@@ -3667,9 +3926,9 @@ async fn generate_background_music(
         // Si le format de sortie n'est pas MP3, utiliser directement le WAV
         if let Err(e) = tokio::fs::copy(&wav_path, &track_path).await {
             error!("[VideoGeneration] Impossible de copier WAV: {}", e);
-            return Err(AppError::Internal(
-                format!("Génération musique impossible: copie WAV échouée")
-            ));
+            return Err(AppError::Internal(format!(
+                "Génération musique impossible: copie WAV échouée"
+            )));
         }
         let _ = tokio::fs::remove_file(&wav_path).await;
     }
@@ -3740,7 +3999,7 @@ async fn download_curated_audio(
     let mut last_error = None;
     let mut response = None;
     let mut is_dns_error = false;
-    
+
     // Tentative avec retry (3 tentatives)
     for attempt in 1..=3 {
         match client.get(loop_info.url).send().await {
@@ -3753,32 +4012,40 @@ async fn download_curated_audio(
                     if attempt < 3 {
                         log::info!(
                             "[VideoGeneration] Tentative {}/3 échouée (statut {}), retry...",
-                            attempt, resp.status()
+                            attempt,
+                            resp.status()
                         );
-                        tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+                        tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64))
+                            .await;
                     }
                 }
             }
             Err(err) => {
                 let error_msg = err.to_string();
                 last_error = Some(error_msg.clone());
-                
+
                 // Vérifier si c'est une erreur DNS
-                if error_msg.contains("dns error") || error_msg.contains("failed to lookup") || error_msg.contains("Name or service not known") {
+                if error_msg.contains("dns error")
+                    || error_msg.contains("failed to lookup")
+                    || error_msg.contains("Name or service not known")
+                {
                     is_dns_error = true;
                     log::warn!(
                         "[VideoGeneration] Erreur DNS pour {}: {}. Tentative fallback local...",
-                        loop_info.url, error_msg
+                        loop_info.url,
+                        error_msg
                     );
                     break; // Sortir de la boucle pour essayer le fallback
                 }
-                
+
                 if attempt < 3 {
                     log::info!(
                         "[VideoGeneration] Tentative {}/3 échouée ({}), retry...",
-                        attempt, error_msg
+                        attempt,
+                        error_msg
                     );
-                    tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+                    tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64))
+                        .await;
                 }
             }
         }
@@ -3796,7 +4063,8 @@ async fn download_curated_audio(
             tokio::fs::read(&local_path).await.map_err(|err| {
                 AppError::Internal(format!(
                     "Impossible de lire le fichier audio local {}: {}",
-                    local_path.display(), err
+                    local_path.display(),
+                    err
                 ))
             })?
         } else {
@@ -3812,14 +4080,13 @@ async fn download_curated_audio(
                 last_error.unwrap_or_else(|| "Erreur inconnue".to_string())
             ))
         })?;
-        
+
         response
             .bytes()
             .await
             .map_err(|err| AppError::Internal(format!("Lecture audio IA impossible: {err}")))?
             .to_vec()
     };
-
 
     let extension = loop_info
         .url

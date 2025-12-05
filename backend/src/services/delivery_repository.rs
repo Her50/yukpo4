@@ -6,8 +6,8 @@ use crate::{
         DeliveryEngineType, DeliveryMatchingEvent, DeliveryMatchingQueueItem,
         DeliveryMatchingStatus, DeliveryParcel, DeliveryPricing, DeliveryRecipient,
         DeliveryRecipientUpdate, DeliveryStatus, DeliveryStatusEvent, DeliverySummary,
-        DeliveryTrackingPoint, GeoPoint, ParcelRejectionReason, ParcelType, ShoppingItemStatus, ShoppingOrder,
-        ShoppingOrderItem, ShoppingStatus,
+        DeliveryTrackingPoint, GeoPoint, ParcelRejectionReason, ParcelType, ShoppingItemStatus,
+        ShoppingOrder, ShoppingOrderItem, ShoppingStatus,
     },
 };
 use chrono::{DateTime, Utc};
@@ -394,7 +394,7 @@ impl DeliveryRepository {
                 avatar_url
             FROM users
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(user_id)
         .fetch_optional(&self.pool)
@@ -429,7 +429,7 @@ impl DeliveryRepository {
                 AND d.status <> 'completed'::delivery_status
             ORDER BY d.requested_at DESC
             LIMIT $2
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(limit)
@@ -458,7 +458,7 @@ impl DeliveryRepository {
             WHERE delivery_id = $1
             ORDER BY occurred_at ASC
             LIMIT $2
-            "#
+            "#,
         )
         .bind(delivery_id)
         .bind(limit)
@@ -498,7 +498,7 @@ impl DeliveryRepository {
             WHERE delivery_id = $1
             ORDER BY created_at DESC
             LIMIT $2
-            "#
+            "#,
         )
         .bind(delivery_id)
         .bind(limit)
@@ -538,7 +538,7 @@ impl DeliveryRepository {
                 created_at
             FROM parcel_types
             ORDER BY display_name ASC
-            "#
+            "#,
         )
         .fetch_all(&self.pool)
         .await?;
@@ -591,7 +591,7 @@ impl DeliveryRepository {
                 notes,
                 created_at,
                 updated_at
-            "#
+            "#,
         )
         .bind(payload.user_id)
         .bind(payload.status as DeliveryApplicationStatus)
@@ -648,7 +648,7 @@ impl DeliveryRepository {
                 notes,
                 created_at,
                 updated_at
-            "#
+            "#,
         )
         .bind(application_id)
         .bind(status as DeliveryApplicationStatus)
@@ -697,7 +697,7 @@ impl DeliveryRepository {
             WHERE user_id = $1
             ORDER BY created_at DESC
             LIMIT 1
-            "#
+            "#,
         )
         .bind(user_id)
         .fetch_optional(&self.pool)
@@ -738,7 +738,7 @@ impl DeliveryRepository {
             FROM couriers
             WHERE user_id = $1
             LIMIT 1
-            "#
+            "#,
         )
         .bind(user_id)
         .fetch_optional(&self.pool)
@@ -776,7 +776,7 @@ impl DeliveryRepository {
                 updated_at
             FROM couriers
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(courier_id)
         .fetch_optional(&self.pool)
@@ -823,7 +823,7 @@ impl DeliveryRepository {
                 suspended_at,
                 created_at,
                 updated_at
-            "#
+            "#,
         )
         .bind(payload.user_id)
         .bind(payload.application_id)
@@ -886,7 +886,7 @@ impl DeliveryRepository {
                 documents,
                 created_at,
                 updated_at
-            "#
+            "#,
         )
         .bind(payload.courier_id)
         .bind(payload.engine_type as DeliveryEngineType)
@@ -945,7 +945,7 @@ impl DeliveryRepository {
                  photos,
                  constraints,
                  created_at
-             "#
+             "#,
         )
         .bind(payload.parcel.type_id)
         .bind(payload.parcel.weight_kg)
@@ -1102,7 +1102,7 @@ impl DeliveryRepository {
                 recorded_by
             )
             VALUES ($1, $2, $3, $4)
-            "#
+            "#,
         )
         .bind(delivery_row.id)
         .bind(payload.initial_status as DeliveryStatus)
@@ -1206,13 +1206,15 @@ impl DeliveryRepository {
                 occurred_at,
                 payload,
                 recorded_by
-            "#
+            "#,
         )
         .bind(payload.delivery_id)
         .bind(payload.status as DeliveryStatus)
-        .bind(payload
-            .payload
-            .unwrap_or_else(|| Value::Object(Default::default())))
+        .bind(
+            payload
+                .payload
+                .unwrap_or_else(|| Value::Object(Default::default())),
+        )
         .bind(payload.recorded_by)
         .fetch_one(&self.pool)
         .await?;
@@ -1388,7 +1390,7 @@ impl DeliveryRepository {
                 recipient_dropoff_updated_at,
                 recipient_chat_thread_id,
                 metadata
-            "#
+            "#,
         )
         .bind(delivery_id)
         .bind(point.longitude)
@@ -1407,7 +1409,7 @@ impl DeliveryRepository {
                 address
             )
             VALUES ($1, $2, $3, $4, $5)
-            "#
+            "#,
         )
         .bind(delivery_id)
         .bind(submitted_by)
@@ -1476,7 +1478,7 @@ impl DeliveryRepository {
                 pickup_address = $4,
                 updated_at = NOW()
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(delivery_id)
         .bind(point.longitude)
@@ -1498,7 +1500,7 @@ impl DeliveryRepository {
                 )
                 VALUES ($1, $2, $3, $4, $5)
                 ON CONFLICT DO NOTHING
-                "#
+                "#,
             )
             .bind(delivery_id)
             .bind(user_id)
@@ -1551,7 +1553,7 @@ impl DeliveryRepository {
                  COALESCE(details, '{}'::jsonb) AS details,
                  shopping_cost_cents,
                  shopping_discount_cents
-             "#
+             "#,
         )
         .bind(payload.delivery_id)
         .bind(payload.base_price_cents)
@@ -1600,7 +1602,7 @@ impl DeliveryRepository {
                  shopping_discount_cents
              FROM delivery_pricing
              WHERE delivery_id = $1
-             "#
+             "#,
         )
         .bind(delivery_id)
         .fetch_optional(&self.pool)
@@ -1661,7 +1663,7 @@ impl DeliveryRepository {
                 COALESCE(metadata, '{}'::jsonb) AS metadata
             FROM deliveries
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(delivery_id)
         .fetch_optional(&self.pool)
@@ -1785,7 +1787,7 @@ impl DeliveryRepository {
                 updated_at
             FROM shopping_orders
             WHERE delivery_id = $1
-            "#
+            "#,
         )
         .bind(delivery_id)
         .fetch_optional(&self.pool)
@@ -1849,7 +1851,7 @@ impl DeliveryRepository {
                 updated_at
             FROM shopping_orders
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(order_id)
         .fetch_optional(&self.pool)
@@ -1913,7 +1915,7 @@ impl DeliveryRepository {
             FROM shopping_order_items
             WHERE shopping_order_id = $1
             ORDER BY created_at
-            "#
+            "#,
         )
         .bind(shopping_order_id)
         .fetch_all(&self.pool)
@@ -2006,6 +2008,48 @@ impl DeliveryRepository {
         .fetch_one(&mut *tx)
         .await?;
 
+        // ✅ NOUVEAU 2025-01-28: Vérifier le stock pour chaque produit (uniquement pour les produits)
+        for item in payload.items {
+            // Vérifier si le produit est tarissable (is_tarissable = TRUE)
+            if let Some(service_id) = item.metadata.get("service_id").and_then(|v| v.as_i64()) {
+                let is_tarissable: Option<bool> = sqlx::query_scalar(
+                    r#"
+                    SELECT is_tarissable
+                    FROM services
+                    WHERE id = $1
+                    "#,
+                )
+                .bind(service_id as i32)
+                .fetch_optional(&self.pool)
+                .await?;
+
+                if let Some(true) = is_tarissable {
+                    // ✅ NOUVEAU 2025-01-28: Vérifier le stock depuis autocomplete_combinations
+                    let available_stock: Option<i32> = sqlx::query_scalar(
+                        r#"
+                        SELECT MIN(stock)
+                        FROM autocomplete_combinations
+                        WHERE service_id = $1
+                            AND stock IS NOT NULL
+                        "#,
+                    )
+                    .bind(service_id as i32)
+                    .fetch_optional(&self.pool)
+                    .await?;
+
+                    if let Some(stock) = available_stock {
+                        let quantity = item.quantity.to_string().parse::<i64>().unwrap_or(1);
+                        if stock < quantity as i32 {
+                            return Err(AppError::BadRequest(format!(
+                                "Stock insuffisant pour le produit '{}'. Stock disponible: {}, Quantité demandée: {}",
+                                item.product_name, stock, quantity
+                            )));
+                        }
+                    }
+                }
+            }
+        }
+
         let mut items_out = Vec::new();
         for item in payload.items {
             let inserted: ShoppingOrderItemRow = sqlx::query_as(
@@ -2039,7 +2083,7 @@ impl DeliveryRepository {
                     metadata,
                     created_at,
                     updated_at
-                "#
+                "#,
             )
             .bind(order.id)
             .bind(item.product_id)
@@ -2124,7 +2168,7 @@ impl DeliveryRepository {
             SET status = $2,
                 updated_at = NOW()
             WHERE delivery_id = $1
-            "#
+            "#,
         )
         .bind(delivery_id)
         .bind(status as ShoppingStatus)
@@ -2178,7 +2222,7 @@ impl DeliveryRepository {
                 payload = COALESCE($3, payload),
                 updated_at = NOW()
             WHERE delivery_id = $1
-            "#
+            "#,
         )
         .bind(delivery_id)
         .bind(actual_total_cents)
@@ -2225,25 +2269,22 @@ impl DeliveryRepository {
         struct UserBalanceRow {
             tokens_balance: i64,
         }
-        
-        let balance: Option<UserBalanceRow> = sqlx::query_as(
-            r#"SELECT tokens_balance FROM users WHERE id = $1"#
-        )
-        .bind(user_id)
-        .fetch_optional(&self.pool)
-        .await?;
-        
+
+        let balance: Option<UserBalanceRow> =
+            sqlx::query_as(r#"SELECT tokens_balance FROM users WHERE id = $1"#)
+                .bind(user_id)
+                .fetch_optional(&self.pool)
+                .await?;
+
         Ok(balance.map(|r| r.tokens_balance).unwrap_or(0))
     }
 
     pub async fn update_user_balance(&self, user_id: i32, new_balance: i64) -> AppResult<()> {
-        sqlx::query(
-            r#"UPDATE users SET tokens_balance = $2 WHERE id = $1"#
-        )
-        .bind(user_id)
-        .bind(new_balance)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query(r#"UPDATE users SET tokens_balance = $2 WHERE id = $1"#)
+            .bind(user_id)
+            .bind(new_balance)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -2269,14 +2310,14 @@ impl DeliveryRepository {
         struct UserBalanceLockRow {
             tokens_balance: i64,
         }
-        
+
         let current_balance: Option<UserBalanceLockRow> = sqlx::query_as(
             r#"
             SELECT tokens_balance
             FROM users
             WHERE id = $1
             FOR UPDATE
-            "#
+            "#,
         )
         .bind(user_id)
         .fetch_optional(&mut *tx)
@@ -2303,13 +2344,11 @@ impl DeliveryRepository {
             WalletEventDirection::Refund => current_balance + amount_cents,
         };
 
-        sqlx::query(
-            r#"UPDATE users SET tokens_balance = $2 WHERE id = $1"#
-        )
-        .bind(user_id)
-        .bind(new_balance)
-        .execute(&mut *tx)
-        .await?;
+        sqlx::query(r#"UPDATE users SET tokens_balance = $2 WHERE id = $1"#)
+            .bind(user_id)
+            .bind(new_balance)
+            .execute(&mut *tx)
+            .await?;
 
         let metadata_value = metadata.unwrap_or_else(|| Value::Object(Default::default()));
 
@@ -2325,7 +2364,7 @@ impl DeliveryRepository {
                 metadata
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(delivery_id)
@@ -2386,7 +2425,7 @@ impl DeliveryRepository {
                 speed_kmh,
                 bearing,
                 accuracy_meters
-            "#
+            "#,
         )
         .bind(payload.delivery_id)
         .bind(payload.courier_id)
@@ -2451,7 +2490,7 @@ impl DeliveryRepository {
                 next_attempt_at,
                 enqueued_at,
                 updated_at
-            "#
+            "#,
         )
         .bind(payload.delivery_id)
         .bind(payload.zone_id)
@@ -2494,7 +2533,7 @@ impl DeliveryRepository {
                 attempt_count = attempt_count + CASE WHEN $5 THEN 1 ELSE 0 END,
                 updated_at = NOW()
             WHERE delivery_id = $1
-            "#
+            "#,
         )
         .bind(delivery_id)
         .bind(status as DeliveryMatchingStatus)
@@ -2532,7 +2571,7 @@ impl DeliveryRepository {
                 reason,
                 metadata,
                 created_at
-            "#
+            "#,
         )
         .bind(payload.delivery_id)
         .bind(payload.courier_id)
@@ -2556,6 +2595,8 @@ impl DeliveryRepository {
     }
 
     /// Liste les coursiers disponibles proches d'un point cible
+    /// ✅ Phase 1: Utilise la fonction SQL optimisée find_nearby_couriers si disponible
+    /// Sinon, utilise l'ancienne méthode avec QueryBuilder
     pub async fn list_matching_candidates(
         &self,
         pickup: GeoPoint,
@@ -2564,6 +2605,30 @@ impl DeliveryRepository {
         max_distance_meters: Option<f64>,
         passenger_mode: bool,
     ) -> AppResult<Vec<CourierMatchingCandidate>> {
+        // ✅ Phase 1: Essayer d'utiliser la fonction SQL optimisée d'abord
+        let use_optimized_function = std::env::var("DELIVERY_USE_OPTIMIZED_MATCHING")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse()
+            .unwrap_or(true);
+
+        // Cloner pickup pour pouvoir l'utiliser après le passage à find_nearby_couriers_optimized
+        let pickup_clone = GeoPoint {
+            latitude: pickup.latitude,
+            longitude: pickup.longitude,
+        };
+
+        if use_optimized_function {
+            if let Ok(candidates) = self
+                .find_nearby_couriers_optimized(pickup, zone_id, limit, max_distance_meters)
+                .await
+            {
+                return Ok(candidates);
+            }
+            // Si la fonction optimisée échoue, fallback sur l'ancienne méthode
+            log::debug!("[DeliveryRepository] Fonction optimisée non disponible, fallback sur méthode classique");
+        }
+
+        // Ancienne méthode (fallback)
         let mut builder = QueryBuilder::<Postgres>::new(
             "
             SELECT
@@ -2583,9 +2648,9 @@ impl DeliveryRepository {
                         cas.location,
                         ST_SetSRID(ST_MakePoint(",
         );
-        builder.push_bind(pickup.longitude);
+        builder.push_bind(pickup_clone.longitude);
         builder.push(", ");
-        builder.push_bind(pickup.latitude);
+        builder.push_bind(pickup_clone.latitude);
         builder.push(
             "), 4326)::geography
                     )
@@ -2622,9 +2687,9 @@ impl DeliveryRepository {
             builder.push(
                 " AND (cas.location IS NULL OR ST_Distance(cas.location, ST_SetSRID(ST_MakePoint(",
             );
-            builder.push_bind(pickup.longitude);
+            builder.push_bind(pickup_clone.longitude);
             builder.push(", ");
-            builder.push_bind(pickup.latitude);
+            builder.push_bind(pickup_clone.latitude);
             builder.push("), 4326)::geography) <= ");
             builder.push_bind(max_distance);
             builder.push(")");
@@ -2641,19 +2706,90 @@ impl DeliveryRepository {
         Ok(rows)
     }
 
+    /// ✅ Phase 1: Fonction optimisée utilisant find_nearby_couriers SQL
+    pub async fn find_nearby_couriers_optimized(
+        &self,
+        pickup: GeoPoint,
+        zone_id: Option<Uuid>,
+        limit: i64,
+        max_distance_meters: Option<f64>,
+    ) -> AppResult<Vec<CourierMatchingCandidate>> {
+        let radius_meters = max_distance_meters.unwrap_or(5000.0) as i32;
+        let max_results = limit.max(1).min(50) as i32; // Limiter à 50 max
+
+        #[derive(FromRow)]
+        struct NearbyCourierRow {
+            courier_id: Uuid,
+            user_id: i32,
+            distance_meters: Option<f64>,
+            load_factor: BigDecimal,
+            active_deliveries: i16,
+            max_capacity: i16,
+            engine_type: Option<DeliveryEngineType>,
+            is_primary: Option<bool>,
+        }
+
+        let rows: Vec<NearbyCourierRow> = sqlx::query_as(
+            r#"
+            SELECT 
+                courier_id,
+                user_id,
+                distance_meters,
+                load_factor,
+                active_deliveries,
+                max_capacity,
+                engine_type,
+                is_primary
+            FROM find_nearby_couriers($1, $2, $3, $4, $5)
+            "#,
+        )
+        .bind(pickup.latitude as f32)
+        .bind(pickup.longitude as f32)
+        .bind(radius_meters)
+        .bind(max_results)
+        .bind(zone_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Convertir en CourierMatchingCandidate
+        let candidates: Vec<CourierMatchingCandidate> = rows
+            .into_iter()
+            .map(|row| {
+                // Récupérer les données depuis courier_availability_snapshots pour les champs manquants
+                CourierMatchingCandidate {
+                    courier_id: row.courier_id,
+                    zone_id,
+                    active_deliveries: row.active_deliveries,
+                    max_capacity: row.max_capacity,
+                    load_factor: row.load_factor,
+                    latitude: None, // Sera rempli si nécessaire
+                    longitude: None,
+                    captured_at: Utc::now(), // Approximation
+                    capacity_weight: row.is_primary.map(|p| if p { 10 } else { 5 }).unwrap_or(5),
+                    is_primary: row.is_primary.unwrap_or(false),
+                    distance_meters: row.distance_meters,
+                    metadata: serde_json::json!({
+                        "engine_type": row.engine_type.map(|e| format!("{:?}", e)),
+                        "user_id": row.user_id,
+                    }),
+                }
+            })
+            .collect();
+
+        Ok(candidates)
+    }
+
     /// Associe définitivement un coursier à la livraison
     pub async fn assign_delivery_courier(
         &self,
         delivery_id: Uuid,
         courier_id: Uuid,
     ) -> AppResult<()> {
-        sqlx::query(
-            "UPDATE deliveries SET courier_id = $2, updated_at = NOW() WHERE id = $1"
-        )
-        .bind(delivery_id)
-        .bind(courier_id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE deliveries SET courier_id = $2, updated_at = NOW() WHERE id = $1")
+            .bind(delivery_id)
+            .bind(courier_id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }
@@ -2663,7 +2799,7 @@ impl DeliveryRepository {
         struct RecipientTrackingTokenRow {
             recipient_tracking_token: Option<Uuid>,
         }
-        
+
         let row: RecipientTrackingTokenRow = sqlx::query_as(
             r#"
             UPDATE deliveries
@@ -2671,7 +2807,7 @@ impl DeliveryRepository {
                 updated_at = NOW()
             WHERE id = $1
             RETURNING recipient_tracking_token
-            "#
+            "#,
         )
         .bind(delivery_id)
         .fetch_one(&self.pool)
@@ -2688,7 +2824,7 @@ impl DeliveryRepository {
             SET metadata = COALESCE(metadata, '{}'::jsonb) || $2,
                 updated_at = NOW()
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(delivery_id)
         .bind(patch)
@@ -2706,7 +2842,7 @@ impl DeliveryRepository {
         struct DeliveryIdRow {
             id: Uuid,
         }
-        
+
         let row: Option<DeliveryIdRow> = sqlx::query_as(
             r#"
             SELECT id
@@ -2714,7 +2850,7 @@ impl DeliveryRepository {
             WHERE recipient_tracking_token = $1
                OR tracking_token = $1
             LIMIT 1
-            "#
+            "#,
         )
         .bind(token)
         .fetch_optional(&self.pool)
@@ -2746,24 +2882,27 @@ impl DeliveryRepository {
               AND next_attempt_at <= NOW()
             ORDER BY priority ASC, next_attempt_at ASC
             LIMIT $1
-            "#
+            "#,
         )
         .bind(limit.max(1))
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|row| DeliveryMatchingQueueItem {
-            id: row.id,
-            delivery_id: row.delivery_id,
-            zone_id: row.zone_id,
-            status: row.status,
-            priority: row.priority,
-            attempt_count: row.attempt_count,
-            payload: row.payload,
-            next_attempt_at: row.next_attempt_at,
-            enqueued_at: row.enqueued_at,
-            updated_at: row.updated_at,
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|row| DeliveryMatchingQueueItem {
+                id: row.id,
+                delivery_id: row.delivery_id,
+                zone_id: row.zone_id,
+                status: row.status,
+                priority: row.priority,
+                attempt_count: row.attempt_count,
+                payload: row.payload,
+                next_attempt_at: row.next_attempt_at,
+                enqueued_at: row.enqueued_at,
+                updated_at: row.updated_at,
+            })
+            .collect())
     }
 
     /// Ajoute ou met à jour une note client -> coursier
@@ -2797,7 +2936,7 @@ impl DeliveryRepository {
                 tags,
                 comment,
                 created_at
-            "#
+            "#,
         )
         .bind(payload.delivery_id)
         .bind(payload.courier_id)
@@ -2852,7 +2991,7 @@ impl DeliveryRepository {
                 tags,
                 comment,
                 created_at
-            "#
+            "#,
         )
         .bind(payload.delivery_id)
         .bind(payload.client_id)

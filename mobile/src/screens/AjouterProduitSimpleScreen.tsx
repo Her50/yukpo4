@@ -359,21 +359,21 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     // Cela garantit que toutes les données sont chargées depuis le produit existant
     const initialFormValues = {
         // ✅ PRIORITÉ 1: prefill (données du produit existant pour édition/duplication)
-        // En mode edit/duplicate, utiliser TOUJOURS le prefill (même si vide), sinon utiliser fallback
+        // En mode edit/duplicate, utiliser TOUJOURS le prefill, avec fallback intelligent si vide
         nom_produit: (isEditing || isDuplicate)
-            ? (prefill.nom_produit !== undefined ? prefill.nom_produit : '')
+            ? (prefill.nom_produit !== undefined && prefill.nom_produit !== null ? String(prefill.nom_produit) : (nom_produit || ''))
             : (prefill.nom_produit ?? nom_produit ?? ''),
         categorie_produit: (isEditing || isDuplicate)
-            ? (prefill.categorie_produit !== undefined ? prefill.categorie_produit : '')
+            ? (prefill.categorie_produit !== undefined && prefill.categorie_produit !== null ? String(prefill.categorie_produit) : (categorie_produit || ''))
             : (prefill.categorie_produit ?? categorie_produit ?? ''),
         description_produit: (isEditing || isDuplicate)
-            ? (prefill.description_produit !== undefined ? prefill.description_produit : '')
+            ? (prefill.description_produit !== undefined && prefill.description_produit !== null ? String(prefill.description_produit) : (description_produit || ''))
             : (prefill.description_produit ?? description_produit ?? ''),
         prix_produit: (isEditing || isDuplicate)
-            ? (prefill.prix_produit !== undefined ? prefill.prix_produit : '')
+            ? (prefill.prix_produit !== undefined && prefill.prix_produit !== null && prefill.prix_produit !== '' ? String(prefill.prix_produit) : (prix_produit || ''))
             : (prefill.prix_produit ?? prix_produit ?? ''),
         devise_produit: (isEditing || isDuplicate)
-            ? (prefill.devise_produit !== undefined ? prefill.devise_produit : initialCurrency)
+            ? (prefill.devise_produit !== undefined && prefill.devise_produit !== null && prefill.devise_produit !== '' ? String(prefill.devise_produit).toUpperCase() : initialCurrency)
             : (prefill.devise_produit ?? initialCurrency),
         variabilite_prix: (isEditing || isDuplicate)
             ? (prefill.variabilite_prix !== undefined ? prefill.variabilite_prix : (prefill.price_variant || null))
@@ -382,23 +382,36 @@ const AjouterProduitSimpleScreen: React.FC = () => {
             ? (prefill.price_variant !== undefined ? prefill.price_variant : (prefill.variabilite_prix || null))
             : (initialPriceVariant || prefill.variabilite_prix || prefill.price_variant || null),
         // ✅ CORRIGÉ: Pour produits, utiliser prefill.produits si disponible (mode edit/duplicate)
+        // En mode edit/duplicate, utiliser TOUJOURS prefill.produits (même si vide), avec fallback intelligent
         produits: (isEditing || isDuplicate)
-            ? (prefill.produits !== undefined
-                ? (Array.isArray(prefill.produits) ? prefill.produits : [])
-                : initialProduitsValues)
+            ? (prefill.produits !== undefined && prefill.produits !== null
+                ? (Array.isArray(prefill.produits) ? prefill.produits : (prefill.produits ? [prefill.produits] : []))
+                : (initialProduitsValues.length > 0 ? initialProduitsValues : []))
             : initialProduitsValues,
         // ✅ CORRECTION: Utiliser sous_caracteristiques depuis prefill en priorité pour edit/duplicate
+        // En mode edit/duplicate, utiliser TOUJOURS prefill.sous_caracteristiques (même si vide), avec fallback intelligent
         sous_caracteristiques: (isEditing || isDuplicate)
-            ? (prefill.sous_caracteristiques !== undefined ? prefill.sous_caracteristiques : {})
+            ? (prefill.sous_caracteristiques !== undefined && prefill.sous_caracteristiques !== null
+                ? (typeof prefill.sous_caracteristiques === 'object' && !Array.isArray(prefill.sous_caracteristiques)
+                    ? prefill.sous_caracteristiques
+                    : {})
+                : (sous_caracteristiques && typeof sous_caracteristiques === 'object' && Object.keys(sous_caracteristiques).length > 0
+                    ? sous_caracteristiques
+                    : {}))
             : (prefill.sous_caracteristiques || sous_caracteristiques || {}),
         lieu_produit: (isEditing || isDuplicate)
             ? (prefill.lieu_produit !== undefined ? prefill.lieu_produit : null)
             : (prefill.lieu_produit ?? lieu_produit ?? null),
+        // ✅ NOUVEAU: Quantité disponible (uniquement pour les produits)
+        quantite_disponible: (isEditing || isDuplicate)
+            ? (prefill.quantite_disponible !== undefined ? prefill.quantite_disponible : (prefill.stock !== undefined ? prefill.stock : null))
+            : (prefill.quantite_disponible ?? prefill.stock ?? null),
         // ✅ CRITIQUE: Pour les médias, utiliser prefill en priorité pour edit/duplicate
-        images: (isEditing || isDuplicate) && prefilledImages.length > 0 ? prefilledImages : initialProductImages,
-        videos: (isEditing || isDuplicate) && prefilledVideos.length > 0 ? prefilledVideos : initialProductVideos,
-        audios: (isEditing || isDuplicate) && prefilledAudios.length > 0 ? prefilledAudios : initialProductAudios,
-        documents: (isEditing || isDuplicate) && prefilledDocuments.length > 0 ? prefilledDocuments : initialProductDocuments,
+        // En mode edit/duplicate, utiliser TOUJOURS les médias du prefill (même si vides)
+        images: (isEditing || isDuplicate) ? prefilledImages : initialProductImages,
+        videos: (isEditing || isDuplicate) ? prefilledVideos : initialProductVideos,
+        audios: (isEditing || isDuplicate) ? prefilledAudios : initialProductAudios,
+        documents: (isEditing || isDuplicate) ? prefilledDocuments : initialProductDocuments,
         characteristic_vector: prefill.characteristic_vector ?? suggestionData?.characteristic_vector ?? null,
         combinaison_brute: prefill.combinaison_brute ?? suggestionData?.combinaison_brute ?? null,
         // ✅ NOUVEAU: Initialiser product_vector et product_labels depuis prefill en priorité
@@ -867,6 +880,18 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     }
                                 });
 
+                                // ✅ Ajouter le stock si quantite_disponible est défini
+                                // ✅ Note: Validation backend dans creer_service.rs (sécurité ultime)
+                                if (formValues.quantite_disponible !== null && formValues.quantite_disponible !== undefined && formValues.quantite_disponible !== '') {
+                                    const stockValue = typeof formValues.quantite_disponible === 'number'
+                                        ? formValues.quantite_disponible
+                                        : parseInt(String(formValues.quantite_disponible), 10);
+                                    if (!isNaN(stockValue) && stockValue >= 0) {
+                                        nouveauProduit.stock = stockValue;
+                                        nouveauProduit.quantite_disponible = stockValue; // Alias pour compatibilité
+                                    }
+                                }
+
                                 const combinationString = (() => {
                                     if (Array.isArray(formValues.produits)) {
                                         const firstString = formValues.produits.find((entry: any) => typeof entry === 'string');
@@ -1244,6 +1269,34 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 inputStyle={styles.descriptionInputText}
                             />
                         </View>
+
+                        {/* ✅ NOUVEAU: Quantité disponible (uniquement pour les produits) */}
+                        {!isPrestation && (
+                            <View style={{ marginBottom: 12 }}>
+                                <Text style={{ fontSize: 12, color: modernColors.textSecondary, marginBottom: 4, fontStyle: 'italic' }}>
+                                    ⚠️ Quantité obligatoire pour les produits
+                                </Text>
+                                <Text style={{ fontSize: 11, color: modernColors.textSecondary, marginBottom: 8 }}>
+                                    La gestion du stock permet d'éviter les ventes de produits épuisés et d'améliorer l'expérience de vos clients.
+                                </Text>
+                            </View>
+                        )}
+                        {!isPrestation && (
+                            <View style={styles.fieldGroup}>
+                                <Text style={styles.label}>Quantité disponible</Text>
+                                <NativeInput
+                                    placeholder="Ex: 50"
+                                    value={formValues.quantite_disponible?.toString() || ''}
+                                    onChangeText={(text) => {
+                                        const numValue = text.trim() === '' ? null : parseInt(text, 10);
+                                        handleFieldChange('quantite_disponible', isNaN(numValue as any) ? null : numValue);
+                                    }}
+                                    keyboardType="numeric"
+                                    style={styles.fieldInput}
+                                />
+                                <Text style={styles.helperText}>Nombre d'unités disponibles en stock</Text>
+                            </View>
+                        )}
 
                         {/* Caractéristiques (Autocomplete) - IDENTIQUE AU GRAND FORMULAIRE */}
                         <View style={styles.fieldGroup}>

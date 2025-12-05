@@ -41,7 +41,7 @@ L'endpoint `/api/weather/config` doit retourner :
 ### Variable d'environnement backend
 Assurez-vous que votre fichier `.env` du backend contient :
 ```bash
-OPENWEATHER_API_KEY=votre_cle_api_openweathermap
+OPENWEATHERMAP_API_KEY=votre_cle_api_openweathermap
 ```
 
 ### URL du backend dans le mobile
@@ -66,7 +66,7 @@ npm run dev
 ## 🐛 Dépannage
 
 ### Problème : "API key manquante"
-- Vérifiez que `OPENWEATHER_API_KEY` est définie dans le backend
+- Vérifiez que `OPENWEATHERMAP_API_KEY` est définie dans le backend
 - Redémarrez le backend après modification du `.env`
 
 ### Problème : "Erreur de connexion"

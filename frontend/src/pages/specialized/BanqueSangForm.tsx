@@ -6,7 +6,7 @@ import axios from 'axios';
 import { ArrowLeft, Droplet, Heart, Phone } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { buildUrl } from '../config/api.config';
 
 const GROUPES_SANGUINS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
@@ -14,8 +14,9 @@ const GROUPES_SANGUINS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 export default function BanqueSangForm() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { serviceId: serviceIdParam } = useParams<{ serviceId?: string }>();
     const { user } = useUser();
-    const serviceId = location.state?.serviceId;
+    const serviceId = serviceIdParam ? parseInt(serviceIdParam, 10) : (location.state?.serviceId as number | undefined);
     const hopitalId = location.state?.hopitalId; // Optionnel
 
     const [formData, setFormData] = useState({

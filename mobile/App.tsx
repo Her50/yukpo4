@@ -5,7 +5,6 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { initObservability } from './src/observability';
-import { remoteLoggingService } from './src/services/remoteLoggingService';
 
 initObservability();
 
@@ -25,6 +24,7 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { DeliveryProvider } from './src/contexts/DeliveryContext';
 import { FeatureFlagProvider } from './src/contexts/FeatureFlagContext';
 import { ShoppingProvider } from './src/contexts/ShoppingContext';
+import { ThemeProvider } from './src/contexts/ThemeContext';
 import { WebSocketProvider } from './src/contexts/WebSocketContext';
 import { TOUS_LES_PAYS } from './src/data/africanLocations'; // ✅ OPTIMISATION 5
 import AppNavigator from './src/navigation/AppNavigator';
@@ -78,36 +78,38 @@ export default function App() {
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <PaperProvider theme={theme}>
-            <AuthProvider>
-              <RemoteLoggingInitializer />
-              <WebSocketProvider>
-                <FeatureFlagProvider>
-                  <DeliveryProvider>
-                    <ShoppingProvider>
-                      <StatusBar style="auto" />
-                      <GPSTrackingManager />
-                      <NavigationContainer
-                        linking={linking}
-                        fallback={null}
-                        onReady={() => {
-                          console.log('[NavigationContainer] ✅ Navigation prête avec Deep Linking');
-                        }}
-                        onStateChange={() => {
-                          console.log('[NavigationContainer] 📍 Navigation changée');
-                        }}
-                        onUnhandledAction={(action: any) => {
-                          console.warn('[NavigationContainer] ⚠️ Action non gérée:', action);
-                        }}
-                      >
-                        <AppNavigator />
-                      </NavigationContainer>
-                    </ShoppingProvider>
-                  </DeliveryProvider>
-                </FeatureFlagProvider>
-              </WebSocketProvider>
-            </AuthProvider>
-          </PaperProvider>
+          <ThemeProvider>
+            <PaperProvider theme={theme}>
+              <AuthProvider>
+                <RemoteLoggingInitializer />
+                <WebSocketProvider>
+                  <FeatureFlagProvider>
+                    <DeliveryProvider>
+                      <ShoppingProvider>
+                        <StatusBar style="auto" />
+                        <GPSTrackingManager />
+                        <NavigationContainer
+                          linking={linking}
+                          fallback={null}
+                          onReady={() => {
+                            console.log('[NavigationContainer] ✅ Navigation prête avec Deep Linking');
+                          }}
+                          onStateChange={() => {
+                            console.log('[NavigationContainer] 📍 Navigation changée');
+                          }}
+                          onUnhandledAction={(action: any) => {
+                            console.warn('[NavigationContainer] ⚠️ Action non gérée:', action);
+                          }}
+                        >
+                          <AppNavigator />
+                        </NavigationContainer>
+                      </ShoppingProvider>
+                    </DeliveryProvider>
+                  </FeatureFlagProvider>
+                </WebSocketProvider>
+              </AuthProvider>
+            </PaperProvider>
+          </ThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>

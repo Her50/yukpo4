@@ -192,12 +192,29 @@ FORMAT DE SORTIE (JSON STRICT - PAS DE MARKDOWN):
     "search_query_semantic": "Description naturelle complète et détaillée du produit avec contexte pour matching sémantique intelligent"
 }}
 
+CONTRAINTES:
+- description: string détaillée (50-500 caractères)
+- tags: tableau de strings (minimum 3, maximum 20)
+- category_detected: string (catégorie valide)
+- marque: string ou null
+- couleurs: tableau de strings (minimum 1)
+- caracteristiques_cles: objet avec clés string et valeurs string
+- confiance: nombre entre 0.0 et 1.0
+- search_query_exact: string (3-5 mots)
+- search_query_broad: string (8-15 mots)
+- search_query_semantic: string (15-30 mots)
+
 CRITÈRES DE QUALITÉ:
 - search_query_exact: 3-5 mots ultra-précis, unique au produit
 - search_query_broad: 8-15 mots incluant TOUS les synonymes pertinents
 - search_query_semantic: Phrase complète de 15-30 mots, naturelle et descriptive
 
-IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#,
+IMPORTANT:
+- Retourne UNIQUEMENT du JSON valide
+- Pas de texte avant ou après le JSON
+- Pas de markdown (```json```)
+- Pas de commentaires dans le JSON
+- Tous les nombres doivent être des nombres (pas de strings)"#,
             mode_instruction,
             category_instruction,
             category.unwrap_or("detection_auto")

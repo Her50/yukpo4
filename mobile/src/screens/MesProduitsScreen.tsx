@@ -1600,28 +1600,37 @@ const MesProduitsScreen: React.FC = () => {
         const categorieRaw = product.categorie_produit || product.categorie || product.category;
         const descriptionRaw = product.description || product.description_produit;
 
-        // ✅ CORRECTION: Ne pas écraser si déjà présent dans prefill, mais toujours extraire correctement
-        if (!prefill.nom_produit || prefill.nom_produit === '') {
-            const nomValue = extractValue(nomRaw);
-            prefill.nom_produit = nomValue !== undefined && nomValue !== null
-                ? (typeof nomValue === 'string' ? nomValue : String(nomValue))
-                : (typeof nomRaw === 'string' ? nomRaw : '');
+        // ✅ CORRECTION: Toujours extraire et définir les valeurs, même si elles sont vides
+        // Cela garantit que les champs sont toujours présents dans le prefill
+        const nomValue = extractValue(nomRaw);
+        if (nomValue !== undefined && nomValue !== null && String(nomValue).trim().length > 0) {
+            prefill.nom_produit = typeof nomValue === 'string' ? nomValue : String(nomValue);
+        } else if (typeof nomRaw === 'string' && nomRaw.trim().length > 0) {
+            prefill.nom_produit = nomRaw.trim();
+        } else if (!prefill.nom_produit) {
+            prefill.nom_produit = '';
         }
-        if (!prefill.categorie_produit || prefill.categorie_produit === '') {
-            const categorieValue = extractValue(categorieRaw);
-            prefill.categorie_produit = categorieValue !== undefined && categorieValue !== null
-                ? (typeof categorieValue === 'string' ? categorieValue : String(categorieValue))
-                : (typeof categorieRaw === 'string' ? categorieRaw : '');
+
+        const categorieValue = extractValue(categorieRaw);
+        if (categorieValue !== undefined && categorieValue !== null && String(categorieValue).trim().length > 0) {
+            prefill.categorie_produit = typeof categorieValue === 'string' ? categorieValue : String(categorieValue);
+        } else if (typeof categorieRaw === 'string' && categorieRaw.trim().length > 0) {
+            prefill.categorie_produit = categorieRaw.trim();
+        } else if (!prefill.categorie_produit) {
+            prefill.categorie_produit = '';
         }
-        if (!prefill.description_produit || prefill.description_produit === '') {
-            const descriptionValue = extractValue(descriptionRaw);
-            prefill.description_produit = descriptionValue !== undefined && descriptionValue !== null
-                ? (typeof descriptionValue === 'string' ? descriptionValue : String(descriptionValue))
-                : (typeof descriptionRaw === 'string' ? descriptionRaw : '');
+
+        const descriptionValue = extractValue(descriptionRaw);
+        if (descriptionValue !== undefined && descriptionValue !== null && String(descriptionValue).trim().length > 0) {
+            prefill.description_produit = typeof descriptionValue === 'string' ? descriptionValue : String(descriptionValue);
+        } else if (typeof descriptionRaw === 'string' && descriptionRaw.trim().length > 0) {
+            prefill.description_produit = descriptionRaw.trim();
+        } else if (!prefill.description_produit) {
+            prefill.description_produit = '';
         }
 
         // ✅ CORRECTION: Extraire prix depuis objets structurés
-        // Ne pas écraser si déjà présent dans prefill, mais toujours extraire correctement
+        // Toujours définir le prix, même s'il est vide ou 0
         if (!prefill.prix_produit || prefill.prix_produit === '' || prefill.prix_produit === '0') {
             const prixRaw = product.prix_produit || product.prix;
             const prixValue = extractValue(prixRaw);
@@ -1634,14 +1643,21 @@ const MesProduitsScreen: React.FC = () => {
                 prefill.prix_produit = typeof product.prix === 'number'
                     ? product.prix.toString()
                     : (typeof product.prix === 'string' ? product.prix : String(product.prix));
+            } else {
+                prefill.prix_produit = '';
             }
         }
 
         // ✅ CORRECTION: Extraire devise depuis objets structurés
-        // Ne pas écraser si déjà présent dans prefill
+        // Toujours définir la devise, avec fallback sur XAF
         if (!prefill.devise_produit) {
             const deviseRaw = product.devise_produit || product.devise;
-            prefill.devise_produit = extractValue(deviseRaw) || (typeof deviseRaw === 'string' ? deviseRaw : 'XAF');
+            const deviseValue = extractValue(deviseRaw);
+            prefill.devise_produit = (deviseValue && typeof deviseValue === 'string' && deviseValue.trim().length > 0)
+                ? deviseValue.trim().toUpperCase()
+                : (typeof deviseRaw === 'string' && deviseRaw.trim().length > 0)
+                    ? deviseRaw.trim().toUpperCase()
+                    : 'XAF';
         }
 
         // ✅ CORRECTION CRITIQUE: Extraire lieu_produit depuis objets structurés avec tous les fallbacks
@@ -1680,14 +1696,17 @@ const MesProduitsScreen: React.FC = () => {
             }
         }
 
+        // ✅ CORRECTION: Toujours définir produits, même si vide
         if (produitsExtracted) {
-            prefill.produits = produitsExtracted;
+            prefill.produits = Array.isArray(produitsExtracted) ? produitsExtracted : [produitsExtracted];
         } else if (Array.isArray(product.produits)) {
             prefill.produits = product.produits;
         } else if (product.combinaison_brute) {
             prefill.produits = [product.combinaison_brute];
-        } else if (Array.isArray(product.characteristic_vector)) {
+        } else if (Array.isArray(product.characteristic_vector) && product.characteristic_vector.length > 0) {
             prefill.produits = [product.characteristic_vector.filter(Boolean).join(', ')];
+        } else if (!prefill.produits) {
+            prefill.produits = [];
         }
 
         // ✅ CORRECTION CRITIQUE: Gestion des sous-caractéristiques avec extraction
@@ -1702,11 +1721,12 @@ const MesProduitsScreen: React.FC = () => {
             }
         }
 
-        if (sousCaracsExtracted) {
+        // ✅ CORRECTION: Toujours définir sous_caracteristiques, même si vide
+        if (sousCaracsExtracted && typeof sousCaracsExtracted === 'object' && Object.keys(sousCaracsExtracted).length > 0) {
             prefill.sous_caracteristiques = sousCaracsExtracted;
-        } else if (product.sous_caracteristiques) {
+        } else if (product.sous_caracteristiques && typeof product.sous_caracteristiques === 'object' && Object.keys(product.sous_caracteristiques).length > 0) {
             prefill.sous_caracteristiques = product.sous_caracteristiques;
-        } else if (Array.isArray(product.product_labels) && Array.isArray(product.characteristic_vector)) {
+        } else if (Array.isArray(product.product_labels) && Array.isArray(product.characteristic_vector) && product.product_labels.length > 0 && product.characteristic_vector.length > 0) {
             const map: Record<string, string[]> = {};
             product.product_labels.forEach((label: string, index: number) => {
                 const value = product.characteristic_vector[index];
@@ -1722,7 +1742,11 @@ const MesProduitsScreen: React.FC = () => {
             });
             if (Object.keys(map).length > 0) {
                 prefill.sous_caracteristiques = map;
+            } else if (!prefill.sous_caracteristiques) {
+                prefill.sous_caracteristiques = {};
             }
+        } else if (!prefill.sous_caracteristiques) {
+            prefill.sous_caracteristiques = {};
         }
 
         // ✅ CORRECTION CRITIQUE: Extraire variabilite_prix depuis objets structurés

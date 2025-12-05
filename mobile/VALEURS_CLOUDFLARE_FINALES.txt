@@ -1,0 +1,43 @@
+Valeurs exactes pour mobile/.env (Cloudflare uniquement)
+
+==================================================
+FICHIER mobile/.env
+==================================================
+
+# Configuration CDN Cloudflare
+EXPO_PUBLIC_CDN_CLOUDFLARE_URL=https://cdn.yukpomnang.com
+
+# Wasabi Direct (fallback si Cloudflare indisponible)
+EXPO_PUBLIC_WASABI_DIRECT_URL=https://yukpo-video-prod.s3.eu-central-1.wasabisys.com
+
+# Variables existantes (garder)
+EXPO_PUBLIC_API_BASE_URL=https://yukpomnang.onrender.com
+EXPO_PUBLIC_DEV_MODE=false
+EXPO_PUBLIC_DEBUG_TRANSLATION=false
+EXPO_PUBLIC_ENVIRONMENT=production
+
+==================================================
+OÙ TROUVER CES VALEURS
+==================================================
+
+1. EXPO_PUBLIC_CDN_CLOUDFLARE_URL
+   → Cloudflare Dashboard → yukpomnang.com → DNS
+   → Cherchez CNAME "cdn"
+   → URL : https://cdn.yukpomnang.com
+
+2. EXPO_PUBLIC_WASABI_DIRECT_URL
+   → Déjà configuré : https://yukpo-video-prod.s3.eu-central-1.wasabisys.com
+   → (Bucket Wasabi pour vos vidéos)
+
+==================================================
+NOTE IMPORTANTE
+==================================================
+
+Vous n'avez PAS BESOIN des variables CloudFront si vous utilisez uniquement Cloudflare :
+- ❌ EXPO_PUBLIC_CDN_CLOUDFRONT_US_URL (pas nécessaire)
+- ❌ EXPO_PUBLIC_CDN_CLOUDFRONT_EU_URL (pas nécessaire)
+
+==================================================
+
+
+

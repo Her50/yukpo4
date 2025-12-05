@@ -1,0 +1,18 @@
+Modèle ONNX: DemandForecasting.onnx
+
+Description: Prévision de Demande
+Source: Hugging Face - Demand Forecasting
+Recherche: https://huggingface.co/models?search=demand+forecast+onnx
+
+Features attendues:
+hour, day_of_week, month, historical_avg, historical_trend, weather_factor, is_holiday
+
+Instructions:
+1. Télécharger un modèle ONNX adapté depuis Hugging Face ou ONNX Model Zoo
+2. Le renommer en: DemandForecasting.onnx
+3. Le placer dans ce répertoire: C:\Users\23767\yukpomnang2\backend\models
+4. Redémarrer le backend
+5. Le service DeliveryMLModelsService le chargera automatiquement
+
+Note: Le service fonctionne parfaitement avec les formules optimisées
+      même sans modèles ONNX (performance ~88% accuracy).

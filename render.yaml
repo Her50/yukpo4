@@ -1,25 +1,73 @@
+# ✅ NOUVEAU 2025-12-02: Configuration Render pour scaling horizontal
+# Load balancer automatique avec plusieurs instances
+
 services:
   - type: web
     name: yukpomnang-backend
     env: rust
-    buildCommand: chmod +x backend/build.sh && ./backend/build.sh
+    plan: standard
+    # ✅ NOUVEAU 2025-12-02: Scaling horizontal - 3 instances avec load balancing automatique
+    numInstances: 3
+    buildCommand: |
+      apt-get update && \
+      apt-get install -y wget xz-utils && \
+      wget https://download.blender.org/release/Blender4.0/blender-4.0.0-linux-x64.tar.xz && \
+      tar -xf blender-4.0.0-linux-x64.tar.xz && \
+      mv blender-4.0.0-linux-x64 /opt/blender && \
+      rm blender-4.0.0-linux-x64.tar.xz && \
+      ln -s /opt/blender/blender /usr/local/bin/blender && \
+      chmod +x /opt/blender/blender && \
+      blender --version && \
+      cd backend && cargo build --release
     startCommand: cd backend && ./target/release/yukpomnang_backend
     envVars:
       - key: DATABASE_URL
         sync: false
-      - key: RUST_LOG
-        value: info
-      - key: LOG_FORMAT
-        value: json
-      - key: SQLX_OFFLINE
-        value: true
-      - key: LANG
-        value: fr_FR.UTF-8
-      - key: LC_ALL
-        value: fr_FR.UTF-8
-      - key: GOOGLE_MAPS_API_KEY
-        sync: false  # À configurer manuellement dans Render Dashboard
-    healthCheckPath: /healthz
-    autoDeploy: true
-    branch: master
-    rootDir: /
+      # ✅ NOUVEAU 2025-12-02: Variables optionnelles - NE PAS CONFIGURER si non disponibles
+      # L'application fonctionne parfaitement sans ces variables (utilise master PostgreSQL et Redis standalone)
+      # - key: DATABASE_READ_REPLICA_URL
+      #   sync: false
+      #   # ✅ Optionnel: URL du read replica PostgreSQL
+      #   # Valeur par défaut: LAISSER VIDE (utilise DATABASE_URL/master)
+      #   # Configurer seulement si vous avez un read replica configuré
+      - key: REDIS_URL
+        sync: false
+      # - key: REDIS_CLUSTER_NODES
+      #   sync: false
+      #   # ✅ Optionnel: URLs des nœuds Redis cluster (séparées par virgule)
+      #   # Valeur par défaut: LAISSER VIDE (utilise REDIS_URL/standalone)
+      #   # Exemple: redis://node1:6379,redis://node2:6379,redis://node3:6379
+      #   # Configurer seulement si vous avez un Redis cluster configuré
+      - key: MONGODB_URL
+        sync: false
+      - key: ENABLE_AI_OPTIMIZATIONS
+        value: "true"
+      - key: CACHE_TTL
+        value: "600" # 10 minutes
+      - key: RATE_LIMIT_IP
+        value: "200"
+      # 🎨 Blender Configuration (pour rendu 3D AR)
+      - key: BLENDER_PATH
+        value: "/usr/local/bin/blender"
+      - key: BLENDER_RENDER_SAMPLES
+        value: "256"
+      - key: BLENDER_USE_GPU
+        value: "false"
+        # ⚠️ IMPORTANT: Render.com ne supporte pas GPU, utiliser CPU uniquement
+      - key: AR_RENDER_OUTPUT_DIR
+        value: "/tmp/ar_renders"
+    healthCheckPath: /api/ping
+    # ✅ NOUVEAU 2025-12-02: Health check pour load balancer
+    # Le load balancer vérifie automatiquement la santé de chaque instance
+
+# ✅ NOUVEAU 2025-12-02: Base de données PostgreSQL avec read replica
+databases:
+  - name: yukpo_db
+    plan: standard
+    # ✅ Note: Render ne supporte pas directement les read replicas
+    # Pour read replicas, utiliser un service PostgreSQL externe (AWS RDS, etc.)
+    # ou configurer manuellement la réplication streaming PostgreSQL
+
+# ✅ NOUVEAU 2025-12-02: Redis (optionnel - peut être externe)
+# Si vous utilisez Redis cluster externe, configurez REDIS_CLUSTER_NODES
+# Si vous utilisez Redis standalone, configurez REDIS_URL

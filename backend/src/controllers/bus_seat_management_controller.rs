@@ -74,7 +74,7 @@ pub async fn block_seat(
             WHERE p.id::text = $1
                 AND s.user_id = $2
         )
-        "#
+        "#,
     )
     .bind(&payload.product_id)
     .bind(user_id)
@@ -86,26 +86,27 @@ pub async fn block_seat(
     })?;
 
     if !is_owner {
-        return Err(AppError::Forbidden("Vous n'êtes pas propriétaire de cette agence".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de cette agence".to_string(),
+        ));
     }
 
     // Appeler la fonction SQL
     let reason = payload.reason.unwrap_or_else(|| "maintenance".to_string());
-    let result: Value = sqlx::query_scalar(
-        "SELECT block_bus_seat_manually($1, $2, $3, $4, $5, $6)"
-    )
-    .bind(&payload.product_id)
-    .bind(&payload.seat_id)
-    .bind(payload.seat_number)
-    .bind(&reason)
-    .bind(&payload.reason_details)
-    .bind(user_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[block_seat] Erreur: {}", e);
-        AppError::Internal(format!("Erreur blocage place: {}", e))
-    })?;
+    let result: Value =
+        sqlx::query_scalar("SELECT block_bus_seat_manually($1, $2, $3, $4, $5, $6)")
+            .bind(&payload.product_id)
+            .bind(&payload.seat_id)
+            .bind(payload.seat_number)
+            .bind(&reason)
+            .bind(&payload.reason_details)
+            .bind(user_id)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[block_seat] Erreur: {}", e);
+                AppError::Internal(format!("Erreur blocage place: {}", e))
+            })?;
 
     let success = result
         .get("success")
@@ -147,7 +148,7 @@ pub async fn unblock_seat(
             WHERE p.id::text = $1
                 AND s.user_id = $2
         )
-        "#
+        "#,
     )
     .bind(&payload.product_id)
     .bind(user_id)
@@ -159,22 +160,22 @@ pub async fn unblock_seat(
     })?;
 
     if !is_owner {
-        return Err(AppError::Forbidden("Vous n'êtes pas propriétaire de cette agence".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de cette agence".to_string(),
+        ));
     }
 
     // Appeler la fonction SQL
-    let result: Value = sqlx::query_scalar(
-        "SELECT unblock_bus_seat_manually($1, $2, $3)"
-    )
-    .bind(&payload.product_id)
-    .bind(&payload.seat_id)
-    .bind(user_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[unblock_seat] Erreur: {}", e);
-        AppError::Internal(format!("Erreur déblocage place: {}", e))
-    })?;
+    let result: Value = sqlx::query_scalar("SELECT unblock_bus_seat_manually($1, $2, $3)")
+        .bind(&payload.product_id)
+        .bind(&payload.seat_id)
+        .bind(user_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[unblock_seat] Erreur: {}", e);
+            AppError::Internal(format!("Erreur déblocage place: {}", e))
+        })?;
 
     let success = result
         .get("success")
@@ -202,7 +203,10 @@ pub async fn get_blocked_seats(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(product_id): Path<String>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_blocked_seats] User ID: {}, Product ID: {}", user_id, product_id);
+    info!(
+        "[get_blocked_seats] User ID: {}, Product ID: {}",
+        user_id, product_id
+    );
 
     // Vérifier que l'utilisateur est propriétaire de l'agence
     let is_owner: bool = sqlx::query_scalar(
@@ -213,7 +217,7 @@ pub async fn get_blocked_seats(
             WHERE p.id::text = $1
                 AND s.user_id = $2
         )
-        "#
+        "#,
     )
     .bind(&product_id)
     .bind(user_id)
@@ -225,7 +229,9 @@ pub async fn get_blocked_seats(
     })?;
 
     if !is_owner {
-        return Err(AppError::Forbidden("Vous n'êtes pas propriétaire de cette agence".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de cette agence".to_string(),
+        ));
     }
 
     // Récupérer depuis la vue
@@ -246,7 +252,7 @@ pub async fn get_blocked_seats(
         FROM bus_active_seat_blocks
         WHERE product_id = $1
         ORDER BY seat_number ASC
-        "#
+        "#,
     )
     .bind(&product_id)
     .fetch_all(&state.pg)
@@ -263,7 +269,9 @@ pub async fn get_blocked_seats(
             product_id: row.get::<String, _>("product_id"),
             seat_id: row.get::<String, _>("seat_id"),
             seat_number: row.get::<i32, _>("seat_number"),
-            reason: row.get::<Option<String>, _>("reason").unwrap_or_else(|| "maintenance".to_string()),
+            reason: row
+                .get::<Option<String>, _>("reason")
+                .unwrap_or_else(|| "maintenance".to_string()),
             reason_details: row.get::<Option<String>, _>("reason_details"),
             blocked_by: row.get::<i32, _>("blocked_by"),
             blocked_at: row
@@ -276,7 +284,10 @@ pub async fn get_blocked_seats(
         blocks.push(block);
     }
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "blocks": blocks }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "blocks": blocks })),
+    ))
 }
 
 // ============================================================================
@@ -289,7 +300,10 @@ pub async fn get_seat_availability_with_blocks(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(product_id): Path<String>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_seat_availability_with_blocks] User ID: {}, Product ID: {}", user_id, product_id);
+    info!(
+        "[get_seat_availability_with_blocks] User ID: {}, Product ID: {}",
+        user_id, product_id
+    );
 
     // Vérifier que l'utilisateur est propriétaire de l'agence
     let is_owner: bool = sqlx::query_scalar(
@@ -300,33 +314,35 @@ pub async fn get_seat_availability_with_blocks(
             WHERE p.id::text = $1
                 AND s.user_id = $2
         )
-        "#
+        "#,
     )
     .bind(&product_id)
     .bind(user_id)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
-        error!("[get_seat_availability_with_blocks] Erreur vérification propriété: {}", e);
+        error!(
+            "[get_seat_availability_with_blocks] Erreur vérification propriété: {}",
+            e
+        );
         AppError::Internal(format!("Erreur vérification: {}", e))
     })?;
 
     if !is_owner {
-        return Err(AppError::Forbidden("Vous n'êtes pas propriétaire de cette agence".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de cette agence".to_string(),
+        ));
     }
 
     // Appeler la fonction SQL
-    let result: Value = sqlx::query_scalar(
-        "SELECT get_bus_seat_availability_with_blocks($1)"
-    )
-    .bind(&product_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[get_seat_availability_with_blocks] Erreur: {}", e);
-        AppError::Internal(format!("Erreur récupération disponibilité: {}", e))
-    })?;
+    let result: Value = sqlx::query_scalar("SELECT get_bus_seat_availability_with_blocks($1)")
+        .bind(&product_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[get_seat_availability_with_blocks] Erreur: {}", e);
+            AppError::Internal(format!("Erreur récupération disponibilité: {}", e))
+        })?;
 
     Ok((StatusCode::OK, Json(result)))
 }
-

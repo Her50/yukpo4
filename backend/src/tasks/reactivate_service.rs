@@ -15,14 +15,13 @@ pub async fn reactivate_service(
     }
 
     // Récupérer si le service est tarissable
-    let service: ServiceTarissableRow = sqlx::query_as(
-        "SELECT is_tarissable FROM services WHERE id = $1 AND user_id = $2"
-    )
-    .bind(service_id)
-    .bind(user_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::internal_server_error(e.to_string()))?;
+    let service: ServiceTarissableRow =
+        sqlx::query_as("SELECT is_tarissable FROM services WHERE id = $1 AND user_id = $2")
+            .bind(service_id)
+            .bind(user_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::internal_server_error(e.to_string()))?;
 
     // Limitation à 30 jours si tarissable
     let mut days = extra_duration.num_days();
@@ -48,7 +47,7 @@ pub async fn reactivate_service(
          WHERE id = $1
            AND user_id = $2
          RETURNING id, auto_deactivate_at
-        "#
+        "#,
     )
     .bind(service_id)
     .bind(user_id)
@@ -65,13 +64,11 @@ pub async fn reactivate_service(
     }
 
     // Réindexation Pinecone : récupérer les données du service
-    let rec: ServiceDataRow = sqlx::query_as(
-        "SELECT data, gps FROM services WHERE id = $1"
-    )
-    .bind(service_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::internal_server_error(e.to_string()))?;
+    let rec: ServiceDataRow = sqlx::query_as("SELECT data, gps FROM services WHERE id = $1")
+        .bind(service_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::internal_server_error(e.to_string()))?;
     let _data_obj: serde_json::Value = serde_json::from_value(rec.data).unwrap_or_default();
     let gps = rec.gps.and_then(|s| {
         let parts: Vec<&str> = s.split(',').collect();

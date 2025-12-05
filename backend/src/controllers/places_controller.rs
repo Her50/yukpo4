@@ -94,7 +94,8 @@ pub async fn enrich_location(
     .bind(&params.place_name)
     .bind(country_str)
     .fetch_optional(pool)
-    .await {
+    .await
+    {
         Ok(c) => c,
         Err(e) => {
             warn!("[enrich_location] Erreur requête cache: {}", e);
@@ -137,28 +138,32 @@ pub async fn enrich_location(
             .get_children(pool, &params.place_name, place_type)
             .await;
 
-        return (axum::http::StatusCode::OK, axum::Json(EnrichLocationResponse {
-            place_name: params.place_name.clone(),
-            geoname_id: None, // Google Places n'a pas de geoname_id
-            display_name,
-            location_vector: location_vector.clone(),
-            hierarchy: LocationHierarchy {
-                parents,
-                children,
-                is_leaf,
-                admin_level,
-            },
-            coordinates: Coordinates {
-                lat: lat.to_string().parse().unwrap_or(0.0),
-                lng: lng.to_string().parse().unwrap_or(0.0),
-            },
-            metadata: LocationMetadata {
-                country: parent_country,
-                country_code: parent_country_code,
-                population: None,
-                timezone: None,
-            },
-        })).into_response();
+        return (
+            axum::http::StatusCode::OK,
+            axum::Json(EnrichLocationResponse {
+                place_name: params.place_name.clone(),
+                geoname_id: None, // Google Places n'a pas de geoname_id
+                display_name,
+                location_vector: location_vector.clone(),
+                hierarchy: LocationHierarchy {
+                    parents,
+                    children,
+                    is_leaf,
+                    admin_level,
+                },
+                coordinates: Coordinates {
+                    lat: lat.to_string().parse().unwrap_or(0.0),
+                    lng: lng.to_string().parse().unwrap_or(0.0),
+                },
+                metadata: LocationMetadata {
+                    country: parent_country,
+                    country_code: parent_country_code,
+                    population: None,
+                    timezone: None,
+                },
+            }),
+        )
+            .into_response();
     }
 
     // 2. Pas en cache → Enrichir avec Google Places API
@@ -181,35 +186,39 @@ pub async fn enrich_location(
                 "⚠️ Lieu '{}' introuvable dans Google Places, retour données minimales",
                 params.place_name
             );
-            return (axum::http::StatusCode::OK, axum::Json(EnrichLocationResponse {
-                place_name: params.place_name.clone(),
-                geoname_id: None,
-                display_name: params.place_name.clone(),
-                location_vector: vec![params.place_name.clone()],
-                hierarchy: LocationHierarchy {
-                    parents: params.country.clone().map(|c| vec![c]).unwrap_or_default(),
-                    children: vec![],
-                    is_leaf: true,
-                    admin_level: 8,
-                },
-                coordinates: Coordinates { lat: 0.0, lng: 0.0 },
-                metadata: LocationMetadata {
-                    country: params.country.unwrap_or_else(|| "Inconnu".to_string()),
-                    country_code: None,
-                    population: None,
-                    timezone: None,
-                },
-            })).into_response();
+            return (
+                axum::http::StatusCode::OK,
+                axum::Json(EnrichLocationResponse {
+                    place_name: params.place_name.clone(),
+                    geoname_id: None,
+                    display_name: params.place_name.clone(),
+                    location_vector: vec![params.place_name.clone()],
+                    hierarchy: LocationHierarchy {
+                        parents: params.country.clone().map(|c| vec![c]).unwrap_or_default(),
+                        children: vec![],
+                        is_leaf: true,
+                        admin_level: 8,
+                    },
+                    coordinates: Coordinates { lat: 0.0, lng: 0.0 },
+                    metadata: LocationMetadata {
+                        country: params.country.unwrap_or_else(|| "Inconnu".to_string()),
+                        country_code: None,
+                        population: None,
+                        timezone: None,
+                    },
+                }),
+            )
+                .into_response();
         }
         Err(error) => {
             let error_msg = error.to_string();
-            
+
             // ✅ NOUVEAU: Détecter les erreurs critiques (billing, API key, etc.)
-            let is_critical_error = error_msg.contains("BILLING_DISABLED") 
-                || error_msg.contains("API_KEY_INVALID") 
+            let is_critical_error = error_msg.contains("BILLING_DISABLED")
+                || error_msg.contains("API_KEY_INVALID")
                 || error_msg.contains("PERMISSION_DENIED")
                 || error_msg.contains("indisponible");
-            
+
             if is_critical_error {
                 warn!(
                     "⚠️ Google Places API indisponible pour '{}' ({}), tentative fallback base locale",
@@ -221,7 +230,7 @@ pub async fn enrich_location(
                     params.place_name, error_msg
                 );
             }
-            
+
             // ✅ NOUVEAU: Fallback vers base de données locale (AfricanLocationsService)
             let african_service = AfricanLocationsService::new();
             if let Ok(Some(local_data)) = african_service
@@ -229,65 +238,73 @@ pub async fn enrich_location(
                 .await
             {
                 info!("✅ Lieu '{}' trouvé dans la base locale", params.place_name);
-                
+
                 let parents = if local_data.location_vector.len() > 1 {
                     local_data.location_vector[1..].to_vec()
                 } else {
                     vec![]
                 };
-                
+
                 let children = african_service
                     .get_children(pool, &params.place_name, "city")
                     .await;
-                
-                return (axum::http::StatusCode::OK, axum::Json(EnrichLocationResponse {
-                    place_name: params.place_name.clone(),
-                    geoname_id: local_data.geoname_id,
-                    display_name: local_data.display_name.clone(),
-                    location_vector: local_data.location_vector.clone(),
-                    hierarchy: LocationHierarchy {
-                        parents,
-                        children,
-                        is_leaf: local_data.is_leaf,
-                        admin_level: local_data.admin_level,
-                    },
-                    coordinates: Coordinates {
-                        lat: local_data.coordinates.lat,
-                        lng: local_data.coordinates.lng,
-                    },
-                    metadata: LocationMetadata {
-                        country: local_data.country,
-                        country_code: local_data.country_code,
-                        population: local_data.population,
-                        timezone: local_data.timezone,
-                    },
-                })).into_response();
+
+                return (
+                    axum::http::StatusCode::OK,
+                    axum::Json(EnrichLocationResponse {
+                        place_name: params.place_name.clone(),
+                        geoname_id: local_data.geoname_id,
+                        display_name: local_data.display_name.clone(),
+                        location_vector: local_data.location_vector.clone(),
+                        hierarchy: LocationHierarchy {
+                            parents,
+                            children,
+                            is_leaf: local_data.is_leaf,
+                            admin_level: local_data.admin_level,
+                        },
+                        coordinates: Coordinates {
+                            lat: local_data.coordinates.lat,
+                            lng: local_data.coordinates.lng,
+                        },
+                        metadata: LocationMetadata {
+                            country: local_data.country,
+                            country_code: local_data.country_code,
+                            population: local_data.population,
+                            timezone: local_data.timezone,
+                        },
+                    }),
+                )
+                    .into_response();
             }
-            
+
             // ✅ Fallback final : retourner données minimales
             info!(
                 "⚠️ Lieu '{}' introuvable (Google Places et base locale), retour données minimales",
                 params.place_name
             );
-            return (axum::http::StatusCode::OK, axum::Json(EnrichLocationResponse {
-                place_name: params.place_name.clone(),
-                geoname_id: None,
-                display_name: params.place_name.clone(),
-                location_vector: vec![params.place_name.clone()],
-                hierarchy: LocationHierarchy {
-                    parents: params.country.clone().map(|c| vec![c]).unwrap_or_default(),
-                    children: vec![],
-                    is_leaf: true,
-                    admin_level: 8,
-                },
-                coordinates: Coordinates { lat: 0.0, lng: 0.0 },
-                metadata: LocationMetadata {
-                    country: params.country.unwrap_or_else(|| "Inconnu".to_string()),
-                    country_code: None,
-                    population: None,
-                    timezone: None,
-                },
-            })).into_response();
+            return (
+                axum::http::StatusCode::OK,
+                axum::Json(EnrichLocationResponse {
+                    place_name: params.place_name.clone(),
+                    geoname_id: None,
+                    display_name: params.place_name.clone(),
+                    location_vector: vec![params.place_name.clone()],
+                    hierarchy: LocationHierarchy {
+                        parents: params.country.clone().map(|c| vec![c]).unwrap_or_default(),
+                        children: vec![],
+                        is_leaf: true,
+                        admin_level: 8,
+                    },
+                    coordinates: Coordinates { lat: 0.0, lng: 0.0 },
+                    metadata: LocationMetadata {
+                        country: params.country.unwrap_or_else(|| "Inconnu".to_string()),
+                        country_code: None,
+                        population: None,
+                        timezone: None,
+                    },
+                }),
+            )
+                .into_response();
         }
     };
 
@@ -339,7 +356,8 @@ pub async fn enrich_location(
             .unwrap_or(0.0),
     )
     .execute(pool)
-    .await {
+    .await
+    {
         warn!("[enrich_location] Erreur sauvegarde cache: {}", e);
         // Continuer même si le cache échoue
     }
@@ -370,36 +388,40 @@ pub async fn enrich_location(
         .get_children(pool, &params.place_name, place_type_str)
         .await;
 
-    (axum::http::StatusCode::OK, axum::Json(EnrichLocationResponse {
-        place_name: params.place_name,
-        geoname_id: None,
-        display_name: google_data.display_name.clone(),
-        location_vector: google_data.location_vector.clone(),
-        hierarchy: LocationHierarchy {
-            parents,
-            children,
-            is_leaf,
-            admin_level,
-        },
-        coordinates: Coordinates {
-            lat: google_data
-                .coordinates
-                .as_ref()
-                .map(|c| c.lat)
-                .unwrap_or(0.0),
-            lng: google_data
-                .coordinates
-                .as_ref()
-                .map(|c| c.lng)
-                .unwrap_or(0.0),
-        },
-        metadata: LocationMetadata {
-            country: parent_country,
-            country_code: parent_country_code,
-            population: None,
-            timezone: None,
-        },
-    })).into_response()
+    (
+        axum::http::StatusCode::OK,
+        axum::Json(EnrichLocationResponse {
+            place_name: params.place_name,
+            geoname_id: None,
+            display_name: google_data.display_name.clone(),
+            location_vector: google_data.location_vector.clone(),
+            hierarchy: LocationHierarchy {
+                parents,
+                children,
+                is_leaf,
+                admin_level,
+            },
+            coordinates: Coordinates {
+                lat: google_data
+                    .coordinates
+                    .as_ref()
+                    .map(|c| c.lat)
+                    .unwrap_or(0.0),
+                lng: google_data
+                    .coordinates
+                    .as_ref()
+                    .map(|c| c.lng)
+                    .unwrap_or(0.0),
+            },
+            metadata: LocationMetadata {
+                country: parent_country,
+                country_code: parent_country_code,
+                population: None,
+                timezone: None,
+            },
+        }),
+    )
+        .into_response()
 }
 
 /// Détermine le niveau administratif basé sur la taille du location_vector

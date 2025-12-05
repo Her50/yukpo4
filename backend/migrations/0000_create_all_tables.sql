@@ -665,6 +665,14 @@ CREATE TABLE IF NOT EXISTS publicites (
     impressions INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- ✅ NOUVEAU: Fonctionnalités avancées pour 100% parité avec les géants
+    targeting JSONB DEFAULT '{}',
+    ab_testing JSONB DEFAULT '{}',
+    schedule JSONB DEFAULT NULL,
+    placements JSONB DEFAULT '[]',
+    bid_strategy JSONB DEFAULT '{}',
+    retargeting JSONB DEFAULT '{}',
+    variant_performance JSONB DEFAULT '{}',
     CONSTRAINT check_date_fin_after_debut CHECK (date_fin > date_debut),
     CONSTRAINT check_produits_not_empty CHECK (array_length(produits_indexes, 1) > 0)
 );
@@ -675,6 +683,184 @@ CREATE INDEX IF NOT EXISTS idx_publicites_status ON publicites(status);
 CREATE INDEX IF NOT EXISTS idx_publicites_zone ON publicites(zone_geographique);
 CREATE INDEX IF NOT EXISTS idx_publicites_date_fin ON publicites(date_fin);
 CREATE INDEX IF NOT EXISTS idx_publicites_produits_gin ON publicites USING GIN(produits_indexes);
+-- ✅ NOUVEAU: Index pour fonctionnalités avancées
+CREATE INDEX IF NOT EXISTS idx_publicites_targeting_gin ON publicites USING GIN(targeting);
+CREATE INDEX IF NOT EXISTS idx_publicites_ab_testing_gin ON publicites USING GIN(ab_testing);
+CREATE INDEX IF NOT EXISTS idx_publicites_placements_gin ON publicites USING GIN(placements);
+CREATE INDEX IF NOT EXISTS idx_publicites_retargeting_gin ON publicites USING GIN(retargeting);
+CREATE INDEX IF NOT EXISTS idx_publicites_schedule_start ON publicites((schedule->>'start_date')) WHERE schedule IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_publicites_schedule_end ON publicites((schedule->>'end_date')) WHERE schedule IS NOT NULL;
+
+-- ✅ NOUVEAU 2025-01-01: Table pour versioning des publicités (historique complet)
+CREATE TABLE IF NOT EXISTS publicite_versions (
+    id SERIAL PRIMARY KEY,
+    publicite_id INTEGER NOT NULL REFERENCES publicites(id) ON DELETE CASCADE,
+    version_number INTEGER NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    data_snapshot JSONB NOT NULL,
+    change_type VARCHAR(50) NOT NULL,
+    changed_by INTEGER REFERENCES users(id),
+    change_description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_publicite_version UNIQUE (publicite_id, version_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_publicite_versions_publicite_id ON publicite_versions(publicite_id);
+CREATE INDEX IF NOT EXISTS idx_publicite_versions_user_id ON publicite_versions(user_id);
+CREATE INDEX IF NOT EXISTS idx_publicite_versions_created_at ON publicite_versions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_publicite_versions_change_type ON publicite_versions(change_type);
+
+COMMENT ON TABLE publicite_versions IS 'Historique complet des modifications de publicités';
+COMMENT ON COLUMN publicite_versions.version_number IS 'Numéro de version incrémental pour chaque publicité';
+COMMENT ON COLUMN publicite_versions.data_snapshot IS 'Snapshot JSON complet de toutes les données de la publicité à ce moment';
+COMMENT ON COLUMN publicite_versions.change_type IS 'Type de modification: created, updated, paused, resumed, deleted';
+
+-- Fonction pour créer automatiquement une version lors d'une modification
+CREATE OR REPLACE FUNCTION create_publicite_version()
+RETURNS TRIGGER AS $$
+DECLARE
+    next_version INTEGER;
+    snapshot_data JSONB;
+    change_type_val VARCHAR(50);
+BEGIN
+    -- Déterminer le prochain numéro de version
+    SELECT COALESCE(MAX(version_number), 0) + 1
+    INTO next_version
+    FROM publicite_versions
+    WHERE publicite_id = NEW.id;
+    
+    -- Créer un snapshot complet de toutes les données
+    snapshot_data := jsonb_build_object(
+        'id', NEW.id,
+        'user_id', NEW.user_id,
+        'titre', NEW.titre,
+        'description', NEW.description,
+        'produits_indexes', NEW.produits_indexes,
+        'videos', NEW.videos,
+        'thumbnails', NEW.thumbnails,
+        'duree_jours', NEW.duree_jours,
+        'cout', NEW.cout,
+        'devise_utilisateur', NEW.devise_utilisateur,
+        'zone_geographique', NEW.zone_geographique,
+        'rayon_km', NEW.rayon_km,
+        'status', NEW.status,
+        'date_debut', NEW.date_debut,
+        'date_fin', NEW.date_fin,
+        'vues', NEW.vues,
+        'clics', NEW.clics,
+        'impressions', NEW.impressions,
+        'targeting', NEW.targeting,
+        'ab_testing', NEW.ab_testing,
+        'schedule', NEW.schedule,
+        'placements', NEW.placements,
+        'bid_strategy', NEW.bid_strategy,
+        'retargeting', NEW.retargeting,
+        'variant_performance', NEW.variant_performance,
+        'created_at', NEW.created_at,
+        'updated_at', NEW.updated_at
+    );
+    
+    -- Déterminer le type de changement
+    IF TG_OP = 'INSERT' THEN
+        change_type_val := 'created';
+    ELSIF TG_OP = 'UPDATE' THEN
+        IF OLD.status != NEW.status THEN
+            IF NEW.status = 'paused' THEN
+                change_type_val := 'paused';
+            ELSIF NEW.status = 'active' AND OLD.status = 'paused' THEN
+                change_type_val := 'resumed';
+            ELSE
+                change_type_val := 'updated';
+            END IF;
+        ELSE
+            change_type_val := 'updated';
+        END IF;
+    END IF;
+    
+    -- Insérer la version
+    INSERT INTO publicite_versions (
+        publicite_id,
+        version_number,
+        user_id,
+        data_snapshot,
+        change_type,
+        changed_by,
+        change_description
+    )
+    VALUES (
+        NEW.id,
+        next_version,
+        NEW.user_id,
+        snapshot_data,
+        change_type_val,
+        NEW.user_id,
+        CASE 
+            WHEN TG_OP = 'INSERT' THEN 'Création de la publicité'
+            WHEN TG_OP = 'UPDATE' THEN 'Modification de la publicité'
+            ELSE 'Changement inconnu'
+        END
+    );
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger pour créer automatiquement une version à chaque modification
+DROP TRIGGER IF EXISTS trigger_create_publicite_version ON publicites;
+CREATE TRIGGER trigger_create_publicite_version
+    AFTER INSERT OR UPDATE ON publicites
+    FOR EACH ROW
+    EXECUTE FUNCTION create_publicite_version();
+
+-- Fonction pour restaurer une version
+CREATE OR REPLACE FUNCTION restore_publicite_version(
+    p_publicite_id INTEGER,
+    p_version_number INTEGER
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    version_data JSONB;
+BEGIN
+    -- Récupérer les données de la version
+    SELECT data_snapshot
+    INTO version_data
+    FROM publicite_versions
+    WHERE publicite_id = p_publicite_id
+    AND version_number = p_version_number;
+    
+    IF version_data IS NULL THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- Restaurer les données (sauf id, created_at, et certaines métriques)
+    UPDATE publicites
+    SET
+        titre = (version_data->>'titre')::VARCHAR,
+        description = (version_data->>'description')::TEXT,
+        produits_indexes = ARRAY(SELECT jsonb_array_elements_text(version_data->'produits_indexes')),
+        videos = ARRAY(SELECT jsonb_array_elements_text(version_data->'videos')),
+        thumbnails = ARRAY(SELECT jsonb_array_elements_text(version_data->'thumbnails')),
+        duree_jours = (version_data->>'duree_jours')::INTEGER,
+        cout = (version_data->>'cout')::INTEGER,
+        devise_utilisateur = (version_data->>'devise_utilisateur')::VARCHAR,
+        zone_geographique = (version_data->>'zone_geographique')::VARCHAR,
+        rayon_km = (version_data->>'rayon_km')::INTEGER,
+        status = (version_data->>'status')::VARCHAR,
+        date_debut = (version_data->>'date_debut')::TIMESTAMPTZ,
+        date_fin = (version_data->>'date_fin')::TIMESTAMPTZ,
+        targeting = version_data->'targeting',
+        ab_testing = version_data->'ab_testing',
+        schedule = version_data->'schedule',
+        placements = version_data->'placements',
+        bid_strategy = version_data->'bid_strategy',
+        retargeting = version_data->'retargeting',
+        variant_performance = version_data->'variant_performance',
+        updated_at = NOW()
+    WHERE id = p_publicite_id;
+    
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
 
 DO $$
 BEGIN
@@ -688,6 +874,37 @@ BEGIN
 END $$;
 
 -- Table notifications (gestion des notifications utilisateurs)
+-- ✅ 2025-12-01 : Table user_push_tokens pour les notifications push
+CREATE TABLE IF NOT EXISTS user_push_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    push_token VARCHAR(500) NOT NULL UNIQUE,
+    device_type VARCHAR(20) NOT NULL,
+    device_id VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_push_tokens_user_id ON user_push_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_push_tokens_push_token ON user_push_tokens(push_token);
+CREATE INDEX IF NOT EXISTS idx_user_push_tokens_is_active ON user_push_tokens(is_active);
+CREATE INDEX IF NOT EXISTS idx_user_push_tokens_device ON user_push_tokens(device_id);
+
+-- Trigger pour updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_user_push_tokens_updated_at 
+    BEFORE UPDATE ON user_push_tokens 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -745,12 +962,14 @@ END $$;
 -- ========================================
 
 -- Fonction : Désactiver les produits expirés automatiquement
+-- ✅ MODIFIÉ 2025-01-28: Inclut vérification stock = 0 (uniquement pour les produits)
 CREATE OR REPLACE FUNCTION deactivate_expired_products()
 RETURNS TABLE(
     service_id INTEGER,
     product_index INTEGER,
     product_nom TEXT,
-    user_id INTEGER
+    user_id INTEGER,
+    deactivation_reason TEXT
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -762,12 +981,31 @@ BEGIN
     FROM services s
     WHERE pl.service_id = s.id
         AND pl.is_active = TRUE
-        AND pl.auto_deactivate_at <= NOW()
+        AND (
+            -- Critère 1: Délai expiré (existant)
+            pl.auto_deactivate_at <= NOW()
+            OR
+            -- ✅ NOUVEAU Critère 2: Stock = 0 (uniquement pour les produits)
+            (
+                s.is_tarissable = TRUE  -- Uniquement pour les produits
+                AND EXISTS (
+                    SELECT 1 
+                    FROM autocomplete_combinations ac
+                    WHERE ac.service_id = s.id
+                        AND ac.stock IS NOT NULL
+                        AND ac.stock <= 0
+                )
+            )
+        )
     RETURNING 
         pl.service_id,
         pl.product_index,
         pl.product_nom,
-        s.user_id;
+        s.user_id,
+        CASE 
+            WHEN pl.auto_deactivate_at <= NOW() THEN 'expired_time'
+            ELSE 'stock_zero'
+        END::TEXT;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -820,6 +1058,267 @@ BEGIN
     RETURN affected_count;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ✅ NOUVEAU: Fonction pour vérifier si une publicité doit être active selon la planification
+CREATE OR REPLACE FUNCTION is_publicite_scheduled_active(pub_id INTEGER)
+RETURNS BOOLEAN AS $$
+DECLARE
+    pub_schedule JSONB;
+    start_date TIMESTAMPTZ;
+    end_date TIMESTAMPTZ;
+    pause_weekends BOOLEAN;
+    current_day INTEGER;
+BEGIN
+    SELECT schedule INTO pub_schedule FROM publicites WHERE id = pub_id;
+    IF pub_schedule IS NULL OR pub_schedule = '{}'::jsonb THEN
+        RETURN TRUE;
+    END IF;
+    IF pub_schedule->>'start_date' IS NOT NULL THEN
+        start_date := (pub_schedule->>'start_date')::timestamptz;
+        IF NOW() < start_date THEN RETURN FALSE; END IF;
+    END IF;
+    IF pub_schedule->>'end_date' IS NOT NULL THEN
+        end_date := (pub_schedule->>'end_date')::timestamptz;
+        IF NOW() > end_date THEN RETURN FALSE; END IF;
+    END IF;
+    pause_weekends := COALESCE((pub_schedule->>'pause_on_weekends')::boolean, FALSE);
+    IF pause_weekends THEN
+        current_day := EXTRACT(DOW FROM NOW())::integer;
+        IF current_day = 0 OR current_day = 6 THEN RETURN FALSE; END IF;
+    END IF;
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ✅ NOUVEAU: Fonction pour filtrer par ciblage avancé
+CREATE OR REPLACE FUNCTION matches_targeting(pub_targeting JSONB, user_age INTEGER, user_gender TEXT, user_interests TEXT[], user_behaviors TEXT[])
+RETURNS BOOLEAN AS $$
+DECLARE
+    target_age_min INTEGER;
+    target_age_max INTEGER;
+    target_gender TEXT;
+    target_interests JSONB;
+    target_behaviors JSONB;
+BEGIN
+    IF pub_targeting IS NULL OR pub_targeting = '{}'::jsonb THEN RETURN TRUE; END IF;
+    IF pub_targeting->'age_range' IS NOT NULL THEN
+        target_age_min := COALESCE((pub_targeting->'age_range'->>'min')::integer, 0);
+        target_age_max := COALESCE((pub_targeting->'age_range'->>'max')::integer, 999);
+        IF user_age < target_age_min OR user_age > target_age_max THEN RETURN FALSE; END IF;
+    END IF;
+    target_gender := pub_targeting->>'gender';
+    IF target_gender IS NOT NULL AND target_gender != 'all' THEN
+        IF target_gender != user_gender THEN RETURN FALSE; END IF;
+    END IF;
+    target_interests := pub_targeting->'interests';
+    IF target_interests IS NOT NULL AND jsonb_array_length(target_interests) > 0 THEN
+        IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(target_interests) AS interest WHERE interest = ANY(user_interests)) THEN
+            RETURN FALSE;
+        END IF;
+    END IF;
+    target_behaviors := pub_targeting->'behaviors';
+    IF target_behaviors IS NOT NULL AND jsonb_array_length(target_behaviors) > 0 THEN
+        IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(target_behaviors) AS behavior WHERE behavior = ANY(user_behaviors)) THEN
+            RETURN FALSE;
+        END IF;
+    END IF;
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ✅ NOUVEAU: Fonction pour vérifier le retargeting
+CREATE OR REPLACE FUNCTION matches_retargeting(pub_retargeting JSONB, user_id INTEGER)
+RETURNS BOOLEAN AS $$
+DECLARE
+    retargeting_rules JSONB;
+    rule JSONB;
+    rule_type TEXT;
+    days_since INTEGER;
+    match_found BOOLEAN := FALSE;
+BEGIN
+    IF pub_retargeting IS NULL OR pub_retargeting = '{}'::jsonb THEN RETURN TRUE; END IF;
+    retargeting_rules := pub_retargeting->'rules';
+    IF retargeting_rules IS NULL OR jsonb_array_length(retargeting_rules) = 0 THEN RETURN TRUE; END IF;
+    FOR rule IN SELECT * FROM jsonb_array_elements(retargeting_rules) LOOP
+        rule_type := rule->>'type';
+        days_since := COALESCE((rule->>'days_since')::integer, 7);
+        CASE rule_type
+            WHEN 'viewed_product' THEN
+                SELECT EXISTS (SELECT 1 FROM user_behavior WHERE user_id = user_id AND behavior_type = 'product_view' AND created_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+            WHEN 'abandoned_cart' THEN
+                SELECT EXISTS (SELECT 1 FROM shopping_baskets WHERE user_id = user_id AND status = 'abandoned' AND updated_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+            WHEN 'visited_service' THEN
+                SELECT EXISTS (SELECT 1 FROM user_behavior WHERE user_id = user_id AND behavior_type = 'service_view' AND created_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+            WHEN 'searched' THEN
+                SELECT EXISTS (SELECT 1 FROM search_history WHERE user_id = user_id AND created_at > NOW() - (days_since || ' days')::interval) INTO match_found;
+            ELSE match_found := FALSE;
+        END CASE;
+        IF match_found THEN RETURN TRUE; END IF;
+    END LOOP;
+    RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ✅ NOUVEAU: Table pour tracker les impressions (affichages) de publicités
+CREATE TABLE IF NOT EXISTS publicite_impressions (
+    id SERIAL PRIMARY KEY,
+    publicite_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    placement VARCHAR(50) NOT NULL, -- 'feed', 'stories', 'carousel', 'search', etc.
+    viewed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (publicite_id) REFERENCES publicites(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Index pour performances
+CREATE INDEX IF NOT EXISTS idx_publicite_impressions_publicite_user ON publicite_impressions(publicite_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_publicite_impressions_user_date ON publicite_impressions(user_id, viewed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_publicite_impressions_publicite_date ON publicite_impressions(publicite_id, viewed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_publicite_impressions_placement ON publicite_impressions(placement);
+CREATE INDEX IF NOT EXISTS idx_publicite_impressions_user_publicite_date ON publicite_impressions(user_id, publicite_id, viewed_at DESC);
+
+-- ✅ NOUVEAU: Fonction pour vérifier la fréquence d'affichage
+CREATE OR REPLACE FUNCTION check_publicite_frequency(
+    p_publicite_id INTEGER,
+    p_user_id INTEGER,
+    p_frequency_type VARCHAR(20) DEFAULT 'daily'
+) RETURNS BOOLEAN AS $$
+DECLARE
+    v_count INTEGER;
+    v_frequency_limit INTEGER;
+    v_frequency_config JSONB;
+BEGIN
+    SELECT frequency_config INTO v_frequency_config FROM publicites WHERE id = p_publicite_id;
+    IF v_frequency_config IS NULL OR v_frequency_config = '{}'::jsonb THEN RETURN TRUE; END IF;
+    IF p_frequency_type = 'daily' THEN
+        v_frequency_limit := COALESCE((v_frequency_config->>'max_per_day')::INTEGER, 999999);
+        SELECT COUNT(*) INTO v_count FROM publicite_impressions WHERE publicite_id = p_publicite_id AND user_id = p_user_id AND viewed_at >= CURRENT_DATE;
+    ELSIF p_frequency_type = 'weekly' THEN
+        v_frequency_limit := COALESCE((v_frequency_config->>'max_per_week')::INTEGER, 999999);
+        SELECT COUNT(*) INTO v_count FROM publicite_impressions WHERE publicite_id = p_publicite_id AND user_id = p_user_id AND viewed_at >= DATE_TRUNC('week', CURRENT_DATE);
+    ELSE RETURN TRUE;
+    END IF;
+    RETURN v_count < v_frequency_limit;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ✅ NOUVEAU: Fonction pour enregistrer une impression
+CREATE OR REPLACE FUNCTION record_publicite_impression(
+    p_publicite_id INTEGER,
+    p_user_id INTEGER,
+    p_placement VARCHAR(50) DEFAULT 'feed'
+) RETURNS INTEGER AS $$
+DECLARE
+    v_impression_id INTEGER;
+BEGIN
+    INSERT INTO publicite_impressions (publicite_id, user_id, placement)
+    VALUES (p_publicite_id, p_user_id, p_placement)
+    RETURNING id INTO v_impression_id;
+    RETURN v_impression_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ✅ NOUVEAU 2025-01-XX: Table pour les événements pixel (tracking avancé)
+CREATE TABLE IF NOT EXISTS pixel_events (
+    id SERIAL PRIMARY KEY,
+    event_name VARCHAR(100) NOT NULL, -- 'PageView', 'ViewContent', 'AddToCart', 'Purchase', etc.
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    event_id VARCHAR(255) UNIQUE NOT NULL, -- ID unique pour déduplication
+    event_time BIGINT NOT NULL, -- Timestamp Unix
+    action_source VARCHAR(50) NOT NULL DEFAULT 'app', -- 'website', 'app', 'email', etc.
+    custom_data JSONB DEFAULT '{}', -- Données personnalisées
+    user_data JSONB DEFAULT '{}', -- Données utilisateur (email, phone, etc.)
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index pour performances
+CREATE INDEX IF NOT EXISTS idx_pixel_events_user_id ON pixel_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_pixel_events_event_name ON pixel_events(event_name);
+CREATE INDEX IF NOT EXISTS idx_pixel_events_event_time ON pixel_events(event_time DESC);
+CREATE INDEX IF NOT EXISTS idx_pixel_events_user_event ON pixel_events(user_id, event_name);
+CREATE INDEX IF NOT EXISTS idx_pixel_events_event_id ON pixel_events(event_id);
+
+-- Index GIN pour recherche dans JSONB
+CREATE INDEX IF NOT EXISTS idx_pixel_events_custom_data_gin ON pixel_events USING GIN(custom_data);
+CREATE INDEX IF NOT EXISTS idx_pixel_events_user_data_gin ON pixel_events USING GIN(user_data);
+
+-- ✅ NOUVEAU 2025-01-XX: Table pour les audiences personnalisées (amélioration)
+CREATE TABLE IF NOT EXISTS publicite_audiences (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL, -- 'custom', 'lookalike', 'saved'
+    source_audience_id INTEGER REFERENCES publicite_audiences(id) ON DELETE SET NULL, -- Pour lookalike
+    similarity DECIMAL(3,2), -- Pour lookalike (0.01 à 1.0)
+    user_ids JSONB DEFAULT '[]', -- Liste des user_ids
+    metadata JSONB DEFAULT '{}', -- Métadonnées supplémentaires
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index pour audiences
+CREATE INDEX IF NOT EXISTS idx_publicite_audiences_user_id ON publicite_audiences(user_id);
+CREATE INDEX IF NOT EXISTS idx_publicite_audiences_type ON publicite_audiences(type);
+CREATE INDEX IF NOT EXISTS idx_publicite_audiences_user_ids_gin ON publicite_audiences USING GIN(user_ids);
+
+-- Fonction pour mettre à jour updated_at
+CREATE OR REPLACE FUNCTION update_publicite_audiences_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger pour updated_at
+DROP TRIGGER IF EXISTS trigger_publicite_audiences_updated_at ON publicite_audiences;
+CREATE TRIGGER trigger_publicite_audiences_updated_at
+    BEFORE UPDATE ON publicite_audiences
+    FOR EACH ROW
+    EXECUTE FUNCTION update_publicite_audiences_updated_at();
+
+-- ✅ NOUVEAU 2025-01-XX: Table pour les rapports automatisés
+CREATE TABLE IF NOT EXISTS automated_reports (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    frequency VARCHAR(20) NOT NULL, -- 'daily', 'weekly', 'monthly'
+    format VARCHAR(20) NOT NULL, -- 'csv', 'excel', 'pdf'
+    email VARCHAR(255),
+    metrics JSONB DEFAULT '[]', -- Liste des métriques à inclure
+    is_active BOOLEAN DEFAULT true,
+    last_sent_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index
+CREATE INDEX IF NOT EXISTS idx_automated_reports_user_id ON automated_reports(user_id);
+CREATE INDEX IF NOT EXISTS idx_automated_reports_frequency ON automated_reports(frequency);
+CREATE INDEX IF NOT EXISTS idx_automated_reports_active ON automated_reports(is_active);
+CREATE INDEX IF NOT EXISTS idx_automated_reports_last_sent ON automated_reports(last_sent_at);
+
+-- Fonction pour mettre à jour updated_at
+CREATE OR REPLACE FUNCTION update_automated_reports_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger
+DROP TRIGGER IF EXISTS trigger_automated_reports_updated_at ON automated_reports;
+CREATE TRIGGER trigger_automated_reports_updated_at
+    BEFORE UPDATE ON automated_reports
+    FOR EACH ROW
+    EXECUTE FUNCTION update_automated_reports_updated_at();
+
+-- Commentaires
+COMMENT ON TABLE pixel_events IS 'Événements de tracking pixel pour retargeting et audiences';
+COMMENT ON TABLE publicite_audiences IS 'Audiences personnalisées et lookalike pour publicités';
+COMMENT ON TABLE automated_reports IS 'Rapports automatisés pour publicités (daily, weekly, monthly)';
+COMMENT ON COLUMN automated_reports.metrics IS 'Liste des métriques à inclure: views, clicks, conversions, roi, etc.';
 
 -- Fonction : Mettre à jour updated_at pour autocomplete_characteristics
 CREATE OR REPLACE FUNCTION update_autocomplete_characteristics_updated_at()
@@ -3819,3 +4318,626 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_bus_payments_return_date ON bus_ticket_payments(return_date) WHERE return_date IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_bus_payments_return_time ON bus_ticket_payments(return_time) WHERE return_time IS NOT NULL;
+
+-- ✅ 2025-12-03 : Table videos avec hashtags pour VideoFeed
+CREATE TABLE IF NOT EXISTS videos (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    content_id TEXT NOT NULL UNIQUE,
+    service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+    titre TEXT NOT NULL,
+    description TEXT,
+    video_url TEXT NOT NULL,
+    thumbnail TEXT,
+    hashtags TEXT[] DEFAULT ARRAY[]::TEXT[],
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_sponsored BOOLEAN NOT NULL DEFAULT FALSE,
+    studio_session_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Métadonnées vidéo
+    duration_ms INTEGER,
+    video_format TEXT,
+    video_source TEXT,
+    -- Embedding vectoriel pour ML (stocké en TEXT, pgvector non utilisé)
+    embedding TEXT, -- JSON array ou base64 pour stockage temporaire
+    -- Statistiques
+    view_count INTEGER DEFAULT 0,
+    like_count INTEGER DEFAULT 0,
+    save_count INTEGER DEFAULT 0,
+    share_count INTEGER DEFAULT 0
+);
+
+-- Index pour performance
+CREATE INDEX IF NOT EXISTS idx_videos_service_id ON videos(service_id) WHERE service_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_videos_content_id ON videos(content_id);
+CREATE INDEX IF NOT EXISTS idx_videos_is_active ON videos(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_videos_created_at ON videos(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_videos_studio_session_id ON videos(studio_session_id) WHERE studio_session_id IS NOT NULL;
+
+-- Index GIN pour hashtags (recherche rapide)
+CREATE INDEX IF NOT EXISTS idx_videos_hashtags_gin ON videos USING GIN(hashtags);
+
+-- Index pour recherche full-text sur titre et description
+CREATE INDEX IF NOT EXISTS idx_videos_title_fulltext 
+    ON videos USING GIN(to_tsvector('french', COALESCE(titre, '')));
+CREATE INDEX IF NOT EXISTS idx_videos_description_fulltext 
+    ON videos USING GIN(to_tsvector('french', COALESCE(description, '')));
+
+-- Index pour embedding (stocké en TEXT, pas de pgvector)
+CREATE INDEX IF NOT EXISTS idx_videos_embedding ON videos(embedding) WHERE embedding IS NOT NULL;
+
+-- Trigger pour updated_at
+CREATE OR REPLACE FUNCTION set_videos_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_videos_updated_at ON videos;
+CREATE TRIGGER trg_videos_updated_at
+    BEFORE UPDATE ON videos
+    FOR EACH ROW
+    EXECUTE FUNCTION set_videos_updated_at();
+
+-- ✅ Fonction pour extraire automatiquement les hashtags depuis titre/description
+CREATE OR REPLACE FUNCTION extract_hashtags_from_text(input_text TEXT)
+RETURNS TEXT[] AS $$
+DECLARE
+    hashtags TEXT[];
+BEGIN
+    -- Extraire tous les mots commençant par # (hashtags)
+    SELECT array_agg(DISTINCT LOWER(SUBSTRING(match, 2)))
+    INTO hashtags
+    FROM regexp_split_to_table(input_text, '\s+') AS match
+    WHERE match ~ '^#[a-zA-Z0-9_]+$';
+    
+    RETURN COALESCE(hashtags, ARRAY[]::TEXT[]);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- ✅ Trigger pour extraire automatiquement les hashtags
+CREATE OR REPLACE FUNCTION auto_extract_video_hashtags()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Extraire hashtags depuis titre et description
+    NEW.hashtags = array_cat(
+        COALESCE(NEW.hashtags, ARRAY[]::TEXT[]),
+        extract_hashtags_from_text(COALESCE(NEW.titre, '') || ' ' || COALESCE(NEW.description, ''))
+    );
+    
+    -- Supprimer doublons
+    NEW.hashtags = array(SELECT DISTINCT unnest(NEW.hashtags));
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_auto_extract_video_hashtags ON videos;
+CREATE TRIGGER trg_auto_extract_video_hashtags
+    BEFORE INSERT OR UPDATE OF titre, description ON videos
+    FOR EACH ROW
+    EXECUTE FUNCTION auto_extract_video_hashtags();
+
+-- ✅ Vue pour statistiques hashtags (pour tendances)
+CREATE OR REPLACE VIEW hashtag_stats AS
+SELECT 
+    tag,
+    COUNT(DISTINCT v.id) as video_count,
+    SUM(v.view_count) as total_views,
+    SUM(v.like_count) as total_likes,
+    SUM(v.save_count) as total_saves,
+    (
+        SUM(v.like_count * 2 + v.save_count * 1.5 + v.view_count * 0.1) 
+        / GREATEST(EXTRACT(EPOCH FROM (NOW() - MIN(v.created_at))) / 3600, 1)
+    ) as trend_score,
+    MAX(v.created_at) as last_video_at
+FROM videos v
+CROSS JOIN LATERAL unnest(v.hashtags) tag
+WHERE v.is_active = TRUE
+GROUP BY tag;
+
+COMMENT ON TABLE videos IS 'Table pour stocker les vidéos du feed avec hashtags et embeddings pour ML';
+COMMENT ON COLUMN videos.hashtags IS 'Array de hashtags extraits automatiquement ou ajoutés manuellement';
+COMMENT ON COLUMN videos.embedding IS 'Vecteur d''embedding pour recommandations ML (stocké en TEXT, JSON array ou base64)';
+COMMENT ON COLUMN videos.studio_session_id IS 'ID de session studio pour chaînage vidéos';
+
+-- ✅ 2025-01-27 : Table message_reactions (réactions aux messages de chat)
+CREATE TABLE IF NOT EXISTS message_reactions (
+    id SERIAL PRIMARY KEY,
+    message_id VARCHAR(255) NOT NULL,
+    user_id INTEGER NOT NULL,
+    emoji VARCHAR(10) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Contrainte unique: un utilisateur ne peut réagir qu'une fois avec le même emoji sur un message
+    UNIQUE(message_id, user_id, emoji)
+);
+
+-- Index pour recherche rapide (PostgreSQL)
+CREATE INDEX IF NOT EXISTS idx_message_reactions_message_id ON message_reactions(message_id);
+CREATE INDEX IF NOT EXISTS idx_message_reactions_user_id ON message_reactions(user_id);
+
+-- Fonction pour mettre à jour updated_at automatiquement
+CREATE OR REPLACE FUNCTION update_message_reactions_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger pour updated_at
+DROP TRIGGER IF EXISTS trigger_update_message_reactions_updated_at ON message_reactions;
+CREATE TRIGGER trigger_update_message_reactions_updated_at
+    BEFORE UPDATE ON message_reactions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_message_reactions_updated_at();
+
+-- Commentaires
+COMMENT ON TABLE message_reactions IS 'Réactions (emojis) aux messages de chat';
+COMMENT ON COLUMN message_reactions.message_id IS 'ID du message (format: msg_xxx ou UUID)';
+COMMENT ON COLUMN message_reactions.user_id IS 'ID de l''utilisateur qui a réagi';
+COMMENT ON COLUMN message_reactions.emoji IS 'Emoji de la réaction (ex: ❤️, 👍, 😂)';
+
+-- ✅ NOUVEAU 2025-01-28: Tables de chat de livraison et gamification
+
+-- 1. Table pour les messages de chat de livraison
+CREATE TABLE IF NOT EXISTS delivery_chat_messages (
+    id SERIAL PRIMARY KEY,
+    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sender_name TEXT NOT NULL,
+    sender_role TEXT NOT NULL CHECK (sender_role IN ('client', 'courier', 'provider')),
+    content TEXT NOT NULL,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_chat_messages_delivery_id ON delivery_chat_messages(delivery_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_chat_messages_sender_id ON delivery_chat_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_chat_messages_created_at ON delivery_chat_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_delivery_chat_messages_delivery_created ON delivery_chat_messages(delivery_id, created_at DESC);
+
+-- 2. Table pour les statistiques de gamification
+CREATE TABLE IF NOT EXISTS delivery_gamification_stats (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    total_deliveries INTEGER DEFAULT 0,
+    total_completed_deliveries INTEGER DEFAULT 0,
+    total_points INTEGER DEFAULT 0,
+    current_level TEXT DEFAULT 'bronze' CHECK (current_level IN ('bronze', 'silver', 'gold', 'platinum', 'diamond')),
+    badges JSONB DEFAULT '[]'::jsonb,
+    achievements JSONB DEFAULT '{}'::jsonb,
+    last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_gamification_stats_points ON delivery_gamification_stats(total_points DESC);
+CREATE INDEX IF NOT EXISTS idx_delivery_gamification_stats_level ON delivery_gamification_stats(current_level);
+CREATE INDEX IF NOT EXISTS idx_delivery_gamification_stats_deliveries ON delivery_gamification_stats(total_completed_deliveries DESC);
+
+-- 3. Table pour les badges obtenus
+CREATE TABLE IF NOT EXISTS delivery_badges (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    badge_type TEXT NOT NULL,
+    badge_name TEXT NOT NULL,
+    badge_description TEXT,
+    icon_url TEXT,
+    earned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    metadata JSONB DEFAULT '{}'::jsonb,
+    UNIQUE(user_id, badge_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_badges_user_id ON delivery_badges(user_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_badges_type ON delivery_badges(badge_type);
+CREATE INDEX IF NOT EXISTS idx_delivery_badges_earned_at ON delivery_badges(earned_at DESC);
+
+-- 4. Table pour l'historique des points
+CREATE TABLE IF NOT EXISTS delivery_points_history (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    points_change INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    delivery_id UUID REFERENCES deliveries(id) ON DELETE SET NULL,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_points_history_user_id ON delivery_points_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_points_history_created_at ON delivery_points_history(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_delivery_points_history_delivery_id ON delivery_points_history(delivery_id);
+
+-- 5. Table pour les suggestions produits IA
+CREATE TABLE IF NOT EXISTS delivery_product_suggestions (
+    id SERIAL PRIMARY KEY,
+    delivery_id UUID NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    suggested_product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+    suggested_product_name TEXT NOT NULL,
+    suggested_product_price DECIMAL(10, 2),
+    suggestion_reason TEXT,
+    confidence_score DECIMAL(3, 2) DEFAULT 0.5,
+    was_accepted BOOLEAN DEFAULT FALSE,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_product_suggestions_delivery_id ON delivery_product_suggestions(delivery_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_product_suggestions_user_id ON delivery_product_suggestions(user_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_product_suggestions_created_at ON delivery_product_suggestions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_delivery_product_suggestions_accepted ON delivery_product_suggestions(was_accepted);
+
+COMMENT ON TABLE delivery_chat_messages IS 'Messages de chat pendant les livraisons';
+COMMENT ON TABLE delivery_gamification_stats IS 'Statistiques de gamification par utilisateur';
+COMMENT ON TABLE delivery_badges IS 'Badges obtenus par les utilisateurs';
+COMMENT ON TABLE delivery_points_history IS 'Historique des changements de points';
+COMMENT ON TABLE delivery_product_suggestions IS 'Suggestions de produits générées par IA';
+
+-- ✅ NOUVEAU 2025-01-27: Table pour bibliothèque d'effets vidéo étendue (50+)
+CREATE TABLE IF NOT EXISTS effects (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    category VARCHAR(50) NOT NULL CHECK (category IN ('transitions', 'visual_effects', 'animations', 'special')),
+    description TEXT NOT NULL,
+    ffmpeg_filter TEXT NOT NULL,
+    parameters JSONB NOT NULL DEFAULT '{}'::jsonb,
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    is_premium BOOLEAN NOT NULL DEFAULT FALSE,
+    popularity_score DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_effects_category ON effects(category);
+CREATE INDEX IF NOT EXISTS idx_effects_tags ON effects USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_effects_popularity ON effects(popularity_score DESC);
+CREATE INDEX IF NOT EXISTS idx_effects_name ON effects(name);
+CREATE INDEX IF NOT EXISTS idx_effects_category_popularity ON effects(category, popularity_score DESC);
+
+CREATE OR REPLACE FUNCTION update_effects_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_effects_updated_at
+    BEFORE UPDATE ON effects
+    FOR EACH ROW
+    EXECUTE FUNCTION update_effects_updated_at();
+
+-- ✅ NOUVEAU 2025-01-27: Table pour bibliothèque de templates vidéo par industrie (50+)
+CREATE TABLE IF NOT EXISTS video_templates (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    industry VARCHAR(50) NOT NULL CHECK (industry IN ('ecommerce', 'services', 'creators', 'business', 'social_media')),
+    subcategory VARCHAR(100),
+    description TEXT NOT NULL,
+    timeline JSONB NOT NULL,
+    effects JSONB NOT NULL DEFAULT '[]'::jsonb,
+    transitions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    style JSONB NOT NULL DEFAULT '{}'::jsonb,
+    duration DOUBLE PRECISION NOT NULL DEFAULT 30.0,
+    format VARCHAR(10) NOT NULL DEFAULT '16:9' CHECK (format IN ('16:9', '9:16', '1:1', '4:5')),
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    thumbnail_url VARCHAR(500),
+    preview_url VARCHAR(500),
+    is_premium BOOLEAN NOT NULL DEFAULT FALSE,
+    popularity_score DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    usage_count BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_templates_industry ON video_templates(industry);
+CREATE INDEX IF NOT EXISTS idx_templates_subcategory ON video_templates(subcategory);
+CREATE INDEX IF NOT EXISTS idx_templates_tags ON video_templates USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_templates_popularity ON video_templates(popularity_score DESC);
+CREATE INDEX IF NOT EXISTS idx_templates_usage ON video_templates(usage_count DESC);
+CREATE INDEX IF NOT EXISTS idx_templates_name ON video_templates(name);
+CREATE INDEX IF NOT EXISTS idx_templates_industry_popularity ON video_templates(industry, popularity_score DESC);
+
+CREATE OR REPLACE FUNCTION update_templates_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_templates_updated_at
+    BEFORE UPDATE ON video_templates
+    FOR EACH ROW
+    EXECUTE FUNCTION update_templates_updated_at();
+
+-- ✅ NOUVEAU 2025-01-27: Enrichissement automatique des effets (50 effets supplémentaires)
+-- Note: Les INSERT détaillés sont dans la migration 20250127_002_enrich_effects_to_100.sql
+-- Cette section insère les effets de base si la table est vide
+DO $$
+DECLARE
+    effects_count INTEGER;
+    templates_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO effects_count FROM effects;
+    
+    IF effects_count < 100 THEN
+        -- Insérer les effets enrichis via la migration SQL séparée
+        -- Les INSERT sont dans backend/migrations/20250127_002_enrich_effects_to_100.sql
+        RAISE NOTICE 'Enrichissement effets: Utiliser la migration 20250127_002_enrich_effects_to_100.sql (actuellement: % effets)', effects_count;
+    END IF;
+
+    SELECT COUNT(*) INTO templates_count FROM video_templates;
+    
+    IF templates_count < 1000 THEN
+        -- Insérer les templates enrichis via les migrations SQL séparées
+        -- Les INSERT sont dans backend/migrations/20250127_003 et 20250127_004
+        RAISE NOTICE 'Enrichissement templates: Utiliser les migrations 20250127_003 et 20250127_004 (actuellement: % templates)', templates_count;
+    END IF;
+END $$;
+
+-- ✅ NOUVEAU 2025-01-27 Phase 2: Tables pour système plugins marketplace
+-- Migration: 20250127_012_create_plugin_marketplace.sql
+
+CREATE TABLE IF NOT EXISTS plugin_marketplace (
+    id SERIAL PRIMARY KEY,
+    plugin_id VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    version VARCHAR(50) NOT NULL,
+    author VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(50) NOT NULL CHECK (category IN ('effect', 'transition', 'filter', 'export', 'integration', 'other')),
+    tags TEXT[] DEFAULT ARRAY[]::TEXT[],
+    icon_url TEXT,
+    homepage_url TEXT,
+    license VARCHAR(100) NOT NULL DEFAULT 'MIT',
+    min_yukpo_version VARCHAR(50),
+    download_url TEXT NOT NULL,
+    download_count INTEGER DEFAULT 0,
+    rating DECIMAL(3,2) DEFAULT 0.0 CHECK (rating >= 0.0 AND rating <= 5.0),
+    rating_count INTEGER DEFAULT 0,
+    price DECIMAL(10,2) DEFAULT 0.0,
+    is_premium BOOLEAN DEFAULT false,
+    is_featured BOOLEAN DEFAULT false,
+    is_verified BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_plugin_marketplace_category ON plugin_marketplace(category);
+CREATE INDEX IF NOT EXISTS idx_plugin_marketplace_tags ON plugin_marketplace USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_plugin_marketplace_featured ON plugin_marketplace(is_featured) WHERE is_featured = true;
+CREATE INDEX IF NOT EXISTS idx_plugin_marketplace_rating ON plugin_marketplace(rating DESC);
+CREATE INDEX IF NOT EXISTS idx_plugin_marketplace_downloads ON plugin_marketplace(download_count DESC);
+
+CREATE OR REPLACE FUNCTION update_plugin_marketplace_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_plugin_marketplace_updated_at
+    BEFORE UPDATE ON plugin_marketplace
+    FOR EACH ROW
+    EXECUTE FUNCTION update_plugin_marketplace_updated_at();
+
+CREATE TABLE IF NOT EXISTS plugin_dependencies (
+    id SERIAL PRIMARY KEY,
+    plugin_id VARCHAR(255) NOT NULL REFERENCES plugin_marketplace(plugin_id) ON DELETE CASCADE,
+    dependency_id VARCHAR(255) NOT NULL,
+    dependency_version VARCHAR(50),
+    is_required BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_plugin_dependencies_plugin ON plugin_dependencies(plugin_id);
+CREATE INDEX IF NOT EXISTS idx_plugin_dependencies_dep ON plugin_dependencies(dependency_id);
+
+CREATE TABLE IF NOT EXISTS plugin_permissions (
+    id SERIAL PRIMARY KEY,
+    plugin_id VARCHAR(255) NOT NULL REFERENCES plugin_marketplace(plugin_id) ON DELETE CASCADE,
+    permission_name VARCHAR(100) NOT NULL,
+    permission_description TEXT,
+    is_required BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_plugin_permissions_plugin ON plugin_permissions(plugin_id);
+
+CREATE TABLE IF NOT EXISTS plugin_reviews (
+    id SERIAL PRIMARY KEY,
+    plugin_id VARCHAR(255) NOT NULL REFERENCES plugin_marketplace(plugin_id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    review_text TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(plugin_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_plugin_reviews_plugin ON plugin_reviews(plugin_id);
+CREATE INDEX IF NOT EXISTS idx_plugin_reviews_user ON plugin_reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_plugin_reviews_rating ON plugin_reviews(rating);
+
+CREATE OR REPLACE FUNCTION update_plugin_rating()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE plugin_marketplace
+    SET 
+        rating = (
+            SELECT COALESCE(AVG(rating), 0.0)
+            FROM plugin_reviews
+            WHERE plugin_id = NEW.plugin_id
+        ),
+        rating_count = (
+            SELECT COUNT(*)
+            FROM plugin_reviews
+            WHERE plugin_id = NEW.plugin_id
+        )
+    WHERE plugin_id = NEW.plugin_id;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_plugin_rating
+    AFTER INSERT OR UPDATE OR DELETE ON plugin_reviews
+    FOR EACH ROW
+    EXECUTE FUNCTION update_plugin_rating();
+
+-- ✅ NOUVEAU 2025-01-27: Tables pour service Planification Menus
+-- Migration: 20250127_create_menu_planning_tables.sql
+
+-- Profil famille utilisatrice
+CREATE TABLE IF NOT EXISTS family_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    family_name VARCHAR(255),
+    total_members INTEGER NOT NULL DEFAULT 1,
+    children_count INTEGER DEFAULT 0,
+    adults_count INTEGER DEFAULT 1,
+    preferences JSONB DEFAULT '{}', -- végétarien, vegan, halal, etc.
+    allergies TEXT[], -- liste allergies
+    dietary_restrictions TEXT[], -- diabète, hypertension, etc.
+    budget_monthly DECIMAL(10,2),
+    cuisine_styles TEXT[], -- africaine, camerounaise, occidentale, etc.
+    cooking_level VARCHAR(50), -- débutant, intermédiaire, avancé
+    time_available_hours DECIMAL(4,2), -- heures disponibles par jour
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id)
+);
+
+-- Base de données recettes
+CREATE TABLE IF NOT EXISTS recipes (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    cuisine_style VARCHAR(100), -- africaine, camerounaise, occidentale, etc.
+    meal_type TEXT[], -- petit_dejeuner, dejeuner, diner
+    difficulty VARCHAR(50), -- facile, moyen, difficile
+    prep_time_minutes INTEGER,
+    cook_time_minutes INTEGER,
+    servings INTEGER DEFAULT 1,
+    ingredients JSONB NOT NULL, -- [{name, quantity, unit}, ...]
+    instructions TEXT[] NOT NULL, -- étapes de préparation
+    nutrition_per_serving JSONB, -- {calories, proteins, carbs, fats, fiber}
+    tags TEXT[], -- végétarien, vegan, rapide, économique, etc.
+    image_url TEXT,
+    video_url TEXT, -- vidéo recette optionnelle
+    source VARCHAR(255), -- "yukpo_ai", "community", "premium"
+    is_premium BOOLEAN DEFAULT FALSE,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Plans menus hebdomadaires
+CREATE TABLE IF NOT EXISTS menu_plans (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    week_start DATE NOT NULL, -- lundi de la semaine
+    week_end DATE NOT NULL, -- dimanche de la semaine
+    status VARCHAR(50) DEFAULT 'draft', -- draft, active, completed
+    total_budget DECIMAL(10,2),
+    actual_cost DECIMAL(10,2),
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, week_start)
+);
+
+-- Repas planifiés (lien menu_plans -> recipes -> day/meal_type)
+CREATE TABLE IF NOT EXISTS planned_meals (
+    id SERIAL PRIMARY KEY,
+    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,
+    day_of_week INTEGER NOT NULL, -- 1=lundi, 7=dimanche
+    meal_type VARCHAR(50) NOT NULL, -- petit_dejeuner, dejeuner, diner, gouter
+    recipe_id INTEGER REFERENCES recipes(id) ON DELETE SET NULL,
+    custom_name VARCHAR(255), -- nom personnalisé si pas de recette
+    servings INTEGER NOT NULL DEFAULT 1,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Recettes favorites utilisatrices
+CREATE TABLE IF NOT EXISTS recipe_favorites (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, recipe_id)
+);
+
+-- Listes de courses
+CREATE TABLE IF NOT EXISTS shopping_lists (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    menu_plan_id INTEGER REFERENCES menu_plans(id) ON DELETE SET NULL,
+    week_start DATE NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending', -- pending, in_progress, completed
+    organized_by_store BOOLEAN DEFAULT FALSE,
+    organized_by_aisle BOOLEAN DEFAULT FALSE,
+    total_estimated_cost DECIMAL(10,2),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Items liste de courses
+CREATE TABLE IF NOT EXISTS shopping_list_items (
+    id SERIAL PRIMARY KEY,
+    shopping_list_id INTEGER NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,
+    ingredient_name VARCHAR(255) NOT NULL,
+    quantity DECIMAL(10,2) NOT NULL,
+    unit VARCHAR(50) NOT NULL,
+    category VARCHAR(100), -- fruits, légumes, viande, épicerie, etc.
+    store_section VARCHAR(100), -- rayon magasin
+    preferred_store VARCHAR(255), -- magasin préféré
+    is_checked BOOLEAN DEFAULT FALSE,
+    actual_price DECIMAL(10,2),
+    notes TEXT,
+    order_placed BOOLEAN DEFAULT FALSE, -- commande via Yukpo
+    order_id INTEGER, -- Référence vers commande (peut être lié à shopping_orders ou delivery_requests)
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Analytics nutrition
+CREATE TABLE IF NOT EXISTS nutrition_analytics (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    menu_plan_id INTEGER NOT NULL REFERENCES menu_plans(id) ON DELETE CASCADE,
+    week_start DATE NOT NULL,
+    total_calories DECIMAL(10,2),
+    total_proteins DECIMAL(10,2),
+    total_carbs DECIMAL(10,2),
+    total_fats DECIMAL(10,2),
+    total_fiber DECIMAL(10,2),
+    daily_average JSONB, -- moyenne par jour
+    recommendations TEXT[], -- recommandations IA
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index pour performance
+CREATE INDEX IF NOT EXISTS idx_menu_plans_user_week ON menu_plans(user_id, week_start);
+CREATE INDEX IF NOT EXISTS idx_planned_meals_menu_plan ON planned_meals(menu_plan_id);
+CREATE INDEX IF NOT EXISTS idx_shopping_lists_user_week ON shopping_lists(user_id, week_start);
+CREATE INDEX IF NOT EXISTS idx_recipes_tags ON recipes USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_recipes_cuisine ON recipes(cuisine_style);
+CREATE INDEX IF NOT EXISTS idx_shopping_list_items_list ON shopping_list_items(shopping_list_id);
+CREATE INDEX IF NOT EXISTS idx_family_profiles_user ON family_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_recipe_favorites_user ON recipe_favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_nutrition_analytics_user_week ON nutrition_analytics(user_id, week_start);
+
+-- Commentaires pour documentation
+COMMENT ON TABLE family_profiles IS 'Profils famille pour planification menus personnalisée';
+COMMENT ON TABLE recipes IS 'Base de données recettes (IA, communauté, premium)';
+COMMENT ON TABLE menu_plans IS 'Plans menus hebdomadaires utilisatrices';
+COMMENT ON TABLE planned_meals IS 'Repas planifiés par jour/type dans menu';
+COMMENT ON TABLE shopping_lists IS 'Listes de courses générées depuis menus';
+COMMENT ON TABLE shopping_list_items IS 'Items individuels dans liste courses';
+COMMENT ON TABLE nutrition_analytics IS 'Analytics nutrition hebdomadaires';

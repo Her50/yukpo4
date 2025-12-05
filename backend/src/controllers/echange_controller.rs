@@ -7,9 +7,9 @@ use std::sync::Arc;
 
 use crate::models::echange::CreerEchangeRequest;
 use crate::state::AppState;
+use chrono::{DateTime, Utc};
 use serde_json::json;
 use sqlx::FromRow;
-use chrono::{DateTime, Utc};
 
 #[derive(FromRow)]
 struct EchangeStatusRow {

@@ -21,8 +21,7 @@ impl SmsConfig {
             .and_then(|v| v.parse::<bool>().ok())
             .unwrap_or(false);
 
-        let provider = std::env::var("SMS_PROVIDER")
-            .unwrap_or_else(|_| "twilio".to_string());
+        let provider = std::env::var("SMS_PROVIDER").unwrap_or_else(|_| "twilio".to_string());
 
         let twilio_account_sid = std::env::var("TWILIO_ACCOUNT_SID").ok();
         let twilio_auth_token = std::env::var("TWILIO_AUTH_TOKEN").ok();
@@ -68,11 +67,7 @@ impl SmsService {
     }
 
     /// Envoie un SMS via Twilio
-    pub async fn send_sms(
-        &self,
-        to: &str,
-        message: &str,
-    ) -> AppResult<SmsResult> {
+    pub async fn send_sms(&self, to: &str, message: &str) -> AppResult<SmsResult> {
         if !self.config.enabled {
             log::debug!(
                 "[SmsService] 📱 SMS désactivé. Message pour {}: {}",
@@ -202,5 +197,3 @@ impl Default for SmsService {
         Self::new()
     }
 }
-
-

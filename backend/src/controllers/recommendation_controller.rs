@@ -93,11 +93,12 @@ pub async fn get_recommended_products(
             let products: Vec<serde_json::Value> = rows
                 .iter()
                 .map(|row| {
-                    let product_data: serde_json::Value =
-                        row.try_get("product_data").unwrap_or(serde_json::json!({}));
+                    let product_data: serde_json::Value = row
+                        .get::<Option<_>, _>("product_data")
+                        .unwrap_or(serde_json::json!({}));
                     let relevance_score: f64 = row
-                        .try_get::<sqlx::types::BigDecimal, _>("relevance_score")
-                        .map(|d| d.to_string().parse().unwrap_or(0.0))
+                        .get::<Option<sqlx::types::BigDecimal>, _>("relevance_score")
+                        .and_then(|d| d.to_string().parse::<f64>().ok())
                         .unwrap_or(0.0);
 
                     let mut data = product_data.as_object().cloned().unwrap_or_default();
@@ -216,25 +217,24 @@ pub async fn get_mixed_content(
 
     let mut engagement_map: HashMap<String, EngagementStats> = HashMap::new();
     for row in visibility_rows {
-        if let Ok(content_id) = row.try_get::<String, _>("content_id") {
-            let clicks: i64 = row.try_get("clicks").unwrap_or(0);
-            let impressions: i64 = row.try_get("impressions").unwrap_or(0);
-            let ctr = if impressions > 0 {
-                clicks as f64 / impressions as f64
-            } else {
-                0.0
-            };
-            let score = ctr + (clicks as f64 * 0.05);
-            engagement_map.insert(
-                content_id.clone(),
-                EngagementStats {
-                    score,
-                    clicks,
-                    impressions,
-                    ..Default::default()
-                },
-            );
-        }
+        let content_id = row.get::<String, _>("content_id");
+        let clicks: i64 = row.get::<Option<_>, _>("clicks").unwrap_or(0);
+        let impressions: i64 = row.get::<Option<_>, _>("impressions").unwrap_or(0);
+        let ctr = if impressions > 0 {
+            clicks as f64 / impressions as f64
+        } else {
+            0.0
+        };
+        let score = ctr + (clicks as f64 * 0.05);
+        engagement_map.insert(
+            content_id,
+            EngagementStats {
+                score,
+                clicks,
+                impressions,
+                ..Default::default()
+            },
+        );
     }
 
     let engagement_counts_rows = sqlx::query(
@@ -252,29 +252,28 @@ pub async fn get_mixed_content(
     .unwrap_or_default();
 
     for row in engagement_counts_rows {
-        if let Ok(content_id) = row.try_get::<String, _>("content_id") {
-            let likes: i64 = row
-                .try_get::<Option<i64>, _>("likes")
-                .unwrap_or(Some(0))
-                .unwrap_or(0);
-            let saves: i64 = row
-                .try_get::<Option<i64>, _>("saves")
-                .unwrap_or(Some(0))
-                .unwrap_or(0);
-            let entry = engagement_map
-                .entry(content_id.clone())
-                .or_insert_with(EngagementStats::default);
-            entry.likes = likes;
-            entry.saves = saves;
-        }
+        let content_id = row.get::<String, _>("content_id");
+        let likes: i64 = row
+            .try_get::<Option<i64>, _>("likes")
+            .unwrap_or(Some(0))
+            .unwrap_or(0);
+        let saves: i64 = row
+            .try_get::<Option<i64>, _>("saves")
+            .unwrap_or(Some(0))
+            .unwrap_or(0);
+        let entry = engagement_map
+            .entry(content_id.clone())
+            .or_insert_with(EngagementStats::default);
+        entry.likes = likes;
+        entry.saves = saves;
     }
 
     // Traiter les résultats
     let mut organic_products: Vec<serde_json::Value> = vec![];
     for row in organic_rows {
-        let row_id: i32 = row.try_get("id").unwrap_or_default();
-        let row_data: serde_json::Value = row.try_get("data").unwrap_or_default();
-        let row_category: Option<String> = row.try_get("category").ok();
+        let row_id: i32 = row.get::<Option<_>, _>("id").unwrap_or_default();
+        let row_data: serde_json::Value = row.get::<Option<_>, _>("data").unwrap_or_default();
+        let row_category: Option<String> = row.get::<Option<_>, _>("category");
 
         if let Some(produits) = row_data.get("produits") {
             if let Some(produits_array) = produits
@@ -330,15 +329,15 @@ pub async fn get_mixed_content(
     let mut paid_ads: Vec<serde_json::Value> = vec![];
     let mut produit_service_ids: HashSet<i32> = HashSet::new();
     for row in paid_rows {
-        let id: i32 = row.try_get("id").unwrap_or(0);
-        let titre: String = row.try_get("titre").unwrap_or_default();
-        let description: Option<String> = row.try_get("description").ok();
+        let id: i32 = row.get::<Option<_>, _>("id").unwrap_or(0);
+        let titre: String = row.get::<Option<_>, _>("titre").unwrap_or_default();
+        let description: Option<String> = row.get::<Option<_>, _>("description");
         let videos: Vec<String> = row.try_get::<Vec<String>, _>("videos").unwrap_or_default();
         let thumbnails: Vec<String> = row
             .try_get::<Vec<String>, _>("thumbnails")
             .unwrap_or_default();
-        let boost_level: Option<String> = row.try_get("boost_level").ok();
-        let frequency_ratio: Option<f64> = row.try_get("frequency_ratio").ok();
+        let boost_level: Option<String> = row.get::<Option<_>, _>("boost_level");
+        let frequency_ratio: Option<f64> = row.get::<Option<_>, _>("frequency_ratio");
         let produits_indexes: Vec<String> = row
             .try_get::<Vec<String>, _>("produits_indexes")
             .unwrap_or_default();
@@ -420,16 +419,17 @@ pub async fn get_mixed_content(
                 Ok(rows) => rows
                     .into_iter()
                     .map(|row| {
-                        let id: i32 = row.try_get("id").unwrap_or(0);
-                        let titre: String = row.try_get("titre").unwrap_or_default();
-                        let description: Option<String> = row.try_get("description").ok();
+                        let id: i32 = row.get::<Option<_>, _>("id").unwrap_or(0);
+                        let titre: String = row.get::<Option<_>, _>("titre").unwrap_or_default();
+                        let description: Option<String> = row.get::<Option<_>, _>("description");
                         let videos: Vec<String> =
                             row.try_get::<Vec<String>, _>("videos").unwrap_or_default();
                         let thumbnails: Vec<String> = row
                             .try_get::<Vec<String>, _>("thumbnails")
                             .unwrap_or_default();
-                        let boost_level: Option<String> = row.try_get("boost_level").ok();
-                        let frequency_ratio: Option<f64> = row.try_get("frequency_ratio").ok();
+                        let boost_level: Option<String> = row.get::<Option<_>, _>("boost_level");
+                        let frequency_ratio: Option<f64> =
+                            row.get::<Option<_>, _>("frequency_ratio");
                         let produits_indexes: Vec<String> = row
                             .try_get::<Vec<String>, _>("produits_indexes")
                             .unwrap_or_default();
@@ -658,7 +658,7 @@ async fn fetch_service_categories(
     let mut map = HashMap::new();
     for row in rows {
         let id: i32 = row.try_get("id")?;
-        let category: Option<String> = row.try_get("category").ok();
+        let category: Option<String> = row.get::<Option<_>, _>("category");
         map.insert(id, category);
     }
 
@@ -852,9 +852,9 @@ pub async fn get_fairness_stats(
         Ok(rows) => {
             let stats: Vec<serde_json::Value> = rows.iter().map(|row| {
                 serde_json::json!({
-                    "content_type": row.try_get::<String, _>("content_type").unwrap_or_default(),
-                    "unique_items": row.try_get::<i64, _>("unique_items").unwrap_or(0),
-                    "total_appearances": row.try_get::<i64, _>("total_appearances").unwrap_or(0),
+                    "content_type": row.get::<String, _>("content_type"),
+                    "unique_items": row.get::<Option<i64>, _>("unique_items").unwrap_or(0),
+                    "total_appearances": row.get::<Option<i64>, _>("total_appearances").unwrap_or(0),
                     "avg_view_duration": row.try_get::<Option<f64>, _>("avg_view_duration").unwrap_or(None),
                     "click_through_rate": row.try_get::<Option<f64>, _>("click_through_rate").unwrap_or(None),
                     "avg_appearances_per_item": row.try_get::<Option<i64>, _>("avg_appearances_per_item").unwrap_or(None)

@@ -16,7 +16,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { config } from '../config/environment';
 import { iaApi, mediaApi } from '../services/api';
+import { uploadToCloud } from '../services/cloudUpload';
 import { studioService, type VideoDependency } from '../services/studioService';
+import { trackUxEvent } from '../services/uxMetrics';
 import { modernColors } from '../theme/modernTheme';
 import { ManagedProduct } from '../types/ManagedProduct';
 import { AIDistributionPlan, AIVideoBriefVariant, AIVideoStyleSuggestion, GeneratedVideoResponse, VideoCostEstimateResponse, VideoCostEstimation, VideoGenerationPayload } from '../types/VideoGeneration';
@@ -28,6 +30,18 @@ import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import { TimelineEditor } from './TimelineEditor';
 import { TimelinePreview, VideoTimeline as VideoTimelineType } from './TimelinePreview';
+// ✅ NOUVEAU: Composants IA avancés
+import { AudioSuggestionPanel } from './AudioSuggestionPanel';
+import { AudioSyncPanel } from './AudioSyncPanel';
+import { AutoCaptionsPanel } from './AutoCaptionsPanel';
+import { AutoCutPanel } from './AutoCutPanel';
+import { ColorGradingPanel } from './ColorGradingPanel';
+import { CreatorStudioCard } from './CreatorStudioCard';
+import { EffectPreviewCarousel } from './EffectPreviewCarousel';
+import { QuickPreview } from './QuickPreview';
+import { TimelineVariantSelector } from './TimelineVariantSelector';
+// ✅ NOUVEAU Phase 3.2: Éditeur AR immersif
+import ARVideoEditor from './ARVideoEditor';
 
 type VideoStylePreset = 'tiktok' | 'story' | 'cinematic' | 'carousel';
 type MusicMode = 'pulse' | 'lofi' | 'ambient' | 'cinematic' | 'none';
@@ -332,7 +346,86 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [showVideoChaining, setShowVideoChaining] = useState<boolean>(false);
     const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
 
+    // ✅ NOUVEAU: Studio Sessions (depuis Wizard)
+    const [studioSessionId, setStudioSessionId] = useState<string | undefined>();
+    const [storyboard, setStoryboard] = useState<import('../services/studioService').Storyboard | null>(null);
+    const [storyboardLoading, setStoryboardLoading] = useState<boolean>(false);
+    const [shortPreviewUrl, setShortPreviewUrl] = useState<string | null>(null);
+    const [shortPreviewLoading, setShortPreviewLoading] = useState<boolean>(false);
+    const [prewarmedShortPreviewUrl, setPrewarmedShortPreviewUrl] = useState<string | undefined>();
+
+    // ✅ NOUVEAU: Auto-Storyboard Toggle (depuis Wizard)
+    const [autoStoryboard, setAutoStoryboard] = useState<boolean>(true);
+
+    // ✅ NOUVEAU: Completed Steps Tracking (depuis Wizard)
+    const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+
+    // ✅ NOUVEAU: Story Templates Serveur (depuis Wizard)
+    const [storyTemplates, setStoryTemplates] = useState<import('../types/VideoGeneration').StoryTemplateSpec[]>([]);
+    const [storyTemplatesLoading, setStoryTemplatesLoading] = useState<boolean>(false);
+    const [storyTemplateId, setStoryTemplateId] = useState<string>('blog');
+
+    // ✅ NOUVEAU Phase 3.2: État pour l'éditeur AR
+    const [showAREditor, setShowAREditor] = useState<boolean>(false);
+    const [isUploadingARVideo, setIsUploadingARVideo] = useState<boolean>(false);
+
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+    // ✅ NOUVEAU Phase 3.2: Gérer la vidéo AR capturée
+    const handleARVideoCaptured = useCallback(async (videoUri: string) => {
+        if (!selectedProduct || typeof selectedProduct.product_index !== 'number') {
+            Alert.alert('Erreur', 'Produit non sélectionné');
+            setShowAREditor(false);
+            return;
+        }
+
+        setIsUploadingARVideo(true);
+        try {
+            const serviceId = Number(selectedProduct.serviceId);
+            const productIndex = selectedProduct.product_index;
+
+            // Upload vers le cloud
+            const uploadResult = await uploadToCloud(
+                videoUri,
+                'video',
+                `ar_video_${Date.now()}.mp4`
+            );
+
+            if (!uploadResult.success || !uploadResult.url) {
+                throw new Error(uploadResult.error || 'Erreur lors de l\'upload');
+            }
+
+            // Créer un item média temporaire (l'API backend gérera l'enregistrement)
+            const newMediaItem: MediaLibraryItem = {
+                id: Date.now(), // ID temporaire
+                path: uploadResult.url,
+                type: 'video',
+                media_type: 'video',
+                product_index: productIndex,
+                ai_description: 'Vidéo AR immersive',
+            };
+
+            // Ajouter à la médiathèque produit immédiatement
+            setProductMedia((prev) => [...prev, newMediaItem]);
+            // Sélectionner automatiquement
+            setSelectedMediaIds((prev) => new Set([...prev, newMediaItem.id]));
+
+            Alert.alert('Succès', 'Vidéo AR ajoutée à votre médiathèque');
+            setShowAREditor(false);
+
+            // Rafraîchir les médias pour obtenir l'ID réel depuis le serveur
+            await refreshMedia(selectedProduct);
+            console.log('[ProductVideoCreationModal] Médias rafraîchis après upload AR');
+        } catch (error: any) {
+            console.error('[ProductVideoCreationModal] Erreur upload vidéo AR:', error);
+            Alert.alert(
+                'Erreur',
+                error?.message || 'Impossible d\'ajouter la vidéo AR. Réessayez plus tard.'
+            );
+        } finally {
+            setIsUploadingARVideo(false);
+        }
+    }, [selectedProduct]);
     const refreshMedia = useCallback(
         async (product?: ManagedProduct | null): Promise<MediaLibraryItem[]> => {
             if (!product || typeof product.product_index !== 'number') {
@@ -917,8 +1010,17 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setShowCostEstimation(false);
             setShowVideoChaining(false);
             setSelectedLinkedSessions([]);
+            setCompletedSteps(new Set());
+        } else {
+            // ✅ NOUVEAU: Tracking UX (depuis Wizard)
+            trackUxEvent('wizard_open', {
+                device: 'mobile',
+                serviceId: selectedProduct?.serviceId ? Number(selectedProduct.serviceId) : undefined,
+                productIndex: selectedProduct?.product_index,
+                step: activeStep,
+            });
         }
-    }, [visible]);
+    }, [visible, selectedProduct, activeStep]);
 
     useEffect(() => {
         coachPrefetchDoneRef.current = false;
@@ -1391,11 +1493,300 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     }), [insets.bottom]);
 
     // ✅ NOUVEAU: Fonctions de rendu par étape - Réorganisées en 6 étapes courtes
+    // ✅ NOUVEAU: Charger Templates Narratifs Serveur (depuis Wizard)
+    useEffect(() => {
+        const loadTemplates = async () => {
+            setStoryTemplatesLoading(true);
+            try {
+                const templates = await studioService.listTemplates();
+                if (Array.isArray(templates)) {
+                    setStoryTemplates(templates);
+                    if (templates.length > 0 && !templates.some((spec) => spec.id === storyTemplateId)) {
+                        setStoryTemplateId(templates[0].id);
+                    }
+                }
+            } catch (error) {
+                console.warn('[ProductVideoCreationModal] Templates indisponibles', error);
+            } finally {
+                setStoryTemplatesLoading(false);
+            }
+        };
+        if (visible && selectedProduct) {
+            loadTemplates();
+        }
+    }, [visible, selectedProduct, storyTemplateId]);
+
+    // ✅ NOUVEAU: Marquer étape complétée (depuis Wizard)
+    const markStepCompleted = useCallback((stepNum: number) => {
+        setCompletedSteps((prev) => new Set([...prev, stepNum]));
+    }, []);
+
+    // ✅ NOUVEAU: Ensure Studio Session (depuis Wizard)
+    const ensureStudioSession = useCallback(async (): Promise<string | undefined> => {
+        if (studioSessionId) {
+            return studioSessionId;
+        }
+        if (!selectedProduct || typeof selectedProduct.serviceId === 'undefined') {
+            return undefined;
+        }
+        try {
+            const existing = await studioService.listSessions();
+            if (existing.length > 0) {
+                setStudioSessionId(existing[0].id);
+                return existing[0].id;
+            }
+            const payload: import('../services/studioService').CreateStudioSessionPayload = {
+                service_id: Number(selectedProduct.serviceId),
+                brief: { raw: scriptNotes || headline || normalizeProductName(selectedProduct) },
+                metadata: {
+                    product_name: normalizeProductName(selectedProduct),
+                },
+                distribution_plan: [],
+            };
+            const aggregate = await studioService.createSession(payload);
+            setStudioSessionId(aggregate.session.id);
+            return aggregate.session.id;
+        } catch (error) {
+            console.warn('[ProductVideoCreationModal] session Studio indisponible', error);
+            return undefined;
+        }
+    }, [selectedProduct, scriptNotes, headline, studioSessionId]);
+
+    // ✅ NOUVEAU: Generate Storyboard via Studio (depuis Wizard)
+    const handleGenerateStoryboard = useCallback(async () => {
+        if (!selectedProduct) {
+            Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer un storyboard.');
+            return;
+        }
+        const startedAt = Date.now();
+        trackUxEvent('storyboard_generate_click', {
+            device: 'mobile',
+            serviceId: Number(selectedProduct.serviceId),
+            productIndex: selectedProduct.product_index,
+            sessionId: studioSessionId,
+            step: activeStep,
+        });
+        const sessionId = await ensureStudioSession();
+        if (!sessionId) {
+            Alert.alert('Erreur', 'Impossible de créer une session Studio. Vérifiez votre connexion.');
+            return;
+        }
+        setStoryboardLoading(true);
+        try {
+            const request: import('../services/studioService').StoryboardRequest = {
+                script_outline: scriptNotes
+                    .split(/\r?\n/)
+                    .map((line) => line.trim())
+                    .filter((line) => line.length > 0)
+                    .slice(0, 6),
+                product_name: normalizeProductName(selectedProduct),
+                headline: headline || undefined,
+                call_to_action: callToAction || undefined,
+                style: stylePreset,
+                duration_seconds: ensureNumber(duration, 28),
+                template_id: storyTemplateId !== 'blog' ? storyTemplateId : undefined,
+                business_context: undefined,
+                ai_hints: [],
+            };
+            const result = await studioService.generateStoryboard(sessionId, request);
+            setStoryboard(result);
+            const durationMs = Date.now() - startedAt;
+            trackUxEvent('storyboard_generate_completed', {
+                device: 'mobile',
+                serviceId: Number(selectedProduct.serviceId),
+                productIndex: selectedProduct.product_index,
+                sessionId,
+                step: activeStep,
+                durationMs,
+                extra: { scenes: result.scenes.length },
+            });
+            Alert.alert('Storyboard généré', `${result.scenes.length} scènes créées.`);
+        } catch (error: any) {
+            console.error('[ProductVideoCreationModal] Erreur génération storyboard:', error);
+            const durationMs = Date.now() - startedAt;
+            trackUxEvent('storyboard_generate_failed', {
+                device: 'mobile',
+                serviceId: Number(selectedProduct.serviceId),
+                productIndex: selectedProduct.product_index,
+                sessionId: studioSessionId,
+                step: activeStep,
+                durationMs,
+                extra: { error: error?.message ?? 'unknown' },
+            });
+            Alert.alert('Erreur', error?.message || 'Impossible de générer le storyboard.');
+        } finally {
+            setStoryboardLoading(false);
+        }
+    }, [selectedProduct, ensureStudioSession, scriptNotes, headline, callToAction, stylePreset, duration, storyTemplateId, studioSessionId, activeStep]);
+
+    // ✅ NOUVEAU: Request Short Preview (depuis Wizard)
+    const handleShortPreview = useCallback(async () => {
+        if (!studioSessionId) {
+            Alert.alert('Session requise', 'Générez d\'abord un storyboard pour créer une session Studio.');
+            return;
+        }
+        const startedAt = Date.now();
+        trackUxEvent('preview_short_click', {
+            device: 'mobile',
+            serviceId: selectedProduct ? Number(selectedProduct.serviceId) : undefined,
+            productIndex: selectedProduct?.product_index,
+            sessionId: studioSessionId,
+            step: activeStep,
+        });
+        setShortPreviewLoading(true);
+        try {
+            // ✅ NOUVEAU: Utiliser prewarmed preview si disponible (depuis Wizard)
+            if (prewarmedShortPreviewUrl) {
+                const { Linking } = require('react-native');
+                Linking.openURL(prewarmedShortPreviewUrl);
+                const durationMs = Date.now() - startedAt;
+                trackUxEvent('preview_short_completed', {
+                    device: 'mobile',
+                    serviceId: selectedProduct ? Number(selectedProduct.serviceId) : undefined,
+                    productIndex: selectedProduct?.product_index,
+                    sessionId: studioSessionId,
+                    step: activeStep,
+                    durationMs,
+                    prewarmed: true,
+                });
+                return;
+            }
+            const response = await studioService.requestShortPreview(studioSessionId);
+            if (response.preview_url) {
+                setShortPreviewUrl(response.preview_url);
+                setPrewarmedShortPreviewUrl(response.preview_url);
+                // Ouvrir dans le lecteur natif
+                const { Linking } = require('react-native');
+                Linking.openURL(response.preview_url);
+                const durationMs = Date.now() - startedAt;
+                trackUxEvent('preview_short_completed', {
+                    device: 'mobile',
+                    serviceId: selectedProduct ? Number(selectedProduct.serviceId) : undefined,
+                    productIndex: selectedProduct?.product_index,
+                    sessionId: studioSessionId,
+                    step: activeStep,
+                    durationMs,
+                    prewarmed: false,
+                });
+                Alert.alert('Preview ouverte', 'La prévisualisation s\'ouvre dans votre lecteur vidéo.');
+            } else {
+                throw new Error('Aucune URL de preview retournée');
+            }
+        } catch (error: any) {
+            console.error('[ProductVideoCreationModal] Erreur short preview:', error);
+            const durationMs = Date.now() - startedAt;
+            trackUxEvent('preview_short_failed', {
+                device: 'mobile',
+                serviceId: selectedProduct ? Number(selectedProduct.serviceId) : undefined,
+                productIndex: selectedProduct?.product_index,
+                sessionId: studioSessionId,
+                step: activeStep,
+                durationMs,
+                extra: { error: error?.message ?? 'unknown' },
+            });
+            Alert.alert('Erreur', error?.message || 'Impossible de générer la prévisualisation.');
+        } finally {
+            setShortPreviewLoading(false);
+        }
+    }, [studioSessionId, prewarmedShortPreviewUrl, selectedProduct, activeStep]);
+
     const renderStep1 = () => {
         // Étape 1 : Sélection produit uniquement
         return (
             <>
                 {renderProductSelection()}
+                {/* ✅ NOUVEAU: CreatorStudioCard (depuis Wizard) */}
+                {selectedProduct && (
+                    <CreatorStudioCard
+                        serviceName={`Service #${selectedProduct.serviceId}`}
+                        productName={normalizeProductName(selectedProduct)}
+                    />
+                )}
+                {/* ✅ NOUVEAU: Templates Narratifs Serveur (depuis Wizard) */}
+                {selectedProduct && storyTemplates.length > 0 && (
+                    <NativeCard style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>📚 Templates narratifs</Text>
+                            {storyTemplatesLoading && (
+                                <ActivityIndicator size="small" color={modernColors.primary} />
+                            )}
+                        </View>
+                        <Text style={styles.sectionSubtitle}>
+                            Choisissez un template pour structurer votre vidéo.
+                        </Text>
+                        <View style={styles.templateList}>
+                            {storyTemplates.slice(0, 4).map((spec) => {
+                                const active = spec.id === storyTemplateId;
+                                return (
+                                    <TouchableOpacity
+                                        key={spec.id}
+                                        style={[styles.templateCard, active && styles.templateCardActive]}
+                                        onPress={() => setStoryTemplateId(spec.id)}
+                                    >
+                                        <Text style={[styles.templateTitle, active && styles.templateTitleActive]}>
+                                            {spec.label}
+                                        </Text>
+                                        <Text style={styles.templateDescription} numberOfLines={2}>
+                                            {spec.description}
+                                        </Text>
+                                        <Text style={styles.templateMeta}>
+                                            {spec.suggestedScenes} scènes · ~{spec.defaultDurationSeconds}s
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </NativeCard>
+                )}
+
+                {/* ✅ NOUVEAU: Storyboard IA via Studio (depuis Wizard) */}
+                {selectedProduct && (
+                    <NativeCard style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>🎬 Storyboard IA</Text>
+                            <TouchableOpacity
+                                style={styles.linkButton}
+                                onPress={handleGenerateStoryboard}
+                                disabled={storyboardLoading}
+                            >
+                                {storyboardLoading ? (
+                                    <ActivityIndicator size="small" color={modernColors.primary} />
+                                ) : (
+                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                                )}
+                                <Text style={styles.linkButtonText}>
+                                    {storyboardLoading ? 'Génération…' : 'Générer storyboard'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.sectionSubtitle}>
+                            Génère une proposition de scènes (intro, bénéfices, preuves, CTA) à partir de ton brief.
+                        </Text>
+                        {/* ✅ NOUVEAU: Auto-Storyboard Toggle (depuis Wizard) */}
+                        <View style={styles.inlineRow}>
+                            <Text style={styles.inlineLabel}>Storyboard automatique</Text>
+                            <Switch
+                                value={autoStoryboard}
+                                onValueChange={setAutoStoryboard}
+                                trackColor={{ true: modernColors.primary }}
+                            />
+                        </View>
+                        {storyboard && storyboard.scenes.length > 0 && (
+                            <View style={styles.storyboardList}>
+                                {storyboard.scenes.slice(0, 4).map((scene) => (
+                                    <View key={scene.index} style={styles.storyboardItem}>
+                                        <Text style={styles.storyboardSceneType}>
+                                            {scene.sceneType}
+                                        </Text>
+                                        <Text style={styles.storyboardSceneText} numberOfLines={2}>
+                                            {scene.headline || scene.body || 'Scène générée'}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                    </NativeCard>
+                )}
                 {coachPanel}
                 {selectedProduct && renderRelatedProducts()}
             </>
@@ -1435,8 +1826,23 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </TouchableOpacity>
                 </View>
                 <Text style={styles.sectionSubtitle}>
-                    Choisissez les images/vidéos à utiliser dans votre vidéo.
+                    Choisissez les images/vidéos à utiliser dans votre vidéo, ou créez une vidéo AR immersive.
                 </Text>
+
+                {/* ✅ NOUVEAU Phase 3.2: Bouton pour créer vidéo AR */}
+                <View style={styles.arButtonContainer}>
+                    <NativeButton
+                        title="🎬 Créer vidéo AR immersive"
+                        variant="primary"
+                        size="medium"
+                        onPress={() => setShowAREditor(true)}
+                        style={styles.arButton}
+                    />
+                    <Text style={styles.arButtonHint}>
+                        Capturez votre produit en réalité augmentée avec effets 3D
+                    </Text>
+                </View>
+
                 {Array.isArray(mediaAnalysis.dominantColors) && mediaAnalysis.dominantColors.length > 0 && (
                     <View style={styles.mediaInsightsBox}>
                         <Text style={styles.mediaInsightsTitle}>Palette dominante</Text>
@@ -1765,17 +2171,75 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                 </NativeCard>
 
+                {/* ✅ NOUVEAU: Sélecteur de variantes de timeline */}
+                {!generatedTimeline && !isEditingTimeline && scriptNotes.trim().length > 0 && (
+                    <TimelineVariantSelector
+                        timelineRequest={{
+                            brief: {
+                                script_outline: scriptNotes.split('\n').filter(l => l.trim().length > 0),
+                                headline,
+                                call_to_action: callToAction,
+                            },
+                            style: {
+                                effects: Array.from(selectedEffects),
+                                transitions: Array.from(selectedTransitions),
+                                color_palette: styleSuggestion?.color_palette || undefined,
+                            },
+                            available_media: Array.from(selectedMediaIds).map(id => ({
+                                id: id.toString(),
+                                media_type: 'image',
+                            })),
+                            duration_seconds: Number.parseFloat(duration) || 30,
+                            voiceover_script: voiceoverEnabled ? voiceoverScript : undefined,
+                            music_track_id: selectedMusicTrackId?.toString(),
+                            lang: voiceoverLang || subtitleLang || 'fr',
+                            variant_count: 3,
+                        }}
+                        onVariantSelected={(variant) => {
+                            console.log('[ProductVideoCreationModal] Variante sélectionnée:', variant.variant_name);
+                            setGeneratedTimeline(variant.timeline);
+                        }}
+                    />
+                )}
+
                 {/* Prévisualisation de la timeline générée */}
                 {generatedTimeline && !isEditingTimeline && (
-                    <NativeCard style={styles.sectionCard}>
-                        <TimelinePreview
+                    <>
+                        <NativeCard style={styles.sectionCard}>
+                            <TimelinePreview
+                                timeline={generatedTimeline}
+                                onEdit={() => setIsEditingTimeline(true)}
+                                onScenePress={(sceneIndex) => {
+                                    console.log('[ProductVideoCreationModal] Scène pressée:', sceneIndex);
+                                }}
+                            />
+                        </NativeCard>
+
+                        {/* ✅ NOUVEAU: Preview rapide */}
+                        <QuickPreview
                             timeline={generatedTimeline}
-                            onEdit={() => setIsEditingTimeline(true)}
-                            onScenePress={(sceneIndex) => {
-                                console.log('[ProductVideoCreationModal] Scène pressée:', sceneIndex);
+                            onPreviewReady={(preview) => {
+                                console.log('[ProductVideoCreationModal] Preview prêt:', preview.preview_url);
                             }}
                         />
-                    </NativeCard>
+
+                        {/* ✅ NOUVEAU: Short Preview via Studio (depuis Wizard) */}
+                        {studioSessionId && (
+                            <View style={styles.shortPreviewContainer}>
+                                <NativeButton
+                                    title={shortPreviewLoading ? "Génération preview…" : "🎬 Preview courte (Studio)"}
+                                    variant="outline"
+                                    size="medium"
+                                    onPress={handleShortPreview}
+                                    disabled={shortPreviewLoading}
+                                    style={styles.shortPreviewButton}
+                                />
+                                <Text style={styles.shortPreviewHint}>
+                                    Génère une prévisualisation courte avant la génération finale
+                                </Text>
+                            </View>
+                        )}
+                    </>
                 )}
 
                 {/* Éditeur de timeline */}
@@ -1790,6 +2254,72 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             onCancel={() => setIsEditingTimeline(false)}
                         />
                     </NativeCard>
+                )}
+
+                {/* ✅ NOUVEAU: Auto-cut intelligent */}
+                {generatedTimeline && !isEditingTimeline && generatedTimeline.scenes.length > 0 && (
+                    <AutoCutPanel
+                        videoUrl={generatedTimeline.scenes[0]?.media_url || ''}
+                        videoId={undefined}
+                        onScenesSelected={(scenes) => {
+                            console.log('[ProductVideoCreationModal] Scènes sélectionnées:', scenes);
+                            // Appliquer les scènes sélectionnées à la timeline
+                            if (scenes.length > 0 && generatedTimeline) {
+                                const updatedScenes = generatedTimeline.scenes.map((originalScene, idx) => {
+                                    const matchingScene = scenes.find(s =>
+                                        Math.abs(s.start_time - originalScene.start_time) < 0.5
+                                    );
+                                    if (matchingScene) {
+                                        return {
+                                            ...originalScene,
+                                            start_time: matchingScene.start_time,
+                                            duration: matchingScene.duration,
+                                        };
+                                    }
+                                    return originalScene;
+                                });
+                                setGeneratedTimeline({
+                                    ...generatedTimeline,
+                                    scenes: updatedScenes,
+                                    total_duration: scenes.reduce((sum, s) => sum + s.duration, 0),
+                                });
+                            }
+                        }}
+                    />
+                )}
+
+                {/* ✅ NOUVEAU: Color grading automatique */}
+                {selectedMediaIds.size > 0 && Array.from(selectedMediaIds).length > 0 && (
+                    <ColorGradingPanel
+                        mediaUrl={Array.from(selectedMediaIds)[0]?.toString() || ''}
+                        onGradingComplete={(gradedUrl) => {
+                            console.log('[ProductVideoCreationModal] Color grading appliqué:', gradedUrl);
+                        }}
+                    />
+                )}
+
+                {/* ✅ NOUVEAU: Carousel de previews d'effets */}
+                {styleSuggestion && styleSuggestion.effects && styleSuggestion.effects.length > 0 && selectedMediaIds.size > 0 && (
+                    <EffectPreviewCarousel
+                        effectNames={styleSuggestion.effects}
+                        sampleMediaUrl={Array.from(selectedMediaIds)[0]?.toString() || ''}
+                        onEffectSelected={(effectName, preview) => {
+                            console.log('[ProductVideoCreationModal] Effet sélectionné:', effectName, preview.preview_url);
+                            // Ajouter l'effet sélectionné
+                            setSelectedEffects(prev => new Set(prev).add(effectName));
+                        }}
+                    />
+                )}
+
+                {/* ✅ NOUVEAU: Sous-titres automatiques */}
+                {generatedTimeline && !isEditingTimeline && (
+                    <AutoCaptionsPanel
+                        videoUrl={generatedTimeline.scenes[0]?.media_url || ''}
+                        lang={voiceoverLang || 'fr'}
+                        onCaptionsGenerated={(subtitles, subtitleFileUrl) => {
+                            console.log('[ProductVideoCreationModal] Sous-titres générés:', subtitles.length);
+                        }}
+                    />
                 )}
             </>
         );
@@ -1871,6 +2401,22 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
                                         Sélectionner une piste audio existante
                                     </Text>
+                                    {/* ✅ NOUVEAU: Panel de suggestions audio contextuelles IA */}
+                                    {selectedProduct && (
+                                        <AudioSuggestionPanel
+                                            productName={selectedProduct.name || 'Produit'}
+                                            productType={selectedProduct.category}
+                                            tone={'energetic'}
+                                            channel={Array.from(selectedChannels)[0] || 'tiktok'}
+                                            durationSeconds={Number.parseFloat(duration) || 30}
+                                            onTrackSelected={(track) => {
+                                                console.log('[ProductVideoCreationModal] Piste audio sélectionnée:', track.track_id);
+                                                // TODO: Intégrer la piste sélectionnée
+                                                setSelectedMusicTrackId(Number.parseInt(track.track_id) || null);
+                                            }}
+                                        />
+                                    )}
+
                                     {/* ✅ CORRIGÉ: Affichage en 2 colonnes au lieu d'un scroll horizontal */}
                                     <View style={styles.audioRowGrid}>
                                         {availableAudioTracks.map((track) => {
@@ -2464,6 +3010,44 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         />
                     </View>
                 </NativeCard>
+
+                {/* ✅ NOUVEAU: Synchronisation audio-vidéo */}
+                {musicMode !== 'none' && generatedTimeline && generatedTimeline.scenes.length > 0 && (
+                    <AudioSyncPanel
+                        videoUrl={generatedTimeline.scenes[0]?.media_url || ''}
+                        musicTrackId={selectedMusicTrackId || undefined}
+                        videoTransitions={generatedTimeline.scenes.map((s) => s.start_time)}
+                        onSyncComplete={(syncedAudioUrl, beats) => {
+                            console.log('[ProductVideoCreationModal] Audio synchronisé:', syncedAudioUrl, beats.length);
+                            // Mettre à jour la timeline avec les points de synchronisation
+                            if (generatedTimeline && beats.length > 0) {
+                                const updatedScenes = generatedTimeline.scenes.map((scene, idx) => {
+                                    // Trouver le beat le plus proche pour cette scène
+                                    const closestBeat = beats.reduce((closest, beat) => {
+                                        const sceneDist = Math.abs(beat.time - scene.start_time);
+                                        const closestDist = Math.abs(closest.time - scene.start_time);
+                                        return sceneDist < closestDist ? beat : closest;
+                                    }, beats[0]);
+
+                                    // Ajuster le timing de la scène pour s'aligner sur le beat
+                                    if (Math.abs(closestBeat.time - scene.start_time) < 0.5) {
+                                        return {
+                                            ...scene,
+                                            start_time: closestBeat.time,
+                                            audio_cue: closestBeat.time,
+                                        };
+                                    }
+                                    return scene;
+                                });
+
+                                setGeneratedTimeline({
+                                    ...generatedTimeline,
+                                    scenes: updatedScenes,
+                                });
+                            }
+                        }}
+                    />
+                )}
             </>
         );
     };
@@ -2742,6 +3326,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         audio_cue: s.audio_cue,
                     }))
                 } : undefined,
+                auto_storyboard: autoStoryboard,
                 storyboard: generatedTimeline
                     ? undefined
                     : scriptNotes
@@ -3239,6 +3824,30 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             {renderStepContent()}
                         </ScrollView>
 
+                        {/* ✅ NOUVEAU Phase 3.2: Modal AR Video Editor */}
+                        <Modal
+                            visible={showAREditor}
+                            animationType="slide"
+                            presentationStyle="fullScreen"
+                            onRequestClose={() => {
+                                if (!isUploadingARVideo) {
+                                    setShowAREditor(false);
+                                }
+                            }}
+                        >
+                            <ARVideoEditor
+                                productName={normalizeProductName(selectedProduct)}
+                                serviceId={selectedProduct ? Number(selectedProduct.serviceId) : undefined}
+                                productIndex={selectedProduct?.product_index}
+                                onVideoCaptured={handleARVideoCaptured}
+                                onClose={() => {
+                                    if (!isUploadingARVideo) {
+                                        setShowAREditor(false);
+                                    }
+                                }}
+                            />
+                        </Modal>
+
                         {/* ✅ NOUVEAU: Boutons de navigation par étape */}
                         <View style={getFixedBottomButtonStyle()}>
                             {activeStep === 1 && (
@@ -3246,7 +3855,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     title={selectedProduct ? "Suivant" : "Sélectionnez un produit"}
                                     variant="primary"
                                     size="large"
-                                    onPress={() => handleStepChange(2)}
+                                    onPress={() => {
+                                        if (selectedProduct) {
+                                            markStepCompleted(1);
+                                            // Tracking step completion
+                                            markStepCompleted(1);
+                                        }
+                                        handleStepChange(2);
+                                    }}
                                     disabled={!selectedProduct}
                                 />
                             )}
@@ -4340,6 +4956,119 @@ const styles = StyleSheet.create({
         color: '#0F172A',
         flex: 1,
         textAlign: 'right',
+    },
+    // ✅ NOUVEAU Phase 3.2: Styles pour le bouton AR
+    arButtonContainer: {
+        marginTop: 16,
+        marginBottom: 16,
+        padding: 16,
+        borderRadius: 16,
+        backgroundColor: '#EEF2FF',
+        borderWidth: 2,
+        borderColor: '#6366F1',
+        borderStyle: 'dashed',
+        alignItems: 'center',
+        gap: 8,
+    },
+    arButton: {
+        width: '100%',
+    },
+    arButtonHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        marginTop: 4,
+    },
+    // ✅ NOUVEAU: Styles pour storyboard IA
+    storyboardList: {
+        marginTop: 12,
+        gap: 8,
+    },
+    storyboardItem: {
+        padding: 12,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    storyboardSceneType: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: modernColors.primary,
+        textTransform: 'uppercase',
+        marginBottom: 4,
+    },
+    storyboardSceneText: {
+        fontSize: 13,
+        color: modernColors.text,
+        lineHeight: 18,
+    },
+    // ✅ NOUVEAU: Styles pour short preview
+    shortPreviewContainer: {
+        marginTop: 16,
+        padding: 16,
+        backgroundColor: '#F0F9FF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+    },
+    shortPreviewButton: {
+        width: '100%',
+    },
+    shortPreviewHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 8,
+        textAlign: 'center',
+    },
+    // ✅ NOUVEAU: Styles pour templates narratifs (depuis Wizard)
+    templateList: {
+        marginTop: 12,
+        gap: 12,
+    },
+    templateCard: {
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+    },
+    templateCardActive: {
+        backgroundColor: '#EEF2FF',
+        borderColor: modernColors.primary,
+    },
+    templateTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 4,
+    },
+    templateTitleActive: {
+        color: modernColors.primary,
+    },
+    templateDescription: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        marginBottom: 8,
+        lineHeight: 18,
+    },
+    templateMeta: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        fontWeight: '500',
+    },
+    // ✅ NOUVEAU: Styles pour inline row (depuis Wizard)
+    inlineRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 12,
+        paddingVertical: 8,
+    },
+    inlineLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.text,
     },
 });
 

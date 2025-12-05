@@ -1,5 +1,6 @@
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::services::specialized_services_validation;
 use crate::state::AppState;
 use axum::{
     extract::{Extension, Path, Query, State},
@@ -13,14 +14,123 @@ use serde_json::json;
 use sqlx::FromRow;
 use std::sync::Arc;
 
-/// ✅ Liste des pharmacies (stub pour éviter erreur 405)
+#[derive(Debug, Deserialize)]
+pub struct ListPharmaciesQuery {
+    pub status: Option<String>, // "active", "inactive", "all"
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
+}
+
+/// ✅ Liste des pharmacies de l'utilisateur avec pagination et filtres
 pub async fn list_pharmacies(
-    State(_state): State<Arc<AppState>>,
-    Extension(_user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Query(query): Query<ListPharmaciesQuery>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[list_pharmacies] Called");
-    // TODO: Implémenter la vraie liste
-    Ok((StatusCode::OK, Json(json!([]))))
+    info!(
+        "[list_pharmacies] Appelé pour user_id={}, status={:?}",
+        user_id, query.status
+    );
+
+    let page = query.page.unwrap_or(1).max(1);
+    let limit = query.limit.unwrap_or(20).min(100).max(1);
+    let offset = (page - 1) * limit;
+
+    let status_condition = match query.status.as_deref() {
+        Some("active") => "AND s.is_active = true",
+        Some("inactive") => "AND s.is_active = false",
+        _ => "",
+    };
+
+    let sql = format!(
+        r#"
+        SELECT 
+            p.id,
+            p.service_id,
+            p.user_id,
+            p.nom,
+            p.adresse,
+            p.quartier,
+            p.ville,
+            p.gps,
+            p.jours_garde,
+            p.heures_ouverture,
+            p.heures_fermeture,
+            p.permanent_24h,
+            p.telephone,
+            p.telephone_urgence,
+            p.whatsapp,
+            p.email,
+            p.services,
+            s.is_active,
+            p.is_on_duty_now,
+            p.created_at,
+            p.updated_at
+        FROM pharmacies p
+        INNER JOIN services s ON s.id = p.service_id
+        WHERE s.user_id = $1 {}
+        ORDER BY p.updated_at DESC
+        LIMIT $2 OFFSET $3
+        "#,
+        status_condition
+    );
+
+    let pharmacies = sqlx::query_as::<_, Pharmacy>(&sql)
+        .bind(user_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[list_pharmacies] Erreur: {}", e);
+            AppError::Internal(format!("Erreur chargement pharmacies: {}", e))
+        })?;
+
+    // Compter le total pour pagination
+    let count_sql = format!(
+        r#"
+        SELECT COUNT(*)::bigint
+        FROM pharmacies p
+        INNER JOIN services s ON s.id = p.service_id
+        WHERE s.user_id = $1 {}
+        "#,
+        status_condition
+    );
+
+    let total: i64 = sqlx::query_scalar(&count_sql)
+        .bind(user_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[list_pharmacies] Erreur count: {}", e);
+            AppError::Internal(format!("Erreur count pharmacies: {}", e))
+        })?;
+
+    let total_pages = if total > 0 {
+        ((total as f64) / (limit as f64)).ceil() as i64
+    } else {
+        0
+    };
+
+    info!(
+        "[list_pharmacies] ✅ {} pharmacies trouvées pour user_id={}",
+        pharmacies.len(),
+        user_id
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": pharmacies,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "total_pages": total_pages
+            }
+        })),
+    ))
 }
 
 #[derive(Debug, Deserialize)]
@@ -82,46 +192,86 @@ pub async fn create_pharmacy(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<CreatePharmacyRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[create_pharmacy] Création pharmacie pour user_id={}, service_id={}", user_id, payload.service_id);
+    info!(
+        "[create_pharmacy] Création pharmacie pour user_id={}, service_id={}",
+        user_id, payload.service_id
+    );
 
     // Vérifier que le service appartient à l'utilisateur
-    let service_exists: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM services WHERE id = $1 AND user_id = $2"
-    )
-    .bind(payload.service_id)
-    .bind(user_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[create_pharmacy] Erreur vérification service: {}", e);
-        AppError::Internal(format!("Erreur vérification service: {}", e))
-    })?;
+    let service_exists: Option<i32> =
+        sqlx::query_scalar("SELECT id FROM services WHERE id = $1 AND user_id = $2")
+            .bind(payload.service_id)
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[create_pharmacy] Erreur vérification service: {}", e);
+                AppError::Internal(format!("Erreur vérification service: {}", e))
+            })?;
 
     if service_exists.is_none() {
-        return Err(AppError::NotFound("Service non trouvé ou n'appartient pas à l'utilisateur".to_string()));
+        return Err(AppError::NotFound(
+            "Service non trouvé ou n'appartient pas à l'utilisateur".to_string(),
+        ));
     }
 
     // ✅ NOUVEAU : Vérifier si une pharmacie existe déjà pour ce service
-    let existing_pharmacy: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM pharmacies WHERE service_id = $1 AND user_id = $2"
-    )
-    .bind(payload.service_id)
-    .bind(user_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[create_pharmacy] Erreur vérification pharmacie existante: {}", e);
-        AppError::Internal(format!("Erreur vérification pharmacie existante: {}", e))
-    })?;
+    let existing_pharmacy: Option<i32> =
+        sqlx::query_scalar("SELECT id FROM pharmacies WHERE service_id = $1 AND user_id = $2")
+            .bind(payload.service_id)
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!(
+                    "[create_pharmacy] Erreur vérification pharmacie existante: {}",
+                    e
+                );
+                AppError::Internal(format!("Erreur vérification pharmacie existante: {}", e))
+            })?;
 
     if existing_pharmacy.is_some() {
-        info!("[create_pharmacy] Pharmacie existe déjà pour service_id={}, utilisation UPSERT", payload.service_id);
+        info!(
+            "[create_pharmacy] Pharmacie existe déjà pour service_id={}, utilisation UPSERT",
+            payload.service_id
+        );
         // ✅ UPSERT : Mise à jour si existe, sinon création
         let pharmacy_id = existing_pharmacy.unwrap();
-        
-        let heures_ouverture = payload.heures_ouverture
+
+        // ✅ NOUVEAU: Validation stricte avant mise à jour
+        // Valider GPS
+        if let Some(ref gps) = payload.gps {
+            specialized_services_validation::validate_gps_format(gps)?;
+        }
+
+        // Valider email
+        if let Some(ref email) = payload.email {
+            specialized_services_validation::validate_email_format(email)?;
+        }
+
+        // Valider heures d'ouverture/fermeture
+        specialized_services_validation::validate_opening_hours(
+            payload.heures_ouverture.as_deref(),
+            payload.heures_fermeture.as_deref(),
+            payload.permanent_24h.unwrap_or(false),
+        )?;
+
+        // Valider téléphone (optionnel)
+        if let Some(ref phone) = payload.telephone {
+            specialized_services_validation::validate_phone_format(phone)?;
+        }
+        if let Some(ref phone) = payload.telephone_urgence {
+            specialized_services_validation::validate_phone_format(phone)?;
+        }
+        if let Some(ref phone) = payload.whatsapp {
+            specialized_services_validation::validate_phone_format(phone)?;
+        }
+
+        let heures_ouverture = payload
+            .heures_ouverture
             .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
-        let heures_fermeture = payload.heures_fermeture
+        let heures_fermeture = payload
+            .heures_fermeture
             .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
 
         sqlx::query(
@@ -143,7 +293,7 @@ pub async fn create_pharmacy(
                 services = $16,
                 updated_at = NOW()
             WHERE id = $1 AND user_id = $2
-            "#
+            "#,
         )
         .bind(pharmacy_id)
         .bind(user_id)
@@ -168,17 +318,51 @@ pub async fn create_pharmacy(
             AppError::Internal(format!("Erreur mise à jour pharmacie: {}", e))
         })?;
 
-        return Ok((StatusCode::OK, Json(json!({
-            "success": true,
-            "id": pharmacy_id,
-            "message": "Pharmacie mise à jour avec succès"
-        }))));
+        return Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "id": pharmacy_id,
+                "message": "Pharmacie mise à jour avec succès"
+            })),
+        ));
+    }
+
+    // ✅ NOUVEAU: Validation stricte avant insertion
+    // Valider GPS
+    if let Some(ref gps) = payload.gps {
+        specialized_services_validation::validate_gps_format(gps)?;
+    }
+
+    // Valider email
+    if let Some(ref email) = payload.email {
+        specialized_services_validation::validate_email_format(email)?;
+    }
+
+    // Valider heures d'ouverture/fermeture
+    specialized_services_validation::validate_opening_hours(
+        payload.heures_ouverture.as_deref(),
+        payload.heures_fermeture.as_deref(),
+        payload.permanent_24h.unwrap_or(false),
+    )?;
+
+    // Valider téléphone (optionnel)
+    if let Some(ref phone) = payload.telephone {
+        specialized_services_validation::validate_phone_format(phone)?;
+    }
+    if let Some(ref phone) = payload.telephone_urgence {
+        specialized_services_validation::validate_phone_format(phone)?;
+    }
+    if let Some(ref phone) = payload.whatsapp {
+        specialized_services_validation::validate_phone_format(phone)?;
     }
 
     // Convertir heures_ouverture et heures_fermeture
-    let heures_ouverture = payload.heures_ouverture
+    let heures_ouverture = payload
+        .heures_ouverture
         .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
-    let heures_fermeture = payload.heures_fermeture
+    let heures_fermeture = payload
+        .heures_fermeture
         .and_then(|h| chrono::NaiveTime::parse_from_str(&h, "%H:%M").ok());
 
     // Insérer la pharmacie
@@ -191,7 +375,7 @@ pub async fn create_pharmacy(
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING id
-        "#
+        "#,
     )
     .bind(payload.service_id)
     .bind(user_id)
@@ -217,16 +401,17 @@ pub async fn create_pharmacy(
     })?;
 
     // ✅ NOUVEAU : Marquer le service comme spécialisé
-    sqlx::query(
-        "UPDATE services SET specialized_type = 'pharmacie' WHERE id = $1"
-    )
-    .bind(payload.service_id)
-    .execute(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[create_pharmacy] Erreur mise à jour specialized_type: {}", e);
-        AppError::Internal("Erreur mise à jour specialized_type".to_string())
-    })?;
+    sqlx::query("UPDATE services SET specialized_type = 'pharmacie' WHERE id = $1")
+        .bind(payload.service_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!(
+                "[create_pharmacy] Erreur mise à jour specialized_type: {}",
+                e
+            );
+            AppError::Internal("Erreur mise à jour specialized_type".to_string())
+        })?;
 
     // Mettre à jour is_on_duty_now avec la fonction PostgreSQL
     sqlx::query(
@@ -241,7 +426,7 @@ pub async fn create_pharmacy(
             NOW()
         )
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(pharmacy_id)
     .execute(&state.pg)
@@ -253,11 +438,14 @@ pub async fn create_pharmacy(
 
     info!("[create_pharmacy] Pharmacie créée avec succès: id={}, service_id={} marqué comme spécialisé", pharmacy_id, payload.service_id);
 
-    Ok((StatusCode::CREATED, Json(json!({
-        "success": true,
-        "id": pharmacy_id,
-        "message": "Pharmacie créée avec succès"
-    }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "id": pharmacy_id,
+            "message": "Pharmacie créée avec succès"
+        })),
+    ))
 }
 
 /// Rechercher des pharmacies
@@ -275,7 +463,7 @@ pub async fn search_pharmacies(
     let pharmacies = if !search_query.is_empty() {
         let pattern = format!("%{}%", search_query);
         let ville_pattern = query.ville.as_ref().map(|v| format!("%{}%", v));
-        
+
         let mut sql = String::from(
             r#"
             SELECT 
@@ -286,31 +474,28 @@ pub async fn search_pharmacies(
             FROM pharmacies p
             WHERE p.is_active = TRUE
             AND (p.nom ILIKE $1 OR p.quartier ILIKE $1 OR p.ville ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(p.services) AS service WHERE service ILIKE $1))
-            "#
+            "#,
         );
-        
+
         if on_duty_only {
             sql.push_str(" AND p.is_on_duty_now = TRUE");
         }
-        
+
         if let Some(_) = &ville_pattern {
             sql.push_str(" AND p.ville ILIKE $2");
         }
-        
+
         sql.push_str(" ORDER BY p.is_on_duty_now DESC, p.nom ASC LIMIT 50");
-        
+
         let mut query_builder = sqlx::query_as::<_, Pharmacy>(&sql).bind(&pattern);
         if let Some(vp) = &ville_pattern {
             query_builder = query_builder.bind(vp);
         }
-        
-        query_builder
-            .fetch_all(&state.pg)
-            .await
-            .map_err(|e| {
-                error!("[search_pharmacies] Erreur recherche: {}", e);
-                AppError::Internal("Erreur recherche".to_string())
-            })?
+
+        query_builder.fetch_all(&state.pg).await.map_err(|e| {
+            error!("[search_pharmacies] Erreur recherche: {}", e);
+            AppError::Internal("Erreur recherche".to_string())
+        })?
     } else {
         // Pas de recherche textuelle
         let mut sql = String::from(
@@ -322,18 +507,18 @@ pub async fn search_pharmacies(
                 p.is_active, p.is_on_duty_now, p.created_at, p.updated_at
             FROM pharmacies p
             WHERE p.is_active = TRUE
-            "#
+            "#,
         );
-        
+
         if on_duty_only {
             sql.push_str(" AND p.is_on_duty_now = TRUE");
         }
-        
+
         if let Some(ville) = &query.ville {
             let pattern = format!("%{}%", ville);
             sql.push_str(" AND p.ville ILIKE $1");
             sql.push_str(" ORDER BY p.is_on_duty_now DESC, p.nom ASC LIMIT 50");
-            
+
             sqlx::query_as::<_, Pharmacy>(&sql)
                 .bind(&pattern)
                 .fetch_all(&state.pg)
@@ -344,7 +529,7 @@ pub async fn search_pharmacies(
                 })?
         } else {
             sql.push_str(" ORDER BY p.is_on_duty_now DESC, p.nom ASC LIMIT 50");
-            
+
             sqlx::query_as::<_, Pharmacy>(&sql)
                 .fetch_all(&state.pg)
                 .await
@@ -355,11 +540,14 @@ pub async fn search_pharmacies(
         }
     };
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": pharmacies,
-        "count": pharmacies.len()
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": pharmacies,
+            "count": pharmacies.len()
+        })),
+    ))
 }
 
 /// Récupérer une pharmacie par ID
@@ -367,22 +555,23 @@ pub async fn get_pharmacy(
     Path(id): Path<i32>,
     State(state): State<Arc<AppState>>,
 ) -> AppResult<impl IntoResponse> {
-    let pharmacy: Option<Pharmacy> = sqlx::query_as(
-        "SELECT * FROM pharmacies WHERE id = $1"
-    )
-    .bind(id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[get_pharmacy] Erreur: {}", e);
-        AppError::Internal("Erreur récupération".to_string())
-    })?;
+    let pharmacy: Option<Pharmacy> = sqlx::query_as("SELECT * FROM pharmacies WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[get_pharmacy] Erreur: {}", e);
+            AppError::Internal("Erreur récupération".to_string())
+        })?;
 
     match pharmacy {
-        Some(p) => Ok((StatusCode::OK, Json(json!({
-            "success": true,
-            "data": p
-        })))),
+        Some(p) => Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "data": p
+            })),
+        )),
         None => Err(AppError::NotFound("Pharmacie non trouvée".to_string())),
     }
 }
@@ -404,7 +593,7 @@ pub async fn get_pharmacies_on_duty(
             NOW()
         )
         WHERE is_active = TRUE
-        "#
+        "#,
     )
     .execute(&state.pg)
     .await
@@ -423,10 +612,12 @@ pub async fn get_pharmacies_on_duty(
         AppError::Internal("Erreur recherche".to_string())
     })?;
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": pharmacies,
-        "count": pharmacies.len()
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": pharmacies,
+            "count": pharmacies.len()
+        })),
+    ))
 }
-

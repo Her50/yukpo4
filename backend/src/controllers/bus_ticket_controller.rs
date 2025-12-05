@@ -44,7 +44,7 @@ pub struct BusTicketSearchResult {
     pub agency_telephone: Option<String>,
     pub agency_whatsapp: Option<String>,
     pub agency_email: Option<String>,
-    
+
     pub product_id: String,
     pub product_name: String,
     pub bus_model_name: Option<String>,
@@ -60,7 +60,7 @@ pub struct BusTicketSearchResult {
     pub currency: Option<String>,
     pub bus_configuration: Option<serde_json::Value>,
     pub seat_map: Option<serde_json::Value>,
-    
+
     pub distance_km: Option<f64>,
     pub relevance_score: f64,
 }
@@ -74,8 +74,9 @@ pub async fn search_bus_tickets(
 
     let departure_date = if let Some(date_str) = &params.departure_date {
         Some(
-            chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-                .map_err(|_| AppError::BadRequest("Format date invalide (YYYY-MM-DD requis)".to_string()))?,
+            chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d").map_err(|_| {
+                AppError::BadRequest("Format date invalide (YYYY-MM-DD requis)".to_string())
+            })?,
         )
     } else {
         None
@@ -141,33 +142,33 @@ pub async fn search_bus_tickets(
     let mut results = Vec::new();
     for row in rows {
         let result = BusTicketSearchResult {
-            agency_id: row.get("agency_id"),
-            agency_service_id: row.get("agency_service_id"),
-            agency_nom: row.get("agency_nom"),
-            agency_adresse: row.get("agency_adresse"),
-            agency_quartier: row.get("agency_quartier"),
-            agency_ville: row.get("agency_ville"),
-            agency_gps: row.get("agency_gps"),
-            agency_telephone: row.get("agency_telephone"),
-            agency_whatsapp: row.get("agency_whatsapp"),
-            agency_email: row.get("agency_email"),
-            product_id: row.get("product_id"),
-            product_name: row.get("product_name"),
-            bus_model_name: row.get("bus_model_name"),
-            total_seats: row.get("total_seats"),
-            available_seats: row.get("available_seats"),
-            reserved_seats: row.get("reserved_seats"),
-            bus_number: row.get("bus_number"),
-            departure_city: row.get("departure_city"),
-            arrival_city: row.get("arrival_city"),
-            departure_date: row.get("departure_date"),
-            departure_time: row.get("departure_time"),
-            ticket_price: row.get("ticket_price"),
-            currency: row.get("currency"),
-            bus_configuration: row.get("bus_configuration"),
-            seat_map: row.get("seat_map"),
-            distance_km: row.get("distance_km"),
-            relevance_score: row.get("relevance_score"),
+            agency_id: row.get::<i32, _>("agency_id"),
+            agency_service_id: row.get::<i32, _>("agency_service_id"),
+            agency_nom: row.get::<String, _>("agency_nom"),
+            agency_adresse: row.get::<Option<String>, _>("agency_adresse"),
+            agency_quartier: row.get::<Option<String>, _>("agency_quartier"),
+            agency_ville: row.get::<Option<String>, _>("agency_ville"),
+            agency_gps: row.get::<Option<String>, _>("agency_gps"),
+            agency_telephone: row.get::<Option<String>, _>("agency_telephone"),
+            agency_whatsapp: row.get::<Option<String>, _>("agency_whatsapp"),
+            agency_email: row.get::<Option<String>, _>("agency_email"),
+            product_id: row.get::<String, _>("product_id"),
+            product_name: row.get::<String, _>("product_name"),
+            bus_model_name: row.get::<Option<String>, _>("bus_model_name"),
+            total_seats: row.get::<Option<i32>, _>("total_seats"),
+            available_seats: row.get::<i32, _>("available_seats"),
+            reserved_seats: row.get::<i32, _>("reserved_seats"),
+            bus_number: row.get::<Option<String>, _>("bus_number"),
+            departure_city: row.get::<Option<String>, _>("departure_city"),
+            arrival_city: row.get::<Option<String>, _>("arrival_city"),
+            departure_date: row.get::<Option<chrono::NaiveDate>, _>("departure_date"),
+            departure_time: row.get::<Option<chrono::NaiveTime>, _>("departure_time"),
+            ticket_price: row.get::<Option<i32>, _>("ticket_price"),
+            currency: row.get::<Option<String>, _>("currency"),
+            bus_configuration: row.get::<Option<serde_json::Value>, _>("bus_configuration"),
+            seat_map: row.get::<Option<serde_json::Value>, _>("seat_map"),
+            distance_km: row.get::<Option<f64>, _>("distance_km"),
+            relevance_score: row.get::<f64, _>("relevance_score"),
         };
         results.push(result);
     }
@@ -193,9 +194,7 @@ pub async fn get_seat_availability(
 ) -> AppResult<impl IntoResponse> {
     info!("[get_seat_availability] Product ID: {}", product_id);
 
-    let result: serde_json::Value = sqlx::query_scalar(
-        "SELECT get_bus_seat_availability($1)"
-    )
+    let result: serde_json::Value = sqlx::query_scalar("SELECT get_bus_seat_availability($1)")
         .bind(&product_id)
         .fetch_one(&state.pg)
         .await
@@ -204,9 +203,15 @@ pub async fn get_seat_availability(
             AppError::Internal(format!("Erreur récupération disponibilité: {}", e))
         })?;
 
-    let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
+    let success = result
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let availability = result.get("availability").cloned();
-    let error = result.get("error").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let error = result
+        .get("error")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
 
     let response = SeatAvailabilityResponse {
         success,
@@ -244,28 +249,35 @@ pub async fn create_bus_product(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateBusProductRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[create_bus_product] User ID: {}, Service ID: {}, Name: {}", user_id, payload.service_id, payload.name);
+    info!(
+        "[create_bus_product] User ID: {}, Service ID: {}, Name: {}",
+        user_id, payload.service_id, payload.name
+    );
 
     // Vérifier que le service existe et appartient à l'utilisateur
     let service_exists: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM services WHERE id = $1 AND user_id = $2 AND is_active = true"
+        "SELECT id FROM services WHERE id = $1 AND user_id = $2 AND is_active = true",
     )
-        .bind(payload.service_id)
-        .bind(user_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[create_bus_product] Erreur vérification service: {}", e);
-            AppError::Internal(format!("Erreur vérification service: {}", e))
-        })?;
+    .bind(payload.service_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_bus_product] Erreur vérification service: {}", e);
+        AppError::Internal(format!("Erreur vérification service: {}", e))
+    })?;
 
     if service_exists.is_none() {
-        return Err(AppError::NotFound("Service non trouvé ou n'appartient pas à l'utilisateur".to_string()));
+        return Err(AppError::NotFound(
+            "Service non trouvé ou n'appartient pas à l'utilisateur".to_string(),
+        ));
     }
 
     // Vérifier que le type est ticket_voyage
     if payload.product_type != "ticket_voyage" {
-        return Err(AppError::BadRequest("Le type doit être 'ticket_voyage'".to_string()));
+        return Err(AppError::BadRequest(
+            "Le type doit être 'ticket_voyage'".to_string(),
+        ));
     }
 
     // Créer le produit
@@ -285,28 +297,51 @@ pub async fn create_bus_product(
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         RETURNING id
-        "#
+        "#,
     )
-        .bind(payload.service_id)
-        .bind(&payload.name)
-        .bind(&payload.product_type)
-        .bind(payload.total_seats)
-        .bind(&payload.bus_configuration)
-        .bind(&payload.seat_map)
-        .bind(payload.price_cents)
-        .bind(payload.currency.as_deref().unwrap_or("XAF"))
-        .fetch_one(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[create_bus_product] Erreur création produit: {}", e);
-            AppError::Internal(format!("Erreur création produit: {}", e))
-        })?;
+    .bind(payload.service_id)
+    .bind(&payload.name)
+    .bind(&payload.product_type)
+    .bind(payload.total_seats)
+    .bind(&payload.bus_configuration)
+    .bind(&payload.seat_map)
+    .bind(payload.price_cents)
+    .bind(payload.currency.as_deref().unwrap_or("XAF"))
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_bus_product] Erreur création produit: {}", e);
+        AppError::Internal(format!("Erreur création produit: {}", e))
+    })?;
 
-    Ok((StatusCode::CREATED, Json(json!({
-        "success": true,
-        "id": product_id.to_string(),
-        "message": "Produit créé avec succès"
-    }))))
+    // ✅ NOUVEAU: Déclencher matching automatique pour demandes de retour
+    let _matched_count: Option<i32> =
+        sqlx::query_scalar("SELECT auto_match_return_requests_for_product($1)")
+            .bind(&product_id.to_string())
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+
+    if let Some(count) = _matched_count {
+        if count > 0 {
+            info!(
+                "[create_bus_product] {} demande(s) de retour matchée(s) automatiquement",
+                count
+            );
+            // TODO: Envoyer notifications push aux utilisateurs
+        }
+    }
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "id": product_id.to_string(),
+            "message": "Produit créé avec succès",
+            "matched_return_requests": _matched_count.unwrap_or(0)
+        })),
+    ))
 }
 
 // ============================================================================
@@ -367,7 +402,7 @@ pub async fn get_agency_tickets(
         LEFT JOIN users u ON u.id = btp.user_id
         WHERE s.user_id = $1
         ORDER BY btp.created_at DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(&state.pg)
@@ -384,8 +419,8 @@ pub async fn get_agency_tickets(
             .unwrap_or_default();
 
         let ticket = json!({
-            "payment_id": row.try_get::<String, _>("payment_id").unwrap_or_default(),
-            "product_id": row.try_get::<String, _>("product_id").unwrap_or_default(),
+            "payment_id": row.get::<String, _>("payment_id"),
+            "product_id": row.get::<String, _>("product_id"),
             "product_name": row.get::<String, _>("product_name"),
             "bus_number": row.get::<Option<String>, _>("bus_number"),
             "departure_city": row.get::<String, _>("departure_city"),
@@ -413,7 +448,10 @@ pub async fn get_agency_tickets(
         tickets.push(ticket);
     }
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "tickets": tickets }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "tickets": tickets })),
+    ))
 }
 
 pub async fn link_bus_product_to_agency(
@@ -421,23 +459,27 @@ pub async fn link_bus_product_to_agency(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<LinkBusProductRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[link_bus_product] User ID: {}, Agency ID: {}, Product ID: {}", user_id, payload.agency_id, payload.product_id);
+    info!(
+        "[link_bus_product] User ID: {}, Agency ID: {}, Product ID: {}",
+        user_id, payload.agency_id, payload.product_id
+    );
 
     // Vérifier que l'agence appartient à l'utilisateur
-    let agency_exists: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM agences_voyage WHERE id = $1 AND user_id = $2"
-    )
-        .bind(payload.agency_id)
-        .bind(user_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[link_bus_product] Erreur vérification agence: {}", e);
-            AppError::Internal(format!("Erreur vérification agence: {}", e))
-        })?;
+    let agency_exists: Option<i32> =
+        sqlx::query_scalar("SELECT id FROM agences_voyage WHERE id = $1 AND user_id = $2")
+            .bind(payload.agency_id)
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[link_bus_product] Erreur vérification agence: {}", e);
+                AppError::Internal(format!("Erreur vérification agence: {}", e))
+            })?;
 
     if agency_exists.is_none() {
-        return Err(AppError::NotFound("Agence non trouvée ou n'appartient pas à l'utilisateur".to_string()));
+        return Err(AppError::NotFound(
+            "Agence non trouvée ou n'appartient pas à l'utilisateur".to_string(),
+        ));
     }
 
     // Vérifier que le produit existe et appartient à l'utilisateur
@@ -451,32 +493,33 @@ pub async fn link_bus_product_to_agency(
           AND s.user_id = $2 
           AND p.type = 'ticket_voyage'
           AND s.is_active = TRUE
-        "#
+        "#,
     )
-        .bind(&payload.product_id)
-        .bind(user_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[link_bus_product] Erreur vérification produit: {}", e);
-            AppError::Internal(format!("Erreur vérification produit: {}", e))
-        })?;
+    .bind(&payload.product_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[link_bus_product] Erreur vérification produit: {}", e);
+        AppError::Internal(format!("Erreur vérification produit: {}", e))
+    })?;
 
     if product_exists.is_none() {
-        return Err(AppError::NotFound("Produit non trouvé ou n'est pas un ticket_voyage".to_string()));
+        return Err(AppError::NotFound(
+            "Produit non trouvé ou n'est pas un ticket_voyage".to_string(),
+        ));
     }
 
     // Récupérer la config actuelle
-    let current_config: Option<serde_json::Value> = sqlx::query_scalar(
-        "SELECT bus_products_config FROM agences_voyage WHERE id = $1"
-    )
-        .bind(payload.agency_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[link_bus_product] Erreur récupération config: {}", e);
-            AppError::Internal(format!("Erreur récupération config: {}", e))
-        })?;
+    let current_config: Option<serde_json::Value> =
+        sqlx::query_scalar("SELECT bus_products_config FROM agences_voyage WHERE id = $1")
+            .bind(payload.agency_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[link_bus_product] Erreur récupération config: {}", e);
+                AppError::Internal(format!("Erreur récupération config: {}", e))
+            })?;
 
     // Construire le nouveau modèle
     let new_model = json!({
@@ -492,14 +535,18 @@ pub async fn link_bus_product_to_agency(
         if !config.get("modeles_bus").is_some() {
             config["modeles_bus"] = json!([]);
         }
-        
+
         // Obtenir la référence mutable aux modèles
-        let modeles = config.get_mut("modeles_bus")
+        let modeles = config
+            .get_mut("modeles_bus")
             .and_then(|v| v.as_array_mut())
             .expect("modeles_bus devrait être un tableau");
-        
+
         // Vérifier si le produit est déjà lié
-        if let Some(existing) = modeles.iter_mut().find(|m| m.get("product_id") == Some(&json!(payload.product_id))) {
+        if let Some(existing) = modeles
+            .iter_mut()
+            .find(|m| m.get("product_id") == Some(&json!(payload.product_id)))
+        {
             // Mettre à jour le modèle existant
             *existing = new_model;
         } else {
@@ -516,22 +563,25 @@ pub async fn link_bus_product_to_agency(
 
     // Sauvegarder
     sqlx::query(
-        "UPDATE agences_voyage SET bus_products_config = $1, updated_at = NOW() WHERE id = $2"
+        "UPDATE agences_voyage SET bus_products_config = $1, updated_at = NOW() WHERE id = $2",
     )
-        .bind(&updated_config)
-        .bind(payload.agency_id)
-        .execute(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[link_bus_product] Erreur mise à jour: {}", e);
-            AppError::Internal(format!("Erreur mise à jour config: {}", e))
-        })?;
+    .bind(&updated_config)
+    .bind(payload.agency_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[link_bus_product] Erreur mise à jour: {}", e);
+        AppError::Internal(format!("Erreur mise à jour config: {}", e))
+    })?;
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "message": "Produit lié à l'agence avec succès",
-        "config": updated_config
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": "Produit lié à l'agence avec succès",
+            "config": updated_config
+        })),
+    ))
 }
 
 // ============================================================================
@@ -566,10 +616,17 @@ pub async fn create_reservations(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateReservationRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[create_reservations] User ID: {}, Product ID: {}, Seats: {}", user_id, payload.product_id, payload.seats.len());
+    info!(
+        "[create_reservations] User ID: {}, Product ID: {}, Seats: {}",
+        user_id,
+        payload.product_id,
+        payload.seats.len()
+    );
 
     if payload.seats.is_empty() {
-        return Err(AppError::BadRequest("Aucune place sélectionnée".to_string()));
+        return Err(AppError::BadRequest(
+            "Aucune place sélectionnée".to_string(),
+        ));
     }
 
     let caution_amount = payload.caution_amount.unwrap_or(500);
@@ -583,24 +640,22 @@ pub async fn create_reservations(
         WHERE p.id::text = $1 
           AND p.type = 'ticket_voyage' 
           AND s.is_active = TRUE
-        "#
+        "#,
     )
-        .bind(&payload.product_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[create_reservations] Erreur vérification produit: {}", e);
-            AppError::Internal(format!("Erreur vérification produit: {}", e))
-        })?;
+    .bind(&payload.product_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_reservations] Erreur vérification produit: {}", e);
+        AppError::Internal(format!("Erreur vérification produit: {}", e))
+    })?;
 
     if product_exists.is_none() {
         return Err(AppError::NotFound("Produit non trouvé".to_string()));
     }
 
     // Vérifier le solde utilisateur
-    let user_balance: i64 = sqlx::query_scalar(
-        "SELECT tokens_balance FROM users WHERE id = $1"
-    )
+    let user_balance: i64 = sqlx::query_scalar("SELECT tokens_balance FROM users WHERE id = $1")
         .bind(user_id)
         .fetch_one(&state.pg)
         .await
@@ -617,32 +672,47 @@ pub async fn create_reservations(
         )));
     }
 
-    // Créer les réservations
+    // ✅ AMÉLIORATION: Utiliser transaction avec SELECT FOR UPDATE pour éviter conflits
+    let mut tx = state.pg.begin().await.map_err(|e| {
+        error!("[create_reservations] Erreur début transaction: {}", e);
+        AppError::Internal(format!("Erreur début transaction: {}", e))
+    })?;
+
     let mut reservations = Vec::new();
-    for seat in payload.seats {
-        // Vérifier que la place n'est pas déjà réservée
+
+    // Vérifier et verrouiller toutes les places en une fois
+    for seat in &payload.seats {
+        // ✅ Verrouiller la place avec SELECT FOR UPDATE
         let existing: Option<String> = sqlx::query_scalar(
             r#"
             SELECT id FROM bus_reservations
             WHERE product_id = $1 AND seat_id = $2
                 AND status IN ('pending', 'confirmed')
                 AND (expires_at IS NULL OR expires_at > NOW())
-            "#
+            FOR UPDATE
+            "#,
         )
-            .bind(&payload.product_id)
-            .bind(&seat.seat_id)
-            .fetch_optional(&state.pg)
-            .await
-            .map_err(|e| {
-                error!("[create_reservations] Erreur vérification place: {}", e);
-                AppError::Internal(format!("Erreur vérification place: {}", e))
-            })?;
+        .bind(&payload.product_id)
+        .bind(&seat.seat_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| {
+            error!("[create_reservations] Erreur vérification place: {}", e);
+            AppError::Internal(format!("Erreur vérification place: {}", e))
+        })?;
 
         if existing.is_some() {
-            return Err(AppError::BadRequest(format!("La place {} est déjà réservée", seat.seat_id)));
+            let _ = tx.rollback().await;
+            return Err(AppError::BadRequest(format!(
+                "La place {} est déjà réservée",
+                seat.seat_id
+            )));
         }
+    }
 
-        // Créer la réservation
+    // Toutes les places sont libres, créer les réservations
+    for seat in &payload.seats {
+        // Créer la réservation dans la transaction
         let reservation_id: String = sqlx::query_scalar(
             r#"
             INSERT INTO bus_reservations (
@@ -666,51 +736,226 @@ pub async fn create_reservations(
             .bind(seat.seat_number)
             .bind(&seat.passenger_name)
             .bind(caution_amount)
-            .fetch_one(&state.pg)
+            .fetch_one(&mut *tx)
             .await
             .map_err(|e| {
                 error!("[create_reservations] Erreur création réservation: {}", e);
                 AppError::Internal(format!("Erreur création réservation: {}", e))
             })?;
 
-        // Débiter le solde
-        sqlx::query(
-            "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2"
-        )
-            .bind(caution_amount)
-            .bind(user_id)
-            .execute(&state.pg)
-            .await
-            .map_err(|e| {
-                error!("[create_reservations] Erreur débit solde: {}", e);
-                AppError::Internal(format!("Erreur débit solde: {}", e))
-            })?;
-
-        // Récupérer la date d'expiration
-        let expires_at: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
-            "SELECT expires_at FROM bus_reservations WHERE id = $1"
-        )
-            .bind(&reservation_id)
-            .fetch_one(&state.pg)
-            .await
-            .map_err(|e| {
-                error!("[create_reservations] Erreur récupération expiration: {}", e);
-                AppError::Internal(format!("Erreur récupération expiration: {}", e))
-            })?;
+        // Récupérer la date d'expiration dans la transaction
+        let expires_at: chrono::DateTime<chrono::Utc> =
+            sqlx::query_scalar("SELECT expires_at FROM bus_reservations WHERE id = $1")
+                .bind(&reservation_id)
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(|e| {
+                    error!(
+                        "[create_reservations] Erreur récupération expiration: {}",
+                        e
+                    );
+                    AppError::Internal(format!("Erreur récupération expiration: {}", e))
+                })?;
 
         reservations.push(ReservationResponse {
             reservation_id,
-            seat_id: seat.seat_id,
+            seat_id: seat.seat_id.clone(),
             seat_number: seat.seat_number,
             expires_at: expires_at.to_rfc3339(),
         });
     }
 
-    Ok((StatusCode::CREATED, Json(json!({
-        "success": true,
-        "reservations": reservations,
-        "total_caution": total_caution,
-        "new_balance": user_balance - total_caution as i64
-    }))))
+    // Débiter le solde dans la transaction
+    sqlx::query("UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2")
+        .bind(total_caution)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            error!("[create_reservations] Erreur débit solde: {}", e);
+            AppError::Internal(format!("Erreur débit solde: {}", e))
+        })?;
+
+    // ✅ Commit la transaction (libère tous les verrous)
+    tx.commit().await.map_err(|e| {
+        error!("[create_reservations] Erreur commit transaction: {}", e);
+        AppError::Internal(format!("Erreur commit transaction: {}", e))
+    })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "reservations": reservations,
+            "total_caution": total_caution,
+            "new_balance": user_balance - total_caution as i64
+        })),
+    ))
 }
 
+// ============================================================================
+// ANNULATION ET REMBOURSEMENT
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct CancelReservationRequest {
+    pub refund_reason: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CancelReservationResponse {
+    pub success: bool,
+    pub reservation_id: String,
+    pub refund_percentage: f64,
+    pub refund_amount: i32,
+    pub new_balance: i64,
+}
+
+/// PATCH /api/bus-tickets/reservations/{id}/cancel
+/// Annuler une réservation avec politique de remboursement selon délai
+pub async fn cancel_reservation(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(reservation_id): Path<String>,
+    Json(payload): Json<CancelReservationRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[cancel_reservation] User ID: {}, Reservation ID: {}",
+        user_id, reservation_id
+    );
+
+    // Récupérer la réservation avec les détails du produit
+    let reservation_info: Option<(
+        i32,
+        String,
+        Option<chrono::DateTime<chrono::Utc>>,
+        i32,
+        Option<String>,
+    )> = sqlx::query_as(
+        r#"
+        SELECT 
+            br.user_id,
+            br.product_id,
+            p.departure_time,
+            br.caution_amount,
+            br.passenger_name
+        FROM bus_reservations br
+        JOIN products p ON p.id::text = br.product_id
+        WHERE br.id = $1
+            AND br.status IN ('pending', 'confirmed')
+        "#,
+    )
+    .bind(&reservation_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[cancel_reservation] Erreur: {}", e);
+        AppError::Internal(format!("Erreur récupération réservation: {}", e))
+    })?;
+
+    let (reservation_user_id, product_id, departure_time, caution_amount, _passenger_name) =
+        match reservation_info {
+            Some(info) => info,
+            None => {
+                return Err(AppError::NotFound(
+                    "Réservation non trouvée ou déjà annulée".to_string(),
+                ));
+            }
+        };
+
+    // Vérifier que l'utilisateur est propriétaire de la réservation
+    if reservation_user_id != user_id {
+        return Err(AppError::Forbidden(
+            "Cette réservation ne vous appartient pas".to_string(),
+        ));
+    }
+
+    // Calculer remboursement selon délai
+    let now = chrono::Utc::now();
+    let hours_until_departure = departure_time
+        .map(|dt| (dt - now).num_hours())
+        .unwrap_or(24 * 365); // Si pas de date, considérer comme lointain
+
+    let refund_percentage = if hours_until_departure > 24 {
+        100.0 // Remboursement 100% si > 24h avant départ
+    } else if hours_until_departure > 12 {
+        50.0 // Remboursement 50% si 12-24h avant
+    } else {
+        0.0 // Pas de remboursement si < 12h
+    };
+
+    let refund_amount = (caution_amount as f64 * refund_percentage / 100.0) as i32;
+
+    // Utiliser une transaction pour garantir cohérence
+    let mut tx = state.pg.begin().await.map_err(|e| {
+        error!("[cancel_reservation] Erreur début transaction: {}", e);
+        AppError::Internal(format!("Erreur début transaction: {}", e))
+    })?;
+
+    // 1. Libérer le siège (mettre à jour la réservation)
+    sqlx::query(
+        r#"
+        UPDATE bus_reservations
+        SET status = 'cancelled',
+            cancelled_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+        "#,
+    )
+    .bind(&reservation_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| {
+        error!("[cancel_reservation] Erreur mise à jour réservation: {}", e);
+        AppError::Internal(format!("Erreur annulation réservation: {}", e))
+    })?;
+
+    // 2. Rembourser si applicable
+    if refund_amount > 0 {
+        sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
+            .bind(refund_amount)
+            .bind(user_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| {
+                error!("[cancel_reservation] Erreur remboursement: {}", e);
+                AppError::Internal(format!("Erreur remboursement: {}", e))
+            })?;
+    }
+
+    // 3. Récupérer le nouveau solde
+    let new_balance: i64 = sqlx::query_scalar("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| {
+            error!("[cancel_reservation] Erreur récupération solde: {}", e);
+            AppError::Internal(format!("Erreur récupération solde: {}", e))
+        })?;
+
+    // Commit transaction
+    tx.commit().await.map_err(|e| {
+        error!("[cancel_reservation] Erreur commit transaction: {}", e);
+        AppError::Internal(format!("Erreur commit transaction: {}", e))
+    })?;
+
+    let response = CancelReservationResponse {
+        success: true,
+        reservation_id: reservation_id.clone(),
+        refund_percentage,
+        refund_amount,
+        new_balance,
+    };
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": format!(
+                "Réservation annulée. Remboursement: {} XAF ({}%)",
+                refund_amount, refund_percentage
+            ),
+            "data": response
+        })),
+    ))
+}

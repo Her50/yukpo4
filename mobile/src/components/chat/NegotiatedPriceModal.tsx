@@ -18,7 +18,7 @@ import SafeIcon from '../SafeIcon';
 interface NegotiatedPriceModalProps {
     visible: boolean;
     onClose: () => void;
-    conversationId: number;
+    conversationId: number | string; // ✅ CORRIGÉ: Peut être un nombre ou une string (UUID pour conversations privées)
     serviceId: number;
     productIndex?: number;
     originalPrice: number; // Prix en FCFA
@@ -29,7 +29,7 @@ interface NegotiatedPriceModalProps {
 
 interface NegotiatedPriceOffer {
     id: number;
-    conversation_id: number;
+    conversation_id: string | number; // ✅ CORRIGÉ: Peut être string (UUID) ou number
     service_id: number;
     product_index?: number;
     merchant_user_id: number;
@@ -86,9 +86,11 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
     const loadPendingOffer = async () => {
         setLoadingOffer(true);
         try {
+            // ✅ CORRIGÉ : Convertir conversationId en string pour l'API
+            const conversationIdStr = String(conversationId);
             // ✅ CORRIGÉ : Charger les offres en attente pour cette conversation/produit
             const response = await apiGet(
-                `/api/negotiated-prices/pending?conversation_id=${conversationId}&service_id=${serviceId}${productIndex !== undefined ? `&product_index=${productIndex}` : ''}`
+                `/api/negotiated-prices/pending?conversation_id=${encodeURIComponent(conversationIdStr)}&service_id=${serviceId}${productIndex !== undefined ? `&product_index=${productIndex}` : ''}`
             );
             if (response.success && response.data) {
                 // Si plusieurs offres, prendre la plus récente
@@ -120,8 +122,10 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
 
         setLoading(true);
         try {
+            // ✅ CORRIGÉ : Convertir conversationId en string pour l'API
+            const conversationIdStr = String(conversationId);
             const response = await apiPost('/api/negotiated-prices', {
-                conversation_id: conversationId,
+                conversation_id: conversationIdStr,
                 service_id: serviceId,
                 product_index: productIndex,
                 merchant_user_id: merchantUserId,

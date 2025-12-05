@@ -22,8 +22,7 @@ impl EmailConfig {
             .and_then(|v| v.parse::<bool>().ok())
             .unwrap_or(false);
 
-        let provider = std::env::var("EMAIL_PROVIDER")
-            .unwrap_or_else(|_| "sendgrid".to_string());
+        let provider = std::env::var("EMAIL_PROVIDER").unwrap_or_else(|_| "sendgrid".to_string());
 
         let sendgrid_api_key = std::env::var("SENDGRID_API_KEY").ok();
         let sendgrid_from_email = std::env::var("SENDGRID_FROM_EMAIL")
@@ -127,7 +126,11 @@ impl EmailService {
 
         let api_key = self.config.sendgrid_api_key.as_ref().unwrap();
         let from_email = self.config.sendgrid_from_email.as_ref().unwrap();
-        let from_name = self.config.sendgrid_from_name.as_deref().unwrap_or("Yukpomnang");
+        let from_name = self
+            .config
+            .sendgrid_from_name
+            .as_deref()
+            .unwrap_or("Yukpomnang");
 
         let url = "https://api.sendgrid.com/v3/mail/send";
 
@@ -252,4 +255,3 @@ impl Default for EmailService {
         Self::new()
     }
 }
-

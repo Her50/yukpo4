@@ -50,6 +50,8 @@ pub struct FileSharingService {
     max_file_size: u64, // en bytes
     allowed_extensions: Vec<String>,
     allowed_mime_types: Vec<String>,
+    // ✅ Optionnel : MediaStorageService pour générer URLs pré-signées
+    // Note: Sera ajouté via une méthode set_media_storage si nécessaire
 }
 
 impl FileSharingService {
@@ -247,6 +249,113 @@ impl FileSharingService {
         );
 
         Ok((file_data, shared_file))
+    }
+
+    /// ✅ Génère une URL pré-signée pour télécharger un fichier partagé
+    /// Au lieu de télécharger directement, retourne une URL pré-signée Wasabi/S3
+    /// 
+    /// # Arguments
+    /// * `file_id` - ID du fichier partagé
+    /// * `user_id` - ID de l'utilisateur qui demande l'accès
+    /// * `media_storage` - Service de stockage média pour générer l'URL pré-signée
+    /// 
+    /// # Returns
+    /// URL pré-signée avec expiration selon expires_at dans DB
+    pub async fn get_presigned_download_url(
+        &self,
+        file_id: &str,
+        user_id: i32,
+        media_storage: &crate::services::media_storage_service::MediaStorageService,
+    ) -> AppResult<String> {
+        // Récupérer les informations du fichier
+        let shared_file = sqlx::query_as!(
+            SharedFile,
+            "SELECT * FROM shared_files WHERE id = $1",
+            file_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Vérifier si le fichier a expiré
+        if let Some(expires_at) = shared_file.expires_at {
+            if Utc::now() > expires_at {
+                return Err(crate::core::types::AppError::BadRequest(
+                    "Ce fichier a expiré".into()
+                ));
+            }
+        }
+
+        // Vérifier le nombre maximum de téléchargements
+        if let Some(max_downloads) = shared_file.max_downloads {
+            if shared_file.download_count >= max_downloads {
+                return Err(crate::core::types::AppError::BadRequest(
+                    "Nombre maximum de téléchargements atteint".into()
+                ));
+            }
+        }
+
+        // Extraire le chemin de stockage depuis file_path
+        // file_path peut être un chemin local ou un chemin Wasabi
+        let storage_path = if shared_file.file_path.starts_with("uploads/") {
+            shared_file.file_path.clone()
+        } else if shared_file.file_path.starts_with("/uploads/") {
+            shared_file.file_path[1..].to_string()
+        } else {
+            // Si c'est un chemin local, on doit l'uploader vers Wasabi d'abord
+            // Pour l'instant, on retourne une erreur
+            return Err(crate::core::types::AppError::Internal(
+                "Le fichier n'est pas encore uploadé vers Wasabi. Utilisez download_file() pour télécharger directement.".into()
+            ));
+        };
+
+        // Calculer la durée d'expiration
+        let expires_in_seconds = if let Some(expires_at) = shared_file.expires_at {
+            let now = Utc::now();
+            if expires_at > now {
+                (expires_at - now).num_seconds() as u64
+            } else {
+                return Err(crate::core::types::AppError::BadRequest(
+                    "Ce fichier a expiré".into()
+                ));
+            }
+        } else {
+            // Par défaut, 7 jours si pas d'expiration spécifiée
+            7 * 24 * 3600
+        };
+
+        // Générer l'URL pré-signée
+        let presigned_url = media_storage.generate_presigned_url(&storage_path, expires_in_seconds).await?;
+
+        // Enregistrer le téléchargement (même si c'est juste une URL)
+        let download_id = Uuid::new_v4();
+        sqlx::query(
+            r#"
+            INSERT INTO file_downloads (id, file_id, user_id, ip_address, user_agent)
+            VALUES ($1, $2, $3, NULL, NULL)
+            "#
+        )
+        .bind(download_id.to_string())
+        .bind(file_id)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await?;
+
+        // Incrémenter le compteur de téléchargements
+        sqlx::query(
+            "UPDATE shared_files SET download_count = download_count + 1 WHERE id = $1"
+        )
+        .bind(file_id)
+        .execute(&self.pool)
+        .await?;
+
+        log::info!(
+            "URL pré-signée générée pour fichier: {} par l'utilisateur {} (expire dans {}s)",
+            shared_file.original_filename,
+            user_id,
+            expires_in_seconds
+        );
+
+        Ok(presigned_url)
     }
 
     /// Récupérer tous les fichiers d'un chat

@@ -3,7 +3,7 @@ use chrono::{DateTime, Duration, Utc};
 use log::{error, info, warn};
 use serde_json::{json, Value};
 use sqlx::{postgres::PgRow, FromRow, PgPool, Postgres, QueryBuilder, Row};
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 use uuid::Uuid;
 
 use crate::{
@@ -37,6 +37,15 @@ impl GlobalPromoService {
         pool: &PgPool,
         payload: CreateGlobalPromoEventRequest,
         creator_id: i32,
+    ) -> AppResult<GlobalPromoEvent> {
+        Self::create_event_with_notification_queue(pool, payload, creator_id, None).await
+    }
+
+    pub async fn create_event_with_notification_queue(
+        pool: &PgPool,
+        payload: CreateGlobalPromoEventRequest,
+        creator_id: i32,
+        notification_queue: Option<&crate::services::notification_queue::NotificationQueue>,
     ) -> AppResult<GlobalPromoEvent> {
         if payload.ends_at <= payload.starts_at {
             return Err(AppError::BadRequest(
@@ -93,9 +102,14 @@ impl GlobalPromoService {
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         }
 
-        // ✅ NOUVEAU : Notifier tous les prestataires lors de la création d'un événement Black Friday
-        if let Err(err) = notify_all_prestataires_event_created(pool, &event).await {
-            warn!("Failed to notify prestataires about new Black Friday event: {:?}", err);
+        // ✅ NOUVEAU : Notifier tous les prestataires via queue asynchrone
+        if let Err(err) =
+            notify_all_prestataires_event_created(pool, &event, notification_queue).await
+        {
+            warn!(
+                "Failed to notify prestataires about new Black Friday event: {:?}",
+                err
+            );
             // Ne pas échouer la création de l'événement si la notification échoue
         }
 
@@ -411,7 +425,16 @@ impl GlobalPromoService {
     pub async fn list_active_catalog(
         pool: &PgPool,
         query: GlobalPromoCatalogQuery,
+        cache: Option<&crate::services::global_promo_cache::GlobalPromoCache>,
     ) -> AppResult<GlobalPromoCatalogPage> {
+        // ✅ NOUVEAU: Vérifier le cache d'abord
+        if let Some(cache_service) = cache {
+            if let Ok(Some(cached_page)) = cache_service.get_catalog_page(&query).await {
+                log::debug!("✅ Catalogue récupéré depuis le cache Redis");
+                return Ok(cached_page);
+            }
+        }
+
         let GlobalPromoCatalogQuery {
             page,
             page_size,
@@ -545,7 +568,7 @@ impl GlobalPromoService {
         let mut items = Vec::with_capacity(rows.len());
         for row in rows {
             if total == 0 {
-                total = row.try_get::<i64, _>("total_count").unwrap_or(0);
+                total = row.get::<Option<i64>, _>("total_count").unwrap_or(0);
             }
 
             let event = map_event_from_row(&row)?;
@@ -574,22 +597,34 @@ impl GlobalPromoService {
         crate::metrics::GLOBAL_PROMO_METRICS
             .catalog_page_views_total
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        
+
         // Si une recherche a été effectuée
-        let search_was_performed = search.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false);
+        let search_was_performed = search
+            .as_ref()
+            .map(|s| !s.trim().is_empty())
+            .unwrap_or(false);
         if search_was_performed {
             crate::metrics::GLOBAL_PROMO_METRICS
                 .catalog_searches_total
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         }
 
-        Ok(GlobalPromoCatalogPage {
+        let result = GlobalPromoCatalogPage {
             items,
             page,
             page_size,
             total,
             has_more,
-        })
+        };
+
+        // ✅ NOUVEAU: Mettre en cache le résultat
+        if let Some(cache_service) = cache {
+            if let Err(e) = cache_service.set_catalog_page(&query, &result).await {
+                log::warn!("⚠️ Impossible de mettre en cache le catalogue: {:?}", e);
+            }
+        }
+
+        Ok(result)
     }
 
     pub async fn upsert_entry_for_owner(
@@ -810,8 +845,9 @@ impl GlobalPromoService {
     async fn process_scheduler_inner(state: Arc<AppState>) -> AppResult<()> {
         let pool = &state.pg;
         let now = Utc::now();
+        let notification_queue = state.notification_queue.as_deref();
 
-        let activated = activate_due_events(pool, now).await?;
+        let activated = activate_due_events(pool, now, notification_queue).await?;
         if activated > 0 {
             info!(
                 "[GlobalPromo] {} évènement(s) passent en statut LIVE",
@@ -845,7 +881,7 @@ impl GlobalPromoService {
         base_price: f64,
     ) -> AppResult<f64> {
         let now = Utc::now();
-        
+
         // Chercher une promotion active pour ce service
         let promo_entry = sqlx::query_as::<_, GlobalPromoEntry>(
             r#"
@@ -873,7 +909,7 @@ impl GlobalPromoService {
                     return Ok(promo_price);
                 }
             }
-            
+
             // Priorité 2 : Pourcentage de réduction
             if let Some(discount_pct) = entry.discount_percentage {
                 if discount_pct > 0.0 && discount_pct <= 100.0 {
@@ -929,9 +965,9 @@ fn to_decimal_percentage(value: Option<f64>) -> AppResult<Option<BigDecimal>> {
                 "Le pourcentage de réduction doit être compris entre 0 et 100.".into(),
             ));
         }
-        Ok(Some(BigDecimal::from_f64(percent).ok_or_else(|| {
-            AppError::BadRequest("Réduction invalide.".into())
-        })?))
+        Ok(Some(BigDecimal::from_str(&percent.to_string()).map_err(
+            |_| AppError::BadRequest("Réduction invalide.".into()),
+        )?))
     } else {
         Ok(None)
     }
@@ -944,9 +980,9 @@ fn to_decimal_price(value: Option<f64>) -> AppResult<Option<BigDecimal>> {
                 "Le prix promotionnel doit être positif.".into(),
             ));
         }
-        Ok(Some(BigDecimal::from_f64(price).ok_or_else(|| {
-            AppError::BadRequest("Prix promotionnel invalide.".into())
-        })?))
+        Ok(Some(BigDecimal::from_str(&price.to_string()).map_err(
+            |_| AppError::BadRequest("Prix promotionnel invalide.".into()),
+        )?))
     } else {
         Ok(None)
     }
@@ -1047,7 +1083,11 @@ struct PromoEntryInfo {
     service_id: i32,
 }
 
-async fn activate_due_events(pool: &PgPool, now: DateTime<Utc>) -> AppResult<usize> {
+async fn activate_due_events(
+    pool: &PgPool,
+    now: DateTime<Utc>,
+    notification_queue: Option<&crate::services::notification_queue::NotificationQueue>,
+) -> AppResult<usize> {
     let rows = sqlx::query(
         r#"
         SELECT id, display_name
@@ -1063,28 +1103,33 @@ async fn activate_due_events(pool: &PgPool, now: DateTime<Utc>) -> AppResult<usi
     for row in rows {
         let event_id: Uuid = row.try_get("id")?;
         let _event_name: String = row.try_get("display_name")?;
-        
+
         sqlx::query(
             "UPDATE global_promo_events SET status = 'live', updated_at = NOW() WHERE id = $1",
         )
         .bind(event_id)
         .execute(pool)
         .await?;
-        
+
         // ✅ NOUVEAU : Notifier tous les prestataires quand un événement devient "live"
         // Récupérer l'événement complet pour la notification
-        if let Ok(Some(event)) = sqlx::query_as::<_, GlobalPromoEvent>(
-            "SELECT * FROM global_promo_events WHERE id = $1"
-        )
-        .bind(event_id)
-        .fetch_optional(pool)
-        .await
+        if let Ok(Some(event)) =
+            sqlx::query_as::<_, GlobalPromoEvent>("SELECT * FROM global_promo_events WHERE id = $1")
+                .bind(event_id)
+                .fetch_optional(pool)
+                .await
         {
-            if let Err(err) = notify_all_prestataires_event_created(pool, &event).await {
-                warn!("Failed to notify prestataires about activated event: {:?}", err);
+            // Utiliser la queue de notifications si disponible
+            if let Err(err) =
+                notify_all_prestataires_event_created(pool, &event, notification_queue).await
+            {
+                warn!(
+                    "Failed to notify prestataires about activated event: {:?}",
+                    err
+                );
             }
         }
-        
+
         counter += 1;
     }
 
@@ -1275,15 +1320,15 @@ async fn send_entry_notification(
 }
 
 // ✅ NOUVEAU : Notifier tous les prestataires lors de la création d'un événement Black Friday
+// Version asynchrone avec queue pour gérer des milliers de prestataires
 async fn notify_all_prestataires_event_created(
     pool: &PgPool,
     event: &GlobalPromoEvent,
+    notification_queue: Option<&crate::services::notification_queue::NotificationQueue>,
 ) -> AppResult<()> {
-    // ✅ Les imports notification_service et NotificationType sont déjà au niveau du module
-
     // Récupérer tous les prestataires (utilisateurs qui ont créé au moins un service)
     let prestataires: Vec<i32> = sqlx::query_scalar::<_, i32>(
-        "SELECT DISTINCT user_id FROM services WHERE user_id IS NOT NULL AND is_active = TRUE"
+        "SELECT DISTINCT user_id FROM services WHERE user_id IS NOT NULL AND is_active = TRUE",
     )
     .fetch_all(pool)
     .await?;
@@ -1298,24 +1343,98 @@ async fn notify_all_prestataires_event_created(
         "event_id": event.id,
         "event_slug": event.slug,
         "event_name": event.display_name,
-        "action_url": "yukpo://GlobalPromoSubmission", // ✅ CORRIGÉ : Deep link vers la page de participation
+        "action_url": "yukpo://GlobalPromoSubmission",
         "action_text": "Participer au Black Friday"
     });
 
     let prestataires_count = prestataires.len();
-    for prestataire_id in &prestataires {
+
+    // ✅ NOUVEAU: Utiliser la queue si disponible (recommandé pour > 100 prestataires)
+    if let Some(queue) = notification_queue {
+        use crate::services::notification_queue::NotificationJob;
+        use chrono::Utc;
+
+        let mut jobs = Vec::with_capacity(prestataires.len());
+        for prestataire_id in prestataires {
+            jobs.push(NotificationJob {
+                user_id: prestataire_id,
+                notification_type: "GlobalPromoEventCreated".to_string(),
+                title: title.clone(),
+                body: body.clone(),
+                metadata: Some(metadata.clone()),
+                push_channel: Some("default".to_string()),
+                created_at: Utc::now(),
+            });
+        }
+
+        // Ajouter toutes les notifications à la queue en batch
+        match queue.enqueue_notifications_batch(jobs).await {
+            Ok(count) => {
+                info!(
+                    "✅ {} notifications ajoutées à la queue pour l'événement Black Friday: {}",
+                    count, event.display_name
+                );
+            }
+            Err(e) => {
+                warn!("⚠️ Erreur ajout notifications à la queue: {:?}. Fallback vers méthode synchrone.", e);
+                // Fallback vers méthode synchrone
+                return notify_all_prestataires_event_created_sync(
+                    pool,
+                    event,
+                    &prestataires,
+                    &title,
+                    &body,
+                    &metadata,
+                )
+                .await;
+            }
+        }
+    } else {
+        // Fallback vers méthode synchrone si queue non disponible
+        warn!("⚠️ Queue de notifications non disponible. Utilisation méthode synchrone (peut être lent pour {} prestataires)", prestataires_count);
+        notify_all_prestataires_event_created_sync(
+            pool,
+            event,
+            &prestataires,
+            &title,
+            &body,
+            &metadata,
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+// Méthode synchrone de fallback
+async fn notify_all_prestataires_event_created_sync(
+    pool: &PgPool,
+    event: &GlobalPromoEvent,
+    prestataires: &[i32],
+    title: &str,
+    body: &str,
+    metadata: &serde_json::Value,
+) -> AppResult<()> {
+    let mut success_count = 0;
+    let mut error_count = 0;
+
+    for prestataire_id in prestataires {
         // Créer la notification en base
         if let Err(err) = notification_service::create_notification(
             pool,
             *prestataire_id,
             NotificationType::GlobalPromoEventCreated,
-            title.clone(),
-            body.clone(),
+            title.to_string(),
+            body.to_string(),
             Some(metadata.clone()),
         )
         .await
         {
-            warn!("Failed to create notification for prestataire {}: {:?}", prestataire_id, err);
+            warn!(
+                "Failed to create notification for prestataire {}: {:?}",
+                prestataire_id, err
+            );
+            error_count += 1;
             continue;
         }
 
@@ -1323,18 +1442,30 @@ async fn notify_all_prestataires_event_created(
         if let Err(err) = push_notification_service::send_push_notification(
             pool,
             *prestataire_id,
-            title.clone(),
-            body.clone(),
+            title.to_string(),
+            body.to_string(),
             Some(metadata.clone()),
             Some("default".into()),
         )
         .await
         {
-            warn!("Failed to send push notification to prestataire {}: {:?}", prestataire_id, err);
+            warn!(
+                "Failed to send push notification to prestataire {}: {:?}",
+                prestataire_id, err
+            );
+            error_count += 1;
+        } else {
+            success_count += 1;
         }
     }
 
-    info!("Notified {} prestataires about new Black Friday event: {}", prestataires_count, event.display_name);
+    info!(
+        "Notified {} prestataires ({} succès, {} erreurs) about new Black Friday event: {}",
+        prestataires.len(),
+        success_count,
+        error_count,
+        event.display_name
+    );
     Ok(())
 }
 
