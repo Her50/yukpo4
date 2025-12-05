@@ -380,7 +380,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(publicite_assets) // ✅ NOUVEAU: Routes assets
         .merge(publicite_ab_testing) // ✅ NOUVEAU: Routes A/B testing
         .merge(publicite_auto_optimization) // ✅ NOUVEAU: Routes auto optimization
-        .merge(chat_reactions.with_state(state.clone()))
+        .merge(publicite_pixel) // ✅ NOUVEAU: Routes tracking pixel
         .route(
             "/fournitures/gestion",
             axum::routing::post(fournitures_axum_handler),

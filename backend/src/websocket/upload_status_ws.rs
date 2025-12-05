@@ -61,7 +61,7 @@ async fn handle_upload_status_websocket(
     let storage_root = env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "./uploads".to_string());
 
     // Créer un service avec le pool depuis AppState
-    let upload_service = AsyncUploadService::new(app_state.pg.clone(), storage_root);
+    let upload_service = AsyncUploadService::new(Arc::new(app_state.pg.clone()), storage_root);
 
     let mut status_rx = upload_service.subscribe();
     let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(500));

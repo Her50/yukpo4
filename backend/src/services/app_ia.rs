@@ -183,21 +183,21 @@ pub struct TimelineRequest {
     pub lang: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineBriefInput {
     pub script_outline: Vec<String>,
     pub headline: Option<String>,
     pub call_to_action: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineStyleInput {
     pub effects: Vec<String>,
     pub transitions: Vec<String>,
     pub color_palette: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineMediaItem {
     pub id: String,
     pub url: Option<String>,

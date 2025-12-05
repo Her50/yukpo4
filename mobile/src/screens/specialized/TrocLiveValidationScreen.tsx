@@ -1,23 +1,21 @@
 // ✅ Écran de validation Live/Video d'un livre scolaire lors d'un troc (Mobile)
 
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
     ActivityIndicator,
     Alert,
     ScrollView,
-    TouchableOpacity,
+    StyleSheet,
+    Text,
+    View
 } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { NativeCard } from '../../components/NativeDesign';
-import { NativeButton } from '../../components/NativeDesign';
+import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
-import { modernColors } from '../../theme/modernTheme';
 import LivreScolaireValidationVideoRecorder from '../../components/troc/LivreScolaireValidationVideoRecorder';
-import { apiGet, apiPost } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiGet, apiPost } from '../../services/api';
+import { modernColors } from '../../theme/modernTheme';
 
 interface RouteParams {
     trocId: number;

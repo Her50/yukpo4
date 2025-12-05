@@ -120,7 +120,7 @@ pub struct GlobalPromoEntry {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GlobalPromoCatalogItem {
     pub event: GlobalPromoEvent,
     pub entry: GlobalPromoEntry,

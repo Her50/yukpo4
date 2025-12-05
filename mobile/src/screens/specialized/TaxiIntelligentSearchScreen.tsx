@@ -9,7 +9,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useLocation } from '../../contexts/LocationContext';
-import { apiPost } from '../../services/apiService';
+import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 export const TaxiIntelligentSearchScreen: React.FC = () => {

@@ -419,8 +419,8 @@ pub async fn create_concours(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<CreateConcoursRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ConcoursEntreeService::new(state.pg.clone(), state.clone());
-    let concours = service.create_concours(user_id, request).await?;
+    let service = ConcoursEntreeService::new(Arc::new(state.pg.clone()), state.clone());
+    let concours = service.create_concours(request).await?;
 
     Ok((
         StatusCode::CREATED,
@@ -634,7 +634,7 @@ pub async fn ai_analyze_profile(
     .map_err(|e| AppError::Internal(format!("Erreur récupération profil: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Profil non trouvé".to_string()))?;
 
-    let ai_service = OrientationScolaireAIService::new(state.app_ia.clone());
+    let ai_service = OrientationScolaireAIService::new(state.ia.clone());
     let analysis = ai_service
         .analyze_student_profile(
             profile.id,
@@ -680,7 +680,7 @@ pub async fn ai_recommendations(
         ));
     }
 
-    let ai_service = OrientationScolaireAIService::new(state.app_ia.clone());
+    let ai_service = OrientationScolaireAIService::new(state.ia.clone());
     let recommendation = ai_service
         .generate_program_recommendations(
             request.student_profile_id,
@@ -724,7 +724,7 @@ pub async fn ai_compare_programs(
         ));
     }
 
-    let ai_service = OrientationScolaireAIService::new(state.app_ia.clone());
+    let ai_service = OrientationScolaireAIService::new(state.ia.clone());
     let comparison = ai_service
         .compare_programs(
             request.student_profile_id,

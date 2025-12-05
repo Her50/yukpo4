@@ -212,8 +212,9 @@ impl PluginService {
         let mut plugins = self.installed_plugins.write().await;
 
         if let Some(plugin) = plugins.get_mut(plugin_id) {
-            // Vérifier les dépendances
-            for dep in &plugin.metadata.dependencies {
+            // Vérifier les dépendances - collecter d'abord pour éviter les emprunts simultanés
+            let dependencies = plugin.metadata.dependencies.clone();
+            for dep in &dependencies {
                 if let Some(dep_plugin) = plugins.get(dep) {
                     if dep_plugin.status != PluginStatus::Active {
                         return Err(AppError::BadRequest(format!(

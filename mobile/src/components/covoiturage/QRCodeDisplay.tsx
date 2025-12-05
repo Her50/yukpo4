@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { apiGet } from '../../services/apiService';
+import { apiGet } from '../../services/api';
 import { NativeButton, NativeCard } from '../NativeDesign';
 import { SafeIcon } from '../SafeIcon';
 

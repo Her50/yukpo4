@@ -3,6 +3,7 @@
 
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::core::types::{AppError, AppResult};

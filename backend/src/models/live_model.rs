@@ -69,7 +69,7 @@ pub struct CreateLiveSessionRequest {
     pub metadata: serde_json::Value,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LiveLinkedService {
     pub id: i32,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -141,7 +141,7 @@ pub struct LiveFlashSaleReservationView {
     pub user_name: Option<String>,
 }
 
-#[derive(Debug, Serialize, Clone, FromRow)]
+#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
 pub struct LiveFlashSaleCommentary {
     pub id: Uuid,
     pub flash_sale_id: Uuid,

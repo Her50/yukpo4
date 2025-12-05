@@ -399,44 +399,6 @@ impl LiveFlashSaleService {
         }
     }
 
-    /// ✅ NOUVEAU: Diffuse une mise à jour de stock via Redis pub/sub
-    pub async fn broadcast_stock_update(
-        redis_client: &redis::Client,
-        flash_sale_id: Uuid,
-        available_stock: i32,
-        reserved_quantity: i64,
-    ) {
-        use crate::utils::redis_helper;
-        use redis::AsyncCommands;
-
-        let mut conn = match redis_helper::get_redis_connection(redis_client, 1, 0).await {
-            Ok(conn) => conn,
-            Err(_) => {
-                // Redis non disponible, ignorer silencieusement
-                return;
-            }
-        };
-
-        let channel = format!("flash_sale:{}:stock", flash_sale_id);
-        let message = serde_json::json!({
-            "flash_sale_id": flash_sale_id,
-            "available_stock": available_stock,
-            "reserved_quantity": reserved_quantity,
-            "timestamp": chrono::Utc::now(),
-        });
-
-        if let Err(e) = conn
-            .publish::<_, _, ()>(&channel, message.to_string())
-            .await
-        {
-            log::debug!(
-                "⚠️ Impossible de publier mise à jour stock flash_sale {}: {:?}",
-                flash_sale_id,
-                e
-            );
-        }
-    }
-
     async fn process_timers_inner(state: Arc<AppState>) -> AppResult<()> {
         let now = Utc::now();
         Self::dispatch_scheduled_notifications(state.clone(), now).await?;

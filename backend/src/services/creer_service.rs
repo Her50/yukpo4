@@ -1797,10 +1797,11 @@ pub async fn creer_service(
                                 .unwrap_or(false);
 
                             if !has_stock && !has_qty && !has_variant_stock {
+                                let default_name = format!("Produit #{}", index + 1);
                                 let product_name = prod_obj
                                     .get("nom")
                                     .and_then(|n| n.as_str())
-                                    .unwrap_or(&format!("Produit #{}", index + 1));
+                                    .unwrap_or(&default_name);
 
                                 return Err(AppError::BadRequest(format!(
                                     "⚠️ Quantité obligatoire pour les produits\n\n\

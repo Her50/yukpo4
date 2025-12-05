@@ -32,11 +32,12 @@ pub async fn list_plugins(
         .map_err(|e| AppError::Internal(format!("Erreur création PluginService: {}", e)))?;
 
     let plugins = plugin_service.list_plugins().await?;
+    let total = plugins.len();
 
     Ok(Json(PluginListResponse {
         success: true,
         plugins,
-        total: plugins.len(),
+        total,
     }))
 }
 
@@ -94,11 +95,12 @@ pub async fn search_marketplace(
     let plugins = plugin_service
         .search_marketplace(&state.pg, query, category, params.limit)
         .await?;
+    let total = plugins.len();
 
     Ok(Json(PluginListResponse {
         success: true,
         plugins,
-        total: plugins.len(),
+        total,
     }))
 }
 
@@ -114,7 +116,8 @@ pub async fn install_plugin(
 
     // TODO: Récupérer le fichier plugin depuis Multipart
     // Pour l'instant, on suppose que le plugin est déjà téléchargé
-    let temp_path = std::path::Path::new(&format!("/tmp/{}_temp.zip", metadata.id));
+    let temp_path_str = format!("/tmp/{}_temp.zip", metadata.id);
+    let temp_path = std::path::Path::new(&temp_path_str);
 
     let plugin_id = plugin_service.install_plugin(temp_path, metadata).await?;
 

@@ -578,7 +578,7 @@ pub async fn ai_matching(
         user_id, request.offre_id
     );
 
-    let ai_service = EmploiAIService::new(state.app_ia.clone());
+    let ai_service = EmploiAIService::new(state.ia.clone());
     let matching = ai_service
         .generate_improved_matching(
             request.offre_id,
@@ -616,7 +616,7 @@ pub async fn ai_analyze_cv(
         ));
     }
 
-    let ai_service = EmploiAIService::new(state.app_ia.clone());
+    let ai_service = EmploiAIService::new(state.ia.clone());
     let analysis = ai_service
         .analyze_cv(
             request.candidat_id,
@@ -642,7 +642,7 @@ pub async fn ai_salary_prediction(
         params.titre_poste, params.secteur
     );
 
-    let ai_service = EmploiAIService::new(state.app_ia.clone());
+    let ai_service = EmploiAIService::new(state.ia.clone());
     let prediction = ai_service
         .predict_salary(
             &params.titre_poste,

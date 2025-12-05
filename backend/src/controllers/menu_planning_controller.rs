@@ -70,7 +70,7 @@ pub async fn generate_weekly_menu(
     };
 
     // Générer menu avec IA
-    let ai_service = MenuPlanningAIService::new(state.app_ia.clone());
+    let ai_service = MenuPlanningAIService::new(state.ia.clone());
     let menu = ai_service
         .generate_weekly_menu(&profile, &week_start.format("%Y-%m-%d").to_string())
         .await?;

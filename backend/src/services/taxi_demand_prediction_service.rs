@@ -356,7 +356,14 @@ Retourne UNIQUEMENT un JSON avec:
                     .filter_map(|v| v.as_u64().map(|u| u as u8))
                     .collect()
             })
-            .unwrap_or_else(|| self.identify_peak_hours(features).await.unwrap_or_default());
+            .unwrap_or_default();
+        
+        // Si peak_hours est vide, calculer avec identify_peak_hours
+        let peak_hours = if peak_hours.is_empty() {
+            self.identify_peak_hours(features).await.unwrap_or_default()
+        } else {
+            peak_hours
+        };
 
         let recommended_vehicles = prediction_json
             .get("recommended_vehicles")
@@ -419,7 +426,7 @@ Retourne UNIQUEMENT un JSON avec:
             + weekend_adjustment)
             .max(0.0);
 
-        let peak_hours = self.identify_peak_hours(features).await.unwrap_or_else(|| {
+        let peak_hours = self.identify_peak_hours(features).await.unwrap_or_else(|| -> Vec<u8> {
             // Heures de pic par défaut
             if features.is_weekend {
                 vec![10, 11, 12, 18, 19, 20]

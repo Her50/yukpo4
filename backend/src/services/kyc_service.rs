@@ -130,7 +130,20 @@ impl KYCService {
         let app_ia = if std::env::var("OPENAI_API_KEY").is_ok() 
             || std::env::var("ANTHROPIC_API_KEY").is_ok() 
             || std::env::var("GEMINI_API_KEY").is_ok() {
-            Some(Arc::new(AppIA::new(pool.clone()).await))
+            // Créer RedisClient et IAStats pour AppIA
+            let redis_url = std::env::var("REDIS_URL")
+                .unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
+            if let Ok(redis_client) = redis::Client::open(redis_url.as_str()) {
+                // RedisClient dans app_ia est un alias pour redis::Client
+                let redis_client: redis::Client = redis_client;
+                let ia_stats = Arc::new(tokio::sync::Mutex::new(
+                    crate::controllers::ia_status_controller::IAStats::default()
+                ));
+                Some(Arc::new(AppIA::new(redis_client, ia_stats, (*pool).clone())))
+            } else {
+                warn!("[KYCService] Impossible de créer RedisClient, analyse automatique désactivée");
+                None
+            }
         } else {
             warn!("[KYCService] Aucune clé API IA configurée, analyse automatique désactivée");
             None

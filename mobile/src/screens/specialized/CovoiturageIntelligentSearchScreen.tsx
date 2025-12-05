@@ -7,7 +7,7 @@ import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
 import { CompatibilityScoreBadge } from '../../components/covoiturage/CompatibilityScoreBadge';
 import { IntelligentMatchingFilters, MatchingFilters } from '../../components/covoiturage/IntelligentMatchingFilters';
-import { apiPost } from '../../services/apiService';
+import { apiPost } from '../../services/api';
 
 export const CovoiturageIntelligentSearchScreen: React.FC = () => {
     const navigation = useNavigation();

@@ -1632,7 +1632,7 @@ pub async fn get_ai_recommendations(
     let real_estate_service = RealEstateAIService::new(app_ia);
 
     let recommendation = real_estate_service
-        .generate_recommendations(
+        .recommend_properties(
             request.budget_max,
             request.type_bien.as_deref(),
             request.nb_chambres,
@@ -2575,10 +2575,12 @@ pub async fn analyze_land(
         .analyze_viability(
             request.superficie_m2,
             &request.zonage,
+            request.acces_route,
+            None, // type_acces
+            request.viabilise,
             &request.quartier,
             &request.ville,
-            request.acces_route,
-            request.viabilise,
+            None, // services_proximite
         )
         .await
         .map_err(|e| {
@@ -2841,7 +2843,7 @@ pub async fn create_moving_quote(
     .bind(rust_decimal::Decimal::from_f64_retain(volume_m3).unwrap_or(rust_decimal::Decimal::ZERO))
     .bind(request.nb_pieces)
     .bind(rust_decimal::Decimal::from_f64_retain(cost_estimate.total_cost).unwrap_or(rust_decimal::Decimal::ZERO))
-    .bind(estimated_eta.map(|e| rust_decimal::Decimal::from_f64_retain(e.estimated_hours).unwrap_or(rust_decimal::Decimal::ZERO)))
+    .bind(estimated_eta.map(|e| rust_decimal::Decimal::from_f64_retain(e.estimated_minutes / 60.0).unwrap_or(rust_decimal::Decimal::ZERO)))
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
@@ -2857,7 +2859,7 @@ pub async fn create_moving_quote(
                 "id": quote_id,
                 "volume_m3": volume_m3,
                 "estimated_cost": cost_estimate.total_cost,
-                "estimated_duration_hours": estimated_eta.map(|e| e.estimated_hours),
+                "estimated_duration_hours": estimated_eta.map(|e| e.estimated_minutes / 60.0),
                 "distance_km": distance_km
             }
         })),
@@ -2960,7 +2962,7 @@ pub async fn get_moving_tracking(
     let tracking_json = json!({
         "id": row.try_get::<i32, _>("id").unwrap_or(0),
         "status": row.try_get::<String, _>("status").unwrap_or_default(),
-        "date_demenagement": row.try_get::<Option<chrono::NaiveDate>, _>("date_demenagement").ok().map(|d| d.to_string()),
+        "date_demenagement": row.try_get::<Option<chrono::NaiveDate>, _>("date_demenagement").ok().flatten().map(|d| d.to_string()),
         "adresse_depart": row.try_get::<Option<String>, _>("adresse_depart").ok().flatten(),
         "adresse_arrivee": row.try_get::<Option<String>, _>("adresse_arrivee").ok().flatten(),
         "gps_depart": row.try_get::<Option<String>, _>("gps_depart").ok().flatten(),

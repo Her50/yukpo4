@@ -11,7 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { apiGet } from '../../services/apiService';
+import { apiGet } from '../../services/api';
 
 interface Etablissement {
     id: number;

@@ -204,3 +204,4 @@ export function getPopularStickers(): Sticker[] {
     return stickersLibrary.slice(0, 20);
 }
 
+

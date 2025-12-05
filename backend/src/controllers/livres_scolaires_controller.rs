@@ -226,7 +226,7 @@ pub async fn ai_recommendations(
         user_id, request.classe_actuelle, request.classe_souhaitee
     );
 
-    let ai_service = BookExchangeAIService::new(state.app_ia.clone());
+    let ai_service = BookExchangeAIService::new(state.ia.clone());
     let recommendation = ai_service
         .generate_book_recommendations(
             &request.classe_actuelle,
@@ -255,7 +255,7 @@ pub async fn ai_matching(
         request.livre_offert_id, request.livre_souhaite_id
     );
 
-    let ai_service = BookExchangeAIService::new(state.app_ia.clone());
+    let ai_service = BookExchangeAIService::new(state.ia.clone());
     let matching = ai_service
         .generate_book_matching(
             request.livre_offert_id,
@@ -284,7 +284,7 @@ pub async fn price_suggestions(
         request.livre_id, request.titre
     );
 
-    let ai_service = BookExchangeAIService::new(state.app_ia.clone());
+    let ai_service = BookExchangeAIService::new(state.ia.clone());
     let suggestion = ai_service
         .generate_price_suggestions(
             request.livre_id,

@@ -1293,7 +1293,7 @@ const MesServicesScreen: React.FC = () => {
         {/* Overlay pour fermer le menu quand on clique ailleurs */}
         {showGlobalMenu && (
           <TouchableOpacity
-            style={styles.menuOverlay}
+            style={dynamicStyles.menuOverlay}
             activeOpacity={1}
             onPress={() => setShowGlobalMenu(false)}
           />
@@ -1498,7 +1498,7 @@ const MesServicesScreen: React.FC = () => {
                 onPress={() => handleAddProduct()}
                 variant="primary"
                 size="medium"
-                style={styles.createButton}
+                style={dynamicStyles.createButton}
               />
             </View>
           ) : (
@@ -1555,21 +1555,21 @@ const MesServicesScreen: React.FC = () => {
                     onPress={() => (navigation as any).navigate('AnalyticsDashboard')}
                     variant="primary"
                     size="large"
-                    style={styles.analyticsFooterButton}
+                    style={dynamicStyles.analyticsFooterButton}
                   />
                   <NativeButton
                     title="📦 Gérer mes produits"
                     onPress={() => navigation.navigate('MesProduits' as never)}
                     variant="outline"
                     size="large"
-                    style={styles.productsButton}
+                    style={dynamicStyles.productsButton}
                   />
                   <NativeButton
                     title="🏠 Retour à l'accueil"
                     onPress={() => navigation.navigate('Home' as never)}
                     variant="outline"
                     size="large"
-                    style={styles.homeButton}
+                    style={dynamicStyles.homeButton}
                   />
                 </View>
               }
@@ -1584,7 +1584,7 @@ const MesServicesScreen: React.FC = () => {
                     onPress={() => handleAddProduct()}
                     variant="primary"
                     size="medium"
-                    style={styles.createButton}
+                    style={dynamicStyles.createButton}
                   />
                 </View>
               }
@@ -1948,230 +1948,6 @@ const MesServicesScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: modernColors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingContent: {
-    alignItems: 'center',
-    padding: 30,
-  },
-  loadingText: {
-    marginTop: 20,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  header: {
-    paddingHorizontal: 16, // ✅ RÉDUIT: 20 → 16 pour plus de compacité
-    paddingTop: 50,
-    paddingBottom: 16, // ✅ RÉDUIT: 20 → 16 pour économiser l'espace
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap', // ✅ AJOUTÉ: Permet le retour à la ligne si nécessaire
-    gap: 8, // ✅ AJOUTÉ: Espacement entre les éléments
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10, // ✅ RÉDUIT: 12 → 10
-    flex: 1,
-  },
-  titleContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 22, // ✅ RÉDUIT: 24 → 22 pour plus de compacité
-    fontWeight: '700', // ✅ RÉDUIT: 'bold' → '700'
-    color: '#fff',
-  },
-  subtitleCompact: {
-    fontSize: 11, // ✅ RÉDUIT: 12 → 11
-    color: 'rgba(255, 255, 255, 0.85)', // ✅ LÉGÈREMENT PLUS CLAIR
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  headerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12, // ✅ OPTIMISÉ: 12px pour meilleur touch target
-    paddingVertical: 10, // ✅ OPTIMISÉ: 10px pour meilleur touch target
-    borderRadius: 12, // ✅ MODERNE: Border radius plus arrondi
-    minWidth: 44, // ✅ OPTIMAL: 44px minimum pour touch target (Apple/Google guidelines)
-    minHeight: 44, // ✅ OPTIMAL: 44px minimum
-  },
-  analyticsButton: {
-    backgroundColor: 'rgba(99, 102, 241, 0.3)', // Indigo pour Analytics
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  publiciteButton: {
-    backgroundColor: 'rgba(236, 72, 153, 0.3)', // Rose pour Publicité
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  headerButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  subtitle: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 2,
-  },
-  // ✅ ANCIEN subtitle remplacé par subtitleCompact
-  menuButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-  },
-  globalMenu: {
-    position: 'absolute',
-    top: 90,
-    right: 20,
-    backgroundColor: colors.surface, // ✅ NOUVEAU: Support thème
-    borderRadius: 12,
-    padding: 8,
-    shadowColor: colors.shadow, // ✅ NOUVEAU: Support thème
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    minWidth: 220,
-    maxWidth: 280,
-    zIndex: 10000,
-    borderWidth: 1,
-    borderColor: colors.border, // ✅ NOUVEAU: Support thème
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 12,
-  },
-  menuItemText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text, // ✅ NOUVEAU: Support thème
-  },
-  menuOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-    zIndex: 999,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 120,
-    backgroundColor: colors.background, // ✅ NOUVEAU: Support thème
-  },
-  // ✅ SUPPRIMÉ: statsContainer, statCard, statNumber, statLabel (statistiques intégrées dans l'en-tête)
-  filtersScrollView: {
-    marginBottom: 16, // ✅ RÉDUIT: 20 → 16
-  },
-  filtersContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 4, // ✅ AJOUTÉ: Padding vertical pour meilleur espacement
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14, // ✅ RÉDUIT: 16 → 14 pour compacité
-    paddingVertical: 8, // ✅ RÉDUIT: 10 → 8 pour compacité
-    borderRadius: 20,
-    backgroundColor: colors.surface, // ✅ NOUVEAU: Support thème
-    borderWidth: 1,
-    borderColor: colors.border, // ✅ NOUVEAU: Support thème
-    gap: 6,
-    minHeight: 36, // ✅ AJOUTÉ: Hauteur minimale pour touch target
-  },
-  filterChipActive: {
-    backgroundColor: colors.primary, // ✅ NOUVEAU: Support thème
-    borderColor: colors.primary, // ✅ NOUVEAU: Support thème
-  },
-  filterChipText: {
-    fontSize: 13, // ✅ RÉDUIT: 14 → 13 pour compacité
-    fontWeight: '600', // ✅ AUGMENTÉ: '500' → '600' pour meilleure lisibilité
-    color: colors.textSecondary, // ✅ NOUVEAU: Support thème
-  },
-  filterChipTextActive: {
-    color: '#fff',
-  },
-  servicesContainer: {
-    gap: 16,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text, // ✅ NOUVEAU: Support thème
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: colors.textSecondary, // ✅ NOUVEAU: Support thème
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 24,
-  },
-  createButton: {
-    marginTop: 10,
-  },
-  footerContainer: {
-    marginTop: 32,
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: colors.border, // ✅ NOUVEAU: Support thème
-    gap: 12,
-  },
-  analyticsFooterButton: {
-    alignSelf: 'stretch',
-    marginBottom: 8,
-  },
-  productsButton: {
-    alignSelf: 'stretch',
-  },
-  homeButton: {
-    alignSelf: 'center',
-  },
-});
-
 // ✅ NOUVEAU: Fonction createStyles pour styles dynamiques avec thème
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
@@ -2424,9 +2200,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignSelf: 'center',
   },
 });
-
-// ✅ Styles par défaut (pour compatibilité)
-const styles = createStyles(modernColors);
 
 export default MesServicesScreen;
 

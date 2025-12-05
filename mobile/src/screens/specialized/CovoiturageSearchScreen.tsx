@@ -12,8 +12,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import CovoiturageMapView from '../../components/covoiturage/CovoiturageMapView';
+import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
@@ -307,11 +307,11 @@ const CovoiturageSearchScreen: React.FC = () => {
                             title="Rechercher"
                             onPress={handleSearch}
                             disabled={loading}
-                            icon="search"
                             style={styles.searchButton}
                         />
                     </View>
                 </ScrollView>
+            )}
         </View>
     );
 };

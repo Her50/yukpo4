@@ -2,7 +2,7 @@
 // Date: 2025-01-29
 
 import { useCallback, useEffect } from 'react';
-import { apiPost } from '../services/apiService';
+import { apiPost } from '../services/api';
 import PushNotificationService, { TripReminderNotification } from '../services/pushNotificationService';
 
 interface UseTripRemindersOptions {

@@ -4,7 +4,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiPost } from './api';
+import { apiGet, apiPost } from './api';
 
 interface UserPoints {
     total: number;
@@ -32,6 +32,19 @@ interface Streak {
     current: number;
     longest: number;
     lastActiveDate: string; // YYYY-MM-DD
+}
+
+interface Challenge {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    type: 'daily' | 'weekly' | 'monthly' | 'special';
+    target: number;
+    current: number;
+    reward: number;
+    expiresAt?: number;
+    completed: boolean;
 }
 
 const STORAGE_KEY_POINTS = 'user_points';
@@ -335,134 +348,121 @@ class GamificationService {
     }
 
     // ✅ NOUVEAU: Challenges
-    interface Challenge {
-    id: string;
-    name: string;
-    description: string;
-    icon: string;
-    type: 'daily' | 'weekly' | 'monthly' | 'special';
-    target: number;
-    current: number;
-    reward: number;
-    expiresAt?: number;
-    completed: boolean;
-}
+    async getChallenges(userId: string): Promise<Challenge[]> {
+        try {
+            const response = await apiGet(`/api/gamification/challenges?user_id=${userId}`);
 
-    async getChallenges(userId: string): Promise < Challenge[] > {
-    try {
-        const response = await apiGet(`/api/gamification/challenges?user_id=${userId}`);
+            if (response.success && response.data) {
+                return Array.isArray(response.data) ? response.data : (response.data.challenges || []);
+            }
 
-        if(response.success && response.data) {
-    return Array.isArray(response.data) ? response.data : (response.data.challenges || []);
-}
-
-// ✅ Fallback: Challenges par défaut
-return this.getDefaultChallenges();
+            // ✅ Fallback: Challenges par défaut
+            return this.getDefaultChallenges();
         } catch (error) {
-    console.error('[Gamification] Erreur challenges:', error);
-    return this.getDefaultChallenges();
-}
+            console.error('[Gamification] Erreur challenges:', error);
+            return this.getDefaultChallenges();
+        }
     }
 
     private getDefaultChallenges(): Challenge[] {
-    const now = Date.now();
-    const tomorrow = new Date();
-    tomorrow.setHours(23, 59, 59, 999);
+        const now = Date.now();
+        const tomorrow = new Date();
+        tomorrow.setHours(23, 59, 59, 999);
 
-    return [
-        {
-            id: 'daily_search_5',
-            name: 'Explorateur du jour',
-            description: 'Effectuez 5 recherches aujourd\'hui',
-            icon: '🔍',
-            type: 'daily',
-            target: 5,
-            current: 0,
-            reward: 10,
-            expiresAt: tomorrow.getTime(),
-            completed: false,
-        },
-        {
-            id: 'weekly_share_10',
-            name: 'Partageur actif',
-            description: 'Partagez 10 contenus cette semaine',
-            icon: '📤',
-            type: 'weekly',
-            target: 10,
-            current: 0,
-            reward: 50,
-            completed: false,
-        },
-        {
-            id: 'monthly_points_1000',
-            name: 'Champion du mois',
-            description: 'Gagnez 1000 points ce mois',
-            icon: '🏆',
-            type: 'monthly',
-            target: 1000,
-            current: 0,
-            reward: 200,
-            completed: false,
-        },
-    ];
-}
-
-    async checkChallengeProgress(userId: string, challengeId: string, progress: number): Promise < boolean > {
-    try {
-        const response = await apiPost(`/api/gamification/challenges/${challengeId}/progress`, {
-            user_id: userId,
-            progress,
-        });
-
-        if(response.success && response.data?.completed) {
-    // ✅ Challenge complété, donner la récompense
-    const challenge = response.data.challenge;
-    if (challenge?.reward) {
-        await this.addPoints(userId, challenge.reward, `Challenge "${challenge.name}" complété`);
+        return [
+            {
+                id: 'daily_search_5',
+                name: 'Explorateur du jour',
+                description: 'Effectuez 5 recherches aujourd\'hui',
+                icon: '🔍',
+                type: 'daily',
+                target: 5,
+                current: 0,
+                reward: 10,
+                expiresAt: tomorrow.getTime(),
+                completed: false,
+            },
+            {
+                id: 'weekly_share_10',
+                name: 'Partageur actif',
+                description: 'Partagez 10 contenus cette semaine',
+                icon: '📤',
+                type: 'weekly',
+                target: 10,
+                current: 0,
+                reward: 50,
+                completed: false,
+            },
+            {
+                id: 'monthly_points_1000',
+                name: 'Champion du mois',
+                description: 'Gagnez 1000 points ce mois',
+                icon: '🏆',
+                type: 'monthly',
+                target: 1000,
+                current: 0,
+                reward: 200,
+                completed: false,
+            },
+        ];
     }
-    return true;
-}
 
-return false;
+    async checkChallengeProgress(userId: string, challengeId: string, progress: number): Promise<boolean> {
+        try {
+            const response = await apiPost(`/api/gamification/challenges/${challengeId}/progress`, {
+                user_id: userId,
+                progress,
+            });
+
+            if (response.success && response.data?.completed) {
+                // ✅ Challenge complété, donner la récompense
+                const challenge = response.data.challenge;
+                if (challenge?.reward) {
+                    await this.addPoints(userId, challenge.reward, `Challenge "${challenge.name}" complété`);
+                }
+                return true;
+            }
+
+            return false;
         } catch (error) {
-    console.error('[Gamification] Erreur progression challenge:', error);
-    return false;
-}
+            console.error('[Gamification] Erreur progression challenge:', error);
+            return false;
+        }
     }
 
     // ✅ Actions qui donnent des points
-    async trackAction(userId: string, action: string): Promise < void> {
-    const pointsMap: Record<string, number> = {
-    'search': 1,
-        'view_product': 2,
+    async trackAction(userId: string, action: string): Promise<void> {
+        const pointsMap: Record<string, number> = {
+            'search': 1,
+            'view_product': 2,
             'chat_message': 3,
-                'share': 5,
-                    'create_service': 10,
-                        'first_login': 5,
-                            'daily_login': 2,
+            'share': 5,
+            'create_service': 10,
+            'first_login': 5,
+            'daily_login': 2,
         };
 
-const reasonMap: Record<string, string> = {
-    'search': 'Recherche effectuée',
-    'view_product': 'Produit consulté',
-    'chat_message': 'Message envoyé',
-    'share': 'Contenu partagé',
-    'create_service': 'Service créé',
-    'first_login': 'Première connexion',
-    'daily_login': 'Connexion quotidienne',
-};
+        const reasonMap: Record<string, string> = {
+            'search': 'Recherche effectuée',
+            'view_product': 'Produit consulté',
+            'chat_message': 'Message envoyé',
+            'share': 'Contenu partagé',
+            'create_service': 'Service créé',
+            'first_login': 'Première connexion',
+            'daily_login': 'Connexion quotidienne',
+        };
 
-const points = pointsMap[action] || 0;
-const reason = reasonMap[action] || action;
+        const points = pointsMap[action] || 0;
+        const reason = reasonMap[action] || action;
 
-if (points > 0) {
-    await this.addPoints(userId, points, reason);
-}
+        if (points > 0) {
+            await this.addPoints(userId, points, reason);
+        }
 
-// ✅ Mettre à jour le streak si c'est une connexion
-if (action === 'daily_login' || action === 'first_login') {
-    await this.updateStreak(userId);
-}
+        // ✅ Mettre à jour le streak si c'est une connexion
+        if (action === 'daily_login' || action === 'first_login') {
+            await this.updateStreak(userId);
+        }
     }
 }
 

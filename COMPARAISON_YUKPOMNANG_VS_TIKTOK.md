@@ -381,3 +381,4 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
 
 *Analyse basée sur le code source dans `mobile/src/screens/VideoFeedScreen.tsx` et composants/services associés après implémentation des 4 fonctionnalités critiques.*
 
+

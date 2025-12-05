@@ -1,7 +1,7 @@
 // ✅ NOUVEAU Phase 2: Contrôleur pour timelines multi-pistes avancées
 
 use axum::{
-    extract::{Path as AxumPath, Query, State},
+    extract::{Extension, Path as AxumPath, Query, State},
     http::StatusCode,
     Json,
 };
@@ -28,12 +28,12 @@ pub struct TimelineListQuery {
 /// Crée une nouvelle timeline avancée
 pub async fn create_timeline(
     State(state): State<Arc<AppState>>,
-    AuthenticatedUser { user_id, .. }: AuthenticatedUser,
+    Extension(user): Extension<AuthenticatedUser>,
     Json(request): Json<AdvancedTimelineRequest>,
 ) -> AppResult<Json<AdvancedTimelineResponse>> {
     let service = AdvancedTimelineService::new(state.pg.clone());
 
-    let timeline_row = service.create_timeline(user_id, request).await?;
+    let timeline_row = service.create_timeline(user.id, request).await?;
 
     Ok(Json(AdvancedTimelineResponse {
         success: true,
@@ -45,12 +45,12 @@ pub async fn create_timeline(
 /// Récupère une timeline par ID
 pub async fn get_timeline(
     State(state): State<Arc<AppState>>,
-    AuthenticatedUser { user_id, .. }: AuthenticatedUser,
+    Extension(user): Extension<AuthenticatedUser>,
     AxumPath(timeline_id): AxumPath<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     let service = AdvancedTimelineService::new(state.pg.clone());
 
-    match service.get_timeline(&timeline_id, Some(user_id)).await? {
+    match service.get_timeline(&timeline_id, Some(user.id)).await? {
         Some(timeline) => Ok(Json(serde_json::json!({
             "success": true,
             "timeline": timeline,
@@ -65,13 +65,13 @@ pub async fn get_timeline(
 /// Liste les timelines de l'utilisateur
 pub async fn list_timelines(
     State(state): State<Arc<AppState>>,
-    AuthenticatedUser { user_id, .. }: AuthenticatedUser,
+    Extension(user): Extension<AuthenticatedUser>,
     Query(query): Query<TimelineListQuery>,
 ) -> AppResult<Json<serde_json::Value>> {
     let service = AdvancedTimelineService::new(state.pg.clone());
 
     let (timelines, total) = service
-        .list_timelines(user_id, query.limit, query.offset)
+        .list_timelines(user.id, query.limit, query.offset)
         .await?;
 
     Ok(Json(serde_json::json!({
@@ -86,14 +86,14 @@ pub async fn list_timelines(
 /// Met à jour une timeline
 pub async fn update_timeline(
     State(state): State<Arc<AppState>>,
-    AuthenticatedUser { user_id, .. }: AuthenticatedUser,
+    Extension(user): Extension<AuthenticatedUser>,
     AxumPath(timeline_id): AxumPath<String>,
     Json(request): Json<AdvancedTimelineRequest>,
 ) -> AppResult<Json<AdvancedTimelineResponse>> {
     let service = AdvancedTimelineService::new(state.pg.clone());
 
     let timeline_row = service
-        .update_timeline(&timeline_id, user_id, request)
+        .update_timeline(&timeline_id, user.id, request)
         .await?;
 
     Ok(Json(AdvancedTimelineResponse {
@@ -106,12 +106,12 @@ pub async fn update_timeline(
 /// Supprime une timeline
 pub async fn delete_timeline(
     State(state): State<Arc<AppState>>,
-    AuthenticatedUser { user_id, .. }: AuthenticatedUser,
+    Extension(user): Extension<AuthenticatedUser>,
     AxumPath(timeline_id): AxumPath<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     let service = AdvancedTimelineService::new(state.pg.clone());
 
-    let deleted = service.delete_timeline(&timeline_id, user_id).await?;
+    let deleted = service.delete_timeline(&timeline_id, user.id).await?;
 
     if deleted {
         Ok(Json(serde_json::json!({

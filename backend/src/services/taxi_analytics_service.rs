@@ -162,7 +162,7 @@ impl TaxiAnalyticsService {
         let revenue_trend = self
             .get_revenue_trend()
             .await
-            .unwrap_or_else(|| RevenueTrend {
+            .unwrap_or(RevenueTrend {
                 today: 0.0,
                 yesterday: 0.0,
                 last_7_days: 0.0,

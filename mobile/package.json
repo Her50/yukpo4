@@ -100,8 +100,5 @@
     "typescript": "~5.3.3",
     "vitest": "^3.1.2"
   },
-  "overrides": {
-    "yocto-queue": "^1.0.0"
-  },
   "private": true
 }

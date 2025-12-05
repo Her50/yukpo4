@@ -310,8 +310,8 @@ pub async fn get_conversation_messages(
                         .unwrap_or_default(),
                     from.to_string(),
                     row.get::<Option<_>, _>("content").unwrap_or_default(),
-                    row.get::<Option<_>, _>("created_at")
-                        .unwrap_or_else(|_| Utc::now()),
+                    row.get::<Option<chrono::DateTime<Utc>>, _>("created_at")
+                        .unwrap_or_else(|| Utc::now()),
                     from == "client",
                     row.get::<Option<_>, _>("type")
                         .unwrap_or_else(|| "text".to_string()),

@@ -1355,9 +1355,9 @@ async fn notify_all_prestataires_event_created(
         use chrono::Utc;
 
         let mut jobs = Vec::with_capacity(prestataires.len());
-        for prestataire_id in prestataires {
+        for prestataire_id in &prestataires {
             jobs.push(NotificationJob {
-                user_id: prestataire_id,
+                user_id: *prestataire_id,
                 notification_type: "GlobalPromoEventCreated".to_string(),
                 title: title.clone(),
                 body: body.clone(),

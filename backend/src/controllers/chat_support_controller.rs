@@ -216,7 +216,7 @@ pub async fn send_chat_message(
         sender: row.get("sender"),
         timestamp: row.get("timestamp"),
         read: row.get("read"),
-        attachments: payload.attachments.clone(),
+        attachments: payload.attachments.as_ref().map(|v| v.clone()),
     };
 
     // ✅ NOUVEAU 2025-01-27: Générer une réponse IA automatique

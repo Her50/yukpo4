@@ -549,16 +549,18 @@ pub async fn list_effects(
         .tags
         .map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
 
-    let (effects, total) = service
-        .list_effects(
-            query.category.as_deref(),
-            tags.as_deref(),
-            query.q.as_deref(),
-            query.premium,
-            query.limit.unwrap_or(50),
-            query.offset.unwrap_or(0),
-        )
-        .await?;
+    let params = crate::services::effect_library_service::EffectSearchParams {
+        category: query.category.clone(),
+        tags,
+        search_query: query.q.clone(),
+        is_premium: query.premium,
+        limit: query.limit,
+        offset: query.offset,
+    };
+    
+    let response = service.list_effects(params).await?;
+    let effects = response.effects;
+    let total = response.total;
 
     Ok(Json(serde_json::json!({
         "success": true,

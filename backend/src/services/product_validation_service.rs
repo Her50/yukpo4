@@ -206,7 +206,7 @@ fn validate_product_description(data: &Value, result: &mut ProductValidationResu
 /// Valide les images du produit
 fn validate_product_images(data: &Value, result: &mut ProductValidationResult) {
     let mut image_count = 0;
-    let mut total_size_estimate = 0;
+    let mut _total_size_estimate = 0;
 
     // Chercher dans différents champs
     let image_fields = ["imageUrls", "images", "base64_image"];
@@ -219,7 +219,7 @@ fn validate_product_images(data: &Value, result: &mut ProductValidationResult) {
                     if let Some(img_str) = img.as_str() {
                         // Estimer la taille (base64 = ~33% plus grand que binaire)
                         let estimated_size = (img_str.len() * 3) / 4;
-                        total_size_estimate += estimated_size;
+                        _total_size_estimate += estimated_size;
 
                         // Vérifier la taille individuelle
                         let size_mb = estimated_size / (1024 * 1024);
@@ -235,7 +235,7 @@ fn validate_product_images(data: &Value, result: &mut ProductValidationResult) {
             } else if let Some(img_str) = images.as_str() {
                 image_count += 1;
                 let estimated_size = (img_str.len() * 3) / 4;
-                total_size_estimate += estimated_size;
+                _total_size_estimate += estimated_size;
 
                 let size_mb = estimated_size / (1024 * 1024);
                 if size_mb > validation_constants::MAX_IMAGE_SIZE_MB {
@@ -269,7 +269,7 @@ fn validate_product_images(data: &Value, result: &mut ProductValidationResult) {
 /// Valide les vidéos du produit
 fn validate_product_videos(data: &Value, result: &mut ProductValidationResult) {
     let mut video_count = 0;
-    let mut total_size_estimate = 0;
+    let mut _total_size_estimate = 0;
 
     let video_fields = ["videoUrls", "videos", "video_base64"];
 
@@ -280,7 +280,7 @@ fn validate_product_videos(data: &Value, result: &mut ProductValidationResult) {
                 for video in arr {
                     if let Some(video_str) = video.as_str() {
                         let estimated_size = (video_str.len() * 3) / 4;
-                        total_size_estimate += estimated_size;
+                        _total_size_estimate += estimated_size;
 
                         let size_mb = estimated_size / (1024 * 1024);
                         if size_mb > validation_constants::MAX_VIDEO_SIZE_MB {
@@ -295,7 +295,7 @@ fn validate_product_videos(data: &Value, result: &mut ProductValidationResult) {
             } else if let Some(video_str) = videos.as_str() {
                 video_count += 1;
                 let estimated_size = (video_str.len() * 3) / 4;
-                total_size_estimate += estimated_size;
+                _total_size_estimate += estimated_size;
 
                 let size_mb = estimated_size / (1024 * 1024);
                 if size_mb > validation_constants::MAX_VIDEO_SIZE_MB {

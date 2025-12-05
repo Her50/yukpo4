@@ -307,7 +307,8 @@ pub async fn get_duets(
     let limit = params.limit.unwrap_or(25);
     let offset = params.offset.unwrap_or(0);
 
-    let sql = if let Some(video_id) = params.video_id {
+    let video_id_ref = params.video_id.as_ref();
+    let sql = if let Some(video_id) = video_id_ref {
         // Duets d'une vidéo spécifique
         r#"
         SELECT 
@@ -376,7 +377,7 @@ pub async fn get_duets(
         "#
     };
 
-    let count_sql = if let Some(video_id) = params.video_id {
+    let count_sql = if let Some(video_id) = video_id_ref {
         r#"
         SELECT COUNT(*)
         FROM media m
@@ -397,7 +398,7 @@ pub async fn get_duets(
         "#
     };
 
-    let count_result = if let Some(video_id) = params.video_id {
+    let count_result = if let Some(video_id) = video_id_ref {
         sqlx::query_scalar::<_, i64>(count_sql)
             .bind(video_id)
             .fetch_one(pool)
@@ -410,7 +411,7 @@ pub async fn get_duets(
 
     let total = count_result.unwrap_or(0);
 
-    let result = if let Some(video_id) = params.video_id {
+    let result = if let Some(video_id) = video_id_ref {
         sqlx::query(sql)
             .bind(video_id)
             .bind(limit)

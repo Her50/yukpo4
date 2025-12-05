@@ -735,7 +735,7 @@ use crate::services::video_analysis_service::{detect_scenes, AutoCutRequest};
 
 /// ✅ POST /api/ia/video/auto-cut - Détecte automatiquement les scènes dans une vidéo
 pub async fn handle_auto_cut(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<AutoCutPayload>,
 ) -> AppResult<Json<serde_json::Value>> {
     info!(
@@ -753,7 +753,7 @@ pub async fn handle_auto_cut(
         target_duration: payload.target_duration,
     };
 
-    match detect_scenes(request).await {
+    match detect_scenes(request, Some(state.ia.clone())).await {
         Ok(response) => {
             info!(
                 "[handle_auto_cut] ✅ Success - {} scènes détectées",
@@ -836,7 +836,7 @@ use crate::services::color_grading_service::{apply_color_grading, ColorGradingRe
 
 /// ✅ POST /api/ia/media/color-grade - Applique un color grading automatique
 pub async fn handle_color_grade(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<ColorGradingPayload>,
 ) -> AppResult<Json<serde_json::Value>> {
     info!(
@@ -853,7 +853,7 @@ pub async fn handle_color_grade(
         maintain_skin_tones: payload.maintain_skin_tones,
     };
 
-    match apply_color_grading(request).await {
+    match apply_color_grading(request, Some(state.ia.clone())).await {
         Ok(response) => {
             info!(
                 "[handle_color_grade] ✅ Success - preset: {}",

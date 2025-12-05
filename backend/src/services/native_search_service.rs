@@ -2408,17 +2408,6 @@ LIMIT 100
         Ok(search_results)
     }
 
-    /// Calcul du score de récence
-    fn calculate_recency_score(&self, created_at: chrono::DateTime<chrono::Utc>) -> f32 {
-        let now = chrono::Utc::now();
-        let days_old = now.signed_duration_since(created_at).num_days();
-
-        if days_old <= self.config.recency_days {
-            self.config.recency_boost
-        } else {
-            0.0
-        }
-    }
 
     /// ✅ NOUVEAU 2025-11-30: Enrichir la requête avec les variations (profession ↔ activité)
     /// Exemple: "plombier" → "plombier | plomberie"
@@ -2704,7 +2693,7 @@ LIMIT 100
             let _gps: Option<String> = row.get::<Option<String>, _>("gps");
             let _category: Option<String> = row.get::<Option<String>, _>("category");
 
-            let recency_score = self.calculate_recency_score(created_at);
+            let recency_score = self.calculate_recency_score(&created_at);
 
             search_results.push(SearchResult {
                 service_id,
@@ -2841,7 +2830,7 @@ LIMIT 100
             let _category: Option<String> = row.get::<Option<String>, _>("category");
             let location_score: f32 = row.get::<f32, _>("location_score");
 
-            let recency_score = self.calculate_recency_score(created_at);
+            let recency_score = self.calculate_recency_score(&created_at);
 
             search_results.push(SearchResult {
                 service_id,
