@@ -79,10 +79,10 @@ pub async fn create_token_pack(
         }
     };
     let pack = TokenPack {
-        id: row.try_get("id")?,
-        name: row.try_get("name")?,
-        tokens: row.try_get("tokens")?,
-        price: row.try_get("price")?,
+        id: row.get::<i32, _>("id"),
+        name: row.get::<String, _>("name"),
+        tokens: row.get::<i32, _>("tokens"),
+        price: row.get::<i32, _>("price"),
     };
     info!("[create_token_pack] Created pack id={}", pack.id);
     Ok(Json(pack))

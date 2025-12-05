@@ -1,6 +1,6 @@
 use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
-use sqlx::{query, Row};
+use sqlx::{query, postgres::PgRow, Row};
 use std::sync::Arc;
 
 use crate::core::types::AppResult;
@@ -63,10 +63,10 @@ pub async fn create_token_pack(
     .await?;
 
     let pack = TokenPack {
-        id: row.try_get("id")?,
-        name: row.try_get("name")?,
-        tokens: row.try_get("tokens")?,
-        price: row.try_get("price")?,
+        id: row.get::<i32, _>("id"),
+        name: row.get::<String, _>("name"),
+        tokens: row.get::<i32, _>("tokens"),
+        price: row.get::<i32, _>("price"),
     };
 
     Ok(Json(pack))

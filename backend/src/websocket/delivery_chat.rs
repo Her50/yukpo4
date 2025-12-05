@@ -287,7 +287,7 @@ async fn handle_delivery_chat_websocket(
             );
             Arc::new(DeliveryChatWebSocketManager::new(
                 64,
-                state.redis_client.clone(),
+                Some(state.redis_client.clone()),
             ))
         };
 

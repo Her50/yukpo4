@@ -114,13 +114,14 @@ impl VideoQueueService {
         // ✅ Ajouter à Redis queue pour traitement distribué
         let job_id = item.job_id.clone();
         let priority = item.priority as u8;
+        let priority_clone = item.priority;
         // Cloner les champs nécessaires pour sérialisation
         let item_for_queue = serde_json::json!({
             "job_id": item.job_id,
             "user_id": item.user_id,
             "service_id": item.service_id,
             "product_index": item.product_index,
-            "priority": item.priority,
+            "priority": priority_clone,
             "payload": item.payload,
         });
         let item_json = serde_json::to_string(&item_for_queue)?;

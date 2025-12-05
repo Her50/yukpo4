@@ -675,11 +675,12 @@ pub async fn ai_recommendations(
     }
 
     let ai_service = OrientationScolaireAIService::new(state.ia.clone());
+    let filiere_str = request.filiere.clone().unwrap_or_default();
     let recommendation = ai_service
         .generate_program_recommendations(
             request.student_profile_id,
             request.etablissement_id.unwrap_or(0),
-            &request.filiere.unwrap_or_default(),
+            &filiere_str,
             request.specialite.as_deref(),
             request.budget_max,
             &request.preference_localisation.unwrap_or_default(),

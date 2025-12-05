@@ -274,6 +274,7 @@ impl TaxiRouteOptimizationService {
             total_distance, total_duration
         );
 
+        let waypoint_order_clone = waypoint_order.clone();
         Ok(OptimizedRoute {
             waypoints_order: waypoint_order,
             total_distance_km: total_distance,
@@ -281,7 +282,7 @@ impl TaxiRouteOptimizationService {
             estimated_cost: None,
             route_points: {
                 let mut points = vec![origin.clone()];
-                for idx in &waypoint_order {
+                for idx in &waypoint_order_clone {
                     if let Some(waypoint) = waypoints.get(*idx) {
                         points.push(waypoint.clone());
                     }

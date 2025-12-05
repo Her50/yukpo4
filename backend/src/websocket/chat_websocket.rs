@@ -287,7 +287,7 @@ async fn handle_chat_websocket(
     } else {
         // Créer un manager temporaire (normalement créé au démarrage)
         log::warn!("[ChatWS] ChatWebSocketManager non initialisé, création temporaire");
-        ChatWebSocketManager::new(64, Some(state.redis_client.clone()))
+        Arc::new(ChatWebSocketManager::new(64, Some(state.redis_client.clone())))
     };
 
     // S'abonner aux messages de cette conversation
