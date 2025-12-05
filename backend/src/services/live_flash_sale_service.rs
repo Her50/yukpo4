@@ -445,8 +445,7 @@ impl LiveFlashSaleService {
             let service_id: i32 = row.try_get("service_id")?;
             let promo_price: BigDecimal = row.try_get("promo_price_cfa")?;
             let start_at: DateTime<Utc> = row.try_get("start_at")?;
-            let promo_price_cfa = promo_price
-                .to_f64()
+            let promo_price_cfa = ToPrimitive::to_f64(&promo_price)
                 .ok_or_else(|| AppError::Internal("Conversion du prix promo impossible".into()))?;
             let metadata: Value = row.try_get("metadata")?;
             let session_title: String = row.try_get("title")?;
@@ -536,8 +535,7 @@ impl LiveFlashSaleService {
             let host_user_id: i32 = row.try_get("host_user_id")?;
             let service_id: i32 = row.try_get("service_id")?;
             let promo_price: BigDecimal = row.try_get("promo_price_cfa")?;
-            let promo_price_cfa = promo_price
-                .to_f64()
+            let promo_price_cfa = ToPrimitive::to_f64(&promo_price)
                 .ok_or_else(|| AppError::Internal("Conversion du prix promo impossible".into()))?;
             let metadata: Value = row.try_get("metadata")?;
             let session_title: String = row.try_get("title")?;
@@ -925,8 +923,7 @@ impl LiveFlashSaleService {
         let mut summaries = Vec::with_capacity(rows.len());
         for row in rows {
             let promo_price: BigDecimal = row.try_get("promo_price_cfa")?;
-            let promo_price_cfa = promo_price
-                .to_f64()
+            let promo_price_cfa = ToPrimitive::to_f64(&promo_price)
                 .ok_or_else(|| AppError::Internal("Conversion du prix promo impossible".into()))?;
 
             let summary = LiveFlashSaleSummary {

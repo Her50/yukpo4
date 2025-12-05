@@ -186,10 +186,10 @@ impl<'r> FromRow<'r, PgRow> for GlobalPromoEntry {
 
         let discount = row
             .try_get::<Option<bigdecimal::BigDecimal>, _>("discount_percentage")?
-            .and_then(|value| value.to_f64());
+            .and_then(|value| ToPrimitive::to_f64(&value));
         let promo_price = row
             .try_get::<Option<bigdecimal::BigDecimal>, _>("promo_price_cfa")?
-            .and_then(|value| value.to_f64());
+            .and_then(|value| ToPrimitive::to_f64(&value));
 
         Ok(Self {
             id: row.try_get("id")?,

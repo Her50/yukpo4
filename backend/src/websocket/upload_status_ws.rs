@@ -66,6 +66,10 @@ async fn handle_upload_status_websocket(
     let mut status_rx = upload_service.subscribe();
     let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(500));
 
+    // Cloner upload_id avant de le déplacer dans les tâches
+    let upload_id_for_recv = upload_id.clone();
+    let upload_id_for_status = upload_id.clone();
+
     // Tâche de réception des messages du client
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
@@ -73,14 +77,14 @@ async fn handle_upload_status_websocket(
                 Message::Text(text) => {
                     if let Ok(ping) = serde_json::from_str::<serde_json::Value>(&text) {
                         if ping.get("type").and_then(|v| v.as_str()) == Some("ping") {
-                            log::debug!("[UploadStatusWS] Ping reçu pour upload_id={}", upload_id);
+                            log::debug!("[UploadStatusWS] Ping reçu pour upload_id={}", upload_id_for_recv);
                         }
                     }
                 }
                 Message::Close(_) => {
                     log::info!(
                         "[UploadStatusWS] WebSocket fermé par le client pour upload_id={}",
-                        upload_id
+                        upload_id_for_recv
                     );
                     break;
                 }
@@ -90,7 +94,7 @@ async fn handle_upload_status_websocket(
     });
 
     // Tâche d'envoi de statut depuis broadcast
-    let upload_id_clone = upload_id.clone();
+    let upload_id_clone = upload_id_for_status;
     let mut status_task = tokio::spawn(async move {
         loop {
             tokio::select! {

@@ -21,7 +21,7 @@ use crate::{
     },
     websocket::delivery_tracking::{DeliveryTrackingManager, DeliveryWsEvent},
 };
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, ToPrimitive as BigDecimalToPrimitive};
 use chrono::{DateTime, Duration, Utc};
 use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
@@ -301,7 +301,7 @@ impl FrontendShoppingSummary {
                 FrontendShoppingItem {
                     id: item.id.to_string(),
                     label: item.product_name,
-                    quantity: item.quantity.to_f64().unwrap_or_default(),
+                    quantity: BigDecimalToPrimitive::to_f64(&item.quantity).unwrap_or_default(),
                     unit: Some(item.unit),
                     estimated_price: Some(cents_to_units(item.estimated_price_cents)),
                     estimated_total: Some(cents_to_units(item.estimated_price_cents)),
@@ -3197,9 +3197,9 @@ impl DeliveryService {
                 DeliveryWsEvent::Location {
                     latitude: input.latitude,
                     longitude: input.longitude,
-                    speed_kmh: input.speed_kmh.and_then(|d| d.to_f64()),
-                    bearing: input.bearing.and_then(|d| d.to_f64()),
-                    accuracy_meters: input.accuracy_meters.and_then(|d| d.to_f64()),
+                    speed_kmh: input.speed_kmh.and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
+                    bearing: input.bearing.and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
+                    accuracy_meters: input.accuracy_meters.and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
                 },
             )
             .await;
@@ -3272,7 +3272,7 @@ impl DeliveryService {
                         name: user.nom_complet.or(user.prenom).or(user.nom),
                         phone: None,
                         avatar_url: user.avatar_url,
-                        rating: courier.rating_average.to_f64(),
+                        rating: BigDecimalToPrimitive::to_f64(&courier.rating_average),
                         notes: courier.bio,
                         vehicle_type: None,
                         eta_minutes: None,
@@ -4028,9 +4028,7 @@ impl DeliveryService {
         let distance_ratio = (distance / MATCHING_MAX_DISTANCE_METERS).min(2.0);
         let distance_component = (1.0 - distance_ratio).max(-0.5);
 
-        let load_factor = candidate
-            .load_factor
-            .to_f64()
+        let load_factor = BigDecimalToPrimitive::to_f64(&candidate.load_factor)
             .unwrap_or_default()
             .clamp(0.0, 2.0);
         let load_component = 1.0 - load_factor.min(1.0);

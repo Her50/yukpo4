@@ -109,7 +109,7 @@ async fn handle_flash_sale_stock_websocket(
             };
 
             // Envoyer la mise à jour au client WebSocket
-            if sender.send(Message::Text(payload)).await.is_err() {
+            if sender.send(Message::Text(payload.into())).await.is_err() {
                 log::info!(
                     "Client WebSocket déconnecté pour flash_sale {}",
                     flash_sale_id

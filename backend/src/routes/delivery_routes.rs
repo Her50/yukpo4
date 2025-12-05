@@ -2295,7 +2295,7 @@ async fn get_my_courier_status(
         "courier": courier.map(|c| json!({
             "id": c.id,
             "status": format!("{:?}", c.status),
-            "rating_average": c.rating_average.to_f64().unwrap_or(0.0),
+            "rating_average": ToPrimitive::to_f64(&c.rating_average).unwrap_or(0.0),
             "rating_count": c.rating_count,
         })),
         "application": application.map(|a| json!({

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use log::{error, info, warn};
-use rust_decimal::Decimal;
+use rust_decimal::{Decimal, prelude::ToPrimitive};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -281,7 +281,7 @@ impl VideoQueueService {
             .try_get::<Option<Decimal>, _>("avg_duration_seconds")
             .ok()
             .flatten()
-            .and_then(|d| d.to_f64());
+            .and_then(|d| ToPrimitive::to_f64(&d));
 
         Ok(QueueStats {
             queued: queued_count.unwrap_or(0) as u64,

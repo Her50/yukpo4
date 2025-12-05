@@ -1,6 +1,7 @@
 // ✅ Service pour envoyer des notifications push pour nouveaux matchings
 use crate::core::types::AppResult;
 use crate::services::push_notification_service;
+use bigdecimal::ToPrimitive;
 use log::{error, info};
 use serde_json::json;
 use sqlx::PgPool;
@@ -102,7 +103,7 @@ pub async fn check_and_notify_new_matchings(pool: &PgPool) -> AppResult<usize> {
             pool,
             matching.candidat_id,
             matching.offre_id,
-            matching.score_total.to_f64().unwrap_or(0.0),
+            ToPrimitive::to_f64(&matching.score_total).unwrap_or(0.0),
             matching.titre_poste,
         )
         .await

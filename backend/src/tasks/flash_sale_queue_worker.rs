@@ -79,15 +79,17 @@ impl FlashSaleQueueWorker {
             })?;
 
         // Lire un batch de messages depuis le stream
-        // Note: Utiliser xreadgroup de redis-rs avec AsyncCommands
-        use redis::AsyncCommands;
-        let messages_result: Result<Vec<redis::streams::StreamReadReply>, _> = conn
-            .xreadgroup(
-                &self.consumer_group,
-                &self.consumer_name,
-                &[&self.stream_name],
-                &[">"],
-            )
+        // Note: Utiliser redis::cmd avec MultiplexedConnection
+        let messages_result: Result<Vec<redis::streams::StreamReadReply>, _> = redis::cmd("XREADGROUP")
+            .arg("GROUP")
+            .arg(&self.consumer_group)
+            .arg(&self.consumer_name)
+            .arg("COUNT")
+            .arg(10)
+            .arg("STREAMS")
+            .arg(&self.stream_name)
+            .arg(">")
+            .query_async(&mut conn)
             .await;
 
         let messages = match messages_result {
