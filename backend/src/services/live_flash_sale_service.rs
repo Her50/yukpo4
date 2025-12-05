@@ -530,15 +530,15 @@ impl LiveFlashSaleService {
         .await?;
 
         for row in rows {
-            let flash_sale_id: Uuid = row.try_get("id")?;
-            let session_id: Uuid = row.try_get("live_session_id")?;
-            let host_user_id: i32 = row.try_get("host_user_id")?;
+            let flash_sale_id: Uuid = row.get::<Uuid, _>("id");
+            let session_id: Uuid = row.get::<Uuid, _>("live_session_id");
+            let host_user_id: i32 = row.get::<i32, _>("host_user_id");
             let service_id: i32 = row.get::<i32, _>("service_id");
-            let promo_price: BigDecimal = row.try_get("promo_price_cfa")?;
+            let promo_price: BigDecimal = row.get::<BigDecimal, _>("promo_price_cfa");
             let promo_price_cfa = ToPrimitive::to_f64(&promo_price)
                 .ok_or_else(|| AppError::Internal("Conversion du prix promo impossible".into()))?;
-            let metadata: Value = row.try_get("metadata")?;
-            let session_title: String = row.try_get("title")?;
+            let metadata: Value = row.get::<Value, _>("metadata");
+            let session_title: String = row.get::<String, _>("title");
 
             let mut audience_services = LiveStreamingService::extract_linked_ids(&metadata);
             if let Some(primary) = row.get::<Option<i32>, _>("primary_service_id") {
@@ -613,9 +613,9 @@ impl LiveFlashSaleService {
         .await?;
 
         for row in rows {
-            let flash_sale_id: Uuid = row.try_get("id")?;
-            let session_id: Uuid = row.try_get("live_session_id")?;
-            let host_user_id: i32 = row.try_get("host_user_id")?;
+            let flash_sale_id: Uuid = row.get::<Uuid, _>("id");
+            let session_id: Uuid = row.get::<Uuid, _>("live_session_id");
+            let host_user_id: i32 = row.get::<i32, _>("host_user_id");
             let service_id: i32 = row.get::<i32, _>("service_id");
             let end_at: DateTime<Utc> = row.get::<DateTime<Utc>, _>("end_at");
             let metadata: Value = row.get::<Value, _>("metadata");
@@ -735,18 +735,18 @@ impl LiveFlashSaleService {
         }
 
         for row in rows {
-            let flash_sale_id: Uuid = row.try_get("id")?;
-            let session_id: Uuid = row.try_get("live_session_id")?;
+            let flash_sale_id: Uuid = row.get::<Uuid, _>("id");
+            let session_id: Uuid = row.get::<Uuid, _>("live_session_id");
             let service_id: i32 = row.get::<i32, _>("service_id");
-            let stock_target: i32 = row.try_get("stock_target")?;
-            let reserved_quantity: i64 = row.try_get("reserved_quantity")?;
-            let interval_seconds: i32 = row.try_get("commentary_interval_seconds")?;
-            let end_at: DateTime<Utc> = row.try_get("end_at")?;
-            let session_metadata: Value = row.try_get("session_metadata")?;
-            let flash_metadata: Value = row.try_get("flash_metadata")?;
-            let host_user_id: i32 = row.try_get("host_user_id")?;
-            let primary_service_id: Option<i32> = row.try_get("primary_service_id")?;
-            let session_title: String = row.try_get("title")?;
+            let stock_target: i32 = row.get::<i32, _>("stock_target");
+            let reserved_quantity: i64 = row.get::<i64, _>("reserved_quantity");
+            let interval_seconds: i32 = row.get::<i32, _>("commentary_interval_seconds");
+            let end_at: DateTime<Utc> = row.get::<DateTime<Utc>, _>("end_at");
+            let session_metadata: Value = row.get::<Value, _>("session_metadata");
+            let flash_metadata: Value = row.get::<Value, _>("flash_metadata");
+            let host_user_id: i32 = row.get::<i32, _>("host_user_id");
+            let primary_service_id: Option<i32> = row.get::<Option<i32>, _>("primary_service_id");
+            let session_title: String = row.get::<String, _>("title");
 
             let title = linked_map
                 .get(&service_id)

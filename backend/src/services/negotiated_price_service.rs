@@ -271,15 +271,9 @@ impl NegotiatedPriceService {
 
         let offer_row = offer.ok_or_else(|| AppError::NotFound("Offre introuvable".into()))?;
 
-        let merchant_id: i32 = offer_row
-            .try_get("merchant_user_id")
-            .map_err(|e| AppError::Internal(format!("Erreur extraction merchant_id: {}", e)))?;
-        let _client_id: i32 = offer_row
-            .try_get("client_user_id")
-            .map_err(|e| AppError::Internal(format!("Erreur extraction client_id: {}", e)))?;
-        let status: String = offer_row
-            .try_get("status")
-            .map_err(|e| AppError::Internal(format!("Erreur extraction status: {}", e)))?;
+        let merchant_id: i32 = offer_row.get::<i32, _>("merchant_user_id");
+        let _client_id: i32 = offer_row.get::<i32, _>("client_user_id");
+        let status: String = offer_row.get::<String, _>("status");
 
         // Vérifier que l'utilisateur est le prestataire (seul le prestataire peut rejeter)
         if user_id != merchant_id {
@@ -335,12 +329,8 @@ impl NegotiatedPriceService {
 
         let offer_row = offer.ok_or_else(|| AppError::NotFound("Offre introuvable".into()))?;
 
-        let client_id: i32 = offer_row
-            .try_get("client_user_id")
-            .map_err(|e| AppError::Internal(format!("Erreur extraction client_id: {}", e)))?;
-        let status: String = offer_row
-            .try_get("status")
-            .map_err(|e| AppError::Internal(format!("Erreur extraction status: {}", e)))?;
+        let client_id: i32 = offer_row.get::<i32, _>("client_user_id");
+        let status: String = offer_row.get::<String, _>("status");
 
         // Vérifier que l'utilisateur est le client
         if user_id != client_id {

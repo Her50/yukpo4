@@ -1162,7 +1162,7 @@ async fn archive_finished_events(pool: &PgPool, now: DateTime<Utc>) -> AppResult
 
     let mut counter = 0usize;
     for row in rows {
-        let event_id: Uuid = row.try_get("id")?;
+        let event_id: Uuid = row.get::<Uuid, _>("id");
         sqlx::query(
             "UPDATE global_promo_events SET status = 'archived', updated_at = NOW() WHERE id = $1",
         )

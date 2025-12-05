@@ -275,10 +275,10 @@ impl VideoQueueService {
         .fetch_one(&self.pool)
         .await?;
 
-        let queued_count: Option<i64> = row.try_get("queued_count").ok();
-        let processing_count: Option<i64> = row.try_get("processing_count").ok();
-        let completed_count: Option<i64> = row.try_get("completed_count").ok();
-        let failed_count: Option<i64> = row.try_get("failed_count").ok();
+        let queued_count: Option<i64> = row.get::<Option<i64>, _>("queued_count");
+        let processing_count: Option<i64> = row.get::<Option<i64>, _>("processing_count");
+        let completed_count: Option<i64> = row.get::<Option<i64>, _>("completed_count");
+        let failed_count: Option<i64> = row.get::<Option<i64>, _>("failed_count");
         let avg_duration_seconds: Option<f64> = row
             .try_get::<Option<Decimal>, _>("avg_duration_seconds")
             .ok()
