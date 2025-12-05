@@ -57,7 +57,7 @@ async fn handle_flash_sale_stock_websocket(
     let channel = format!("flash_sale:{}:stock", flash_sale_id);
 
     // Tâche de réception des messages du client
-    let mut recv_task = tokio::spawn(async move {
+    let recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
             match msg {
                 Message::Text(text) => {
@@ -80,8 +80,9 @@ async fn handle_flash_sale_stock_websocket(
 
     // Tâche d'écoute Redis pub/sub
     let redis_client = app_state.redis_client.clone();
-    let mut pubsub_task = tokio::spawn(async move {
+    let pubsub_task = tokio::spawn(async move {
         // Créer une connexion pubsub dédiée (même approche que chat_websocket)
+        #[allow(deprecated)]
         let mut pubsub = match redis_client.get_async_connection().await {
             Ok(conn) => conn.into_pubsub(),
             Err(e) => {
