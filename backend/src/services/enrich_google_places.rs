@@ -70,9 +70,7 @@ pub async fn enrich_service_with_google_places_data(
 
     if let Some(row) = row {
         // Récupérer le JSONB directement
-        let google_place_data: Option<Value> = row
-            .try_get("google_place_data")
-            .map_err(|e| AppError::Internal(format!("Erreur parsing Google Places JSON: {}", e)))?;
+        let google_place_data: Option<Value> = row.get::<Option<Value>, _>("google_place_data");
 
         if let Some(mut gp_data) = google_place_data {
             // Nettoyer les valeurs NULL du JSON
@@ -192,9 +190,7 @@ pub async fn enrich_search_results_batch_with_google_places_data(
     let mut google_places_data_map: HashMap<i32, Value> = HashMap::new();
     for row in rows {
         let service_id: i32 = row.get::<i32, _>("service_id");
-        let google_place_data: Option<Value> = row
-            .try_get("google_place_data")
-            .map_err(|e| AppError::Internal(format!("Erreur parsing Google Places JSON: {}", e)))?;
+        let google_place_data: Option<Value> = row.get::<Option<Value>, _>("google_place_data");
 
         if let Some(mut gp_data) = google_place_data {
             // Nettoyer les valeurs NULL du JSON
@@ -293,9 +289,7 @@ pub async fn enrich_search_results_batch(
     let mut google_places_data_map: HashMap<i32, Value> = HashMap::new();
     for row in rows {
         let service_id: i32 = row.get::<i32, _>("service_id");
-        let google_place_data: Option<Value> = row
-            .try_get("google_place_data")
-            .map_err(|e| AppError::Internal(format!("Erreur parsing Google Places JSON: {}", e)))?;
+        let google_place_data: Option<Value> = row.get::<Option<Value>, _>("google_place_data");
 
         if let Some(mut gp_data) = google_place_data {
             if let Some(gp_obj) = gp_data.as_object_mut() {

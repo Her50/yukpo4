@@ -1368,11 +1368,11 @@ async fn search_services_direct_fallback(
     let mut results = Vec::new();
     for row in services {
         // Extraire les données de la ligne
-        let service_id: i32 = row.try_get("id")?;
-        let _user_id: i32 = row.try_get("user_id")?;
-        let data: Value = row.try_get("data")?;
-        let _is_active: bool = row.try_get("is_active")?;
-        let created_at: chrono::DateTime<chrono::Utc> = row.try_get("created_at")?;
+        let service_id: i32 = row.get::<i32, _>("id");
+        let _user_id: i32 = row.get::<i32, _>("user_id");
+        let data: Value = row.get::<Value, _>("data");
+        let _is_active: bool = row.get::<bool, _>("is_active");
+        let created_at: chrono::DateTime<chrono::Utc> = row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
 
         // Calculer un score basé sur tous les mots-clés
         let mut score = 0.0;

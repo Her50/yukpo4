@@ -719,14 +719,16 @@ pub async fn ai_compare_programs(
         ));
     }
 
+    let filiere_1_str = request.filiere_1.clone();
+    let filiere_2_str = request.filiere_2.clone();
     let ai_service = OrientationScolaireAIService::new(state.ia.clone());
     let comparison = ai_service
         .compare_programs(
             request.student_profile_id,
             request.etablissement_1_id,
             request.etablissement_2_id,
-            &request.filiere_1,
-            &request.filiere_2,
+            &filiere_1_str,
+            &filiere_2_str,
             request.specialite_1.as_deref(),
             request.specialite_2.as_deref(),
         )

@@ -217,6 +217,7 @@ impl VideoQueueService {
         error_message: String,
         retry: bool,
     ) -> AppResult<()> {
+        let job_id_for_log = job_id;
         if retry {
             // ✅ Retry avec backoff exponentiel
             sqlx::query!(
@@ -253,7 +254,7 @@ impl VideoQueueService {
             .await?;
         }
 
-        warn!("[VideoQueue] Job {} failed: {}", job_id, error_message);
+        warn!("[VideoQueue] Job {} failed: {}", job_id_for_log, error_message);
         Ok(())
     }
 

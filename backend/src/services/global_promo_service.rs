@@ -1030,43 +1030,43 @@ fn build_snapshot_from_service(service_id: i32, service_data: Value) -> Value {
 
 fn map_event_from_row(row: &PgRow) -> AppResult<GlobalPromoEvent> {
     Ok(GlobalPromoEvent {
-        id: row.try_get("event_id_alias")?,
-        slug: row.try_get("event_slug")?,
-        theme: row.try_get("event_theme")?,
-        display_name: row.try_get("event_display_name")?,
-        description: row.try_get("event_description")?,
-        starts_at: row.try_get("event_starts_at")?,
-        ends_at: row.try_get("event_ends_at")?,
-        recurrence_rule: row.try_get("event_recurrence_rule")?,
-        status: row.try_get("event_status")?,
-        config: row.try_get("event_config")?,
-        created_by_user_id: row.try_get("event_created_by_user_id")?,
-        created_at: row.try_get("event_created_at")?,
-        updated_at: row.try_get("event_updated_at")?,
+        id: row.get::<Uuid, _>("event_id_alias"),
+        slug: row.get::<String, _>("event_slug"),
+        theme: row.get::<String, _>("event_theme"),
+        display_name: row.get::<String, _>("event_display_name"),
+        description: row.get::<Option<String>, _>("event_description"),
+        starts_at: row.get::<DateTime<Utc>, _>("event_starts_at"),
+        ends_at: row.get::<DateTime<Utc>, _>("event_ends_at"),
+        recurrence_rule: row.get::<Option<String>, _>("event_recurrence_rule"),
+        status: row.get::<String, _>("event_status"),
+        config: row.get::<Value, _>("event_config"),
+        created_by_user_id: row.get::<Option<i32>, _>("event_created_by_user_id"),
+        created_at: row.get::<DateTime<Utc>, _>("event_created_at"),
+        updated_at: row.get::<DateTime<Utc>, _>("event_updated_at"),
     })
 }
 
 fn map_product_from_row(row: &PgRow) -> AppResult<Option<GlobalPromoProductSnapshot>> {
-    let id: Option<Uuid> = row.try_get("product_id")?;
+    let id: Option<Uuid> = row.get::<Option<Uuid>, _>("product_id");
     if id.is_none() {
         return Ok(None);
     }
 
     Ok(Some(GlobalPromoProductSnapshot {
         id: id.unwrap(),
-        promo_entry_id: row.try_get("product_entry_id")?,
-        availability: row.try_get("product_availability")?,
+        promo_entry_id: row.get::<Uuid, _>("product_entry_id"),
+        availability: row.get::<String, _>("product_availability"),
         snapshot: row
-            .try_get::<Option<Value>, _>("product_snapshot")?
+            .get::<Option<Value>, _>("product_snapshot")
             .unwrap_or_else(|| json!({})),
         priority_score: row
-            .try_get::<Option<i32>, _>("product_priority_score")?
+            .get::<Option<i32>, _>("product_priority_score")
             .unwrap_or(0),
         highlighted: row
-            .try_get::<Option<bool>, _>("product_highlighted")?
+            .get::<Option<bool>, _>("product_highlighted")
             .unwrap_or(false),
-        created_at: row.try_get("product_created_at")?,
-        updated_at: row.try_get("product_updated_at")?,
+        created_at: row.get::<DateTime<Utc>, _>("product_created_at"),
+        updated_at: row.get::<DateTime<Utc>, _>("product_updated_at"),
     }))
 }
 

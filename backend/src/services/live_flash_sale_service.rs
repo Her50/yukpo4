@@ -42,7 +42,7 @@ impl LiveFlashSaleService {
             ));
         };
 
-        let session_host: i32 = session_row.try_get("host_user_id")?;
+        let session_host: i32 = session_row.get::<i32, _>("host_user_id");
         if session_host != host_user_id {
             return Err(AppError::Forbidden(
                 "Vous ne pouvez configurer que vos propres ventes flash".into(),
@@ -50,8 +50,8 @@ impl LiveFlashSaleService {
         }
 
         let primary_service_id: Option<i32> = session_row.get::<Option<i32>, _>("service_id");
-        let metadata: Value = session_row.try_get("metadata")?;
-        let session_title: String = session_row.try_get("title")?;
+        let metadata: Value = session_row.get::<Value, _>("metadata");
+        let session_title: String = session_row.get::<String, _>("title");
 
         let mut audience_services = LiveStreamingService::extract_linked_ids(&metadata);
         if let Some(primary) = primary_service_id {

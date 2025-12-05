@@ -161,14 +161,14 @@ pub async fn get_user_notifications(
         .into_iter()
         .map(|row| {
             Ok(Notification {
-                id: row.try_get("id")?,
-                user_id: row.try_get("user_id")?,
-                notification_type: row.try_get("notification_type")?,
-                title: row.try_get("title")?,
-                message: row.try_get("message")?,
-                data: row.try_get("data")?,
-                is_read: row.try_get("is_read")?,
-                created_at: row.try_get("created_at")?,
+                id: row.get::<i32, _>("id"),
+                user_id: row.get::<i32, _>("user_id"),
+                notification_type: row.get::<String, _>("notification_type"),
+                title: row.get::<String, _>("title"),
+                message: row.get::<String, _>("message"),
+                data: row.get::<serde_json::Value, _>("data"),
+                is_read: row.get::<bool, _>("is_read"),
+                created_at: row.get::<DateTime<Utc>, _>("created_at"),
             })
         })
         .collect();

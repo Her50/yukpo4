@@ -160,7 +160,7 @@ impl ChatWebSocketManager {
         redis::cmd("PUBLISH")
             .arg(&channel)
             .arg(json)
-            .query_async::<_, i32>(&mut conn)
+            .query_async::<(), i32>(&mut conn)
             .await?;
 
         Ok(())
