@@ -249,7 +249,7 @@ async fn delivery_chat_websocket_handler(
             log::warn!("[DeliveryChatWS] ID de livraison invalide: {}", delivery_id);
             return axum::response::Response::builder()
                 .status(400)
-                .body("Invalid delivery ID".into())
+                .body::<axum::body::Body>("Invalid delivery ID".into())
                 .unwrap()
                 .into_response();
         }

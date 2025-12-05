@@ -117,9 +117,9 @@ pub struct AdvancedTimelineRow {
     pub name: String,
     pub timeline_data: Value, // JSON AdvancedTimeline
     pub duration: f64,
-    pub fps: Option<u32>,
-    pub resolution_width: Option<u32>,
-    pub resolution_height: Option<u32>,
+    pub fps: Option<i32>, // ✅ CORRIGÉ: u32 -> i32 pour compatibilité PostgreSQL
+    pub resolution_width: Option<i32>, // ✅ CORRIGÉ: u32 -> i32 pour compatibilité PostgreSQL
+    pub resolution_height: Option<i32>, // ✅ CORRIGÉ: u32 -> i32 pour compatibilité PostgreSQL
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
