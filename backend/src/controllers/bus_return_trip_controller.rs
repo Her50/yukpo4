@@ -397,7 +397,7 @@ pub async fn get_return_trip_request(
                     .ok()
                     .flatten()
                     .map(|dt| dt.to_rfc3339()),
-                notification_sent: row.get("notification_sent"),
+                notification_sent: row.get::<bool, _>("notification_sent"),
                 created_at: row
                     .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
                     .to_rfc3339(),
@@ -469,9 +469,9 @@ pub async fn confirm_return_trip_request(
     let (matched_product_id, number_of_seats, status): (Option<String>, i32, String) =
         match request_row {
             Some(row) => (
-                row.try_get("matched_product_id").ok().flatten(),
-                row.get("number_of_seats"),
-                row.get("status"),
+                row.try_get::<Option<String>, _>("matched_product_id").ok().flatten(),
+                row.get::<i32, _>("number_of_seats"),
+                row.get::<String, _>("status"),
             ),
             None => {
                 return Err(AppError::NotFound(

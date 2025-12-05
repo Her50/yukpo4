@@ -112,10 +112,10 @@ pub async fn start_chat_session(
         })?;
 
     let session = ChatSession {
-        id: row.get("id"),
-        status: row.get("status"),
-        created_at: row.get("created_at"),
-        last_message_at: row.get("last_message_at"),
+        id: row.get::<String, _>("id"),
+        status: row.get::<String, _>("status"),
+        created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+        last_message_at: row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at"),
         agent_name: None,
         agent_avatar: None,
     };
@@ -158,7 +158,7 @@ pub async fn send_chat_message(
         return Err(AppError::NotFound("Session introuvable".to_string()));
     }
 
-    let session_user_id: i32 = session_row.as_ref().unwrap().get("user_id");
+    let session_user_id: i32 = session_row.as_ref().unwrap().get::<i32, _>("user_id");
     if session_user_id != user.id {
         return Err(AppError::Forbidden("Cette session ne vous appartient pas".to_string()));
     }
@@ -212,11 +212,11 @@ pub async fn send_chat_message(
         .ok();
 
     let user_message = ChatMessage {
-        id: row.get("id"),
-        text: row.get("text"),
-        sender: row.get("sender"),
-        timestamp: row.get("timestamp"),
-        read: row.get("read"),
+        id: row.get::<String, _>("id"),
+        text: row.get::<String, _>("text"),
+        sender: row.get::<String, _>("sender"),
+        timestamp: row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp"),
+        read: row.get::<bool, _>("read"),
         attachments: payload.attachments.clone(),
     };
 
@@ -293,7 +293,7 @@ async fn generate_ai_support_response(
             AppError::Internal(format!("Erreur topic: {}", e))
         })?;
 
-    let topic: Option<String> = topic_row.and_then(|row| row.get("topic"));
+    let topic: Option<String> = topic_row.and_then(|row| row.get::<Option<String>, _>("topic"));
 
     // Générer la réponse IA
     let ai_response_text = generate_support_response(
@@ -356,11 +356,11 @@ async fn generate_ai_support_response(
         .ok();
 
     let ai_message = ChatMessage {
-        id: ai_row.get("id"),
-        text: ai_row.get("text"),
-        sender: ai_row.get("sender"),
-        timestamp: ai_row.get("timestamp"),
-        read: ai_row.get("read"),
+        id: ai_row.get::<String, _>("id"),
+        text: ai_row.get::<String, _>("text"),
+        sender: ai_row.get::<String, _>("sender"),
+        timestamp: ai_row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp"),
+        read: ai_row.get::<bool, _>("read"),
         attachments: None,
     };
 
@@ -407,7 +407,7 @@ pub async fn get_chat_messages(
         return Err(AppError::NotFound("Session introuvable".to_string()));
     }
 
-    let session_user_id: i32 = session_row.as_ref().unwrap().get("user_id");
+    let session_user_id: i32 = session_row.as_ref().unwrap().get::<i32, _>("user_id");
     if session_user_id != user.id {
         return Err(AppError::Forbidden("Cette session ne vous appartient pas".to_string()));
     }
@@ -440,7 +440,7 @@ pub async fn get_chat_messages(
     let messages: Vec<ChatMessage> = rows
         .iter()
         .map(|row| {
-            let attachments: Option<String> = row.get("attachments");
+            let attachments: Option<String> = row.get::<Option<String>, _>("attachments");
             let attachments_parsed = attachments.and_then(|a| {
                 serde_json::from_str::<Vec<serde_json::Value>>(&a).ok().map(|v| {
                     v.iter()
@@ -455,11 +455,11 @@ pub async fn get_chat_messages(
             });
 
             ChatMessage {
-                id: row.get("id"),
-                text: row.get("text"),
-                sender: row.get("sender"),
-                timestamp: row.get("timestamp"),
-                read: row.get("read"),
+                id: row.get::<String, _>("id"),
+                text: row.get::<String, _>("text"),
+                sender: row.get::<String, _>("sender"),
+                timestamp: row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp"),
+                read: row.get::<bool, _>("read"),
                 attachments: attachments_parsed,
             }
         })
@@ -514,12 +514,12 @@ pub async fn get_chat_sessions(
     let sessions: Vec<ChatSession> = rows
         .iter()
         .map(|row| ChatSession {
-            id: row.get("id"),
-            status: row.get("status"),
-            created_at: row.get("created_at"),
-            last_message_at: row.get("last_message_at"),
-            agent_name: row.get("agent_name"),
-            agent_avatar: row.get("agent_avatar"),
+            id: row.get::<String, _>("id"),
+            status: row.get::<String, _>("status"),
+            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+            last_message_at: row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at"),
+            agent_name: row.get::<Option<String>, _>("agent_name"),
+            agent_avatar: row.get::<Option<String>, _>("agent_avatar"),
         })
         .collect();
 
@@ -561,7 +561,7 @@ pub async fn close_chat_session(
         return Err(AppError::NotFound("Session introuvable".to_string()));
     }
 
-    let session_user_id: i32 = session_row.as_ref().unwrap().get("user_id");
+    let session_user_id: i32 = session_row.as_ref().unwrap().get::<i32, _>("user_id");
     if session_user_id != user.id {
         return Err(AppError::Forbidden("Cette session ne vous appartient pas".to_string()));
     }
