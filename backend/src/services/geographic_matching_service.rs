@@ -490,12 +490,12 @@ pub struct CourierLocation {
 impl<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow> for CourierLocation {
     fn from_row(row: &'r sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
         Ok(CourierLocation {
-            id: row.get::<i32, _>("id"),
+            id: row.get::<Uuid, _>("id"),
             user_id: row.get::<i32, _>("user_id"),
             status: row.get::<String, _>("status"),
-            latitude: row.get::<f64, _>("latitude"),
-            longitude: row.get::<f64, _>("longitude"),
-            distance_meters: row.get::<f64, _>("distance_meters"),
+            latitude: row.get::<Option<f64>, _>("latitude"),
+            longitude: row.get::<Option<f64>, _>("longitude"),
+            distance_meters: row.get::<Option<f64>, _>("distance_meters"),
         })
     }
 }

@@ -106,6 +106,18 @@ module.exports = {
             favicon: "./assets/favicon.png"
         },
         plugins: [
+            [
+                "expo-build-properties",
+                {
+                    android: {
+                        compileSdkVersion: 34,
+                        targetSdkVersion: 34,
+                        buildToolsVersion: "34.0.0",
+                        minSdkVersion: 23,
+                        kotlinVersion: "2.0.0"
+                    }
+                }
+            ],
             "expo-location",
             "expo-camera",
             "expo-barcode-scanner",

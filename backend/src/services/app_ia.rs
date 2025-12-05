@@ -574,7 +574,7 @@ impl AppIA {
             .await
             {
                 Ok(Ok((model_name, response, tokens))) => {
-                    let processing_time = start_time.elapsed().unwrap().as_millis();
+                    let processing_time = SystemTime::now().duration_since(start_time).unwrap().as_millis();
                     log::info!(
                         "[AppIA] ? Succ?s avec {} en {}ms ({} tokens)",
                         model_name,
@@ -692,7 +692,7 @@ impl AppIA {
 
             match timeout_future.await {
                 Ok(Ok((model_name, response, tokens_used))) => {
-                    let elapsed = start_time.elapsed().unwrap().as_millis();
+                    let elapsed = SystemTime::now().duration_since(start_time).unwrap().as_millis();
                     log::info!(
                         "[AppIA] ? Mod?le multimodal {} r?ussi en {}ms",
                         model_name,
@@ -1003,7 +1003,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         for attempt in 0..model.retry_count {
             match self.call_model_implementation(model, prompt).await {
                 Ok((response, tokens_used)) => {
-                    let response_time = start_time.elapsed().unwrap().as_millis() as f64;
+                    let response_time = SystemTime::now().duration_since(start_time).unwrap().as_millis() as f64;
 
                     // ✅ Log structuré avec contexte
                     log::info!(
@@ -1069,7 +1069,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 .await
             {
                 Ok((response, tokens_used)) => {
-                    let response_time = start_time.elapsed().unwrap().as_millis() as f64;
+                    let response_time = SystemTime::now().duration_since(start_time).unwrap().as_millis() as f64;
 
                     log::info!(
                         "[AppIA] ? Mod?le multimodal {} r?ussi en {}ms, {} tokens (tentative {})",
@@ -2115,7 +2115,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
     /// ?? Mise ? jour des m?triques de performance
     #[allow(dead_code)]
     async fn update_metrics(&self, model_name: &str, success: bool, start_time: SystemTime) {
-        let response_time = start_time.elapsed().unwrap().as_millis() as f64;
+        let response_time = SystemTime::now().duration_since(start_time).unwrap().as_millis() as f64;
 
         let mut metrics = self.metrics.write().await;
         let model_metrics = metrics
@@ -2153,7 +2153,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         start_time: SystemTime,
         tokens_used: u32,
     ) {
-        let response_time = start_time.elapsed().unwrap().as_millis() as f64;
+        let response_time = SystemTime::now().duration_since(start_time).unwrap().as_millis() as f64;
 
         let mut metrics = self.metrics.write().await;
         let model_metrics = metrics
