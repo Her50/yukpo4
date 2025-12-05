@@ -118,6 +118,7 @@ module.exports = {
                     }
                 }
             ],
+            "./plugins/withExpoModuleGradlePlugin",
             "expo-location",
             "expo-camera",
             "expo-barcode-scanner",

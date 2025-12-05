@@ -304,15 +304,15 @@ pub async fn list_return_trip_requests(
     let requests: Vec<ReturnTripRequestListItem> = rows
         .into_iter()
         .map(|row| ReturnTripRequestListItem {
-            id: row.get("id"),
-            outbound_payment_id: row.get("outbound_payment_id"),
-            return_from: row.get("return_from"),
-            return_to: row.get("return_to"),
-            preferred_return_date: row.get("preferred_return_date"),
-            preferred_return_time: row.try_get("preferred_return_time").ok(),
-            status: row.get("status"),
-            matched_product_id: row.try_get("matched_product_id").ok(),
-            number_of_seats: row.get("number_of_seats"),
+            id: row.get::<String, _>("id"),
+            outbound_payment_id: row.get::<String, _>("outbound_payment_id"),
+            return_from: row.get::<String, _>("return_from"),
+            return_to: row.get::<String, _>("return_to"),
+            preferred_return_date: row.get::<String, _>("preferred_return_date"),
+            preferred_return_time: row.try_get::<Option<String>, _>("preferred_return_time").ok().flatten(),
+            status: row.get::<String, _>("status"),
+            matched_product_id: row.try_get::<Option<String>, _>("matched_product_id").ok().flatten(),
+            number_of_seats: row.get::<i32, _>("number_of_seats"),
             created_at: row
                 .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
                 .to_rfc3339(),
@@ -381,17 +381,17 @@ pub async fn get_return_trip_request(
     match row {
         Some(row) => {
             let request = ReturnTripRequestResponse {
-                id: row.get("id"),
-                outbound_payment_id: row.get("outbound_payment_id"),
-                return_from: row.get("return_from"),
-                return_to: row.get("return_to"),
-                preferred_return_date: row.get("preferred_return_date"),
-                preferred_return_time: row.try_get("preferred_return_time").ok(),
-                date_flexibility_days: row.get("date_flexibility_days"),
-                passenger_names: row.get("passenger_names"),
-                number_of_seats: row.get("number_of_seats"),
-                status: row.get("status"),
-                matched_product_id: row.try_get("matched_product_id").ok(),
+                id: row.get::<String, _>("id"),
+                outbound_payment_id: row.get::<String, _>("outbound_payment_id"),
+                return_from: row.get::<String, _>("return_from"),
+                return_to: row.get::<String, _>("return_to"),
+                preferred_return_date: row.get::<String, _>("preferred_return_date"),
+                preferred_return_time: row.try_get::<Option<String>, _>("preferred_return_time").ok().flatten(),
+                date_flexibility_days: row.get::<i32, _>("date_flexibility_days"),
+                passenger_names: row.get::<Vec<String>, _>("passenger_names"),
+                number_of_seats: row.get::<i32, _>("number_of_seats"),
+                status: row.get::<String, _>("status"),
+                matched_product_id: row.try_get::<Option<String>, _>("matched_product_id").ok().flatten(),
                 matched_at: row
                     .try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("matched_at")
                     .ok()
