@@ -141,7 +141,7 @@ impl PromptLoader {
     }
 
     /// Parse un prompt markdown
-    fn parse_prompt(&self, content: &str, prompt_name: &str) -> AppResult<Prompt> {
+    fn parse_prompt(&self, content: &str, _prompt_name: &str) -> AppResult<Prompt> {
         // Extraire la version si présente (format: # Version: 1.0)
         let version_re = Regex::new(r"#\s*Version:\s*(\S+)")
             .map_err(|e| AppError::Internal(format!("Erreur regex version: {}", e)))?;

@@ -222,7 +222,7 @@ impl WatermarkService {
         config: &WatermarkConfig,
         start_time: f32,
         duration: f32,
-        video_duration: f32,
+        _video_duration: f32,
     ) -> AppResult<String> {
         // Redimensionner le logo (size_percent% de la largeur vidéo)
         let scale_filter = format!(
@@ -245,7 +245,7 @@ impl WatermarkService {
         let fade_in_start = start_time;
         let fade_in_end = start_time + fade_duration.min((duration / 2.0) as f32);
         let fade_out_start = (start_time + duration - fade_duration).max(fade_in_end);
-        let fade_out_end = start_time + duration;
+        let _fade_out_end = start_time + duration;
 
         // Construire le filtre complexe
         // [1:v] = logo, [0:v] = vidéo

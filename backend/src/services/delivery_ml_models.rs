@@ -138,7 +138,7 @@ impl TrainingDataStore {
 
         self.eta_samples
             .iter()
-            .map(|(feat, actual)| {
+            .map(|(feat, _actual)| {
                 vec![
                     feat.distance_km,
                     feat.hour_of_day as f64,
@@ -555,6 +555,7 @@ impl DeliveryMLModelsService {
                     }
                 }
             }
+        }
         }
 
         Ok(())

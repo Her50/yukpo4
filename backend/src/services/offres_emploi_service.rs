@@ -9,7 +9,7 @@ use bigdecimal::BigDecimal;
 use chrono::{NaiveDate, Utc};
 use log::{error, info, warn};
 use serde_json::{json, Value};
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use std::str::FromStr;
 
 /// Service pour la gestion des offres d'emploi

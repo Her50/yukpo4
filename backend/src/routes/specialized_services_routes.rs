@@ -208,7 +208,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/immobilier/biens/:id/upload-virtual-tour",
             post(specialized_services_controller::upload_virtual_tour),
-        )
+        );
         // TODO: Implémenter activate_pending_recurring_instances
         // .route(
         //     "/api/covoiturages/recurring/activate",

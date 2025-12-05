@@ -13,7 +13,7 @@ use axum::{
     Router,
 };
 use futures::{SinkExt, StreamExt};
-use redis::{AsyncCommands, Client as RedisClient};
+use redis::Client as RedisClient;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;

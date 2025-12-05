@@ -15,7 +15,6 @@ struct UserGpsRow {
     gps: Option<String>,
 }
 use futures::stream::FuturesUnordered;
-use futures::StreamExt;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use uuid::Uuid;

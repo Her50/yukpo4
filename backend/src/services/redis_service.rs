@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use log::{error, info, warn};
-use redis::{aio::MultiplexedConnection, Commands, RedisResult};
+use redis::{aio::MultiplexedConnection, RedisResult};
 use serde::{Deserialize, Serialize};
 
 use crate::config::redis_config::RedisConfig;

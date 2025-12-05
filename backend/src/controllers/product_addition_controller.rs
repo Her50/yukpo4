@@ -11,7 +11,6 @@ use axum::{
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;
 use futures::stream::FuturesUnordered;
-use futures::StreamExt;
 #[cfg(feature = "image_search")]
 use md5;
 use reqwest::Client;

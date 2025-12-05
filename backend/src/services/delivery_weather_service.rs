@@ -152,18 +152,16 @@ impl DeliveryWeatherService {
         wind_speed: f64,
         visibility: f64,
     ) -> f64 {
-        let mut factor = 1.0;
-
         // Impact des conditions
-        match condition {
-            "clear" | "sunny" => factor = 0.95, // Légèrement plus rapide
-            "clouds" => factor = 1.0,
-            "rain" | "drizzle" => factor = 1.2 + (precipitation / 10.0).min(0.5),
-            "thunderstorm" => factor = 1.5,
-            "snow" => factor = 1.8,
-            "fog" | "mist" => factor = 1.3,
-            _ => factor = 1.1,
-        }
+        let mut factor = match condition {
+            "clear" | "sunny" => 0.95, // Légèrement plus rapide
+            "clouds" => 1.0,
+            "rain" | "drizzle" => 1.2 + (precipitation / 10.0).min(0.5),
+            "thunderstorm" => 1.5,
+            "snow" => 1.8,
+            "fog" | "mist" => 1.3,
+            _ => 1.1,
+        };
 
         // Impact du vent fort (ralentit)
         if wind_speed > 30.0 {

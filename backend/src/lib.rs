@@ -51,7 +51,7 @@ use crate::routes::{
     diagnostic_routes::diagnostic_routes,
     embedding_routes::embedding_routes,
     export_routes::export_routes, // ✅ NOUVEAU Phase 2.3: Routes pour jobs d'export vidéo
-    // extended_audio_routes::extended_audio_routes, // ✅ NOUVEAU Phase 2.2: Routes bibliothèque audio étendue (à implémenter)
+    extended_audio_routes::extended_audio_routes, // ✅ NOUVEAU Phase 2.2: Routes bibliothèque audio étendue
     generative_routes::generative_routes, // ✅ NOUVEAU Phase 3.1: Routes pour génération vidéo IA
     global_promo_routes::global_promo_routes,
     health_routes::health_routes,
@@ -59,7 +59,7 @@ use crate::routes::{
     history_routes::history_routes,
     ia_routes::ia_routes,
     kyc_admin_routes::kyc_admin_routes, // ✅ NOUVEAU 2025-01-29: Routes admin KYC
-    // kyc_webhook_routes::kyc_webhook_routes, // ✅ NOUVEAU 2025-01-29: Routes webhook KYC (à implémenter)
+    kyc_webhook_routes::kyc_webhook_routes, // ✅ NOUVEAU 2025-01-29: Routes webhook KYC
     live_ai_routes::live_ai_routes,
     live_routes::live_routes,
     media_routes::media_routes,

@@ -5,7 +5,7 @@
 use crate::core::types::{AppError, AppResult};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use std::f64::consts::PI;
 
 // Trait pour convertir en radians

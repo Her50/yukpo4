@@ -4,12 +4,13 @@
  * 
  * ✅ AMÉLIORÉ: Architecture prête pour TensorFlow Lite
  * Pour activer TensorFlow Lite:
- * 1. npm install @tensorflow/tfjs-react-native @tensorflow/tfjs-platform-react-native
- * 2. Décommenter les sections TensorFlow Lite ci-dessous
+ * 1. npm install @tensorflow/tfjs @tensorflow/tfjs-react-native
+ * 2. Les sections TensorFlow Lite sont déjà activées ci-dessous
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // ✅ INTÉGRÉ: TensorFlow Lite activé (import conditionnel)
+// Le service fonctionne en mode fallback si TensorFlow n'est pas disponible
 let tf: any = null;
 try {
     tf = require('@tensorflow/tfjs');

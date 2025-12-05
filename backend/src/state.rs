@@ -395,7 +395,7 @@ impl AppState {
             ia_stats,
             database_url,
             optimizations_enabled,
-            redis_client,
+            redis_client: redis_client.clone(),
             redis_pool, // ✅ NOUVEAU 2025-12-01: Pool Redis pour réutiliser les connexions
             redis_cluster_nodes, // ✅ NOUVEAU 2025-12-02: Support Redis cluster
             semantic_cache: None,

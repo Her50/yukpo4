@@ -83,7 +83,7 @@ pub async fn get_loyalty_points(
         .get("user_id")
         .and_then(|v| v.as_i64())
         .map(|v| v as i32)
-        .unwrap_or(user.user_id);
+        .unwrap_or(user.id);
 
     info!("[get_loyalty_points] User ID: {}", user_id);
 
@@ -144,7 +144,7 @@ pub async fn add_loyalty_points(
     info!("[add_loyalty_points] User: {}, Points: {}, Reason: {}", payload.user_id, payload.points, payload.reason);
 
     // Vérifier que l'utilisateur peut ajouter des points pour lui-même
-    if payload.user_id != user.user_id {
+    if payload.user_id != user.id {
         return Err(AppError::Forbidden("Vous ne pouvez ajouter des points que pour votre propre compte".to_string()));
     }
 
@@ -188,7 +188,7 @@ pub async fn redeem_loyalty_points(
     info!("[redeem_loyalty_points] User: {}, Points: {}, Reward: {}", payload.user_id, payload.points, payload.reward_id);
 
     // Vérifier que l'utilisateur peut utiliser ses propres points
-    if payload.user_id != user.user_id {
+    if payload.user_id != user.id {
         return Err(AppError::Forbidden("Vous ne pouvez utiliser que vos propres points".to_string()));
     }
 
@@ -282,7 +282,7 @@ pub async fn get_loyalty_transactions(
         .get("user_id")
         .and_then(|v| v.as_i64())
         .map(|v| v as i32)
-        .unwrap_or(user.user_id);
+        .unwrap_or(user.id);
     let limit = params
         .get("limit")
         .and_then(|v| v.as_i64())

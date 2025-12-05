@@ -3,7 +3,6 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::services::cache_service::CacheService;
-use redis::AsyncCommands;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;

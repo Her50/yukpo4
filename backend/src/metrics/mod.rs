@@ -540,7 +540,7 @@ pub fn format_all_additional_metrics() -> String {
 
 /// Formate les métriques de création de produits
 fn format_product_creation_metrics(
-    metrics: &product_creation_metrics::ProductCreationMetrics,
+    _metrics: &product_creation_metrics::ProductCreationMetrics,
 ) -> String {
     use prometheus::Encoder;
     let encoder = prometheus::TextEncoder::new();

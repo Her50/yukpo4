@@ -278,8 +278,8 @@ impl TaxiDynamicPricingService {
     /// Calculer multiplicateur final
     fn calculate_multiplier(
         &self,
-        demand_factor: f64,
-        supply_factor: f64,
+        _demand_factor: f64,
+        _supply_factor: f64,
         time_factor: f64,
         surge_factor: f64,
     ) -> f64 {

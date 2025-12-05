@@ -63,7 +63,7 @@ pub async fn rate_bus_ticket(
 ) -> AppResult<impl IntoResponse> {
     info!(
         "[rate_bus_ticket] User: {}, Ticket: {}, Rating: {}",
-        user.user_id, payload.ticket_id, payload.rating
+        user.id, payload.ticket_id, payload.rating
     );
 
     // Valider la note (1-5)
@@ -93,7 +93,7 @@ pub async fn rate_bus_ticket(
     }
 
     let ticket_user_id: i32 = ticket_row.as_ref().unwrap().get("user_id");
-    if ticket_user_id != user.user_id {
+    if ticket_user_id != user.id {
         return Err(AppError::Forbidden("Ce ticket ne vous appartient pas".to_string()));
     }
 
@@ -106,7 +106,7 @@ pub async fn rate_bus_ticket(
 
     let existing = sqlx::query(existing_check)
         .bind(&payload.ticket_id)
-        .bind(user.user_id)
+        .bind(user.id)
         .fetch_optional(&state.pg)
         .await
         .map_err(|e| {
@@ -134,7 +134,7 @@ pub async fn rate_bus_ticket(
             .bind(&payload.comment)
             .bind(categories_json.as_ref().map(|j| j.to_string()))
             .bind(&payload.ticket_id)
-            .bind(user.user_id)
+            .bind(user.id)
             .fetch_one(&state.pg)
             .await
             .map_err(|e| {
@@ -173,7 +173,7 @@ pub async fn rate_bus_ticket(
         let row = sqlx::query(insert_query)
             .bind(&payload.ticket_id)
             .bind(&payload.payment_id)
-            .bind(user.user_id)
+            .bind(user.id)
             .bind(payload.rating)
             .bind(&payload.comment)
             .bind(categories_json.as_ref().map(|j| j.to_string()))

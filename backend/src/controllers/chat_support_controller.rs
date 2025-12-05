@@ -83,7 +83,7 @@ pub async fn start_chat_session(
     info!("[start_chat_session] User: {}, Topic: {:?}", payload.user_id, payload.topic);
 
     // Vérifier que l'utilisateur peut démarrer une session pour lui-même
-    if payload.user_id != user.user_id {
+    if payload.user_id != user.id {
         return Err(AppError::Forbidden("Vous ne pouvez démarrer une session que pour votre propre compte".to_string()));
     }
 
@@ -135,7 +135,7 @@ pub async fn send_chat_message(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<SendMessageRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[send_chat_message] Session: {}, User: {}", payload.session_id, user.user_id);
+    info!("[send_chat_message] Session: {}, User: {}", payload.session_id, user.id);
 
     // Vérifier que la session appartient à l'utilisateur
     let session_check = r#"
@@ -158,7 +158,7 @@ pub async fn send_chat_message(
     }
 
     let session_user_id: i32 = session_row.as_ref().unwrap().get("user_id");
-    if session_user_id != user.user_id {
+    if session_user_id != user.id {
         return Err(AppError::Forbidden("Cette session ne vous appartient pas".to_string()));
     }
 
@@ -182,7 +182,7 @@ pub async fn send_chat_message(
     let row = sqlx::query(query)
         .bind(&message_id)
         .bind(&payload.session_id)
-        .bind(user.user_id)
+        .bind(user.id)
         .bind(&payload.text)
         .bind(timestamp)
         .bind(attachments_json.as_ref().map(|j| j.to_string()))
@@ -224,7 +224,7 @@ pub async fn send_chat_message(
         &state,
         &payload.session_id,
         &payload.text,
-        user.user_id,
+        user.id,
     ).await;
 
     // Retourner le message utilisateur + réponse IA si générée
@@ -407,7 +407,7 @@ pub async fn get_chat_messages(
     }
 
     let session_user_id: i32 = session_row.as_ref().unwrap().get("user_id");
-    if session_user_id != user.user_id {
+    if session_user_id != user.id {
         return Err(AppError::Forbidden("Cette session ne vous appartient pas".to_string()));
     }
 
@@ -484,7 +484,7 @@ pub async fn get_chat_sessions(
         .get("user_id")
         .and_then(|v| v.as_i64())
         .map(|v| v as i32)
-        .unwrap_or(user.user_id);
+        .unwrap_or(user.id);
 
     info!("[get_chat_sessions] User ID: {}", user_id);
 
@@ -538,7 +538,7 @@ pub async fn close_chat_session(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CloseChatRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[close_chat_session] Session: {}, User: {}", payload.session_id, user.user_id);
+    info!("[close_chat_session] Session: {}, User: {}", payload.session_id, user.id);
 
     // Vérifier que la session appartient à l'utilisateur
     let session_check = r#"
@@ -561,7 +561,7 @@ pub async fn close_chat_session(
     }
 
     let session_user_id: i32 = session_row.as_ref().unwrap().get("user_id");
-    if session_user_id != user.user_id {
+    if session_user_id != user.id {
         return Err(AppError::Forbidden("Cette session ne vous appartient pas".to_string()));
     }
 

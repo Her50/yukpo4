@@ -163,7 +163,7 @@ impl DeliveryChatWebSocketManager {
     /// Écoute les messages Redis et les distribue localement
     fn spawn_redis_listener(&self) {
         let channels = self.channels.clone();
-        let instance_id = self.instance_id.clone();
+        let _instance_id = self.instance_id.clone();
         let redis_client = self.redis_client.clone();
 
         tokio::spawn(async move {
