@@ -497,7 +497,7 @@ impl AppIA {
 
         // 1. ✅ Vérification du cache Redis (ACTIVÉ)
         let cache_key = format!("ai:prompt:{}", Self::_hash_prompt(prompt));
-        match self.redis_client.get_async_connection().await {
+        match self.redis_client.get_multiplexed_async_connection().await {
             Ok(mut conn) => match conn.get::<_, Option<String>>(&cache_key).await {
                 Ok(Some(response_json)) => {
                     log::info!(
@@ -591,7 +591,7 @@ impl AppIA {
                         "timestamp": SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
                     });
                     if let Ok(cache_json) = serde_json::to_string(&cache_data) {
-                        if let Ok(mut conn) = self.redis_client.get_async_connection().await {
+                        if let Ok(mut conn) = self.redis_client.get_multiplexed_async_connection().await {
                             if let Err(e) = conn
                                 .set_ex::<_, _, ()>(&cache_key, &cache_json, cache_ttl)
                                 .await

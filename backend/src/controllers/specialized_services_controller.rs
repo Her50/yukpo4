@@ -1355,7 +1355,7 @@ pub async fn search_properties(
             "prix_vente": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_vente").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
             "prix_location_mensuel": row.try_get::<Option<rust_decimal::Decimal>, _>("prix_location_mensuel").ok().flatten().and_then(|d| d.to_string().parse::<f64>().ok()),
             "photos": row.try_get::<Option<Vec<String>>, _>("photos").ok().flatten(),
-            "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").unwrap_or(false),
+            "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten(),
         }));
     }
 
@@ -1541,7 +1541,7 @@ pub async fn simulate_property_loan(
             request.property_price,
             request.down_payment,
             request.loan_duration_years,
-            request.interest_rate.unwrap_or(8.5),
+            request.interest_rate.unwrap_or(Some(8.5)).unwrap_or(8.5),
         )
         .await
         .map_err(|e| {
@@ -2782,6 +2782,8 @@ pub async fn create_moving_quote(
     };
 
     // Estimer le coût avec IA
+    let services_additionnels_value = request.services_additionnels
+        .map(|v| serde_json::Value::Array(v.into_iter().map(|s| serde_json::Value::String(s)).collect()));
     let cost_estimate = moving_service
         .estimate_cost(
             &request.adresse_depart,
@@ -2789,7 +2791,7 @@ pub async fn create_moving_quote(
             if distance_km > 0.0 { Some(distance_km) } else { None },
             volume_m3,
             request.nb_pieces.unwrap_or(3),
-            request.services_additionnels,
+            services_additionnels_value,
         )
         .await
         .map_err(|e| {
@@ -2804,7 +2806,7 @@ pub async fn create_moving_quote(
             parse_gps(gps_arrivee),
         ) {
             use crate::services::delivery_ai_eta_service::Location;
-            let mut eta_service = DeliveryAIETAService::new(state.pg.clone()).with_ia(app_ia);
+            let mut eta_service = DeliveryAIETAService::new(Arc::new(state.pg.clone())).with_ia(app_ia);
             eta_service
                 .predict_eta_with_ai(
                     &Location { lat: lat1, lng: lng1 },
@@ -3019,7 +3021,8 @@ pub async fn search_taxis(
     query.push(" OFFSET ");
     query.push_bind(offset);
     
-    let taxis = query.build_query_as::<sqlx::postgres::PgRow>()
+    use sqlx::Row;
+    let taxis = query.build()
         .fetch_all(&state.pg)
         .await
         .map_err(|e| {
@@ -3110,7 +3113,8 @@ pub async fn search_covoiturages(
     query.push(" OFFSET ");
     query.push_bind(offset);
     
-    let covoiturages = query.build_query_as::<sqlx::postgres::PgRow>()
+    use sqlx::Row;
+    let covoiturages = query.build()
         .fetch_all(&state.pg)
         .await
         .map_err(|e| {
@@ -3234,7 +3238,7 @@ pub async fn search_hospitals(
     query.push(" OFFSET ");
     query.push_bind(offset);
     
-    let hospitals = query.build_query_as::<sqlx::postgres::PgRow>()
+    let hospitals = query.build()
         .fetch_all(&state.pg)
         .await
         .map_err(|e| {
@@ -3311,7 +3315,7 @@ pub async fn search_laboratories(
     query.push(" OFFSET ");
     query.push_bind(offset);
     
-    let labs = query.build_query_as::<sqlx::postgres::PgRow>()
+    let labs = query.build()
         .fetch_all(&state.pg)
         .await
         .map_err(|e| {
@@ -3388,7 +3392,7 @@ pub async fn search_travel_agencies(
     query.push(" OFFSET ");
     query.push_bind(offset);
     
-    let agencies = query.build_query_as::<sqlx::postgres::PgRow>()
+    let agencies = query.build()
         .fetch_all(&state.pg)
         .await
         .map_err(|e| {

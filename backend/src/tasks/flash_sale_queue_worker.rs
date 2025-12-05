@@ -60,6 +60,7 @@ impl FlashSaleQueueWorker {
 
         // XGROUP CREATE avec MKSTREAM si nécessaire
         // Note: Utiliser xgroup_create_mkstream de redis-rs
+        use redis::AsyncCommands;
         let _: Result<(), _> = conn
             .xgroup_create_mkstream(&self.stream_name, &self.consumer_group, "0")
             .await;
@@ -79,6 +80,7 @@ impl FlashSaleQueueWorker {
 
         // Lire un batch de messages depuis le stream
         // Note: Utiliser xreadgroup de redis-rs avec AsyncCommands
+        use redis::AsyncCommands;
         let messages_result: Result<Vec<redis::streams::StreamReadReply>, _> = conn
             .xreadgroup(
                 &self.consumer_group,
@@ -120,12 +122,26 @@ impl FlashSaleQueueWorker {
 
                 for (key, value) in &message.map {
                     if key == "ticket_id" {
-                        if let redis::Value::Data(data) = value {
-                            ticket_id = Some(String::from_utf8_lossy(data).to_string());
+                        match redis::from_redis_value::<String>(value) {
+                            Ok(s) => ticket_id = Some(s),
+                            Err(_) => {
+                                if let Ok(bytes) = redis::from_redis_value::<Vec<u8>>(value) {
+                                    if let Ok(s) = String::from_utf8(bytes) {
+                                        ticket_id = Some(s);
+                                    }
+                                }
+                            }
                         }
                     } else if key == "request" {
-                        if let redis::Value::Data(data) = value {
-                            request_json = Some(String::from_utf8_lossy(data).to_string());
+                        match redis::from_redis_value::<String>(value) {
+                            Ok(s) => request_json = Some(s),
+                            Err(_) => {
+                                if let Ok(bytes) = redis::from_redis_value::<Vec<u8>>(value) {
+                                    if let Ok(s) = String::from_utf8(bytes) {
+                                        request_json = Some(s);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -259,6 +275,7 @@ impl FlashSaleQueueWorker {
                 crate::core::types::AppError::Internal(format!("Redis connection failed: {}", e))
             })?;
 
+        use redis::AsyncCommands;
         conn.xack::<_, _, i64>(&self.stream_name, &self.consumer_group, &[message_id])
             .await
             .map_err(|e| {

@@ -195,7 +195,7 @@ impl CollaborationService {
         // Utiliser une connexion async pour publier
         let mut conn = self
             .redis_client
-            .get_async_connection()
+            .get_multiplexed_async_connection()
             .await
             .map_err(|e| format!("Erreur connexion Redis: {}", e))?;
 
@@ -224,7 +224,7 @@ impl CollaborationService {
 
         let mut conn = self
             .redis_client
-            .get_async_connection()
+            .get_multiplexed_async_connection()
             .await
             .map_err(|e| format!("Erreur connexion Redis: {}", e))?;
 

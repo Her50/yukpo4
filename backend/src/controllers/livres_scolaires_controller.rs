@@ -369,7 +369,7 @@ pub async fn get_analytics(
     );
 
     let livre_id_filter = params.livre_id;
-    let analytics = if let Some(livre_id) = livre_id_filter {
+    let analytics: Option<crate::models::book_exchange::BookAnalytics> = if let Some(livre_id) = livre_id_filter {
         sqlx::query_as::<_, crate::models::book_exchange::BookAnalytics>(
             r#"
             SELECT * FROM book_analytics
@@ -382,21 +382,21 @@ pub async fn get_analytics(
         .bind(livre_id)
         .fetch_optional(&state.pg)
         .await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
     } else {
         sqlx::query_as::<_, crate::models::book_exchange::BookAnalytics>(
             r#"
             SELECT * FROM book_analytics
             WHERE user_id = $1
             ORDER BY periode_debut DESC
-            LIMIT 10
+            LIMIT 1
             "#,
         )
         .bind(user_id)
-        .fetch_all(&state.pg)
+        .fetch_optional(&state.pg)
         .await
-        .map(|v| Some(v))
-    }
-    .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
+    };
 
     Ok(Json(json!({ "success": true, "analytics": analytics })))
 }

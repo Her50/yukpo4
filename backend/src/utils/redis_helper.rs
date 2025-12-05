@@ -223,7 +223,8 @@ pub async fn check_redis_health_with_error(client: &RedisClient) -> (bool, Optio
     let (is_available, error_msg) = match get_redis_connection(client, 3, 1000).await {
         Ok(mut conn) => {
             // Tester avec une opération PING (plus fiable que GET)
-            match conn.ping::<String>().await {
+            use redis::AsyncCommands;
+            match redis::cmd("PING").query_async::<_, String>(&mut conn).await {
                 Ok(_) => (true, None),
                 Err(e) => {
                     let err_msg = format!("PING failed: {}", e);

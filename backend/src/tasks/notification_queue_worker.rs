@@ -88,17 +88,18 @@ impl NotificationQueueWorker {
         use notification_service::NotificationType;
 
         // Parser le type de notification
-        let notif_type = match job.notification_type.as_str() {
+        let notification_type = job.notification_type.clone();
+        let notif_type = match notification_type.as_str() {
             "GlobalPromoEventCreated" => NotificationType::GlobalPromoEventCreated,
             "GlobalPromoEntryApproved" => NotificationType::GlobalPromoEntryApproved,
             "GlobalPromoEntryRejected" => NotificationType::GlobalPromoEntryRejected,
             "GlobalPromoEntryPublished" => NotificationType::GlobalPromoEntryPublished,
             "GlobalPromoEntryEnded" => NotificationType::GlobalPromoEntryEnded,
             _ => {
-                log::warn!("⚠️ Type de notification inconnu: {}", job.notification_type);
+                log::warn!("⚠️ Type de notification inconnu: {}", notification_type);
                 return Err(crate::core::types::AppError::BadRequest(format!(
                     "Type de notification inconnu: {}",
-                    job.notification_type
+                    notification_type
                 )));
             }
         };

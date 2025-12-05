@@ -44,6 +44,7 @@ pub struct ChatMessage {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct Attachment {
     pub type_: String,
     pub url: String,
@@ -216,7 +217,7 @@ pub async fn send_chat_message(
         sender: row.get("sender"),
         timestamp: row.get("timestamp"),
         read: row.get("read"),
-        attachments: payload.attachments.as_ref().map(|v| v.clone()),
+        attachments: payload.attachments.clone(),
     };
 
     // ✅ NOUVEAU 2025-01-27: Générer une réponse IA automatique

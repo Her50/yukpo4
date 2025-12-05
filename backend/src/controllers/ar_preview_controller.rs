@@ -15,7 +15,7 @@ pub async fn generate_ar_preview(
     State(state): State<Arc<AppState>>,
     Json(request): Json<ARPreviewRequest>,
 ) -> AppResult<Json<ARPreviewResponse>> {
-    let ar_service = ARPreviewService::new(state.pg.clone());
+    let ar_service = ARPreviewService::new(Arc::new(state.pg.clone()));
     let response = ar_service
         .generate_ar_preview(request)
         .await

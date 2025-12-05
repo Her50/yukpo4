@@ -49,7 +49,7 @@ pub async fn create_etablissement(
     // TODO: Intégrer avec le système de services existant
     let service_id = 0; // À remplacer par création réelle du service
 
-    let service = OrientationScolaireService::new(state.pg.clone(), state.clone());
+    let service = OrientationScolaireService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let etablissement = service
         .create_etablissement(user_id, service_id, request)
         .await?;
@@ -70,11 +70,10 @@ pub async fn search_etablissements(
 ) -> AppResult<impl IntoResponse> {
     info!("[ORIENTATION_SCOLAIRE] Recherche établissements");
 
-    let service = OrientationScolaireService::new(state.pg.clone(), state.clone());
-    let (etablissements, total) = service.search_etablissements(request).await?;
-
     let page = request.page.unwrap_or(1);
     let limit = request.limit.unwrap_or(20);
+    let service = OrientationScolaireService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
+    let (etablissements, total) = service.search_etablissements(request).await?;
     let total_pages = if total > 0 {
         ((total as f64) / (limit as f64)).ceil() as i64
     } else {
@@ -106,7 +105,7 @@ pub async fn get_etablissement_details(
         etablissement_id
     );
 
-    let service = OrientationScolaireService::new(state.pg.clone(), state.clone());
+    let service = OrientationScolaireService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let etablissement = service.get_etablissement_details(etablissement_id).await?;
 
     Ok((
@@ -132,7 +131,7 @@ pub async fn update_statistiques_examens(
 
     // TODO: Vérifier que l'utilisateur est propriétaire de l'établissement
 
-    let service = OrientationScolaireService::new(state.pg.clone(), state.clone());
+    let service = OrientationScolaireService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let etablissement = service
         .update_statistiques_examens(etablissement_id, request)
         .await?;
@@ -153,7 +152,7 @@ pub async fn suggest_etablissements(
 ) -> AppResult<impl IntoResponse> {
     info!("[ORIENTATION_SCOLAIRE] Suggestions");
 
-    let service = OrientationScolaireService::new(state.pg.clone(), state.clone());
+    let service = OrientationScolaireService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let suggestions = service.suggest_etablissements(request).await?;
 
     Ok((
@@ -175,7 +174,7 @@ pub async fn upload_programme(
 
     // TODO: Vérifier que l'utilisateur est propriétaire de l'établissement
 
-    let service = ProgrammesScolairesService::new(state.pg.clone(), state.clone());
+    let service = ProgrammesScolairesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let programme = service.upload_programme(request).await?;
 
     Ok((
@@ -196,7 +195,7 @@ pub async fn get_programmes_by_etablissement(
     let page = params.get("page").and_then(|v| v.as_i64());
     let limit = params.get("limit").and_then(|v| v.as_i64());
 
-    let service = ProgrammesScolairesService::new(state.pg.clone(), state.clone());
+    let service = ProgrammesScolairesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let (programmes, total) = service
         .get_programmes_by_etablissement(etablissement_id, page, limit)
         .await?;
@@ -229,11 +228,10 @@ pub async fn search_programmes(
     State(state): State<Arc<AppState>>,
     Query(request): Query<SearchProgrammesRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ProgrammesScolairesService::new(state.pg.clone(), state.clone());
-    let (programmes, total) = service.search_programmes(request).await?;
-
     let page = request.page.unwrap_or(1);
     let limit = request.limit.unwrap_or(20);
+    let service = ProgrammesScolairesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
+    let (programmes, total) = service.search_programmes(request).await?;
     let total_pages = if total > 0 {
         ((total as f64) / (limit as f64)).ceil() as i64
     } else {
@@ -265,7 +263,7 @@ pub async fn upload_fournitures(
 
     // TODO: Vérifier que l'utilisateur est propriétaire de l'établissement
 
-    let service = FournituresScolairesService::new(state.pg.clone(), state.clone());
+    let service = FournituresScolairesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let fournitures = service.upload_fournitures(request).await?;
 
     Ok((
@@ -286,7 +284,7 @@ pub async fn get_fournitures_by_etablissement(
     let page = params.get("page").and_then(|v| v.as_i64());
     let limit = params.get("limit").and_then(|v| v.as_i64());
 
-    let service = FournituresScolairesService::new(state.pg.clone(), state.clone());
+    let service = FournituresScolairesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let (fournitures, total) = service
         .get_fournitures_by_etablissement(etablissement_id, page, limit)
         .await?;
@@ -319,11 +317,10 @@ pub async fn search_fournitures(
     State(state): State<Arc<AppState>>,
     Query(request): Query<SearchFournituresRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let service = FournituresScolairesService::new(state.pg.clone(), state.clone());
-    let (fournitures, total) = service.search_fournitures(request).await?;
-
     let page = request.page.unwrap_or(1);
     let limit = request.limit.unwrap_or(20);
+    let service = FournituresScolairesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
+    let (fournitures, total) = service.search_fournitures(request).await?;
     let total_pages = if total > 0 {
         ((total as f64) / (limit as f64)).ceil() as i64
     } else {
@@ -353,7 +350,7 @@ pub async fn search_fournitures(
 pub async fn list_concours_actifs(
     State(state): State<Arc<AppState>>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ConcoursEntreeService::new(state.pg.clone(), state.clone());
+    let service = ConcoursEntreeService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let (concours, _total) = service.list_concours_actifs(None, None).await?;
 
     Ok((
@@ -370,11 +367,10 @@ pub async fn search_concours(
     State(state): State<Arc<AppState>>,
     Query(request): Query<SearchConcoursRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ConcoursEntreeService::new(state.pg.clone(), state.clone());
-    let (concours, total) = service.search_concours(request).await?;
-
     let page = request.page.unwrap_or(1);
     let limit = request.limit.unwrap_or(20);
+    let service = ConcoursEntreeService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
+    let (concours, total) = service.search_concours(request).await?;
     let total_pages = if total > 0 {
         ((total as f64) / (limit as f64)).ceil() as i64
     } else {
@@ -401,7 +397,7 @@ pub async fn get_concours_details(
     State(state): State<Arc<AppState>>,
     Path(concours_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ConcoursEntreeService::new(state.pg.clone(), state.clone());
+    let service = ConcoursEntreeService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let concours = service.get_concours_details(concours_id).await?;
 
     Ok((
@@ -419,7 +415,7 @@ pub async fn create_concours(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<CreateConcoursRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ConcoursEntreeService::new(Arc::new(state.pg.clone()), state.clone());
+    let service = ConcoursEntreeService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let concours = service.create_concours(request).await?;
 
     Ok((
@@ -440,11 +436,10 @@ pub async fn search_experiences(
     State(state): State<Arc<AppState>>,
     Query(request): Query<SearchExperiencesRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ExperiencesEtudiantsService::new(state.pg.clone(), state.clone());
-    let (experiences, total) = service.search_experiences(request).await?;
-
     let page = request.page.unwrap_or(1);
     let limit = request.limit.unwrap_or(20);
+    let service = ExperiencesEtudiantsService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
+    let (experiences, total) = service.search_experiences(request).await?;
     let total_pages = if total > 0 {
         ((total as f64) / (limit as f64)).ceil() as i64
     } else {
@@ -471,7 +466,7 @@ pub async fn list_experiences_by_etablissement(
     State(state): State<Arc<AppState>>,
     Path(etablissement_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ExperiencesEtudiantsService::new(state.pg.clone(), state.clone());
+    let service = ExperiencesEtudiantsService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let (experiences, _total) = service
         .list_experiences_by_etablissement(etablissement_id, None, None)
         .await?;
@@ -491,7 +486,7 @@ pub async fn create_experience(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<CreateExperienceRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ExperiencesEtudiantsService::new(state.pg.clone(), state.clone());
+    let service = ExperiencesEtudiantsService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let experience = service.create_experience(user_id, request).await?;
 
     Ok((
@@ -511,7 +506,7 @@ pub async fn create_experience(
 pub async fn list_conferences_programmees(
     State(state): State<Arc<AppState>>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ConferencesLivesService::new(state.pg.clone(), state.clone());
+    let service = ConferencesLivesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let (conferences, _total) = service.list_conferences_programmees(None, None).await?;
 
     Ok((
@@ -528,11 +523,10 @@ pub async fn search_conferences(
     State(state): State<Arc<AppState>>,
     Query(request): Query<SearchConferencesRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ConferencesLivesService::new(state.pg.clone(), state.clone());
-    let (conferences, total) = service.search_conferences(request).await?;
-
     let page = request.page.unwrap_or(1);
     let limit = request.limit.unwrap_or(20);
+    let service = ConferencesLivesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
+    let (conferences, total) = service.search_conferences(request).await?;
     let total_pages = if total > 0 {
         ((total as f64) / (limit as f64)).ceil() as i64
     } else {
@@ -559,7 +553,7 @@ pub async fn get_conference_details(
     State(state): State<Arc<AppState>>,
     Path(conference_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ConferencesLivesService::new(state.pg.clone(), state.clone());
+    let service = ConferencesLivesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let conference = service.get_conference_details(conference_id).await?;
 
     Ok((
@@ -577,7 +571,7 @@ pub async fn create_conference(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<CreateConferenceRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ConferencesLivesService::new(state.pg.clone(), state.clone());
+    let service = ConferencesLivesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let conference = service.create_conference(user_id, request).await?;
 
     Ok((
@@ -595,7 +589,7 @@ pub async fn join_conference(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(conference_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ConferencesLivesService::new(state.pg.clone(), state.clone());
+    let service = ConferencesLivesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let result = service.join_conference(user_id, conference_id).await?;
 
     Ok((
@@ -778,7 +772,7 @@ pub async fn get_analytics(
     );
 
     let etablissement_id_filter = params.etablissement_id;
-    let analytics = if let Some(etablissement_id) = etablissement_id_filter {
+    let analytics: Option<crate::models::orientation_ai::OrientationAnalytics> = if let Some(etablissement_id) = etablissement_id_filter {
         sqlx::query_as::<_, crate::models::orientation_ai::OrientationAnalytics>(
             r#"
             SELECT * FROM orientation_analytics
@@ -791,21 +785,21 @@ pub async fn get_analytics(
         .bind(etablissement_id)
         .fetch_optional(&state.pg)
         .await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
     } else {
         sqlx::query_as::<_, crate::models::orientation_ai::OrientationAnalytics>(
             r#"
             SELECT * FROM orientation_analytics
             WHERE user_id = $1
             ORDER BY periode_debut DESC
-            LIMIT 10
+            LIMIT 1
             "#,
         )
         .bind(user_id)
-        .fetch_all(&state.pg)
+        .fetch_optional(&state.pg)
         .await
-        .map(|v| Some(v))
-    }
-    .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
+    };
 
     Ok(Json(json!({ "success": true, "analytics": analytics })))
 }

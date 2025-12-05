@@ -31,7 +31,7 @@ pub async fn ia_rate_limit(
     let limit_per_hour = 100;
 
     // Vérifier limite par minute
-    match state.redis_client.get_async_connection().await {
+    match state.redis_client.get_multiplexed_async_connection().await {
         Ok(mut conn) => {
             // Vérifier compteur minute
             let minute_count: i32 = conn
@@ -49,8 +49,11 @@ pub async fn ia_rate_limit(
             }
 
             // Incrémenter compteur minute (TTL 60s)
-            if let Err(e) = conn.incr::<_, _, ()>(&minute_key, 60).await {
+            use redis::AsyncCommands;
+            if let Err(e) = conn.incr::<_, _, i32>(&minute_key, 1).await {
                 warn!("[IA Rate Limit] Erreur incrément minute: {}", e);
+            } else {
+                let _: Result<(), _> = conn.expire(&minute_key, 60).await;
             }
 
             // Vérifier compteur heure
@@ -69,8 +72,10 @@ pub async fn ia_rate_limit(
             }
 
             // Incrémenter compteur heure (TTL 3600s = 1h)
-            if let Err(e) = conn.incr::<_, _, ()>(&hour_key, 3600).await {
+            if let Err(e) = conn.incr::<_, _, i32>(&hour_key, 1).await {
                 warn!("[IA Rate Limit] Erreur incrément heure: {}", e);
+            } else {
+                let _: Result<(), _> = conn.expire(&hour_key, 3600).await;
             }
         }
         Err(e) => {

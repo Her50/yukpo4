@@ -323,7 +323,7 @@ pub async fn get_conversation_messages(
             let message_futures: Vec<_> = raw_messages.into_iter().map(|(id, conv_id, from, content, created_at, is_from_client, msg_type, metadata)| {
                 let state_clone = state.clone();
                 async move {
-                    let mut final_metadata = metadata;
+                    let mut final_metadata: Option<serde_json::Value> = metadata;
                     
                     // ✅ Générer URL pré-signée pour les médias dans les métadonnées (7 jours de validité)
                     if let Some(ref mut meta) = final_metadata {

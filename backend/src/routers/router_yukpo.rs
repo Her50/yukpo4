@@ -2170,8 +2170,7 @@ async fn handle_paginated_search(
     let duration = start_time.elapsed();
 
     // Enregistrer les métriques
-    if let Some(ref metrics) = state.search_metrics {
-        metrics
+    state.search_metrics
             .record_search(
                 &request.query,
                 request.specialized_type.as_deref(),
@@ -2202,10 +2201,10 @@ async fn handle_search_metrics(State(state): State<Arc<AppState>>) -> Json<Value
     let metrics_service = &state.search_metrics;
 
     // Mettre à jour les infos du pool
-    let pool_size = state.pg.size();
-    let idle = state.pg.num_idle();
+    let pool_size = state.pg.size() as u32;
+    let idle = state.pg.num_idle() as u32;
     metrics_service
-        .update_pool_info(pool_size.saturating_sub(idle as u32), idle)
+        .update_pool_info(pool_size.saturating_sub(idle), idle)
         .await;
 
     let metrics = metrics_service.get_metrics().await;

@@ -387,6 +387,7 @@ impl KYCService {
             AppError::Internal(format!("Erreur récupération documents: {}", e))
         })?;
 
+        use sqlx::Row;
         let mut docs_json = Vec::new();
         for row in documents {
             docs_json.push(json!({

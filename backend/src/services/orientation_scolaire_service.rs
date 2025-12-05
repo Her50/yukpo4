@@ -485,7 +485,7 @@ impl OrientationScolaireService {
     /// Invalider le cache de recherche
     async fn invalidate_cache_search(&self) {
         let pattern = "orientation:search:*";
-        if let Ok(mut conn) = self.state.redis_client.get_async_connection().await {
+        if let Ok(mut conn) = self.state.redis_client.get_multiplexed_async_connection().await {
             let _: Result<(), _> = conn.del(pattern).await;
         }
     }

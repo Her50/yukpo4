@@ -62,7 +62,7 @@ async fn generate_hls_variants(
 
     // Générer variantes
     match hls_service
-        .generate_hls_variants(&video_path, &video_id)
+        .generate_hls_variants(video_path.as_deref().ok_or(StatusCode::NOT_FOUND)?, &video_id)
         .await
     {
         Ok(manifest) => Ok(Json(serde_json::json!({

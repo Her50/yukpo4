@@ -22,7 +22,7 @@ pub async fn start_export(
     // TODO: Récupérer user_id depuis le token JWT
     let user_id = 1; // Placeholder
 
-    let export_service = ExportService::new(state.pg.clone(), state.media_storage.clone());
+    let export_service = ExportService::new(Arc::new(state.pg.clone()), Arc::clone(&state.media_storage));
     let job_id = export_service
         .start_export(user_id, request)
         .await
@@ -43,7 +43,7 @@ pub async fn get_export_status(
     // TODO: Récupérer user_id depuis le token JWT
     let user_id = 1; // Placeholder
 
-    let export_service = ExportService::new(state.pg.clone(), state.media_storage.clone());
+    let export_service = ExportService::new(Arc::new(state.pg.clone()), Arc::clone(&state.media_storage));
     let job = export_service
         .get_job_status(&job_id, user_id)
         .await
@@ -60,7 +60,7 @@ pub async fn cancel_export(
     // TODO: Récupérer user_id depuis le token JWT
     let user_id = 1; // Placeholder
 
-    let export_service = ExportService::new(state.pg.clone(), state.media_storage.clone());
+    let export_service = ExportService::new(Arc::new(state.pg.clone()), Arc::clone(&state.media_storage));
     export_service
         .cancel_job(&job_id, user_id)
         .await
@@ -91,7 +91,7 @@ pub async fn list_exports(
         .unwrap_or(0)
         .max(0);
 
-    let export_service = ExportService::new(state.pg.clone(), state.media_storage.clone());
+    let export_service = ExportService::new(Arc::new(state.pg.clone()), Arc::clone(&state.media_storage));
     let jobs = export_service
         .list_jobs(user_id, limit, offset)
         .await

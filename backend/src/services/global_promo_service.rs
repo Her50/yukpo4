@@ -619,7 +619,19 @@ impl GlobalPromoService {
 
         // ✅ NOUVEAU: Mettre en cache le résultat
         if let Some(cache_service) = cache {
-            if let Err(e) = cache_service.set_catalog_page(&query, &result).await {
+            // Cloner les valeurs nécessaires pour le cache avant la déstructuration
+            let cache_query = GlobalPromoCatalogQuery {
+                page: Some(page),
+                page_size: Some(page_size),
+                highlighted_only: Some(highlighted_only),
+                event_slug: event_slug.clone(),
+                availability: availability.clone(),
+                status: status.clone(),
+                search: search.clone(),
+                sort: Some(sort_label.clone()),
+                starts_within_minutes: start_filter_opt,
+            };
+            if let Err(e) = cache_service.set_catalog_page(&cache_query, &result).await {
                 log::warn!("⚠️ Impossible de mettre en cache le catalogue: {:?}", e);
             }
         }

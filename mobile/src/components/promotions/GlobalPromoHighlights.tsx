@@ -30,7 +30,7 @@ const formatPrice = (value?: number | null) => {
     return `${value.toLocaleString('fr-FR')} CFA`;
 };
 
-const GlobalPromoHighlights: React.FC = React.memo(() => {
+const GlobalPromoHighlightsComponent: React.FC = () => {
     const navigation = useNavigation<any>();
     const { catalog, loading, error, refresh } = useGlobalPromos();
     const { isEnabled } = useFeatureFlags();
@@ -166,6 +166,8 @@ const GlobalPromoHighlights: React.FC = React.memo(() => {
         </NativeCard>
     );
 };
+
+const GlobalPromoHighlights = React.memo(GlobalPromoHighlightsComponent);
 
 const styles = StyleSheet.create({
     card: {

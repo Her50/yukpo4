@@ -104,7 +104,15 @@ pub async fn create_return_trip_request(
             e
         );
         AppError::Internal(format!("Erreur vérification ticket aller: {}", e))
-    })?;
+    })?
+    .map(|row| {
+        use sqlx::Row;
+        (
+            row.get::<String, _>("departure_city"),
+            row.get::<String, _>("arrival_city"),
+            row.get::<String, _>("product_id"),
+        )
+    });
 
     let (departure_city, arrival_city, outbound_product_id) = match outbound_ticket {
         Some(ticket) => ticket,

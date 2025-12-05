@@ -12,7 +12,7 @@ fn empty_metadata() -> Value {
     json!({})
 }
 
-#[derive(Debug, Serialize, Clone, FromRow)]
+#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
 pub struct GlobalPromoEvent {
     pub id: Uuid,
     pub slug: String,
@@ -97,7 +97,7 @@ fn default_availability() -> String {
     "online".to_string()
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GlobalPromoEntry {
     pub id: Uuid,
     pub event_id: Uuid,
@@ -130,7 +130,7 @@ pub struct GlobalPromoCatalogItem {
     pub badges: GlobalPromoCatalogBadges,
 }
 
-#[derive(Debug, Serialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct GlobalPromoCatalogBadges {
     pub event_is_live: bool,
     pub event_is_imminent: bool,
@@ -167,7 +167,7 @@ pub struct GlobalPromoCatalogQuery {
     pub starts_within_minutes: Option<i64>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GlobalPromoProductSnapshot {
     pub id: Uuid,
     pub promo_entry_id: Uuid,

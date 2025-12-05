@@ -12,6 +12,7 @@ use axum::{
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sqlx::Row;
 use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
@@ -145,7 +146,8 @@ pub async fn list_pending_documents(
                     let recommendation = ai_analysis.get("recommendation")
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
-                    (confidence, recommendation, confidence.is_some() || recommendation.is_some())
+                    let has_ai = confidence.is_some() || recommendation.is_some();
+                    (confidence, recommendation, has_ai)
                 }
             } else {
                 (None, None, false)

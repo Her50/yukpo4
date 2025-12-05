@@ -90,12 +90,13 @@ async fn handle_upload_status_websocket(
     });
 
     // Tâche d'envoi de statut depuis broadcast
+    let upload_id_clone = upload_id.clone();
     let mut status_task = tokio::spawn(async move {
         loop {
             tokio::select! {
                 // Recevoir depuis le broadcast
                 Ok((id, status)) = status_rx.recv() => {
-                    if id == upload_id {
+                    if id == upload_id_clone {
                         let status_msg = UploadStatusMessage {
                             upload_id: id.clone(),
                             status: serde_json::to_string(&status).unwrap_or_default(),
@@ -123,7 +124,7 @@ async fn handle_upload_status_websocket(
 
                         // Si terminé (succès ou échec), fermer la connexion
                         if matches!(status, UploadStatus::Completed { .. } | UploadStatus::Failed { .. }) {
-                            log::info!("[UploadStatusWS] Upload terminé, fermeture WebSocket pour upload_id={}", upload_id);
+                            log::info!("[UploadStatusWS] Upload terminé, fermeture WebSocket pour upload_id={}", upload_id_clone);
                             break;
                         }
                     }
@@ -133,7 +134,7 @@ async fn handle_upload_status_websocket(
                     // Envoyer un ping pour maintenir la connexion
                     let ping = serde_json::json!({
                         "type": "ping",
-                        "upload_id": upload_id,
+                        "upload_id": upload_id_clone.clone(),
                         "timestamp": chrono::Utc::now()
                     });
                     if let Err(e) = sender.send(Message::Text(ping.to_string().into())).await {

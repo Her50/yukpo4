@@ -207,8 +207,8 @@ async fn segment_transcription(
         let subtitle_duration = word_count_in_subtitle as f32 * avg_duration_per_word;
 
         subtitles.push(Subtitle {
-            start_time: current_start as f64,
-            end_time: (current_start + subtitle_duration).min(total_duration as f64),
+            start_time: current_start as f32,
+            end_time: ((current_start + subtitle_duration).min(total_duration)) as f32,
             text: current_text.trim().to_string(),
             confidence: 0.95,
             words: None,

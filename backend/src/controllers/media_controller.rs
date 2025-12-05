@@ -629,8 +629,8 @@ pub async fn list_templates(
             query.subcategory.as_deref(),
             query.q.as_deref(),
             query.premium,
-            query.limit.unwrap_or(50),
-            query.offset.unwrap_or(0),
+            Some(query.limit.unwrap_or(50)),
+            Some(query.offset.unwrap_or(0)),
         )
         .await?;
 
