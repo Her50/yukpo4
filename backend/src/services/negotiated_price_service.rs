@@ -97,9 +97,7 @@ impl NegotiatedPriceService {
         .await
         .map_err(|e| AppError::Internal(format!("Erreur création offre: {}", e)))?;
 
-        let id: i32 = row
-            .try_get("id")
-            .map_err(|e| AppError::Internal(format!("Erreur extraction ID: {}", e)))?;
+        let id: i32 = row.get::<i32, _>("id");
 
         info!(
             "✅ Offre de prix négocié créée: id={}, conversation={}, service={}, produit={:?}, prix={} -> {}",
@@ -140,9 +138,7 @@ impl NegotiatedPriceService {
         .map_err(|e| AppError::Internal(format!("Erreur récupération prix négocié: {}", e)))?;
 
         if let Some(row) = row {
-            let price_cents: i64 = row
-                .try_get("negotiated_price_cents")
-                .map_err(|e| AppError::Internal(format!("Erreur extraction prix: {}", e)))?;
+            let price_cents: i64 = row.get::<i64, _>("negotiated_price_cents");
             Ok(Some(price_cents))
         } else {
             Ok(None)
@@ -203,19 +199,10 @@ impl NegotiatedPriceService {
 
         let offer_row = offer.ok_or_else(|| AppError::NotFound("Offre introuvable".into()))?;
 
-        let merchant_id: i32 = offer_row
-            .try_get("merchant_user_id")
-            .map_err(|e| AppError::Internal(format!("Erreur extraction merchant_id: {}", e)))?;
-        let client_id: i32 = offer_row
-            .try_get("client_user_id")
-            .map_err(|e| AppError::Internal(format!("Erreur extraction client_id: {}", e)))?;
-        let status: String = offer_row
-            .try_get("status")
-            .map_err(|e| AppError::Internal(format!("Erreur extraction status: {}", e)))?;
-        let expires_at: Option<chrono::DateTime<Utc>> = offer_row
-            .try_get("expires_at")
-            .map_err(|_| None)
-            .unwrap_or(None);
+        let merchant_id: i32 = offer_row.get::<i32, _>("merchant_user_id");
+        let client_id: i32 = offer_row.get::<i32, _>("client_user_id");
+        let status: String = offer_row.get::<String, _>("status");
+        let expires_at: Option<chrono::DateTime<Utc>> = offer_row.get::<Option<chrono::DateTime<Utc>>, _>("expires_at");
 
         // Vérifier que l'utilisateur est le prestataire (seul le prestataire peut accepter)
         if user_id != merchant_id {

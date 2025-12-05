@@ -194,10 +194,10 @@ impl LiveFlashSaleService {
             return Err(AppError::NotFound("Vente flash introuvable".to_string()));
         };
 
-        let stock_target: i32 = sale_row.try_get("stock_target")?;
-        let start_at: DateTime<Utc> = sale_row.try_get("start_at")?;
-        let end_at: DateTime<Utc> = sale_row.try_get("end_at")?;
-        let mut status: String = sale_row.try_get("status")?;
+        let stock_target: i32 = sale_row.get::<i32, _>("stock_target");
+        let start_at: DateTime<Utc> = sale_row.get::<DateTime<Utc>, _>("start_at");
+        let end_at: DateTime<Utc> = sale_row.get::<DateTime<Utc>, _>("end_at");
+        let mut status: String = sale_row.get::<String, _>("status");
 
         let now = Utc::now();
         if now < start_at {
@@ -338,7 +338,7 @@ impl LiveFlashSaleService {
             return Err(AppError::NotFound("Vente flash introuvable".to_string()));
         };
 
-        let owner: i32 = row.try_get("host_user_id")?;
+        let owner: i32 = row.get::<i32, _>("host_user_id");
         if owner != host_user_id {
             return Err(AppError::Forbidden(
                 "Vous ne pouvez consulter que vos propres réservations".into(),
@@ -366,9 +366,9 @@ impl LiveFlashSaleService {
 
         let mut result = Vec::with_capacity(reservations.len());
         for row in reservations {
-            let user_id: i32 = row.try_get("user_id")?;
-            let quantity: i32 = row.try_get("quantity")?;
-            let reserved_at: DateTime<Utc> = row.try_get("reserved_at")?;
+            let user_id: i32 = row.get::<i32, _>("user_id");
+            let quantity: i32 = row.get::<i32, _>("quantity");
+            let reserved_at: DateTime<Utc> = row.get::<DateTime<Utc>, _>("reserved_at");
 
             let name: Option<String> = row.get::<Option<String>, _>("name");
             let prenom: Option<String> = row.get::<Option<String>, _>("prenom");
@@ -439,19 +439,19 @@ impl LiveFlashSaleService {
         .await?;
 
         for row in rows {
-            let flash_sale_id: Uuid = row.try_get("id")?;
-            let session_id: Uuid = row.try_get("live_session_id")?;
-            let host_user_id: i32 = row.try_get("host_user_id")?;
-            let service_id: i32 = row.try_get("service_id")?;
-            let promo_price: BigDecimal = row.try_get("promo_price_cfa")?;
-            let start_at: DateTime<Utc> = row.try_get("start_at")?;
+            let flash_sale_id: Uuid = row.get::<Uuid, _>("id");
+            let session_id: Uuid = row.get::<Uuid, _>("live_session_id");
+            let host_user_id: i32 = row.get::<i32, _>("host_user_id");
+            let service_id: i32 = row.get::<i32, _>("service_id");
+            let promo_price: BigDecimal = row.get::<BigDecimal, _>("promo_price_cfa");
+            let start_at: DateTime<Utc> = row.get::<DateTime<Utc>, _>("start_at");
             let promo_price_cfa = ToPrimitive::to_f64(&promo_price)
                 .ok_or_else(|| AppError::Internal("Conversion du prix promo impossible".into()))?;
-            let metadata: Value = row.try_get("metadata")?;
-            let session_title: String = row.try_get("title")?;
+            let metadata: Value = row.get::<Value, _>("metadata");
+            let session_title: String = row.get::<String, _>("title");
 
             let mut audience_services = LiveStreamingService::extract_linked_ids(&metadata);
-            if let Some(primary) = row.try_get::<Option<i32>, _>("primary_service_id")? {
+            if let Some(primary) = row.get::<Option<i32>, _>("primary_service_id") {
                 if !audience_services.contains(&primary) {
                     audience_services.push(primary);
                 }
@@ -533,7 +533,7 @@ impl LiveFlashSaleService {
             let flash_sale_id: Uuid = row.try_get("id")?;
             let session_id: Uuid = row.try_get("live_session_id")?;
             let host_user_id: i32 = row.try_get("host_user_id")?;
-            let service_id: i32 = row.try_get("service_id")?;
+            let service_id: i32 = row.get::<i32, _>("service_id");
             let promo_price: BigDecimal = row.try_get("promo_price_cfa")?;
             let promo_price_cfa = ToPrimitive::to_f64(&promo_price)
                 .ok_or_else(|| AppError::Internal("Conversion du prix promo impossible".into()))?;
@@ -541,7 +541,7 @@ impl LiveFlashSaleService {
             let session_title: String = row.try_get("title")?;
 
             let mut audience_services = LiveStreamingService::extract_linked_ids(&metadata);
-            if let Some(primary) = row.try_get::<Option<i32>, _>("primary_service_id")? {
+            if let Some(primary) = row.get::<Option<i32>, _>("primary_service_id") {
                 if !audience_services.contains(&primary) {
                     audience_services.push(primary);
                 }
@@ -616,13 +616,13 @@ impl LiveFlashSaleService {
             let flash_sale_id: Uuid = row.try_get("id")?;
             let session_id: Uuid = row.try_get("live_session_id")?;
             let host_user_id: i32 = row.try_get("host_user_id")?;
-            let service_id: i32 = row.try_get("service_id")?;
-            let end_at: DateTime<Utc> = row.try_get("end_at")?;
-            let metadata: Value = row.try_get("metadata")?;
-            let session_title: String = row.try_get("title")?;
+            let service_id: i32 = row.get::<i32, _>("service_id");
+            let end_at: DateTime<Utc> = row.get::<DateTime<Utc>, _>("end_at");
+            let metadata: Value = row.get::<Value, _>("metadata");
+            let session_title: String = row.get::<String, _>("title");
 
             let mut audience_services = LiveStreamingService::extract_linked_ids(&metadata);
-            if let Some(primary) = row.try_get::<Option<i32>, _>("primary_service_id")? {
+            if let Some(primary) = row.get::<Option<i32>, _>("primary_service_id") {
                 if !audience_services.contains(&primary) {
                     audience_services.push(primary);
                 }
@@ -722,7 +722,7 @@ impl LiveFlashSaleService {
 
         let mut service_ids = Vec::new();
         for row in &rows {
-            let service_id: i32 = row.try_get("service_id")?;
+            let service_id: i32 = row.get::<i32, _>("service_id");
             if !service_ids.contains(&service_id) {
                 service_ids.push(service_id);
             }
@@ -737,7 +737,7 @@ impl LiveFlashSaleService {
         for row in rows {
             let flash_sale_id: Uuid = row.try_get("id")?;
             let session_id: Uuid = row.try_get("live_session_id")?;
-            let service_id: i32 = row.try_get("service_id")?;
+            let service_id: i32 = row.get::<i32, _>("service_id");
             let stock_target: i32 = row.try_get("stock_target")?;
             let reserved_quantity: i64 = row.try_get("reserved_quantity")?;
             let interval_seconds: i32 = row.try_get("commentary_interval_seconds")?;
@@ -904,11 +904,11 @@ impl LiveFlashSaleService {
         let mut service_ids = Vec::new();
         let mut sale_ids = Vec::new();
         for row in &rows {
-            let service_id: i32 = row.try_get("service_id")?;
+            let service_id: i32 = row.get::<i32, _>("service_id");
             if !service_ids.contains(&service_id) {
                 service_ids.push(service_id);
             }
-            let sale_id: Uuid = row.try_get("id")?;
+            let sale_id: Uuid = row.get::<Uuid, _>("id");
             sale_ids.push(sale_id);
         }
 
@@ -922,25 +922,25 @@ impl LiveFlashSaleService {
 
         let mut summaries = Vec::with_capacity(rows.len());
         for row in rows {
-            let promo_price: BigDecimal = row.try_get("promo_price_cfa")?;
+            let promo_price: BigDecimal = row.get::<BigDecimal, _>("promo_price_cfa");
             let promo_price_cfa = ToPrimitive::to_f64(&promo_price)
                 .ok_or_else(|| AppError::Internal("Conversion du prix promo impossible".into()))?;
 
             let summary = LiveFlashSaleSummary {
-                id: row.try_get("id")?,
-                live_session_id: row.try_get("live_session_id")?,
-                service_id: row.try_get("service_id")?,
+                id: row.get::<Uuid, _>("id"),
+                live_session_id: row.get::<Uuid, _>("live_session_id"),
+                service_id: row.get::<i32, _>("service_id"),
                 promo_price_cfa,
-                stock_target: row.try_get("stock_target")?,
+                stock_target: row.get::<i32, _>("stock_target"),
                 reserved_quantity: row.get::<i64, _>("reserved_quantity"),
-                start_at: row.try_get("start_at")?,
-                end_at: row.try_get("end_at")?,
+                start_at: row.get::<DateTime<Utc>, _>("start_at"),
+                end_at: row.get::<DateTime<Utc>, _>("end_at"),
                 status: row.get::<String, _>("status"),
-                commentary_mode: row.try_get("commentary_mode")?,
-                commentary_interval_seconds: row.try_get("commentary_interval_seconds")?,
-                ai_voice_profile: row.try_get("ai_voice_profile")?,
-                last_commentary_sent_at: row.try_get("last_commentary_sent_at")?,
-                metadata: row.try_get("metadata")?,
+                commentary_mode: row.get::<String, _>("commentary_mode"),
+                commentary_interval_seconds: row.get::<i32, _>("commentary_interval_seconds"),
+                ai_voice_profile: row.get::<Option<String>, _>("ai_voice_profile"),
+                last_commentary_sent_at: row.get::<Option<DateTime<Utc>>, _>("last_commentary_sent_at"),
+                metadata: row.get::<Value, _>("metadata"),
                 linked_service: linked_map.get(&row.get::<i32, _>("service_id")).cloned(),
                 recent_commentaries: commentary_map
                     .get(&row.get::<Uuid, _>("id"))
@@ -989,15 +989,15 @@ impl LiveFlashSaleService {
         let mut map: HashMap<Uuid, Vec<LiveFlashSaleCommentary>> = HashMap::new();
 
         for row in rows {
-            let flash_sale_id: Uuid = row.try_get("flash_sale_id")?;
+            let flash_sale_id: Uuid = row.get::<Uuid, _>("flash_sale_id");
             let entry = map.entry(flash_sale_id).or_default();
             entry.push(LiveFlashSaleCommentary {
-                id: row.try_get("id")?,
+                id: row.get::<Uuid, _>("id"),
                 flash_sale_id,
                 created_by: row.get::<String, _>("created_by"),
-                message: row.try_get("message")?,
-                metadata: row.try_get("metadata")?,
-                created_at: row.try_get("created_at")?,
+                message: row.get::<String, _>("message"),
+                metadata: row.get::<Value, _>("metadata"),
+                created_at: row.get::<DateTime<Utc>, _>("created_at"),
             });
         }
 
@@ -1137,7 +1137,7 @@ impl LiveFlashSaleService {
             return Err(AppError::NotFound("Session live introuvable".to_string()));
         };
 
-        let owner: i32 = row.try_get("host_user_id")?;
+        let owner: i32 = row.get::<i32, _>("host_user_id");
         if owner != host_user_id {
             return Err(AppError::Forbidden(
                 "Accès refusé aux ventes flash d'un autre prestataire".into(),
@@ -1195,19 +1195,19 @@ impl LiveFlashSaleService {
             return Err(AppError::NotFound("Vente flash introuvable".into()));
         };
 
-        let owner: i32 = row.try_get("host_user_id")?;
+        let owner: i32 = row.get::<i32, _>("host_user_id");
         if owner != host_user_id {
             return Err(AppError::Forbidden(
                 "Vous ne pouvez commenter que vos propres ventes flash".into(),
             ));
         }
 
-        let session_id: Uuid = row.try_get("live_session_id")?;
-        let service_id: i32 = row.try_get("service_id")?;
-        let session_metadata: Value = row.try_get("session_metadata")?;
-        let flash_metadata: Value = row.try_get("flash_metadata")?;
-        let primary_service_id: Option<i32> = row.try_get("primary_service_id")?;
-        let session_title: String = row.try_get("title")?;
+        let session_id: Uuid = row.get::<Uuid, _>("live_session_id");
+        let service_id: i32 = row.get::<i32, _>("service_id");
+        let session_metadata: Value = row.get::<Value, _>("session_metadata");
+        let flash_metadata: Value = row.get::<Value, _>("flash_metadata");
+        let primary_service_id: Option<i32> = row.get::<Option<i32>, _>("primary_service_id");
+        let session_title: String = row.get::<String, _>("title");
 
         let metadata = json!({
             "source": "host",

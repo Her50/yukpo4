@@ -406,9 +406,9 @@ impl GlobalPromoService {
             ));
         };
 
-        let service_id: i32 = row.try_get("service_id")?;
-        let availability: String = row.try_get("availability")?;
-        let service_data: Value = row.try_get("service_data")?;
+        let service_id: i32 = row.get::<i32, _>("service_id");
+        let availability: String = row.get::<String, _>("availability");
+        let service_data: Value = row.get::<Value, _>("service_data");
         let snapshot = build_snapshot_from_service(service_id, service_data);
 
         Self::save_product_snapshot(
@@ -703,7 +703,7 @@ impl GlobalPromoService {
             ));
         };
 
-        let current_status: String = row.try_get("status")?;
+        let current_status: String = row.get::<String, _>("status");
         if matches!(current_status.as_str(), "published" | "ended") {
             return Err(AppError::BadRequest(
                 "Impossible de modifier une entrée déjà publiée ou terminée.".into(),
@@ -715,7 +715,7 @@ impl GlobalPromoService {
             )));
         }
 
-        let mut metadata: Value = row.try_get("metadata")?;
+        let mut metadata: Value = row.get::<Value, _>("metadata");
         if !metadata.is_object() {
             metadata = json!({});
         }
@@ -753,7 +753,7 @@ impl GlobalPromoService {
         .await?;
 
         if highlighted.is_some() || priority_score.is_some() {
-            let availability: String = row.try_get("availability")?;
+            let availability: String = row.get::<String, _>("availability");
             sqlx::query(
                 r#"
                 INSERT INTO global_promo_products (
@@ -783,8 +783,8 @@ impl GlobalPromoService {
             let promo_info = PromoEntryInfo {
                 user_id,
                 entry_id,
-                event_name: row.try_get("event_display_name")?,
-                service_id: row.try_get("service_id")?,
+                event_name: row.get::<String, _>("event_display_name"),
+                service_id: row.get::<i32, _>("service_id"),
             };
 
             let (notif_type, title, mut body) = if decision == "approved" {
@@ -1113,8 +1113,8 @@ async fn activate_due_events(
 
     let mut counter = 0usize;
     for row in rows {
-        let event_id: Uuid = row.try_get("id")?;
-        let _event_name: String = row.try_get("display_name")?;
+        let event_id: Uuid = row.get::<Uuid, _>("id");
+        let _event_name: String = row.get::<String, _>("display_name");
 
         sqlx::query(
             "UPDATE global_promo_events SET status = 'live', updated_at = NOW() WHERE id = $1",
@@ -1194,7 +1194,7 @@ async fn publish_entries_for_live_events(pool: &PgPool) -> AppResult<Vec<PromoEn
 
     let mut entries = Vec::with_capacity(rows.len());
     for row in rows {
-        let entry_id: Uuid = row.try_get("entry_id")?;
+        let entry_id: Uuid = row.get::<Uuid, _>("entry_id");
         sqlx::query(
             "UPDATE global_promo_entries SET status = 'published', published_at = NOW(), updated_at = NOW() WHERE id = $1",
         )
@@ -1206,8 +1206,8 @@ async fn publish_entries_for_live_events(pool: &PgPool) -> AppResult<Vec<PromoEn
             entries.push(PromoEntryInfo {
                 user_id,
                 entry_id,
-                event_name: row.try_get("event_display_name")?,
-                service_id: row.try_get("service_id")?,
+                event_name: row.get::<String, _>("event_display_name"),
+                service_id: row.get::<i32, _>("service_id"),
             });
         }
     }
@@ -1234,7 +1234,7 @@ async fn close_entries_for_archived_events(pool: &PgPool) -> AppResult<Vec<Promo
 
     let mut entries = Vec::with_capacity(rows.len());
     for row in rows {
-        let entry_id: Uuid = row.try_get("entry_id")?;
+        let entry_id: Uuid = row.get::<Uuid, _>("entry_id");
         sqlx::query(
             "UPDATE global_promo_entries SET status = 'ended', updated_at = NOW() WHERE id = $1",
         )
@@ -1246,8 +1246,8 @@ async fn close_entries_for_archived_events(pool: &PgPool) -> AppResult<Vec<Promo
             entries.push(PromoEntryInfo {
                 user_id,
                 entry_id,
-                event_name: row.try_get("event_display_name")?,
-                service_id: row.try_get("service_id")?,
+                event_name: row.get::<String, _>("event_display_name"),
+                service_id: row.get::<i32, _>("service_id"),
             });
         }
     }

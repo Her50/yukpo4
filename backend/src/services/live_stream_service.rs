@@ -725,8 +725,8 @@ impl LiveStreamingService {
         let mut map: HashMap<i32, LiveLinkedService> = HashMap::new();
 
         for row in rows {
-            let id: i32 = row.try_get("id")?;
-            let data: Value = row.try_get("data")?;
+            let id: i32 = row.get::<i32, _>("id");
+            let data: Value = row.get::<Value, _>("data");
 
             let gallery = Self::extract_gallery(&data);
             let cover_media = Self::extract_string(

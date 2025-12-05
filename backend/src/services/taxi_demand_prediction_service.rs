@@ -517,8 +517,8 @@ Retourne UNIQUEMENT un JSON avec:
         let mut count = 0;
 
         for row in historical {
-            let hour_bucket: Option<NaiveDateTime> = row.try_get("hour_bucket")?;
-            let demand_count: f64 = row.try_get("demand_count")?;
+            let hour_bucket: Option<NaiveDateTime> = row.get::<Option<NaiveDateTime>, _>("hour_bucket");
+            let demand_count: f64 = row.get::<f64, _>("demand_count");
 
             if let Some(hour) = hour_bucket {
                 let hour_key = hour.hour() as u8;

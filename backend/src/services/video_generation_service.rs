@@ -3429,9 +3429,9 @@ async fn resolve_audio_track(
         }
     };
 
-    let owner: i32 = row.try_get("service_id").map_err(AppError::from)?;
-    let raw_path: String = row.try_get("path").map_err(AppError::from)?;
-    let media_type: String = row.try_get("type").map_err(AppError::from)?;
+    let owner: i32 = row.get::<i32, _>("service_id");
+    let raw_path: String = row.get::<String, _>("path");
+    let media_type: String = row.get::<String, _>("type");
 
     if owner != service_id {
         return Err(AppError::Unauthorized(
