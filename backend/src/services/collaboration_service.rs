@@ -202,7 +202,7 @@ impl CollaborationService {
         redis::cmd("PUBLISH")
             .arg(&channel)
             .arg(&payload)
-            .query_async::<_, ()>(&mut conn)
+            .query_async::<i32>(&mut conn)
             .await
             .map_err(|e| format!("Erreur publication Redis: {}", e))?;
 
@@ -231,7 +231,7 @@ impl CollaborationService {
         redis::cmd("PUBLISH")
             .arg(&channel)
             .arg(serde_json::to_string(&payload).unwrap())
-            .query_async::<_, ()>(&mut conn)
+            .query_async::<i32>(&mut conn)
             .await
             .map_err(|e| format!("Erreur publication Redis: {}", e))?;
 
