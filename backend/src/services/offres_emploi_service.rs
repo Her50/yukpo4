@@ -9,7 +9,7 @@ use bigdecimal::BigDecimal;
 use chrono::{NaiveDate, Utc};
 use log::{error, info, warn};
 use serde_json::{json, Value};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::str::FromStr;
 
 /// Service pour la gestion des offres d'emploi
@@ -53,8 +53,11 @@ impl OffresEmploiService {
             .salaire_max
             .map(|s| BigDecimal::from_str(&s.to_string()).unwrap_or_default());
 
-        let offre = sqlx::query_as!(
-            OffreEmploi,
+        // Préparer langues_requises comme JSONB
+        let langues_requises_json = request.langues_requises.as_ref()
+            .map(|v| serde_json::to_value(v).unwrap_or(Value::Null));
+        
+        let offre_row = sqlx::query(
             r#"
             INSERT INTO offres_emploi (
                 entreprise_id, titre_poste, description, type_contrat, duree_contrat,
@@ -65,47 +68,86 @@ impl OffresEmploiService {
             )
             VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8,
-                CASE WHEN $9 IS NOT NULL THEN ST_GeogFromText($9) ELSE NULL END,
+                CASE WHEN $9::TEXT IS NOT NULL THEN ST_GeogFromText($9::TEXT) ELSE NULL END,
                 $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
             )
-            RETURNING *
-            "#,
-            entreprise_id,
-            request.titre_poste,
-            request.description,
-            request.type_contrat,
-            request.duree_contrat,
-            request.lieu_travail,
-            request.adresse,
-            request.gps,
-            location_point,
-            request.remote.unwrap_or(false),
-            request.remote_partiel.unwrap_or(false),
-            salaire_min,
-            salaire_max,
-            request.devise.unwrap_or_else(|| "XAF".to_string()),
-            request.salaire_negociable.unwrap_or(false),
-            request.niveau_etude,
-            request.experience_min,
-            request.competences_requises.as_deref(),
-            request
-                .langues_requises
-                .as_ref()
-                .map(|v| serde_json::to_string(v).unwrap_or_default()),
-            request.permis_requis.as_deref(),
-            request.secteur,
-            request.domaine,
-            request.tags.as_deref(),
-            request.date_limite_candidature,
-            request.date_debut_poste,
-            "active"
+            RETURNING 
+                id, entreprise_id, titre_poste, description, type_contrat, duree_contrat,
+                lieu_travail, adresse, gps, remote, remote_partiel,
+                salaire_min, salaire_max, devise, salaire_negociable,
+                niveau_etude, experience_min, competences_requises, langues_requises, permis_requis,
+                secteur, domaine, tags, date_limite_candidature, date_debut_poste, statut,
+                date_publication, nombre_vues, nombre_candidatures, is_active, is_verified, created_at, updated_at
+            "#
         )
+        .bind(entreprise_id)
+        .bind(&request.titre_poste)
+        .bind(&request.description)
+        .bind(&request.type_contrat)
+        .bind(request.duree_contrat)
+        .bind(&request.lieu_travail)
+        .bind(request.adresse.as_deref())
+        .bind(request.gps.as_deref())
+        .bind(location_point.as_deref())
+        .bind(request.remote.unwrap_or(false))
+        .bind(request.remote_partiel.unwrap_or(false))
+        .bind(salaire_min.as_ref())
+        .bind(salaire_max.as_ref())
+        .bind(&request.devise.unwrap_or_else(|| "XAF".to_string()))
+        .bind(request.salaire_negociable.unwrap_or(false))
+        .bind(request.niveau_etude.as_deref())
+        .bind(request.experience_min)
+        .bind(request.competences_requises.as_deref())
+        .bind(langues_requises_json.as_ref())
+        .bind(request.permis_requis.as_deref())
+        .bind(&request.secteur)
+        .bind(request.domaine.as_deref())
+        .bind(request.tags.as_deref())
+        .bind(request.date_limite_candidature)
+        .bind(request.date_debut_poste)
+        .bind("active")
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
             error!("[create_offre] Erreur: {}", e);
             AppError::Internal(format!("Erreur création offre: {}", e))
         })?;
+
+        let offre = OffreEmploi {
+            id: offre_row.get::<i32, _>("id"),
+            entreprise_id: offre_row.get::<i32, _>("entreprise_id"),
+            titre_poste: offre_row.get::<String, _>("titre_poste"),
+            description: offre_row.get::<String, _>("description"),
+            type_contrat: offre_row.get::<String, _>("type_contrat"),
+            duree_contrat: offre_row.get::<Option<i32>, _>("duree_contrat"),
+            lieu_travail: offre_row.get::<String, _>("lieu_travail"),
+            adresse: offre_row.get::<Option<String>, _>("adresse"),
+            gps: offre_row.get::<Option<String>, _>("gps"),
+            remote: offre_row.get::<bool, _>("remote"),
+            remote_partiel: offre_row.get::<bool, _>("remote_partiel"),
+            salaire_min: offre_row.get::<Option<BigDecimal>, _>("salaire_min"),
+            salaire_max: offre_row.get::<Option<BigDecimal>, _>("salaire_max"),
+            devise: offre_row.get::<String, _>("devise"),
+            salaire_negociable: offre_row.get::<bool, _>("salaire_negociable"),
+            niveau_etude: offre_row.get::<Option<String>, _>("niveau_etude"),
+            experience_min: offre_row.get::<Option<i32>, _>("experience_min"),
+            competences_requises: offre_row.get::<Option<Vec<String>>, _>("competences_requises"),
+            langues_requises: offre_row.get::<Option<Value>, _>("langues_requises"),
+            permis_requis: offre_row.get::<Option<Vec<String>>, _>("permis_requis"),
+            secteur: offre_row.get::<String, _>("secteur"),
+            domaine: offre_row.get::<Option<String>, _>("domaine"),
+            tags: offre_row.get::<Option<Vec<String>>, _>("tags"),
+            date_publication: offre_row.get::<chrono::DateTime<chrono::Utc>, _>("date_publication"),
+            date_limite_candidature: offre_row.get::<Option<NaiveDate>, _>("date_limite_candidature"),
+            date_debut_poste: offre_row.get::<Option<NaiveDate>, _>("date_debut_poste"),
+            statut: offre_row.get::<String, _>("statut"),
+            nombre_candidatures: offre_row.get::<i32, _>("nombre_candidatures"),
+            nombre_vues: offre_row.get::<i32, _>("nombre_vues"),
+            is_active: offre_row.get::<bool, _>("is_active"),
+            is_verified: offre_row.get::<bool, _>("is_verified"),
+            created_at: offre_row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+            updated_at: offre_row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
+        };
 
         // Invalider le cache de recherche
         self.invalidate_search_cache().await;
@@ -208,7 +250,7 @@ impl OffresEmploiService {
         })?;
 
         // Compter le total
-        let total: i64 = sqlx::query_scalar!(
+        let total: i64 = sqlx::query_scalar::<_, i64>(
             "SELECT COUNT(*)::bigint FROM offres_emploi WHERE statut = 'active' AND is_active = true"
         )
         .fetch_one(&self.pool)

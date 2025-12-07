@@ -3,7 +3,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 pub struct QRCodeService {
@@ -96,8 +96,7 @@ impl QRCodeService {
         info!("[QRCodeService] Validation QR code: {}", qr_code);
 
         // Récupérer QR code
-        let qr_info = sqlx::query_as!(
-            QRCodeRow,
+        let qr_row = sqlx::query(
             r#"
             SELECT 
                 id, reservation_id, qr_code, status, expires_at
@@ -112,6 +111,14 @@ impl QRCodeService {
             error!("[QRCodeService] Erreur récupération QR code: {}", e);
             AppError::Internal(format!("Erreur récupération QR code: {}", e))
         })?;
+
+        let qr_info = qr_row.map(|row| QRCodeRow {
+            id: row.get::<i32, _>("id"),
+            reservation_id: row.get::<i32, _>("reservation_id"),
+            qr_code: row.get::<String, _>("qr_code"),
+            status: row.get::<String, _>("status"),
+            expires_at: row.get::<chrono::DateTime<chrono::Utc>, _>("expires_at"),
+        });
 
         let qr = match qr_info {
             Some(q) => q,
@@ -197,8 +204,7 @@ impl QRCodeService {
         &self,
         reservation_id: i32,
     ) -> AppResult<Option<QRCodeInfo>> {
-        let qr = sqlx::query_as!(
-            QRCodeInfo,
+        let qr_row = sqlx::query(
             r#"
             SELECT 
                 id, reservation_id, qr_code, qr_code_url, status, expires_at
@@ -215,6 +221,15 @@ impl QRCodeService {
             error!("[QRCodeService] Erreur récupération: {}", e);
             AppError::Internal(format!("Erreur récupération QR code: {}", e))
         })?;
+
+        let qr = qr_row.map(|row| QRCodeInfo {
+            id: row.get::<i32, _>("id"),
+            reservation_id: row.get::<i32, _>("reservation_id"),
+            qr_code: row.get::<String, _>("qr_code"),
+            qr_code_url: row.get::<Option<String>, _>("qr_code_url").unwrap_or_else(|| "".to_string()),
+            status: row.get::<String, _>("status"),
+            expires_at: row.get::<chrono::DateTime<chrono::Utc>, _>("expires_at"),
+        });
 
         Ok(qr)
     }

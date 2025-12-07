@@ -6,10 +6,26 @@ use crate::core::types::{AppError, AppResult};
 use crate::services::notification_service::{create_notification, NotificationType};
 use log::{error, info};
 use serde_json::json;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 pub struct CovoiturageProactiveNotifications {
     pool: PgPool,
+}
+
+struct ReservationInfo {
+    id: i32,
+    passenger_id: i32,
+    driver_id: i32,
+    depart: String,
+    destination: String,
+    date_depart: chrono::NaiveDate,
+    heure_depart: String,
+    gps_depart: Option<String>,
+}
+
+struct TripInfo {
+    date_depart: chrono::NaiveDate,
+    heure_depart: String,
 }
 
 impl CovoiturageProactiveNotifications {
@@ -27,7 +43,7 @@ impl CovoiturageProactiveNotifications {
         );
 
         // Récupérer infos réservation
-        let reservation = sqlx::query!(
+        let reservation_row = sqlx::query(
             r#"
             SELECT 
                 r.id,
@@ -54,7 +70,17 @@ impl CovoiturageProactiveNotifications {
             AppError::Internal(format!("Erreur récupération réservation: {}", e))
         })?;
 
-        if let Some(res) = reservation {
+        if let Some(row) = reservation_row {
+            let res = ReservationInfo {
+                id: row.get::<i32, _>("id"),
+                passenger_id: row.get::<i32, _>("passenger_id"),
+                driver_id: row.get::<i32, _>("driver_id"),
+                depart: row.get::<String, _>("depart"),
+                destination: row.get::<String, _>("destination"),
+                date_depart: row.get::<chrono::NaiveDate, _>("date_depart"),
+                heure_depart: row.get::<String, _>("heure_depart"),
+                gps_depart: None,
+            };
             // Notification passager
             let _ = create_notification(
                 &self.pool,
@@ -97,7 +123,7 @@ impl CovoiturageProactiveNotifications {
             reservation_id
         );
 
-        let reservation = sqlx::query!(
+        let reservation_row = sqlx::query(
             r#"
             SELECT 
                 r.id,
@@ -124,7 +150,17 @@ impl CovoiturageProactiveNotifications {
             AppError::Internal(format!("Erreur récupération réservation: {}", e))
         })?;
 
-        if let Some(res) = reservation {
+        if let Some(row) = reservation_row {
+            let res = ReservationInfo {
+                id: row.get::<i32, _>("id"),
+                passenger_id: row.get::<i32, _>("passenger_id"),
+                driver_id: row.get::<i32, _>("driver_id"),
+                depart: row.get::<String, _>("depart"),
+                destination: row.get::<String, _>("destination"),
+                date_depart: row.get::<chrono::NaiveDate, _>("date_depart"),
+                heure_depart: row.get::<String, _>("heure_depart"),
+                gps_depart: row.get::<Option<String>, _>("gps_depart"),
+            };
             // Notification passager
             let _ = create_notification(
                 &self.pool,
@@ -242,7 +278,7 @@ impl CovoiturageProactiveNotifications {
         );
 
         // Récupérer date/heure départ
-        let trip_info = sqlx::query!(
+        let trip_row = sqlx::query(
             r#"
             SELECT 
                 c.date_depart,
@@ -261,7 +297,11 @@ impl CovoiturageProactiveNotifications {
             AppError::Internal(format!("Erreur récupération trajet: {}", e))
         })?;
 
-        if let Some(trip) = trip_info {
+        if let Some(row) = trip_row {
+            let trip = TripInfo {
+                date_depart: row.get::<chrono::NaiveDate, _>("date_depart"),
+                heure_depart: row.get::<String, _>("heure_depart"),
+            };
             // Calculer dates rappels
             let departure_datetime = chrono::NaiveDateTime::parse_from_str(
                 &format!(

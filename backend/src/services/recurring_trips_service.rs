@@ -4,7 +4,7 @@
 use crate::core::types::{AppError, AppResult};
 use chrono::{Date, Datelike, Duration, Utc, Weekday};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::collections::HashSet;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -71,8 +71,7 @@ impl RecurringTripsService {
         let end_date = start_date + Duration::days(days_ahead as i64);
 
         // Récupérer tous les trajets récurrents actifs
-        let recurring_trips = sqlx::query_as!(
-            RecurringTripRow,
+        let recurring_trips_rows = sqlx::query(
             r#"
             SELECT 
                 c.id,
@@ -89,15 +88,29 @@ impl RecurringTripsService {
             AND s.is_active = TRUE
             AND c.is_active = TRUE
             AND (c.recurrence_end_date IS NULL OR c.recurrence_end_date >= $1)
-            "#,
-            start_date
+            "#
         )
+        .bind(start_date)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| {
             error!("[RecurringTripsService] Erreur récupération trajets: {}", e);
             AppError::Internal(format!("Erreur récupération trajets récurrents: {}", e))
         })?;
+
+        let recurring_trips: Vec<RecurringTripRow> = recurring_trips_rows
+            .into_iter()
+            .map(|row| RecurringTripRow {
+                id: row.get::<i32, _>("id"),
+                service_id: row.get::<i32, _>("service_id"),
+                user_id: row.get::<i32, _>("user_id"),
+                recurrence_type: row.get::<Option<String>, _>("recurrence_type"),
+                recurrence_days: row.get::<Option<Vec<i32>>, _>("recurrence_days")
+                    .map(|v| v.into_iter().map(|x| x as i16).collect()),
+                recurrence_end_date: row.get::<Option<chrono::NaiveDate>, _>("recurrence_end_date"),
+                start_date: row.get::<chrono::NaiveDate, _>("start_date"),
+            })
+            .collect();
 
         let mut total_instances = 0;
 
@@ -281,8 +294,7 @@ impl RecurringTripsService {
         &self,
         parent_trip_id: i32,
     ) -> AppResult<Vec<RecurringInstance>> {
-        let instances = sqlx::query_as!(
-            RecurringInstance,
+        let instances_rows = sqlx::query(
             r#"
             SELECT 
                 id,
@@ -307,6 +319,19 @@ impl RecurringTripsService {
             );
             AppError::Internal(format!("Erreur récupération instances: {}", e))
         })?;
+
+        let instances: Vec<RecurringInstance> = instances_rows
+            .into_iter()
+            .map(|row| RecurringInstance {
+                id: row.get::<i32, _>("id"),
+                parent_trip_id: row.get::<i32, _>("parent_trip_id"),
+                instance_date: row.get::<chrono::NaiveDate, _>("instance_date"),
+                instance_covoiturage_id: row.get::<Option<i32>, _>("instance_covoiturage_id"),
+                status: row.get::<String, _>("status"),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+                updated_at: row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
+            })
+            .collect();
 
         Ok(instances)
     }

@@ -95,7 +95,7 @@ impl VideoQueueService {
         );
 
         // ✅ Insertion dans la DB
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO video_generation_jobs (
                 job_id, user_id, service_id, product_index,
@@ -103,26 +103,26 @@ impl VideoQueueService {
             )
             VALUES ($1, $2, $3, $4, 'queued', '[]'::jsonb, $5)
             ON CONFLICT (job_id) DO NOTHING
-            "#,
-            item.job_id,
-            item.user_id,
-            item.service_id,
-            item.product_index,
-            item.payload
+            "#
         )
+        .bind(item.job_id)
+        .bind(item.user_id)
+        .bind(item.service_id)
+        .bind(item.product_index)
+        .bind(&item.payload)
         .execute(&self.pool)
         .await?;
 
         // ✅ Ajouter à Redis queue pour traitement distribué
         let job_id = item.job_id.clone();
-        let priority = priority_value as u8;
+        let priority = priority_value.clone() as u8;
         // Cloner les champs nécessaires pour sérialisation
         let item_for_queue = serde_json::json!({
             "job_id": item.job_id,
             "user_id": item.user_id,
             "service_id": item.service_id,
             "product_index": item.product_index,
-            "priority": priority_value,
+            "priority": priority_value.clone(),
             "payload": item.payload,
         });
         let item_json = serde_json::to_string(&item_for_queue)?;
@@ -136,8 +136,7 @@ impl VideoQueueService {
 
     /// ✅ Récupère un batch de jobs à traiter (priorité haute d'abord)
     pub async fn dequeue_batch(&self) -> AppResult<Vec<VideoJobQueueItem>> {
-        let jobs = sqlx::query_as!(
-            VideoJobQueueItem,
+        let jobs_rows = sqlx::query(
             r#"
             SELECT 
                 job_id,
@@ -155,23 +154,37 @@ impl VideoQueueService {
                 created_at ASC
             LIMIT $1
             FOR UPDATE SKIP LOCKED
-            "#,
-            self.config.batch_size as i64
+            "#
         )
+        .bind(self.config.batch_size as i64)
         .fetch_all(&self.pool)
         .await?;
+
+        let jobs: Vec<VideoJobQueueItem> = jobs_rows.into_iter().map(|row| {
+            VideoJobQueueItem {
+                job_id: row.get::<Uuid, _>("job_id"),
+                user_id: row.get::<i32, _>("user_id"),
+                service_id: row.get::<Option<i32>, _>("service_id"),
+                product_index: row.get::<Option<i32>, _>("product_index"),
+                priority: JobPriority::Normal, // Default to Normal
+                payload: row.get::<serde_json::Value, _>("payload"),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+                retry_count: row.get::<i32, _>("retry_count") as u32,
+                max_retries: row.get::<i32, _>("max_retries") as u32,
+            }
+        }).collect();
 
         // ✅ Marquer comme "processing"
         if !jobs.is_empty() {
             let job_ids: Vec<Uuid> = jobs.iter().map(|j| j.job_id).collect();
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 UPDATE video_generation_jobs
                 SET status = 'processing', updated_at = NOW()
                 WHERE job_id = ANY($1)
-                "#,
-                &job_ids[..]
+                "#
             )
+            .bind(&job_ids[..])
             .execute(&self.pool)
             .await?;
         }
@@ -186,7 +199,7 @@ impl VideoQueueService {
         result_media_id: Option<i32>,
         result_payload: Option<serde_json::Value>,
     ) -> AppResult<()> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE video_generation_jobs
             SET 
@@ -195,11 +208,11 @@ impl VideoQueueService {
                 result_payload = $3,
                 updated_at = NOW()
             WHERE job_id = $1
-            "#,
-            job_id,
-            result_media_id,
-            result_payload
+            "#
         )
+        .bind(job_id)
+        .bind(result_media_id)
+        .bind(result_payload)
         .execute(&self.pool)
         .await?;
 
@@ -217,7 +230,7 @@ impl VideoQueueService {
         let job_id_for_log = job_id;
         if retry {
             // ✅ Retry avec backoff exponentiel
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 UPDATE video_generation_jobs
                 SET 
@@ -228,14 +241,14 @@ impl VideoQueueService {
                 AND (
                     SELECT COUNT(*) FROM jsonb_array_elements(progress_steps)
                 ) < 3
-                "#,
-                job_id,
-                error_message
+                "#
             )
+            .bind(job_id)
+            .bind(&error_message)
             .execute(&self.pool)
             .await?;
         } else {
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 UPDATE video_generation_jobs
                 SET 
@@ -243,10 +256,10 @@ impl VideoQueueService {
                     error_message = $2,
                     updated_at = NOW()
                 WHERE job_id = $1
-                "#,
-                job_id,
-                error_message
+                "#
             )
+            .bind(job_id)
+            .bind(&error_message)
             .execute(&self.pool)
             .await?;
         }

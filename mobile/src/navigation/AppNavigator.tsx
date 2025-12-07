@@ -2,7 +2,8 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { modernColors } from '../theme/modernTheme';
 import { defaultScreenOptions, transitionConfig } from './transitions'; // ✅ PHASE 3: Transitions personnalisées
@@ -312,32 +313,43 @@ const LoadingScreen = () => (
 );
 
 // Icône de tab simple
-// ✅ AMÉLIORÉ: TabIcon avec animations Reanimated et badges
-const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }> = ({ name, focused, badgeCount }) => {
-  const React = require('react');
-  const Animated = require('react-native-reanimated').default;
-  const { useAnimatedStyle, useSharedValue, withSpring, withTiming } = Animated;
-  const { useEffect } = React;
-  const { StyleSheet, Text, View } = require('react-native');
-  const { hapticPress } = require('../utils/hapticFeedback');
+// ✅ CORRIGÉ: TabIcon avec react-native-reanimated (pattern correct comme ProductCard/HomeHeader)
+const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }> = React.memo(({ name, focused, badgeCount }) => {
+  // ✅ CORRIGÉ: useSharedValue appelé directement (hook React, stable entre renders)
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(0.6);
 
-  const scale = React.useRef(Animated.useSharedValue(1)).current;
-  const opacity = React.useRef(Animated.useSharedValue(focused ? 1 : 0.6)).current;
-
-  React.useEffect(() => {
-    if (focused) {
-      scale.value = Animated.withSpring(1.15, { damping: 10, stiffness: 200 });
-      opacity.value = Animated.withTiming(1, { duration: 200 });
-    } else {
-      scale.value = Animated.withSpring(1, { damping: 10, stiffness: 200 });
-      opacity.value = Animated.withTiming(0.6, { duration: 200 });
+  // ✅ CORRIGÉ: useEffect avec dépendances correctes
+  useEffect(() => {
+    // ✅ Protection: Vérifier que les fonctions et valeurs existent
+    if (scale && opacity && typeof withSpring === 'function' && typeof withTiming === 'function') {
+      try {
+        scale.value = withSpring(focused ? 1.15 : 1, { damping: 10, stiffness: 200 });
+        opacity.value = withTiming(focused ? 1 : 0.6, { duration: 200 });
+      } catch (error) {
+        console.warn('[TabIcon] Erreur animation:', error);
+      }
     }
-  }, [focused, scale, opacity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focused]); // ✅ IMPORTANT: Ne pas inclure scale et opacity (SharedValues sont stables)
 
-  const animatedStyle = Animated.useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
+  // ✅ CORRIGÉ: useAnimatedStyle avec worklet (automatiquement géré par Babel)
+  // Le callback est automatiquement transformé en worklet par le plugin Babel
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    try {
+      return {
+        transform: [{ scale: scale?.value ?? (focused ? 1.15 : 1) }],
+        opacity: opacity?.value ?? (focused ? 1 : 0.6),
+      };
+    } catch (error) {
+      // Fallback en cas d'erreur
+      return {
+        transform: [{ scale: focused ? 1.15 : 1 }],
+        opacity: focused ? 1 : 0.6,
+      };
+    }
+  });
 
   const icons: { [key: string]: string } = {
     'home': '🏠',
@@ -383,7 +395,7 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
       )}
     </View>
   );
-};
+});
 
 // Stack d'authentification - Très léger
 const AuthStack = () => {

@@ -4,7 +4,7 @@
 use crate::core::types::{AppError, AppResult};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InsuranceConfig {
@@ -107,8 +107,7 @@ impl CovoiturageInsuranceService {
         &self,
         reservation_id: i32,
     ) -> AppResult<Option<InsuranceInfo>> {
-        let insurance = sqlx::query_as!(
-            InsuranceInfo,
+        let insurance_row = sqlx::query(
             r#"
             SELECT 
                 id,
@@ -134,6 +133,19 @@ impl CovoiturageInsuranceService {
             error!("[CovoiturageInsurance] Erreur récupération: {}", e);
             AppError::Internal(format!("Erreur récupération assurance: {}", e))
         })?;
+
+        let insurance = insurance_row.map(|row| InsuranceInfo {
+            id: row.get::<i32, _>("id"),
+            reservation_id: row.get::<i32, _>("reservation_id"),
+            passenger_user_id: row.get::<i32, _>("passenger_user_id"),
+            insurance_provider: row.get::<Option<String>, _>("insurance_provider"),
+            policy_number: row.get::<Option<String>, _>("policy_number"),
+            coverage_amount: row.get::<rust_decimal::Decimal, _>("coverage_amount"),
+            coverage_type: row.get::<String, _>("coverage_type"),
+            status: row.get::<String, _>("status"),
+            start_date: row.get::<chrono::DateTime<chrono::Utc>, _>("start_date"),
+            end_date: row.get::<chrono::DateTime<chrono::Utc>, _>("end_date"),
+        });
 
         Ok(insurance)
     }

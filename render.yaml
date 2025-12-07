@@ -18,7 +18,10 @@ services:
       ln -s /opt/blender/blender /usr/local/bin/blender && \
       chmod +x /opt/blender/blender && \
       blender --version && \
-      cd backend && cargo build --release
+      cd backend && \
+      export SQLX_OFFLINE=true && \
+      echo "Mode SQLx: OFFLINE (pas de vérification DB à la compilation)" && \
+      cargo build --release
     startCommand: cd backend && ./target/release/yukpomnang_backend
     envVars:
       - key: DATABASE_URL
@@ -56,6 +59,11 @@ services:
         # ⚠️ IMPORTANT: Render.com ne supporte pas GPU, utiliser CPU uniquement
       - key: AR_RENDER_OUTPUT_DIR
         value: "/tmp/ar_renders"
+      # ✅ SQLx Configuration - Mode offline pour compilation sans DB
+      - key: SQLX_OFFLINE
+        value: "true"
+        # ✅ IMPORTANT: Mode offline activé pour compilation sans connexion DB
+        # Les métadonnées SQLx doivent être générées localement avec: cargo sqlx prepare
     healthCheckPath: /api/ping
     # ✅ NOUVEAU 2025-12-02: Health check pour load balancer
     # Le load balancer vérifie automatiquement la santé de chaque instance

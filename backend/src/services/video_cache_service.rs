@@ -11,6 +11,7 @@ use uuid::Uuid;
 
 use crate::core::types::{AppError, AppResult};
 use crate::services::redis_service::RedisService;
+use sqlx::Row;
 
 /// ✅ Cache pour les sessions studio (évite les requêtes DB répétées)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,17 +81,17 @@ impl VideoCacheService {
                 .await?;
         } else {
             // ✅ Fallback: Cache en DB
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO studio_session_cache (session_id, cached_data, expires_at)
                 VALUES ($1, $2, NOW() + INTERVAL '1 second' * $3)
                 ON CONFLICT (session_id) DO UPDATE
                 SET cached_data = $2, expires_at = NOW() + INTERVAL '1 second' * $3
-                "#,
-                session.id,
-                serde_json::to_value(&session)?,
-                ttl.as_secs() as i64
+                "#
             )
+            .bind(session.id)
+            .bind(serde_json::to_value(&session)?)
+            .bind(ttl.as_secs() as i64)
             .execute(&self.pool)
             .await?;
         }
@@ -108,19 +109,20 @@ impl VideoCacheService {
         }
 
         // ✅ Fallback: Cache en DB
-        let cached = sqlx::query!(
+        let cached_row = sqlx::query(
             r#"
             SELECT cached_data
             FROM studio_session_cache
             WHERE session_id = $1 AND expires_at > NOW()
-            "#,
-            session_id
+            "#
         )
+        .bind(session_id)
         .fetch_optional(&self.pool)
         .await?;
 
-        if let Some(row) = cached {
-            Ok(Some(serde_json::from_value(row.cached_data)?))
+        if let Some(row) = cached_row {
+            let cached_data: serde_json::Value = row.get::<serde_json::Value, _>("cached_data");
+            Ok(Some(serde_json::from_value(cached_data)?))
         } else {
             Ok(None)
         }

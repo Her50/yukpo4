@@ -11,7 +11,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use log;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
 #[derive(Debug, Serialize)]
@@ -106,12 +106,11 @@ pub async fn get_creator_analytics(
     let offset = params.offset.unwrap_or(0);
 
     // Récupérer les vidéos du créateur avec analytics
-    let videos_result = sqlx::query_as!(
-        VideoAnalytics,
+    let videos_rows = sqlx::query(
         r#"
         SELECT 
             m.id::text as video_id,
-            COALESCE(s.data->>'titre_service'->>'valeur', 'Sans titre') as title,
+            COALESCE(s.data->'titre_service'->>'valeur', 'Sans titre') as title,
             COALESCE(ce.views, 0) as views,
             COALESCE(ce.likes, 0) as likes,
             COALESCE(ce.saves, 0) as saves,
@@ -180,18 +179,38 @@ pub async fn get_creator_analytics(
                  ce.video_duration_ms, ce.impressions, ce.clicks, m.uploaded_at
         ORDER BY ce.views DESC NULLS LAST
         LIMIT $4 OFFSET $5
-        "#,
-        start_date,
-        end_date,
-        user_id,
-        limit,
-        offset
+        "#
     )
+    .bind(start_date)
+    .bind(end_date)
+    .bind(user_id)
+    .bind(limit as i64)
+    .bind(offset as i64)
     .fetch_all(pool)
     .await;
 
-    let videos = match videos_result {
-        Ok(vids) => vids,
+    let videos = match videos_rows {
+        Ok(rows) => {
+            rows.into_iter().map(|row| {
+                VideoAnalytics {
+                    video_id: row.get::<String, _>("video_id"),
+                    title: row.get::<String, _>("title"),
+                    views: row.get::<i64, _>("views"),
+                    likes: row.get::<i64, _>("likes"),
+                    saves: row.get::<i64, _>("saves"),
+                    shares: row.get::<i64, _>("shares"),
+                    comments: row.get::<i64, _>("comments"),
+                    avg_watch_duration_ms: row.get::<i64, _>("avg_watch_duration_ms"),
+                    completion_rate: row.get::<f64, _>("completion_rate"),
+                    engagement_rate: row.get::<f64, _>("engagement_rate"),
+                    reach: row.get::<i64, _>("reach"),
+                    impressions: row.get::<i64, _>("impressions"),
+                    ctr: row.get::<f64, _>("ctr"),
+                    created_at: row.get::<String, _>("created_at"),
+                    last_updated: row.get::<String, _>("last_updated"),
+                }
+            }).collect()
+        },
         Err(e) => {
             log::error!("❌ [CreatorAnalytics] Erreur récupération vidéos: {}", e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
@@ -322,12 +341,11 @@ pub async fn get_video_analytics(
         video_id
     );
 
-    let result = sqlx::query_as!(
-        VideoAnalytics,
+    let video_row = sqlx::query(
         r#"
         SELECT 
             m.id::text as video_id,
-            COALESCE(s.data->>'titre_service'->>'valeur', 'Sans titre') as title,
+            COALESCE(s.data->'titre_service'->>'valeur', 'Sans titre') as title,
             COALESCE(ce.views, 0) as views,
             COALESCE(ce.likes, 0) as likes,
             COALESCE(ce.saves, 0) as saves,
@@ -391,14 +409,33 @@ pub async fn get_video_analytics(
                  comment_counts.comments, ce.avg_watch_duration_ms, 
                  ce.video_duration_ms, ce.impressions, ce.clicks, m.uploaded_at
         LIMIT 1
-        "#,
-        video_id
+        "#
     )
+    .bind(video_id)
     .fetch_optional(pool)
     .await;
 
-    match result {
-        Ok(Some(analytics)) => Ok(Json(analytics)),
+    match video_row {
+        Ok(Some(row)) => {
+            let analytics = VideoAnalytics {
+                video_id: row.get::<String, _>("video_id"),
+                title: row.get::<String, _>("title"),
+                views: row.get::<i64, _>("views"),
+                likes: row.get::<i64, _>("likes"),
+                saves: row.get::<i64, _>("saves"),
+                shares: row.get::<i64, _>("shares"),
+                comments: row.get::<i64, _>("comments"),
+                avg_watch_duration_ms: row.get::<i64, _>("avg_watch_duration_ms"),
+                completion_rate: row.get::<f64, _>("completion_rate"),
+                engagement_rate: row.get::<f64, _>("engagement_rate"),
+                reach: row.get::<i64, _>("reach"),
+                impressions: row.get::<i64, _>("impressions"),
+                ctr: row.get::<f64, _>("ctr"),
+                created_at: row.get::<String, _>("created_at"),
+                last_updated: row.get::<String, _>("last_updated"),
+            };
+            Ok(Json(analytics))
+        },
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             log::error!("❌ [CreatorAnalytics] Erreur: {}", e);

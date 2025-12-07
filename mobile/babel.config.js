@@ -1,9 +1,8 @@
-module.exports = function(api) {
+module.exports = function (api) {
   api.cache(true);
   return {
     presets: ['babel-preset-expo'],
     plugins: [
-      'react-native-reanimated/plugin', // ✅ Réactivé pour les animations
       [
         'module-resolver',
         {
@@ -18,6 +17,8 @@ module.exports = function(api) {
           },
         },
       ],
+      // ✅ CRITIQUE: react-native-reanimated/plugin DOIT être en dernier
+      'react-native-reanimated/plugin',
     ],
     // ✅ CORRECTION: Configuration UTF-8 sans plugin externe
     // env: {

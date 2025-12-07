@@ -4,7 +4,7 @@
  */
 use crate::core::types::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -76,7 +76,7 @@ impl AdvancedAnalyticsService {
     /// Analyse complète d'une vidéo
     pub async fn analyze_video(pool: &PgPool, video_id: &str) -> AppResult<VideoAnalytics> {
         // Récupérer données de base
-        let base_stats = sqlx::query!(
+        let base_stats_row = sqlx::query(
             r#"
             SELECT 
                 COUNT(*) as total_views,
@@ -86,15 +86,15 @@ impl AdvancedAnalyticsService {
             FROM content_engagement
             WHERE content_id = $1
             AND created_at > NOW() - INTERVAL '30 days'
-            "#,
-            video_id
+            "#
         )
+        .bind(video_id)
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur analytics base: {}", e)))?;
 
         // Calculer engagement rate
-        let engagement_data = sqlx::query!(
+        let engagement_row = sqlx::query(
             r#"
             SELECT 
                 COUNT(CASE WHEN liked = TRUE THEN 1 END) as likes,
@@ -104,17 +104,20 @@ impl AdvancedAnalyticsService {
             FROM content_engagement
             WHERE content_id = $1
             AND created_at > NOW() - INTERVAL '30 days'
-            "#,
-            video_id
+            "#
         )
+        .bind(video_id)
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur engagement: {}", e)))?;
 
-        let total_engagements = (engagement_data.likes.unwrap_or(0)
-            + engagement_data.saves.unwrap_or(0)
-            + engagement_data.shares.unwrap_or(0)) as f64;
-        let total_views = engagement_data.total_views.unwrap_or(1) as f64;
+        let likes: i64 = engagement_row.get::<Option<i64>, _>("likes").unwrap_or(0);
+        let saves: i64 = engagement_row.get::<Option<i64>, _>("saves").unwrap_or(0);
+        let shares: i64 = engagement_row.get::<Option<i64>, _>("shares").unwrap_or(0);
+        let total_views_eng: i64 = engagement_row.get::<Option<i64>, _>("total_views").unwrap_or(1);
+        
+        let total_engagements = (likes + saves + shares) as f64;
+        let total_views = total_views_eng as f64;
         let engagement_rate = (total_engagements / total_views) * 100.0;
 
         // Analyser points de drop-off
@@ -128,10 +131,10 @@ impl AdvancedAnalyticsService {
 
         Ok(VideoAnalytics {
             video_id: video_id.to_string(),
-            total_views: base_stats.total_views.unwrap_or(0),
-            unique_viewers: base_stats.unique_viewers.unwrap_or(0),
-            avg_watch_duration: base_stats.avg_watch_duration.unwrap_or(0.0) / 1000.0, // en secondes
-            completion_rate: base_stats.avg_completion_rate.unwrap_or(0.0) * 100.0,
+            total_views: base_stats_row.get::<Option<i64>, _>("total_views").unwrap_or(0),
+            unique_viewers: base_stats_row.get::<Option<i64>, _>("unique_viewers").unwrap_or(0),
+            avg_watch_duration: base_stats_row.get::<Option<f64>, _>("avg_watch_duration").unwrap_or(0.0) / 1000.0, // en secondes
+            completion_rate: base_stats_row.get::<Option<f64>, _>("avg_completion_rate").unwrap_or(0.0) * 100.0,
             engagement_rate,
             drop_off_points,
             heatmap_data,
@@ -141,7 +144,7 @@ impl AdvancedAnalyticsService {
 
     /// Analyse les points de drop-off (où les utilisateurs quittent)
     async fn analyze_drop_offs(pool: &PgPool, video_id: &str) -> AppResult<Vec<DropOffPoint>> {
-        let data = sqlx::query!(
+        let data_rows = sqlx::query(
             r#"
             SELECT 
                 FLOOR(watch_duration_ms / 1000.0 / 5) * 5 as timestamp_bucket,
@@ -152,9 +155,9 @@ impl AdvancedAnalyticsService {
             AND watch_duration_ms IS NOT NULL
             GROUP BY timestamp_bucket
             ORDER BY timestamp_bucket
-            "#,
-            video_id
+            "#
         )
+        .bind(video_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur drop-off: {}", e)))?;
@@ -162,10 +165,10 @@ impl AdvancedAnalyticsService {
         let mut drop_offs = Vec::new();
         let mut previous_count = 0i64;
 
-        for row in data {
-            let timestamp = row.timestamp_bucket.unwrap_or(0.0);
-            let current_count = row.viewers_at_time.unwrap_or(0);
-            let dropped = row.dropped_off.unwrap_or(0);
+        for row in data_rows {
+            let timestamp = row.get::<Option<f64>, _>("timestamp_bucket").unwrap_or(0.0);
+            let current_count = row.get::<Option<i64>, _>("viewers_at_time").unwrap_or(0);
+            let dropped = row.get::<Option<i64>, _>("dropped_off").unwrap_or(0);
 
             if previous_count > 0 {
                 let drop_off_pct = (dropped as f64 / previous_count as f64) * 100.0;
@@ -183,7 +186,7 @@ impl AdvancedAnalyticsService {
 
     /// Génère heatmap des interactions
     async fn generate_heatmap(pool: &PgPool, video_id: &str) -> AppResult<Vec<HeatmapPoint>> {
-        let data = sqlx::query!(
+        let data_rows = sqlx::query(
             r#"
             SELECT 
                 FLOOR(watch_duration_ms / 1000.0) as timestamp_seconds,
@@ -196,60 +199,56 @@ impl AdvancedAnalyticsService {
             AND watch_duration_ms IS NOT NULL
             GROUP BY timestamp_seconds
             ORDER BY timestamp_seconds
-            "#,
-            video_id
+            "#
         )
+        .bind(video_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur heatmap: {}", e)))?;
 
         let mut heatmap = Vec::new();
 
-        for row in data {
-            let timestamp = row.timestamp_seconds.unwrap_or(0.0);
+        for row in data_rows {
+            let timestamp = row.get::<Option<f64>, _>("timestamp_seconds").unwrap_or(0.0);
 
             // Likes
-            if let Some(likes) = row.likes {
-                if likes > 0 {
-                    heatmap.push(HeatmapPoint {
-                        timestamp_seconds: timestamp,
-                        interaction_count: likes,
-                        interaction_type: "like".to_string(),
-                    });
-                }
+            let likes: i64 = row.get::<Option<i64>, _>("likes").unwrap_or(0);
+            if likes > 0 {
+                heatmap.push(HeatmapPoint {
+                    timestamp_seconds: timestamp,
+                    interaction_count: likes,
+                    interaction_type: "like".to_string(),
+                });
             }
 
             // Saves
-            if let Some(saves) = row.saves {
-                if saves > 0 {
-                    heatmap.push(HeatmapPoint {
-                        timestamp_seconds: timestamp,
-                        interaction_count: saves,
-                        interaction_type: "save".to_string(),
-                    });
-                }
+            let saves: i64 = row.get::<Option<i64>, _>("saves").unwrap_or(0);
+            if saves > 0 {
+                heatmap.push(HeatmapPoint {
+                    timestamp_seconds: timestamp,
+                    interaction_count: saves,
+                    interaction_type: "save".to_string(),
+                });
             }
 
             // Shares
-            if let Some(shares) = row.shares {
-                if shares > 0 {
-                    heatmap.push(HeatmapPoint {
-                        timestamp_seconds: timestamp,
-                        interaction_count: shares,
-                        interaction_type: "share".to_string(),
-                    });
-                }
+            let shares: i64 = row.get::<Option<i64>, _>("shares").unwrap_or(0);
+            if shares > 0 {
+                heatmap.push(HeatmapPoint {
+                    timestamp_seconds: timestamp,
+                    interaction_count: shares,
+                    interaction_type: "share".to_string(),
+                });
             }
 
             // Skips
-            if let Some(skips) = row.skips {
-                if skips > 0 {
-                    heatmap.push(HeatmapPoint {
-                        timestamp_seconds: timestamp,
-                        interaction_count: skips,
-                        interaction_type: "skip".to_string(),
-                    });
-                }
+            let skips: i64 = row.get::<Option<i64>, _>("skips").unwrap_or(0);
+            if skips > 0 {
+                heatmap.push(HeatmapPoint {
+                    timestamp_seconds: timestamp,
+                    interaction_count: skips,
+                    interaction_type: "skip".to_string(),
+                });
             }
         }
 
@@ -443,7 +442,7 @@ impl AdvancedAnalyticsService {
         start_date: &str,
         end_date: &str,
     ) -> AppResult<Vec<CohortAnalysis>> {
-        let data = sqlx::query!(
+        let data_rows = sqlx::query(
             r#"
             WITH user_cohorts AS (
                 SELECT 
@@ -461,19 +460,19 @@ impl AdvancedAnalyticsService {
             FROM user_cohorts
             GROUP BY cohort_date
             ORDER BY cohort_date
-            "#,
-            start_date,
-            end_date
+            "#
         )
+        .bind(start_date)
+        .bind(end_date)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur cohortes: {}", e)))?;
 
         let mut cohorts = Vec::new();
 
-        for row in data {
-            let cohort_date = row.cohort_date.unwrap_or_default();
-            let cohort_size = row.cohort_size.unwrap_or(0);
+        for row in data_rows {
+            let cohort_date = row.get::<Option<String>, _>("cohort_date").unwrap_or_default();
+            let cohort_size = row.get::<Option<i64>, _>("cohort_size").unwrap_or(0);
 
             // Analyser rétention par jour
             let mut retention_days = Vec::new();

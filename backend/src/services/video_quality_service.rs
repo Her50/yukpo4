@@ -98,14 +98,14 @@ impl VideoQualityService {
             let output_path = output_dir.join(&output_filename);
 
             // Générer la vidéo avec FFmpeg
+            let scale_filter = format!(
+                "scale={}:{}:force_original_aspect_ratio=decrease",
+                quality.width, quality.height
+            );
             let ffmpeg_args = vec![
                 "-i",
                 local_video_path.to_str().unwrap(),
                 "-vf",
-                let scale_filter = format!(
-                    "scale={}:{}:force_original_aspect_ratio=decrease",
-                    quality.width, quality.height
-                );
                 &scale_filter,
                 "-c:v",
                 "libx264",
@@ -204,14 +204,14 @@ impl VideoQualityService {
         );
         let output_path = output_dir.join(&output_filename);
 
+        let scale_filter = format!(
+            "scale={}:{}:force_original_aspect_ratio=decrease",
+            quality.width, quality.height
+        );
         let ffmpeg_args = vec![
             "-i",
             local_video_path.to_str().unwrap(),
             "-vf",
-            let scale_filter = format!(
-                "scale={}:{}:force_original_aspect_ratio=decrease",
-                quality.width, quality.height
-            );
             &scale_filter,
             "-c:v",
             "libx264",

@@ -6836,6 +6836,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto delivery_proof_media: {}", e),
     }
 
+    // ✅ NOUVEAU 2025-12-07 : Tables sociales vidéo (duets, remixes, stitches, video_reactions)
+    match ensure_social_video_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: social video tables OK"),
+        Err(e) => error!("❌ Erreur migration auto social video tables: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-01-29 : Tables covoiturage (assurance, QR codes, trajets récurrents)
+    match ensure_covoiturage_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: covoiturage tables OK"),
+        Err(e) => error!("❌ Erreur migration auto covoiturage tables: {}", e),
+    }
+
     // ✅ NOUVEAU : Table delivery_engine_pricing pour calcul coût par type d'engin
     match ensure_delivery_engine_pricing_table(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_engine_pricing OK"),
@@ -11894,5 +11906,120 @@ pub async fn ensure_menu_planning_tables(pool: &PgPool) -> Result<(), sqlx::Erro
     execute_multiple_sql_commands(pool, migration_sql).await?;
 
     info!("✅ Tables planification menus créées");
+    Ok(())
+}
+
+/// ✅ 2025-12-07 : Tables sociales vidéo (duets, remixes, stitches, video_reactions)
+/// Migration: 20251207_create_social_video_tables.sql
+pub async fn ensure_social_video_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables sociales vidéo (duets, remixes, stitches, video_reactions)...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251207_create_social_video_tables.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Tables sociales vidéo créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-29 : Tables covoiturage (assurance, QR codes, trajets récurrents)
+/// Migrations: 20250129_add_insurance_qr_covoiturage.sql, 20250129_add_recurring_trips_covoiturage.sql
+pub async fn ensure_covoiturage_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables covoiturage (assurance, QR codes, trajets récurrents)...");
+
+    // Créer table covoiturage_insurance
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS covoiturage_insurance (
+            id SERIAL PRIMARY KEY,
+            reservation_id INTEGER NOT NULL REFERENCES specialized_reservations(id) ON DELETE CASCADE,
+            passenger_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            insurance_provider TEXT,
+            policy_number TEXT,
+            coverage_amount DECIMAL(10,2),
+            coverage_type TEXT DEFAULT 'basic' CHECK (coverage_type IN ('basic', 'premium', 'full')),
+            status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired', 'cancelled')),
+            start_date TIMESTAMPTZ NOT NULL,
+            end_date TIMESTAMPTZ NOT NULL,
+            metadata JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    // Créer table reservation_qr_codes
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS reservation_qr_codes (
+            id SERIAL PRIMARY KEY,
+            reservation_id INTEGER NOT NULL REFERENCES specialized_reservations(id) ON DELETE CASCADE,
+            qr_code TEXT NOT NULL UNIQUE,
+            qr_code_url TEXT,
+            status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'validated', 'expired', 'cancelled')),
+            validated_at TIMESTAMPTZ,
+            validated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            metadata JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter colonnes récurrence dans covoiturages
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            ALTER TABLE covoiturages ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE covoiturages ADD COLUMN IF NOT EXISTS recurrence_type TEXT CHECK (recurrence_type IN ('daily', 'weekly', 'monthly', NULL));
+            ALTER TABLE covoiturages ADD COLUMN IF NOT EXISTS recurrence_days INTEGER[];
+            ALTER TABLE covoiturages ADD COLUMN IF NOT EXISTS recurrence_end_date DATE;
+            ALTER TABLE covoiturages ADD COLUMN IF NOT EXISTS parent_trip_id INTEGER REFERENCES covoiturages(id) ON DELETE CASCADE;
+            ALTER TABLE covoiturages ADD COLUMN IF NOT EXISTS recurrence_pattern JSONB DEFAULT '{}'::jsonb;
+        END $$;
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    // Créer table recurring_trip_instances
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS recurring_trip_instances (
+            id SERIAL PRIMARY KEY,
+            parent_trip_id INTEGER NOT NULL REFERENCES covoiturages(id) ON DELETE CASCADE,
+            instance_date DATE NOT NULL,
+            instance_covoiturage_id INTEGER REFERENCES covoiturages(id) ON DELETE SET NULL,
+            status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'cancelled', 'completed')),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE(parent_trip_id, instance_date)
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    // Créer index
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturage_insurance_reservation ON covoiturage_insurance(reservation_id)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_reservation_qr_codes_reservation ON reservation_qr_codes(reservation_id)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_reservation_qr_codes_qr_code ON reservation_qr_codes(qr_code)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_recurring_instances_parent ON recurring_trip_instances(parent_trip_id)")
+        .execute(pool).await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_recurring_instances_date ON recurring_trip_instances(instance_date)")
+        .execute(pool).await?;
+
+    info!("✅ Tables covoiturage créées");
     Ok(())
 }
