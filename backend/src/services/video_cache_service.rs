@@ -83,14 +83,13 @@ impl VideoCacheService {
             sqlx::query!(
                 r#"
                 INSERT INTO studio_session_cache (session_id, cached_data, expires_at)
-                VALUES ($1, $2, NOW() + INTERVAL '%d seconds')
+                VALUES ($1, $2, NOW() + INTERVAL '1 second' * $3)
                 ON CONFLICT (session_id) DO UPDATE
-                SET cached_data = $2, expires_at = NOW() + INTERVAL '%d seconds'
+                SET cached_data = $2, expires_at = NOW() + INTERVAL '1 second' * $3
                 "#,
                 session.id,
                 serde_json::to_value(&session)?,
-                ttl.as_secs(),
-                ttl.as_secs()
+                ttl.as_secs() as i64
             )
             .execute(&self.pool)
             .await?;

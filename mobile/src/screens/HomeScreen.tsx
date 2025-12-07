@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ReactNavigation from '@react-navigation/native';
 import * as Location from 'expo-location';
-import React, { useReducer } from 'react';
+import React, { Suspense, useReducer } from 'react';
 import ReactNative from 'react-native';
 import { AnimatedCard } from '../components/AnimatedCard'; // ✅ NOUVEAU: Animations d'entrée automatiques
 import ChatHistoryModal from '../components/ChatHistoryModal';
@@ -36,12 +36,13 @@ const SpecializedServicesSection = React.lazy(() => import('../components/Specia
 const GlobalPromoHighlights = React.lazy(() => import('../components/promotions/GlobalPromoHighlights'));
 const InfiniteFeed = React.lazy(() => import('../components/InfiniteFeed').then(module => ({ default: module.InfiniteFeed })));
 // ✅ NOUVEAU: Composants UX améliorés
+import SafeIcon from '../components/SafeIcon';
 import { EnhancedSkeletonLoader, OfflineIndicator, RippleButton, ScreenTransition } from '../components/ux';
 import abTestingService from '../services/abTestingService'; // ✅ NOUVEAU: A/B Testing
 import analyticsService from '../services/analyticsService'; // ✅ NOUVEAU: Analytics
 import gamificationService from '../services/gamificationService'; // ✅ NOUVEAU: Gamification
 import { offlineService } from '../services/offlineService';
-import { pushNotificationService } from '../services/pushNotificationService';
+import pushNotificationService from '../services/pushNotificationService';
 // ✅ ShareServiceModal existe déjà dans ../components/ShareServiceModal.tsx
 
 const { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform, RefreshControl, FlatList, ActivityIndicator } = ReactNative;
@@ -266,16 +267,25 @@ const HomeScreen: React.FC = () => {
     // ✅ NOUVEAU: Initialiser les services UX
     React.useEffect(() => {
         // Initialiser les notifications push
-        pushNotificationService.initialize().then(token => {
+        pushNotificationService.registerForPushNotifications().then(token => {
             if (token) {
                 console.log('[HomeScreen] ✅ Notifications push initialisées:', token);
             }
         });
 
         // Écouter les changements de connexion
-        const unsubscribe = offlineService.onConnectionChange((isOnline) => {
-            console.log('[HomeScreen] 📡 État de connexion:', isOnline ? 'En ligne' : 'Hors ligne');
-        });
+        const handleOnline = () => {
+            console.log('[HomeScreen] 📡 État de connexion: En ligne');
+        };
+        const handleOffline = () => {
+            console.log('[HomeScreen] 📡 État de connexion: Hors ligne');
+        };
+        offlineService.on('online', handleOnline);
+        offlineService.on('offline', handleOffline);
+        const unsubscribe = () => {
+            offlineService.off('online', handleOnline);
+            offlineService.off('offline', handleOffline);
+        };
 
         // ✅ NOUVEAU: Initialiser gamification (streak, points)
         if (user?.id) {

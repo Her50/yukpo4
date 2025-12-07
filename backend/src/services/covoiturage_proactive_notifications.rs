@@ -37,10 +37,10 @@ impl CovoiturageProactiveNotifications {
                 c.destination,
                 c.date_depart,
                 c.heure_depart
-            FROM reservations r
+            FROM specialized_reservations r
             INNER JOIN services s ON s.id = r.service_id
             INNER JOIN covoiturages c ON c.service_id = s.id
-            WHERE r.id = $1
+            WHERE r.id = $1 AND r.reservation_type = 'covoiturage'
             "#
         )
         .bind(reservation_id)
@@ -107,10 +107,10 @@ impl CovoiturageProactiveNotifications {
                 c.destination,
                 c.heure_depart,
                 c.gps_depart
-            FROM reservations r
+            FROM specialized_reservations r
             INNER JOIN services s ON s.id = r.service_id
             INNER JOIN covoiturages c ON c.service_id = s.id
-            WHERE r.id = $1
+            WHERE r.id = $1 AND r.reservation_type = 'covoiturage'
             "#
         )
         .bind(reservation_id)
@@ -247,10 +247,10 @@ impl CovoiturageProactiveNotifications {
             SELECT 
                 c.date_depart,
                 c.heure_depart
-            FROM reservations r
+            FROM specialized_reservations r
             INNER JOIN services s ON s.id = r.service_id
             INNER JOIN covoiturages c ON c.service_id = s.id
-            WHERE r.id = $1
+            WHERE r.id = $1 AND r.reservation_type = 'covoiturage'
             "#
         )
         .bind(reservation_id)

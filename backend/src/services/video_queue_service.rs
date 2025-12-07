@@ -152,10 +152,6 @@ impl VideoQueueService {
             FROM video_generation_jobs
             WHERE status = 'queued'
             ORDER BY 
-                CASE 
-                    WHEN user_id IN (SELECT id FROM users WHERE plan = 'premium') THEN 0
-                    ELSE 1
-                END,
                 created_at ASC
             LIMIT $1
             FOR UPDATE SKIP LOCKED

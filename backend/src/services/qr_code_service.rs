@@ -136,7 +136,7 @@ impl QRCodeService {
             r#"
             SELECT EXISTS(
                 SELECT 1
-                FROM reservations r
+                FROM specialized_reservations r
                 INNER JOIN services s ON s.id = r.service_id
                 INNER JOIN covoiturages c ON c.service_id = s.id
                 WHERE r.id = $1 AND c.user_id = $2

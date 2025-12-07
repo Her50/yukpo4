@@ -328,6 +328,27 @@ impl AdvancedAnalyticsService {
 
     /// Analyse A/B test
     pub async fn analyze_ab_test(pool: &PgPool, test_id: &str) -> AppResult<ABTestResult> {
+        // Table ab_tests n'existe pas encore - retourner résultat vide
+        log::warn!("Table ab_tests n'existe pas, retour résultat vide");
+        return Ok(ABTestResult {
+            test_id: test_id.to_string(),
+            variant_a: TestVariant {
+                name: "A".to_string(),
+                participants: 0,
+                conversions: 0,
+                conversion_rate: 0.0,
+            },
+            variant_b: TestVariant {
+                name: "B".to_string(),
+                participants: 0,
+                conversions: 0,
+                conversion_rate: 0.0,
+            },
+            winner: None,
+            confidence: 0.0,
+        });
+        
+        /* TODO: Décommenter quand table ab_tests sera créée
         let data = sqlx::query!(
             r#"
             SELECT 
@@ -413,6 +434,7 @@ impl AdvancedAnalyticsService {
             winner,
             confidence,
         })
+        */
     }
 
     /// Analyse cohorte d'utilisateurs
