@@ -24,7 +24,7 @@ pub struct PluginListResponse {
 
 /// Liste tous les plugins installés
 pub async fn list_plugins(
-    State(state): State<Arc<crate::state::AppState>>,
+    State(_state): State<Arc<crate::state::AppState>>,
 ) -> AppResult<Json<PluginListResponse>> {
     info!("[PluginController] Liste des plugins");
 
@@ -43,7 +43,7 @@ pub async fn list_plugins(
 
 /// Récupère un plugin par son ID
 pub async fn get_plugin(
-    State(state): State<Arc<crate::state::AppState>>,
+    State(_state): State<Arc<crate::state::AppState>>,
     Path(plugin_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     info!("[PluginController] Récupération plugin: {}", plugin_id);
@@ -71,7 +71,7 @@ pub async fn get_plugin(
 
 /// Recherche dans le marketplace
 pub async fn search_marketplace(
-    State(state): State<Arc<crate::state::AppState>>,
+    State(_state): State<Arc<crate::state::AppState>>,
     Query(params): Query<PluginSearchQuery>,
 ) -> AppResult<Json<PluginListResponse>> {
     info!("[PluginController] Recherche marketplace: {:?}", params.q);
@@ -93,7 +93,7 @@ pub async fn search_marketplace(
 
     let query = params.q.as_deref().unwrap_or("");
     let plugins = plugin_service
-        .search_marketplace(&state.pg, query, category, params.limit)
+        .search_marketplace(&_state.pg, query, category, params.limit)
         .await?;
     let total = plugins.len();
 
@@ -106,7 +106,7 @@ pub async fn search_marketplace(
 
 /// Installe un plugin
 pub async fn install_plugin(
-    State(state): State<Arc<crate::state::AppState>>,
+    State(_state): State<Arc<crate::state::AppState>>,
     Json(metadata): Json<PluginMetadata>,
 ) -> AppResult<Json<serde_json::Value>> {
     info!("[PluginController] Installation plugin: {}", metadata.id);
@@ -129,7 +129,7 @@ pub async fn install_plugin(
 
 /// Active un plugin
 pub async fn activate_plugin(
-    State(state): State<Arc<crate::state::AppState>>,
+    State(_state): State<Arc<crate::state::AppState>>,
     Path(plugin_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     info!("[PluginController] Activation plugin: {}", plugin_id);
@@ -146,7 +146,7 @@ pub async fn activate_plugin(
 
 /// Désactive un plugin
 pub async fn deactivate_plugin(
-    State(state): State<Arc<crate::state::AppState>>,
+    State(_state): State<Arc<crate::state::AppState>>,
     Path(plugin_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     info!("[PluginController] Désactivation plugin: {}", plugin_id);
@@ -163,7 +163,7 @@ pub async fn deactivate_plugin(
 
 /// Désinstalle un plugin
 pub async fn uninstall_plugin(
-    State(state): State<Arc<crate::state::AppState>>,
+    State(_state): State<Arc<crate::state::AppState>>,
     Path(plugin_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     info!("[PluginController] Désinstallation plugin: {}", plugin_id);

@@ -180,16 +180,18 @@ impl PubliciteFilteringService {
         .fetch_optional(pool)
         .await?;
 
-        if let Some(placements_array) = placements.and_then(|v| v.as_array()) {
-            let active_placements: Vec<String> = placements_array
-                .iter()
-                .filter_map(|p| {
-                    p.get("type")
-                        .and_then(|t| t.as_str())
-                        .map(|s| s.to_string())
-                })
-                .collect();
-            return Ok(active_placements);
+        if let Some(placements_value) = placements {
+            if let Some(placements_array) = placements_value.as_array() {
+                let active_placements: Vec<String> = placements_array
+                    .iter()
+                    .filter_map(|p| {
+                        p.get("type")
+                            .and_then(|t| t.as_str())
+                            .map(|s| s.to_string())
+                    })
+                    .collect();
+                return Ok(active_placements);
+            }
         }
 
         Ok(vec!["feed".to_string()]) // Par défaut: feed

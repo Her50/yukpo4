@@ -3051,12 +3051,13 @@ impl NativeSearchService {
                     ));
 
                     // Limiter aux page_size premiers résultats
+                    let cached_len = cached_results.len();
                     let results: Vec<SearchResult> = cached_results
                         .into_iter()
                         .take(page_size as usize)
                         .collect();
 
-                    let has_more = cached_results.len() > page_size as usize;
+                    let has_more = cached_len > page_size as usize;
                     let next_cursor = if has_more && !results.is_empty() {
                         if let Some(last) = results.last() {
                             self.encode_cursor(last.service_id, last.total_score).ok()

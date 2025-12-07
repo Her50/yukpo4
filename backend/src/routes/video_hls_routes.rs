@@ -95,7 +95,7 @@ async fn generate_dash_variants(
     let hls_service = HLSDashService::new(output_dir.clone());
 
     match hls_service
-        .generate_dash_variants(&video_path, &video_id)
+        .generate_dash_variants(&video_path.unwrap(), &video_id)
         .await
     {
         Ok(manifest_url) => Ok(Json(serde_json::json!({

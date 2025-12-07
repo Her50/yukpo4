@@ -182,7 +182,7 @@ pub async fn save_auto_optimization_settings(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<SaveAutoOptimizationSettingsRequest>,
 ) -> Result<ResponseJson<AutoOptimizationSettingsResponse>, StatusCode> {
-    let pool = &state.pg;
+    let _pool = &state.pg;
 
     let settings_json =
         serde_json::to_value(&payload.settings).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

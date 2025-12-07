@@ -54,13 +54,11 @@
     "expo-localization": "~16.0.1",
     "expo-location": "~18.0.10",
     "expo-media-library": "~17.0.6",
-    "expo-modules-core": "~2.2.3",
     "expo-network": "~7.0.5",
     "expo-notifications": "^0.29.14",
     "expo-sharing": "~13.0.1",
     "expo-splash-screen": "~0.29.24",
     "expo-status-bar": "~2.0.1",
-    "expo-three": "^7.0.0",
     "expo-video": "~2.0.1",
     "graphql": "^16.9.0",
     "i18n-js": "^4.5.1",
@@ -89,8 +87,7 @@
     "react-native-vision-camera": "^4.0.0",
     "react-native-webrtc": "^124.0.3",
     "react-query": "^3.39.3",
-    "sentry-expo": "~7.0.0",
-    "vision-camera-code-scanner": "^0.2.0"
+    "sentry-expo": "~7.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.23.0",
@@ -126,15 +123,9 @@
           "react-native-fs",
           "react-native-keyboard-aware-scroll-view",
           "react-native-webrtc",
-          "react-native-skeleton-placeholder",
-          "vision-camera-code-scanner"
+          "react-native-skeleton-placeholder"
         ]
       }
-    },
-    "install": {
-      "exclude": [
-        "expo-modules-core"
-      ]
     }
   },
   "private": true

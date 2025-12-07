@@ -68,7 +68,7 @@ pub struct TrafficInfo {
 /// ✅ POST /api/taxi/optimize-route
 /// Optimiser un itinéraire avec IA
 pub async fn optimize_route(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<RouteOptimizationRequest>,
 ) -> AppResult<impl IntoResponse> {

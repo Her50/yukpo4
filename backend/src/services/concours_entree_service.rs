@@ -130,7 +130,7 @@ impl ConcoursEntreeService {
                 &self.state.redis_client,
                 cache_key,
                 &json_str,
-                300, // 5 minutes
+                Some(300u64), // 5 minutes
             )
             .await;
         }

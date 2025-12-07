@@ -353,7 +353,7 @@ pub struct OptimizeBatchRequest {
 /// GET /api/delivery/eta/metrics
 /// Obtient les métriques de performance ETA
 pub async fn get_eta_metrics(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     // Note: Pour obtenir les métriques, il faudrait stocker le service dans AppState
     // Pour l'instant, retourner un message indiquant que les métriques sont disponibles

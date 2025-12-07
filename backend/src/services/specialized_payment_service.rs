@@ -64,6 +64,9 @@ impl SpecializedPaymentService {
                 .or_else(|| Some(format!("Paiement réservation #{}", reservation_id))),
         };
 
+        // Cloner payment_method avant de déplacer payment_request
+        let payment_method_str = format!("{:?}", payment_request.payment_method);
+        
         let payment_response = self
             .payment_service
             .process_payment(payment_request)
@@ -79,7 +82,7 @@ impl SpecializedPaymentService {
             WHERE id = $2
             "#,
         )
-        .bind(format!("{:?}", payment_request.payment_method))
+        .bind(payment_method_str)
         .bind(reservation_id)
         .execute(&*self.pool)
         .await?;

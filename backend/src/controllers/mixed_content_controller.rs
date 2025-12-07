@@ -366,7 +366,7 @@ async fn fetch_ml_recommended_content(
             None
         };
 
-        let (service_json, category) = if let Some(row) = service_data {
+        let (_service_json, category) = if let Some(row) = service_data {
             let data: Value = row.get::<Option<_>, _>("data").unwrap_or(json!({}));
             let cat: Option<String> = row.get::<Option<_>, _>("category");
             (data, cat)

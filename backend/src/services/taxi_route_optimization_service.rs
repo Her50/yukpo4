@@ -215,7 +215,7 @@ impl TaxiRouteOptimizationService {
         if json.get("status").and_then(|s| s.as_str()) != Some("OK") {
             warn!("[TaxiRouteOptimization] Google Maps API error: {:?}", json);
             return self
-                .optimize_local_vrp(origin, destination, waypoints, preferences)
+                .optimize_local_vrp(origin, destination, waypoints, preferences.clone())
                 .await;
         }
 
@@ -253,7 +253,7 @@ impl TaxiRouteOptimizationService {
             .sum::<i64>()
             / 60; // sec -> min
 
-        let waypoint_order = route
+        let waypoint_order: Vec<usize> = route
             .get("waypoint_order")
             .and_then(|w| w.as_array())
             .map(|arr| {
@@ -276,13 +276,13 @@ impl TaxiRouteOptimizationService {
 
         let waypoint_order_clone = waypoint_order.clone();
         Ok(OptimizedRoute {
-            waypoints_order: waypoint_order,
+            waypoints_order: waypoint_order_clone,
             total_distance_km: total_distance,
             total_duration_minutes: total_duration as i32,
             estimated_cost: None,
             route_points: {
                 let mut points = vec![origin.clone()];
-                for idx in &waypoint_order_clone {
+                for idx in waypoint_order.iter() {
                     if let Some(waypoint) = waypoints.get(*idx) {
                         points.push(waypoint.clone());
                     }

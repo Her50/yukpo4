@@ -328,9 +328,9 @@ pub struct UpdateFamilyProfileRequest {
 }
 
 pub async fn update_family_profile(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
-    Json(req): Json<UpdateFamilyProfileRequest>,
+    Json(_req): Json<UpdateFamilyProfileRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
         "[update_family_profile] Mise à jour profil pour user_id={}",

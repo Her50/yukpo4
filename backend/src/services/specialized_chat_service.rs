@@ -43,7 +43,7 @@ impl SpecializedChatService {
         if let Some(conv_id) = existing {
             // Convertir String en i32 pour compatibilité (mais conversations.id est TEXT)
             // On retourne directement le String car c'est un UUID
-            return Ok(conv_id.parse::<i32>().unwrap_or(0));
+            return Ok(conv_id);
         }
 
         // Créer une nouvelle conversation

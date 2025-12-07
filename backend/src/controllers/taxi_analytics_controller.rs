@@ -51,7 +51,7 @@ pub async fn get_analytics_overview(
 /// ✅ GET /api/admin/taxi/analytics/demand-trends
 /// Tendance de demande
 pub async fn get_demand_trends(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     info!(
@@ -72,7 +72,7 @@ pub async fn get_demand_trends(
 /// ✅ GET /api/admin/taxi/analytics/revenue
 /// Analytics revenus
 pub async fn get_revenue_analytics(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     info!(
@@ -93,7 +93,7 @@ pub async fn get_revenue_analytics(
 /// ✅ GET /api/admin/taxi/analytics/driver-performance
 /// Performance conducteurs
 pub async fn get_driver_performance(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     info!(

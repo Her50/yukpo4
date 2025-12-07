@@ -5,6 +5,7 @@ use crate::models::pharmacy_product::{
     BudgetCalculation, BudgetCalculationItem, BudgetComparison, PharmacyProduct,
     PharmacyProductWithDistance,
 };
+use chrono::{DateTime, Utc};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
@@ -116,9 +117,9 @@ impl PharmacyProductService {
         );
 
         let mut query = sqlx::query_as::<_, PharmacyProduct>(&sql);
-        bind_index = 1;
+        let _bind_index_reset = 1;
 
-        if let Some(nom) = nom_produit {
+        if let Some(ref nom) = nom_produit {
             query = query.bind(nom);
         }
         if let Some(p) = prix {
@@ -237,25 +238,25 @@ impl PharmacyProductService {
             .into_iter()
             .map(|row| {
                 let product = PharmacyProduct {
-                    id: row.get("id"),
-                    pharmacy_service_id: row.get("pharmacy_service_id"),
-                    nom_produit: row.get("nom_produit"),
-                    description: row.get("description"),
-                    prix: row.get("prix"),
-                    stock: row.get("stock"),
-                    disponible: row.get("disponible"),
-                    unite: row.get("unite"),
-                    code_barre: row.get("code_barre"),
-                    categorie: row.get("categorie"),
-                    created_at: row.get("created_at"),
-                    updated_at: row.get("updated_at"),
+                    id: row.get::<i32, _>("id"),
+                    pharmacy_service_id: row.get::<i32, _>("pharmacy_service_id"),
+                    nom_produit: row.get::<String, _>("nom_produit"),
+                    description: row.get::<Option<String>, _>("description"),
+                    prix: row.get::<rust_decimal::Decimal, _>("prix"),
+                    stock: row.get::<i32, _>("stock"),
+                    disponible: row.get::<bool, _>("disponible"),
+                    unite: row.get::<String, _>("unite"),
+                    code_barre: row.get::<Option<String>, _>("code_barre"),
+                    categorie: row.get::<Option<String>, _>("categorie"),
+                    created_at: row.get::<DateTime<Utc>, _>("created_at"),
+                    updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
                 };
                 PharmacyProductWithDistance {
                     product,
-                    distance_km: row.get("distance_km"),
-                    pharmacy_nom: row.get("pharmacy_nom"),
-                    pharmacy_adresse: row.get("pharmacy_adresse"),
-                    pharmacy_gps: row.get("pharmacy_gps"),
+                    distance_km: row.get::<Option<f64>, _>("distance_km"),
+                    pharmacy_nom: row.get::<Option<String>, _>("pharmacy_nom"),
+                    pharmacy_adresse: row.get::<Option<String>, _>("pharmacy_adresse"),
+                    pharmacy_gps: row.get::<Option<serde_json::Value>, _>("pharmacy_gps"),
                 }
             })
             .collect();
@@ -307,23 +308,15 @@ impl PharmacyProductService {
             placeholders
         );
 
-        let mut query = sqlx::query_as::<
-            _,
-            (
-                PharmacyProduct,
-                Option<String>,
-                Option<serde_json::Value>,
-                Option<f64>,
-            ),
-        >(&sql)
-        .bind(user_lat)
-        .bind(user_lng);
+        let mut query = sqlx::query(&sql)
+            .bind(user_lat)
+            .bind(user_lng);
 
         for id in &product_ids {
             query = query.bind(id);
         }
 
-        let results = query
+        let rows = query
             .fetch_all(&*self.pool)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur calcul budget: {}", e)))?;
@@ -332,7 +325,24 @@ impl PharmacyProductService {
         use std::collections::HashMap;
         let mut pharmacy_budgets: HashMap<i32, BudgetCalculation> = HashMap::new();
 
-        for (product, pharmacy_nom, _gps, distance) in results {
+        for row in rows {
+            let product = PharmacyProduct {
+                id: row.get::<i32, _>("id"),
+                pharmacy_service_id: row.get::<i32, _>("pharmacy_service_id"),
+                nom_produit: row.get::<String, _>("nom_produit"),
+                description: row.get::<Option<String>, _>("description"),
+                prix: row.get::<rust_decimal::Decimal, _>("prix"),
+                stock: row.get::<i32, _>("stock"),
+                disponible: row.get::<bool, _>("disponible"),
+                unite: row.get::<String, _>("unite"),
+                code_barre: row.get::<Option<String>, _>("code_barre"),
+                categorie: row.get::<Option<String>, _>("categorie"),
+                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+                updated_at: row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
+            };
+            let pharmacy_nom: Option<String> = row.get::<Option<String>, _>("pharmacy_nom");
+            let _gps: Option<serde_json::Value> = row.get::<Option<serde_json::Value>, _>("pharmacy_gps");
+            let distance: Option<f64> = row.get::<Option<f64>, _>("distance_km");
             let quantity = items
                 .iter()
                 .find(|(id, _)| *id == product.id)

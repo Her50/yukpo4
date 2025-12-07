@@ -135,6 +135,7 @@ pub async fn predict_demand_multi_zone(
     prediction_service = prediction_service.with_app_ia(state.ia.clone());
 
     // Prédire pour chaque zone
+    let zones_count = payload.zones.len();
     let mut predictions = Vec::new();
     for zone_req in payload.zones {
         let zone = PredictionZone {
@@ -163,13 +164,13 @@ pub async fn predict_demand_multi_zone(
     info!(
         "[predict_demand_multi_zone] ✅ {} prédictions complétées sur {}",
         predictions.len(),
-        payload.zones.len()
+        zones_count
     );
 
     Ok(Json(json!({
         "success": true,
         "data": predictions,
-        "total_zones": payload.zones.len(),
+        "total_zones": zones_count,
         "successful_predictions": predictions.len(),
         "metrics": prediction_service.get_metrics(),
     })))

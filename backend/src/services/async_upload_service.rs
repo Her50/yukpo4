@@ -165,6 +165,7 @@ impl AsyncUploadService {
 
                 // Lire les données par chunks pour gérer les gros fichiers
                 let mut chunk_count = 0;
+                let mut field = field;
                 while let Some(chunk) = field
                     .chunk()
                     .await

@@ -5,8 +5,9 @@ use crate::models::livre_scolaire::{
     CreateLivreScolaireRequest, LivreScolaire, LivreScolaireWithDistance,
     SearchLivresScolairesRequest, UpdateLivreScolaireRequest,
 };
+use chrono::{DateTime, Utc};
 use log::info;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
 pub struct LivresScolairesService {
@@ -161,8 +162,8 @@ impl LivresScolairesService {
             param_index + 3
         );
 
-        // Exécuter la requête avec les paramètres
-        let mut query = sqlx::query_as::<_, (LivreScolaire, Option<f64>)>(&sql);
+        // Exécuter la requête avec les paramètres - utiliser query au lieu de query_as pour gérer images_urls
+        let mut query = sqlx::query(&sql);
 
         // Bind des paramètres de filtres
         if let Some(classe_actuelle) = &request.classe_actuelle {
@@ -202,12 +203,41 @@ impl LivresScolairesService {
             .await
             .map_err(|e| AppError::Internal(format!("Erreur recherche livres scolaires: {}", e)))?;
 
-        // Convertir en Vec<LivreScolaireWithDistance>
+        use sqlx::Row;
+        // Convertir en Vec<LivreScolaireWithDistance> - mapper manuellement
         let results: Vec<LivreScolaireWithDistance> = rows
             .into_iter()
-            .map(|(livre, distance)| LivreScolaireWithDistance {
-                livre,
-                distance_km: distance,
+            .map(|row| {
+                let images_urls_json: Option<sqlx::types::Json<Vec<String>>> = row.get::<Option<sqlx::types::Json<Vec<String>>>, _>("images_urls");
+                let images_urls = images_urls_json.map(|j| j.0).unwrap_or_default();
+                
+                LivreScolaireWithDistance {
+                    livre: LivreScolaire {
+                        id: row.get::<i32, _>("id"),
+                        service_id: row.get::<Option<i32>, _>("service_id"),
+                        user_id: row.get::<i32, _>("user_id"),
+                        titre: row.get::<String, _>("titre"),
+                        auteur: row.get::<Option<String>, _>("auteur"),
+                        editeur: row.get::<Option<String>, _>("editeur"),
+                        isbn: row.get::<Option<String>, _>("isbn"),
+                        classe_actuelle: row.get::<String, _>("classe_actuelle"),
+                        classe_souhaitee: row.get::<String, _>("classe_souhaitee"),
+                        matiere: row.get::<String, _>("matiere"),
+                        niveau: row.get::<Option<String>, _>("niveau"),
+                        etat_livre: row.get::<String, _>("etat_livre"),
+                        description_etat: row.get::<Option<String>, _>("description_etat"),
+                        images_urls,
+                        video_url: row.get::<Option<String>, _>("video_url"),
+                        gps: row.get::<Option<String>, _>("gps"),
+                        ville: row.get::<Option<String>, _>("ville"),
+                        quartier: row.get::<Option<String>, _>("quartier"),
+                        is_available: row.get::<bool, _>("is_available"),
+                        is_active: row.get::<bool, _>("is_active"),
+                        created_at: row.get::<DateTime<Utc>, _>("created_at"),
+                        updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
+                    },
+                    distance_km: row.get::<Option<f64>, _>("distance_km"),
+                }
             })
             .collect();
 

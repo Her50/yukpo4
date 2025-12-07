@@ -114,8 +114,8 @@ pub async fn start_chat_session(
     let session = ChatSession {
         id: row.get::<String, _>("id"),
         status: row.get::<String, _>("status"),
-        created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
-        last_message_at: row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at"),
+        created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").timestamp(),
+        last_message_at: row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at").map(|dt| dt.timestamp()).unwrap_or(0),
         agent_name: None,
         agent_avatar: None,
     };
@@ -215,7 +215,7 @@ pub async fn send_chat_message(
         id: row.get::<String, _>("id"),
         text: row.get::<String, _>("text"),
         sender: row.get::<String, _>("sender"),
-        timestamp: row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp"),
+        timestamp: row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp").timestamp(),
         read: row.get::<bool, _>("read"),
         attachments: payload.attachments.clone(),
     };
@@ -359,7 +359,7 @@ async fn generate_ai_support_response(
         id: ai_row.get::<String, _>("id"),
         text: ai_row.get::<String, _>("text"),
         sender: ai_row.get::<String, _>("sender"),
-        timestamp: ai_row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp"),
+        timestamp: ai_row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp").timestamp(),
         read: ai_row.get::<bool, _>("read"),
         attachments: None,
     };
@@ -458,7 +458,7 @@ pub async fn get_chat_messages(
                 id: row.get::<String, _>("id"),
                 text: row.get::<String, _>("text"),
                 sender: row.get::<String, _>("sender"),
-                timestamp: row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp"),
+                timestamp: row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp").timestamp(),
                 read: row.get::<bool, _>("read"),
                 attachments: attachments_parsed,
             }
@@ -516,8 +516,8 @@ pub async fn get_chat_sessions(
         .map(|row| ChatSession {
             id: row.get::<String, _>("id"),
             status: row.get::<String, _>("status"),
-            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
-            last_message_at: row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at"),
+            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").timestamp(),
+            last_message_at: row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at").map(|dt| dt.timestamp()).unwrap_or(0),
             agent_name: row.get::<Option<String>, _>("agent_name"),
             agent_avatar: row.get::<Option<String>, _>("agent_avatar"),
         })

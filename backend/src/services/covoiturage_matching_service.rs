@@ -4,7 +4,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PassengerPreferences {
@@ -262,22 +262,22 @@ impl CovoiturageMatchingService {
         .bind(EARTH_RADIUS_KM)
         .bind(radius_km)
         .map(|row: sqlx::postgres::PgRow| TripData {
-            id: row.get("id"),
-            depart: row.get("depart"),
-            destination: row.get("destination"),
-            gps_depart: row.get("gps_depart"),
-            gps_destination: row.get("gps_destination"),
-            heure_depart: row.get("heure_depart"),
-            nombre_places: row.get("nombre_places"),
-            places_disponibles: row.get("places_disponibles"),
-            prix_par_place: row.get("prix_par_place"),
-            bagages_autorises: row.get("bagages_autorises"),
-            animaux_autorises: row.get("animaux_autorises"),
-            fumeur_autorise: row.get("fumeur_autorise"),
-            climatisation: row.get("climatisation"),
-            driver_rating: row.get("driver_rating"),
-            driver_reviews_count: row.get("driver_reviews_count"),
-            is_verified_driver: row.get("is_verified_driver"),
+            id: row.get::<i32, _>("id"),
+            depart: row.get::<String, _>("depart"),
+            destination: row.get::<String, _>("destination"),
+            gps_depart: row.get::<Option<String>, _>("gps_depart"),
+            gps_destination: row.get::<Option<String>, _>("gps_destination"),
+            heure_depart: row.get::<String, _>("heure_depart"),
+            nombre_places: row.get::<i32, _>("nombre_places"),
+            places_disponibles: row.get::<i32, _>("places_disponibles"),
+            prix_par_place: row.get::<i32, _>("prix_par_place"),
+            bagages_autorises: row.get::<bool, _>("bagages_autorises"),
+            animaux_autorises: row.get::<bool, _>("animaux_autorises"),
+            fumeur_autorise: row.get::<bool, _>("fumeur_autorise"),
+            climatisation: row.get::<bool, _>("climatisation"),
+            driver_rating: row.get::<Option<f64>, _>("driver_rating"),
+            driver_reviews_count: row.get::<Option<i32>, _>("driver_reviews_count"),
+            is_verified_driver: row.get::<bool, _>("is_verified_driver"),
         })
         .fetch_all(&self.pool)
         .await
@@ -340,22 +340,22 @@ impl CovoiturageMatchingService {
         .bind(format!("%{}%", destination))
         .bind(format!("{}%", destination))
         .map(|row: sqlx::postgres::PgRow| TripData {
-            id: row.get("id"),
-            depart: row.get("depart"),
-            destination: row.get("destination"),
-            gps_depart: row.get("gps_depart"),
-            gps_destination: row.get("gps_destination"),
-            heure_depart: row.get("heure_depart"),
-            nombre_places: row.get("nombre_places"),
-            places_disponibles: row.get("places_disponibles"),
-            prix_par_place: row.get("prix_par_place"),
-            bagages_autorises: row.get("bagages_autorises"),
-            animaux_autorises: row.get("animaux_autorises"),
-            fumeur_autorise: row.get("fumeur_autorise"),
-            climatisation: row.get("climatisation"),
-            driver_rating: row.get("driver_rating"),
-            driver_reviews_count: row.get("driver_reviews_count"),
-            is_verified_driver: row.get("is_verified_driver"),
+            id: row.get::<i32, _>("id"),
+            depart: row.get::<String, _>("depart"),
+            destination: row.get::<String, _>("destination"),
+            gps_depart: row.get::<Option<String>, _>("gps_depart"),
+            gps_destination: row.get::<Option<String>, _>("gps_destination"),
+            heure_depart: row.get::<String, _>("heure_depart"),
+            nombre_places: row.get::<i32, _>("nombre_places"),
+            places_disponibles: row.get::<i32, _>("places_disponibles"),
+            prix_par_place: row.get::<i32, _>("prix_par_place"),
+            bagages_autorises: row.get::<bool, _>("bagages_autorises"),
+            animaux_autorises: row.get::<bool, _>("animaux_autorises"),
+            fumeur_autorise: row.get::<bool, _>("fumeur_autorise"),
+            climatisation: row.get::<bool, _>("climatisation"),
+            driver_rating: row.get::<Option<f64>, _>("driver_rating"),
+            driver_reviews_count: row.get::<Option<i32>, _>("driver_reviews_count"),
+            is_verified_driver: row.get::<bool, _>("is_verified_driver"),
         })
         .fetch_all(&self.pool)
         .await

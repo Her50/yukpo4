@@ -73,7 +73,7 @@ impl ProductPriceService {
                 if discount_cents > 0 {
                     metrics
                         .product_promotion_discount_cents_total
-                        .inc_by(discount_cents);
+                        .inc_by(discount_cents as f64);
                 }
             }
 

@@ -102,10 +102,11 @@ impl VideoQualityService {
                 "-i",
                 local_video_path.to_str().unwrap(),
                 "-vf",
-                &format!(
+                let scale_filter = format!(
                     "scale={}:{}:force_original_aspect_ratio=decrease",
                     quality.width, quality.height
-                ),
+                );
+                &scale_filter,
                 "-c:v",
                 "libx264",
                 "-b:v",
@@ -207,10 +208,11 @@ impl VideoQualityService {
             "-i",
             local_video_path.to_str().unwrap(),
             "-vf",
-            &format!(
+            let scale_filter = format!(
                 "scale={}:{}:force_original_aspect_ratio=decrease",
                 quality.width, quality.height
-            ),
+            );
+            &scale_filter,
             "-c:v",
             "libx264",
             "-b:v",

@@ -814,10 +814,10 @@ pub struct CancelReservationResponse {
 /// PATCH /api/bus-tickets/reservations/{id}/cancel
 /// Annuler une réservation avec politique de remboursement selon délai
 pub async fn cancel_reservation(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(reservation_id): Path<String>,
-    Json(payload): Json<CancelReservationRequest>,
+    Json(_payload): Json<CancelReservationRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
         "[cancel_reservation] User ID: {}, Reservation ID: {}",
@@ -846,14 +846,14 @@ pub async fn cancel_reservation(
         "#,
     )
     .bind(&reservation_id)
-    .fetch_optional(&state.pg)
+    .fetch_optional(&_state.pg)
     .await
     .map_err(|e| {
         error!("[cancel_reservation] Erreur: {}", e);
         AppError::Internal(format!("Erreur récupération réservation: {}", e))
     })?;
 
-    let (reservation_user_id, product_id, departure_time, caution_amount, _passenger_name) =
+    let (reservation_user_id, _product_id, departure_time, caution_amount, _passenger_name) =
         match reservation_info {
             Some(info) => info,
             None => {
@@ -887,7 +887,7 @@ pub async fn cancel_reservation(
     let refund_amount = (caution_amount as f64 * refund_percentage / 100.0) as i32;
 
     // Utiliser une transaction pour garantir cohérence
-    let mut tx = state.pg.begin().await.map_err(|e| {
+    let mut tx = _state.pg.begin().await.map_err(|e| {
         error!("[cancel_reservation] Erreur début transaction: {}", e);
         AppError::Internal(format!("Erreur début transaction: {}", e))
     })?;

@@ -403,7 +403,7 @@ const MainStack = () => {
   const [isCourier, setIsCourier] = useState(false);
   const [hasSpecializedServices, setHasSpecializedServices] = useState(false);
 
-  // ✅ NOUVEAU : Vérifier si l'utilisateur est coursier
+  // ✅ CORRECTION CRASH: Vérifier si l'utilisateur est coursier avec timeout et délai
   useEffect(() => {
     const checkCourierStatus = async () => {
       if (!user?.id) {
@@ -411,13 +411,34 @@ const MainStack = () => {
         return;
       }
 
+      // ✅ Délai de 1 seconde pour ne pas surcharger au démarrage
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       try {
         const { deliveryApi } = require('../services/api');
-        const response = await deliveryApi.getMyCourierStatus();
+
+        // ✅ CORRECTION CRASH: Timeout de 5 secondes pour éviter blocage
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout')), 5000)
+        );
+
+        let response: any;
+        try {
+          response = await Promise.race([
+            deliveryApi.getMyCourierStatus(),
+            timeoutPromise
+          ]);
+        } catch (timeoutError) {
+          console.warn('[AppNavigator] Timeout vérification coursier');
+          setIsCourier(false);
+          return;
+        }
+
         const data = response.data || response;
         setIsCourier(data.is_courier || false);
       } catch (error) {
         console.error('[AppNavigator] Erreur vérification coursier:', error);
+        // ✅ En cas d'erreur, continuer sans bloquer l'app
         setIsCourier(false);
       }
     };
@@ -425,7 +446,7 @@ const MainStack = () => {
     checkCourierStatus();
   }, [user?.id]);
 
-  // ✅ NOUVEAU 2025-11-26 : Vérifier si l'utilisateur a des services spécialisés
+  // ✅ CORRECTION CRASH: Vérifier si l'utilisateur a des services spécialisés avec timeout et délai
   useEffect(() => {
     const checkSpecializedServices = async () => {
       if (!user?.id) {
@@ -433,10 +454,19 @@ const MainStack = () => {
         return;
       }
 
+      // ✅ Délai de 1 seconde pour ne pas surcharger au démarrage
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       try {
         const { apiGet } = require('../services/api');
+
+        // ✅ CORRECTION CRASH: Timeout de 5 secondes pour éviter blocage
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout')), 5000)
+        );
+
         // Vérifier si l'utilisateur a au moins un service spécialisé
-        const [pharmacies, hopitaux, laboratoires, banques_sang, agences, covoiturages, taxis] = await Promise.all([
+        const apiCalls = Promise.all([
           apiGet('/api/pharmacies').catch(() => ({ success: false, data: [] })),
           apiGet('/api/hopitaux').catch(() => ({ success: false, data: [] })),
           apiGet('/api/laboratoires').catch(() => ({ success: false, data: [] })),
@@ -445,6 +475,17 @@ const MainStack = () => {
           apiGet('/api/covoiturages').catch(() => ({ success: false, data: [] })),
           apiGet('/api/taxis').catch(() => ({ success: false, data: [] })),
         ]);
+
+        let results: any[];
+        try {
+          results = await Promise.race([apiCalls, timeoutPromise]);
+        } catch (timeoutError) {
+          console.warn('[AppNavigator] Timeout vérification services spécialisés');
+          setHasSpecializedServices(false);
+          return;
+        }
+
+        const [pharmacies, hopitaux, laboratoires, banques_sang, agences, covoiturages, taxis] = results;
 
         const hasAny =
           (pharmacies.success && Array.isArray(pharmacies.data) && pharmacies.data.length > 0) ||
@@ -458,6 +499,7 @@ const MainStack = () => {
         setHasSpecializedServices(hasAny);
       } catch (error) {
         console.error('[AppNavigator] Erreur vérification services spécialisés:', error);
+        // ✅ En cas d'erreur, continuer sans bloquer l'app
         setHasSpecializedServices(false);
       }
     };

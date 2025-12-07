@@ -206,9 +206,9 @@ RÉPONSE ATTENDUE (JSON strict) :
         variables.insert("student_profile_id".to_string(), student_profile_id.to_string());
         variables.insert("etablissement_id".to_string(), etablissement_id.to_string());
         variables.insert("filiere".to_string(), filiere.to_string());
-        variables.insert("specialite".to_string(), specialite_str.clone());
-        variables.insert("budget_max".to_string(), budget_str.clone());
-        variables.insert("preference_localisation".to_string(), localisation_str.clone());
+        variables.insert("specialite".to_string(), specialite_str.to_string());
+        variables.insert("budget_max".to_string(), budget_str.to_string());
+        variables.insert("preference_localisation".to_string(), localisation_str.to_string());
 
         let prompt = load_prompt_section_with_vars(
             "orientation_scolaire",
@@ -323,8 +323,8 @@ RÉPONSE ATTENDUE (JSON strict) :
         variables.insert("etablissement_2_id".to_string(), etablissement_2_id.to_string());
         variables.insert("filiere_1".to_string(), filiere_1.to_string());
         variables.insert("filiere_2".to_string(), filiere_2.to_string());
-        variables.insert("specialite_1".to_string(), specialite_1_str.clone());
-        variables.insert("specialite_2".to_string(), specialite_2_str.clone());
+        variables.insert("specialite_1".to_string(), specialite_1_str.to_string());
+        variables.insert("specialite_2".to_string(), specialite_2_str.to_string());
 
         let prompt = load_prompt_section_with_vars(
             "orientation_scolaire",

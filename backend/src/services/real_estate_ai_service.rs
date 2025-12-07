@@ -381,8 +381,8 @@ RÉPONSE ATTENDUE (JSON strict) :
                 let monthly_rate = interest_rate / 100.0 / 12.0;
                 let num_payments = loan_duration_years * 12;
                 let monthly_payment = loan_amount
-                    * (monthly_rate * (1.0 + monthly_rate).powi(num_payments))
-                    / ((1.0 + monthly_rate).powi(num_payments) - 1.0);
+                    * (monthly_rate * (1.0_f64 + monthly_rate).powi(num_payments))
+                    / ((1.0_f64 + monthly_rate).powi(num_payments) - 1.0);
                 let total_interest = (monthly_payment * num_payments as f64) - loan_amount;
 
                 LoanSimulation {

@@ -411,11 +411,11 @@ pub async fn get_concours_details(
 
 /// Créer un concours
 pub async fn create_concours(
-    State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    State(_state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: _user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<CreateConcoursRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let service = ConcoursEntreeService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
+    let service = ConcoursEntreeService::new(Arc::new(_state.pg.clone()), Arc::clone(&_state));
     let concours = service.create_concours(request).await?;
 
     Ok((

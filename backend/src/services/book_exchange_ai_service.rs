@@ -304,13 +304,13 @@ RÉPONSE ATTENDUE (JSON strict) :
         let mut variables = HashMap::new();
         variables.insert("livre_id".to_string(), livre_id.to_string());
         variables.insert("titre".to_string(), titre.to_string());
-        variables.insert("auteur".to_string(), auteur_str.clone());
-        variables.insert("editeur".to_string(), editeur_str.clone());
-        variables.insert("isbn".to_string(), isbn_str.clone());
+        variables.insert("auteur".to_string(), auteur_str.to_string());
+        variables.insert("editeur".to_string(), editeur_str.to_string());
+        variables.insert("isbn".to_string(), isbn_str.to_string());
         variables.insert("classe".to_string(), classe.to_string());
         variables.insert("matiere".to_string(), matiere.to_string());
         variables.insert("etat_livre".to_string(), etat_livre.to_string());
-        variables.insert("ville".to_string(), ville_str.clone());
+        variables.insert("ville".to_string(), ville_str.to_string());
         variables.insert("prix_marche".to_string(), prix_marche_str.clone());
 
         let prompt = load_prompt_section_with_vars(

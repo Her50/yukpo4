@@ -57,7 +57,7 @@ pub async fn get_generation_status(
 
 /// Annule un job de génération
 pub async fn cancel_generation(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Path(job_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     // TODO: Récupérer user_id depuis le token JWT

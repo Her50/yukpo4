@@ -2165,6 +2165,11 @@ async fn handle_paginated_search(
             state.pg.clone(),
             state.pg_read.clone(),
         );
+    // Cloner les valeurs nécessaires avant le move
+    let query_clone = request.query.clone();
+    let specialized_type_clone = request.specialized_type.clone();
+    let category_filter_clone = request.category_filter.clone();
+    
     let response = search_service.intelligent_search_paginated(request).await?;
 
     let duration = start_time.elapsed();
@@ -2172,9 +2177,9 @@ async fn handle_paginated_search(
     // Enregistrer les métriques
     state.search_metrics
             .record_search(
-                &request.query,
-                request.specialized_type.as_deref(),
-                request.category_filter.as_deref(),
+                &query_clone,
+                specialized_type_clone.as_deref(),
+                category_filter_clone.as_deref(),
                 duration,
                 Duration::from_millis(0), // DB time non mesuré pour l'instant
                 false,                    // Cache hit sera déterminé par le service
@@ -2245,6 +2250,7 @@ async fn handle_global_metrics(State(state): State<Arc<AppState>>) -> Json<Value
     let db_pool_size = state.pg.size();
     let db_idle = state.pg.num_idle();
     let db_active = db_pool_size.saturating_sub(db_idle as u32);
+    let db_idle_u32 = db_idle as u32;
 
     // Note: deadpool-redis Pool n'a pas de méthode status() avec size/idle
     // Utiliser les champs disponibles: max_size, size, available, waiting
@@ -2260,7 +2266,7 @@ async fn handle_global_metrics(State(state): State<Arc<AppState>>) -> Json<Value
     let redis_idle = redis_status.1 as u32;
 
     metrics_service
-        .update_pool_info(db_active, db_idle, redis_active, redis_idle)
+        .update_pool_info(db_active, db_idle_u32, redis_active, redis_idle)
         .await;
 
     let metrics = metrics_service.get_metrics().await;

@@ -166,7 +166,7 @@ pub async fn get_user_notifications(
                 notification_type: row.get::<String, _>("notification_type"),
                 title: row.get::<String, _>("title"),
                 message: row.get::<String, _>("message"),
-                data: row.get::<serde_json::Value, _>("data"),
+                data: row.get::<Option<serde_json::Value>, _>("data"),
                 is_read: row.get::<bool, _>("is_read"),
                 created_at: row.get::<DateTime<Utc>, _>("created_at"),
             })

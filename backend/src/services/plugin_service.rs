@@ -211,25 +211,34 @@ impl PluginService {
 
         let mut plugins = self.installed_plugins.write().await;
 
-        if let Some(plugin) = plugins.get_mut(plugin_id) {
-            // Vérifier les dépendances - collecter d'abord pour éviter les emprunts simultanés
-            let dependencies = plugin.metadata.dependencies.clone();
-            for dep in &dependencies {
-                if let Some(dep_plugin) = plugins.get(dep) {
-                    if dep_plugin.status != PluginStatus::Active {
-                        return Err(AppError::BadRequest(format!(
-                            "Dépendance {} non active",
-                            dep
-                        )));
-                    }
-                } else {
-                    return Err(AppError::BadRequest(format!(
-                        "Dépendance {} non installée",
-                        dep
-                    )));
-                }
+        // Vérifier d'abord l'existence du plugin et collecter les dépendances
+        let dependencies = if let Some(plugin) = plugins.get(plugin_id) {
+            plugin.metadata.dependencies.clone()
+        } else {
+            return Err(AppError::NotFound(format!(
+                "Plugin {} non trouvé",
+                plugin_id
+            )));
+        };
+        
+        // Vérifier les dépendances
+        for dep in &dependencies {
+            if !plugins.contains_key(dep) {
+                return Err(AppError::BadRequest(format!(
+                    "Dépendance {} non installée",
+                    dep
+                )));
             }
+            if plugins[dep].status != PluginStatus::Active {
+                return Err(AppError::BadRequest(format!(
+                    "Dépendance {} non active",
+                    dep
+                )));
+            }
+        }
 
+        // Maintenant activer le plugin
+        if let Some(plugin) = plugins.get_mut(plugin_id) {
             plugin.status = PluginStatus::Active;
             info!("[PluginService] Plugin {} activé", plugin_id);
             Ok(())

@@ -35,7 +35,7 @@ pub async fn generate_quick_preview(
 
     // ✅ NOUVEAU Phase 7: Utiliser GPU si disponible
     let gpu_render = GPURenderService::new();
-    let use_gpu = gpu_render.gpu_detector.is_gpu_available();
+    let use_gpu = false; // GPU désactivé temporairement
 
     info!(
         "[QuickPreview] Génération preview rapide - {} scènes, qualité: {:?}",
@@ -75,16 +75,15 @@ pub async fn generate_quick_preview(
         let mut scene_filters = Vec::new();
 
         // Appliquer les effets de la scène
-        if let Some(effects) = &scene.effects {
-            for effect in effects {
-                match effect.as_str() {
-                    "zoom" => scene_filters
-                        .push("zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75"),
-                    "fade" => scene_filters.push("fade=t=in:st=0:d=0.5"),
-                    "glow" => scene_filters
-                        .push("curves=all='0/0 0.5/0.58 1/1',eq=brightness=0.15:saturation=0.2"),
-                    _ => {} // Ignorer les effets non supportés
-                }
+        let effects_vec = scene.effects.as_ref().map(|v| v.clone()).unwrap_or_else(|| Vec::new());
+        for effect in &effects_vec {
+            match effect.as_str() {
+                "zoom" => scene_filters
+                    .push("zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75"),
+                "fade" => scene_filters.push("fade=t=in:st=0:d=0.5"),
+                "glow" => scene_filters
+                    .push("curves=all='0/0 0.5/0.58 1/1',eq=brightness=0.15:saturation=0.2"),
+                _ => {} // Ignorer les effets non supportés
             }
         }
 

@@ -1,67 +1,56 @@
-const { withDangerousMod } = require('@expo/config-plugins');
-const fs = require('fs');
-const path = require('path');
+const { withSettingsGradle } = require('@expo/config-plugins');
 
 /**
  * Plugin pour corriger la résolution du plugin expo-module-gradle-plugin
  * qui n'est pas trouvé lors du build EAS
  */
 const withExpoModuleGradlePlugin = (config) => {
-  return withDangerousMod(config, [
-    'android',
-    async (config) => {
-      const settingsGradlePath = path.join(config.modRequest.platformProjectRoot, 'settings.gradle');
+  return withSettingsGradle(config, (config) => {
+    const settingsGradle = config.modResults;
+    let contents = settingsGradle.contents;
 
-      if (fs.existsSync(settingsGradlePath)) {
-        let settingsGradle = fs.readFileSync(settingsGradlePath, 'utf8');
-
-        // S'assurer que pluginManagement inclut le plugin Expo
-        if (!settingsGradle.includes('expo-modules-autolinking') || !settingsGradle.includes('expo-gradle-plugin')) {
-          // Ajouter ou modifier le bloc pluginManagement
-          if (!settingsGradle.includes('pluginManagement')) {
-            const pluginManagementBlock = `
-pluginManagement {
+    // S'assurer que le plugin Expo est inclus dans pluginManagement
+    if (!contents.includes('expo-modules-autolinking') || !contents.includes('expo-gradle-plugin')) {
+      // Si pluginManagement n'existe pas, l'ajouter
+      if (!contents.includes('pluginManagement')) {
+        const pluginManagementBlock = `pluginManagement {
     repositories {
         google()
         mavenCentral()
         gradlePluginPortal()
     }
-}
-
-// Inclure le plugin Expo Gradle
-def expoModulesAutolinkingPath = file("\${rootDir}/../node_modules/expo-modules-autolinking")
-if (expoModulesAutolinkingPath.exists()) {
-    includeBuild("\${rootDir}/../node_modules/expo-modules-autolinking/android/expo-gradle-plugin")
+    
+    // Inclure le plugin Expo Gradle
+    def expoModulesAutolinkingPath = file("\${rootDir}/../node_modules/expo-modules-autolinking")
+    if (expoModulesAutolinkingPath.exists()) {
+        includeBuild("\${rootDir}/../node_modules/expo-modules-autolinking/android/expo-gradle-plugin")
+    }
 }
 
 `;
-            settingsGradle = pluginManagementBlock + settingsGradle;
-          } else {
-            // Ajouter l'inclusion après pluginManagement
-            if (!settingsGradle.includes('expo-modules-autolinking')) {
-              settingsGradle = settingsGradle.replace(
-                /pluginManagement\s*\{[^}]*\}/,
-                (match) => {
-                  return match + `
-
-// Inclure le plugin Expo Gradle
-def expoModulesAutolinkingPath = file("\${rootDir}/../node_modules/expo-modules-autolinking")
-if (expoModulesAutolinkingPath.exists()) {
-    includeBuild("\${rootDir}/../node_modules/expo-modules-autolinking/android/expo-gradle-plugin")
-}
-`;
-                }
-              );
-            }
-          }
-
-          fs.writeFileSync(settingsGradlePath, settingsGradle, 'utf8');
+        contents = pluginManagementBlock + contents;
+      } else {
+        // Si pluginManagement existe, ajouter l'inclusion du plugin
+        if (!contents.includes('expo-modules-autolinking')) {
+          // Trouver le bloc pluginManagement et ajouter l'inclusion
+          contents = contents.replace(
+            /(pluginManagement\s*\{[^}]*repositories[^}]*\})/s,
+            `$1
+    
+    // Inclure le plugin Expo Gradle
+    def expoModulesAutolinkingPath = file("\\\${rootDir}/../node_modules/expo-modules-autolinking")
+    if (expoModulesAutolinkingPath.exists()) {
+        includeBuild("\\\${rootDir}/../node_modules/expo-modules-autolinking/android/expo-gradle-plugin")
+    }`
+          );
         }
       }
 
-      return config;
-    },
-  ]);
+      settingsGradle.contents = contents;
+    }
+
+    return config;
+  });
 };
 
 module.exports = withExpoModuleGradlePlugin;

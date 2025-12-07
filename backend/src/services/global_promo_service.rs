@@ -447,6 +447,12 @@ impl GlobalPromoService {
             starts_within_minutes,
         } = query;
 
+        // Cloner immédiatement les valeurs nécessaires pour éviter les moves partiels
+        let event_slug_clone = event_slug.clone();
+        let availability_clone = availability.clone();
+        let status_clone = status.clone();
+        let search_clone = search.clone();
+
         let page = page.unwrap_or(1).max(1);
         let page_size = page_size.unwrap_or(24).clamp(1, 100);
         let offset = (page - 1) * page_size;
@@ -624,10 +630,10 @@ impl GlobalPromoService {
                 page: Some(page),
                 page_size: Some(page_size),
                 highlighted_only: Some(highlighted_only),
-                event_slug: event_slug.clone(),
-                availability: availability.clone(),
-                status: status.clone(),
-                search: search.clone(),
+                event_slug: event_slug_clone,
+                availability: availability_clone,
+                status: status_clone,
+                search: search_clone,
                 sort: Some(sort_label.clone()),
                 starts_within_minutes: start_filter_opt,
             };

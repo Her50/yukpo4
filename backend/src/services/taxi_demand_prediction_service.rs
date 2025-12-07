@@ -10,7 +10,7 @@ use chrono::{DateTime, Datelike, NaiveDateTime, Timelike, Utc};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -121,7 +121,8 @@ impl TaxiDemandPredictionService {
         {
             let cache_guard = self.cache.read().await;
             if let Some((cached, cached_time)) = cache_guard.get(&cache_key) {
-                if cached_time.elapsed().unwrap().as_secs() < 3600 {
+                let elapsed = (Utc::now() - *cached_time).num_seconds();
+                if elapsed < 3600 {
                     info!(
                         "[TaxiDemandPrediction] ✅ Cache hit pour zone {}",
                         zone.zone_id
@@ -426,7 +427,7 @@ Retourne UNIQUEMENT un JSON avec:
             + weekend_adjustment)
             .max(0.0);
 
-        let peak_hours = self.identify_peak_hours(features).await.unwrap_or_else(|| -> Vec<u8> {
+        let peak_hours = self.identify_peak_hours(features).await.unwrap_or_else(|_| {
             // Heures de pic par défaut
             if features.is_weekend {
                 vec![10, 11, 12, 18, 19, 20]

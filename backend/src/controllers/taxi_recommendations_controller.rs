@@ -35,9 +35,9 @@ pub struct MatchFactor {
 /// ✅ GET /api/taxi/personalized-recommendations
 /// Obtenir recommandations personnalisées pour un utilisateur
 pub async fn get_personalized_recommendations(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
-    Query(params): Query<RecommendationsQuery>,
+    Query(_params): Query<RecommendationsQuery>,
 ) -> AppResult<impl IntoResponse> {
     info!(
         "[get_personalized_recommendations] User {} demande recommandations",

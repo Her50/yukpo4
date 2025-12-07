@@ -51,7 +51,7 @@ pub async fn upload_comment_media(
         error!("[CommentMedia] ❌ Erreur multipart: {}", err);
         StatusCode::BAD_REQUEST
     })? {
-        let field_name = field.name().unwrap_or("file").to_string();
+        let _field_name = field.name().unwrap_or("file").to_string();
         let file_name = field.file_name().unwrap_or("unknown").to_string();
         let content_type = field
             .content_type()

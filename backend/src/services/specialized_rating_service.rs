@@ -143,16 +143,16 @@ impl SpecializedRatingService {
                 rating_distribution: row.get(3),
                 average_quality: row
                     .get::<Option<rust_decimal::Decimal>, _>(4)
-                    .map(|d| d.to_string().parse::<f64>().ok()),
+                    .and_then(|d| d.to_string().parse::<f64>().ok()),
                 average_punctuality: row
                     .get::<Option<rust_decimal::Decimal>, _>(5)
-                    .map(|d| d.to_string().parse::<f64>().ok()),
+                    .and_then(|d| d.to_string().parse::<f64>().ok()),
                 average_price: row
                     .get::<Option<rust_decimal::Decimal>, _>(6)
-                    .map(|d| d.to_string().parse::<f64>().ok()),
+                    .and_then(|d| d.to_string().parse::<f64>().ok()),
                 average_communication: row
                     .get::<Option<rust_decimal::Decimal>, _>(7)
-                    .map(|d| d.to_string().parse::<f64>().ok()),
+                    .and_then(|d| d.to_string().parse::<f64>().ok()),
             })
         } else {
             // Retourner des stats vides si aucun avis

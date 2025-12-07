@@ -6,11 +6,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { initObservability } from './src/observability';
 
-initObservability();
-
-// ✅ NOUVEAU : Initialiser le logging distant pour Expo.dev cloud
+// ✅ CORRECTION CRASH: initObservability déplacé dans useEffect pour éviter blocage synchrone
 // Le service intercepte automatiquement tous les console.log/error/warn
-console.log('[App] ✅ Service de logging distant initialisé');
 
 // ✅ Import dynamique pour éviter les erreurs TypeScript
 const { NavigationContainer } = require('@react-navigation/native');
@@ -26,7 +23,7 @@ import { FeatureFlagProvider } from './src/contexts/FeatureFlagContext';
 import { ShoppingProvider } from './src/contexts/ShoppingContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { WebSocketProvider } from './src/contexts/WebSocketContext';
-import { TOUS_LES_PAYS } from './src/data/africanLocations'; // ✅ OPTIMISATION 5
+// ✅ CORRECTION CRASH: africanLocations chargé en lazy loading pour éviter surcharge mémoire au démarrage
 import AppNavigator from './src/navigation/AppNavigator';
 import { theme } from './src/theme/theme';
 
@@ -46,32 +43,47 @@ import { theme } from './src/theme/theme';
 export default function App() {
   console.log('[App] 🚀 Yukpomnang - Démarrage avec Deep Linking');
 
-  // ✅ OPTIMISATION 5: Prefetch des données de localisation au démarrage
+  // ✅ CORRECTION CRASH: initObservability dans useEffect pour éviter blocage
   React.useEffect(() => {
-    const prefetchLocationData = () => {
-      const startTime = Date.now();
+    try {
+      initObservability();
+      console.log('[App] ✅ Observability initialisé');
+    } catch (error) {
+      console.error('[App] ⚠️ Erreur initialisation observability:', error);
+    }
+  }, []);
 
-      // Compter les pays et villes
-      const nbPays = TOUS_LES_PAYS.length;
-      const nbVilles = TOUS_LES_PAYS.reduce((acc, pays) => acc + pays.villes.length, 0);
-      const nbQuartiers = TOUS_LES_PAYS.reduce((acc, pays) =>
-        acc + pays.villes.reduce((acc2, ville) =>
-          acc2 + (ville.quartiers?.length || 0), 0
-        ), 0
-      );
+  // ✅ CORRECTION CRASH: Prefetch des données de localisation en lazy loading avec délai
+  React.useEffect(() => {
+    // Charger les données de localisation après 2 secondes pour ne pas bloquer le démarrage
+    const timer = setTimeout(() => {
+      try {
+        const { TOUS_LES_PAYS } = require('./src/data/africanLocations');
+        const startTime = Date.now();
 
-      const endTime = Date.now();
-      const loadTime = endTime - startTime;
+        // Compter les pays et villes
+        const nbPays = TOUS_LES_PAYS.length;
+        const nbVilles = TOUS_LES_PAYS.reduce((acc, pays) => acc + pays.villes.length, 0);
+        const nbQuartiers = TOUS_LES_PAYS.reduce((acc, pays) =>
+          acc + pays.villes.reduce((acc2, ville) =>
+            acc2 + (ville.quartiers?.length || 0), 0
+          ), 0
+        );
 
-      console.log(`📍 [App] Données de localisation préchargées en ${loadTime}ms:`);
-      console.log(`   - ${nbPays} pays`);
-      console.log(`   - ${nbVilles} villes`);
-      console.log(`   - ${nbQuartiers} quartiers`);
-      console.log(`   ✅ Accès instantané aux données africaines !`);
-    };
+        const endTime = Date.now();
+        const loadTime = endTime - startTime;
 
-    // Précharger immédiatement
-    prefetchLocationData();
+        console.log(`📍 [App] Données de localisation préchargées en ${loadTime}ms:`);
+        console.log(`   - ${nbPays} pays`);
+        console.log(`   - ${nbVilles} villes`);
+        console.log(`   - ${nbQuartiers} quartiers`);
+        console.log(`   ✅ Accès instantané aux données africaines !`);
+      } catch (error) {
+        console.error('[App] ⚠️ Erreur chargement données localisation:', error);
+      }
+    }, 2000); // Délai de 2 secondes
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (

@@ -1486,7 +1486,7 @@ pub async fn book_property_visit(
     // Parser date et heure
     let date_visite = chrono::NaiveDate::parse_from_str(&request.date_visite, "%Y-%m-%d")
         .map_err(|_| AppError::BadRequest("Format date invalide (YYYY-MM-DD requis)".to_string()))?;
-    let heure_visite = chrono::NaiveTime::parse_from_str(&request.heure_visite, "%H:%M")
+    let _heure_visite = chrono::NaiveTime::parse_from_str(&request.heure_visite, "%H:%M")
         .map_err(|_| AppError::BadRequest("Format heure invalide (HH:MM requis)".to_string()))?;
 
     let visit_id: i32 = sqlx::query_scalar(
@@ -1541,7 +1541,7 @@ pub async fn simulate_property_loan(
             request.property_price,
             request.down_payment,
             request.loan_duration_years,
-            request.interest_rate.unwrap_or(Some(8.5)).unwrap_or(8.5),
+            request.interest_rate,
         )
         .await
         .map_err(|e| {
@@ -2845,7 +2845,7 @@ pub async fn create_moving_quote(
     .bind(rust_decimal::Decimal::from_f64_retain(volume_m3).unwrap_or(rust_decimal::Decimal::ZERO))
     .bind(request.nb_pieces)
     .bind(rust_decimal::Decimal::from_f64_retain(cost_estimate.total_cost).unwrap_or(rust_decimal::Decimal::ZERO))
-    .bind(estimated_eta.map(|e| rust_decimal::Decimal::from_f64_retain(e.estimated_minutes / 60.0).unwrap_or(rust_decimal::Decimal::ZERO)))
+    .bind(estimated_eta.as_ref().map(|e| rust_decimal::Decimal::from_f64_retain(e.estimated_minutes / 60.0).unwrap_or(rust_decimal::Decimal::ZERO)))
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
@@ -2861,7 +2861,7 @@ pub async fn create_moving_quote(
                 "id": quote_id,
                 "volume_m3": volume_m3,
                 "estimated_cost": cost_estimate.total_cost,
-                "estimated_duration_hours": estimated_eta.map(|e| e.estimated_minutes / 60.0),
+                "estimated_duration_hours": estimated_eta.as_ref().map(|e| e.estimated_minutes / 60.0),
                 "distance_km": distance_km
             }
         })),
@@ -3459,10 +3459,10 @@ pub struct ManageHospitalSlotsRequest {
 }
 
 pub async fn manage_hospital_slots(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(hospital_id): Path<i32>,
-    Json(request): Json<ManageHospitalSlotsRequest>,
+    Json(_request): Json<ManageHospitalSlotsRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!("[manage_hospital_slots] hospital_id={}, user_id={}", hospital_id, user_id);
     
@@ -3526,10 +3526,10 @@ pub struct CreatePharmacyOrderRequest {
 }
 
 pub async fn create_pharmacy_order(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(pharmacy_id): Path<i32>,
-    Json(request): Json<CreatePharmacyOrderRequest>,
+    Json(_request): Json<CreatePharmacyOrderRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!("[create_pharmacy_order] pharmacy_id={}, user_id={}", pharmacy_id, user_id);
     

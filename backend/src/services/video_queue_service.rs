@@ -7,7 +7,7 @@ use std::time::Duration;
 use log::{error, info, warn};
 use rust_decimal::{Decimal, prelude::ToPrimitive};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 use crate::core::types::{AppError, AppResult};

@@ -152,8 +152,11 @@ pub async fn upload_images(
     Path(_livre_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     // TODO: Implémenter upload d'images avec le service de médias existant
-    Err(AppError::BadRequest(
-        "Upload d'images à implémenter".to_string(),
+    Ok((
+        axum::http::StatusCode::NOT_IMPLEMENTED,
+        axum::Json(serde_json::json!({
+            "error": "Upload d'images à implémenter"
+        })),
     ))
 }
 
@@ -165,8 +168,11 @@ pub async fn upload_video(
     Path(_livre_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     // TODO: Implémenter upload de vidéo avec le service de médias existant
-    Err(AppError::BadRequest(
-        "Upload de vidéo à implémenter".to_string(),
+    Ok((
+        axum::http::StatusCode::NOT_IMPLEMENTED,
+        axum::Json(serde_json::json!({
+            "error": "Upload de vidéo à implémenter"
+        })),
     ))
 }
 

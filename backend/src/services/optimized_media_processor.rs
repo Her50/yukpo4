@@ -526,8 +526,7 @@ impl OptimizedMediaProcessor {
             // Exécuter avec les paramètres
             let mut query_builder = sqlx::query(&query);
             for (idx, media) in chunk.iter().enumerate() {
-                let product_id_str = product_index.map(|_| "prod".to_string());
-                let product_id_opt = product_id_str.as_deref();
+                let product_id_opt = product_index.map(|_| "prod");
                 query_builder = query_builder
                     .bind(service_id)
                     .bind(product_id_opt)

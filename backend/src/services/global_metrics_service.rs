@@ -89,9 +89,21 @@ impl GlobalMetricsService {
 
         if cache_hit {
             function_metrics.cache_hits += 1;
-            metrics.cache_hit_rate = self.calculate_cache_hit_rate().await;
         } else {
             function_metrics.cache_misses += 1;
+        }
+        
+        // Libérer tous les emprunts avant d'appeler calculate_cache_hit_rate
+        std::mem::drop(function_metrics);
+        std::mem::drop(metrics);
+        
+        // Calculer cache_hit_rate
+        let cache_hit_rate = self.calculate_cache_hit_rate().await;
+        
+        // Réemprunter metrics pour mettre à jour cache_hit_rate
+        {
+            let mut metrics = self.metrics.write().await;
+            metrics.cache_hit_rate = cache_hit_rate;
         }
 
         // Enregistrer l'historique
@@ -114,11 +126,16 @@ impl GlobalMetricsService {
         }
 
         // Calculer les moyennes
-        if !response_times.is_empty() {
+        let avg_response_time = if !response_times.is_empty() {
             let total: Duration = response_times.iter().sum();
-            metrics.average_response_time_ms =
-                total.as_millis() as f64 / response_times.len() as f64;
-        }
+            total.as_millis() as f64 / response_times.len() as f64
+        } else {
+            0.0
+        };
+        drop(response_times); // Libérer l'emprunt avant de réemprunter metrics
+        
+        let mut metrics = self.metrics.write().await;
+        metrics.average_response_time_ms = avg_response_time;
 
         // Calculer moyenne par fonctionnalité (simplifié - utiliser response_time actuel)
         // Note: Pour une moyenne précise, il faudrait stocker les temps par fonctionnalité

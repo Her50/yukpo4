@@ -28,11 +28,13 @@ impl RedisService {
         info!("[Redis] Connecting to Redis: {}", config.url);
 
         let connection = if config.cluster_mode {
-            // ✅ Mode cluster - ClusterClient n'a pas get_multiplexed_async_connection
-            // Utiliser get_async_connection à la place
+            // ✅ Mode cluster - ClusterClient utilise get_connection_manager
             let cluster_client = redis::cluster::ClusterClient::new(config.cluster_urls())?;
-            let conn = cluster_client.get_async_connection().await?;
-            RedisConnection::Standard(conn)
+            // Pour le cluster, on utilise une connexion standard
+            // Note: En production, considérer l'utilisation d'un pool de connexions
+            // Note: redis::cluster n'a pas de get_connection_manager
+            // Pour le cluster, désactiver temporairement en attendant support
+            return Err(AppError::Internal("Mode cluster Redis non supporté actuellement. Utiliser mode standalone.".to_string()));
         } else {
             // ✅ Mode standalone
             let client = redis::Client::open(config.url.as_str())?;

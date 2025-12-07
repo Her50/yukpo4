@@ -265,7 +265,7 @@ pub async fn create_offre(
 
 /// Liste les offres d'un employeur
 pub async fn list_my_offres(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Query(params): Query<ListOffresQuery>,
 ) -> AppResult<impl IntoResponse> {
@@ -282,7 +282,7 @@ pub async fn list_my_offres(
     .bind(user_id)
     .bind(params.limit.unwrap_or(20))
     .bind((params.page.unwrap_or(1) - 1) * params.limit.unwrap_or(20))
-    .fetch_all(&state.pg)
+    .fetch_all(&_state.pg)
     .await
     .map_err(|e| {
         error!("[list_my_offres] Erreur: {}", e);
@@ -292,7 +292,7 @@ pub async fn list_my_offres(
     let total: i64 =
         sqlx::query_scalar("SELECT COUNT(*)::bigint FROM offres_emploi WHERE entreprise_id = $1")
             .bind(user_id)
-            .fetch_one(&state.pg)
+            .fetch_one(&_state.pg)
             .await
             .unwrap_or(0);
 

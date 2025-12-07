@@ -147,7 +147,7 @@ impl ExperiencesEtudiantsService {
         let total: i64 = sqlx::query_scalar(
             "SELECT COUNT(*)::bigint FROM experiences_anciens_etudiants WHERE filiere = $1 AND is_approved = true"
         )
-        .bind(filiere)
+        .bind(&filiere)
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| {
