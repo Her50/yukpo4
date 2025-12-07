@@ -87,10 +87,11 @@ impl VideoQueueService {
 
     /// ✅ Enqueue un job de génération vidéo avec priorité
     pub async fn enqueue_job(&self, item: VideoJobQueueItem) -> AppResult<Uuid> {
-        let priority_for_log = item.priority;
+        // Cloner priority avant toute utilisation
+        let priority_value = item.priority;
         info!(
             "[VideoQueue] Enqueueing job {} with priority {:?}",
-            item.job_id, priority_for_log
+            item.job_id, priority_value
         );
 
         // ✅ Insertion dans la DB
@@ -114,7 +115,6 @@ impl VideoQueueService {
 
         // ✅ Ajouter à Redis queue pour traitement distribué
         let job_id = item.job_id.clone();
-        let priority_value = item.priority;
         let priority = priority_value as u8;
         // Cloner les champs nécessaires pour sérialisation
         let item_for_queue = serde_json::json!({

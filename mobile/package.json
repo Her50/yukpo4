@@ -18,19 +18,21 @@
     "@config-plugins/react-native-webrtc": "^9.0.0",
     "@expo/vector-icons": "~14.0.4",
     "@gorhom/bottom-sheet": "^5.2.7",
-    "@react-native-async-storage/async-storage": "^1.23.1",
+    "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/datetimepicker": "8.2.0",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-masked-view/masked-view": "^0.3.1",
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/stack": "^6.4.1",
-    "@shopify/flash-list": "^1.8.3",
+    "@shopify/flash-list": "1.7.3",
     "@tensorflow/tfjs": "^4.15.0",
     "@tensorflow/tfjs-react-native": "^0.8.0",
     "axios": "^1.12.2",
     "buffer": "^6.0.3",
     "expo": "~52.0.0",
+    "expo-application": "~6.0.2",
+    "expo-asset": "~11.0.5",
     "expo-av": "~15.0.2",
     "expo-barcode-scanner": "^13.0.1",
     "expo-blur": "~14.0.3",
@@ -44,16 +46,16 @@
     "expo-file-system": "~18.0.4",
     "expo-font": "~13.0.4",
     "expo-gl": "~15.0.5",
-    "expo-haptics": "^15.0.7",
+    "expo-haptics": "~14.0.1",
     "expo-image-manipulator": "~13.0.0",
     "expo-image-picker": "~16.0.6",
     "expo-linear-gradient": "~14.0.2",
     "expo-linking": "~7.0.5",
-    "expo-localization": "^17.0.7",
+    "expo-localization": "~16.0.1",
     "expo-location": "~18.0.10",
-    "expo-media-library": "^18.2.0",
-    "expo-modules-core": "~2.2.0",
-    "expo-network": "~6.0.0",
+    "expo-media-library": "~17.0.6",
+    "expo-modules-core": "~2.2.3",
+    "expo-network": "~7.0.5",
     "expo-notifications": "^0.29.14",
     "expo-sharing": "~13.0.1",
     "expo-splash-screen": "~0.29.24",
@@ -68,6 +70,7 @@
     "lucide-react-native": "^0.344.0",
     "phosphor-react-native": "^3.0.1",
     "react": "18.3.1",
+    "react-dom": "18.3.1",
     "react-native": "0.76.9",
     "react-native-chart-kit": "^6.12.0",
     "react-native-fs": "^2.20.0",
@@ -86,7 +89,7 @@
     "react-native-vision-camera": "^4.0.0",
     "react-native-webrtc": "^124.0.3",
     "react-query": "^3.39.3",
-    "sentry-expo": "^7.0.0",
+    "sentry-expo": "~7.0.0",
     "vision-camera-code-scanner": "^0.2.0"
   },
   "devDependencies": {
@@ -103,6 +106,36 @@
     "jsdom": "^26.0.0",
     "typescript": "~5.3.3",
     "vitest": "^3.1.2"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false,
+        "exclude": [
+          "@config-plugins/react-native-webrtc",
+          "@tensorflow/tfjs",
+          "@tensorflow/tfjs-react-native",
+          "buffer",
+          "expo-av",
+          "expo-barcode-scanner",
+          "graphql",
+          "livekit-react-native",
+          "react-query",
+          "sentry-expo",
+          "react-native-chart-kit",
+          "react-native-fs",
+          "react-native-keyboard-aware-scroll-view",
+          "react-native-webrtc",
+          "react-native-skeleton-placeholder",
+          "vision-camera-code-scanner"
+        ]
+      }
+    },
+    "install": {
+      "exclude": [
+        "expo-modules-core"
+      ]
+    }
   },
   "private": true
 }
