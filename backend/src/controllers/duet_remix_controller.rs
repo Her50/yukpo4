@@ -99,7 +99,7 @@ pub async fn create_duet(
 ) -> Result<Json<CreateDuetResponse>, StatusCode> {
     let request_payload = payload;
     let pool = &state.pg;
-    let user_id = 0; // TODO: Extraire depuis JWT
+    let _user_id = 0; // TODO: Extraire depuis JWT
 
     log::info!(
         "🎬 [Duet] Création duet: original_video_id={}, type={}",
@@ -113,7 +113,7 @@ pub async fn create_duet(
         SELECT 
             m.path as video_url_raw,
             m.id::text as content_id,
-            s.data->>'titre_service'->>'valeur' as titre
+            (s.data->'titre_service')->>'valeur' as titre
         FROM media m
         INNER JOIN services s ON s.id = m.service_id
         WHERE m.id::text = $1 OR m.id::text = $1
@@ -314,7 +314,7 @@ pub async fn get_duets(
         SELECT 
             m.id::text as id,
             m.id::text as content_id,
-            COALESCE(s.data->>'titre_service'->>'valeur', 'Duet') as titre,
+            COALESCE((s.data->'titre_service')->>'valeur', 'Duet') as titre,
             m.path as video_url_raw,
             (SELECT path FROM media m2 WHERE m2.service_id = m.service_id AND m2.type = 'image' LIMIT 1) as thumbnail_raw,
             m.service_id,
@@ -348,7 +348,7 @@ pub async fn get_duets(
         SELECT 
             m.id::text as id,
             m.id::text as content_id,
-            COALESCE(s.data->>'titre_service'->>'valeur', 'Duet') as titre,
+            COALESCE((s.data->'titre_service')->>'valeur', 'Duet') as titre,
             m.path as video_url_raw,
             (SELECT path FROM media m2 WHERE m2.service_id = m.service_id AND m2.type = 'image' LIMIT 1) as thumbnail_raw,
             m.service_id,
@@ -377,7 +377,7 @@ pub async fn get_duets(
         "#
     };
 
-    let count_sql = if let Some(video_id) = video_id_ref {
+    let count_sql = if let Some(_video_id) = video_id_ref {
         r#"
         SELECT COUNT(*)
         FROM media m

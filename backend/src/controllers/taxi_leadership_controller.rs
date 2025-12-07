@@ -14,7 +14,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use log::info;
+use log::{error, info};
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
@@ -216,7 +216,7 @@ pub async fn get_demand_heatmap(
     };
 
     // Créer zone centrale
-    let center_zone = PredictionZone {
+    let _center_zone = PredictionZone {
         zone_id: "heatmap_center".to_string(),
         latitude: params.center_lat,
         longitude: params.center_lng,
