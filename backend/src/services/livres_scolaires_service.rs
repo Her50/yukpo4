@@ -53,7 +53,7 @@ impl LivresScolairesService {
         .bind(request.niveau)
         .bind(request.etat_livre)
         .bind(request.description_etat)
-        .bind(request.images_urls.unwrap_or_default())
+        .bind(sqlx::types::Json(request.images_urls.unwrap_or_default()))
         .bind(request.video_url)
         .bind(request.gps)
         .bind(request.ville)
@@ -370,7 +370,7 @@ impl LivresScolairesService {
             query = query.bind(description_etat);
         }
         if let Some(images_urls) = request.images_urls {
-            query = query.bind(images_urls);
+            query = query.bind(sqlx::types::Json(images_urls));
         }
         if let Some(video_url) = request.video_url {
             query = query.bind(video_url);

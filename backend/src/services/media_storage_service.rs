@@ -285,6 +285,17 @@ impl MediaStorageService {
     }
 
     /// ✅ Construit l'URL publique pour un fichier stocké (S3/Wasabi ou local)
+    /// ✅ Alias pour upload_file - utilise store_file en interne
+    pub async fn upload_file<P: AsRef<Path>>(
+        &self,
+        local_path: P,
+        storage_key: &str,
+    ) -> AppResult<String> {
+        let result = self.store_file(local_path, storage_key, None).await?;
+        Ok(result.public_url)
+    }
+
+    /// ✅ Construit l'URL publique pour un fichier stocké (S3/Wasabi ou local)
     pub fn build_public_url(&self, storage_path: &str) -> String {
         let candidate_base = self
             .config

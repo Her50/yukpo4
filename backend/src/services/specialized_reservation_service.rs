@@ -246,34 +246,7 @@ impl SpecializedReservationService {
             .bind(user_id),
         };
 
-        let rows = query.fetch_all(&*self.pool).await?;
-
-        let reservations: Vec<SpecializedReservation> = rows
-            .into_iter()
-            .map(|row| SpecializedReservation {
-                id: row.get(0),
-                service_id: row.get(1),
-                service_type: row.get(2),
-                user_id: row.get(3),
-                prestataire_id: row.get(4),
-                reservation_type: row.get(5),
-                status: row.get(6),
-                requested_date: row.get(7),
-                confirmed_date: row.get(8),
-                completed_at: row.get(9),
-                cancelled_at: row.get(10),
-                details: row.get(11),
-                amount: row.get(12),
-                currency: row.get(13),
-                payment_status: row.get(14),
-                payment_method: row.get(15),
-                notes: row.get(16),
-                prestataire_notes: row.get(17),
-                created_at: row.get(18),
-                updated_at: row.get(19),
-            })
-            .collect();
-
+        let reservations = query.fetch_all(&*self.pool).await?;
         Ok(reservations)
     }
 
@@ -303,35 +276,7 @@ impl SpecializedReservationService {
             .bind(prestataire_id),
         };
 
-        let rows = query.fetch_all(&*self.pool).await?;
-
-        // Convertir les rows en SpecializedReservation
-        let reservations: Vec<SpecializedReservation> = rows
-            .into_iter()
-            .map(|row| SpecializedReservation {
-                id: row.get("id"),
-                service_id: row.get("service_id"),
-                service_type: row.get("service_type"),
-                user_id: row.get("user_id"),
-                prestataire_id: row.get("prestataire_id"),
-                reservation_type: row.get("reservation_type"),
-                status: row.get("status"),
-                requested_date: row.get("requested_date"),
-                confirmed_date: row.get("confirmed_date"),
-                completed_at: row.get("completed_at"),
-                cancelled_at: row.get("cancelled_at"),
-                details: row.get("details"),
-                amount: row.get("amount"),
-                currency: row.get("currency"),
-                payment_status: row.get("payment_status"),
-                payment_method: row.get("payment_method"),
-                notes: row.get("notes"),
-                prestataire_notes: row.get("prestataire_notes"),
-                created_at: row.get("created_at"),
-                updated_at: row.get("updated_at"),
-            })
-            .collect();
-
+        let reservations = query.fetch_all(&*self.pool).await?;
         Ok(reservations)
     }
 
@@ -356,26 +301,26 @@ impl SpecializedReservationService {
         .await?;
 
         Ok(SpecializedReservation {
-            id: row.get(0),
-            service_id: row.get(1),
-            service_type: row.get(2),
-            user_id: row.get(3),
-            prestataire_id: row.get(4),
-            reservation_type: row.get(5),
-            status: row.get(6),
-            requested_date: row.get(7),
-            confirmed_date: row.get(8),
-            completed_at: row.get(9),
-            cancelled_at: row.get(10),
-            details: row.get(11),
-            amount: row.get(12),
-            currency: row.get(13),
-            payment_status: row.get(14),
-            payment_method: row.get(15),
-            notes: row.get(16),
-            prestataire_notes: row.get(17),
-            created_at: row.get(18),
-            updated_at: row.get(19),
+            id: row.get::<i32, _>(0),
+            service_id: row.get::<i32, _>(1),
+            service_type: row.get::<String, _>(2),
+            user_id: row.get::<i32, _>(3),
+            prestataire_id: row.get::<i32, _>(4),
+            reservation_type: row.get::<String, _>(5),
+            status: row.get::<String, _>(6),
+            requested_date: row.get::<Option<DateTime<Utc>>, _>(7),
+            confirmed_date: row.get::<Option<DateTime<Utc>>, _>(8),
+            completed_at: row.get::<Option<DateTime<Utc>>, _>(9),
+            cancelled_at: row.get::<Option<DateTime<Utc>>, _>(10),
+            details: row.get::<serde_json::Value, _>(11),
+            amount: row.get::<Option<Decimal>, _>(12),
+            currency: row.get::<Option<String>, _>(13),
+            payment_status: row.get::<Option<String>, _>(14),
+            payment_method: row.get::<Option<String>, _>(15),
+            notes: row.get::<Option<String>, _>(16),
+            prestataire_notes: row.get::<Option<String>, _>(17),
+            created_at: row.get::<DateTime<Utc>, _>(18),
+            updated_at: row.get::<DateTime<Utc>, _>(19),
         })
     }
 }

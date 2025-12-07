@@ -282,15 +282,18 @@ impl DeliveryMLModelsService {
         self.total_predictions.fetch_add(1, Ordering::Relaxed);
 
         // ✅ Essayer d'abord avec ONNX si disponible (toujours activé)
-        if let Some(session) = self.onnx_sessions.get(&ModelType::ETAPrediction) {
-            match self.predict_eta_with_onnx(session, features).await {
-                Ok(prediction) => {
-                    self.ml_predictions.fetch_add(1, Ordering::Relaxed);
-                    return Ok(prediction);
-                }
-                Err(e) => {
-                    log::warn!("[ML Models] Erreur ONNX, fallback formule: {}", e);
-                    // Continue vers formule optimisée
+        #[cfg(feature = "onnx")]
+        {
+            if let Some(session) = self.onnx_sessions.get(&ModelType::ETAPrediction) {
+                match self.predict_eta_with_onnx(session, features).await {
+                    Ok(prediction) => {
+                        self.ml_predictions.fetch_add(1, Ordering::Relaxed);
+                        return Ok(prediction);
+                    }
+                    Err(e) => {
+                        log::warn!("[ML Models] Erreur ONNX, fallback formule: {}", e);
+                        // Continue vers formule optimisée
+                    }
                 }
             }
         }
@@ -596,6 +599,7 @@ impl DeliveryMLModelsService {
 
         Ok(prediction.max(5.0)) // Minimum 5 minutes
     }
+
 
     /// Entraîne un modèle avec de nouvelles données (pour compatibilité)
     pub async fn train_model(

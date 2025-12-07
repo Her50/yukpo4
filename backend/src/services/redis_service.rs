@@ -2,16 +2,23 @@
 
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 
 use log::{error, info, warn};
-use redis::{aio::MultiplexedConnection, RedisResult};
+use redis::{aio::{Connection, MultiplexedConnection}, RedisResult};
 use serde::{Deserialize, Serialize};
 
 use crate::config::redis_config::RedisConfig;
 use crate::core::types::{AppError, AppResult};
 
+/// ✅ Type énuméré pour gérer les deux types de connexions Redis
+enum RedisConnection {
+    Multiplexed(MultiplexedConnection),
+    Standard(Connection),
+}
+
 pub struct RedisService {
-    connection_manager: Arc<MultiplexedConnection>,
+    connection_manager: Arc<Mutex<RedisConnection>>,
     config: RedisConfig,
 }
 
@@ -20,21 +27,23 @@ impl RedisService {
     pub async fn new(config: RedisConfig) -> AppResult<Self> {
         info!("[Redis] Connecting to Redis: {}", config.url);
 
-        let client = if config.cluster_mode {
+        let connection = if config.cluster_mode {
             // ✅ Mode cluster - ClusterClient n'a pas get_multiplexed_async_connection
             // Utiliser get_async_connection à la place
             let cluster_client = redis::cluster::ClusterClient::new(config.cluster_urls())?;
-            cluster_client.get_async_connection().await?
+            let conn = cluster_client.get_async_connection().await?;
+            RedisConnection::Standard(conn)
         } else {
             // ✅ Mode standalone
             let client = redis::Client::open(config.url.as_str())?;
-            client.get_multiplexed_async_connection().await?
+            let conn = client.get_multiplexed_async_connection().await?;
+            RedisConnection::Multiplexed(conn)
         };
 
         info!("[Redis] Connected successfully");
 
         Ok(Self {
-            connection_manager: Arc::new(client),
+            connection_manager: Arc::new(Mutex::new(connection)),
             config,
         })
     }
@@ -45,14 +54,27 @@ impl RedisService {
         K: redis::ToRedisArgs + Send + Sync,
         V: redis::ToRedisArgs + Send + Sync,
     {
-        let mut conn = self.connection_manager.clone();
-        redis::cmd("SETEX")
-            .arg(key)
-            .arg(seconds)
-            .arg(value)
-            .query_async(&mut *conn)
-            .await
-            .map_err(|e| AppError::Internal(format!("Redis SETEX error: {}", e)))?;
+        let mut conn = self.connection_manager.lock().await;
+        match &mut *conn {
+            RedisConnection::Multiplexed(conn) => {
+                redis::cmd("SETEX")
+                    .arg(key)
+                    .arg(seconds)
+                    .arg(value)
+                    .query_async(conn)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Redis SETEX error: {}", e)))?;
+            }
+            RedisConnection::Standard(conn) => {
+                redis::cmd("SETEX")
+                    .arg(key)
+                    .arg(seconds)
+                    .arg(value)
+                    .query_async(conn)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Redis SETEX error: {}", e)))?;
+            }
+        }
         Ok(())
     }
 
@@ -62,9 +84,15 @@ impl RedisService {
         K: redis::ToRedisArgs + Send + Sync,
         V: redis::FromRedisValue,
     {
-        let mut conn = self.connection_manager.clone();
-        let result: RedisResult<Option<V>> =
-            redis::cmd("GET").arg(key).query_async(&mut *conn).await;
+        let mut conn = self.connection_manager.lock().await;
+        let result: RedisResult<Option<V>> = match &mut *conn {
+            RedisConnection::Multiplexed(conn) => {
+                redis::cmd("GET").arg(key).query_async(conn).await
+            }
+            RedisConnection::Standard(conn) => {
+                redis::cmd("GET").arg(key).query_async(conn).await
+            }
+        };
 
         match result {
             Ok(value) => Ok(value),
@@ -81,12 +109,23 @@ impl RedisService {
     where
         K: redis::ToRedisArgs + Send + Sync,
     {
-        let mut conn = self.connection_manager.clone();
-        redis::cmd("DEL")
-            .arg(key)
-            .query_async(&mut *conn)
-            .await
-            .map_err(|e| AppError::Internal(format!("Redis DEL error: {}", e)))?;
+        let mut conn = self.connection_manager.lock().await;
+        match &mut *conn {
+            RedisConnection::Multiplexed(conn) => {
+                redis::cmd("DEL")
+                    .arg(key)
+                    .query_async(conn)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Redis DEL error: {}", e)))?;
+            }
+            RedisConnection::Standard(conn) => {
+                redis::cmd("DEL")
+                    .arg(key)
+                    .query_async(conn)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Redis DEL error: {}", e)))?;
+            }
+        }
         Ok(())
     }
 
@@ -95,21 +134,44 @@ impl RedisService {
     where
         K: redis::ToRedisArgs + Send + Sync + Clone,
     {
-        let mut conn = self.connection_manager.clone();
-        let count: u64 = redis::cmd("INCR")
-            .arg(key.clone())
-            .query_async(&mut *conn)
-            .await
-            .map_err(|e| AppError::Internal(format!("Redis INCR error: {}", e)))?;
+        let mut conn = self.connection_manager.lock().await;
+        let count: u64 = match &mut *conn {
+            RedisConnection::Multiplexed(conn) => {
+                redis::cmd("INCR")
+                    .arg(key.clone())
+                    .query_async(conn)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Redis INCR error: {}", e)))?
+            }
+            RedisConnection::Standard(conn) => {
+                redis::cmd("INCR")
+                    .arg(key.clone())
+                    .query_async(conn)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Redis INCR error: {}", e)))?
+            }
+        };
 
         // ✅ Set expiration si première incrémentation
         if count == 1 {
-            redis::cmd("EXPIRE")
-                .arg(key)
-                .arg(ttl)
-                .query_async(&mut *conn)
-                .await
-                .map_err(|e| AppError::Internal(format!("Redis EXPIRE error: {}", e)))?;
+            match &mut *conn {
+                RedisConnection::Multiplexed(conn) => {
+                    redis::cmd("EXPIRE")
+                        .arg(key)
+                        .arg(ttl)
+                        .query_async(conn)
+                        .await
+                        .map_err(|e| AppError::Internal(format!("Redis EXPIRE error: {}", e)))?;
+                }
+                RedisConnection::Standard(conn) => {
+                    redis::cmd("EXPIRE")
+                        .arg(key)
+                        .arg(ttl)
+                        .query_async(conn)
+                        .await
+                        .map_err(|e| AppError::Internal(format!("Redis EXPIRE error: {}", e)))?;
+                }
+            }
         }
 
         Ok(count)
@@ -121,13 +183,25 @@ impl RedisService {
         K: redis::ToRedisArgs + Send + Sync,
         V: redis::ToRedisArgs + Send + Sync,
     {
-        let mut conn = self.connection_manager.clone();
-        redis::cmd("LPUSH")
-            .arg(key)
-            .arg(value)
-            .query_async(&mut *conn)
-            .await
-            .map_err(|e| AppError::Internal(format!("Redis LPUSH error: {}", e)))?;
+        let mut conn = self.connection_manager.lock().await;
+        match &mut *conn {
+            RedisConnection::Multiplexed(conn) => {
+                redis::cmd("LPUSH")
+                    .arg(key)
+                    .arg(value)
+                    .query_async(conn)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Redis LPUSH error: {}", e)))?;
+            }
+            RedisConnection::Standard(conn) => {
+                redis::cmd("LPUSH")
+                    .arg(key)
+                    .arg(value)
+                    .query_async(conn)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Redis LPUSH error: {}", e)))?;
+            }
+        }
         Ok(())
     }
 
@@ -137,12 +211,23 @@ impl RedisService {
         K: redis::ToRedisArgs + Send + Sync,
         V: redis::FromRedisValue,
     {
-        let mut conn = self.connection_manager.clone();
-        let result: RedisResult<Option<(String, V)>> = redis::cmd("BRPOP")
-            .arg(key)
-            .arg(timeout)
-            .query_async(&mut *conn)
-            .await;
+        let mut conn = self.connection_manager.lock().await;
+        let result: RedisResult<Option<(String, V)>> = match &mut *conn {
+            RedisConnection::Multiplexed(conn) => {
+                redis::cmd("BRPOP")
+                    .arg(key)
+                    .arg(timeout)
+                    .query_async(conn)
+                    .await
+            }
+            RedisConnection::Standard(conn) => {
+                redis::cmd("BRPOP")
+                    .arg(key)
+                    .arg(timeout)
+                    .query_async(conn)
+                    .await
+            }
+        };
 
         match result {
             Ok(value) => Ok(value),
@@ -166,13 +251,25 @@ impl RedisService {
         if let Some(seconds) = ttl {
             self.setex(key, seconds, json).await
         } else {
-            let mut conn = self.connection_manager.clone();
-            redis::cmd("SET")
-                .arg(key)
-                .arg(json)
-                .query_async(&mut *conn)
-                .await
-                .map_err(|e| AppError::Internal(format!("Redis SET error: {}", e)))?;
+            let mut conn = self.connection_manager.lock().await;
+            match &mut *conn {
+                RedisConnection::Multiplexed(conn) => {
+                    redis::cmd("SET")
+                        .arg(key)
+                        .arg(json)
+                        .query_async(conn)
+                        .await
+                        .map_err(|e| AppError::Internal(format!("Redis SET error: {}", e)))?;
+                }
+                RedisConnection::Standard(conn) => {
+                    redis::cmd("SET")
+                        .arg(key)
+                        .arg(json)
+                        .query_async(conn)
+                        .await
+                        .map_err(|e| AppError::Internal(format!("Redis SET error: {}", e)))?;
+                }
+            }
             Ok(())
         }
     }
@@ -194,8 +291,15 @@ impl RedisService {
 
     /// ✅ Health check
     pub async fn ping(&self) -> AppResult<bool> {
-        let mut conn = self.connection_manager.clone();
-        let result: RedisResult<String> = redis::cmd("PING").query_async(&mut *conn).await;
+        let mut conn = self.connection_manager.lock().await;
+        let result: RedisResult<String> = match &mut *conn {
+            RedisConnection::Multiplexed(conn) => {
+                redis::cmd("PING").query_async(conn).await
+            }
+            RedisConnection::Standard(conn) => {
+                redis::cmd("PING").query_async(conn).await
+            }
+        };
 
         match result {
             Ok(_) => Ok(true),
@@ -207,7 +311,8 @@ impl RedisService {
     }
 
     /// ✅ Get connection manager (pour usage avancé)
-    pub fn connection_manager(&self) -> Arc<MultiplexedConnection> {
+    /// Note: Retourne un clone de l'Arc, mais l'accès nécessite un lock
+    pub fn connection_manager(&self) -> Arc<Mutex<RedisConnection>> {
         self.connection_manager.clone()
     }
 }

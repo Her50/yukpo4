@@ -23,9 +23,8 @@ pub struct LivreScolaire {
     // État et médias
     pub etat_livre: String, // "Neuf", "Très bon", "Bon", "Acceptable"
     pub description_etat: Option<String>,
-    #[sqlx(default)]
-    pub images_urls: Vec<String>, // URLs des images du livre
-    pub video_url: Option<String>, // URL vidéo d'appréciation de l'état
+    #[sqlx(default, json)]
+    pub images_urls: Vec<String>, // URLs des images du livre (stocké en JSON)
 
     // Géolocalisation
     pub gps: Option<String>, // Format: "lat,lng"
