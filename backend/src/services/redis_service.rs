@@ -21,10 +21,10 @@ impl RedisService {
         info!("[Redis] Connecting to Redis: {}", config.url);
 
         let client = if config.cluster_mode {
-            // ✅ Mode cluster
-            redis::cluster::ClusterClient::new(config.cluster_urls())?
-                .get_multiplexed_async_connection()
-                .await?
+            // ✅ Mode cluster - ClusterClient n'a pas get_multiplexed_async_connection
+            // Utiliser get_async_connection à la place
+            let cluster_client = redis::cluster::ClusterClient::new(config.cluster_urls())?;
+            cluster_client.get_async_connection().await?
         } else {
             // ✅ Mode standalone
             let client = redis::Client::open(config.url.as_str())?;
