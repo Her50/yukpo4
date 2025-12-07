@@ -12,11 +12,40 @@ config.resolver.nodeModulesPaths = [
     path.resolve(__dirname, 'node_modules'),
 ];
 
-// Surcharger resolveRequest pour forcer la résolution de react-native-fs
+// Surcharger resolveRequest pour forcer la résolution de modules problématiques
 const defaultResolver = config.resolver.resolveRequest;
+const fs = require('fs');
+
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+    // ✅ CORRECTION: Forcer la résolution de expo-modules-core
+    if (moduleName === 'expo-modules-core') {
+        const searchPaths = [
+            path.resolve(__dirname, 'node_modules', 'expo-modules-core'),
+            path.resolve(__dirname, 'node_modules', 'expo', 'node_modules', 'expo-modules-core'),
+        ];
+
+        for (const searchPath of searchPaths) {
+            try {
+                const packageJsonPath = path.join(searchPath, 'package.json');
+                if (fs.existsSync(packageJsonPath)) {
+                    const packageJson = require(packageJsonPath);
+                    const mainFile = packageJson.main || 'index.js';
+                    const mainPath = path.join(searchPath, mainFile);
+                    if (fs.existsSync(mainPath)) {
+                        return {
+                            filePath: mainPath,
+                            type: 'sourceFile',
+                        };
+                    }
+                }
+            } catch (error) {
+                // Continuer à chercher
+            }
+        }
+    }
+
+    // ✅ CORRECTION: Forcer la résolution de react-native-fs
     if (moduleName === 'react-native-fs') {
-        // Essayer de résoudre depuis plusieurs emplacements
         const searchPaths = [
             path.resolve(__dirname, 'node_modules', 'react-native-fs'),
             path.resolve(__dirname, 'node_modules', '@tensorflow', 'tfjs-react-native', 'node_modules', 'react-native-fs'),
@@ -25,9 +54,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
         for (const searchPath of searchPaths) {
             try {
                 const packageJsonPath = path.join(searchPath, 'package.json');
-                const fs = require('fs');
                 if (fs.existsSync(packageJsonPath)) {
-                    // Trouver le point d'entrée principal
                     const packageJson = require(packageJsonPath);
                     const mainFile = packageJson.main || 'index.js';
                     const mainPath = path.join(searchPath, mainFile);

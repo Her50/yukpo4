@@ -224,7 +224,7 @@ pub async fn check_redis_health_with_error(client: &RedisClient) -> (bool, Optio
         Ok(mut conn) => {
             // Tester avec une opération PING (plus fiable que GET)
             use redis::AsyncCommands;
-            match redis::cmd("PING").query_async::<_, String>(&mut conn).await {
+            match redis::cmd("PING").query_async::<String>(&mut conn).await {
                 Ok(_) => (true, None),
                 Err(e) => {
                     let err_msg = format!("PING failed: {}", e);
