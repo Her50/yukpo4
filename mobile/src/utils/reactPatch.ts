@@ -61,41 +61,77 @@ export const patchReactUseEffect = (ReactInstance: any) => {
     }
 
     try {
+        // ✅ SÉCURITÉ: Vérifier que ReactInstance existe et a useEffect
+        if (!ReactInstance || typeof ReactInstance.useEffect !== 'function') {
+            console.warn('[reactPatch] ⚠️ ReactInstance invalide, patch ignoré');
+            return;
+        }
+
         // Sauvegarder l'original
         const originalUseEffect = ReactInstance.useEffect;
 
-        // ✅ CRITIQUE: Remplacer React.useEffect
-        ReactInstance.useEffect = safeUseEffect;
+        // ✅ CRITIQUE: Remplacer React.useEffect avec protection
+        try {
+            ReactInstance.useEffect = safeUseEffect;
+        } catch (assignError) {
+            console.error('[reactPatch] ❌ Erreur remplacement React.useEffect:', assignError);
+            return; // Ne pas continuer si on ne peut pas remplacer
+        }
 
         // Aussi remplacer dans les exports si disponible
-        if (ReactInstance.default && ReactInstance.default.useEffect) {
-            ReactInstance.default.useEffect = safeUseEffect;
+        if (ReactInstance.default && typeof ReactInstance.default.useEffect === 'function') {
+            try {
+                ReactInstance.default.useEffect = safeUseEffect;
+            } catch (defaultError) {
+                console.warn('[reactPatch] ⚠️ Impossible de patcher React.default.useEffect:', defaultError);
+            }
         }
 
         // ✅ CRITIQUE: Patcher aussi le module 'react' directement pour intercepter les imports directs
         // Cela garantit que même les imports `import { useEffect } from 'react'` utilisent le patch
+        // ✅ SÉCURITÉ: Envelopper dans un try-catch pour ne pas bloquer le démarrage
+        // ✅ NOTE: Dans React Native, require('react') peut ne pas fonctionner de la même manière
+        // On se concentre donc sur ReactInstance.useEffect qui est plus fiable
         try {
-            const reactModule = require('react');
-            if (reactModule && reactModule.useEffect) {
-                reactModule.useEffect = safeUseEffect;
-            }
-            // Aussi pour les exports nommés
-            if (reactModule && typeof reactModule === 'object') {
-                Object.defineProperty(reactModule, 'useEffect', {
-                    value: safeUseEffect,
-                    writable: true,
-                    configurable: true
-                });
+            // Utiliser une approche plus sûre qui ne bloque pas si require échoue
+            if (typeof require !== 'undefined' && typeof require.cache !== 'undefined') {
+                try {
+                    const reactModulePath = require.resolve('react');
+                    const reactModule = require.cache[reactModulePath];
+                    if (reactModule && reactModule.exports) {
+                        if (reactModule.exports.useEffect && typeof reactModule.exports.useEffect === 'function') {
+                            reactModule.exports.useEffect = safeUseEffect;
+                        }
+                        // Aussi pour default export
+                        if (reactModule.exports.default && reactModule.exports.default.useEffect) {
+                            reactModule.exports.default.useEffect = safeUseEffect;
+                        }
+                    }
+                } catch (cacheError) {
+                    // Si require.cache n'est pas disponible, essayer require direct
+                    try {
+                        const reactModule = require('react');
+                        if (reactModule && typeof reactModule.useEffect === 'function') {
+                            reactModule.useEffect = safeUseEffect;
+                        }
+                    } catch (directError) {
+                        // Ignorer si ça ne fonctionne pas
+                        console.warn('[reactPatch] ⚠️ Impossible de patcher require("react") (non-bloquant)');
+                    }
+                }
             }
         } catch (requireError) {
             // En mode production ou si require n'est pas disponible, on continue quand même
-            console.warn('[reactPatch] Impossible de patcher le module react directement:', requireError);
+            // Ne pas bloquer le démarrage pour ça
+            console.warn('[reactPatch] ⚠️ Impossible de patcher le module react directement (non-bloquant):', requireError?.message || requireError);
         }
 
         isPatched = true;
         console.log('[reactPatch] ✅ Patch useEffect appliqué globalement (React.useEffect + imports directs)');
     } catch (error) {
-        console.error('[reactPatch] ❌ Erreur application du patch:', error);
+        // ✅ CRITIQUE: Ne pas bloquer le démarrage si le patch échoue
+        console.error('[reactPatch] ❌ Erreur application du patch (non-bloquant):', error);
+        // Ne pas throw l'erreur pour permettre à l'app de démarrer
     }
 };
 

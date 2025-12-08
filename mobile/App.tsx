@@ -1,10 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import * as React from 'react';
 
-// ✅ PATCH CRITIQUE: Appliquer le patch React IMMÉDIATEMENT après l'import
-import { patchReactUseEffect } from './src/utils/reactPatch';
-patchReactUseEffect(React);
-
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -48,13 +44,34 @@ import { theme } from './src/theme/theme';
  * - Chargement progressif des providers
  */
 export default function App() {
-  console.log('[App] 🚀 Yukpomnang - Démarrage avec Deep Linking');
+  // ✅ SÉCURITÉ: Envelopper dans try-catch pour éviter crash au démarrage
+  try {
+    console.log('[App] 🚀 Yukpomnang - Démarrage avec Deep Linking');
+  } catch (logError) {
+    // Ignorer les erreurs de log
+  }
+
+  // ✅ PATCH REACT: Appliquer le patch useEffect une fois au montage initial
+  React.useEffect(() => {
+    try {
+      const { patchReactUseEffect } = require('./src/utils/reactPatch');
+      if (patchReactUseEffect && typeof patchReactUseEffect === 'function') {
+        patchReactUseEffect(React);
+        console.log('[App] ✅ Patch React useEffect appliqué au montage');
+      }
+    } catch (patchError) {
+      // Ne pas bloquer l'app si le patch échoue
+      console.warn('[App] ⚠️ Patch React non appliqué (non-bloquant):', patchError?.message || patchError);
+    }
+  }, []); // ✅ Exécuté une seule fois au montage
 
   // ✅ CORRECTION CRASH: initObservability dans useEffect pour éviter blocage
   React.useEffect(() => {
     try {
-      initObservability();
-      console.log('[App] ✅ Observability initialisé');
+      if (typeof initObservability === 'function') {
+        initObservability();
+        console.log('[App] ✅ Observability initialisé');
+      }
     } catch (error) {
       console.error('[App] ⚠️ Erreur initialisation observability:', error);
     }

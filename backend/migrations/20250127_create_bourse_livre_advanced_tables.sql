@@ -79,7 +79,10 @@ CREATE TABLE IF NOT EXISTS book_recommendations (
 CREATE INDEX IF NOT EXISTS idx_book_recommendations_user ON book_recommendations(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_book_recommendations_livre ON book_recommendations(livre_id);
 CREATE INDEX IF NOT EXISTS idx_book_recommendations_score ON book_recommendations(score_recommendation DESC);
-CREATE INDEX IF NOT EXISTS idx_book_recommendations_expires ON book_recommendations(expires_at) WHERE expires_at > NOW();
+-- Index sur expires_at pour les requêtes de filtrage
+-- Note: Les index partiels avec NOW() ne sont pas supportés (fonction non-IMMUTABLE)
+-- Le filtrage WHERE expires_at > NOW() sera fait dans les requêtes SQL
+CREATE INDEX IF NOT EXISTS idx_book_recommendations_expires ON book_recommendations(expires_at);
 
 -- ============================================================================
 -- 3. TABLE : Historique des prix (pour suggestions prix IA)

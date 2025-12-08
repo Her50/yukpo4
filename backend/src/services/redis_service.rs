@@ -12,7 +12,7 @@ use crate::core::types::{AppError, AppResult};
 
 /// ✅ Type énuméré pour gérer les connexions Redis
 /// Note: Standard est deprecated mais conservé pour compatibilité
-enum RedisConnection {
+pub enum RedisConnection {
     Multiplexed(MultiplexedConnection),
     #[allow(deprecated)]
     Standard(redis::aio::Connection),

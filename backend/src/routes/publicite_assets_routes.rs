@@ -225,6 +225,6 @@ pub fn publicite_assets_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::<Arc<AppState>>::new()
         .route("/api/publicites/assets", get(list_assets))
         .route("/api/publicites/assets/upload", post(upload_asset))
-        .route("/api/publicites/assets/:id", delete(delete_asset))
+        .route("/api/publicites/assets/{id}", delete(delete_asset))
         .with_state(state)
 }

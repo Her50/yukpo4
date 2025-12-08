@@ -155,7 +155,7 @@ pub async fn get_effect_definition_from_db(
 }
 
 #[derive(Debug, Clone)]
-struct EffectDefinition {
+pub struct EffectDefinition {
     ffmpeg_filter: String,
     description: String,
 }

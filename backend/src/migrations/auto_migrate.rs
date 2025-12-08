@@ -9890,17 +9890,22 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
     // Cette version crée la fonction de base, la migration SQLx l'améliorera
     // ⚠️ IMPORTANT: Utiliser search_radius_km (pas radius_km) pour correspondre aux migrations SQL
     // ⚠️ CRITIQUE: Supprimer toutes les versions existantes pour éviter l'erreur de renommage de paramètre
-    sqlx::query(
-        r#"
-        DROP FUNCTION IF EXISTS search_services_gps_final(text, text, integer, integer);
-        DROP FUNCTION IF EXISTS search_services_gps_final(text, text, integer);
-        DROP FUNCTION IF EXISTS search_services_gps_final(text, text);
-        DROP FUNCTION IF EXISTS search_services_gps_final(text);
-        DROP FUNCTION IF EXISTS search_services_gps_final();
-        "#
-    )
-    .execute(pool)
-    .await?;
+    // Séparer les DROP FUNCTION en requêtes individuelles car SQLx ne peut pas exécuter plusieurs commandes dans un prepared statement
+    let _ = sqlx::query("DROP FUNCTION IF EXISTS search_services_gps_final(text, text, integer, integer)")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("DROP FUNCTION IF EXISTS search_services_gps_final(text, text, integer)")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("DROP FUNCTION IF EXISTS search_services_gps_final(text, text)")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("DROP FUNCTION IF EXISTS search_services_gps_final(text)")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("DROP FUNCTION IF EXISTS search_services_gps_final()")
+        .execute(pool)
+        .await;
 
     sqlx::query(
         r#"

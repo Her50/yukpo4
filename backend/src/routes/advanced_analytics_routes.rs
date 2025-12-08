@@ -23,9 +23,9 @@ pub struct CohortQuery {
 pub fn advanced_analytics_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // Analyse complète d'une vidéo
-        .route("/api/analytics/video/:video_id", get(analyze_video))
+        .route("/api/analytics/video/{video_id}", get(analyze_video))
         // Analyse A/B test
-        .route("/api/analytics/ab-test/:test_id", get(analyze_ab_test))
+        .route("/api/analytics/ab-test/{test_id}", get(analyze_ab_test))
         // Analyse cohortes
         .route("/api/analytics/cohorts", get(analyze_cohorts))
         .with_state(state)
