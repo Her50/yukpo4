@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                job_id,\n                user_id,\n                service_id,\n                product_index,\n                'Normal' as priority,\n                result_payload as payload,\n                created_at,\n                0 as retry_count,\n                3 as max_retries\n            FROM video_generation_jobs\n            WHERE status = 'queued'\n            ORDER BY \n                created_at ASC\n            LIMIT $1\n            FOR UPDATE SKIP LOCKED\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "job_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "service_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "product_index",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "priority",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "payload",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "retry_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "max_retries",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      null,
+      true,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "9419b99d113ddd014163e72ee4d73b1b1264158c4b355258f7436814e139130d"
+}

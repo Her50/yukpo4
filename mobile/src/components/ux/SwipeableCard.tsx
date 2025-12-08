@@ -3,7 +3,7 @@
  * Améliore l'engagement utilisateur de +35%
  */
 
-import React, { useRef } from 'react';
+import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -12,8 +12,8 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
-import { SafeIcon } from '../SafeIcon';
 import { modernColors } from '../../theme/modernTheme';
+import { SafeIcon } from '../SafeIcon';
 
 interface SwipeableCardProps {
     children: React.ReactNode;
@@ -50,18 +50,32 @@ export const SwipeableCard: React.FC<SwipeableCardProps> = React.memo(({
         })
         .onEnd((event) => {
             const threshold = 100;
-            
-            if (event.translationX > threshold && onSwipeRight) {
-                translateX.value = withSpring(500);
-                opacity.value = withSpring(0);
-                runOnJS(onSwipeRight)();
-            } else if (event.translationX < -threshold && onSwipeLeft) {
-                translateX.value = withSpring(-500);
-                opacity.value = withSpring(0);
-                runOnJS(onSwipeLeft)();
-            } else {
-                translateX.value = withSpring(0);
-                opacity.value = withSpring(1);
+
+            if (typeof withSpring === 'function' && translateX && opacity) {
+                try {
+                    if (event.translationX > threshold && onSwipeRight) {
+                        translateX.value = withSpring(500);
+                        opacity.value = withSpring(0);
+                        if (typeof runOnJS === 'function') {
+                            runOnJS(onSwipeRight)();
+                        } else {
+                            onSwipeRight();
+                        }
+                    } else if (event.translationX < -threshold && onSwipeLeft) {
+                        translateX.value = withSpring(-500);
+                        opacity.value = withSpring(0);
+                        if (typeof runOnJS === 'function') {
+                            runOnJS(onSwipeLeft)();
+                        } else {
+                            onSwipeLeft();
+                        }
+                    } else {
+                        translateX.value = withSpring(0);
+                        opacity.value = withSpring(1);
+                    }
+                } catch (error) {
+                    console.warn('[SwipeableCard] Erreur animation onEnd:', error);
+                }
             }
         });
 
@@ -101,7 +115,7 @@ export const SwipeableCard: React.FC<SwipeableCardProps> = React.memo(({
                     </TouchableOpacity>
                 </Animated.View>
             )}
-            
+
             {rightAction && (
                 <Animated.View style={[styles.rightAction, rightActionStyle]}>
                     <TouchableOpacity

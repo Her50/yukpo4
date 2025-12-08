@@ -77,7 +77,8 @@ impl PharmacyProductService {
         let mut updates = Vec::new();
         let mut bind_index = 1;
 
-        if let Some(nom) = nom_produit {
+        let nom_produit_clone = nom_produit.clone();
+        if let Some(ref nom) = nom_produit_clone {
             updates.push(format!("nom_produit = ${}", bind_index));
             bind_index += 1;
         }
@@ -119,7 +120,7 @@ impl PharmacyProductService {
         let mut query = sqlx::query_as::<_, PharmacyProduct>(&sql);
         let _bind_index_reset = 1;
 
-        if let Some(ref nom) = nom_produit {
+        if let Some(ref nom) = nom_produit_clone {
             query = query.bind(nom);
         }
         if let Some(p) = prix {

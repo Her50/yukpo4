@@ -38,38 +38,45 @@ export const useScreenTransition = (options: UseScreenTransitionOptions = {}) =>
 
     useEffect(() => {
         // Animation d'entrée
-        const timer = setTimeout(() => {
-            opacity.value = withTiming(1, {
-                duration,
-                easing: Easing.out(Easing.ease),
-            });
+        if (typeof withTiming === 'function' && typeof withSpring === 'function' && opacity && translateX && translateY && scale) {
+            const timer = setTimeout(() => {
+                try {
+                    opacity.value = withTiming(1, {
+                        duration,
+                        easing: Easing.out(Easing.ease),
+                    });
 
-            if (type === 'slide') {
-                translateX.value = withSpring(0, {
-                    damping: 15,
-                    stiffness: 100,
-                });
-            } else if (type === 'slideUp' || type === 'slideDown') {
-                translateY.value = withSpring(0, {
-                    damping: 15,
-                    stiffness: 100,
-                });
-            } else if (type === 'scale') {
-                scale.value = withSpring(1, {
-                    damping: 15,
-                    stiffness: 100,
-                });
-            }
+                    if (type === 'slide') {
+                        translateX.value = withSpring(0, {
+                            damping: 15,
+                            stiffness: 100,
+                        });
+                    } else if (type === 'slideUp' || type === 'slideDown') {
+                        translateY.value = withSpring(0, {
+                            damping: 15,
+                            stiffness: 100,
+                        });
+                    } else if (type === 'scale') {
+                        scale.value = withSpring(1, {
+                            damping: 15,
+                            stiffness: 100,
+                        });
+                    }
 
-            if (onComplete) {
-                setTimeout(() => {
-                    onComplete();
-                }, duration);
-            }
-        }, delay);
+                    if (onComplete) {
+                        setTimeout(() => {
+                            onComplete();
+                        }, duration);
+                    }
+                } catch (error) {
+                    console.warn('[useScreenTransition] Erreur animation:', error);
+                }
+            }, delay);
 
-        return () => clearTimeout(timer);
-    }, []);
+            return () => clearTimeout(timer);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [type, duration, delay, onComplete]); // ✅ CORRIGÉ: Ne pas inclure les SharedValues
 
     // Animation de sortie
     const exit = (callback?: () => void) => {

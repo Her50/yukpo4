@@ -7,7 +7,7 @@ use crate::models::livre_scolaire::{
 };
 use chrono::{DateTime, Utc};
 use log::info;
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use std::sync::Arc;
 
 pub struct LivresScolairesService {

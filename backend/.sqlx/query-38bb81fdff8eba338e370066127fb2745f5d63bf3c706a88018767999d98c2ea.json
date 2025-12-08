@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE offres_emploi SET nombre_vues = nombre_vues + 1 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "38bb81fdff8eba338e370066127fb2745f5d63bf3c706a88018767999d98c2ea"
+}

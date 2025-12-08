@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE profils_candidats SET is_complete = true, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "922e2e616a303d18b648cfd932c930bfe68e37f5b254a021b4ad771c92eb546f"
+}

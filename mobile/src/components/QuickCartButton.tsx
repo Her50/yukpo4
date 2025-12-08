@@ -45,8 +45,14 @@ export const QuickCartButton: React.FC<QuickCartButtonProps> = ({
         triggerHaptic('medium');
 
         // Animation press
-        scale.value = withSpring(0.9);
-        rotation.value = withSpring(rotation.value + 360);
+        if (typeof withSpring === 'function' && scale && rotation) {
+            try {
+                scale.value = withSpring(0.9);
+                rotation.value = withSpring(rotation.value + 360);
+            } catch (error) {
+                console.warn('[QuickCartButton] Erreur animation press:', error);
+            }
+        }
 
         try {
             if (onAddToCart) {
@@ -76,25 +82,43 @@ export const QuickCartButton: React.FC<QuickCartButtonProps> = ({
             toaster.success('Ajouté au panier !');
 
             // Animation de succès
-            scale.value = withSequence(
-                withSpring(1.2),
-                withSpring(1)
-            );
-            badgeScale.value = withSequence(
-                withSpring(1.3),
-                withSpring(1)
-            );
+            if (typeof withSequence === 'function' && typeof withSpring === 'function' && scale && badgeScale) {
+                try {
+                    scale.value = withSequence(
+                        withSpring(1.2),
+                        withSpring(1)
+                    );
+                    badgeScale.value = withSequence(
+                        withSpring(1.3),
+                        withSpring(1)
+                    );
+                } catch (error) {
+                    console.warn('[QuickCartButton] Erreur animation succès:', error);
+                }
+            }
 
             // Reset après 2 secondes
             setTimeout(() => {
                 setIsInCart(false);
-                badgeScale.value = withSpring(0);
+                if (typeof withSpring === 'function' && badgeScale) {
+                    try {
+                        badgeScale.value = withSpring(0);
+                    } catch (error) {
+                        console.warn('[QuickCartButton] Erreur animation reset:', error);
+                    }
+                }
             }, 2000);
         } catch (error) {
             triggerHaptic('error');
             const errorMessage = error instanceof Error ? error.message : 'Impossible d\'ajouter au panier';
             toaster.error(errorMessage);
-            scale.value = withSpring(1);
+            if (typeof withSpring === 'function' && scale) {
+                try {
+                    scale.value = withSpring(1);
+                } catch (animError) {
+                    console.warn('[QuickCartButton] Erreur animation error:', animError);
+                }
+            }
         } finally {
             setIsAdding(false);
         }

@@ -72,17 +72,16 @@ pub async fn generate_quick_preview(
 
     for (idx, scene) in preview_scenes.iter().enumerate() {
         // Pour chaque scène, on applique les effets et transitions
-        let mut scene_filters = Vec::new();
+        let mut scene_filters: Vec<String> = Vec::new();
 
         // Appliquer les effets de la scène
-        let effects_vec = scene.effects.as_ref().map(|v| v.clone()).unwrap_or_else(|| Vec::new());
-        for effect in &effects_vec {
+        for effect in &scene.effects {
             match effect.as_str() {
                 "zoom" => scene_filters
-                    .push("zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75"),
-                "fade" => scene_filters.push("fade=t=in:st=0:d=0.5"),
+                    .push("zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75".to_string()),
+                "fade" => scene_filters.push("fade=t=in:st=0:d=0.5".to_string()),
                 "glow" => scene_filters
-                    .push("curves=all='0/0 0.5/0.58 1/1',eq=brightness=0.15:saturation=0.2"),
+                    .push("curves=all='0/0 0.5/0.58 1/1',eq=brightness=0.15:saturation=0.2".to_string()),
                 _ => {} // Ignorer les effets non supportés
             }
         }
@@ -90,13 +89,14 @@ pub async fn generate_quick_preview(
         // Appliquer la transition (simplifiée pour preview)
         if let Some(transition) = &scene.transition {
             match transition.as_str() {
-                "fade" => scene_filters.push("fade=t=in:st=0:d=0.3"),
+                "fade" => scene_filters.push("fade=t=in:st=0:d=0.3".to_string()),
                 _ => {}
             }
         }
 
         // Scale pour qualité réduite
-        scene_filters.push(&format!("scale={}", scale));
+        let scale_filter = format!("scale={}", scale);
+        scene_filters.push(scale_filter);
 
         let filter_chain = if scene_filters.is_empty() {
             format!("scale={}", scale)
@@ -128,11 +128,13 @@ pub async fn generate_quick_preview(
     let output_path = format!("preview_{}_{}.mp4", timestamp, quality);
 
     // Générer le preview avec FFmpeg
+    let max_duration_str = max_duration.to_string();
+    let full_filter_str = full_filter;
     let mut ffmpeg_args = vec![
         "-i",
         "input_video.mp4", // TODO: Utiliser le vrai média de la timeline
         "-filter_complex",
-        &full_filter,
+        &full_filter_str,
         "-map",
         "[outv]",
         "-c:v",
@@ -142,7 +144,7 @@ pub async fn generate_quick_preview(
         "-crf",
         crf,
         "-t",
-        &max_duration.to_string(),
+        &max_duration_str,
         "-y",
         &output_path,
     ];

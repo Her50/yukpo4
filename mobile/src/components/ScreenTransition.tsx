@@ -40,37 +40,41 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            opacity.value = withTiming(1, {
-                duration,
-                easing: Easing.out(Easing.ease),
-            });
+            if (typeof withTiming === 'function' && typeof withSpring === 'function') {
+                opacity.value = withTiming(1, {
+                    duration,
+                    easing: Easing.out(Easing.ease),
+                });
 
-            if (type === 'slide') {
-                translateX.value = withSpring(0, {
-                    damping: 15,
-                    stiffness: 100,
-                });
-            } else if (type === 'slideUp' || type === 'slideDown') {
-                translateY.value = withSpring(0, {
-                    damping: 15,
-                    stiffness: 100,
-                });
-            } else if (type === 'scale') {
-                scale.value = withSpring(1, {
-                    damping: 15,
-                    stiffness: 100,
-                });
-            }
+                if (type === 'slide') {
+                    translateX.value = withSpring(0, {
+                        damping: 15,
+                        stiffness: 100,
+                    });
+                } else if (type === 'slideUp' || type === 'slideDown') {
+                    translateY.value = withSpring(0, {
+                        damping: 15,
+                        stiffness: 100,
+                    });
+                } else if (type === 'scale') {
+                    scale.value = withSpring(1, {
+                        damping: 15,
+                        stiffness: 100,
+                    });
+                }
 
-            if (onAnimationComplete) {
-                setTimeout(() => {
-                    onAnimationComplete();
-                }, duration);
+                if (onAnimationComplete) {
+                    setTimeout(() => {
+                        onAnimationComplete();
+                    }, duration);
+                }
             }
         }, delay);
 
         return () => clearTimeout(timer);
-    }, [type, duration, delay, opacity, translateX, translateY, scale, onAnimationComplete]);
+        // ✅ CORRIGÉ: Ne pas inclure les SharedValues dans les dépendances (elles sont stables)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [type, duration, delay]);
 
     const animatedStyle = useAnimatedStyle(() => {
         const transform: any[] = [];

@@ -84,6 +84,9 @@ impl GlobalMetricsService {
             _ => &mut metrics.other_operations,
         };
 
+        // Sauvegarder average_time_ms avant de drop function_metrics
+        let current_avg = function_metrics.average_time_ms;
+        
         function_metrics.total += 1;
         function_metrics.successful += 1;
 
@@ -93,8 +96,10 @@ impl GlobalMetricsService {
             function_metrics.cache_misses += 1;
         }
         
-        // Libérer tous les emprunts avant d'appeler calculate_cache_hit_rate
+        // Libérer function_metrics avant d'appeler calculate_cache_hit_rate
         std::mem::drop(function_metrics);
+        
+        // Libérer metrics avant d'appeler calculate_cache_hit_rate
         std::mem::drop(metrics);
         
         // Calculer cache_hit_rate
@@ -145,22 +150,48 @@ impl GlobalMetricsService {
             .filter(|(f, _, time)| *f == function && *time > cutoff)
             .count();
 
+        // Mettre à jour la moyenne dans metrics
         if function_count > 0 {
             // Approximation: utiliser le temps actuel pour mettre à jour la moyenne
-            let current_avg = function_metrics.average_time_ms;
             let new_avg = if current_avg == 0.0 {
                 response_time.as_millis() as f64
             } else {
                 (current_avg * (function_count - 1) as f64 + response_time.as_millis() as f64)
                     / function_count as f64
             };
+            // Réemprunter metrics pour mettre à jour average_time_ms
+            let mut metrics = self.metrics.write().await;
+            let function_metrics = match function {
+                "search" => &mut metrics.searches,
+                "product_creation" => &mut metrics.product_creation,
+                "video_creation" => &mut metrics.video_creation,
+                "delivery_ordering" => &mut metrics.delivery_ordering,
+                _ => &mut metrics.other_operations,
+            };
             function_metrics.average_time_ms = new_avg;
         } else {
+            // Réemprunter metrics pour mettre à jour average_time_ms
+            let mut metrics = self.metrics.write().await;
+            let function_metrics = match function {
+                "search" => &mut metrics.searches,
+                "product_creation" => &mut metrics.product_creation,
+                "video_creation" => &mut metrics.video_creation,
+                "delivery_ordering" => &mut metrics.delivery_ordering,
+                _ => &mut metrics.other_operations,
+            };
             function_metrics.average_time_ms = response_time.as_millis() as f64;
         }
 
         // Calculer dernières 24h et dernière heure
         let now = Instant::now();
+        let mut metrics = self.metrics.write().await;
+        let function_metrics = match function {
+            "search" => &mut metrics.searches,
+            "product_creation" => &mut metrics.product_creation,
+            "video_creation" => &mut metrics.video_creation,
+            "delivery_ordering" => &mut metrics.delivery_ordering,
+            _ => &mut metrics.other_operations,
+        };
         function_metrics.last_24h = history
             .iter()
             .filter(|(f, _, time)| {

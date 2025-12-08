@@ -24,12 +24,19 @@ const SkeletonItem: React.FC<{ variant: string }> = React.memo(({ variant }) => 
     const opacity = useSharedValue(0.3);
 
     React.useEffect(() => {
-        opacity.value = withRepeat(
-            withTiming(0.7, { duration: 1000 }),
-            -1,
-            true
-        );
-    }, [opacity]);
+        if (typeof withRepeat === 'function' && typeof withTiming === 'function' && opacity) {
+            try {
+                opacity.value = withRepeat(
+                    withTiming(0.7, { duration: 1000 }),
+                    -1,
+                    true
+                );
+            } catch (error) {
+                console.warn('[EnhancedSkeletonLoader] Erreur animation:', error);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // ✅ CORRIGÉ: Ne pas inclure opacity (SharedValue est stable)
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,

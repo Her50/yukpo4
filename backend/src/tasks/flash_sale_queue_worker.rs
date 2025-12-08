@@ -278,7 +278,7 @@ impl FlashSaleQueueWorker {
             })?;
 
         use redis::AsyncCommands;
-        conn.xack::<_, _, i64>(&self.stream_name, &self.consumer_group, &[message_id])
+        let _: usize = conn.xack(&self.stream_name, &self.consumer_group, &[message_id])
             .await
             .map_err(|e| {
                 crate::core::types::AppError::Internal(format!("Redis XACK failed: {}", e))

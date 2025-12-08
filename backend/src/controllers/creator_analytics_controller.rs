@@ -189,7 +189,7 @@ pub async fn get_creator_analytics(
     .fetch_all(pool)
     .await;
 
-    let videos = match videos_rows {
+    let videos: Vec<VideoAnalytics> = match videos_rows {
         Ok(rows) => {
             rows.into_iter().map(|row| {
                 VideoAnalytics {

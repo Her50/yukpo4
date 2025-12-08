@@ -53,8 +53,8 @@ impl StatistiquesEmploiService {
         })?
         .ok_or_else(|| AppError::NotFound("Offre non trouvée".to_string()))?;
 
-        let nombre_vues = offre.nombre_vues;
-        let nombre_candidatures = offre.nombre_candidatures;
+        let nombre_vues = offre.nombre_vues.unwrap_or(0);
+        let nombre_candidatures = offre.nombre_candidatures.unwrap_or(0);
 
         // Compter les candidatures qualifiées (score > 70)
         let nombre_candidatures_qualifiees: i32 = sqlx::query_scalar(

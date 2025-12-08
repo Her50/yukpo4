@@ -312,7 +312,7 @@ impl CovoiturageProactiveNotifications {
                 "%Y-%m-%d %H:%M",
             )
             .ok()
-            .and_then(|dt| chrono::DateTime::from_naive_utc_and_offset(dt, chrono::Utc).into());
+            .and_then(|dt: chrono::NaiveDateTime| -> Option<chrono::DateTime<chrono::Utc>> { Some(chrono::DateTime::from_naive_utc_and_offset(dt, chrono::Utc)) });
 
             if let Some(departure) = departure_datetime {
                 let reminder_24h = departure - chrono::Duration::hours(24);

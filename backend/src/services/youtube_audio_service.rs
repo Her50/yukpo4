@@ -5,7 +5,9 @@ use log::{info, warn};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 
 /// Track de la bibliothèque YouTube Audio
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,7 +44,7 @@ pub struct AudioMetadata {
 pub struct YouTubeAudioService {
     client: Client,
     api_key: Option<String>,
-    cache: HashMap<String, (Vec<AudioMetadata>, u64)>, // Cache avec timestamp
+    cache: Arc<Mutex<HashMap<String, (Vec<AudioMetadata>, u64)>>>, // Cache avec timestamp
     cache_ttl: u64,                                    // TTL en secondes
 }
 
@@ -54,7 +56,7 @@ impl YouTubeAudioService {
                 .build()
                 .unwrap_or_else(|_| Client::new()),
             api_key,
-            cache: HashMap::new(),
+            cache: Arc::new(Mutex::new(HashMap::new())),
             cache_ttl: 3600, // 1 heure
         }
     }
@@ -73,7 +75,7 @@ impl YouTubeAudioService {
     ) -> AppResult<(Vec<AudioMetadata>, u32)> {
         // Vérifier le cache
         let cache_key = format!("{:?}_{:?}_{:?}_{:?}", query, genre, mood, license);
-        if let Some((cached_data, timestamp)) = self.cache.get(&cache_key) {
+        if let Some((cached_data, timestamp)) = self.cache.lock().await.get(&cache_key) {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
@@ -90,13 +92,13 @@ impl YouTubeAudioService {
             .get_curated_youtube_audio_tracks(query, genre, mood, license)
             .await?;
 
-        let limit = limit.unwrap_or(20);
-        let offset = offset.unwrap_or(0);
+        let limit_val = limit.unwrap_or(20);
+        let offset_val = offset.unwrap_or(0);
         let total = tracks.len() as u32;
-        let paginated = tracks
+        let paginated: Vec<_> = tracks
             .into_iter()
-            .skip(offset as usize)
-            .take(limit as usize)
+            .skip(offset_val as usize)
+            .take(limit_val as usize)
             .collect();
 
         // Mettre en cache
@@ -104,7 +106,7 @@ impl YouTubeAudioService {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        self.cache.insert(cache_key, (paginated.clone(), now));
+        self.cache.lock().await.insert(cache_key, (paginated.clone(), now));
 
         Ok((paginated, total))
     }

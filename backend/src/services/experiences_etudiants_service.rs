@@ -126,6 +126,7 @@ impl ExperiencesEtudiantsService {
         let limit = limit.unwrap_or(20).min(100).max(1);
         let offset = (page - 1) * limit;
 
+        let filiere_clone = filiere.clone();
         let experiences = sqlx::query_as::<_, ExperienceAncienEtudiant>(
             r#"
             SELECT * FROM experiences_anciens_etudiants
@@ -134,7 +135,7 @@ impl ExperiencesEtudiantsService {
             LIMIT $2 OFFSET $3
             "#,
         )
-        .bind(filiere)
+        .bind(&filiere_clone)
         .bind(limit)
         .bind(offset)
         .fetch_all(&*self.pool)
@@ -143,11 +144,10 @@ impl ExperiencesEtudiantsService {
             error!("[EXPERIENCES_ETUDIANTS] Erreur list by filiere: {}", e);
             AppError::Internal(format!("Erreur liste expériences par filière: {}", e))
         })?;
-
         let total: i64 = sqlx::query_scalar(
             "SELECT COUNT(*)::bigint FROM experiences_anciens_etudiants WHERE filiere = $1 AND is_approved = true"
         )
-        .bind(&filiere)
+        .bind(&filiere_clone)
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| {

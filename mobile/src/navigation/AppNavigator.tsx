@@ -313,16 +313,15 @@ const LoadingScreen = () => (
 );
 
 // Icône de tab simple
-// ✅ CORRIGÉ: TabIcon avec react-native-reanimated (pattern correct comme ProductCard/HomeHeader)
+// ✅ CORRIGÉ: TabIcon avec react-native-reanimated (pattern correct)
 const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }> = React.memo(({ name, focused, badgeCount }) => {
-  // ✅ CORRIGÉ: useSharedValue appelé directement (hook React, stable entre renders)
+  // ✅ CORRIGÉ: useSharedValue initialisé une seule fois avec valeur fixe
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0.6);
 
-  // ✅ CORRIGÉ: useEffect avec dépendances correctes
+  // ✅ CORRIGÉ: useEffect avec dépendances correctes (sans inclure les SharedValues)
   useEffect(() => {
-    // ✅ Protection: Vérifier que les fonctions et valeurs existent
-    if (scale && opacity && typeof withSpring === 'function' && typeof withTiming === 'function') {
+    if (typeof withSpring === 'function' && typeof withTiming === 'function' && scale && opacity) {
       try {
         scale.value = withSpring(focused ? 1.15 : 1, { damping: 10, stiffness: 200 });
         opacity.value = withTiming(focused ? 1 : 0.6, { duration: 200 });
@@ -334,21 +333,12 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
   }, [focused]); // ✅ IMPORTANT: Ne pas inclure scale et opacity (SharedValues sont stables)
 
   // ✅ CORRIGÉ: useAnimatedStyle avec worklet (automatiquement géré par Babel)
-  // Le callback est automatiquement transformé en worklet par le plugin Babel
   const animatedStyle = useAnimatedStyle(() => {
     'worklet';
-    try {
-      return {
-        transform: [{ scale: scale?.value ?? (focused ? 1.15 : 1) }],
-        opacity: opacity?.value ?? (focused ? 1 : 0.6),
-      };
-    } catch (error) {
-      // Fallback en cas d'erreur
-      return {
-        transform: [{ scale: focused ? 1.15 : 1 }],
-        opacity: focused ? 1 : 0.6,
-      };
-    }
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    };
   });
 
   const icons: { [key: string]: string } = {

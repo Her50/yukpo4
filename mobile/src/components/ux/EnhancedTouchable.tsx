@@ -51,22 +51,34 @@ export const EnhancedTouchable: React.FC<EnhancedTouchableProps> = React.memo(({
             if (hapticFeedback !== 'none') {
                 hapticPress();
             }
-            if (scaleOnPress) {
-                scale.value = withSpring(0.95, springConfig);
+            if (typeof withSpring === 'function' && typeof withTiming === 'function' && scale && opacity) {
+                try {
+                    if (scaleOnPress) {
+                        scale.value = withSpring(0.95, springConfig);
+                    }
+                    if (glowOnPress && glow) {
+                        glow.value = withTiming(1, { duration: 150 });
+                    }
+                    opacity.value = withTiming(0.8, { duration: 100 });
+                } catch (error) {
+                    console.warn('[EnhancedTouchable] Erreur animation onBegin:', error);
+                }
             }
-            if (glowOnPress) {
-                glow.value = withTiming(1, { duration: 150 });
-            }
-            opacity.value = withTiming(0.8, { duration: 100 });
         })
         .onFinalize(() => {
-            if (scaleOnPress) {
-                scale.value = withSpring(1, springConfig);
+            if (typeof withSpring === 'function' && typeof withTiming === 'function' && scale && opacity) {
+                try {
+                    if (scaleOnPress) {
+                        scale.value = withSpring(1, springConfig);
+                    }
+                    if (glowOnPress && glow) {
+                        glow.value = withTiming(0, { duration: 300 });
+                    }
+                    opacity.value = withTiming(1, { duration: 100 });
+                } catch (error) {
+                    console.warn('[EnhancedTouchable] Erreur animation onFinalize:', error);
+                }
             }
-            if (glowOnPress) {
-                glow.value = withTiming(0, { duration: 300 });
-            }
-            opacity.value = withTiming(1, { duration: 100 });
             if (onPress && !disabled) {
                 onPress();
             }

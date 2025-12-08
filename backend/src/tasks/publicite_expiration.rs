@@ -94,7 +94,7 @@ async fn check_expiring_soon_publicites(pool: &PgPool) -> Result<usize, sqlx::Er
         );
 
         let metadata = serde_json::json!({
-            "publicite_id": pub_row.get::<i32, _>("id")(0),
+            "publicite_id": pub_row.get::<i32, _>("id"),
             "jours_restants": jours_restants,
             "titre": titre
         });

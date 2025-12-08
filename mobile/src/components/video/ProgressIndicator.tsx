@@ -31,8 +31,15 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
     const progressWidth = useSharedValue(progress);
 
     React.useEffect(() => {
-        progressWidth.value = withTiming(progress, { duration: 200 });
-    }, [progress]);
+        if (typeof withTiming === 'function' && progressWidth) {
+            try {
+                progressWidth.value = withTiming(progress, { duration: 200 });
+            } catch (error) {
+                console.warn('[ProgressIndicator] Erreur animation:', error);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [progress]); // ✅ CORRIGÉ: Ne pas inclure progressWidth (SharedValue est stable)
 
     const animatedProgressStyle = useAnimatedStyle(() => {
         return {

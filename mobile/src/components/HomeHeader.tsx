@@ -76,30 +76,57 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
 
     // ✅ Convertir Animated.Value en SharedValue pour compatibilité
     useEffect(() => {
-        const listener = scrollY.addListener(({ value }) => {
-            scrollYShared.value = value;
-        });
+        if (!scrollY || typeof scrollY.addListener !== 'function') {
+            return;
+        }
 
-        return () => {
-            scrollY.removeListener(listener);
-        };
+        try {
+            const listener = scrollY.addListener(({ value }) => {
+                if (scrollYShared) {
+                    scrollYShared.value = value;
+                }
+            });
+
+            return () => {
+                if (scrollY && typeof scrollY.removeListener === 'function' && listener) {
+                    scrollY.removeListener(listener);
+                }
+            };
+        } catch (error) {
+            console.warn('[HomeHeader] Erreur listener scrollY:', error);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [scrollY]);
 
     // ✅ Animation badges au changement de compteur
     useEffect(() => {
-        if (unreadChatCount > 0) {
-            badgeScaleChat.value = withSpring(1.2, { damping: 8 }, () => {
-                badgeScaleChat.value = withSpring(1, { damping: 8 });
-            });
+        if (unreadChatCount > 0 && typeof withSpring === 'function' && badgeScaleChat) {
+            try {
+                badgeScaleChat.value = withSpring(1.2, { damping: 8 }, () => {
+                    if (badgeScaleChat && typeof withSpring === 'function') {
+                        badgeScaleChat.value = withSpring(1, { damping: 8 });
+                    }
+                });
+            } catch (error) {
+                console.warn('[HomeHeader] Erreur animation badge chat:', error);
+            }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [unreadChatCount]);
 
     useEffect(() => {
-        if (unreadNotificationsCount > 0) {
-            badgeScaleNotification.value = withSpring(1.2, { damping: 8 }, () => {
-                badgeScaleNotification.value = withSpring(1, { damping: 8 });
-            });
+        if (unreadNotificationsCount > 0 && typeof withSpring === 'function' && badgeScaleNotification) {
+            try {
+                badgeScaleNotification.value = withSpring(1.2, { damping: 8 }, () => {
+                    if (badgeScaleNotification && typeof withSpring === 'function') {
+                        badgeScaleNotification.value = withSpring(1, { damping: 8 });
+                    }
+                });
+            } catch (error) {
+                console.warn('[HomeHeader] Erreur animation badge notification:', error);
+            }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [unreadNotificationsCount]);
 
     // ✅ Styles animés avec Reanimated 3 (60fps garanti) + Parallax

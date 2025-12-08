@@ -29,18 +29,25 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = React.memo(
             // Animation d'entrée avec délai basé sur l'index
             const animationDelay = index * 100 + delay;
 
-            setTimeout(() => {
-                opacity.value = withTiming(1, { duration: 300 });
-                translateY.value = withSpring(0, {
-                    damping: 15,
-                    stiffness: 100,
-                });
-                scale.value = withSpring(1, {
-                    damping: 15,
-                    stiffness: 100,
-                });
-            }, animationDelay);
-        }, [index, delay, opacity, translateY, scale]);
+            if (typeof withTiming === 'function' && typeof withSpring === 'function' && opacity && translateY && scale) {
+                setTimeout(() => {
+                    try {
+                        opacity.value = withTiming(1, { duration: 300 });
+                        translateY.value = withSpring(0, {
+                            damping: 15,
+                            stiffness: 100,
+                        });
+                        scale.value = withSpring(1, {
+                            damping: 15,
+                            stiffness: 100,
+                        });
+                    } catch (error) {
+                        console.warn('[AnimatedCard] Erreur animation:', error);
+                    }
+                }, animationDelay);
+            }
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [index, delay]); // ✅ CORRIGÉ: Ne pas inclure les SharedValues (elles sont stables)
 
         const animatedStyle = useAnimatedStyle(() => ({
             opacity: opacity.value,

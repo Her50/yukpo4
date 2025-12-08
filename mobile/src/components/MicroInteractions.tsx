@@ -56,24 +56,30 @@ export const MicroInteractions: React.FC<MicroInteractionsProps> = React.memo(({
     const favoriteGlow = useSharedValue(0);
 
     const animatePress = (scaleValue: Animated.SharedValue<number>, glowValue?: Animated.SharedValue<number>, callback?: () => void) => {
-        // Animation de scale avec spring (plus fluide que Animated API)
-        scaleValue.value = withSequence(
-            withSpring(1.3, {
-                damping: 12,
-                stiffness: 300,
-            }),
-            withSpring(1, {
-                damping: 12,
-                stiffness: 300,
-            })
-        );
+        if (typeof withSequence === 'function' && typeof withSpring === 'function' && typeof withTiming === 'function' && scaleValue) {
+            try {
+                // Animation de scale avec spring (plus fluide que Animated API)
+                scaleValue.value = withSequence(
+                    withSpring(1.3, {
+                        damping: 12,
+                        stiffness: 300,
+                    }),
+                    withSpring(1, {
+                        damping: 12,
+                        stiffness: 300,
+                    })
+                );
 
-        // Animation de glow (effet lumineux)
-        if (glowValue) {
-            glowValue.value = withSequence(
-                withTiming(1, { duration: 150 }),
-                withTiming(0, { duration: 300 })
-            );
+                // Animation de glow (effet lumineux)
+                if (glowValue) {
+                    glowValue.value = withSequence(
+                        withTiming(1, { duration: 150 }),
+                        withTiming(0, { duration: 300 })
+                    );
+                }
+            } catch (error) {
+                console.warn('[MicroInteractions] Erreur animation:', error);
+            }
         }
 
         // Callback après animation

@@ -464,14 +464,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tasks::live_flash_sale_scheduler::start_flash_sale_scheduler(app_state.clone());
 
     // ✅ NOUVEAU: Worker de traitement des réservations Flash Sales
-    if let (Some(flash_sale_cache), Some(flash_sale_queue)) = (
+    if let (Some(flash_sale_cache), Some(_flash_sale_queue)) = (
         app_state.flash_sale_cache.clone(),
         app_state.flash_sale_queue.clone(),
     ) {
+        // Créer une nouvelle instance de FlashSaleCache pour le worker
+        use yukpomnang_backend::services::flash_sale_cache::FlashSaleCache;
+        let redis_client_arc = Arc::new(app_state.redis_client.clone());
+        let cache_for_worker = FlashSaleCache::new(
+            redis_client_arc.clone()
+        );
         let worker = tasks::flash_sale_queue_worker::FlashSaleQueueWorker::new(
-            app_state.redis_client.clone(),
-            app_state.pg.clone(),
-            flash_sale_cache,
+            redis_client_arc.clone(),
+            Arc::new(app_state.pg.clone()),
+            cache_for_worker,
         );
         tokio::spawn(async move {
             if let Err(e) = worker.start().await {
@@ -485,9 +491,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ NOUVEAU: Worker de traitement des notifications asynchrones
     if let Some(_notification_queue) = app_state.notification_queue.clone() {
+        let redis_client_arc = Arc::new(app_state.redis_client.clone());
         let worker = tasks::notification_queue_worker::NotificationQueueWorker::new(
-            app_state.redis_client.clone(),
-            app_state.pg.clone(),
+            redis_client_arc,
+            Arc::new(app_state.pg.clone()),
         );
         tokio::spawn(async move {
             if let Err(e) = worker.start().await {
@@ -501,7 +508,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ Phase 6.1: Cron job pour vérifier et notifier les pharmacies de garde
     // Vérifie toutes les heures si des pharmacies sont de garde
-    let pharmacy_pool = app_state.pg.clone();
+    let pharmacy_pool = Arc::new(app_state.pg.clone());
     tokio::spawn(async move {
         use tokio::time::{interval, Duration};
         let mut interval = interval(Duration::from_secs(3600)); // 1 heure
@@ -521,7 +528,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // ✅ Phase 7: Tâche d'optimisation périodique
-    start_optimization_task(app_state.pg.clone(), app_state.clone());
+    start_optimization_task(Arc::new(app_state.pg.clone()), app_state.clone());
     // ✅ Scheduler pour les campagnes promos globales (Black Friday, etc.)
     tasks::global_promo_scheduler::start_global_promo_scheduler(app_state.clone());
     // ✅ Worker pipeline health (alerting interne)

@@ -68,12 +68,24 @@ const EnhancedActionButton: React.FC<{
 
   const pressGesture = Gesture.Tap()
     .onBegin(() => {
-      scale.value = withSpring(0.92, { damping: 12, stiffness: 150 });
-      glow.value = withTiming(1, { duration: 150 });
+      if (typeof withSpring === 'function' && typeof withTiming === 'function' && scale && glow) {
+        try {
+          scale.value = withSpring(0.92, { damping: 12, stiffness: 150 });
+          glow.value = withTiming(1, { duration: 150 });
+        } catch (error) {
+          console.warn('[ProductCard] Erreur animation onBegin:', error);
+        }
+      }
     })
     .onFinalize(() => {
-      scale.value = withSpring(1, { damping: 12, stiffness: 150 });
-      glow.value = withTiming(0, { duration: 300 });
+      if (typeof withSpring === 'function' && typeof withTiming === 'function' && scale && glow) {
+        try {
+          scale.value = withSpring(1, { damping: 12, stiffness: 150 });
+          glow.value = withTiming(0, { duration: 300 });
+        } catch (error) {
+          console.warn('[ProductCard] Erreur animation onFinalize:', error);
+        }
+      }
       onPress();
     });
 

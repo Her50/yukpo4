@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT nombre_vues, nombre_candidatures FROM offres_emploi WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "nombre_vues",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "nombre_candidatures",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "7397205379ceefbfcbb6cba97b5cdcc0862719e2a451170994e9e05559542e67"
+}

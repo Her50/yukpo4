@@ -54,6 +54,7 @@ impl NotificationQueueWorker {
         let mut failed = 0;
 
         for job in jobs {
+            let user_id = job.user_id;
             match self.process_notification(job).await {
                 Ok(_) => {
                     processed += 1;
@@ -61,7 +62,7 @@ impl NotificationQueueWorker {
                 Err(e) => {
                     log::warn!(
                         "⚠️ Erreur traitement notification user_id={}: {:?}",
-                        job.user_id,
+                        user_id,
                         e
                     );
                     failed += 1;

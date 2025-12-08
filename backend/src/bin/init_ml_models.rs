@@ -11,7 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     println!("🧠 Initialisation Modèles ML - Module de Livraison");
-    println!("=".repeat(60));
+    println!("{}", "=".repeat(60));
     println!();
 
     // Créer le service (initialise automatiquement les modèles)

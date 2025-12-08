@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                d.id,\n                d.original_video_id,\n                d.duet_video_url,\n                d.creator_id,\n                COALESCE(u.nom_complet, u.email) as creator_name,\n                COALESCE(COUNT(ce.id), 0) as likes,\n                d.created_at\n            FROM duets d\n            LEFT JOIN users u ON u.id = d.creator_id\n            LEFT JOIN content_engagement ce ON ce.content_id = d.id::text AND ce.liked = TRUE\n            GROUP BY d.id, d.original_video_id, d.duet_video_url, d.creator_id, creator_name, d.created_at\n            ORDER BY d.created_at DESC\n            LIMIT 50\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "original_video_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "duet_video_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "creator_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "creator_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "likes",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      false
+    ]
+  },
+  "hash": "89f740c56c7a1767454cfd306bbee3470e0beff56158a746843fcbb2b196bb82"
+}

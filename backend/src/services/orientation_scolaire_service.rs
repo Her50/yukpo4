@@ -161,22 +161,22 @@ impl OrientationScolaireService {
         }
 
         // Gestion de la distance GPS
-        if let (Some(lat), Some(lng)) = (request.gps_lat, request.gps_lon) {
+        let point_wkt_opt = if let (Some(lat), Some(lng)) = (request.gps_lat, request.gps_lon) {
             let point_wkt = format!("POINT({} {})", lng, lat);
             query.push(" AND ST_DWithin(e.location_point, ST_GeogFromText(");
-            query.push_bind(&point_wkt);
+            query.push_bind(point_wkt.clone());
             query.push("), ");
             query.push_bind(rayon_km * 1000.0);
             query.push(")");
-        }
+            Some(point_wkt)
+        } else {
+            None
+        };
 
         // Order by
-        if request.gps_lat.is_some() && request.gps_lon.is_some() {
-            let lat = request.gps_lat.unwrap();
-            let lng = request.gps_lon.unwrap();
-            let point_wkt = format!("POINT({} {})", lng, lat);
+        if let Some(point_wkt) = point_wkt_opt {
             query.push(" ORDER BY ST_Distance(e.location_point, ST_GeogFromText(");
-            query.push_bind(&point_wkt);
+            query.push_bind(point_wkt);
             query.push(")) ASC");
         } else {
             query.push(" ORDER BY e.created_at DESC");
@@ -231,7 +231,7 @@ impl OrientationScolaireService {
         if let (Some(lat), Some(lng)) = (request.gps_lat, request.gps_lon) {
             let point_wkt = format!("POINT({} {})", lng, lat);
             count_query.push(" AND ST_DWithin(e.location_point, ST_GeogFromText(");
-            count_query.push_bind(&point_wkt);
+            count_query.push_bind(point_wkt);
             count_query.push("), ");
             count_query.push_bind(rayon_km * 1000.0);
             count_query.push(")");
@@ -254,7 +254,7 @@ impl OrientationScolaireService {
                 &self.state.redis_client,
                 &cache_key,
                 &json_str,
-                600, // 10 minutes
+                Some(600u64), // 10 minutes
             )
             .await;
         }
@@ -295,7 +295,7 @@ impl OrientationScolaireService {
                 &self.state.redis_client,
                 &cache_key,
                 &json_str,
-                900, // 15 minutes
+                Some(900u64), // 15 minutes
             )
             .await;
         }
@@ -396,7 +396,7 @@ impl OrientationScolaireService {
             gps_lon: request.gps_lon,
             rayon_km: Some(50.0), // Rayon plus large pour suggestions
             page: Some(1),
-            limit: Some(limit * 2), // Récupérer plus pour scoring
+            limit: Some((limit * 2) as i64), // Récupérer plus pour scoring
         };
 
         let (etablissements, _) = self.search_etablissements(search_request).await?;
@@ -461,7 +461,7 @@ impl OrientationScolaireService {
                 &self.state.redis_client,
                 &cache_key,
                 &json_str,
-                3600, // 1 heure
+                Some(3600u64), // 1 heure
             )
             .await;
         }

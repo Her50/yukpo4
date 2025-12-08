@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT ON (m.candidat_id, m.offre_id)\n            m.candidat_id,\n            m.offre_id,\n            m.score_total,\n            o.titre_poste,\n            m.created_at\n        FROM matching_offres_candidats m\n        JOIN offres_emploi o ON o.id = m.offre_id\n        WHERE m.score_total >= 70.0\n        AND m.created_at > NOW() - INTERVAL '24 hours'\n        AND NOT EXISTS (\n            SELECT 1 FROM candidatures c\n            WHERE c.candidat_id = m.candidat_id\n            AND c.offre_id = m.offre_id\n        )\n        ORDER BY m.candidat_id, m.offre_id, m.created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "candidat_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "offre_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "score_total",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "titre_poste",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "8a6b6d64236fde52179384533be23a8860cb646f457c32764834bede7d801f4e"
+}

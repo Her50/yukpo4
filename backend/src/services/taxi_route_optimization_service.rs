@@ -192,7 +192,8 @@ impl TaxiRouteOptimizationService {
         );
 
         // Ajouter préférences
-        if let Some(prefs) = preferences {
+        let preferences_clone = preferences.clone();
+        if let Some(prefs) = &preferences_clone {
             if prefs.avoid_tolls.unwrap_or(false) {
                 url.push_str("&avoid=tolls");
             }
@@ -215,7 +216,7 @@ impl TaxiRouteOptimizationService {
         if json.get("status").and_then(|s| s.as_str()) != Some("OK") {
             warn!("[TaxiRouteOptimization] Google Maps API error: {:?}", json);
             return self
-                .optimize_local_vrp(origin, destination, waypoints, preferences.clone())
+                .optimize_local_vrp(origin, destination, waypoints, preferences_clone)
                 .await;
         }
 

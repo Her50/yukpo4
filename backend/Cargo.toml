@@ -16,18 +16,6 @@ path = "cleanup_ghost_embeddings.rs"
 required-features = ["maintenance-tools"]
 
 [[bin]]
-name = "test_redis"
-path = "src/bin/test_redis.rs"
-
-[[bin]]
-name = "test_redis_standalone"
-path = "src/bin/test_redis_standalone.rs"
-
-[[bin]]
-name = "test_redis_minimal"
-path = "test_redis_minimal.rs"
-
-[[bin]]
 name = "recurring_trips_cron"
 path = "src/bin/recurring_trips_cron.rs"
 

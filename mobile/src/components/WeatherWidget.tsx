@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getWeatherApiKey } from '../config/weatherConfig';
 import { theme } from '../theme/theme';
-import { testBackendWeatherEndpoint, testWeatherApi } from '../utils/weatherTest';
 import WeatherForecastModal from './WeatherForecastModal';
 
 interface WeatherData {
@@ -200,28 +199,6 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
         }
     };
 
-    // Fonction de test pour diagnostiquer les problèmes
-    const runWeatherDiagnostics = async () => {
-        console.log('=== DIAGNOSTIC MÉTÉO ===');
-
-        // Test 1: Endpoint backend
-        console.log('Test endpoint backend...');
-        const backendOk = await testBackendWeatherEndpoint();
-
-        // Test 2: API météo
-        console.log('Test API météo...');
-        const apiOk = await testWeatherApi();
-
-        // Test 3: Position GPS
-        console.log('Position GPS actuelle:', location);
-
-        // Test 4: Clé API
-        const apiKey = await getWeatherApiKey();
-        console.log('Clé API récupérée:', apiKey ? 'Oui' : 'Non');
-        console.log('Clé API valide:', apiKey && apiKey !== 'YOUR_OPENWEATHER_API_KEY' ? 'Oui' : 'Non');
-
-        console.log('=== FIN DIAGNOSTIC ===');
-    };
 
     // Charger la météo quand la position change
     useEffect(() => {
@@ -277,16 +254,6 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
                     <Text style={styles.compactTemperature}>{weather.temperature}°C</Text>
                 </TouchableOpacity>
 
-                {/* Bouton de diagnostic (en mode développement) */}
-                {__DEV__ && (
-                    <TouchableOpacity
-                        style={[styles.compactWeatherCard, { backgroundColor: '#ff6b6b', marginTop: 8 }]}
-                        onPress={runWeatherDiagnostics}
-                    >
-                        <Text style={styles.compactWeatherIcon}>🔧</Text>
-                        <Text style={[styles.compactTemperature, { fontSize: 10 }]}>Diagnostic</Text>
-                    </TouchableOpacity>
-                )}
 
                 <WeatherForecastModal
                     visible={showForecastModal}

@@ -633,7 +633,7 @@ impl AppState {
             ia_stats,
             database_url,
             optimizations_enabled: false, // Désactivé pour les tests
-            redis_client,
+            redis_client: redis_client.clone(),
             redis_pool,
             redis_cluster_nodes: vec![], // ✅ NOUVEAU 2025-12-02: Support Redis cluster
             semantic_cache: None,
@@ -677,7 +677,8 @@ impl AppState {
             delivery_state_sharing: None,
             // ✅ NOUVEAU 2025-01-27: Manager WebSocket chat pour tests
             chat_ws_manager: {
-                let redis_available_for_ws = redis_client
+                let redis_client_clone = redis_client.clone();
+                let redis_available_for_ws = redis_client_clone
                     .get_multiplexed_async_connection()
                     .await
                     .is_ok();
@@ -694,7 +695,8 @@ impl AppState {
             },
             // ✅ NOUVEAU: Manager WebSocket chat de livraison pour tests
             delivery_chat_ws_manager: {
-                let redis_available_for_ws = redis_client
+                let redis_client_for_delivery = redis_client.clone();
+                let redis_available_for_ws = redis_client_for_delivery
                     .get_multiplexed_async_connection()
                     .await
                     .is_ok();

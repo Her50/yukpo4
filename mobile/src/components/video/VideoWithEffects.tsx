@@ -94,14 +94,19 @@ const StickerRenderer: React.FC<{ sticker: StickerConfig; currentTime?: number }
 
     // Animation pour stickers animés
     useEffect(() => {
-        if (sticker.type === 'animated') {
-            scale.value = withRepeat(
-                withTiming(1.1, { duration: 1000 }),
-                -1,
-                true
-            );
+        if (sticker.type === 'animated' && typeof withRepeat === 'function' && typeof withTiming === 'function' && scale) {
+            try {
+                scale.value = withRepeat(
+                    withTiming(1.1, { duration: 1000 }),
+                    -1,
+                    true
+                );
+            } catch (error) {
+                console.warn('[VideoWithEffects] Erreur animation sticker:', error);
+            }
         }
-    }, [sticker.type]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sticker.type]); // ✅ CORRIGÉ: Ne pas inclure scale (SharedValue est stable)
 
     // Vérifier si le sticker doit être visible
     const isVisible =
@@ -109,12 +114,19 @@ const StickerRenderer: React.FC<{ sticker: StickerConfig; currentTime?: number }
         currentTime <= sticker.startTime + sticker.duration;
 
     useEffect(() => {
-        if (!isVisible) {
-            opacity.value = withTiming(0, { duration: 200 });
-        } else {
-            opacity.value = withTiming(1, { duration: 200 });
+        if (typeof withTiming === 'function' && opacity) {
+            try {
+                if (!isVisible) {
+                    opacity.value = withTiming(0, { duration: 200 });
+                } else {
+                    opacity.value = withTiming(1, { duration: 200 });
+                }
+            } catch (error) {
+                console.warn('[VideoWithEffects] Erreur animation visibility:', error);
+            }
         }
-    }, [isVisible]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isVisible]); // ✅ CORRIGÉ: Ne pas inclure opacity (SharedValue est stable)
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,

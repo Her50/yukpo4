@@ -51,9 +51,17 @@ export const GamificationBadge: React.FC<GamificationBadgeProps> = ({
                 setBadges(badgesData.filter(b => b.unlockedAt).length);
 
                 // ✅ Animation au chargement
-                scale.value = withSpring(1.1, { damping: 10 }, () => {
-                    scale.value = withSpring(1, { damping: 10 });
-                });
+                if (typeof withSpring === 'function' && scale) {
+                    try {
+                        scale.value = withSpring(1.1, { damping: 10 }, () => {
+                            if (scale && typeof withSpring === 'function') {
+                                scale.value = withSpring(1, { damping: 10 });
+                            }
+                        });
+                    } catch (error) {
+                        console.warn('[GamificationBadge] Erreur animation:', error);
+                    }
+                }
             } catch (error) {
                 console.error('[GamificationBadge] Erreur chargement:', error);
             } finally {
