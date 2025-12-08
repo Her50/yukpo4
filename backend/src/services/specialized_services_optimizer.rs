@@ -119,7 +119,7 @@ impl SpecializedServicesOptimizer {
 pub async fn start_optimization_task(pool: Arc<PgPool>, app_state: Arc<AppState>) {
     let optimizer = SpecializedServicesOptimizer::new(pool, app_state);
 
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
         let mut interval = interval(Duration::from_secs(3600)); // Toutes les heures
 

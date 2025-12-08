@@ -42,7 +42,9 @@ pub struct AudioMetadata {
 }
 
 pub struct YouTubeAudioService {
+    #[allow(dead_code)]
     client: Client,
+    #[allow(dead_code)]
     api_key: Option<String>,
     cache: Arc<Mutex<HashMap<String, (Vec<AudioMetadata>, u64)>>>, // Cache avec timestamp
     cache_ttl: u64,                                    // TTL en secondes

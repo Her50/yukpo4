@@ -10,6 +10,7 @@ use std::time::Duration;
 /// Rate limiting adaptatif avec distinction premium/free
 pub struct AdaptiveRateLimit {
     cache: Arc<CacheService>,
+    #[allow(dead_code)]
     limits: HashMap<String, RateLimitConfig>,
 }
 

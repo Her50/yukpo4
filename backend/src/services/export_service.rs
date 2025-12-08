@@ -58,7 +58,7 @@ impl ExportService {
         let timeline_id = request.timeline_id.clone();
         let settings = request.settings.clone();
 
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             if let Err(e) = Self::process_export(
                 pool_clone,
                 transcoding_clone,

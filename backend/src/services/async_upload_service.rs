@@ -108,7 +108,7 @@ impl AsyncUploadService {
         let upload_id_clone = upload_id.clone();
         let status_tx = self.status_broadcast.clone();
 
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             if let Err(e) = Self::process_upload(
                 &pool_clone,
                 &storage_clone,

@@ -20,7 +20,9 @@ pub struct EffectSearchParams {
 pub struct EffectListResponse {
     pub effects: Vec<Effect>,
     pub total: i64,
+    #[allow(dead_code)]
     pub limit: i64,
+    #[allow(dead_code)]
     pub offset: i64,
 }
 

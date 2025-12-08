@@ -21,7 +21,9 @@ struct DalleImage {
 
 /// Service de génération d'images par IA (DALL-E 3)
 pub struct AIImageGenerationService {
+    #[allow(dead_code)]
     client: Client,
+    #[allow(dead_code)]
     api_key: String,
     base_url: String,
 }

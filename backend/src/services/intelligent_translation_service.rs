@@ -7,7 +7,9 @@ use std::collections::HashMap;
 
 /// 🧠 Service de traduction intelligente pour l'IA
 pub struct IntelligentTranslationService {
+    #[allow(dead_code)]
     client: Client,
+    #[allow(dead_code)]
     api_key: String,
     cache: HashMap<String, String>,
     supported_languages: Vec<String>,

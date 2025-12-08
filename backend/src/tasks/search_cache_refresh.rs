@@ -14,7 +14,7 @@ pub async fn start_search_cache_refresh_task(pool: PgPool) {
     // Intervalle de 2 minutes
     let mut interval_timer = interval(Duration::from_secs(120));
 
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         loop {
             interval_timer.tick().await;
 

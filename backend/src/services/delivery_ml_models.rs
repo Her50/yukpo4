@@ -496,7 +496,7 @@ impl DeliveryMLModelsService {
         let training_data = Arc::clone(&self.training_data);
         let model_dir = self.model_dir.clone();
 
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(3600)); // Toutes les heures
             loop {
                 interval.tick().await;

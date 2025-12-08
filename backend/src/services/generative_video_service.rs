@@ -58,7 +58,7 @@ impl GenerativeVideoService {
         let http_clone = self.http.clone();
         let job_id_clone = job_id.clone();
 
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             if let Err(e) = Self::process_generation(
                 pool_clone,
                 app_ia_clone,
