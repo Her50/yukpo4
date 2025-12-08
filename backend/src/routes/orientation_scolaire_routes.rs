@@ -85,7 +85,7 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(orientation_scolaire_controller::create_etablissement),
         )
         .route(
-            "/api/orientation-scolaire/etablissements/:id/statistiques",
+            "/api/orientation-scolaire/etablissements/{id}/statistiques",
             put(orientation_scolaire_controller::update_statistiques_examens),
         )
         .route(
@@ -112,7 +112,7 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(orientation_scolaire_controller::create_conference),
         )
         .route(
-            "/api/orientation-scolaire/conferences/:id/join",
+            "/api/orientation-scolaire/conferences/{id}/join",
             post(orientation_scolaire_controller::join_conference),
         )
         // Endpoints IA

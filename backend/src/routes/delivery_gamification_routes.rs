@@ -64,7 +64,7 @@ fn default_limit() -> i64 {
 pub fn delivery_gamification_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route(
-            "/api/delivery/gamification/stats/:user_id",
+            "/api/delivery/gamification/stats/{user_id}",
             get(get_gamification_stats)
                 .layer(axum::middleware::from_fn_with_state(
                     state.clone(),
@@ -72,7 +72,7 @@ pub fn delivery_gamification_routes(state: Arc<AppState>) -> Router<Arc<AppState
                 )),
         )
         .route(
-            "/api/delivery/gamification/badges/:user_id",
+            "/api/delivery/gamification/badges/{user_id}",
             get(get_user_badges)
                 .layer(axum::middleware::from_fn_with_state(
                     state.clone(),

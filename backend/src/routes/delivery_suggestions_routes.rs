@@ -49,7 +49,7 @@ fn default_limit() -> i64 {
 pub fn delivery_suggestions_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route(
-            "/api/delivery/:delivery_id/suggestions",
+            "/api/delivery/{delivery_id}/suggestions",
             get(get_delivery_suggestions)
                 .layer(axum::middleware::from_fn_with_state(
                     state.clone(),
@@ -57,7 +57,7 @@ pub fn delivery_suggestions_routes(state: Arc<AppState>) -> Router<Arc<AppState>
                 )),
         )
         .route(
-            "/api/delivery/:delivery_id/suggestions/generate",
+            "/api/delivery/{delivery_id}/suggestions/generate",
             get(generate_delivery_suggestions)
                 .layer(axum::middleware::from_fn_with_state(
                     state.clone(),
@@ -65,7 +65,7 @@ pub fn delivery_suggestions_routes(state: Arc<AppState>) -> Router<Arc<AppState>
                 )),
         )
         .route(
-            "/api/delivery/:delivery_id/suggestions/:suggestion_id/accept",
+            "/api/delivery/{delivery_id}/suggestions/{suggestion_id}/accept",
             get(accept_suggestion)
                 .layer(axum::middleware::from_fn_with_state(
                     state.clone(),

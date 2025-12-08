@@ -10534,7 +10534,25 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
             // Commande normale - se termine par ;
             if trimmed.ends_with(';') {
                 let cmd = current.trim();
-                if !cmd.is_empty() && !cmd.starts_with("--") {
+                // Vérifier que la commande n'est pas vide et contient au moins un mot-clé SQL valide
+                if !cmd.is_empty() 
+                    && !cmd.starts_with("--")
+                    && !cmd.trim_matches(|c: char| c.is_whitespace() || c == ';' || c == '(' || c == ')').is_empty()
+                    && (cmd.to_uppercase().contains("CREATE") 
+                        || cmd.to_uppercase().contains("ALTER") 
+                        || cmd.to_uppercase().contains("DROP")
+                        || cmd.to_uppercase().contains("INSERT")
+                        || cmd.to_uppercase().contains("UPDATE")
+                        || cmd.to_uppercase().contains("DELETE")
+                        || cmd.to_uppercase().contains("SELECT")
+                        || cmd.to_uppercase().contains("GRANT")
+                        || cmd.to_uppercase().contains("REVOKE")
+                        || cmd.to_uppercase().contains("COMMENT")
+                        || cmd.to_uppercase().contains("TRUNCATE")
+                        || cmd.to_uppercase().contains("ANALYZE")
+                        || cmd.to_uppercase().contains("VACUUM")
+                        || cmd.to_uppercase().contains("EXECUTE")
+                        || cmd.to_uppercase().contains("DO")) {
                     commands.push(cmd.to_string());
                 }
                 current.clear();
@@ -10545,7 +10563,25 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
     // Ajouter la dernière commande si elle existe
     if !current.trim().is_empty() {
         let cmd = current.trim();
-        if !cmd.is_empty() && !cmd.starts_with("--") {
+        // Vérifier que la commande n'est pas vide et contient au moins un mot-clé SQL valide
+        if !cmd.is_empty() 
+            && !cmd.starts_with("--")
+            && !cmd.trim_matches(|c: char| c.is_whitespace() || c == ';' || c == '(' || c == ')').is_empty()
+            && (cmd.to_uppercase().contains("CREATE") 
+                || cmd.to_uppercase().contains("ALTER") 
+                || cmd.to_uppercase().contains("DROP")
+                || cmd.to_uppercase().contains("INSERT")
+                || cmd.to_uppercase().contains("UPDATE")
+                || cmd.to_uppercase().contains("DELETE")
+                || cmd.to_uppercase().contains("SELECT")
+                || cmd.to_uppercase().contains("GRANT")
+                || cmd.to_uppercase().contains("REVOKE")
+                || cmd.to_uppercase().contains("COMMENT")
+                || cmd.to_uppercase().contains("TRUNCATE")
+                || cmd.to_uppercase().contains("ANALYZE")
+                || cmd.to_uppercase().contains("VACUUM")
+                || cmd.to_uppercase().contains("EXECUTE")
+                || cmd.to_uppercase().contains("DO")) {
             commands.push(cmd.to_string());
         }
     }
@@ -10600,14 +10636,27 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                     continue;
                 }
                 
-                // Ignorer les erreurs de syntaxe si c'est juste une parenthèse fermante isolée
+                // Ignorer les erreurs de syntaxe si c'est juste une parenthèse fermante isolée ou commande invalide
                 if error_str.contains("syntax error") && error_str.contains("near \")\"") {
                     warn!("⚠️ Commande SQL invalide ignorée (parenthèse isolée): {}", trimmed_cmd);
                     continue;
                 }
                 
-                if error_str.contains("syntax error") || error_str.contains("unterminated") {
+                // Ignorer les erreurs de syntaxe pour les commandes qui semblent être des fragments
+                if error_str.contains("syntax error") {
+                    // Vérifier si c'est un fragment invalide (juste des parenthèses, point-virgule, etc.)
+                    let cmd_clean = trimmed_cmd.trim_matches(|c: char| c.is_whitespace() || c == ';' || c == '(' || c == ')');
+                    if cmd_clean.is_empty() || cmd_clean.len() < 5 {
+                        warn!("⚠️ Fragment SQL invalide ignoré: {}", trimmed_cmd);
+                        continue;
+                    }
+                    
+                    // Si c'est une vraie erreur de syntaxe sur une commande valide, on la propage
                     error!("❌ Erreur de syntaxe SQL: {}", e);
+                    error!("❌ Commande problématique: {}", trimmed_cmd);
+                    return Err(e);
+                } else if error_str.contains("unterminated") {
+                    error!("❌ Commande SQL non terminée: {}", e);
                     error!("❌ Commande problématique: {}", trimmed_cmd);
                     return Err(e);
                 } else {

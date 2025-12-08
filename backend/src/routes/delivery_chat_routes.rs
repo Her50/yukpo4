@@ -43,7 +43,7 @@ pub struct SendDeliveryChatMessageRequest {
 pub fn delivery_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route(
-            "/api/delivery/:delivery_id/chat/messages",
+            "/api/delivery/{delivery_id}/chat/messages",
             get(get_delivery_chat_messages)
                 .layer(axum::middleware::from_fn_with_state(
                     state.clone(),
@@ -51,7 +51,7 @@ pub fn delivery_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
                 )),
         )
         .route(
-            "/api/delivery/:delivery_id/chat/send",
+            "/api/delivery/{delivery_id}/chat/send",
             post(send_delivery_chat_message)
                 .layer(axum::middleware::from_fn_with_state(
                     state.clone(),

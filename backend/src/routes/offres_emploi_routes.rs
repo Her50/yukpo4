@@ -19,7 +19,7 @@ pub fn offres_emploi_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         // Détails d'une offre (publique)
         .route(
-            "/api/offres-emploi/:id",
+            "/api/offres-emploi/{id}",
             get(offres_emploi_controller::get_offre_details),
         )
         // Tendances du marché (publique)
@@ -75,26 +75,26 @@ pub fn offres_emploi_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
                 .get(offres_emploi_controller::list_my_offres),
         )
         .route(
-            "/api/offres-emploi/:id/close",
+            "/api/offres-emploi/{id}/close",
             patch(offres_emploi_controller::close_offre),
         )
         // Candidatures pour une offre
         .route(
-            "/api/offres-emploi/:id/candidatures",
+            "/api/offres-emploi/{id}/candidatures",
             get(offres_emploi_controller::list_candidatures_offre),
         )
         .route(
-            "/api/offres-emploi/candidatures/:id/statut",
+            "/api/offres-emploi/candidatures/{id}/statut",
             patch(offres_emploi_controller::update_statut_candidature),
         )
         // Matching candidats pour une offre
         .route(
-            "/api/offres-emploi/:id/matching/candidats",
+            "/api/offres-emploi/{id}/matching/candidats",
             get(offres_emploi_controller::find_matching_candidats),
         )
         // Statistiques
         .route(
-            "/api/offres-emploi/:id/stats",
+            "/api/offres-emploi/{id}/stats",
             get(offres_emploi_controller::get_offre_stats),
         )
         // Dashboard employeur

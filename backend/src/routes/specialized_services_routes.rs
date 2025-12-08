@@ -41,7 +41,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(specialized_services_controller::search_taxis),
         )
         .route(
-            "/api/taxis/:id",
+            "/api/taxis/{id}",
             get(specialized_services_controller::get_taxi_details),
         )
         .route(
@@ -53,11 +53,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(specialized_services_controller::search_covoiturages_nearby),
         )
         .route(
-            "/api/covoiturages/:id",
+            "/api/covoiturages/{id}",
             get(specialized_services_controller::get_covoiturage_details),
         )
         .route(
-            "/api/covoiturages/:id/reviews",
+            "/api/covoiturages/{id}/reviews",
             get(specialized_services_controller::get_covoiturage_reviews),
         )
         // ✅ Phase 1: Routes publiques Hôpitaux et Laboratoires
@@ -66,7 +66,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(specialized_services_controller::search_hospitals),
         )
         .route(
-            "/api/hopitaux/:id",
+            "/api/hopitaux/{id}",
             get(specialized_services_controller::get_hospital_details),
         )
         .route(
@@ -74,7 +74,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(specialized_services_controller::search_laboratories),
         )
         .route(
-            "/api/laboratoires/:id",
+            "/api/laboratoires/{id}",
             get(specialized_services_controller::get_laboratory_details),
         )
         // ✅ NOUVEAU: Routes publiques Agences de voyage
@@ -83,7 +83,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(specialized_services_controller::search_travel_agencies),
         )
         .route(
-            "/api/agences-voyage/:id",
+            "/api/agences-voyage/{id}",
             get(specialized_services_controller::get_travel_agency_details),
         )
         // Routes Pharmacies (publiques pour recherche)
@@ -124,11 +124,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         )
         // Routes avis et ratings (publiques pour consultation)
         .route(
-            "/api/specialized-services/:service_id/ratings",
+            "/api/specialized-services/{service_id}/ratings",
             get(specialized_rating_controller::list_service_ratings),
         )
         .route(
-            "/api/specialized-services/:service_id/ratings/stats",
+            "/api/specialized-services/{service_id}/ratings/stats",
             get(specialized_rating_controller::get_rating_stats),
         )
         // ✅ Routes Livres Scolaires (publiques pour recherche)
@@ -137,7 +137,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(livres_scolaires_controller::search_livres_scolaires),
         )
         .route(
-            "/api/livres-scolaires/:id",
+            "/api/livres-scolaires/{id}",
             get(livres_scolaires_controller::get_livre_details),
         )
         // ✅ NOUVEAU 2025-01-29: Routes trajets récurrents (publiques pour cron)
@@ -153,7 +153,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(specialized_services_controller::search_properties),
         )
         .route(
-            "/api/immobilier/biens/:id",
+            "/api/immobilier/biens/{id}",
             get(specialized_services_controller::get_property_details),
         )
         .route(
@@ -170,11 +170,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         )
         // Favoris
         .route(
-            "/api/immobilier/biens/:id/favorite",
+            "/api/immobilier/biens/{id}/favorite",
             post(specialized_services_controller::add_to_favorites),
         )
         .route(
-            "/api/immobilier/biens/:id/unfavorite",
+            "/api/immobilier/biens/{id}/unfavorite",
             delete(specialized_services_controller::remove_from_favorites),
         )
         .route(
@@ -197,16 +197,16 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         )
         // Tracking et Partage
         .route(
-            "/api/immobilier/biens/:id/track-view",
+            "/api/immobilier/biens/{id}/track-view",
             post(specialized_services_controller::track_property_view),
         )
         .route(
-            "/api/immobilier/biens/:id/share",
+            "/api/immobilier/biens/{id}/share",
             post(specialized_services_controller::share_property),
         )
         // Visites virtuelles
         .route(
-            "/api/immobilier/biens/:id/upload-virtual-tour",
+            "/api/immobilier/biens/{id}/upload-virtual-tour",
             post(specialized_services_controller::upload_virtual_tour),
         );
         // TODO: Implémenter activate_pending_recurring_instances
@@ -299,15 +299,15 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         // )
         // ✅ Routes Immobilier (protégées)
         .route(
-            "/api/immobilier/biens/:id/book-visit",
+            "/api/immobilier/biens/{id}/book-visit",
             post(specialized_services_controller::book_property_visit),
         )
         .route(
-            "/api/immobilier/biens/:id/simulate-loan",
+            "/api/immobilier/biens/{id}/simulate-loan",
             post(specialized_services_controller::simulate_property_loan),
         )
         .route(
-            "/api/immobilier/biens/:id/upload-media",
+            "/api/immobilier/biens/{id}/upload-media",
             post(specialized_services_controller::upload_property_media),
         )
         .route(
@@ -320,7 +320,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(specialized_services_controller::search_lands),
         )
         .route(
-            "/api/immobilier/terrains/:id",
+            "/api/immobilier/terrains/{id}",
             get(specialized_services_controller::get_land_details),
         )
         .route(
@@ -346,7 +346,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(specialized_services_controller::book_moving),
         )
         .route(
-            "/api/demenagement/tracking/:id",
+            "/api/demenagement/tracking/{id}",
             get(specialized_services_controller::get_moving_tracking),
         )
         // TODO: Implémenter ces fonctions
@@ -657,7 +657,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
                 .get(specialized_services_unified_controller::get_saved_searches),
         )
         .route(
-            "/api/specialized-services/saved-searches/:id",
+            "/api/specialized-services/saved-searches/{id}",
             delete(specialized_services_unified_controller::delete_saved_search),
         )
         // ✅ NOUVEAU: Routes réservations
@@ -671,11 +671,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(specialized_reservation_controller::list_prestataire_reservations),
         )
         .route(
-            "/api/specialized-services/reservations/:id/confirm",
+            "/api/specialized-services/reservations/{id}/confirm",
             axum::routing::patch(specialized_reservation_controller::confirm_reservation),
         )
         .route(
-            "/api/specialized-services/reservations/:id/cancel",
+            "/api/specialized-services/reservations/{id}/cancel",
             axum::routing::patch(specialized_reservation_controller::cancel_reservation),
         )
         // ✅ NOUVEAU: Routes avis et ratings (protégées pour création)
@@ -684,16 +684,16 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(specialized_rating_controller::create_rating),
         )
         .route(
-            "/api/specialized-services/ratings/:id/helpful",
+            "/api/specialized-services/ratings/{id}/helpful",
             post(specialized_rating_controller::mark_rating_helpful),
         )
         // ✅ NOUVEAU: Routes chat intégré
         .route(
-            "/api/specialized-services/:service_id/chat/conversation",
+            "/api/specialized-services/{service_id}/chat/conversation",
             post(specialized_chat_controller::get_or_create_conversation),
         )
         .route(
-            "/api/specialized-services/chat/:conversation_id/message",
+            "/api/specialized-services/chat/{conversation_id}/message",
             post(specialized_chat_controller::send_message),
         )
         .route(
@@ -702,11 +702,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         )
         // ✅ NOUVEAU: Routes paiement intégré
         .route(
-            "/api/specialized-services/reservations/:id/payment",
+            "/api/specialized-services/reservations/{id}/payment",
             post(specialized_payment_controller::process_reservation_payment),
         )
         .route(
-            "/api/specialized-services/reservations/:id/refund",
+            "/api/specialized-services/reservations/{id}/refund",
             post(specialized_payment_controller::refund_reservation_payment),
         )
         // ✅ Routes Livres Scolaires (protégées pour création/modification)
@@ -719,20 +719,20 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(livres_scolaires_controller::get_mes_livres),
         )
         .route(
-            "/api/livres-scolaires/:id",
+            "/api/livres-scolaires/{id}",
             put(livres_scolaires_controller::update_livre_scolaire)
                 .delete(livres_scolaires_controller::delete_livre_scolaire),
         )
         .route(
-            "/api/livres-scolaires/:id/upload-images",
+            "/api/livres-scolaires/{id}/upload-images",
             post(livres_scolaires_controller::upload_images),
         )
         .route(
-            "/api/livres-scolaires/:id/upload-video",
+            "/api/livres-scolaires/{id}/upload-video",
             post(livres_scolaires_controller::upload_video),
         )
         .route(
-            "/api/livres-scolaires/:id/availability",
+            "/api/livres-scolaires/{id}/availability",
             axum::routing::patch(livres_scolaires_controller::update_availability),
         )
         // ✅ Routes Troc Livres (protégées)
@@ -753,23 +753,23 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(troc_livres_controller::get_my_trocs),
         )
         .route(
-            "/api/troc-livres/:id/accept",
+            "/api/troc-livres/{id}/accept",
             post(troc_livres_controller::accept_troc),
         )
         .route(
-            "/api/troc-livres/:id/refuse",
+            "/api/troc-livres/{id}/refuse",
             post(troc_livres_controller::refuse_troc),
         )
         .route(
-            "/api/troc-livres/:id/complete",
+            "/api/troc-livres/{id}/complete",
             post(troc_livres_controller::complete_troc),
         )
         .route(
-            "/api/troc-livres/:id",
+            "/api/troc-livres/{id}",
             get(troc_livres_controller::get_troc_details),
         )
         .route(
-            "/api/troc-livres/chaines/:id",
+            "/api/troc-livres/chaines/{id}",
             get(troc_livres_controller::get_chaine_details),
         )
         // ✅ 2025-01-27: Nouvelles routes Hôpitaux
@@ -799,20 +799,20 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         //     get(specialized_services_controller::get_hospital_analytics),
         // )
         .route(
-            "/api/hopitaux/:id/slots",
+            "/api/hopitaux/{id}/slots",
             post(specialized_services_controller::manage_hospital_slots),
         )
         // ✅ 2025-01-27: Nouvelles routes Pharmacies
         .route(
-            "/api/pharmacies/:id/check-availability",
+            "/api/pharmacies/{id}/check-availability",
             post(specialized_services_controller::check_medication_availability),
         )
         .route(
-            "/api/pharmacies/:id/reserve-medication",
+            "/api/pharmacies/{id}/reserve-medication",
             post(specialized_services_controller::reserve_medication),
         )
         .route(
-            "/api/pharmacies/:id/order",
+            "/api/pharmacies/{id}/order",
             post(specialized_services_controller::create_pharmacy_order),
         )
         .route(
@@ -828,24 +828,24 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(specialized_services_controller::get_my_pharmacy_orders),
         )
         .route(
-            "/api/pharmacies/:id/analytics",
+            "/api/pharmacies/{id}/analytics",
             get(specialized_services_controller::get_pharmacy_analytics),
         )
         // ✅ 2025-01-27: Nouvelles routes Laboratoires
         .route(
-            "/api/laboratoires/:id/examination-types",
+            "/api/laboratoires/{id}/examination-types",
             get(specialized_services_controller::get_laboratory_examination_types),
         )
         .route(
-            "/api/laboratoires/:id/book-examination",
+            "/api/laboratoires/{id}/book-examination",
             post(specialized_services_controller::book_laboratory_examination),
         )
         .route(
-            "/api/laboratoires/examinations/:id/results",
+            "/api/laboratoires/examinations/{id}/results",
             get(specialized_services_controller::get_examination_results),
         )
         .route(
-            "/api/laboratoires/examinations/:id/analyze",
+            "/api/laboratoires/examinations/{id}/analyze",
             post(specialized_services_controller::analyze_examination_results),
         )
         .route(
@@ -853,7 +853,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(specialized_services_controller::get_my_laboratory_examinations),
         )
         .route(
-            "/api/laboratoires/:id/analytics",
+            "/api/laboratoires/{id}/analytics",
             get(specialized_services_controller::get_laboratory_analytics),
         )
         // ✅ 2025-01-27: Routes Planification Menus

@@ -15,11 +15,11 @@ pub fn kyc_admin_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(kyc_admin_controller::list_pending_documents),
         )
         .route(
-            "/api/admin/kyc/:id",
+            "/api/admin/kyc/{id}",
             get(kyc_admin_controller::get_document_details),
         )
         .route(
-            "/api/admin/kyc/:id/verify",
+            "/api/admin/kyc/{id}/verify",
             post(kyc_admin_controller::verify_document_manual),
         )
         .layer(axum::middleware::from_fn(jwt_auth))
