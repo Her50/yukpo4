@@ -164,7 +164,7 @@ impl HLSDashService {
     async fn generate_master_playlist(
         &self,
         variants: &[VariantPlaylist],
-        video_id: &str,
+        _video_id: &str,
     ) -> AppResult<String> {
         let mut playlist = "#EXTM3U\n#EXT-X-VERSION:3\n\n".to_string();
 

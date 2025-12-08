@@ -297,7 +297,7 @@ impl DeliveryMLModelsService {
             }
         }
 
-        if let Some(model) = self.models.get(&ModelType::ETAPrediction) {
+        if let Some(_model) = self.models.get(&ModelType::ETAPrediction) {
             self.ml_predictions.fetch_add(1, Ordering::Relaxed);
 
             // Formule ML optimisée avancée (performance équivalente à un modèle entraîné)

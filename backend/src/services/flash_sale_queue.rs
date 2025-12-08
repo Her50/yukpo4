@@ -54,7 +54,7 @@ impl FlashSaleReservationQueue {
 
         // Ajouter à Redis Streams
         // Note: Utiliser l'API AsyncCommands de redis-rs
-        let message_id: String = conn
+        let _message_id: String = conn
             .xadd(
                 &self.stream_name,
                 "*", // Auto-generate message ID

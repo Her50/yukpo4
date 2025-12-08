@@ -63,7 +63,7 @@ impl DeliveryFraudDetectionService {
     /// Analyse une livraison pour détecter la fraude
     pub async fn analyze_delivery(
         &mut self,
-        delivery_id: uuid::Uuid,
+        _delivery_id: uuid::Uuid,
         user_id: i32,
         courier_id: Option<i32>,
         delivery_data: DeliveryData,

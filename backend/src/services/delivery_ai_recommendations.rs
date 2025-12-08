@@ -237,7 +237,7 @@ impl DeliveryAIRecommendationsService {
     /// Produits complémentaires basés sur le panier
     async fn get_complementary_products(
         &self,
-        cart_product_ids: &[i32],
+        _cart_product_ids: &[i32],
     ) -> AppResult<Vec<RecommendedProduct>> {
         // ✅ NOUVEAU: Si IA disponible, utiliser l'IA pour complémentarité
         // Sinon, utiliser règles basiques ou base de données
@@ -282,7 +282,7 @@ impl DeliveryAIRecommendationsService {
         &mut self,
         user_id: i32,
         product_id: i32,
-        suggestion_id: Option<String>,
+        _suggestion_id: Option<String>,
     ) -> AppResult<()> {
         // Enregistrer pour amélioration future du modèle
         log::info!(

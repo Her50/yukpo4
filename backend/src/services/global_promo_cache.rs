@@ -115,7 +115,7 @@ impl GlobalPromoCache {
     }
 
     /// Invalide le cache d'un événement
-    pub async fn invalidate_event(&self, event_id: uuid::Uuid) -> AppResult<()> {
+    pub async fn invalidate_event(&self, _event_id: uuid::Uuid) -> AppResult<()> {
         let mut conn = redis_helper::get_redis_connection(&self.redis, 3, 100)
             .await
             .map_err(|e| AppError::Internal(format!("Redis connection failed: {}", e)))?;

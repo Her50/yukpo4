@@ -106,7 +106,7 @@ impl AudioExtractionService {
     /**
      * Télécharge une vidéo depuis une URL
      */
-    async fn download_video(state: &Arc<AppState>, video_url: &str) -> Result<PathBuf> {
+    async fn download_video(_state: &Arc<AppState>, video_url: &str) -> Result<PathBuf> {
         log::info!("📥 [AudioExtraction] Téléchargement vidéo: {}", video_url);
 
         let temp_dir = Path::new("temp/video_downloads");

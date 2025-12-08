@@ -3249,7 +3249,7 @@ impl NativeSearchService {
             let total_score: f32 = row.get::<f32, _>("total_score");
             let created_at: chrono::DateTime<chrono::Utc> =
                 row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
-            let user_id: i32 = row.get::<i32, _>("user_id");
+            let _user_id: i32 = row.get::<i32, _>("user_id");
             let gps: Option<String> = row.get::<Option<String>, _>("gps");
             let category: Option<String> = row.get::<Option<String>, _>("category");
 

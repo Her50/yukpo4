@@ -209,7 +209,7 @@ Réponds SEULEMENT le JSON, rien d'autre."#,
 
 /// Analyse la synchronisation avec IA
 async fn analyze_sync_with_ia(
-    video_url: &str,
+    _video_url: &str,
     sync_type: &AudioSyncType,
     video_metadata: &Value,
     audio_metadata: &Value,

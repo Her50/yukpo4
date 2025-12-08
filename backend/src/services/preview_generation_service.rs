@@ -33,8 +33,8 @@ pub async fn generate_quick_preview(
     let start_time = std::time::Instant::now();
 
     // ✅ NOUVEAU Phase 7: Utiliser GPU si disponible
-    let gpu_render = GPURenderService::new();
-    let use_gpu = false; // GPU désactivé temporairement
+    let _gpu_render = GPURenderService::new();
+    let _use_gpu = false; // GPU désactivé temporairement
 
     info!(
         "[QuickPreview] Génération preview rapide - {} scènes, qualité: {:?}",

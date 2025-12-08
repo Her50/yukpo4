@@ -308,7 +308,7 @@ pub async fn get_duets(
     let offset = params.offset.unwrap_or(0);
 
     let video_id_ref = params.video_id.as_ref();
-    let sql = if let Some(video_id) = video_id_ref {
+    let sql = if let Some(_video_id) = video_id_ref {
         // Duets d'une vidéo spécifique
         r#"
         SELECT 

@@ -85,40 +85,40 @@ impl LivresScolairesService {
             "is_active = true".to_string(),
             "is_available = true".to_string(),
         ];
-        let params: Vec<Box<dyn sqlx::Encode<'_, sqlx::Postgres> + Send>> = Vec::new();
+        let _params: Vec<Box<dyn sqlx::Encode<'_, sqlx::Postgres> + Send>> = Vec::new();
         let mut param_index = 1;
 
-        if let Some(classe_actuelle) = &request.classe_actuelle {
+        if let Some(_classe_actuelle) = &request.classe_actuelle {
             conditions.push(format!("classe_actuelle = ${}", param_index));
             param_index += 1;
         }
 
-        if let Some(classe_souhaitee) = &request.classe_souhaitee {
+        if let Some(_classe_souhaitee) = &request.classe_souhaitee {
             conditions.push(format!("classe_souhaitee = ${}", param_index));
             param_index += 1;
         }
 
-        if let Some(matiere) = &request.matiere {
+        if let Some(_matiere) = &request.matiere {
             conditions.push(format!("matiere = ${}", param_index));
             param_index += 1;
         }
 
-        if let Some(niveau) = &request.niveau {
+        if let Some(_niveau) = &request.niveau {
             conditions.push(format!("niveau = ${}", param_index));
             param_index += 1;
         }
 
-        if let Some(etat_livre) = &request.etat_livre {
+        if let Some(_etat_livre) = &request.etat_livre {
             conditions.push(format!("etat_livre = ${}", param_index));
             param_index += 1;
         }
 
-        if let Some(ville) = &request.ville {
+        if let Some(_ville) = &request.ville {
             conditions.push(format!("ville = ${}", param_index));
             param_index += 1;
         }
 
-        if let Some(quartier) = &request.quartier {
+        if let Some(_quartier) = &request.quartier {
             conditions.push(format!("quartier = ${}", param_index));
             param_index += 1;
         }
@@ -286,39 +286,39 @@ impl LivresScolairesService {
         let mut updates = Vec::new();
         let mut param_index = 1;
 
-        if let Some(titre) = &request.titre {
+        if let Some(_titre) = &request.titre {
             updates.push(format!("titre = ${}", param_index));
             param_index += 1;
         }
-        if let Some(auteur) = &request.auteur {
+        if let Some(_auteur) = &request.auteur {
             updates.push(format!("auteur = ${}", param_index));
             param_index += 1;
         }
-        if let Some(editeur) = &request.editeur {
+        if let Some(_editeur) = &request.editeur {
             updates.push(format!("editeur = ${}", param_index));
             param_index += 1;
         }
-        if let Some(isbn) = &request.isbn {
+        if let Some(_isbn) = &request.isbn {
             updates.push(format!("isbn = ${}", param_index));
             param_index += 1;
         }
-        if let Some(classe_actuelle) = &request.classe_actuelle {
+        if let Some(_classe_actuelle) = &request.classe_actuelle {
             updates.push(format!("classe_actuelle = ${}", param_index));
             param_index += 1;
         }
-        if let Some(classe_souhaitee) = &request.classe_souhaitee {
+        if let Some(_classe_souhaitee) = &request.classe_souhaitee {
             updates.push(format!("classe_souhaitee = ${}", param_index));
             param_index += 1;
         }
-        if let Some(matiere) = &request.matiere {
+        if let Some(_matiere) = &request.matiere {
             updates.push(format!("matiere = ${}", param_index));
             param_index += 1;
         }
-        if let Some(niveau) = &request.niveau {
+        if let Some(_niveau) = &request.niveau {
             updates.push(format!("niveau = ${}", param_index));
             param_index += 1;
         }
-        if let Some(etat_livre) = &request.etat_livre {
+        if let Some(_etat_livre) = &request.etat_livre {
             updates.push(format!("etat_livre = ${}", param_index));
             param_index += 1;
         }

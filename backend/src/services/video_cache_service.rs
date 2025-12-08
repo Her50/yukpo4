@@ -130,11 +130,11 @@ impl VideoCacheService {
 
     /// ✅ Cache les templates (TTL long car rarement modifiés)
     pub async fn cache_templates(&self, templates: Vec<CachedTemplate>) -> AppResult<()> {
-        let cache_key = "studio:templates:all";
-        let ttl = Duration::from_secs(3600); // 1 heure
+        let _cache_key = "studio:templates:all";
+        let _ttl = Duration::from_secs(3600); // 1 heure
 
         // ✅ TODO: Implémenter avec Redis
-        // redis_client.setex(cache_key, ttl.as_secs(), serde_json::to_string(&templates)?).await?;
+        // redis_client.setex(_cache_key, _ttl.as_secs(), serde_json::to_string(&templates)?).await?;
 
         info!("[VideoCache] Cached {} templates", templates.len());
         Ok(())
@@ -142,10 +142,10 @@ impl VideoCacheService {
 
     /// ✅ Récupère les templates depuis le cache
     pub async fn get_templates(&self) -> AppResult<Option<Vec<CachedTemplate>>> {
-        let cache_key = "studio:templates:all";
+        let _cache_key = "studio:templates:all";
 
         // ✅ TODO: Implémenter avec Redis
-        // let cached: Option<String> = redis_client.get(cache_key).await?;
+        // let cached: Option<String> = redis_client.get(_cache_key).await?;
         // if let Some(data) = cached {
         //     return Ok(Some(serde_json::from_str(&data)?));
         // }
@@ -157,10 +157,10 @@ impl VideoCacheService {
     pub async fn cache_preview_metrics(
         &self,
         session_id: Uuid,
-        metrics: CachedPreviewMetrics,
+        _metrics: CachedPreviewMetrics,
     ) -> AppResult<()> {
-        let cache_key = format!("studio:metrics:{}", session_id);
-        let ttl = Duration::from_secs(600); // 10 minutes
+        let _cache_key = format!("studio:metrics:{}", session_id);
+        let _ttl = Duration::from_secs(600); // 10 minutes
 
         // ✅ TODO: Implémenter avec Redis
         // redis_client.setex(cache_key, ttl.as_secs(), serde_json::to_string(&metrics)?).await?;

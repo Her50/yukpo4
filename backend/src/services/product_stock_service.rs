@@ -260,7 +260,7 @@ impl ProductStockService {
     pub async fn update_stock(
         &self,
         config_id: i32,
-        storage_location_id: Option<i32>,
+        _storage_location_id: Option<i32>,
         request: UpdateStockRequest,
         user_id: i32,
     ) -> AppResult<()> {

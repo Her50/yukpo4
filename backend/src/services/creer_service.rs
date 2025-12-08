@@ -1533,7 +1533,7 @@ pub async fn creer_service(
     user_id: i32,
     data: &serde_json::Value,
     _redis_client: &redis::Client, // Ajout de Redis pour le caching (désactivé)
-    scalability_service: Option<
+    _scalability_service: Option<
         std::sync::Arc<crate::services::scalability_service::ScalabilityService>,
     >, // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour contrôle du parallélisme
 ) -> Result<(serde_json::Value, u32), AppError> {

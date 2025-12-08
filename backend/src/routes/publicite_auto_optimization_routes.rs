@@ -184,7 +184,7 @@ pub async fn save_auto_optimization_settings(
 ) -> Result<ResponseJson<AutoOptimizationSettingsResponse>, StatusCode> {
     let _pool = &state.pg;
 
-    let settings_json =
+    let _settings_json =
         serde_json::to_value(&payload.settings).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Sauvegarder dans la base de données

@@ -3148,7 +3148,7 @@ pub struct SearchCovoituragesNearbyQuery {
 }
 
 pub async fn search_covoiturages_nearby(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Query(params): Query<SearchCovoituragesNearbyQuery>,
 ) -> AppResult<impl IntoResponse> {
     info!("[search_covoiturages_nearby] lat={}, lng={}", params.lat, params.lng);
@@ -3194,7 +3194,7 @@ pub async fn get_covoiturage_details(
 
 /// Avis d'un covoiturage
 pub async fn get_covoiturage_reviews(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Path(covoiturage_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_covoiturage_reviews] covoiturage_id={}", covoiturage_id);
@@ -3483,7 +3483,7 @@ pub struct CheckMedicationAvailabilityRequest {
 }
 
 pub async fn check_medication_availability(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Path(pharmacy_id): Path<i32>,
     Json(request): Json<CheckMedicationAvailabilityRequest>,
 ) -> AppResult<impl IntoResponse> {
@@ -3504,7 +3504,7 @@ pub struct ReserveMedicationRequest {
 }
 
 pub async fn reserve_medication(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(pharmacy_id): Path<i32>,
     Json(request): Json<ReserveMedicationRequest>,
@@ -3545,7 +3545,7 @@ pub struct CheckMedicationInteractionsRequest {
 }
 
 pub async fn check_medication_interactions(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Json(request): Json<CheckMedicationInteractionsRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!("[check_medication_interactions] medications={:?}", request.medications);
@@ -3567,7 +3567,7 @@ pub struct SuggestMedicationDosageRequest {
 }
 
 pub async fn suggest_medication_dosage(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Json(request): Json<SuggestMedicationDosageRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!("[suggest_medication_dosage] medication={}", request.medication_name);
@@ -3581,7 +3581,7 @@ pub async fn suggest_medication_dosage(
 
 /// Obtenir mes commandes de pharmacie
 pub async fn get_my_pharmacy_orders(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_my_pharmacy_orders] user_id={}", user_id);
@@ -3595,7 +3595,7 @@ pub async fn get_my_pharmacy_orders(
 
 /// Analytics d'une pharmacie
 pub async fn get_pharmacy_analytics(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(pharmacy_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
@@ -3616,7 +3616,7 @@ pub async fn get_pharmacy_analytics(
 
 /// Obtenir les types d'examens d'un laboratoire
 pub async fn get_laboratory_examination_types(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Path(lab_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_laboratory_examination_types] lab_id={}", lab_id);
@@ -3637,7 +3637,7 @@ pub struct BookLaboratoryExaminationRequest {
 }
 
 pub async fn book_laboratory_examination(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(lab_id): Path<i32>,
     Json(request): Json<BookLaboratoryExaminationRequest>,
@@ -3652,7 +3652,7 @@ pub async fn book_laboratory_examination(
 
 /// Obtenir les résultats d'un examen
 pub async fn get_examination_results(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(examination_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
@@ -3666,7 +3666,7 @@ pub async fn get_examination_results(
 
 /// Analyser les résultats d'un examen avec IA
 pub async fn analyze_examination_results(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(examination_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
@@ -3683,7 +3683,7 @@ pub async fn analyze_examination_results(
 
 /// Obtenir mes examens de laboratoire
 pub async fn get_my_laboratory_examinations(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_my_laboratory_examinations] user_id={}", user_id);
@@ -3697,7 +3697,7 @@ pub async fn get_my_laboratory_examinations(
 
 /// Analytics d'un laboratoire
 pub async fn get_laboratory_analytics(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(lab_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {

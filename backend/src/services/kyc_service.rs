@@ -109,19 +109,19 @@ impl KYCService {
         let persona_api_key = std::env::var("PERSONA_API_KEY").ok();
         let persona_webhook_secret = std::env::var("PERSONA_WEBHOOK_SECRET").ok();
 
-        if let Some(ref key) = onfido_api_key {
-            info!("[KYCService] ✅ Clé API Onfido configurée ({} caractères)", key.len());
+        if let Some(ref _key) = onfido_api_key {
+            info!("[KYCService] ✅ Clé API Onfido configurée");
         }
-        if let Some(ref key) = jumio_api_key {
+        if let Some(ref _key) = jumio_api_key {
             info!("[KYCService] ✅ Clé API Jumio configurée");
         }
-        if let Some(ref key) = sumsub_app_token {
+        if let Some(ref _key) = sumsub_app_token {
             info!("[KYCService] ✅ Clé API Sumsub configurée");
         }
-        if let Some(ref key) = veriff_api_key {
+        if let Some(ref _key) = veriff_api_key {
             info!("[KYCService] ✅ Clé API Veriff configurée");
         }
-        if let Some(ref key) = persona_api_key {
+        if let Some(ref _key) = persona_api_key {
             info!("[KYCService] ✅ Clé API Persona configurée");
         }
 

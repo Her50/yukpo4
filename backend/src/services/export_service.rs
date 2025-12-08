@@ -79,13 +79,13 @@ impl ExportService {
 
     /// Traite un job d'export de manière asynchrone
     async fn process_export(
-        pool: Arc<PgPool>,
-        transcoding_service: Arc<crate::services::transcoding_service::TranscodingService>,
-        media_storage: Arc<crate::services::media_storage_service::MediaStorageService>,
+        _pool: Arc<PgPool>,
+        _transcoding_service: Arc<crate::services::transcoding_service::TranscodingService>,
+        _media_storage: Arc<crate::services::media_storage_service::MediaStorageService>,
         job_id: String,
         _user_id: i32,
-        timeline_id: String,
-        settings: ExportSettings,
+        _timeline_id: String,
+        _settings: ExportSettings,
     ) -> Result<(), String> {
         info!("[ExportService] Début traitement export: {}", job_id);
 

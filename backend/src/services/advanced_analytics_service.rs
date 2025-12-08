@@ -325,7 +325,7 @@ impl AdvancedAnalyticsService {
     }
 
     /// Analyse A/B test
-    pub async fn analyze_ab_test(pool: &PgPool, test_id: &str) -> AppResult<ABTestResult> {
+    pub async fn analyze_ab_test(_pool: &PgPool, test_id: &str) -> AppResult<ABTestResult> {
         // Table ab_tests n'existe pas encore - retourner résultat vide
         log::warn!("Table ab_tests n'existe pas, retour résultat vide");
         return Ok(ABTestResult {

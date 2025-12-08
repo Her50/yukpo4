@@ -130,18 +130,7 @@ impl BloodStockMonitor {
 
         // Note: On utilise directement le service de matching au lieu du contrôleur
         // pour éviter les dépendances circulaires
-        let request_payload = serde_json::json!({
-            "banque_sang_id": banque_id,
-            "service_id": service_id,
-            "groupe_sanguin_requis": groupe_sanguin,
-            "quantite_requise": 10, // Quantité par défaut
-            "unite": "poches",
-            "is_urgent": true,
-            "urgence_level": "critique",
-            "request_latitude": gps_info.as_ref().and_then(|(lat, _)| *lat),
-            "request_longitude": gps_info.as_ref().and_then(|(_, lng)| *lng),
-            "max_distance_km": 50.0, // Rayon par défaut
-        });
+        // Les valeurs sont passées directement via .bind() ci-dessous
 
         // Appeler la fonction SQL directement pour créer la demande
         let result: serde_json::Value = sqlx::query_scalar(
@@ -180,12 +169,8 @@ impl BloodStockMonitor {
             );
 
             // Notifier les donneurs (en arrière-plan)
-            let state_clone = self.state.clone();
-            let request_id_clone = request_id.to_string();
-
-            // Notifier les donneurs via l'endpoint API
-            // Note: On pourrait aussi appeler directement la fonction SQL de notification
-            // Pour l'instant, on laisse le système de matching gérer les notifications
+            // Note: Le système de matching gère automatiquement les notifications
+            // via les triggers PostgreSQL et le service de notifications
             info!(
                 "[BloodStockMonitor] ✅ Demande {} créée - Le système de matching notifiera automatiquement les donneurs",
                 request_id

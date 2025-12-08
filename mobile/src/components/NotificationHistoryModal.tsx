@@ -1,5 +1,5 @@
 ﻿import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import ReactNative from 'react-native';
 import { API_ENDPOINTS } from '../config/api.config';
 import { useAuth } from '../contexts/AuthContext';
@@ -122,7 +122,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
   const normalizeNotificationsResponse = (response: any): any[] => {
     if (!response) {

@@ -119,7 +119,7 @@ impl GlobalCacheService {
         self.memory_cache.invalidate(pattern).await;
 
         // Invalider cache Redis (si disponible)
-        if let Some(redis) = &self.redis_cache {
+        if let Some(_redis) = &self.redis_cache {
             // Note: Pour invalidation Redis, on devrait utiliser SCAN + DEL
             // Pour l'instant, on invalide seulement la mémoire
             log::debug!(

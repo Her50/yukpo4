@@ -673,7 +673,7 @@ pub struct SalaryPredictionQuery {
 /// POST /api/offres-emploi/ai/suggest-formations
 /// Suggestions formations IA
 pub async fn ai_suggest_formations(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<SuggestFormationsRequest>,
 ) -> AppResult<impl IntoResponse> {
