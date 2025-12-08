@@ -1840,7 +1840,6 @@ pub async fn sync_services(
     for (index, action) in payload.actions.iter().enumerate() {
         let action_id = format!("action_{}", index);
         let mut success = false;
-        #[allow(unused_assignments)]
         let mut error_msg: Option<String> = None;
 
         match action.action.as_str() {
@@ -1855,7 +1854,6 @@ pub async fn sync_services(
                             {
                                 Ok(Some(conflict)) => {
                                     // Conflit détecté
-                                    #[allow(unused_assignments)]
                                     error_msg = Some(format!(
                                         "CONFLIT: Le service a été modifié sur le serveur ({} > {})",
                                         conflict.server_updated_at, conflict.local_updated_at

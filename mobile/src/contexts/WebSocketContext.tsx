@@ -7,6 +7,24 @@ import { Alert } from 'react-native';
 import websocketService, { ChatMessage, NotificationMessage, UserStatusUpdate } from '../services/websocketService';
 import { useAuth } from './AuthContext';
 
+// ✅ PATCH CRITIQUE: Wrapper pour garantir que les fonctions de cleanup sont toujours valides
+const safeCleanup = (cleanup: any): (() => void) | undefined => {
+    if (cleanup === null || cleanup === undefined) {
+        return undefined;
+    }
+    if (typeof cleanup === 'function') {
+        return () => {
+            try {
+                cleanup();
+            } catch (error) {
+                console.error('[safeCleanup] Erreur dans cleanup:', error);
+            }
+        };
+    }
+    console.error('[safeCleanup] ⚠️ Cleanup non-fonction détecté:', typeof cleanup, cleanup);
+    return undefined;
+};
+
 interface WebSocketContextValue {
     isConnected: boolean;
     onlineUsers: Set<string>;
@@ -33,13 +51,15 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Se connecter au WebSocket quand l'utilisateur est connecté
     useEffect(() => {
         if (!user?.id) {
-            return;
+            // ✅ CORRIGÉ: Retourner une fonction vide au lieu de undefined
+            return () => { };
         }
 
         // ✅ SÉCURITÉ: Vérifier que websocketService existe
         if (!websocketService || typeof websocketService.connect !== 'function') {
             console.warn('[WebSocketContext] websocketService.connect non disponible');
-            return;
+            // ✅ CORRIGÉ: Retourner une fonction vide au lieu de undefined
+            return () => { };
         }
 
         console.log('[WebSocketContext] 🔌 Connexion WebSocket pour user:', user.id);
@@ -103,7 +123,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // ✅ SÉCURITÉ: Vérifier que websocketService existe
         if (!websocketService || typeof websocketService.onStatusChange !== 'function') {
             console.warn('[WebSocketContext] websocketService.onStatusChange non disponible');
-            return;
+            // ✅ CORRIGÉ: Retourner une fonction vide au lieu de undefined
+            return () => { };
         }
 
         const handleStatusChange = (status: 'online' | 'offline') => {
@@ -127,12 +148,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
         const unsubscribe = websocketService.onStatusChange(handleStatusChange);
 
-        return () => {
-            // ✅ NETTOYAGE: Désabonner du changement de statut
-            if (unsubscribe && typeof unsubscribe === 'function') {
-                unsubscribe();
-            }
-        };
+        // ✅ PATCH CRITIQUE: Utiliser safeCleanup pour garantir une fonction valide
+        return safeCleanup(unsubscribe);
     }, [user?.id]);
 
     // Gérer les messages WebSocket
@@ -238,16 +255,16 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         };
 
         // ✅ SÉCURITÉ: Vérifier que websocketService.onMessage existe
-        if (websocketService && typeof websocketService.onMessage === 'function') {
-            const unsubscribe = websocketService.onMessage(handleMessage);
-
-            return () => {
-                // ✅ NETTOYAGE: Désabonner des messages
-                if (unsubscribe && typeof unsubscribe === 'function') {
-                    unsubscribe();
-                }
-            };
+        if (!websocketService || typeof websocketService.onMessage !== 'function') {
+            console.warn('[WebSocketContext] websocketService.onMessage non disponible');
+            // ✅ CORRIGÉ: Retourner une fonction vide au lieu de undefined
+            return () => { };
         }
+
+        const unsubscribe = websocketService.onMessage(handleMessage);
+
+        // ✅ PATCH CRITIQUE: Utiliser safeCleanup pour garantir une fonction valide
+        return safeCleanup(unsubscribe);
     }, [notificationHandlers, chatMessageHandlers, userStatusHandlers]);
 
     // Fonction pour envoyer un message

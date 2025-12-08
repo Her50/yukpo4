@@ -1,6 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
 import websocketService, { ChatMessage, NotificationMessage, UserStatusUpdate } from '../services/websocketService';
 
+// ✅ PATCH CRITIQUE: Wrapper pour garantir que les fonctions de cleanup sont toujours valides
+const safeCleanup = (cleanup: any): (() => void) | undefined => {
+  if (cleanup === null || cleanup === undefined) {
+    return undefined;
+  }
+  if (typeof cleanup === 'function') {
+    return () => {
+      try {
+        cleanup();
+      } catch (error) {
+        console.error('[safeCleanup] Erreur dans cleanup:', error);
+      }
+    };
+  }
+  console.error('[safeCleanup] ⚠️ Cleanup non-fonction détecté:', typeof cleanup, cleanup);
+  return undefined;
+};
+
 interface WebSocketState {
   isConnected: boolean;
   isConnecting: boolean;
@@ -34,67 +52,7 @@ export const useWebSocket = (
   const [isConnecting, setIsConnecting] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
 
-  // Gérer les changements de statut de connexion
-  useEffect(() => {
-    const handleStatusChange = (status: 'online' | 'offline') => {
-      setIsConnected(status === 'online');
-      setIsConnecting(false);
-      setLastError(null);
-
-      if (status === 'offline') {
-        setLastError('Connexion perdue');
-      }
-
-      callbacks?.onConnectionChange?.(status === 'online');
-    };
-
-    websocketService.onStatusChange(handleStatusChange);
-
-    return () => {
-      // Nettoyage des callbacks si nécessaire
-    };
-  }, [callbacks]);
-
-  // Gérer les messages WebSocket
-  useEffect(() => {
-    const handleMessage = (message: any) => {
-      console.log('📨 [useWebSocket] Message reçu:', message.type);
-
-      switch (message.type) {
-        case 'user_status':
-          callbacks?.onUserStatusUpdate?.(message as UserStatusUpdate);
-          break;
-
-        case 'chat_message':
-          callbacks?.onChatMessage?.(message as ChatMessage);
-          break;
-
-        case 'notification':
-          callbacks?.onNotification?.(message as NotificationMessage);
-          break;
-
-        default:
-          console.log('📨 [useWebSocket] Type de message non géré:', message.type);
-      }
-    };
-
-    websocketService.onMessage(handleMessage);
-  }, [callbacks]);
-
-  // Se connecter automatiquement si un userId est fourni
-  useEffect(() => {
-    if (userId && !isConnected && !isConnecting) {
-      if (typeof connect === 'function') {
-        try {
-          connect();
-        } catch (error) {
-          console.warn('[useWebSocket] Erreur lors de la connexion automatique:', error);
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, isConnected, isConnecting]); // ✅ CORRIGÉ: connect est stable (useCallback), mais on inclut les dépendances nécessaires
-
+  // ✅ CORRIGÉ: Déclarer les fonctions AVANT les useEffect qui les utilisent
   const connect = useCallback(() => {
     if (!isConnected && !isConnecting) {
       if (!userId) {
@@ -104,18 +62,22 @@ export const useWebSocket = (
       }
       setIsConnecting(true);
       setLastError(null);
-      websocketService.connect(userId);
+      if (websocketService && typeof websocketService.connect === 'function') {
+        websocketService.connect(userId);
+      }
     }
   }, [isConnected, isConnecting, userId]);
 
   const disconnect = useCallback(() => {
-    websocketService.disconnect();
+    if (websocketService && typeof websocketService.disconnect === 'function') {
+      websocketService.disconnect();
+    }
     setIsConnected(false);
     setIsConnecting(false);
   }, []);
 
   const sendMessage = useCallback((message: any) => {
-    if (isConnected) {
+    if (isConnected && websocketService && typeof websocketService.sendMessage === 'function') {
       websocketService.sendMessage(message);
     } else {
       console.warn('⚠️ [useWebSocket] Impossible d\'envoyer le message - non connecté');
@@ -155,6 +117,85 @@ export const useWebSocket = (
       }
     });
   }, [userId, sendMessage]);
+
+  // Gérer les changements de statut de connexion
+  useEffect(() => {
+    // ✅ SÉCURITÉ: Vérifier que websocketService existe
+    if (!websocketService || typeof websocketService.onStatusChange !== 'function') {
+      console.warn('[useWebSocket] websocketService.onStatusChange non disponible');
+      // ✅ CORRIGÉ: Retourner une fonction vide au lieu de undefined
+      return () => { };
+    }
+
+    const handleStatusChange = (status: 'online' | 'offline') => {
+      setIsConnected(status === 'online');
+      setIsConnecting(false);
+      setLastError(null);
+
+      if (status === 'offline') {
+        setLastError('Connexion perdue');
+      }
+
+      callbacks?.onConnectionChange?.(status === 'online');
+    };
+
+    // ✅ CORRIGÉ: Stocker et retourner la fonction de cleanup
+    const unsubscribe = websocketService.onStatusChange(handleStatusChange);
+
+    // ✅ PATCH CRITIQUE: Utiliser safeCleanup pour garantir une fonction valide
+    return safeCleanup(unsubscribe);
+  }, [callbacks]);
+
+  // Gérer les messages WebSocket
+  useEffect(() => {
+    // ✅ SÉCURITÉ: Vérifier que websocketService existe
+    if (!websocketService || typeof websocketService.onMessage !== 'function') {
+      console.warn('[useWebSocket] websocketService.onMessage non disponible');
+      // ✅ CORRIGÉ: Retourner une fonction vide au lieu de undefined
+      return () => { };
+    }
+
+    const handleMessage = (message: any) => {
+      console.log('📨 [useWebSocket] Message reçu:', message.type);
+
+      switch (message.type) {
+        case 'user_status':
+          callbacks?.onUserStatusUpdate?.(message as UserStatusUpdate);
+          break;
+
+        case 'chat_message':
+          callbacks?.onChatMessage?.(message as ChatMessage);
+          break;
+
+        case 'notification':
+          callbacks?.onNotification?.(message as NotificationMessage);
+          break;
+
+        default:
+          console.log('📨 [useWebSocket] Type de message non géré:', message.type);
+      }
+    };
+
+    // ✅ CORRIGÉ: Stocker et retourner la fonction de cleanup
+    const unsubscribe = websocketService.onMessage(handleMessage);
+
+    // ✅ PATCH CRITIQUE: Utiliser safeCleanup pour garantir une fonction valide
+    return safeCleanup(unsubscribe);
+  }, [callbacks]);
+
+  // Se connecter automatiquement si un userId est fourni
+  useEffect(() => {
+    if (userId && !isConnected && !isConnecting) {
+      try {
+        connect();
+      } catch (error) {
+        console.warn('[useWebSocket] Erreur lors de la connexion automatique:', error);
+      }
+    }
+    // ✅ CORRIGÉ: Retourner explicitement undefined pour éviter tout problème
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, isConnected, isConnecting, connect]); // ✅ CORRIGÉ: Inclure connect dans les dépendances
 
   return {
     isConnected,

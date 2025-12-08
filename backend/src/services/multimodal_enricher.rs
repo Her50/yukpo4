@@ -1,6 +1,6 @@
 // ?? src/services/multimodal_enricher.rs
 // Remplacement automatique des r?f?rences multimodales (images, audio, vid?o, fichiers, etc.) par les vraies donn?es (base64 ou contenu r?el)
-use base64::Engine;
+use base64::Engine as _;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs; // Pour .encode()

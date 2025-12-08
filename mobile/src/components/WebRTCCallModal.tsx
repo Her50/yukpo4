@@ -64,11 +64,17 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const callTimer = useRef<NodeJS.Timeout | null>(null);
 
+    // ✅ CORRIGÉ: Refs pour stocker les fonctions
+    const cleanupRef = useRef<(() => void) | null>(null);
+    const initializeWebRTCRef = useRef<(() => Promise<void>) | null>(null);
+
     useEffect(() => {
         if (visible && callState === 'connecting') {
-            // ✅ CORRECTION: Initialiser la connexion WebRTC avec gestion d'erreur
+            // ✅ CORRIGÉ: Utiliser la ref pour initializeWebRTC
             try {
-                initializeWebRTC();
+                if (initializeWebRTCRef.current && typeof initializeWebRTCRef.current === 'function') {
+                    initializeWebRTCRef.current();
+                }
             } catch (error) {
                 console.error('[WebRTC] Erreur critique initialisation:', error);
                 Alert.alert('Erreur', 'Impossible d\'initialiser l\'appel. Veuillez réessayer.');
@@ -78,12 +84,18 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
 
         return () => {
             try {
-                cleanup();
+                // ✅ CORRIGÉ: Utiliser la ref pour la fonction de cleanup
+                if (cleanupRef.current && typeof cleanupRef.current === 'function') {
+                    cleanupRef.current();
+                }
             } catch (error) {
                 console.error('[WebRTC] Erreur cleanup:', error);
             }
         };
     }, [visible]);
+
+    // ✅ CORRIGÉ: Ref pour stocker stopRingTone
+    const stopRingToneRef = useRef<(() => Promise<void>) | null>(null);
 
     useEffect(() => {
         if (callState === 'active') {
@@ -91,8 +103,10 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                 setCallDuration(prev => prev + 1);
             }, 1000);
 
-            // ✅ Arrêter la sonnerie quand l'appel est accepté
-            stopRingTone();
+            // ✅ CORRIGÉ: Utiliser la ref pour stopRingTone
+            if (stopRingToneRef.current && typeof stopRingToneRef.current === 'function') {
+                stopRingToneRef.current();
+            }
         }
 
         return () => {
@@ -102,18 +116,25 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
         };
     }, [callState]);
 
+    // ✅ CORRIGÉ: Ref pour stocker playRingTone
+    const playRingToneRef = useRef<(() => Promise<void>) | null>(null);
+
     // ✅ AMÉLIORÉ: Jouer la sonnerie selon le type d'appel
     useEffect(() => {
         // Appel ENTRANT : jouer la sonnerie immédiatement pour alerter le destinataire
         if (isIncoming && visible && callState === 'connecting') {
             console.log('[WebRTC] 🔔 Appel entrant - Démarrage sonnerie destinataire');
-            playRingTone();
+            if (playRingToneRef.current && typeof playRingToneRef.current === 'function') {
+                playRingToneRef.current();
+            }
         }
 
         // Appel SORTANT : jouer la sonnerie quand on attend la réponse
         if (!isIncoming && callState === 'ringing') {
             console.log('[WebRTC] 🔔 Appel sortant - Démarrage sonnerie émetteur');
-            playRingTone();
+            if (playRingToneRef.current && typeof playRingToneRef.current === 'function') {
+                playRingToneRef.current();
+            }
 
             // ✅ Animation de pulse pendant la sonnerie
             const pulseAnimation = Animated.loop(
@@ -137,13 +158,17 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                 pulseAnim.setValue(1);
             };
         } else if (callState === 'active' || callState === 'ended') {
-            stopRingTone();
+            if (stopRingToneRef.current && typeof stopRingToneRef.current === 'function') {
+                stopRingToneRef.current();
+            }
             pulseAnim.setValue(1);
         }
 
         return () => {
             if (callState === 'ended') {
-                stopRingTone();
+                if (stopRingToneRef.current && typeof stopRingToneRef.current === 'function') {
+                    stopRingToneRef.current();
+                }
             }
         };
     }, [callState, isIncoming, visible]);
@@ -245,6 +270,9 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             onClose();
         }
     };
+
+    // ✅ CORRIGÉ: Stocker initializeWebRTC dans la ref
+    initializeWebRTCRef.current = initializeWebRTC;
 
     // Connexion au serveur de signaling
     const connectToSignalingServer = () => {
@@ -399,8 +427,10 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             clearInterval(callTimer.current);
         }
 
-        // ✅ Arrêter la sonnerie
-        stopRingTone();
+        // ✅ CORRIGÉ: Arrêter la sonnerie via la ref
+        if (stopRingToneRef.current && typeof stopRingToneRef.current === 'function') {
+            stopRingToneRef.current();
+        }
 
         // Nettoyer les ressources WebRTC
         if (localStream) {
@@ -413,6 +443,9 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             ws.current.close();
         }
     };
+
+    // ✅ CORRIGÉ: Stocker cleanup dans la ref
+    cleanupRef.current = cleanup;
 
     // ✅ CORRIGÉ: Jouer la sonnerie d'appel avec son système
     const playRingTone = async () => {
@@ -476,6 +509,9 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
         }
     };
 
+    // ✅ CORRIGÉ: Stocker playRingTone dans la ref
+    playRingToneRef.current = playRingTone;
+
     // ✅ NOUVEAU: Arrêter la sonnerie
     const stopRingTone = async () => {
         try {
@@ -489,6 +525,9 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             console.error('[WebRTC] Erreur arrêt sonnerie:', error);
         }
     };
+
+    // ✅ CORRIGÉ: Stocker stopRingTone dans la ref
+    stopRingToneRef.current = stopRingTone;
 
     const formatDuration = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);

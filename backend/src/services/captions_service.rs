@@ -195,8 +195,6 @@ async fn segment_transcription(
         } else {
             current_text.push_str(&word_with_space);
         }
-
-        word_index += 1;
     }
 
     // Ajouter le dernier sous-titre

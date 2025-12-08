@@ -459,6 +459,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, [flushPendingMutations]);
 
     useEffect(() => {
+        // ✅ SÉCURITÉ: Vérifier que websocketService existe
+        if (!websocketService || typeof websocketService.onStatusChange !== 'function') {
+            console.warn('[DeliveryContext] websocketService.onStatusChange non disponible');
+            // ✅ CORRIGÉ: Retourner une fonction vide au lieu de undefined
+            return () => { };
+        }
+
         const unsubscribe = websocketService.onStatusChange((status) => {
             const connected = status === 'online';
             websocketConnectedRef.current = connected;
@@ -469,7 +476,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         });
 
         return () => {
-            unsubscribe?.();
+            // ✅ CORRIGÉ: Vérifier et appeler la fonction de cleanup
+            if (unsubscribe && typeof unsubscribe === 'function') {
+                try {
+                    unsubscribe();
+                } catch (error) {
+                    console.warn('[DeliveryContext] Erreur cleanup onStatusChange:', error);
+                }
+            }
         };
     }, [flushPendingMutations]);
 

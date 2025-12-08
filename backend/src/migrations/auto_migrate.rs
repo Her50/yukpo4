@@ -10427,7 +10427,7 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                 // Détecter si c'est la fin du bloc ($$ suivi de LANGUAGE ou ;)
                 let dollar_pos = trimmed.find(&dollar_tag);
                 if let Some(pos) = dollar_pos {
-                    let after_dollar = &trimmed[pos + dollar_tag.len()..].trim();
+                    let after_dollar: &str = trimmed[pos + dollar_tag.len()..].trim();
                     
                     // Cas 1: $$ LANGUAGE plpgsql; (LANGUAGE après $$)
                     if after_dollar.starts_with("LANGUAGE") {

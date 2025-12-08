@@ -49,14 +49,28 @@ export const useSafeEffect = (
             // Validation de la fonction de nettoyage
             if (cleanup && typeof cleanup !== 'function') {
                 console.error(`❌ [useSafeEffect] ${component || 'Unknown'} - useEffect retourne une valeur non-fonction`);
+                // ✅ CORRIGÉ: Retourner une fonction vide si cleanup n'est pas une fonction
+                return () => { };
             }
 
+            // ✅ CORRIGÉ: Retourner cleanup ou undefined (mais jamais une valeur non-fonction)
             return cleanup;
         } catch (error) {
-            errorHandler.handleError(error, {
-                component: component || 'useSafeEffect',
-                action: action || 'effect_execution',
-            });
+            // ✅ SÉCURITÉ: Vérifier que errorHandler existe avant de l'utiliser
+            if (errorHandler && typeof errorHandler.handleError === 'function') {
+                try {
+                    errorHandler.handleError(error, {
+                        component: component || 'useSafeEffect',
+                        action: action || 'effect_execution',
+                    });
+                } catch (handlerError) {
+                    console.error('❌ [useSafeEffect] Erreur dans errorHandler:', handlerError);
+                }
+            } else {
+                console.error('❌ [useSafeEffect] Erreur:', error);
+            }
+            // ✅ CORRIGÉ: Retourner undefined en cas d'erreur (React accepte undefined)
+            return undefined;
         } finally {
             previousDeps.current = [...deps];
             isFirstRun.current = false;

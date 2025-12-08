@@ -333,13 +333,16 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
   }, [focused]); // ✅ IMPORTANT: Ne pas inclure scale et opacity (SharedValues sont stables)
 
   // ✅ CORRIGÉ: useAnimatedStyle avec worklet (automatiquement géré par Babel)
-  const animatedStyle = useAnimatedStyle(() => {
-    'worklet';
-    return {
-      transform: [{ scale: scale.value }],
-      opacity: opacity.value,
-    };
-  });
+  // ✅ SÉCURITÉ: Vérifier que useAnimatedStyle est disponible
+  const animatedStyle = typeof useAnimatedStyle === 'function'
+    ? useAnimatedStyle(() => {
+      'worklet';
+      return {
+        transform: [{ scale: scale.value }],
+        opacity: opacity.value,
+      };
+    })
+    : { transform: [{ scale: 1 }], opacity: 1 }; // Fallback si useAnimatedStyle n'est pas disponible
 
   const icons: { [key: string]: string } = {
     'home': '🏠',
