@@ -1,7 +1,7 @@
 // ✅ NOUVEAU: Service de génération automatique de sous-titres
 
 use crate::core::types::{AppError, AppResult};
-use base64::Engine as _;
+use base64::Engine;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use tokio::fs;

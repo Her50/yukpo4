@@ -2,7 +2,7 @@ use crate::utils::jwt_manager::decode_jwt;
 use axum::body::Body;
 use axum::http::StatusCode;
 use axum::{http::Request, middleware::Next, response::Response};
-use base64::Engine as _;
+use base64::Engine;
 use std::env;
 
 /// ? Authenticated user structure

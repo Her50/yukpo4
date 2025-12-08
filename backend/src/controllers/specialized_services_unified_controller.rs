@@ -1854,10 +1854,6 @@ pub async fn sync_services(
                             {
                                 Ok(Some(conflict)) => {
                                     // Conflit détecté
-                                    error_msg = Some(format!(
-                                        "CONFLIT: Le service a été modifié sur le serveur ({} > {})",
-                                        conflict.server_updated_at, conflict.local_updated_at
-                                    ));
                                     failed += 1;
                                     // Ajouter les infos de conflit dans la réponse
                                     results.push(SyncActionResult {
@@ -1870,7 +1866,7 @@ pub async fn sync_services(
                                                 "server_updated_at": conflict.server_updated_at,
                                                 "local_updated_at": conflict.local_updated_at,
                                             })
-                                            .to_string(),
+                                                .to_string(),
                                         ),
                                     });
                                     continue;

@@ -2,7 +2,7 @@ use axum::{
     extract::{Multipart, State},
     Json,
 };
-use base64::Engine as _;
+use base64::Engine;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;

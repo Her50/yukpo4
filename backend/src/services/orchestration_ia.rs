@@ -7,6 +7,7 @@ use crate::services::app_ia::{AppIA, TrainingData};
 use crate::services::file_extractor::UniversalFileExtractor;
 use crate::state::AppState;
 use base64::engine::general_purpose;
+use base64::Engine;
 use jsonschema::JSONSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};

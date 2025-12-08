@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use base64::engine::general_purpose::STANDARD as BASE64;
-use base64::Engine as _;
+use base64::Engine;
 use log::{debug, info, warn};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::multipart::{Form, Part};
