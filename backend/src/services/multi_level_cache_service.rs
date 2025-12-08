@@ -45,7 +45,7 @@ impl L1Cache {
         }
 
         // Désérialiser
-        bincode::deserialize(value_bytes).ok()
+        bincode::deserialize(&value_bytes).ok()
     }
 
     fn set<T>(&self, key: &str, value: &T) -> AppResult<()>

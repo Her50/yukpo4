@@ -1,4 +1,5 @@
 use axum::http::{HeaderMap, StatusCode};
+#[cfg(debug_assertions)]
 use base64::Engine;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, TokenData, Validation};
 use serde::Deserialize;
