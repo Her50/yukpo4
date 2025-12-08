@@ -1,5 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
 import * as React from 'react';
+
+// ✅ PATCH CRITIQUE: Appliquer le patch React IMMÉDIATEMENT après l'import
+import { patchReactUseEffect } from './src/utils/reactPatch';
+patchReactUseEffect(React);
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';

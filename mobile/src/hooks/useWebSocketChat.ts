@@ -428,15 +428,19 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
         return () => {
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = null;
             }
             if (heartbeatIntervalRef.current) {
                 clearInterval(heartbeatIntervalRef.current);
+                heartbeatIntervalRef.current = null;
             }
             if (wsRef.current) {
                 wsRef.current.close();
+                wsRef.current = null;
             }
         };
-    }, [serviceId, prestataireId, userId, connectWebSocket]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [serviceId, prestataireId, userId]); // ✅ CORRIGÉ: Retirer connectWebSocket des dépendances (stable via useCallback)
 
     return {
         messages,

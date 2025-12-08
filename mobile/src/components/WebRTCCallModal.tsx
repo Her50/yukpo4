@@ -57,6 +57,9 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
     const peerConnection = useRef<RTCPeerConnection | null>(null);
     const ws = useRef<WebSocket | null>(null);
+    // ✅ CORRIGÉ: Refs pour stocker les handlers d'événements pour cleanup
+    const iceCandidateHandlerRef = useRef<((event: any) => void) | null>(null);
+    const trackHandlerRef = useRef<((event: any) => void) | null>(null);
 
     // ✅ NOUVEAU: Sonnerie d'appel
     const [ringSound, setRingSound] = useState<Audio.Sound | null>(null);
@@ -216,30 +219,37 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                 peerConnection.current?.addTrack(track, stream);
             });
 
-            // Gérer les ICE candidates
-            peerConnection.current.onicecandidate = (event) => {
-                if (event.candidate) {
-                    try {
-                        sendSignalingMessage({
-                            type: 'ice-candidate',
-                            candidate: event.candidate,
-                            to: recipientId
-                        });
-                    } catch (error) {
-                        console.error('[WebRTC] Erreur envoi ICE candidate:', error);
+            // ✅ CORRIGÉ: Utiliser addEventListener au lieu de propriétés directes
+            if (peerConnection.current) {
+                // Handler pour ICE candidates
+                const iceCandidateHandler = (event: any) => {
+                    if (event.candidate) {
+                        try {
+                            sendSignalingMessage({
+                                type: 'ice-candidate',
+                                candidate: event.candidate,
+                                to: recipientId
+                            });
+                        } catch (error) {
+                            console.error('[WebRTC] Erreur envoi ICE candidate:', error);
+                        }
                     }
-                }
-            };
+                };
+                iceCandidateHandlerRef.current = iceCandidateHandler;
+                peerConnection.current.addEventListener('icecandidate', iceCandidateHandler);
 
-            // Gérer le stream distant
-            peerConnection.current.ontrack = (event) => {
-                try {
-                    setRemoteStream(event.streams[0]);
-                    setCallState('active');
-                } catch (error) {
-                    console.error('[WebRTC] Erreur gestion stream distant:', error);
-                }
-            };
+                // Handler pour track
+                const trackHandler = (event: any) => {
+                    try {
+                        setRemoteStream(event.streams[0]);
+                        setCallState('active');
+                    } catch (error) {
+                        console.error('[WebRTC] Erreur gestion stream distant:', error);
+                    }
+                };
+                trackHandlerRef.current = trackHandler;
+                peerConnection.current.addEventListener('track', trackHandler);
+            }
 
             // ✅ CORRECTION: Connecter au serveur de signaling avec protection
             try {
@@ -437,10 +447,21 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             localStream.getTracks().forEach(track => track.stop());
         }
         if (peerConnection.current) {
+            // ✅ CORRIGÉ: Retirer les event listeners avant de fermer
+            if (iceCandidateHandlerRef.current) {
+                peerConnection.current.removeEventListener('icecandidate', iceCandidateHandlerRef.current);
+                iceCandidateHandlerRef.current = null;
+            }
+            if (trackHandlerRef.current) {
+                peerConnection.current.removeEventListener('track', trackHandlerRef.current);
+                trackHandlerRef.current = null;
+            }
             peerConnection.current.close();
+            peerConnection.current = null;
         }
         if (ws.current) {
             ws.current.close();
+            ws.current = null;
         }
     };
 
@@ -658,8 +679,8 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                             <Text style={styles.ringingText}>🔊 Appel en cours</Text>
                             <View style={styles.soundWaves}>
                                 <Animated.View style={[styles.soundWave, { opacity: pulseAnim }]} />
-                                <Animated.View style={[styles.soundWave, { opacity: pulseAnim, animationDelay: 200 }]} />
-                                <Animated.View style={[styles.soundWave, { opacity: pulseAnim, animationDelay: 400 }]} />
+                                <Animated.View style={[styles.soundWave, { opacity: pulseAnim }]} />
+                                <Animated.View style={[styles.soundWave, { opacity: pulseAnim }]} />
                             </View>
                         </View>
                     )}

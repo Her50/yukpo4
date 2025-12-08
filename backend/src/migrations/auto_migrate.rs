@@ -6982,6 +6982,11 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     }
 
     // ✅ 2025-01-27 : Tables avancées pour Pharmacies
+    match ensure_pharmacy_products_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: pharmacy_products table OK"),
+        Err(e) => error!("❌ Erreur migration auto pharmacy_products: {}", e),
+    }
+
     match ensure_pharmacy_advanced_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: pharmacy advanced tables OK"),
         Err(e) => error!("❌ Erreur migration auto pharmacy advanced tables: {}", e),
@@ -7951,8 +7956,9 @@ pub async fn ensure_search_history_table(pool: &PgPool) -> Result<(), sqlx::Erro
         CREATE TABLE IF NOT EXISTS search_history (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            query_text TEXT NOT NULL,
+            query TEXT NOT NULL,
             query_type VARCHAR(50) DEFAULT 'text',
+            specialized_type VARCHAR(50),
             category VARCHAR(255),
             filters JSONB,
             location_lat DOUBLE PRECISION,
@@ -7962,9 +7968,27 @@ pub async fn ensure_search_history_table(pool: &PgPool) -> Result<(), sqlx::Erro
             clicked_at TIMESTAMPTZ,
             session_id VARCHAR(255),
             device_type VARCHAR(50),
+            searched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             created_at TIMESTAMPTZ DEFAULT NOW()
         )
     "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Ajouter la colonne searched_at si elle n'existe pas (pour les tables existantes)
+    sqlx::query(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'search_history' AND column_name = 'searched_at'
+            ) THEN
+                ALTER TABLE search_history ADD COLUMN searched_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+            END IF;
+        END $$;
+        "#,
     )
     .execute(pool)
     .await?;
@@ -9597,8 +9621,13 @@ pub async fn ensure_delivery_engine_pricing_table(pool: &PgPool) -> Result<(), s
     .await?;
 
     sqlx::query(
+        "DROP TRIGGER IF EXISTS trigger_update_delivery_engine_pricing_updated_at ON delivery_engine_pricing",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
         r#"
-        DROP TRIGGER IF EXISTS trigger_update_delivery_engine_pricing_updated_at ON delivery_engine_pricing;
         CREATE TRIGGER trigger_update_delivery_engine_pricing_updated_at
             BEFORE UPDATE ON delivery_engine_pricing
             FOR EACH ROW
@@ -9859,12 +9888,13 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
     // 2. Fonction search_services_gps_final (version simplifiée pour auto_migrate)
     // Note: La version complète est dans la migration 20251123
     // Cette version crée la fonction de base, la migration SQLx l'améliorera
+    // ⚠️ IMPORTANT: Utiliser search_radius_km (pas radius_km) pour correspondre aux migrations SQL
     sqlx::query(
         r#"
         CREATE OR REPLACE FUNCTION search_services_gps_final(
             search_query text,
-            user_gps_zone text,
-            radius_km integer DEFAULT 50,
+            user_gps_zone text DEFAULT NULL,
+            search_radius_km integer DEFAULT 50,
             max_results integer DEFAULT 100
         )
         RETURNS TABLE(
@@ -9883,7 +9913,7 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
             radius_adjusted double precision;
         BEGIN
             -- Ajuster le rayon
-            radius_adjusted := COALESCE(calculate_intelligent_radius(radius_km::double precision), radius_km::double precision);
+            radius_adjusted := COALESCE(calculate_intelligent_radius(search_radius_km::double precision), search_radius_km::double precision);
             
             -- Extraire les coordonnées GPS si fournies
             IF user_gps_zone IS NOT NULL AND user_gps_zone != '' AND user_gps_zone != 'null' THEN
@@ -11794,6 +11824,21 @@ pub async fn ensure_hospital_advanced_tables(pool: &PgPool) -> Result<(), sqlx::
     execute_multiple_sql_commands(pool, migration_sql).await?;
 
     info!("✅ Tables avancées hôpitaux créées");
+    Ok(())
+}
+
+/// ✅ 2025-01-28 : Table pour produits de pharmacie
+/// Migration: 20250128_002_add_pharmacy_products.sql
+pub async fn ensure_pharmacy_products_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création de la table pharmacy_products...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20250128_002_add_pharmacy_products.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Table pharmacy_products créée");
     Ok(())
 }
 

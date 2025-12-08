@@ -30,13 +30,29 @@ BEGIN
 END $$;
 
 -- Créer les partitions pour les 12 prochains mois
+-- ⚠️ IMPORTANT: Ne créer des partitions que si la table deliveries est déjà partitionnée
 DO $$
 DECLARE
     start_date DATE;
     end_date DATE;
     partition_name TEXT;
     i INTEGER;
+    is_partitioned BOOLEAN;
 BEGIN
+    -- Vérifier si deliveries est partitionnée
+    SELECT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'deliveries' 
+        AND c.relkind = 'p'
+    ) INTO is_partitioned;
+    
+    -- Ne créer des partitions que si la table est partitionnée
+    IF NOT is_partitioned THEN
+        RAISE NOTICE 'Table deliveries n''est pas partitionnée - création de partitions ignorée';
+        RETURN;
+    END IF;
+    
     start_date := DATE_TRUNC('month', CURRENT_DATE);
     
     FOR i IN 0..11 LOOP
@@ -44,15 +60,18 @@ BEGIN
         partition_name := 'deliveries_' || TO_CHAR(start_date, 'YYYY_MM');
         
         -- Créer la partition si elle n'existe pas
-        EXECUTE format('
-            CREATE TABLE IF NOT EXISTS %I PARTITION OF deliveries
-            FOR VALUES FROM (%L) TO (%L)',
-            partition_name,
-            start_date,
-            end_date
-        );
-        
-        RAISE NOTICE 'Partition créée: %', partition_name;
+        BEGIN
+            EXECUTE format('
+                CREATE TABLE IF NOT EXISTS %I PARTITION OF deliveries
+                FOR VALUES FROM (%L) TO (%L)',
+                partition_name,
+                start_date,
+                end_date
+            );
+            RAISE NOTICE 'Partition créée: %', partition_name;
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Erreur lors de la création de la partition %: %', partition_name, SQLERRM;
+        END;
         
         start_date := end_date;
     END LOOP;

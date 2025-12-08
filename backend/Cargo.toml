@@ -35,6 +35,10 @@ path = "src/bin/test_ml_dir.rs"
 name = "init_ml_models"
 path = "src/bin/init_ml_models.rs"
 
+[[bin]]
+name = "execute_migrations_direct"
+path = "src/bin/execute_migrations_direct.rs"
+
 [features]
 mock = []
 gpu = ["image"]

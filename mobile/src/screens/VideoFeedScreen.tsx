@@ -996,12 +996,26 @@ const VideoFeedScreen: React.FC = () => {
         currentIndexRef.current = 0;
         setCurrentIndex(0);
         currentStartTimeRef.current = Date.now();
-        logVisibility(feed[0], 0, { viewed: true, viewDurationMs: 0 });
+        // ✅ SÉCURITÉ: Vérifier que logVisibility existe avant de l'appeler
+        if (typeof logVisibility === 'function' && feed[0]) {
+            try {
+                logVisibility(feed[0], 0, { viewed: true, viewDurationMs: 0 });
+            } catch (error) {
+                console.error('[VideoFeedScreen] Erreur logVisibility:', error);
+            }
+        }
     }, [feed, logVisibility]);
 
     useEffect(() => {
         return () => {
-            flushCurrentView();
+            // ✅ SÉCURITÉ: Vérifier que flushCurrentView existe avant de l'appeler
+            if (typeof flushCurrentView === 'function') {
+                try {
+                    flushCurrentView();
+                } catch (error) {
+                    console.error('[VideoFeedScreen] Erreur flushCurrentView:', error);
+                }
+            }
         };
     }, [flushCurrentView]);
 
@@ -1033,7 +1047,8 @@ const VideoFeedScreen: React.FC = () => {
         Object.entries(savedMap).forEach(([cid, saved]) => {
             if (saved) engaged.add(cid);
         });
-        const ordered = reorderFeed(forYouSource);
+        // ✅ SÉCURITÉ: Vérifier que reorderFeed existe avant de l'appeler
+        const ordered = typeof reorderFeed === 'function' ? reorderFeed(forYouSource) : forYouSource;
         const curated = ordered.filter((item) => {
             if (engaged.has(item.contentId)) return true;
             if (item.isSponsored) return false;

@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS bus_seat_blocks (
     -- Débloqué
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     unblocked_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    unblocked_at TIMESTAMPTZ,
+    unblocked_at TIMESTAMPTZ
     
     -- Note: Contrainte unique partielle gérée via index unique (voir après CREATE TABLE)
 );

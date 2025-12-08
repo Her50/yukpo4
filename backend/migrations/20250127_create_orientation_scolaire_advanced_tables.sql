@@ -187,6 +187,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_student_profiles_updated_at ON student_profiles;
 CREATE TRIGGER trigger_update_student_profiles_updated_at
     BEFORE UPDATE ON student_profiles
     FOR EACH ROW
@@ -200,6 +201,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_orientation_analytics_updated_at ON orientation_analytics;
 CREATE TRIGGER trigger_update_orientation_analytics_updated_at
     BEFORE UPDATE ON orientation_analytics
     FOR EACH ROW

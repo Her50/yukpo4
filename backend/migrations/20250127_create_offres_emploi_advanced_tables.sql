@@ -198,6 +198,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_cv_ai_analyses_updated_at ON cv_ai_analyses;
 CREATE TRIGGER trigger_update_cv_ai_analyses_updated_at
     BEFORE UPDATE ON cv_ai_analyses
     FOR EACH ROW
@@ -211,6 +212,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_emploi_analytics_advanced_updated_at ON emploi_analytics_advanced;
 CREATE TRIGGER trigger_update_emploi_analytics_advanced_updated_at
     BEFORE UPDATE ON emploi_analytics_advanced
     FOR EACH ROW

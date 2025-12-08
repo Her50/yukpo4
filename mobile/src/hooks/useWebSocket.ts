@@ -192,8 +192,7 @@ export const useWebSocket = (
         console.warn('[useWebSocket] Erreur lors de la connexion automatique:', error);
       }
     }
-    // ✅ CORRIGÉ: Retourner explicitement undefined pour éviter tout problème
-    return undefined;
+    // ✅ CORRIGÉ: Ne pas retourner undefined explicitement - React gère cela automatiquement
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, isConnected, isConnecting, connect]); // ✅ CORRIGÉ: Inclure connect dans les dépendances
 

@@ -26,7 +26,7 @@ pub fn video_ml_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         // ✅ Vidéos par hashtag
         .route(
-            "/api/hashtags/:hashtag/videos",
+            "/api/hashtags/{hashtag}/videos",
             get(get_videos_by_hashtag).layer(middleware::from_fn(optional_jwt_auth)),
         )
         // ✅ Duet/Remix (JSON)

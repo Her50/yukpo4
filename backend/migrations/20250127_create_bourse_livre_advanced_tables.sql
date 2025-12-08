@@ -173,6 +173,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_book_exchanges_updated_at ON book_exchanges;
 CREATE TRIGGER trigger_update_book_exchanges_updated_at
     BEFORE UPDATE ON book_exchanges
     FOR EACH ROW
@@ -186,6 +187,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_book_analytics_updated_at ON book_analytics;
 CREATE TRIGGER trigger_update_book_analytics_updated_at
     BEFORE UPDATE ON book_analytics
     FOR EACH ROW

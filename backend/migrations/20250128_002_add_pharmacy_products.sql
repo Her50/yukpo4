@@ -35,6 +35,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_pharmacy_products_updated_at ON pharmacy_products;
 CREATE TRIGGER trigger_update_pharmacy_products_updated_at
     BEFORE UPDATE ON pharmacy_products
     FOR EACH ROW
@@ -49,6 +50,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_pharmacy_products_disponible ON pharmacy_products;
 CREATE TRIGGER trigger_update_pharmacy_products_disponible
     BEFORE INSERT OR UPDATE ON pharmacy_products
     FOR EACH ROW
