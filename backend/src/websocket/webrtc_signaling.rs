@@ -159,9 +159,8 @@ async fn handle_webrtc_socket(socket: WebSocket, manager: Arc<WebRTCSignalingMan
                                 .register_connection(
                                     signaling_msg.from.clone(),
                                     tx_recv.clone(),
-                                    )
-                                    .await;
-                            }
+                                )
+                                .await;
 
                             // Router le message
                             if let Err(e) = manager_recv.route_message(signaling_msg.clone()).await
