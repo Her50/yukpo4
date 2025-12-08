@@ -4,6 +4,7 @@ use log::info;
 use sqlx::PgPool;
 
 // Extension trait pour to_radians
+#[allow(dead_code)]
 trait ToRadians {
     fn to_radians(self) -> f64;
 }

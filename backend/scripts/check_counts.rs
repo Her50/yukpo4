@@ -1,8 +1,8 @@
 // ✅ Script pour vérifier les comptages effets et templates
 // Usage: cargo run --bin check_counts
 
-use log::{error, info};
-use sqlx::{postgres::PgPoolOptions, PgPool};
+use log::info;
+use sqlx::postgres::PgPoolOptions;
 use std::env;
 
 #[tokio::main]

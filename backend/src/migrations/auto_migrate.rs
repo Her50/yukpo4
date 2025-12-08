@@ -9889,6 +9889,19 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
     // Note: La version complète est dans la migration 20251123
     // Cette version crée la fonction de base, la migration SQLx l'améliorera
     // ⚠️ IMPORTANT: Utiliser search_radius_km (pas radius_km) pour correspondre aux migrations SQL
+    // ⚠️ CRITIQUE: Supprimer toutes les versions existantes pour éviter l'erreur de renommage de paramètre
+    sqlx::query(
+        r#"
+        DROP FUNCTION IF EXISTS search_services_gps_final(text, text, integer, integer);
+        DROP FUNCTION IF EXISTS search_services_gps_final(text, text, integer);
+        DROP FUNCTION IF EXISTS search_services_gps_final(text, text);
+        DROP FUNCTION IF EXISTS search_services_gps_final(text);
+        DROP FUNCTION IF EXISTS search_services_gps_final();
+        "#
+    )
+    .execute(pool)
+    .await?;
+
     sqlx::query(
         r#"
         CREATE OR REPLACE FUNCTION search_services_gps_final(
@@ -10556,6 +10569,16 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                     // Pour les autres erreurs, on les log mais on continue
                     // Sauf pour les erreurs critiques qui doivent être propagées
                     let error_str = e.to_string();
+                    
+                    // Ignorer les erreurs de partitionnement sur tables existantes
+                    if error_str.contains("PARTITION") && 
+                       (error_str.contains("cannot change") || 
+                        error_str.contains("already exists") ||
+                        error_str.contains("must be empty")) {
+                        warn!("⚠️ Erreur de partitionnement ignorée (table existante): {}", e);
+                        continue;
+                    }
+                    
                     if error_str.contains("syntax error") || error_str.contains("unterminated") {
                         error!("❌ Erreur de syntaxe SQL: {}", e);
                         return Err(e);

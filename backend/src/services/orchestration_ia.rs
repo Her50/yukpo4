@@ -2244,6 +2244,7 @@ async fn analyze_website_ultra_advanced(site: &str) -> WebsiteAnalysis {
     }
 }
 
+#[allow(dead_code)]
 fn nettoyer_reponse_ia(response: &str) -> String {
     let cleaned = response.trim().replace("```json", "").replace("```", "");
     cleaned.to_string()

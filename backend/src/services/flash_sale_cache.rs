@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 const FLASH_SALE_STOCK_TTL: u64 = 1; // 1 seconde (très court pour cohérence)
 const FLASH_SALE_SUMMARY_TTL: u64 = 5; // 5 secondes
+#[allow(dead_code)]
 const FLASH_SALE_LIST_TTL: u64 = 10; // 10 secondes
 
 pub struct FlashSaleCache {

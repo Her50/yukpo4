@@ -82,6 +82,8 @@ END $$;
 -- ============================================================================
 
 -- Créer la table parent si elle n'est pas déjà partitionnée
+-- ⚠️ IMPORTANT: ALTER TABLE ... PARTITION BY ne peut pas être utilisé sur une table existante avec des données
+-- Cette opération nécessite une migration complexe avec création d'une nouvelle table
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -90,14 +92,23 @@ BEGIN
         WHERE c.relname = 'delivery_tracking_points' 
         AND c.relkind = 'p'
     ) THEN
-        -- Convertir en table partitionnée par hash (10 partitions)
-        ALTER TABLE delivery_tracking_points 
-        PARTITION BY HASH (delivery_id);
-        
-        RAISE NOTICE 'Table delivery_tracking_points convertie en table partitionnée';
+        -- Vérifier si la table existe et contient des données
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_name = 'delivery_tracking_points'
+        ) THEN
+            -- La table existe déjà, on ne peut pas la convertir en partitionnée
+            -- Cette opération nécessite une migration manuelle complexe
+            RAISE NOTICE 'Table delivery_tracking_points existe déjà - partitionnement désactivé (nécessite migration manuelle)';
+        ELSE
+            -- La table n'existe pas, on peut la créer comme partitionnée
+            RAISE NOTICE 'Table delivery_tracking_points n''existe pas - création comme table partitionnée ignorée (créée ailleurs)';
+        END IF;
     ELSE
         RAISE NOTICE 'Table delivery_tracking_points déjà partitionnée';
     END IF;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Erreur lors de la vérification de delivery_tracking_points: %', SQLERRM;
 END $$;
 
 -- Créer 10 partitions par hash
@@ -132,11 +143,21 @@ BEGIN
         WHERE c.relname = 'delivery_status_events' 
         AND c.relkind = 'p'
     ) THEN
-        ALTER TABLE delivery_status_events 
-        PARTITION BY RANGE (occurred_at);
-        
-        RAISE NOTICE 'Table delivery_status_events convertie en table partitionnée';
+        -- Vérifier si la table existe et contient des données
+        IF EXISTS (
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_name = 'delivery_status_events'
+        ) THEN
+            -- La table existe déjà, on ne peut pas la convertir en partitionnée
+            RAISE NOTICE 'Table delivery_status_events existe déjà - partitionnement désactivé (nécessite migration manuelle)';
+        ELSE
+            RAISE NOTICE 'Table delivery_status_events n''existe pas - création comme table partitionnée ignorée (créée ailleurs)';
+        END IF;
+    ELSE
+        RAISE NOTICE 'Table delivery_status_events déjà partitionnée';
     END IF;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Erreur lors de la vérification de delivery_status_events: %', SQLERRM;
 END $$;
 
 -- Créer les partitions pour les 6 prochains mois

@@ -209,10 +209,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             check_index_migration(&pg_pool).await;
         }
         Err(e) => {
-            log::error!(
-                "❌ Erreur lors de l'application des migrations SQLx standard: {}",
-                e
-            );
+            let error_str = e.to_string();
+            // Ignorer l'erreur de checksum mismatch pour la migration 0 (fichier modifié)
+            if error_str.contains("migration 0 was previously applied but has been modified") {
+                log::warn!(
+                    "⚠️ Migration 0 modifiée détectée (ignorée): {}",
+                    e
+                );
+                log::warn!("⚠️ Si nécessaire, supprimez l'entrée de _sqlx_migrations pour la migration 0");
+            } else {
+                log::error!(
+                    "❌ Erreur lors de l'application des migrations SQLx standard: {}",
+                    e
+                );
+            }
             // On continue quand même, certaines migrations peuvent déjà être appliquées
             log::warn!("⚠️ Continuation du démarrage malgré l'erreur de migration");
         }

@@ -229,6 +229,7 @@ impl OptimizedMediaProcessor {
 
     /// Compression adaptative : ajuste la qualité selon la taille
     #[cfg(feature = "image")]
+    #[allow(dead_code)]
     async fn compress_image_adaptive(
         &self,
         image_bytes: &[u8],
@@ -285,6 +286,7 @@ impl OptimizedMediaProcessor {
     }
 
     #[cfg(not(feature = "image"))]
+    #[allow(dead_code)]
     async fn compress_image_adaptive(
         &self,
         image_bytes: &[u8],

@@ -1,7 +1,6 @@
 // Script d'initialisation automatique des modèles ML
 // Vérifie et initialise tous les modèles ML pour le Module de Livraison
 
-use std::path::Path;
 use yukpomnang_backend::services::delivery_ml_models::DeliveryMLModelsService;
 
 #[tokio::main]

@@ -94,7 +94,7 @@ pub struct DeliveryMLModelsService {
     ml_predictions: Arc<AtomicU64>,
     fallback_predictions: Arc<AtomicU64>,
     // ✅ Sessions ONNX chargées (toujours activé)
-    #[allow(unexpected_cfgs)]
+    #[allow(unexpected_cfgs, dead_code)]
     #[cfg(feature = "onnx")]
     onnx_sessions: HashMap<ModelType, Arc<Session>>,
     #[cfg(not(feature = "onnx"))]
@@ -525,6 +525,7 @@ impl DeliveryMLModelsService {
     }
 
     /// ✅ Charge les modèles ONNX depuis le disque (toujours activé)
+    #[allow(dead_code)]
     async fn load_onnx_models(&mut self) -> AppResult<()> {
         #[allow(unexpected_cfgs)]
         #[cfg(feature = "onnx")]
@@ -681,6 +682,7 @@ impl DeliveryMLModelsService {
         }
     }
 
+    #[allow(dead_code)]
     fn get_hour_factor(&self, hour: u8) -> f64 {
         match hour {
             7..=9 => 0.3,

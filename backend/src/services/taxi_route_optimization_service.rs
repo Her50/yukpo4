@@ -404,6 +404,7 @@ impl TaxiRouteOptimizationService {
     }
 }
 
+#[allow(dead_code)]
 trait ToRadians {
     fn to_radians(&self) -> f64;
 }

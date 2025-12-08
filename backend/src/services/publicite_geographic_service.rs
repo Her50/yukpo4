@@ -203,6 +203,7 @@ fn calculate_distance(geo1: &str, location: &GeographicLocation) -> Option<f64> 
 }
 
 // Extension pour f64
+#[allow(dead_code)]
 trait ToRadians {
     fn to_radians(self) -> Self;
 }

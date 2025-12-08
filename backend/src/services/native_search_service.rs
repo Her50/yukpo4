@@ -42,6 +42,7 @@ pub struct NativeSearchService {
     /// ✅ OPTIMISÉ 2025-11-28 - Service de cache Redis pour les résultats de recherche
     cache_service: Option<Arc<CacheService>>,
     /// ✅ OPTIMISÉ 2025-12-01 - Cache en mémoire pour check_if_location_in_input (TTL 5 min)
+    #[allow(dead_code)]
     location_check_cache:
         Arc<tokio::sync::Mutex<std::collections::HashMap<String, (bool, std::time::Instant)>>>,
     /// ✅ NOUVEAU 2025-12-01 - Service de scalabilité pour cache multi-niveaux optimisé

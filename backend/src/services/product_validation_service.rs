@@ -10,6 +10,7 @@ use std::collections::HashSet;
 mod validation_constants {
     pub const MIN_NAME_LENGTH: usize = 1;
     pub const MAX_NAME_LENGTH: usize = 200;
+    #[allow(dead_code)]
     pub const MIN_DESCRIPTION_LENGTH: usize = 0;
     pub const MAX_DESCRIPTION_LENGTH: usize = 5000;
     pub const MAX_IMAGE_SIZE_MB: usize = 10;

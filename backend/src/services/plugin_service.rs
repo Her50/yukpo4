@@ -81,10 +81,15 @@ struct PluginMarketplaceRow {
     homepage_url: Option<String>,
     license: String,
     min_yukpo_version: Option<String>,
+    #[allow(dead_code)]
     download_count: i64,
+    #[allow(dead_code)]
     rating: Option<rust_decimal::Decimal>,
+    #[allow(dead_code)]
     is_premium: bool,
+    #[allow(dead_code)]
     is_featured: bool,
+    #[allow(dead_code)]
     is_verified: bool,
 }
 

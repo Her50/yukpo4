@@ -60,15 +60,18 @@ pub struct KYCService {
     pool: Arc<PgPool>,
     provider: KYCProvider,
     onfido_api_key: Option<String>,
+    #[allow(dead_code)]
     onfido_webhook_token: Option<String>,
     jumio_api_key: Option<String>,
     jumio_api_secret: Option<String>,
+    #[allow(dead_code)]
     jumio_webhook_token: Option<String>,
     sumsub_app_token: Option<String>,
     sumsub_secret_key: Option<String>,
     veriff_api_key: Option<String>,
     veriff_api_secret: Option<String>,
     persona_api_key: Option<String>,
+    #[allow(dead_code)]
     persona_webhook_secret: Option<String>,
     app_ia: Option<Arc<AppIA>>, // ✅ NOUVEAU: Service IA pour analyse automatique
 }

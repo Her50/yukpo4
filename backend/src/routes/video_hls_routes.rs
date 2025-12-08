@@ -17,26 +17,26 @@ pub fn video_hls_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // Générer variantes HLS pour une vidéo
         .route(
-            "/api/videos/:video_id/generate-hls",
+            "/api/videos/{video_id}/generate-hls",
             post(generate_hls_variants),
         )
         // Générer variantes DASH pour une vidéo
         .route(
-            "/api/videos/:video_id/generate-dash",
+            "/api/videos/{video_id}/generate-dash",
             post(generate_dash_variants),
         )
         // Récupérer master playlist HLS
         .route(
-            "/api/videos/:video_id/master.m3u8",
+            "/api/videos/{video_id}/master.m3u8",
             get(get_master_playlist),
         )
         // Récupérer playlist variante HLS
         .route(
-            "/api/videos/:video_id/:quality/playlist.m3u8",
+            "/api/videos/{video_id}/{quality}/playlist.m3u8",
             get(get_variant_playlist),
         )
         // Récupérer manifest DASH
-        .route("/api/videos/:video_id/manifest.mpd", get(get_dash_manifest))
+        .route("/api/videos/{video_id}/manifest.mpd", get(get_dash_manifest))
         .with_state(state)
 }
 
