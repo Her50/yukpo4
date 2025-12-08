@@ -45,11 +45,13 @@ mod service_costs {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct StoredMedia {
     path: String,
     bytes: Vec<u8>,
 }
 
+#[allow(dead_code)]
 fn strip_base64_prefix(data: &str) -> &str {
     if let Some(idx) = data.find(',') {
         let (prefix, payload) = data.split_at(idx + 1);
@@ -60,6 +62,7 @@ fn strip_base64_prefix(data: &str) -> &str {
     data
 }
 
+#[allow(dead_code)]
 fn infer_extension_from_data(data: &str, default_ext: &str) -> String {
     if data.starts_with("data:") {
         if let Some(end) = data.find(';') {
@@ -126,6 +129,7 @@ fn is_url(data: &str) -> bool {
 }
 
 // ✅ OPTIMISÉ: Structure pour stocker les résultats du traitement parallèle d'une image
+#[allow(dead_code)]
 struct ProcessedImageResult {
     image_index: usize,
     is_main: bool,
@@ -136,6 +140,7 @@ struct ProcessedImageResult {
 }
 
 // ✅ OPTIMISÉ: Fonction helper pour traiter une seule image en parallèle (sans transaction)
+#[allow(dead_code)]
 async fn process_single_image_for_product(
     storage_root: &PathBuf,
     service_id: i32,
@@ -315,6 +320,7 @@ fn produits_array_mut(data_obj: &mut serde_json::Value) -> Option<&mut Vec<serde
 
 /// ✅ OPTIMISÉ 2025-12-01: Sauvegarde streaming pour médias volumineux
 /// Utilise un buffer chunked pour éviter de charger tout en mémoire
+#[allow(dead_code)]
 async fn persist_base64_media(
     storage_root: &Path,
     service_id: i32,
@@ -411,6 +417,7 @@ async fn persist_base64_media(
 }
 
 /// ✅ NOUVEAU: Télécharge et sauvegarde une image depuis une URL HTTP/HTTPS
+#[allow(dead_code)]
 async fn download_and_save_image(
     storage_root: &Path,
     service_id: i32,

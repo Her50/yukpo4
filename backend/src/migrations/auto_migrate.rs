@@ -10553,51 +10553,65 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
     // Exécuter chaque commande avec gestion d'erreur gracieuse
     for cmd in commands {
         let trimmed_cmd = cmd.trim();
-        if !trimmed_cmd.is_empty() && !trimmed_cmd.starts_with("--") {
-            // Ignorer les erreurs pour les commandes qui peuvent échouer si l'objet existe déjà
-            if trimmed_cmd.to_uppercase().contains("DROP INDEX")
-                && !trimmed_cmd.to_uppercase().contains("IF EXISTS")
-            {
-                // Convertir DROP INDEX en DROP INDEX IF EXISTS
-                let fixed_cmd = trimmed_cmd.replace("DROP INDEX", "DROP INDEX IF EXISTS");
-                if let Err(e) = sqlx::query(&fixed_cmd).execute(pool).await {
-                    warn!(
-                        "⚠️ Erreur lors de l'exécution de DROP INDEX (ignorée): {}",
-                        e
-                    );
+        // Ignorer les commandes vides, les commentaires, et les commandes qui ne sont que des parenthèses
+        if trimmed_cmd.is_empty() 
+            || trimmed_cmd.starts_with("--")
+            || trimmed_cmd == ")"
+            || trimmed_cmd == "();"
+            || trimmed_cmd.trim_matches(|c: char| c.is_whitespace() || c == ';' || c == '(' || c == ')').is_empty() {
+            continue;
+        }
+        
+        // Ignorer les erreurs pour les commandes qui peuvent échouer si l'objet existe déjà
+        if trimmed_cmd.to_uppercase().contains("DROP INDEX")
+            && !trimmed_cmd.to_uppercase().contains("IF EXISTS")
+        {
+            // Convertir DROP INDEX en DROP INDEX IF EXISTS
+            let fixed_cmd = trimmed_cmd.replace("DROP INDEX", "DROP INDEX IF EXISTS");
+            if let Err(e) = sqlx::query(&fixed_cmd).execute(pool).await {
+                warn!(
+                    "⚠️ Erreur lors de l'exécution de DROP INDEX (ignorée): {}",
+                    e
+                );
+            }
+        } else if trimmed_cmd.to_uppercase().contains("DROP TABLE")
+            && !trimmed_cmd.to_uppercase().contains("IF EXISTS")
+        {
+            // Convertir DROP TABLE en DROP TABLE IF EXISTS
+            let fixed_cmd = trimmed_cmd.replace("DROP TABLE", "DROP TABLE IF EXISTS");
+            if let Err(e) = sqlx::query(&fixed_cmd).execute(pool).await {
+                warn!(
+                    "⚠️ Erreur lors de l'exécution de DROP TABLE (ignorée): {}",
+                    e
+                );
+            }
+        } else {
+            if let Err(e) = sqlx::query(trimmed_cmd).execute(pool).await {
+                // Pour les autres erreurs, on les log mais on continue
+                // Sauf pour les erreurs critiques qui doivent être propagées
+                let error_str = e.to_string();
+                
+                // Ignorer les erreurs de partitionnement sur tables existantes
+                if error_str.contains("PARTITION") && 
+                   (error_str.contains("cannot change") || 
+                    error_str.contains("already exists") ||
+                    error_str.contains("must be empty")) {
+                    warn!("⚠️ Erreur de partitionnement ignorée (table existante): {}", e);
+                    continue;
                 }
-            } else if trimmed_cmd.to_uppercase().contains("DROP TABLE")
-                && !trimmed_cmd.to_uppercase().contains("IF EXISTS")
-            {
-                // Convertir DROP TABLE en DROP TABLE IF EXISTS
-                let fixed_cmd = trimmed_cmd.replace("DROP TABLE", "DROP TABLE IF EXISTS");
-                if let Err(e) = sqlx::query(&fixed_cmd).execute(pool).await {
-                    warn!(
-                        "⚠️ Erreur lors de l'exécution de DROP TABLE (ignorée): {}",
-                        e
-                    );
+                
+                // Ignorer les erreurs de syntaxe si c'est juste une parenthèse fermante isolée
+                if error_str.contains("syntax error") && error_str.contains("near \")\"") {
+                    warn!("⚠️ Commande SQL invalide ignorée (parenthèse isolée): {}", trimmed_cmd);
+                    continue;
                 }
-            } else {
-                if let Err(e) = sqlx::query(trimmed_cmd).execute(pool).await {
-                    // Pour les autres erreurs, on les log mais on continue
-                    // Sauf pour les erreurs critiques qui doivent être propagées
-                    let error_str = e.to_string();
-                    
-                    // Ignorer les erreurs de partitionnement sur tables existantes
-                    if error_str.contains("PARTITION") && 
-                       (error_str.contains("cannot change") || 
-                        error_str.contains("already exists") ||
-                        error_str.contains("must be empty")) {
-                        warn!("⚠️ Erreur de partitionnement ignorée (table existante): {}", e);
-                        continue;
-                    }
-                    
-                    if error_str.contains("syntax error") || error_str.contains("unterminated") {
-                        error!("❌ Erreur de syntaxe SQL: {}", e);
-                        return Err(e);
-                    } else {
-                        warn!("⚠️ Erreur lors de l'exécution SQL (continuation): {}", e);
-                    }
+                
+                if error_str.contains("syntax error") || error_str.contains("unterminated") {
+                    error!("❌ Erreur de syntaxe SQL: {}", e);
+                    error!("❌ Commande problématique: {}", trimmed_cmd);
+                    return Err(e);
+                } else {
+                    warn!("⚠️ Erreur lors de l'exécution SQL (continuation): {}", e);
                 }
             }
         }

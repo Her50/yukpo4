@@ -13,12 +13,12 @@ pub fn creator_analytics_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // ✅ Analytics d'un créateur
         .route(
-            "/api/creators/:user_id/analytics",
+            "/api/creators/{user_id}/analytics",
             get(get_creator_analytics).layer(middleware::from_fn(jwt_auth)),
         )
         // ✅ Analytics d'une vidéo spécifique
         .route(
-            "/api/videos/:video_id/analytics",
+            "/api/videos/{video_id}/analytics",
             get(get_video_analytics).layer(middleware::from_fn(jwt_auth)),
         )
         .with_state(state)

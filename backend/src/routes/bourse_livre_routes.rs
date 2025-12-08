@@ -19,7 +19,7 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(livres_scolaires_controller::search_livres_scolaires),
         )
         .route(
-            "/api/bourse-livre/:id",
+            "/api/bourse-livre/{id}",
             get(livres_scolaires_controller::get_livre_details),
         )
         .route(
@@ -38,11 +38,11 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(livres_scolaires_controller::get_mes_livres),
         )
         .route(
-            "/api/bourse-livre/:id",
+            "/api/bourse-livre/{id}",
             axum::routing::put(livres_scolaires_controller::update_livre_scolaire),
         )
         .route(
-            "/api/bourse-livre/:id",
+            "/api/bourse-livre/{id}",
             axum::routing::delete(livres_scolaires_controller::delete_livre_scolaire),
         )
         // Endpoints IA

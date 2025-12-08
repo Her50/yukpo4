@@ -171,6 +171,7 @@ struct UserPreferences {
     preferred_categories: Vec<String>,
     preferred_hashtags: Vec<String>,
     preferred_creators: Vec<i32>,
+    #[allow(dead_code)]
     avg_watch_duration_ms: i32,
     most_active_hour: Option<i32>,
     most_active_day: Option<i32>,

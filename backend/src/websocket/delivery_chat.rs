@@ -176,7 +176,13 @@ impl DeliveryChatWebSocketManager {
             let mut pubsub = match client.get_async_connection().await {
                 Ok(conn) => conn.into_pubsub(),
                 Err(err) => {
-                    log::error!("[DeliveryChatWS] Erreur connexion Redis pub/sub: {err:?}");
+                    let err_str = err.to_string();
+                    // Ignorer les erreurs de cancellation (arrêt normal du serveur)
+                    if err_str.contains("task was cancelled") || err_str.contains("cancelled") {
+                        log::debug!("[DeliveryChatWS] Connexion Redis annulée (arrêt normal)");
+                    } else {
+                        log::error!("[DeliveryChatWS] Erreur connexion Redis pub/sub: {err:?}");
+                    }
                     return;
                 }
             };

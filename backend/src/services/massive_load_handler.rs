@@ -33,8 +33,10 @@ pub struct BatchProcessor {
 /// ?? Requ?te de lot
 #[derive(Debug, Clone)]
 pub struct BatchRequest {
+    #[allow(dead_code)]
     pub id: String,
     pub data: String,
+    #[allow(dead_code)]
     pub priority: RequestPriority,
     pub created_at: Instant,
 }

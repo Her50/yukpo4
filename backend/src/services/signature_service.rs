@@ -53,8 +53,13 @@ impl SignatureService {
 
         // Vérifier la signature
         let data = format!("{}:{}", service_id, expires_at);
-        let mut mac = HmacSha256::new_from_slice(self.secret_key.as_bytes())
-            .unwrap_or_else(|_| panic!("Invalid key length"));
+        let mut mac = match HmacSha256::new_from_slice(self.secret_key.as_bytes()) {
+            Ok(m) => m,
+            Err(_) => {
+                log::error!("[SignatureService] Invalid key length for HMAC");
+                return false;
+            }
+        };
         mac.update(data.as_bytes());
         let expected_signature = hex::encode(mac.finalize().into_bytes());
 

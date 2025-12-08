@@ -235,6 +235,7 @@ impl DeliveryAIETAService {
     }
 
     /// Combine les prédictions ML et IA avec poids personnalisables
+    #[allow(dead_code)]
     fn combine_ml_and_ai_weighted(
         &self,
         ml_eta: &EstimatedTime,
@@ -280,6 +281,7 @@ impl DeliveryAIETAService {
 
     /// Combine les prédictions ML et IA pour un résultat optimal (défaut: ML 70%, IA 30%)
     /// ML = base fiable, IA = enrichissement avec données réelles
+    #[allow(dead_code)]
     fn combine_ml_and_ai(&self, ml_eta: &EstimatedTime, ai_eta: &EstimatedTime) -> EstimatedTime {
         self.combine_ml_and_ai_weighted(ml_eta, ai_eta, 0.7, 0.3)
     }
@@ -623,6 +625,7 @@ IMPORTANT:
     }
 
     /// Estime le facteur de trafic selon l'heure et le jour
+    #[allow(dead_code)]
     fn estimate_traffic_factor(&self, hour: u8, day_of_week: u8) -> String {
         let factor = match hour {
             7..=9 => 1.3,           // Heure de pointe matin

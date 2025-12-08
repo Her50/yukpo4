@@ -364,11 +364,11 @@ pub async fn get_message_reactions(
 pub fn create_chat_reactions_router() -> Router<Arc<AppState>> {
     Router::new()
         .route(
-            "/api/chat/messages/:message_id/reactions",
+            "/api/chat/messages/{message_id}/reactions",
             post(add_reaction).get(get_message_reactions),
         )
         .route(
-            "/api/chat/messages/:message_id/reactions/:emoji",
+            "/api/chat/messages/{message_id}/reactions/{emoji}",
             delete(remove_reaction),
         )
         .layer(axum::middleware::from_fn(jwt_auth))

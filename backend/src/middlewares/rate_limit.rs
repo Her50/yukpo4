@@ -33,9 +33,11 @@ pub fn get_rate_limit_metrics() -> (u64, u64, u64) {
 /// Limiteur de taux simple par clé (IP, user_id, etc.)
 #[derive(Clone)]
 pub struct RateLimiter {
+    #[allow(dead_code)]
     limits: Arc<RwLock<HashMap<String, RateLimitEntry>>>,
     max_requests: u32,
     window_seconds: u64,
+    #[allow(dead_code)]
     cleanup_interval: Duration,
 }
 

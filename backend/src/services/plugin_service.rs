@@ -70,6 +70,7 @@ pub struct InstalledPlugin {
 /// Row du marketplace pour conversion
 #[derive(Debug, FromRow)]
 struct PluginMarketplaceRow {
+    #[allow(dead_code)]
     plugin_id: String,
     name: String,
     version: String,

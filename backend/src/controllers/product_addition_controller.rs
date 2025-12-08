@@ -639,6 +639,7 @@ struct SavedMediaPaths {
 }
 
 // ✅ OPTIMISÉ: Fonction helper pour traiter une seule image en parallèle
+#[allow(dead_code)]
 async fn process_single_image_async(
     storage_root: &PathBuf,
     service_id: i32,
@@ -1071,6 +1072,7 @@ fn is_url(data: &str) -> bool {
     data.starts_with("http://") || data.starts_with("https://")
 }
 
+#[allow(dead_code)]
 fn strip_base64_prefix(data: &str) -> &str {
     if let Some(idx) = data.find(',') {
         let (prefix, payload) = data.split_at(idx + 1);
@@ -1081,6 +1083,7 @@ fn strip_base64_prefix(data: &str) -> &str {
     data
 }
 
+#[allow(dead_code)]
 fn infer_extension_from_data(data: &str, default_ext: &str) -> String {
     if data.starts_with("data:") {
         if let Some(end) = data.find(';') {
@@ -1101,11 +1104,13 @@ fn infer_extension_from_data(data: &str, default_ext: &str) -> String {
     default_ext.to_string()
 }
 
+#[allow(dead_code)]
 struct StoredMedia {
     path: String,
     bytes: Vec<u8>,
 }
 
+#[allow(dead_code)]
 async fn persist_base64_media(
     storage_root: &Path,
     service_id: i32,
@@ -1148,6 +1153,7 @@ async fn persist_base64_media(
     })
 }
 
+#[allow(dead_code)]
 async fn download_and_save_image(
     storage_root: &Path,
     service_id: i32,

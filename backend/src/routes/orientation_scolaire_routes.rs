@@ -19,7 +19,7 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(orientation_scolaire_controller::search_etablissements),
         )
         .route(
-            "/api/orientation-scolaire/etablissements/:id",
+            "/api/orientation-scolaire/etablissements/{id}",
             get(orientation_scolaire_controller::get_etablissement_details),
         )
         .route(
@@ -31,7 +31,7 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(orientation_scolaire_controller::search_programmes),
         )
         .route(
-            "/api/orientation-scolaire/etablissements/:id/programmes",
+            "/api/orientation-scolaire/etablissements/{id}/programmes",
             get(orientation_scolaire_controller::get_programmes_by_etablissement),
         )
         .route(
@@ -39,7 +39,7 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(orientation_scolaire_controller::search_fournitures),
         )
         .route(
-            "/api/orientation-scolaire/etablissements/:id/fournitures",
+            "/api/orientation-scolaire/etablissements/{id}/fournitures",
             get(orientation_scolaire_controller::get_fournitures_by_etablissement),
         )
         // Concours
@@ -52,7 +52,7 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(orientation_scolaire_controller::search_concours),
         )
         .route(
-            "/api/orientation-scolaire/concours/:id",
+            "/api/orientation-scolaire/concours/{id}",
             get(orientation_scolaire_controller::get_concours_details),
         )
         // Expériences
@@ -61,7 +61,7 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(orientation_scolaire_controller::search_experiences),
         )
         .route(
-            "/api/orientation-scolaire/etablissements/:id/experiences",
+            "/api/orientation-scolaire/etablissements/{id}/experiences",
             get(orientation_scolaire_controller::list_experiences_by_etablissement),
         )
         // Conférences
@@ -74,7 +74,7 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(orientation_scolaire_controller::search_conferences),
         )
         .route(
-            "/api/orientation-scolaire/conferences/:id",
+            "/api/orientation-scolaire/conferences/{id}",
             get(orientation_scolaire_controller::get_conference_details),
         );
 

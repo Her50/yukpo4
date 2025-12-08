@@ -757,8 +757,12 @@ pub async fn orchestrer_intention_ia_hybride(
     .await?;
 
     // 7. HISTORISATION (ESSENTIELLE pour l'apprentissage)
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
     let input_context = json!({
-        "timestamp": SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+        "timestamp": timestamp,
         "user_id": user_id,
         "intention": intention.clone(),
         "security_check": {
@@ -1020,8 +1024,12 @@ pub async fn orchestrer_intention_ia_ultra_optimisee(
     ));
 
     // 10. Traitements en arri?re-plan (non-bloquant pour UX)
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
     let input_context = json!({
-        "timestamp": SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+        "timestamp": timestamp,
         "user_id": user_id,
         "intention": intention.clone(),
         "gpu_enabled": production_config.gpu_enabled,
@@ -1110,8 +1118,12 @@ async fn construire_input_context_ultra_avance(
     _config: &OrchestrationConfig,
     _app_ia: Option<&AppIA>,
 ) -> Value {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
     let mut context = json!({
-        "timestamp": SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+        "timestamp": timestamp,
         "input_type": "multimodal_ultra",
         "data_sources": {},
         "processing_config": {
