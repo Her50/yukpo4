@@ -6,7 +6,6 @@ use crate::utils::redis_helper;
 use redis::{AsyncCommands, Client as RedisClient};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NotificationJob {

@@ -9,8 +9,8 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use log::{error, info, warn};
-use serde::{Deserialize, Serialize};
+use log::{error, info};
+use serde::Deserialize;
 use serde_json::json;
 use sqlx::Row;
 use std::sync::Arc;

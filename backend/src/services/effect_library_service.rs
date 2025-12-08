@@ -4,7 +4,6 @@ use crate::core::types::{AppError, AppResult};
 use crate::models::effect_model::Effect;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use sqlx::PgPool;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

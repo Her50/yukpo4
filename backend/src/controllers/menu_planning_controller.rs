@@ -11,16 +11,16 @@ use crate::middlewares::jwt::AuthenticatedUser;
 use crate::services::menu_planning_ai_service::{FamilyProfile, MenuPlanningAIService};
 use crate::state::AppState;
 use axum::{
-    extract::{Extension, Path, Query, State},
+    extract::{Extension, Query, State},
     http::StatusCode,
     response::IntoResponse,
     Json,
 };
-use chrono::{Datelike, NaiveDate, Utc, Weekday};
+use chrono::{Datelike, NaiveDate, Utc};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::{FromRow, Row};
+use sqlx::Row;
 use std::sync::Arc;
 
 /// Génère un menu hebdomadaire avec IA

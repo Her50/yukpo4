@@ -249,7 +249,7 @@ pub async fn get_enhanced_recommendations(
     let user_profile_strength = calculate_user_profile_strength(pool, user_id).await;
     if user_profile_strength > 0.5 {
         if let Some(state_ref) = state {
-            if let Ok(mut collab_videos) =
+            if let Ok(collab_videos) =
                 get_collaborative_recommendations(pool, state_ref, user_id, limit / 2, &exclude_ids)
                     .await
             {
@@ -301,7 +301,7 @@ pub async fn get_enhanced_recommendations(
 async fn get_engagement_based_recommendations_enhanced(
     pool: &PgPool,
     state: &Arc<AppState>,
-    user_id: i32,
+    services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32,
     limit: i32,
     categories: &[String],
     exclude_ids: &[String],
@@ -433,11 +433,11 @@ async fn get_engagement_based_recommendations_enhanced(
                     let diversity_score = 1.0; // Sera calculé après récupération
 
                     // ✅ Score total pondéré
-                    let total_score = (engagement_score * 0.35
+                    let total_score = engagement_score * 0.35
                         + preference_score * 0.25
                         + recency_score * 0.15
                         + context_score * 0.15
-                        + diversity_score * 0.10);
+                        + diversity_score * 0.10;
 
                     // ✅ CORRIGÉ: Transformer paths en URLs S3/Wasabi avec fallback local
                     let video_url_raw: String = row.get::<String, _>("video_url_raw");

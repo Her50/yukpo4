@@ -2,10 +2,9 @@
 
 use crate::services::specialized_services_cache::SpecializedServicesCache;
 use crate::state::AppState;
-use log::{info, warn};
+use log::info;
 use sqlx::PgPool;
 use std::sync::Arc;
-use std::time::Duration;
 
 /// Service d'optimisation pour améliorer les performances
 pub struct SpecializedServicesOptimizer {

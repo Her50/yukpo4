@@ -11,7 +11,6 @@ use serde_json::{json, Value};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
-use crate::controllers::video_ml_controller::get_enhanced_recommendations;
 use crate::core::types::{AppError, AppResult};
 use crate::state::AppState;
 use crate::utils::log::{log_error, log_info};
@@ -338,9 +337,7 @@ async fn fetch_ml_recommended_content(
     categories: &[String],
     limit: i32,
 ) -> AppResult<Vec<ContentItem>> {
-    use crate::controllers::video_ml_controller::{
-        get_enhanced_recommendations, MLRecommendedVideo,
-    };
+    use crate::controllers::video_ml_controller::get_enhanced_recommendations;
 
     // Appeler la fonction de recommandations ML améliorée
     let ml_videos = get_enhanced_recommendations(pool, None, user_id, limit, categories, &[]).await;

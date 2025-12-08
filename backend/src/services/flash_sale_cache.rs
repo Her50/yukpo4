@@ -5,7 +5,6 @@ use crate::core::types::{AppError, AppResult};
 use crate::models::live_model::LiveFlashSaleSummary;
 use crate::utils::redis_helper;
 use redis::{AsyncCommands, Client as RedisClient};
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
 

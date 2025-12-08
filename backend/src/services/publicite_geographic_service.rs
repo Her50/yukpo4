@@ -1,4 +1,3 @@
-use log;
 use sqlx::{PgPool, Row};
 
 #[derive(Debug, Clone)]

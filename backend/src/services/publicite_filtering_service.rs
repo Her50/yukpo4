@@ -1,6 +1,5 @@
 use serde_json::Value;
 use sqlx::PgPool;
-use std::collections::HashMap;
 
 /// Service pour filtrer les publicités selon le ciblage avancé et retargeting
 pub struct PubliciteFilteringService;

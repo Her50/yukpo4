@@ -78,14 +78,14 @@ impl LivresScolairesService {
 
         let limit = request.limit.unwrap_or(50);
         let offset = request.offset.unwrap_or(0);
-        let rayon_km = request.rayon_km.unwrap_or(10.0);
+        let services::matching_emploi_service::haversine_distance_km::EARTH_RADIUS_KM = request.rayon_km.unwrap_or(10.0);
 
         // Construire la requête SQL dynamiquement selon les filtres
         let mut conditions = vec![
             "is_active = true".to_string(),
             "is_available = true".to_string(),
         ];
-        let mut params: Vec<Box<dyn sqlx::Encode<'_, sqlx::Postgres> + Send>> = Vec::new();
+        let params: Vec<Box<dyn sqlx::Encode<'_, sqlx::Postgres> + Send>> = Vec::new();
         let mut param_index = 1;
 
         if let Some(classe_actuelle) = &request.classe_actuelle {

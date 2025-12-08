@@ -3,11 +3,11 @@
 use crate::core::types::{AppError, AppResult};
 use crate::models::orientation_scolaire::{
     CreateEtablissementRequest, EtablissementScolaire, SearchEtablissementsRequest,
-    SuggestEtablissementsRequest, UpdateEtablissementRequest, UpdateStatistiquesExamensRequest,
+    SuggestEtablissementsRequest, UpdateStatistiquesExamensRequest,
 };
 use crate::state::AppState;
 use crate::utils::redis_helper;
-use log::{error, info, warn};
+use log::{error, info};
 use redis::AsyncCommands;
 use serde_json::json;
 use sqlx::PgPool;

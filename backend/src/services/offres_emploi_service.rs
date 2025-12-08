@@ -1,14 +1,13 @@
 use crate::core::types::{AppError, AppResult};
 use crate::models::offres_emploi_model::{
-    AlerteEmploi, Candidature, CreateAlerteEmploiRequest, CreateCandidatureRequest,
-    CreateOffreEmploiRequest, CreateOrUpdateProfilRequest, OffreEmploi, ProfilCandidat,
-    SearchOffresRequest, StatistiquesOffre, UpdateStatutCandidatureRequest,
+    CreateOffreEmploiRequest, OffreEmploi,
+    SearchOffresRequest,
 };
 use crate::utils::redis_helper;
 use bigdecimal::BigDecimal;
-use chrono::{NaiveDate, Utc};
-use log::{error, info, warn};
-use serde_json::{json, Value};
+use chrono::NaiveDate;
+use log::{error, info};
+use serde_json::Value;
 use sqlx::{PgPool, Row};
 use std::str::FromStr;
 

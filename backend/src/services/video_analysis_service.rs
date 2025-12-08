@@ -215,7 +215,7 @@ Réponds SEULEMENT le JSON, rien d'autre."#,
         .ok_or_else(|| AppError::Internal("Champ 'scenes' manquant".to_string()))?;
 
     let mut scenes = Vec::new();
-    for (idx, scene_json) in scenes_array.iter().enumerate() {
+    for (utils::prompt_sanitizer::sanitize_prompt_input::MAX_LENGTH, scene_json) in scenes_array.iter().enumerate() {
         let start_time = scene_json
             .get("start_time")
             .and_then(|v| v.as_f64())
@@ -464,7 +464,7 @@ async fn detect_highlights_from_scenes(scenes: &[SceneCut]) -> AppResult<Vec<Hig
     for scene in scenes {
         // Score combiné basé sur motion et audio
         let total_score =
-            (scene.motion_score * 0.5 + (1.0 - (scene.audio_level + 60.0) / 60.0).max(0.0) * 0.5);
+            scene.motion_score * 0.5 + (1.0 - (scene.audio_level + 60.0) / 60.0).max(0.0) * 0.5;
 
         if total_score > 0.7 {
             let reason = if scene.motion_score > 0.8 {

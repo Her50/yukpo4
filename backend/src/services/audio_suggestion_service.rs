@@ -1,8 +1,8 @@
 // ✅ NOUVEAU: Service de suggestions audio contextuelles
 
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use crate::services::app_ia::AppIA;
-use log::{error, info};
+use log::info;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

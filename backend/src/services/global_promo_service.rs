@@ -1,4 +1,4 @@
-use bigdecimal::{BigDecimal, FromPrimitive};
+use bigdecimal::BigDecimal;
 use chrono::{DateTime, Duration, Utc};
 use log::{error, info, warn};
 use serde_json::{json, Value};

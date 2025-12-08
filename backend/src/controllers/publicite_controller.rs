@@ -728,10 +728,10 @@ pub async fn get_active_publicites(
             .get::<Option<Value>, _>("video_stats")
             .unwrap_or_else(|| json!({}));
         // ✅ NOUVEAU: Extraire les nouvelles colonnes depuis la base de données
-        let mut targeting_value: Value = row
+        let targeting_value: Value = row
             .get::<Option<Value>, _>("targeting")
             .unwrap_or_else(|| json!({}));
-        let mut ab_testing_value: Value = row
+        let ab_testing_value: Value = row
             .get::<Option<Value>, _>("ab_testing")
             .unwrap_or_else(|| json!({}));
         let schedule_value: Value = row

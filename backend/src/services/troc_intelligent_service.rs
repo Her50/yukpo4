@@ -4,7 +4,7 @@ use crate::core::types::{AppError, AppResult};
 use crate::models::livre_scolaire::LivreScolaire;
 use crate::models::troc_livre::{
     ChaineTrocLivre, CreateTrocChaineRequest, CreateTrocDirectRequest, MatchingChaine,
-    MatchingDirect, MatchingResult, ParticipantChaine, TrocLivre,
+    MatchingDirect, ParticipantChaine, TrocLivre,
 };
 use log::info;
 use sqlx::PgPool;

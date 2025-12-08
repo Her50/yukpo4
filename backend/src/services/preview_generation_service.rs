@@ -4,9 +4,8 @@
 use crate::core::types::{AppError, AppResult};
 use crate::services::app_ia::VideoTimeline;
 use crate::services::gpu_render_service::GPURenderService;
-use log::{error, info, warn};
+use log::{error, info};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use tokio::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -130,7 +129,7 @@ pub async fn generate_quick_preview(
     // Générer le preview avec FFmpeg
     let max_duration_str = max_duration.to_string();
     let full_filter_str = full_filter;
-    let mut ffmpeg_args = vec![
+    let ffmpeg_args = vec![
         "-i",
         "input_video.mp4", // TODO: Utiliser le vrai média de la timeline
         "-filter_complex",

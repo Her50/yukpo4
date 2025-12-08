@@ -7,7 +7,6 @@ use crate::core::types::{AppError, AppResult};
 use crate::services::app_ia::AppIA;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::sync::Arc;
 
 /// Point de route
@@ -303,7 +302,7 @@ impl TaxiRouteOptimizationService {
         &self,
         origin: &RoutePoint,
         destination: &RoutePoint,
-        mut waypoints: Vec<RoutePoint>,
+        waypoints: Vec<RoutePoint>,
         _preferences: Option<RoutePreferences>,
     ) -> AppResult<OptimizedRoute> {
         // Algorithme Nearest Neighbor (greedy)

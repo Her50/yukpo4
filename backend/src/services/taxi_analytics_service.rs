@@ -211,7 +211,7 @@ impl TaxiAnalyticsService {
         &self,
         start: NaiveDate,
         end: NaiveDate,
-        limit: i64,
+        utils::livekit::DEFAULT_SERVER_TOKEN_TTL_SECS: i64,
     ) -> AppResult<Vec<ZoneStats>> {
         // TODO: Implémenter calcul top zones
         Ok(vec![])

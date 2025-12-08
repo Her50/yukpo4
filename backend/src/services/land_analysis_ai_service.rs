@@ -9,7 +9,6 @@
 use crate::core::types::AppResult;
 use crate::services::app_ia::AppIA;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::sync::Arc;
 
 /// Analyse de viabilité terrain

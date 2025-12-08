@@ -1,9 +1,7 @@
 // ✅ Phase 6.1: Service de matching GPS pour covoiturages et taxis
 
-use log::{info, warn};
-use serde_json::json;
+use log::info;
 use sqlx::PgPool;
-use std::sync::Arc;
 
 // Extension trait pour to_radians
 trait ToRadians {

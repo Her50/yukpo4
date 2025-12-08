@@ -1,7 +1,7 @@
 // ✅ NOUVEAU Phase 3.2: Service de rendu 3D pour preview AR
 
 use crate::models::ar_preview_model::{
-    ARClip3D, ARPreviewRequest, ARPreviewResponse, ARScene3D, ARTrackingState, Vector3,
+    ARClip3D, ARPreviewRequest, ARPreviewResponse, ARTrackingState,
 };
 use crate::services::ar_3d_render_service::AR3DRenderService;
 use log::{info, warn};

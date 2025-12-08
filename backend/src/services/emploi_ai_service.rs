@@ -10,7 +10,6 @@ use crate::core::types::AppResult;
 use crate::services::app_ia::AppIA;
 use crate::services::ia::prompt_loader::load_prompt_section_with_vars;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
 

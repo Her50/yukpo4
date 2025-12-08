@@ -4,7 +4,6 @@ use crate::core::types::{AppError, AppResult};
 use log::{info, warn};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};

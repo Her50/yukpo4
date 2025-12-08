@@ -2,7 +2,6 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
-use crate::models::pharmacy_product::{BudgetComparison, PharmacyProduct};
 use crate::services::pharmacy_product_service::PharmacyProductService as Service;
 use crate::state::AppState;
 use axum::{
@@ -11,7 +10,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use log::{error, info};
+use log::info;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_json::json;

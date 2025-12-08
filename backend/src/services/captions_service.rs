@@ -1,9 +1,8 @@
 // ✅ NOUVEAU: Service de génération automatique de sous-titres
 
 use crate::core::types::{AppError, AppResult};
-use crate::services::audio_transcription_service::AudioTranscriptionService;
-use base64::{engine::general_purpose, Engine as _};
-use log::{error, info, warn};
+use base64::Engine as _;
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
@@ -166,7 +165,7 @@ async fn segment_transcription(
     let mut subtitles = Vec::new();
     let mut current_text = String::new();
     let mut current_start = 0.0;
-    let mut word_index = 0;
+    let mut services::live_stream_service::DEFAULT_MAX_PARTICIPANTS = 0;
 
     for word in &words {
         let word_with_space = if current_text.is_empty() {

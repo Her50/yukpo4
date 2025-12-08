@@ -5,8 +5,7 @@ use crate::models::orientation_scolaire::{
     ConferenceLiveScolaire, CreateConferenceRequest, SearchConferencesRequest,
 };
 use crate::state::AppState;
-use crate::utils::livekit;
-use log::{error, info, warn};
+use log::{error, info};
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;

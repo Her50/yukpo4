@@ -2,8 +2,8 @@ use crate::core::types::{AppError, AppResult};
 use crate::models::offres_emploi_model::{MatchingOffreCandidat, OffreEmploi, ProfilCandidat};
 use crate::utils::redis_helper;
 use bigdecimal::BigDecimal;
-use log::{error, info, warn};
-use serde_json::{json, Value};
+use log::{error, info};
+use serde_json::json;
 use sqlx::PgPool;
 use std::str::FromStr;
 

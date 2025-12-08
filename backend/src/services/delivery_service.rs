@@ -24,7 +24,7 @@ use crate::{
 use bigdecimal::{BigDecimal, ToPrimitive as BigDecimalToPrimitive};
 use chrono::{DateTime, Duration, Utc};
 use rust_decimal::{
-    prelude::{FromPrimitive, ToPrimitive},
+    prelude::FromPrimitive,
     Decimal,
 };
 use serde::{Deserialize, Serialize};

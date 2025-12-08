@@ -2,15 +2,14 @@
 // Gère des millions de jobs simultanés avec Redis/BullMQ
 
 use std::sync::Arc;
-use std::time::Duration;
 
-use log::{error, info, warn};
+use log::{info, warn};
 use rust_decimal::{Decimal, prelude::ToPrimitive};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use crate::services::redis_service::RedisService;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

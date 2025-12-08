@@ -4,7 +4,7 @@
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::services::conflict_resolution::{
-    ConflictInfo, ConflictResolution, ConflictResolutionService,
+    ConflictResolution, ConflictResolutionService,
 };
 use crate::services::specialized_services_cache::SpecializedServicesCache;
 use crate::services::specialized_services_metrics;
@@ -1689,7 +1689,7 @@ pub async fn batch_action(
     let pool = &state.pg;
     let mut processed = 0;
     let mut failed = 0;
-    let mut errors = Vec::new();
+    let errors = Vec::new();
 
     match payload.action.as_str() {
         "activate" => {

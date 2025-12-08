@@ -1149,7 +1149,7 @@ impl NativeSearchService {
                 .map_err(|e| format!("Erreur recherche planifications: {}", e))?;
 
             // Convertir en SearchResult
-            let mut results: Vec<SearchResult> = scheduling_results
+            let results: Vec<SearchResult> = scheduling_results
                 .into_iter()
                 .map(|r| SearchResult {
                     service_id: r.service_id,
@@ -1296,7 +1296,7 @@ impl NativeSearchService {
                             row.get::<Option<String>, _>("gps_source");
 
                         // ✅ OPTIMISÉ 2025-12-01 : Récupérer depuis le batch query au lieu de requête individuelle
-                        let mut service_data = service_data_map
+                        let service_data = service_data_map
                             .get(&service_id)
                             .cloned()
                             .unwrap_or_else(|| serde_json::json!({}));
@@ -1937,7 +1937,7 @@ LIMIT 100
                 let _gps_source: Option<String> = row.get::<Option<String>, _>("gps_source");
 
                 // ✅ OPTIMISÉ 2025-12-01 : Récupérer depuis le batch query
-                let mut service_data = service_data_map
+                let service_data = service_data_map
                     .get(&service_id)
                     .cloned()
                     .unwrap_or_else(|| serde_json::json!({}));
@@ -2199,7 +2199,7 @@ LIMIT 100
                 let _gps_source: Option<String> = row.get::<Option<String>, _>("gps_source");
 
                 // ✅ OPTIMISÉ 2025-12-01 : Récupérer depuis le batch query
-                let mut service_data = service_data_map
+                let service_data = service_data_map
                     .get(&service_id)
                     .cloned()
                     .unwrap_or_else(|| serde_json::json!({}));
@@ -3249,7 +3249,7 @@ impl NativeSearchService {
             let total_score: f32 = row.get::<f32, _>("total_score");
             let created_at: chrono::DateTime<chrono::Utc> =
                 row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
-            let user_id: i32 = row.get::<i32, _>("user_id");
+            let services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32 = row.get::<i32, _>("user_id");
             let gps: Option<String> = row.get::<Option<String>, _>("gps");
             let category: Option<String> = row.get::<Option<String>, _>("category");
 

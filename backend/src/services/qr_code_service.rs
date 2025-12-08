@@ -2,7 +2,7 @@
 // Date: 2025-01-29
 
 use crate::core::types::{AppError, AppResult};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 

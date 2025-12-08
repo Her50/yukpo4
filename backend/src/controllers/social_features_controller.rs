@@ -9,7 +9,7 @@ use axum::{
     Extension,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
+use sqlx::Row;
 use std::collections::HashMap;
 use std::sync::Arc;
 

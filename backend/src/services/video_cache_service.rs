@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use crate::services::redis_service::RedisService;
 use sqlx::Row;
 

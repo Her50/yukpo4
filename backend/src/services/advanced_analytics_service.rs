@@ -5,7 +5,6 @@
 use crate::core::types::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
-use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VideoAnalytics {

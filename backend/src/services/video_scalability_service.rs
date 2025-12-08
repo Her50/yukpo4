@@ -2,12 +2,11 @@
 // Orchestre tous les composants de scalabilité
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use log::{info, warn};
 use sqlx::PgPool;
 
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use crate::services::{
     video_batch_processor::{BatchProcessorConfig, VideoBatchProcessor},
     video_cache_service::VideoCacheService,

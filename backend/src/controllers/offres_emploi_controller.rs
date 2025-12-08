@@ -3,7 +3,7 @@
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::models::emploi_ai::{
-    AnalyzeCVRequest, ImprovedMatchingRequest, PredictSalaryRequest, SuggestFormationsRequest,
+    AnalyzeCVRequest, ImprovedMatchingRequest, SuggestFormationsRequest,
 };
 use crate::models::offres_emploi_model::{
     CreateAlerteEmploiRequest, CreateCandidatureRequest, CreateOffreEmploiRequest,

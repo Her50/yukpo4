@@ -4,7 +4,6 @@ use crate::models::offres_emploi_model::{
 };
 use crate::utils::redis_helper;
 use log::{error, info};
-use serde_json::json;
 use sqlx::PgPool;
 
 /// Service pour la gestion des candidatures

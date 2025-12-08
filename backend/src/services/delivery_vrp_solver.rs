@@ -11,9 +11,7 @@
 //! - Clarke-Wright Savings (regroupement intelligent)
 
 use crate::core::types::AppResult;
-use geo::{coord, Coord, Point};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use uuid::Uuid;
 
 /// Point de livraison avec coordonnées et contraintes
@@ -112,7 +110,7 @@ impl DeliveryVRPSolver {
     ) -> AppResult<VRPSolution> {
         let mut routes: Vec<OptimizedRoute> = vec![];
         let mut unassigned = deliveries.clone();
-        let mut courier_index = 0;
+        let services::live_stream_service::DEFAULT_MAX_PARTICIPANTS = 0;
 
         for (courier_id, courier_lat, courier_lng) in courier_positions {
             if unassigned.is_empty() {

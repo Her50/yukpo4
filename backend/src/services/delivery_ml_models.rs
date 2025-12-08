@@ -12,7 +12,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 // ✅ Support ONNX Runtime pour modèles réels (toujours activé)
-use ndarray::{Array1, Array2};
 // Note: Les imports ort sont conditionnels mais utilisés dans le code
 // On les importe toujours pour éviter les erreurs de compilation
 #[cfg(feature = "onnx")]

@@ -3,10 +3,10 @@
 //! Streaming métriques en temps réel via WebSocket
 //! Objectif: Dashboard temps réel avec alertes
 
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
-use log::{info, warn};
+use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;

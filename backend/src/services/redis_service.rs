@@ -1,7 +1,6 @@
 // ✅ Phase 1: Service Redis pour queue, cache et rate limiting distribué
 
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 
 use log::{error, info, warn};
@@ -63,7 +62,7 @@ impl RedisService {
                     .arg(key)
                     .arg(seconds)
                     .arg(value)
-                    .query_async(conn)
+                    .query_async::<()>(conn)
                     .await
                     .map_err(|e| AppError::Internal(format!("Redis SETEX error: {}", e)))?;
             }
@@ -72,7 +71,7 @@ impl RedisService {
                     .arg(key)
                     .arg(seconds)
                     .arg(value)
-                    .query_async(conn)
+                    .query_async::<()>(conn)
                     .await
                     .map_err(|e| AppError::Internal(format!("Redis SETEX error: {}", e)))?;
             }
@@ -116,14 +115,14 @@ impl RedisService {
             RedisConnection::Multiplexed(conn) => {
                 redis::cmd("DEL")
                     .arg(key)
-                    .query_async(conn)
+                    .query_async::<()>(conn)
                     .await
                     .map_err(|e| AppError::Internal(format!("Redis DEL error: {}", e)))?;
             }
             RedisConnection::Standard(conn) => {
                 redis::cmd("DEL")
                     .arg(key)
-                    .query_async(conn)
+                    .query_async::<()>(conn)
                     .await
                     .map_err(|e| AppError::Internal(format!("Redis DEL error: {}", e)))?;
             }
@@ -161,7 +160,7 @@ impl RedisService {
                     redis::cmd("EXPIRE")
                         .arg(key)
                         .arg(ttl)
-                        .query_async(conn)
+                        .query_async::<()>(conn)
                         .await
                         .map_err(|e| AppError::Internal(format!("Redis EXPIRE error: {}", e)))?;
                 }
@@ -169,7 +168,7 @@ impl RedisService {
                     redis::cmd("EXPIRE")
                         .arg(key)
                         .arg(ttl)
-                        .query_async(conn)
+                        .query_async::<()>(conn)
                         .await
                         .map_err(|e| AppError::Internal(format!("Redis EXPIRE error: {}", e)))?;
                 }
@@ -191,7 +190,7 @@ impl RedisService {
                 redis::cmd("LPUSH")
                     .arg(key)
                     .arg(value)
-                    .query_async(conn)
+                    .query_async::<()>(conn)
                     .await
                     .map_err(|e| AppError::Internal(format!("Redis LPUSH error: {}", e)))?;
             }
@@ -199,7 +198,7 @@ impl RedisService {
                 redis::cmd("LPUSH")
                     .arg(key)
                     .arg(value)
-                    .query_async(conn)
+                    .query_async::<()>(conn)
                     .await
                     .map_err(|e| AppError::Internal(format!("Redis LPUSH error: {}", e)))?;
             }
@@ -259,7 +258,7 @@ impl RedisService {
                     redis::cmd("SET")
                         .arg(key)
                         .arg(json)
-                        .query_async(conn)
+                        .query_async::<()>(conn)
                         .await
                         .map_err(|e| AppError::Internal(format!("Redis SET error: {}", e)))?;
                 }
@@ -267,7 +266,7 @@ impl RedisService {
                     redis::cmd("SET")
                         .arg(key)
                         .arg(json)
-                        .query_async(conn)
+                        .query_async::<()>(conn)
                         .await
                         .map_err(|e| AppError::Internal(format!("Redis SET error: {}", e)))?;
                 }

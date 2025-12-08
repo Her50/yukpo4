@@ -4,7 +4,6 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
-use log::info;
 use std::sync::Arc;
 
 use crate::{

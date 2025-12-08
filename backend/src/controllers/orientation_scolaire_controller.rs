@@ -10,7 +10,7 @@ use crate::models::orientation_scolaire::{
     CreateExperienceRequest, CreateFournituresRequest, CreateProgrammeRequest,
     SearchConcoursRequest, SearchConferencesRequest, SearchEtablissementsRequest,
     SearchExperiencesRequest, SearchFournituresRequest, SearchProgrammesRequest,
-    SuggestEtablissementsRequest, UpdateEtablissementRequest, UpdateStatistiquesExamensRequest,
+    SuggestEtablissementsRequest, UpdateStatistiquesExamensRequest,
 };
 use crate::services::{
     concours_entree_service::ConcoursEntreeService,
@@ -28,7 +28,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use log::{error, info};
+use log::info;
 use serde::Deserialize;
 use serde_json::json;
 use sqlx;

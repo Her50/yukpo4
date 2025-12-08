@@ -4,7 +4,6 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::services::app_ia::AppIA;
-use crate::services::intelligent_image_analysis_service::IntelligentImageAnalysisService;
 use base64::prelude::*;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};

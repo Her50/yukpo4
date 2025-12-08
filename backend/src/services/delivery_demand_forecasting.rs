@@ -179,9 +179,9 @@ impl DeliveryDemandForecastingService {
     /// Obtient les zones à forte demande (heat map)
     pub async fn get_high_demand_zones(
         &mut self,
-        hour: u8,
-        day_of_week: u8,
-        min_demand: f64,
+        services::geonames_service::MAX_DEPTH: u8,
+        services::geonames_service::MAX_DEPTH: u8,
+        services::matching_emploi_service::haversine_distance_km::EARTH_RADIUS_KM: f64,
     ) -> AppResult<Vec<DemandForecast>> {
         // TODO: Implémenter requête toutes zones
         // Pour l'instant, retourner vide

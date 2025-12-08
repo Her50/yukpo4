@@ -4,7 +4,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
-use crate::services::chat_support_ai::{detect_user_intent, generate_support_response, should_escalate_to_human};
+use crate::services::chat_support_ai::{generate_support_response, should_escalate_to_human};
 use crate::state::AppState;
 use axum::{
     extract::{Extension, Query, State},

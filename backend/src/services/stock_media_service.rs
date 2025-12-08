@@ -5,8 +5,6 @@
 use crate::core::types::{AppError, AppResult};
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::time::{timeout, Duration};
 
 /// Configuration des APIs Stock Media

@@ -423,7 +423,7 @@ impl PluginService {
             AppError::Internal(format!("Erreur création fichier temporaire: {}", e))
         })?;
 
-        let mut content = response
+        let content = response
             .bytes()
             .await
             .map_err(|e| AppError::Internal(format!("Erreur lecture réponse: {}", e)))?;

@@ -1,6 +1,5 @@
 // ✅ NOUVEAU 2025-12-01: Service de métriques de recherche pour monitoring
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};

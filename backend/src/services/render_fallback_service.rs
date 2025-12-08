@@ -1,7 +1,7 @@
 // ✅ NOUVEAU: Service de fallback pour rendu vidéo si device utilisateur trop faible
 
-use crate::core::types::{AppError, AppResult};
-use log::{info, warn};
+use crate::core::types::AppResult;
+use log::info;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use log::{error, info, warn};
+use log::info;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
@@ -134,7 +134,7 @@ pub async fn detect_beats(audio_url: &str) -> AppResult<(Vec<Beat>, f64)> {
         .await;
 
     // Estimer BPM (par défaut 120, peut être amélioré avec analyse plus poussée)
-    let mut estimated_bpm = 120.0;
+    let estimated_bpm = 120.0;
     if let Ok(_output) = volume_output {
         // Analyser les variations de volume pour estimer le tempo
         // (simplification - une vraie implémentation utiliserait FFT)

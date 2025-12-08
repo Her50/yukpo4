@@ -4,7 +4,6 @@
 use crate::core::types::AppError;
 use chrono::{DateTime, NaiveTime, Utc};
 use regex::Regex;
-use std::str::FromStr;
 
 /// Valide le format GPS (lat,lng)
 pub fn validate_gps_format(gps: &str) -> Result<(), AppError> {

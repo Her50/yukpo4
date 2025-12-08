@@ -1,10 +1,8 @@
 use crate::core::types::{AppError, AppResult};
 use crate::models::offres_emploi_model::{AlerteEmploi, CreateAlerteEmploiRequest, OffreEmploi};
-use crate::utils::redis_helper;
 use bigdecimal::BigDecimal;
 use chrono::{Duration, Utc};
 use log::{error, info, warn};
-use serde_json::json;
 use sqlx::PgPool;
 use std::str::FromStr;
 

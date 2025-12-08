@@ -14,7 +14,6 @@ use sqlx::{FromRow, PgPool, Row};
 struct UserGpsRow {
     gps: Option<String>,
 }
-use futures::stream::FuturesUnordered;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use uuid::Uuid;
@@ -192,7 +191,7 @@ async fn process_single_image_for_product(
 
     let StoredMedia {
         path: file_path,
-        bytes: mut image_bytes,
+        bytes: image_bytes,
     } = stored;
 
     #[cfg(not(feature = "image_search"))]

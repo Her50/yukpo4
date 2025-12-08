@@ -86,7 +86,7 @@ impl PharmacyProductService {
             updates.push(format!("prix = ${}", bind_index));
             bind_index += 1;
         }
-        if let Some(s) = stock {
+        if let Some(services::live_stream_service::DEFAULT_MAX_PARTICIPANTS) = stock {
             updates.push(format!("stock = ${}", bind_index));
             updates.push(format!("disponible = ${}", bind_index + 1));
             bind_index += 2;

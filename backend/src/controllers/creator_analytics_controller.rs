@@ -11,7 +11,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use log;
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
+use sqlx::Row;
 use std::sync::Arc;
 
 #[derive(Debug, Serialize)]

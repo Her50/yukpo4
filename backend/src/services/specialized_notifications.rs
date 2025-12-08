@@ -4,7 +4,6 @@ use crate::services::gps_matching::{
     find_matching_carpools, find_taxis_in_zone, find_users_in_radius,
 };
 use crate::services::push_notification_service;
-use crate::state::AppState;
 use log::{error, info, warn};
 use serde_json::json;
 use sqlx::PgPool;

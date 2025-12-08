@@ -2,9 +2,8 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::models::advanced_timeline_model::{
-    AdvancedTimeline, AdvancedTimelineRequest, AdvancedTimelineResponse, AdvancedTimelineRow,
+    AdvancedTimelineRequest, AdvancedTimelineRow,
 };
-use chrono::Utc;
 use log::{info, warn};
 use serde_json::json;
 use sqlx::PgPool;

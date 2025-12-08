@@ -5,7 +5,6 @@ use crate::models::orientation_scolaire::{
     ConcoursEntree, CreateConcoursRequest, SearchConcoursRequest,
 };
 use crate::state::AppState;
-use chrono::Utc;
 use log::{error, info};
 use sqlx::PgPool;
 use std::sync::Arc;

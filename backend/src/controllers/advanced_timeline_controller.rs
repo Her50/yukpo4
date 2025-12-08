@@ -2,18 +2,16 @@
 
 use axum::{
     extract::{Extension, Path as AxumPath, Query, State},
-    http::StatusCode,
     Json,
 };
-use log::{error, info};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     models::advanced_timeline_model::{
-        AdvancedTimelineRequest, AdvancedTimelineResponse, AdvancedTimelineRow,
+        AdvancedTimelineRequest, AdvancedTimelineResponse,
     },
     services::advanced_timeline_service::AdvancedTimelineService,
     state::AppState,

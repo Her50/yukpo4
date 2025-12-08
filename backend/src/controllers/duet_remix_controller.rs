@@ -5,13 +5,13 @@
 use crate::services::audio_extraction_service::AudioExtractionService;
 use crate::state::AppState;
 use axum::{
-    extract::{multipart::Multipart, Path, Query, State},
+    extract::{multipart::Multipart, Query, State},
     http::StatusCode,
     response::Json,
 };
 use log;
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
+use sqlx::Row;
 use std::sync::Arc;
 
 /// ✅ Helper: Construit URL média avec fallback pour anciens médias locaux

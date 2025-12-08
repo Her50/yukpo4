@@ -308,9 +308,7 @@ pub async fn reserve_flash_sale(
 ) -> AppResult<Json<serde_json::Value>> {
     // ✅ NOUVEAU: Utiliser la queue pour gérer les pics de trafic
     if let Some(queue) = &state.flash_sale_queue {
-        use crate::services::flash_sale_queue::{
-            FlashSaleReservationQueue, FlashSaleReservationRequest,
-        };
+        use crate::services::flash_sale_queue::FlashSaleReservationRequest;
         use chrono::Utc;
 
         let request = FlashSaleReservationRequest {

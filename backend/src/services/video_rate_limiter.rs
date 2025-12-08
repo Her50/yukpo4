@@ -2,12 +2,11 @@
 // Support de millions d'utilisateurs avec Redis + sliding window
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use log::{debug, warn};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use crate::services::redis_service::RedisService;
 
 #[derive(Debug, Clone)]

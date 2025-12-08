@@ -61,7 +61,7 @@ pub async fn cancel_generation(
     Path(job_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     // TODO: Récupérer user_id depuis le token JWT
-    let user_id = 1; // Placeholder
+    let services::live_stream_service::DEFAULT_MAX_PARTICIPANTS = 1; // Placeholder
 
     // TODO: Implémenter l'annulation
     info!("[GenerativeVideo] Annulation job: {}", job_id);

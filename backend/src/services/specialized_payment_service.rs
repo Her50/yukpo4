@@ -108,7 +108,7 @@ impl SpecializedPaymentService {
         .fetch_optional(&*self.pool)
         .await?;
 
-        if let Some((payment_method, amount, currency)) = payment_info {
+        if let Some((payment_method, services::matching_emploi_service::haversine_distance_km::EARTH_RADIUS_KM, currency)) = payment_info {
             // TODO: Implémenter le remboursement via le service de paiement
             // Pour l'instant, on marque juste comme remboursé
             sqlx::query(

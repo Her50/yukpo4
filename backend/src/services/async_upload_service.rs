@@ -2,7 +2,6 @@
 // Permet l'upload de fichiers volumineux avec feedback en temps réel via WebSocket
 
 use crate::core::types::{AppError, AppResult};
-use crate::state::AppState;
 use axum::extract::multipart::Multipart;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -67,7 +66,7 @@ impl AsyncUploadService {
     pub async fn start_async_upload(
         &self,
         user_id: i32,
-        mut multipart: Multipart,
+        multipart: Multipart,
     ) -> AppResult<String> {
         let upload_id = Uuid::new_v4().to_string();
 

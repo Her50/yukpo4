@@ -3,7 +3,7 @@
 //! Recommandations basées sur historique et préférences
 //! Objectif: Taux clic > 30%
 
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;

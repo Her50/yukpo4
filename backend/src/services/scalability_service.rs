@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{RwLock, Semaphore};
 use tokio::time::interval;
-use uuid::Uuid; // ✅ Phase 7.5: Pour générer des IDs uniques
+ // ✅ Phase 7.5: Pour générer des IDs uniques
 
 /// Service centralisé de scalabilité pour gérer des millions d'interactions
 /// ✅ Phase 7.5: Support scaling horizontal avec Redis pour coordination entre instances
@@ -282,7 +282,7 @@ impl ScalabilityService {
                 .arg(&key)
                 .arg(ttl_seconds)
                 .arg(&state_json)
-                .query_async(&mut conn)
+                .query_async::<()>(&mut conn)
                 .await
                 .map_err(|e| AppError::Internal(format!("Redis SETEX error: {}", e)))?;
 

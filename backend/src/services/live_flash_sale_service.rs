@@ -1,8 +1,7 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
-use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
+use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{DateTime, Duration, Utc};
-use redis::Client as RedisClient;
 use serde_json::{json, Value};
 use sqlx::{postgres::PgRow, PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;

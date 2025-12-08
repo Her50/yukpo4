@@ -11,7 +11,7 @@ use axum::{
     Json,
 };
 use log::info;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
 

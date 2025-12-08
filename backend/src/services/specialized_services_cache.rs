@@ -4,9 +4,7 @@
 use crate::core::types::AppError;
 use crate::state::AppState;
 use log::{info, warn};
-use redis::{AsyncCommands, Script};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::sync::Arc;
 
 // TTL en secondes

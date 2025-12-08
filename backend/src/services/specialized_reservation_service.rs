@@ -4,7 +4,6 @@ use crate::core::types::{AppError, AppResult};
 use crate::models::specialized_reservation::SpecializedReservation;
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
-use serde_json::json;
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 

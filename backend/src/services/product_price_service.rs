@@ -4,7 +4,6 @@ use serde_json::Value;
 use sqlx::PgPool;
 
 use crate::core::types::AppResult;
-use crate::services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS;
 use crate::services::global_promo_service::GlobalPromoService;
 use crate::services::negotiated_price_service::NegotiatedPriceService;
 

@@ -10,7 +10,7 @@ use axum::{
 };
 use log;
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
+use sqlx::Row;
 use std::sync::Arc;
 
 /// ✅ Helper: Construit URL média avec fallback pour anciens médias locaux

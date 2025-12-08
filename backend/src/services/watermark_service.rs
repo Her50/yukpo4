@@ -3,7 +3,7 @@ use tokio::fs;
 use tokio::process::Command;
 
 use crate::core::types::{AppError, AppResult};
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 
 /// Configuration pour le watermark Yukpo
 #[derive(Debug, Clone)]

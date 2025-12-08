@@ -6,7 +6,6 @@ use crate::middlewares::jwt::AuthenticatedUser;
 use crate::services::delivery_ai_eta_service::DeliveryAIETAService;
 use crate::services::interior_design_ai_service::InteriorDesignAIService;
 use crate::services::land_analysis_ai_service::LandAnalysisAIService;
-use crate::services::media_storage_service::{MediaStorageService, StoredMediaLocation};
 use crate::services::moving_ai_service::MovingAIService;
 use crate::services::real_estate_ai_service::RealEstateAIService;
 use crate::state::AppState;

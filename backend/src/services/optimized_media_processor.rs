@@ -166,7 +166,7 @@ impl OptimizedMediaProcessor {
         _media_index: usize,
         item: MediaItem,
     ) -> AppResult<Option<ProcessedMedia>> {
-        use crate::utils::log::log_info;
+        
 
         if item.data.is_empty() {
             return Ok(None);
@@ -294,7 +294,7 @@ impl OptimizedMediaProcessor {
     }
 
     /// Génère un thumbnail (200x200)
-    async fn generate_thumbnail(&self, image_bytes: &[u8], service_id: i32) -> AppResult<String> {
+    async fn generate_thumbnail(&self, image_bytes: &[u8], services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32) -> AppResult<String> {
         #[cfg(feature = "image")]
         {
             use image::ImageFormat;

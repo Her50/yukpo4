@@ -2,7 +2,6 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::models::template_model::VideoTemplate;
-use serde_json::Value;
 use sqlx::PgPool;
 
 pub struct TemplateService {

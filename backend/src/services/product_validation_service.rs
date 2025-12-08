@@ -3,7 +3,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use serde_json::Value;
-use sqlx::{PgPool, Row};
+use sqlx::Row;
 use std::collections::HashSet;
 
 /// Constantes de validation

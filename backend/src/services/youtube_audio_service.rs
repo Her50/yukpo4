@@ -1,7 +1,7 @@
 // ✅ NOUVEAU Phase 2.2: Service d'intégration YouTube Audio Library pour bibliothèque audio étendue
 
 use crate::core::types::{AppError, AppResult};
-use log::{info, warn};
+use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

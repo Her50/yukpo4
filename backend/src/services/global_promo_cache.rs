@@ -5,7 +5,6 @@ use crate::core::types::{AppError, AppResult};
 use crate::models::global_promo_model::GlobalPromoCatalogPage;
 use crate::utils::redis_helper;
 use redis::{AsyncCommands, Client as RedisClient};
-use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;

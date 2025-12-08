@@ -1,7 +1,7 @@
 // ✅ NOUVEAU Phase 2: Controller pour Stock Media Integration
 // Date: 2025-01-27
 
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use crate::services::stock_media_service::{
     StockMediaConfig, StockMediaOrientation, StockMediaProvider, StockMediaSearchRequest,
     StockMediaService, StockMediaType,
@@ -9,7 +9,6 @@ use crate::services::stock_media_service::{
 use axum::{extract::Query, Json};
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 pub struct StockMediaSearchQuery {

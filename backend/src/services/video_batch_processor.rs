@@ -4,12 +4,11 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use log::{error, info, warn};
+use log::{error, info};
 use sqlx::PgPool;
 use tokio::sync::Semaphore;
-use uuid::Uuid;
 
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use crate::services::video_queue_service::{VideoJobQueueItem, VideoQueueService};
 
 pub struct BatchProcessorConfig {

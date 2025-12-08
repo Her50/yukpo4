@@ -12,7 +12,6 @@ use yukpomnang_backend::{
 };
 
 use sqlx::PgPool;
-use yukpomnang_backend::services::blood_stock_monitor::BloodStockMonitor;
 use yukpomnang_backend::services::gpu_optimizer::GPUOptimizer;
 use yukpomnang_backend::services::massive_load_handler::MassiveLoadHandler;
 use yukpomnang_backend::services::social_distribution_service;
@@ -129,18 +128,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pg_read_pool = env::var("DATABASE_READ_REPLICA_URL")
         .ok()
         .and_then(|read_url| {
+            // ✅ CORRIGÉ: Valider l'URL avant de créer le pool
+            if read_url.trim().is_empty() {
+                log::warn!("⚠️ DATABASE_READ_REPLICA_URL est vide - Read replica désactivé");
+                return None;
+            }
+
+            // Vérifier que l'URL est absolue (commence par postgresql:// ou postgres://)
+            if !read_url.starts_with("postgresql://") && !read_url.starts_with("postgres://") {
+                log::error!("❌ DATABASE_READ_REPLICA_URL invalide: URL doit commencer par 'postgresql://' ou 'postgres://'");
+                log::error!("   URL fournie: {}...", read_url.chars().take(50).collect::<String>());
+                return None;
+            }
+
             log::info!("✅ Read replica PostgreSQL configuré - Scaling horizontal activé");
-            Some(
-                PgPoolOptions::new()
-                    .max_connections(30) // Plus de connexions pour lectures
-                    .min_connections(5)
-                    .acquire_timeout(std::time::Duration::from_secs(30))
-                    .idle_timeout(Some(std::time::Duration::from_secs(600)))
-                    .max_lifetime(Some(std::time::Duration::from_secs(1800)))
-                    .test_before_acquire(true)
-                    .connect_lazy(&read_url)
-                    .expect("❌ Échec de connexion à PostgreSQL read replica"),
-            )
+            
+            // ✅ CORRIGÉ: Utiliser connect_lazy avec gestion d'erreur au lieu de expect
+            match PgPoolOptions::new()
+                .max_connections(30) // Plus de connexions pour lectures
+                .min_connections(5)
+                .acquire_timeout(std::time::Duration::from_secs(30))
+                .idle_timeout(Some(std::time::Duration::from_secs(600)))
+                .max_lifetime(Some(std::time::Duration::from_secs(1800)))
+                .test_before_acquire(true)
+                .connect_lazy(&read_url)
+            {
+                Ok(pool) => Some(pool),
+                Err(e) => {
+                    log::error!("❌ Échec de connexion à PostgreSQL read replica: {}", e);
+                    log::error!("   URL utilisée: {}...", read_url.chars().take(50).collect::<String>());
+                    log::warn!("⚠️ Read replica désactivé - Utilisation du master pour toutes les opérations");
+                    None
+                }
+            }
         });
 
     if pg_read_pool.is_none() {
@@ -464,7 +484,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tasks::live_flash_sale_scheduler::start_flash_sale_scheduler(app_state.clone());
 
     // ✅ NOUVEAU: Worker de traitement des réservations Flash Sales
-    if let (Some(flash_sale_cache), Some(_flash_sale_queue)) = (
+    if let (Some(_flash_sale_cache), Some(_flash_sale_queue)) = (
         app_state.flash_sale_cache.clone(),
         app_state.flash_sale_queue.clone(),
     ) {
@@ -607,7 +627,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ NOUVEAU 2025-12-01: Refresh automatique des vues matérialisées de scalabilité
     let pool_clone_matviews = Arc::new(app_state.pg.clone());
     tokio::spawn(async move {
-        use std::sync::atomic::{AtomicU64, Ordering};
         use tokio::time::{interval, Duration};
 
         let mut interval_services = interval(Duration::from_secs(300)); // Toutes les 5 minutes pour services_search_cache

@@ -3,7 +3,6 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
-use crate::services::push_notification_service;
 use crate::state::AppState;
 use axum::{
     extract::{Extension, Path, State},

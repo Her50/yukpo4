@@ -1,14 +1,11 @@
 // ✅ NOUVEAU Phase 2.3: Service de gestion des jobs d'export vidéo
 
 use crate::models::export_model::{
-    ExportJob, ExportProgress, ExportQuality, ExportResolution, ExportSettings, ExportStage,
-    ExportStatus, StartExportRequest,
+    ExportJob, ExportProgress, ExportQuality, ExportResolution, ExportSettings, ExportStage, StartExportRequest,
 };
-use chrono::Utc;
 use log::{error, info, warn};
 use sqlx::PgPool;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use uuid::Uuid;
 
 pub struct ExportService {
@@ -86,7 +83,7 @@ impl ExportService {
         transcoding_service: Arc<crate::services::transcoding_service::TranscodingService>,
         media_storage: Arc<crate::services::media_storage_service::MediaStorageService>,
         job_id: String,
-        user_id: i64,
+        utils::livekit::DEFAULT_SERVER_TOKEN_TTL_SECS: i64,
         timeline_id: String,
         settings: ExportSettings,
     ) -> Result<(), String> {
@@ -111,14 +108,14 @@ impl ExportService {
     }
 
     /// Récupère le statut d'un job d'export
-    pub async fn get_job_status(&self, job_id: &str, user_id: i64) -> Result<ExportJob, String> {
+    pub async fn get_job_status(&self, job_id: &str, utils::livekit::DEFAULT_SERVER_TOKEN_TTL_SECS: i64) -> Result<ExportJob, String> {
         // TODO: Récupérer depuis la DB
         // Pour l'instant, on retourne une erreur
         Err(format!("Job {} non trouvé", job_id))
     }
 
     /// Annule un job d'export
-    pub async fn cancel_job(&self, job_id: &str, user_id: i64) -> Result<(), String> {
+    pub async fn cancel_job(&self, job_id: &str, utils::livekit::DEFAULT_SERVER_TOKEN_TTL_SECS: i64) -> Result<(), String> {
         // TODO: Marquer le job comme annulé dans la DB
         info!("[ExportService] Annulation job: {}", job_id);
         Ok(())
@@ -127,9 +124,9 @@ impl ExportService {
     /// Liste les jobs d'export d'un utilisateur
     pub async fn list_jobs(
         &self,
-        user_id: i64,
-        limit: i64,
-        offset: i64,
+        utils::livekit::DEFAULT_SERVER_TOKEN_TTL_SECS: i64,
+        utils::livekit::DEFAULT_SERVER_TOKEN_TTL_SECS: i64,
+        utils::livekit::DEFAULT_SERVER_TOKEN_TTL_SECS: i64,
     ) -> Result<Vec<ExportJob>, String> {
         // TODO: Récupérer depuis la DB
         Ok(vec![])

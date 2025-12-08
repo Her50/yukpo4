@@ -10,7 +10,6 @@ use axum::{
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;
-use futures::stream::FuturesUnordered;
 #[cfg(feature = "image_search")]
 use md5;
 use reqwest::Client;
@@ -832,7 +831,7 @@ async fn save_product_media(
     use crate::services::optimized_media_processor::{
         MediaItem, OptimizedMediaProcessor, OptimizedMediaProcessorConfig,
     };
-    use crate::utils::log::{log_error, log_info, log_warn};
+    use crate::utils::log::{log_error, log_info};
 
     let storage_root = PathBuf::from(
         std::env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "./uploads".to_string()),

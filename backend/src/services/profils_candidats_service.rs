@@ -2,8 +2,7 @@ use crate::core::types::{AppError, AppResult};
 use crate::models::offres_emploi_model::{CreateOrUpdateProfilRequest, ProfilCandidat};
 use crate::utils::redis_helper;
 use bigdecimal::BigDecimal;
-use log::{error, info, warn};
-use serde_json::json;
+use log::{error, info};
 use sqlx::PgPool;
 use std::str::FromStr;
 

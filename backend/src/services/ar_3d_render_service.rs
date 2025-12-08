@@ -4,7 +4,6 @@ use crate::models::ar_preview_model::{
     ARClip3D, ARPreviewRequest, ARPreviewResponse, ARScene3D, Vector3,
 };
 use log::{info, warn};
-use std::sync::Arc;
 use tokio::fs;
 use tokio::process::Command;
 

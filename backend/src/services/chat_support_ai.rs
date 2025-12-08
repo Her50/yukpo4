@@ -2,11 +2,9 @@
  * Service IA pour chat support
  * Génère des réponses automatiques intelligentes
  */
-use crate::core::types::{AppError, AppResult};
+use crate::core::types::AppResult;
 use crate::services::app_ia::AppIA;
-use crate::state::AppState;
 use log::{error, info};
-use serde_json::json;
 use std::sync::Arc;
 
 /// Générer une réponse IA automatique pour le chat support

@@ -4,9 +4,8 @@ use crate::models::export_model::{BitrateMode, ExportCodec, ExportFormat, Export
 use crate::services::gpu_detector::GPUDetector;
 use log::{error, info, warn};
 use serde_json::Value;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use tokio::fs;
+use std::path::Path;
+use std::process::Command;
 use tokio::process::Command as AsyncCommand;
 
 pub struct TranscodingService {

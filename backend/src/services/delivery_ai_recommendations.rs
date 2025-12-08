@@ -241,7 +241,7 @@ impl DeliveryAIRecommendationsService {
     ) -> AppResult<Vec<RecommendedProduct>> {
         // ✅ NOUVEAU: Si IA disponible, utiliser l'IA pour complémentarité
         // Sinon, utiliser règles basiques ou base de données
-        let mut recommendations = Vec::new();
+        let recommendations = Vec::new();
 
         // TODO: Implémenter logique de complémentarité avec base de données
         // Pour l'instant, retourner vide (l'IA principale s'en charge)
@@ -252,7 +252,7 @@ impl DeliveryAIRecommendationsService {
     /// Recommandations basées sur l'historique utilisateur
     async fn get_historical_recommendations(
         &self,
-        user_id: i32,
+        services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32,
     ) -> AppResult<Vec<RecommendedProduct>> {
         // TODO: Requête base de données pour historique
         // Pour l'instant, retourner vide
@@ -262,8 +262,8 @@ impl DeliveryAIRecommendationsService {
     /// Recommandations basées sur la localisation
     async fn get_local_recommendations(
         &self,
-        lat: f64,
-        lng: f64,
+        services::matching_emploi_service::haversine_distance_km::EARTH_RADIUS_KM: f64,
+        services::matching_emploi_service::haversine_distance_km::EARTH_RADIUS_KM: f64,
     ) -> AppResult<Vec<RecommendedProduct>> {
         // TODO: Requête produits populaires dans la zone
         // Pour l'instant, retourner vide

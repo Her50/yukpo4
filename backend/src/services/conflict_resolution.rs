@@ -1,6 +1,5 @@
 // ✅ Phase 6.4: Service de gestion des conflits pour services spécialisés
 
-use crate::state::AppState;
 use chrono::{DateTime, Utc};
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};

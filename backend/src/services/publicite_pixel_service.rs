@@ -180,7 +180,7 @@ impl PublicitePixelService {
 
         // Trouver des utilisateurs similaires (simplifié)
         // En production, utiliser ML pour trouver des utilisateurs similaires
-        let lookalike_size = size.unwrap_or(1000);
+        let services::live_stream_service::DEFAULT_MAX_PARTICIPANTS = size.unwrap_or(1000);
 
         // Créer l'audience lookalike
         let audience_id: i32 = sqlx::query_scalar(

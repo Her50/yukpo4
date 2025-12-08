@@ -4,7 +4,7 @@
 
 use crate::core::types::AppResult;
 use crate::services::recurring_trips_service::RecurringTripsService;
-use log::{error, info, warn};
+use log::{error, info};
 use sqlx::PgPool;
 use std::sync::Arc;
 

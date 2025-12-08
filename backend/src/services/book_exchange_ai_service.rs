@@ -10,7 +10,6 @@ use crate::core::types::AppResult;
 use crate::services::app_ia::AppIA;
 use crate::services::ia::prompt_loader::load_prompt_section_with_vars;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -267,7 +266,7 @@ RÉPONSE ATTENDUE (JSON strict) :
                     participant_id,
                     score_matching: 70.0,
                     score_compatibilite: 75.0,
-                    score_proximite: distance_km.map(|d| (100.0 - d.min(100.0))).unwrap_or(50.0),
+                    score_proximite: distance_km.map(|d| 100.0 - d.min(100.0)).unwrap_or(50.0),
                     reasoning: "Matching basique calculé".to_string(),
                     points_forts: vec![],
                     points_faibles: vec![],

@@ -1,8 +1,3 @@
-/**
- * Contrôleur pour upload de vidéos (multipart)
- * Gère l'upload de vidéos pour duet/remix et génération de qualités
- */
-use crate::core::types::AppError;
 use crate::services::video_quality_service::VideoQualityService;
 use crate::state::AppState;
 use axum::{

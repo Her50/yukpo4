@@ -19,7 +19,6 @@ use crate::{
     services::notification_service::{create_notification, NotificationType},
     state::AppState,
 };
-use std::time::Duration;
 
 const ALLOWED_REACTIONS: &[&str] = &["like", "love", "insightful", "support", "funny", "angry"];
 

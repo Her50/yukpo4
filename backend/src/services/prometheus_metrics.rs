@@ -1,6 +1,5 @@
 // ✅ Phase 4: Métriques Prometheus pour monitoring
 
-use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use std::sync::Arc;
 
 use log::info;

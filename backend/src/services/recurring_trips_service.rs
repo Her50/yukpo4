@@ -2,7 +2,7 @@
 // Date: 2025-01-29
 
 use crate::core::types::{AppError, AppResult};
-use chrono::{Date, Datelike, Duration, Utc, Weekday};
+use chrono::{Datelike, Duration, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::collections::HashSet;

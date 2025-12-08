@@ -126,7 +126,7 @@ impl BloodStockMonitor {
         .await?;
 
         // Créer une demande de don automatique
-        use crate::controllers::blood_donation_matching_controller::CreateBloodDonationRequest;
+        
 
         // Note: On utilise directement le service de matching au lieu du contrôleur
         // pour éviter les dépendances circulaires
