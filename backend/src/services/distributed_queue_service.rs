@@ -40,6 +40,7 @@ pub struct DistributedQueueService {
     redis_service: Arc<RedisService>,
     stream_name: String,
     consumer_group: String,
+    #[allow(dead_code)]
     consumer_name: String,
 }
 

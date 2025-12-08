@@ -370,7 +370,12 @@ const MesServicesScreen: React.FC = () => {
   }, [user?.id, parseProduct, extractProduits]);
 
   useEffect(() => {
-    loadServices();
+    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    loadServices().catch(error => {
+      console.error('[MesServicesScreen] Erreur loadServices:', error);
+    });
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
   }, [loadServices]);
 
   useFocusEffect(
@@ -383,7 +388,7 @@ const MesServicesScreen: React.FC = () => {
     // ✅ SÉCURITÉ: Vérifier que DeviceEventEmitter existe
     if (!DeviceEventEmitter || typeof DeviceEventEmitter.addListener !== 'function') {
       console.warn('[MesServicesScreen] DeviceEventEmitter.addListener non disponible');
-      return;
+      return undefined; // ✅ CRITIQUE: Retourner explicitement undefined
     }
 
     // Écouter les événements de création/modification de service/produit

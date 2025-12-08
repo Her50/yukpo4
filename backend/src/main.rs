@@ -171,7 +171,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("🔥 Pré-chauffage du pool de connexions...");
     let warmup_pool = pg_pool.clone();
     let warmup_min = min_connections;
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         let mut success_count = 0;
         for i in 0..warmup_min {
             match tokio::time::timeout(
@@ -449,7 +449,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ Lancer la désactivation automatique des produits (tous les jours à minuit)
     let state_clone_products = app_state.clone();
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
         let mut interval = interval(Duration::from_secs(86400)); // 24 heures
 
@@ -470,7 +470,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ Lancer la tâche de désactivation des publicités expirées (toutes les heures)
     let pool_clone_pub = Arc::new(app_state.pg.clone());
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         yukpomnang_backend::tasks::publicite_expiration::start_publicite_expiration_task(
             pool_clone_pub,
         )
@@ -479,7 +479,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ NOUVEAU 2025-01-28: Lancer la tâche de notifications pour nouveaux matchings emploi (toutes les 6 heures)
     let pool_clone_matching = Arc::new(app_state.pg.clone());
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         yukpomnang_backend::tasks::matching_emploi_notifications::start_matching_notifications_task(
             pool_clone_matching,
         )
@@ -509,7 +509,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arc::new(app_state.pg.clone()),
             cache_for_worker,
         );
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             if let Err(e) = worker.start().await {
                 log::error!("❌ Flash Sale Queue Worker error: {:?}", e);
             }
@@ -526,7 +526,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             redis_client_arc,
             Arc::new(app_state.pg.clone()),
         );
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             if let Err(e) = worker.start().await {
                 log::error!("❌ Notification Queue Worker error: {:?}", e);
             }
@@ -539,7 +539,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ Phase 6.1: Cron job pour vérifier et notifier les pharmacies de garde
     // Vérifie toutes les heures si des pharmacies sont de garde
     let pharmacy_pool = Arc::new(app_state.pg.clone());
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
         let mut interval = interval(Duration::from_secs(3600)); // 1 heure
 
@@ -581,7 +581,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ NOUVEAU: Healthcheck périodique Redis pour détecter les changements d'état
     // ✅ CORRIGÉ: Réduit la fréquence à toutes les 5 minutes (au lieu de chaque minute)
     // Le cache interne de check_redis_health gère déjà les logs de changement d'état
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         use yukpomnang_backend::utils::redis_helper;
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // Toutes les 5 minutes
 
@@ -594,7 +594,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ Tâches de recalcul périodique des statistiques (Phase 6)
     let pool_clone_category_stats = Arc::new(app_state.pg.clone());
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         tasks::stats_recalculation::start_category_stats_recalculation_task(
             pool_clone_category_stats,
         )
@@ -602,7 +602,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let pool_clone_cancellation_stats = Arc::new(app_state.pg.clone());
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         tasks::stats_recalculation::start_product_cancellation_stats_recalculation_task(
             pool_clone_cancellation_stats,
         )
@@ -614,7 +614,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ NOUVEAU: Refresh automatique de la vue matérialisée Black Friday (toutes les 30 secondes)
     let pool_clone_blackfriday = Arc::new(app_state.pg.clone());
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
         let mut interval_blackfriday = interval(Duration::from_secs(30)); // Toutes les 30 secondes
 
@@ -636,7 +636,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ NOUVEAU 2025-12-01: Refresh automatique des vues matérialisées de scalabilité
     let pool_clone_matviews = Arc::new(app_state.pg.clone());
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
 
         let mut interval_services = interval(Duration::from_secs(300)); // Toutes les 5 minutes pour services_search_cache

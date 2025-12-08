@@ -8,8 +8,10 @@ use sqlx::FromRow;
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct SpecializedReservation {
     pub id: i32,
+    #[allow(dead_code)]
     pub service_id: i32, // ID du service spécialisé (pharmacie, hopital, etc.)
     pub service_type: String, // "pharmacie", "hopital", "laboratoire", "covoiturage", "taxi", "agence_voyage"
+    #[allow(dead_code)]
     pub user_id: i32,         // Client qui fait la réservation
     pub prestataire_id: i32,  // Prestataire propriétaire du service
 

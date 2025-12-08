@@ -16,14 +16,19 @@ struct ReservationInfo {
     id: i32,
     passenger_id: i32,
     driver_id: i32,
+    #[allow(dead_code)]
     depart: String,
+    #[allow(dead_code)]
     destination: String,
+    #[allow(dead_code)]
     date_depart: chrono::NaiveDate,
     heure_depart: String,
+    #[allow(dead_code)]
     gps_depart: Option<String>,
 }
 
 struct TripInfo {
+    #[allow(dead_code)]
     date_depart: chrono::NaiveDate,
     heure_depart: String,
 }

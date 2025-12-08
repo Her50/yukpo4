@@ -203,7 +203,12 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
     // Charger la météo quand la position change
     useEffect(() => {
         console.log('[WeatherWidget] useEffect triggered, location:', location);
-        fetchWeather();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        fetchWeather().catch(error => {
+            console.error('[WeatherWidget] Erreur fetchWeather:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [location]);
 
     if (loading) {

@@ -95,10 +95,15 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
     // ✅ Charger les services de l'utilisateur pour détecter prestataire vs client
     useEffect(() => {
         if (user?.id) {
-            loadUserServices();
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            loadUserServices().catch(error => {
+                console.error('[SpecializedServicesSection] Erreur loadUserServices:', error);
+            });
         } else {
             setLoading(false);
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [user?.id]);
 
     const loadUserServices = async () => {

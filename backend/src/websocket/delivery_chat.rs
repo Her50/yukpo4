@@ -79,6 +79,7 @@ pub struct DeliveryChatMessage {
 pub struct DeliveryChatWebSocketManager {
     channels: Arc<Mutex<HashMap<Uuid, broadcast::Sender<DeliveryChatMessage>>>>,
     buffer: usize,
+    #[allow(dead_code)]
     redis_client: Option<redis::Client>,
     instance_id: String,
 }
@@ -238,7 +239,7 @@ impl DeliveryChatWebSocketManager {
 /// Route WebSocket pour le chat de livraison
 pub fn create_delivery_chat_websocket_router() -> Router<Arc<AppState>> {
     Router::new().route(
-        "/ws/delivery-chat/:delivery_id/:user_id",
+        "/ws/delivery-chat/{delivery_id}/{user_id}",
         get(delivery_chat_websocket_handler),
     )
 }

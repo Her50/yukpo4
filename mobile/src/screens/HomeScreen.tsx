@@ -221,7 +221,7 @@ const HomeScreen: React.FC = () => {
         // ✅ SÉCURITÉ: Vérifier que les fonctions existent avant de les utiliser
         if (typeof loadUnreadChatCount !== 'function' || typeof loadUnreadNotificationsCount !== 'function') {
             console.warn('[HomeScreen] Fonctions de chargement non disponibles');
-            return;
+            return undefined; // ✅ CRITIQUE: Retourner explicitement undefined
         }
 
         const loadInitialData = async () => {
@@ -261,7 +261,13 @@ const HomeScreen: React.FC = () => {
             }
         };
 
-        loadInitialData();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadInitialData().catch(error => {
+            console.error('[HomeScreen] Erreur chargement données initiales:', error);
+        });
+
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [user?.id, loadUnreadChatCount, loadUnreadNotificationsCount]);
 
     // ✅ OPTIMISATION: Rafraîchissement automatique des notifications
@@ -454,7 +460,7 @@ const HomeScreen: React.FC = () => {
     React.useEffect(() => {
         if (CRASH_PREVENTION_CONFIG.DISABLE_HOME_AUTOSCROLL) {
             console.log('[HomeScreen] ⏸️ Scroll automatique désactivé (configuration)');
-            return;
+            return undefined; // ✅ CRITIQUE: Retourner explicitement undefined
         }
 
         // ✅ CORRIGÉ: Ne pas scroller automatiquement car les marges garantissent déjà la visibilité complète
@@ -462,10 +468,11 @@ const HomeScreen: React.FC = () => {
         // Le scroll automatique n'est plus nécessaire et pourrait décaler la vue
         // Ne pas scroller si l'utilisateur a déjà scrollé ou si le contenu n'est pas chargé
         if (!state.metadata.contentLoaded || state.metadata.hasUserScrolled) {
-            return;
+            return undefined; // ✅ CRITIQUE: Retourner explicitement undefined
         }
 
         // ✅ Plus de scroll automatique nécessaire - les marges garantissent la visibilité
+        return undefined; // ✅ CRITIQUE: Retourner explicitement undefined
     }, [state.metadata.contentLoaded, state.metadata.hasUserScrolled]); // Se déclenche une seule fois au mount du composant
 
     // ✅ CORRECTION: Détection GPS sécurisée avec timeout
@@ -475,7 +482,7 @@ const HomeScreen: React.FC = () => {
                 // ✅ CORRECTION: Vérifier la configuration de prévention des crashes
                 if (CRASH_PREVENTION_CONFIG.DISABLE_AUTO_GPS) {
                     console.log('[HomeScreen] GPS automatique désactivé pour éviter les crashes');
-                    return;
+                    return; // ✅ Retour dans la fonction async, pas dans le useEffect
                 }
 
                 // Vérifier si le GPS est activé dans les paramètres
@@ -524,7 +531,13 @@ const HomeScreen: React.FC = () => {
             }
         };
 
-        checkGPSAndActivate();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        checkGPSAndActivate().catch(error => {
+            console.error('[HomeScreen] Erreur checkGPSAndActivate:', error);
+        });
+
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, []);
 
 

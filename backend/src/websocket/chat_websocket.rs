@@ -74,6 +74,7 @@ pub struct ChatWsMessage {
 pub struct ChatWebSocketManager {
     channels: Arc<Mutex<HashMap<String, broadcast::Sender<ChatWsMessage>>>>,
     buffer: usize,
+    #[allow(dead_code)]
     redis_client: Option<redis::Client>,
     instance_id: String,
 }
@@ -249,7 +250,7 @@ impl ChatWebSocketManager {
 /// Route WebSocket pour le chat
 pub fn create_chat_websocket_router() -> Router<Arc<AppState>> {
     Router::new().route(
-        "/ws/chat/:service_id/:prestataire_id/:user_id",
+        "/ws/chat/{service_id}/{prestataire_id}/{user_id}",
         get(chat_websocket_handler),
     )
 }

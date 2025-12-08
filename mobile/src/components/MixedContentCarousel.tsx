@@ -213,7 +213,12 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
             }
         };
 
-        loadContentWithML();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadContentWithML().catch(error => {
+            console.error('[MixedContentCarousel] Erreur loadContentWithML:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userId, userBehavior]);
 

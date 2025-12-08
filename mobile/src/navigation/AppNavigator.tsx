@@ -448,7 +448,13 @@ const MainStack = () => {
       }
     };
 
-    checkCourierStatus();
+    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    checkCourierStatus().catch(error => {
+      console.error('[AppNavigator] Erreur checkCourierStatus:', error);
+    });
+
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
   }, [user?.id]);
 
   // ✅ CORRECTION CRASH: Vérifier si l'utilisateur a des services spécialisés avec timeout et délai
@@ -509,7 +515,13 @@ const MainStack = () => {
       }
     };
 
-    checkSpecializedServices();
+    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    checkSpecializedServices().catch(error => {
+      console.error('[AppNavigator] Erreur checkSpecializedServices:', error);
+    });
+
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
   }, [user?.id]);
 
   // ✅ NOUVEAU: État pour badges notifications (à connecter avec votre système de notifications)

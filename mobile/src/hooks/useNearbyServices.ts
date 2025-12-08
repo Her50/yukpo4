@@ -99,8 +99,13 @@ export const useNearbyServices = (latitude?: number, longitude?: number, radius:
 
     useEffect(() => {
         if (latitude && longitude) {
-            fetchNearbyServices(latitude, longitude);
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            fetchNearbyServices(latitude, longitude).catch(error => {
+                console.error('[useNearbyServices] Erreur fetchNearbyServices:', error);
+            });
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [latitude, longitude, radius]);
 
     return {

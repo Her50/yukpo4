@@ -69,7 +69,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    initializeAuth();
+    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    initializeAuth().catch(error => {
+      console.error('[AuthContext] Erreur initializeAuth:', error);
+    });
+
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
   }, []);
 
   const checkAuthStatus = async () => {

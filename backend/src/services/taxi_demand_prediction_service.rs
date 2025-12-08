@@ -662,6 +662,7 @@ Retourne UNIQUEMENT un JSON avec:
 /// Données historiques
 #[derive(Debug, Clone)]
 struct HistoricalData {
+    #[allow(dead_code)]
     hourly_demands: HashMap<u8, f64>,
     avg_demand: f64,
     trend: f64,

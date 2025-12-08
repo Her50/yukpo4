@@ -4,12 +4,12 @@
  */
 
 import { useEffect, useState } from 'react';
-import { 
-    downloadFromCloud, 
-    downloadMultipleFromCloud, 
-    cacheCloudFile, 
-    isCloudUrl,
-    DownloadResult 
+import {
+    cacheCloudFile,
+    downloadFromCloud,
+    downloadMultipleFromCloud,
+    DownloadResult,
+    isCloudUrl
 } from '../services/cloudDownload';
 
 interface UseCloudFilesOptions {
@@ -51,7 +51,7 @@ export const useCloudFile = (
                 // Utiliser le cache
                 const cacheKey = generateCacheKey(cloudUrl);
                 const cachedUri = await cacheCloudFile(cloudUrl, cacheKey);
-                
+
                 if (cachedUri) {
                     result = {
                         success: true,
@@ -162,8 +162,13 @@ export const useCloudFiles = (
 
     useEffect(() => {
         if (autoDownload && cloudUrls.length > 0) {
-            download();
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            download().catch(error => {
+                console.error('[useCloudFiles] Erreur download:', error);
+            });
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [JSON.stringify(cloudUrls), autoDownload]);
 
     return {
@@ -187,7 +192,7 @@ function generateCacheKey(url: string): string {
         hash = ((hash << 5) - hash) + char;
         hash = hash & hash; // Convert to 32bit integer
     }
-    
+
     // Ajouter l'extension du fichier si possible
     const extension = url.split('.').pop()?.split('?')[0] || 'file';
     return `${Math.abs(hash)}.${extension}`;

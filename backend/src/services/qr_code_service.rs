@@ -239,6 +239,7 @@ impl QRCodeService {
 pub struct QRCodeInfo {
     pub id: i32,
     pub reservation_id: i32,
+    #[allow(dead_code)]
     pub qr_code: String,
     pub qr_code_url: String,
     pub status: String,

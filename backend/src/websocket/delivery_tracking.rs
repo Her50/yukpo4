@@ -130,6 +130,7 @@ pub struct DeliveryWsBatch {
 pub struct DeliveryTrackingManager {
     channels: Arc<Mutex<HashMap<Uuid, broadcast::Sender<DeliveryWsMessage>>>>,
     buffer: usize,
+    #[allow(dead_code)]
     redis_client: Option<redis::Client>,
     // ✅ Phase 2: Batching pour réduire le nombre de messages
     message_batches: Arc<Mutex<HashMap<Uuid, Vec<DeliveryWsMessage>>>>,
