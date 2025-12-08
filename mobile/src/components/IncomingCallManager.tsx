@@ -41,7 +41,12 @@ const IncomingCallManager: React.FC = () => {
             }
         };
 
-        setupWebSocketHandler();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        setupWebSocketHandler().catch(error => {
+            console.error('[IncomingCallManager] Erreur setupWebSocketHandler:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
 
         // TODO: Réactiver les notifications WebSocket une fois le système stabilisé
         /*

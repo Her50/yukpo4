@@ -51,8 +51,13 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
     // Charger les premiers items si initialItems est vide
     useEffect(() => {
         if (initialItems.length === 0 && !loading) {
-            loadMoreItems(true);
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            loadMoreItems(true).catch(error => {
+                console.error('[InfiniteFeed] Erreur loadMoreItems:', error);
+            });
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, []);
 
     const loadMoreItems = useCallback(async (isInitial = false) => {
@@ -175,9 +180,14 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
                     }
                 };
 
-                prefetchNextPage();
+                // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+                prefetchNextPage().catch(error => {
+                    // Ignorer les erreurs silencieusement (prefetching)
+                });
             }
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [items.length, loading, loadingMore, hasMore, page, category, location]);
 
     const handleItemPress = useCallback((item: any) => {

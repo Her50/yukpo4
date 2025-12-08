@@ -81,7 +81,12 @@ export const useVoiceProfiles = ({ serviceId }: UseVoiceProfilesOptions = {}): U
     }, []);
 
     useEffect(() => {
-        void refresh();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        refresh().catch(error => {
+            console.error('[useVoiceProfiles] Erreur refresh:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [refresh]);
 
     return useMemo(

@@ -30,7 +30,12 @@ export const useMyGlobalPromos = () => {
     }, [selectedEventId]);
 
     useEffect(() => {
-        refresh();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        refresh().catch(error => {
+            console.error('[useMyGlobalPromos] Erreur refresh:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [refresh]);
 
     const submit = useCallback(

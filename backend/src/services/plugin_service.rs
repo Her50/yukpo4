@@ -757,6 +757,7 @@ impl PluginService {
 
 /// Contexte de sandbox pour exécution sécurisée
 struct SandboxContext {
+    #[allow(dead_code)]
     plugin_id: String,
     max_execution_time: std::time::Duration,
     max_memory_mb: u64,

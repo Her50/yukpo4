@@ -29,6 +29,7 @@ export const useCollaboration = (options: UseCollaborationOptions) => {
         }
 
         // Se connecter
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
         collaborationService
             .connect(sessionId, userId, (message) => {
                 handleMessage(message);

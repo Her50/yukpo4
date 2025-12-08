@@ -68,12 +68,18 @@ const OrderStatusScreen: React.FC = () => {
     };
 
     useEffect(() => {
-        loadOrder();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadOrder().catch(error => {
+            console.error('[OrderStatusScreen] Erreur loadOrder:', error);
+        });
 
         // Polling toutes les 10 secondes pour mise à jour temps réel
         const interval = setInterval(() => {
             if (orderId) {
-                loadOrder();
+                // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+                loadOrder().catch(error => {
+                    console.error('[OrderStatusScreen] Erreur loadOrder (interval):', error);
+                });
             }
         }, 10000);
 

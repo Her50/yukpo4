@@ -53,7 +53,12 @@ const HomeScreenNew: React.FC = () => {
 
     // Charger le nombre de notifications non lues
     useEffect(() => {
-        loadUnreadNotificationsCount();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadUnreadNotificationsCount().catch(error => {
+            console.error('[HomeScreenNew] Erreur loadUnreadNotificationsCount:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [loadUnreadNotificationsCount]);
 
     // Détection GPS automatique au chargement (si activé dans les paramètres)

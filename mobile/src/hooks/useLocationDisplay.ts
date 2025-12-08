@@ -362,8 +362,13 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
         };
 
         if (service) {
-            processLocation();
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            processLocation().catch(error => {
+                console.error('[useLocationDisplay] Erreur processLocation:', error);
+            });
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [service, serviceCreatorInfo, getFieldValue, convertGpsToLocation]);
 
     return { locationData, loading, error };

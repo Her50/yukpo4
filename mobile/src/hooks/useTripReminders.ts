@@ -74,13 +74,19 @@ export const useTripReminders = (options: UseTripRemindersOptions) => {
     // Planification automatique au montage
     useEffect(() => {
         if (autoSchedule) {
-            scheduleReminders();
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            scheduleReminders().catch(error => {
+                console.error('[useTripReminders] Erreur scheduleReminders:', error);
+            });
         }
 
         // Nettoyage à la destruction
         return () => {
             if (autoSchedule) {
-                cancelReminders();
+                // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+                cancelReminders().catch(error => {
+                    console.error('[useTripReminders] Erreur cancelReminders:', error);
+                });
             }
         };
     }, [autoSchedule, scheduleReminders, cancelReminders]);

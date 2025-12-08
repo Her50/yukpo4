@@ -79,7 +79,12 @@ export const useServiceMedia = (serviceId: string | number): ServiceMedia => {
       }
     };
 
-    fetchServiceMedia();
+    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    fetchServiceMedia().catch(error => {
+      console.error('[useServiceMedia] Erreur fetchServiceMedia:', error);
+    });
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
   }, [serviceId]);
 
   return media;

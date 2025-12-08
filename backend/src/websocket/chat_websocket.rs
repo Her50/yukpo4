@@ -174,7 +174,7 @@ impl ChatWebSocketManager {
         let instance_id = self.instance_id.clone();
         let redis_client = self.redis_client.clone();
 
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             let client = match redis_client {
                 Some(client) => client,
                 None => return,

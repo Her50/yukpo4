@@ -1,19 +1,17 @@
 ﻿import * as React from "react";
 import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
-import { gpsTrackingService } from '../services/gpsTrackingService';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { useUserContext } from '../context/UserContext';
+import { gpsTrackingService } from '../services/gpsTrackingService';
 
 interface GPSAutoTrackerProps {
   autoStart?: boolean;
   showStatus?: boolean;
 }
 
-const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({ 
-  autoStart = true, 
-  showStatus = true 
+const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
+  autoStart = true,
+  showStatus = true
 }) => {
   const { user } = useUserContext();
   const [isTracking, setIsTracking] = useState(false);
@@ -22,7 +20,10 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
 
   useEffect(() => {
     if (autoStart && user) {
-      startGPSTracking();
+      // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+      startGPSTracking().catch(error => {
+        console.error('[GPSAutoTracker] Erreur startGPSTracking:', error);
+      });
     }
 
     return () => {
@@ -35,7 +36,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
   const startGPSTracking = async () => {
     try {
       console.log('🚀 Démarrage du tracking GPS automatique...');
-      
+
       // Démarrer le service de tracking
       gpsTrackingService.startTracking();
       setIsTracking(true);
@@ -51,9 +52,9 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
             const coords = `${newLocation.latitude.toFixed(6)},${newLocation.longitude.toFixed(6)}`;
             setCurrentLocation(coords);
             setLastUpdate(new Date());
-            
+
             console.log(`📍 Position GPS mise à jour: ${coords}`);
-            
+
             // Envoyer au backend
             await updateBackendGPS(newLocation.latitude, newLocation.longitude);
           }
@@ -82,12 +83,12 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
         const coords = `${location.latitude.toFixed(6)},${location.longitude.toFixed(6)}`;
         setCurrentLocation(coords);
         setLastUpdate(new Date());
-        
+
         console.log(`📍 Position GPS actuelle: ${coords}`);
-        
+
         // Envoyer au backend
         await updateBackendGPS(location.latitude, location.longitude);
-        
+
         return coords;
       }
     } catch (error) {
@@ -137,7 +138,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
         </Text>
         <View style={`w-3 h-3 rounded-full ${isTracking ? 'bg-green-500' : 'bg-red-500'}`} />
       </View>
-      
+
       <View style="space-y-2 text-xs">
         <View>
           <Text style="text-gray-600 dark:text-gray-400">Statut:</Text>
@@ -145,7 +146,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
             {isTracking ? 'Actif' : 'Inactif'}
           </Text>
         </View>
-        
+
         {currentLocation && (
           <View>
             <Text style="text-gray-600 dark:text-gray-400">Position:</Text>
@@ -154,7 +155,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
             </Text>
           </View>
         )}
-        
+
         {lastUpdate && (
           <View>
             <Text style="text-gray-600 dark:text-gray-400">Dernière mise à jour:</Text>
@@ -164,7 +165,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
           </View>
         )}
       </View>
-      
+
       <View style="flex space-x-2 mt-3">
         {!isTracking ? (
           <TouchableOpacity
@@ -181,7 +182,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
             Arrêter
           </TouchableOpacity>
         )}
-        
+
         <TouchableOpacity
           onPress={getCurrentLocation}
           style="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
@@ -193,7 +194,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
   );
 };
 
-export default GPSAutoTracker; 
+export default GPSAutoTracker;
 
 
 

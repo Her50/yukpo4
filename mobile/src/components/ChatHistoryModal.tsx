@@ -140,14 +140,24 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 
   useEffect(() => {
     if (isOpen && user?.id) {
-      loadChatHistories();
+      // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+      loadChatHistories().catch(error => {
+        console.error('[ChatHistoryModal] Erreur loadChatHistories:', error);
+      });
     }
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
   }, [isOpen, user?.id, loadChatHistories]);
 
   useEffect(() => {
     if (selectedChat) {
-      loadChatMessages(selectedChat.id);
+      // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+      loadChatMessages(selectedChat.id).catch(error => {
+        console.error('[ChatHistoryModal] Erreur loadChatMessages:', error);
+      });
     }
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
   }, [selectedChat, loadChatMessages]);
 
   const loadChatMessagesOLD = async (chatId: string) => {

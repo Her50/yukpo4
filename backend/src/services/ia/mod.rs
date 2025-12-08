@@ -137,7 +137,7 @@ impl OptimizedIAService {
             let user_text_cloned = user_text.clone();
             let intention_cloned = intention.clone();
 
-            tokio::spawn(async move {
+            let _ = tokio::spawn(async move {
                 let _ = semantic_cache_cloned
                     .store_semantic_cache(&user_text_cloned, &intention_cloned, &cached_response)
                     .await;
@@ -204,7 +204,7 @@ impl OptimizedIAService {
         let cleaned_json_cloned = cleaned_json.clone();
         let response_cache_cloned = self.response_cache.clone();
 
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             // Cache exact
             let mut cache = response_cache_cloned.write().await;
             cache.insert(
@@ -794,7 +794,7 @@ impl OptimizedIAService {
         let semantic_cache = self.semantic_cache.clone();
         let response_cache = self.response_cache.clone();
 
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             log::info!("[BackgroundTasks] ?? D?marrage des traitements en arri?re-plan");
 
             // 1. Mise en cache exact

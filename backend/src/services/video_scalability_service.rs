@@ -106,7 +106,7 @@ impl VideoScalabilityService {
         // ✅ Démarrer le worker de batch processing
         if self.config.enable_distributed_processing {
             let processor = self.batch_processor.clone();
-            tokio::spawn(async move {
+            let _ = tokio::spawn(async move {
                 if let Err(e) = processor.start_worker().await {
                     warn!("[Scalability] Batch processor error: {}", e);
                 }

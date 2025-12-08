@@ -329,6 +329,8 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
         console.warn('[TabIcon] Erreur animation:', error);
       }
     }
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focused]); // ✅ IMPORTANT: Ne pas inclure scale et opacity (SharedValues sont stables)
 

@@ -36,7 +36,10 @@ const GPSTrackingManager: React.FC = () => {
                     // Délai pour éviter les blocages au démarrage
                     // Réduit à 2 secondes car LazyManagers attend déjà 5 secondes
                     setTimeout(() => {
-                        startGPSTracking();
+                        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+                        startGPSTracking().catch(error => {
+                            console.error('[GPSTrackingManager] Erreur startGPSTracking:', error);
+                        });
                     }, 2000); // 2 secondes après le chargement du manager
                 }
             } catch (error) {
@@ -45,7 +48,12 @@ const GPSTrackingManager: React.FC = () => {
             }
         };
 
-        checkGPSStatus();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        checkGPSStatus().catch(error => {
+            console.error('[GPSTrackingManager] Erreur checkGPSStatus:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [user]);
 
     const startGPSTracking = async () => {

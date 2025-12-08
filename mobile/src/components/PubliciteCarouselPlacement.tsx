@@ -102,7 +102,12 @@ export const PubliciteCarouselPlacement: React.FC<PubliciteCarouselPlacementProp
     }, [userBehavior, userId]);
 
     useEffect(() => {
-        loadPublicites();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadPublicites().catch(error => {
+            console.error('[PubliciteCarouselPlacement] Erreur loadPublicites:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [loadPublicites]);
 
     useEffect(() => {

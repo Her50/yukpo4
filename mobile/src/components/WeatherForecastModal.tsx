@@ -293,8 +293,13 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
         console.log('[WeatherForecastModal] useEffect triggered, visible:', visible, 'location:', location);
         if (visible) {
             // Charger les données même sans location (utilise des données mockées)
-            fetchWeatherForecast();
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            fetchWeatherForecast().catch(error => {
+                console.error('[WeatherForecastModal] Erreur fetchWeatherForecast:', error);
+            });
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [visible, location]);
 
     const ForecastCard: React.FC<{ item: WeatherForecast; index: number }> = ({ item, index }) => (

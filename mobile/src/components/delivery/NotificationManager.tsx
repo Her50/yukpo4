@@ -34,10 +34,13 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({
 
     useEffect(() => {
         // Demander les permissions
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
         registerForPushNotificationsAsync().then(token => {
             if (token) {
                 setExpoPushToken(token);
             }
+        }).catch(error => {
+            console.error('[NotificationManager] Erreur registerForPushNotificationsAsync:', error);
         });
 
         // Écouter les notifications reçues

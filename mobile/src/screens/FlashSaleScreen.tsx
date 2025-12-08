@@ -83,7 +83,12 @@ const FlashSaleScreen: React.FC = () => {
     }, [sessionId]);
 
     useEffect(() => {
-        loadFlashSales();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadFlashSales().catch(error => {
+            console.error('[FlashSaleScreen] Erreur loadFlashSales:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [loadFlashSales]);
 
     const pollTicketStatus = useCallback(

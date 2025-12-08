@@ -84,8 +84,13 @@ export const useCloudFile = (
 
     useEffect(() => {
         if (autoDownload && cloudUrl) {
-            download();
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            download().catch(error => {
+                console.error('[useCloudFile] Erreur download:', error);
+            });
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [cloudUrl, autoDownload]);
 
     return {

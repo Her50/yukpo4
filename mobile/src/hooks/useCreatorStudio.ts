@@ -696,7 +696,10 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
                 }
             }
         };
-        loadTemplates();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadTemplates().catch(error => {
+            console.error('[useCreatorStudio] Erreur loadTemplates:', error);
+        });
         return () => {
             cancelled = true;
         };
@@ -775,7 +778,10 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
             }
         };
 
-        bootstrapDelivery();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        bootstrapDelivery().catch(error => {
+            console.error('[useCreatorStudio] Erreur bootstrapDelivery:', error);
+        });
 
         return () => {
             aborted = true;
@@ -948,7 +954,10 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
             }
         };
 
-        bootstrap();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        bootstrap().catch(error => {
+            console.error('[useCreatorStudio] Erreur bootstrap:', error);
+        });
         return () => {
             cancelled = true;
         };
@@ -1129,7 +1138,12 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
         if (templateRecommendations.length > 0 || templateRecommendationsLoading) {
             return;
         }
-        void refreshTemplateRecommendations();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        refreshTemplateRecommendations().catch(error => {
+            console.error('[useCreatorStudio] Erreur refreshTemplateRecommendations:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [
         refreshTemplateRecommendations,
         sessionId,

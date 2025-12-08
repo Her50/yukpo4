@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { useEffect } from 'react';
-import { handlePendingDeepLink } from '../utils/deepLinkHandler';
 import { useAuth } from '../contexts/AuthContext';
+import { handlePendingDeepLink } from '../utils/deepLinkHandler';
 
 /**
  * Hook pour gérer la redirection vers un deep link en attente après connexion/inscription
@@ -29,11 +29,16 @@ export const useDeepLinkRedirect = () => {
 
             // Attendre un peu que la navigation soit prête
             const timer = setTimeout(() => {
-                checkDeepLink();
+                // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+                checkDeepLink().catch(error => {
+                    console.error('[useDeepLinkRedirect] Erreur checkDeepLink:', error);
+                });
             }, 500);
 
             return () => clearTimeout(timer);
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined si user n'existe pas
+        return undefined;
     }, [user, navigation]);
 };
 

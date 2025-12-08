@@ -328,7 +328,7 @@ impl DeliveryTrackingManager {
         let flush_interval = self.batch_flush_interval;
         let manager = self.clone();
 
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             let mut interval = tokio::time::interval(flush_interval);
             loop {
                 interval.tick().await;
@@ -362,7 +362,7 @@ impl DeliveryTrackingManager {
         let channels = self.channels.clone();
         let buffer = self.buffer;
 
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             if let Err(err) = Self::redis_listener_loop(client, channels, buffer).await {
                 log::warn!("[DeliveryWS] Listener Redis stoppé: {err:?}");
             }

@@ -101,13 +101,23 @@ export const useGlobalPromos = (): UseGlobalPromosResult => {
     );
 
     useEffect(() => {
-        refreshEvents();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        refreshEvents().catch(error => {
+            console.error('[useGlobalPromos] Erreur refreshEvents:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [refreshEvents]);
 
     useEffect(() => {
         if (selectedEventId) {
-            loadEntries(selectedEventId);
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            loadEntries(selectedEventId).catch(error => {
+                console.error('[useGlobalPromos] Erreur loadEntries:', error);
+            });
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [selectedEventId, loadEntries]);
 
     const createEvent = useCallback(

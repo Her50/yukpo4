@@ -59,7 +59,12 @@ export const useFavorites = (userId?: string): FavoritesResult => {
             }
         };
 
-        loadFavorites();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadFavorites().catch(error => {
+            console.error('[useFavorites] Erreur loadFavorites:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [userId]);
 
     // Vérifier si un service est en favori

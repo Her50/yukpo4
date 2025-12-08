@@ -46,14 +46,22 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
 
     // Charger les recherches récentes au montage
     useEffect(() => {
-        loadRecentSearches();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadRecentSearches().catch(error => {
+            console.error('[CityAutocomplete] Erreur loadRecentSearches:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, []);
 
     // Rechercher des suggestions quand le texte change
     useEffect(() => {
         if (value.trim().length >= 2) {
             const debounceTimer = setTimeout(() => {
-                searchCities(value.trim());
+                // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+                searchCities(value.trim()).catch(error => {
+                    console.error('[CityAutocomplete] Erreur searchCities:', error);
+                });
             }, 300); // Debounce 300ms
 
             return () => {

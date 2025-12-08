@@ -126,13 +126,19 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
   useEffect(() => {
     if (isOpen && user?.id) {
-      loadNotifications();
+      // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+      loadNotifications().catch(error => {
+        console.error('[NotificationHistoryModal] Erreur loadNotifications:', error);
+      });
 
       // Rafraîchissement automatique toutes les 15 secondes quand le modal est ouvert
       const interval = setInterval(() => {
         console.log('[NotificationHistoryModal] 🔄 Rafraîchissement automatique des notifications');
         if (typeof loadNotifications === 'function') {
-          loadNotifications();
+          // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+          loadNotifications().catch(error => {
+            console.error('[NotificationHistoryModal] Erreur loadNotifications (interval):', error);
+          });
         }
       }, 15000); // 15 secondes
 
@@ -141,6 +147,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         clearInterval(interval);
       };
     }
+    // ✅ CRITIQUE: Retourner explicitement undefined si la condition n'est pas remplie
+    return undefined;
   }, [isOpen, user?.id, loadNotifications]);
 
   const normalizeNotificationsResponse = (response: any): any[] => {

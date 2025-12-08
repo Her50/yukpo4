@@ -68,7 +68,12 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
 
     // Charger la langue sauvegardée au démarrage - VERSION SIMPLIFIÉE
     useEffect(() => {
-        loadLanguage();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadLanguage().catch(error => {
+            console.error('[LanguageContext] Erreur loadLanguage:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, []);
 
     const loadLanguage = async () => {

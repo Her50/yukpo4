@@ -722,7 +722,7 @@ impl ScalabilityService {
     /// Démarre le worker de traitement par lots
     fn start_batch_processor_worker(&self) {
         let processor = Arc::clone(&self.batch_processor);
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(2));
             loop {
                 interval.tick().await;

@@ -1,6 +1,6 @@
 ﻿// 🌍 Fournisseur intelligent de gestion des langues
-import { useIntelligentLanguage } from '@/hooks/useIntelligentLanguage';
-import { languageDetectionService } from '@/services/languageDetectionService';
+import { useIntelligentLanguage } from '../hooks/useIntelligentLanguage';
+import { languageDetectionService } from '../services/languageDetectionService';
 import * as React from "react";
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
@@ -53,7 +53,12 @@ export const IntelligentLanguageProvider: React.FC<IntelligentLanguageProviderPr
             }
         };
 
-        initializeLanguage();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        initializeLanguage().catch(error => {
+            console.error('[IntelligentLanguageProvider] Erreur initializeLanguage:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, []);
 
     // Enregistrer les interactions utilisateur pour l'apprentissage (React Native compatible)
@@ -78,7 +83,10 @@ export const IntelligentLanguageProvider: React.FC<IntelligentLanguageProviderPr
 
     // Traduction automatique pour React Native
     useEffect(() => {
-        if (!isInitialized) return;
+        if (!isInitialized) {
+            // ✅ CRITIQUE: Retourner explicitement undefined si non initialisé
+            return undefined;
+        }
 
         const initializeTranslation = async () => {
             try {
@@ -90,7 +98,12 @@ export const IntelligentLanguageProvider: React.FC<IntelligentLanguageProviderPr
             }
         };
 
-        initializeTranslation();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        initializeTranslation().catch(error => {
+            console.error('[IntelligentLanguageProvider] Erreur initializeTranslation:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [intelligentLanguage.currentLanguage, isInitialized]);
 
     // Traduction automatique des notifications (React Native compatible)
@@ -147,7 +160,12 @@ export const AutoTranslate: React.FC<{ children: React.ReactNode; context?: stri
             }
         };
 
-        translateContent();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        translateContent().catch(error => {
+            console.error('[AutoTranslate] Erreur translateContent:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [children, context, translateText]);
 
     // ✅ CORRECTION CRITIQUE: Encapsuler le contenu dans un composant Text si c'est une chaîne

@@ -34,7 +34,12 @@ export const useSearchAutocomplete = () => {
 
   // Charger l'historique au démarrage
   useEffect(() => {
-    loadSearchHistory();
+    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    loadSearchHistory().catch(error => {
+      console.error('[useSearchAutocomplete] Erreur loadSearchHistory:', error);
+    });
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
   }, []);
 
   const loadSearchHistory = useCallback(async () => {
@@ -120,11 +125,11 @@ export const useSearchAutocomplete = () => {
       if (response.success && response.data) {
         const suggestions = Array.isArray(response.data)
           ? response.data.map((item: any) => ({
-              text: item.text || item.query || item.nom || '',
-              icon: item.icon || 'search',
-              type: 'suggestion' as const,
-              metadata: item,
-            }))
+            text: item.text || item.query || item.nom || '',
+            icon: item.icon || 'search',
+            type: 'suggestion' as const,
+            metadata: item,
+          }))
           : [];
 
         // Combiner avec l'historique filtré

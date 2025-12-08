@@ -4053,7 +4053,7 @@ pub async fn creer_service(
             let mut token_tracker = token_tracker.clone();
             let valeur = valeur.clone();
 
-            tokio::spawn(async move {
+            let _ = tokio::spawn(async move {
                 let mut value_for_embedding = value_str.clone();
                 let mut meta_lang: Option<String> = None;
                 let mut meta_unite: Option<String> = None;
@@ -4161,7 +4161,7 @@ pub async fn creer_service(
         let service_id = service_id;
         let _data_obj = data_obj.clone();
 
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             log::info!(
                 "[PINECONE][BACKGROUND] ?? Démarrage embeddings en arrière-plan pour service {}",
                 service_id
@@ -4269,7 +4269,7 @@ pub async fn creer_service(
                             let service_id_clone = service_id;
                             let origine_champs_clone = origine_champs.to_string();
 
-                            tokio::spawn(async move {
+                            let _ = tokio::spawn(async move {
                                 match crate::services::autocomplete_history_service::historize_autocomplete_field(
                                     &pool_clone,
                                     &identifiant_base_clone,

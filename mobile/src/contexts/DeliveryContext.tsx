@@ -417,10 +417,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setDeliveries({});
             setEvents({});
             setActiveDeliveryId(null);
-            return;
+            // ✅ CRITIQUE: Retourner explicitement undefined si pas d'utilisateur
+            return undefined;
         }
 
-        refreshActiveDeliveries();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        refreshActiveDeliveries().catch(error => {
+            console.error('[DeliveryContext] Erreur refreshActiveDeliveries:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [user?.id, refreshActiveDeliveries]);
 
     useEffect(() => {
@@ -446,7 +452,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
         };
 
-        fetchInitialState();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        fetchInitialState().catch(error => {
+            console.error('[DeliveryContext] Erreur fetchInitialState:', error);
+        });
         const subscription = Network.addNetworkStateListener?.((state) => {
             const online = !!state.isConnected && (state.isInternetReachable ?? true);
             updateNetworkState(online);

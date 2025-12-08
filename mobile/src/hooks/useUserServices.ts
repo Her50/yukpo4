@@ -14,8 +14,13 @@ export const useUserServices = () => {
 
     useEffect(() => {
         if (user?.id) {
-            loadUserServices();
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            loadUserServices().catch(error => {
+                console.error('[useUserServices] Erreur loadUserServices:', error);
+            });
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [user?.id]);
 
     const loadUserServices = async () => {

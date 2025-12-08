@@ -1,7 +1,7 @@
 // ✅ Phase 4: Routes pour exposer les métriques Prometheus de scalabilité vidéo
 
 use axum::http::StatusCode;
-use axum::{response::Response, routing::get, Router};
+use axum::{response::Response, Router};
 use std::sync::Arc;
 
 use crate::services::prometheus_metrics::render_metrics;

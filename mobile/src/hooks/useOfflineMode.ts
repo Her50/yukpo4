@@ -28,7 +28,10 @@ export const useOfflineMode = (): OfflineModeResult => {
             setConnectionType(state.type);
         };
 
-        checkInitialState();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        checkInitialState().catch(error => {
+            console.error('[useOfflineMode] Erreur checkInitialState:', error);
+        });
 
         // Écouter les changements de connexion
         const unsubscribe = NetInfo.addEventListener((state) => {

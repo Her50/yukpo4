@@ -37,7 +37,12 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 console.error('[ThemeContext] Erreur chargement thème:', error);
             }
         };
-        loadTheme();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadTheme().catch(error => {
+            console.error('[ThemeContext] Erreur loadTheme:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, []);
 
     // Écouter les changements du système

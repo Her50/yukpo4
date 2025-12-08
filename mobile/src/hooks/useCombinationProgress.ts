@@ -1,6 +1,6 @@
 // Hook pour suivre la progression de génération des combinaisons
-import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useEffect, useState } from 'react';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://yukpomnang.onrender.com';
 
@@ -90,10 +90,18 @@ export function useCombinationProgress(
     };
 
     // Premier appel immédiat
-    fetchProgress();
+    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    fetchProgress().catch(error => {
+      console.error('[useCombinationProgress] Erreur fetchProgress initial:', error);
+    });
 
     // Polling régulier
-    const interval = setInterval(fetchProgress, pollingInterval);
+    const interval = setInterval(() => {
+      // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+      fetchProgress().catch(error => {
+        console.error('[useCombinationProgress] Erreur fetchProgress polling:', error);
+      });
+    }, pollingInterval);
 
     return () => {
       isMounted = false;
@@ -120,7 +128,7 @@ export function useCombinationProgress(
  */
 export function formatRemainingTime(seconds?: number): string {
   if (!seconds || seconds === 0) return 'Terminé';
-  
+
   if (seconds < 60) {
     return `${Math.ceil(seconds)}s`;
   } else if (seconds < 3600) {
