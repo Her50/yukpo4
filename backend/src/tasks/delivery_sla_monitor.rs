@@ -166,7 +166,7 @@ pub fn start_delivery_sla_monitor(state: Arc<AppState>) {
     let config = DeliverySlaMonitorConfig::from_env();
     let worker = DeliverySlaMonitor::new(state, config);
 
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         worker.run_forever().await;
     });
 }

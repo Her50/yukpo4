@@ -14,6 +14,7 @@ const FLASH_SALE_SUMMARY_TTL: u64 = 5; // 5 secondes
 const FLASH_SALE_LIST_TTL: u64 = 10; // 10 secondes
 
 pub struct FlashSaleCache {
+    #[allow(dead_code)]
     redis: Arc<RedisClient>,
 }
 

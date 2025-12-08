@@ -25,6 +25,7 @@ pub struct CachedStatistics {
 }
 
 pub struct SpecializedServicesCache {
+    #[allow(dead_code)]
     state: Arc<AppState>,
 }
 

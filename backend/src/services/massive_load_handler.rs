@@ -62,6 +62,7 @@ pub struct ConnectionPool {
 /// ?? Information de connexion
 #[derive(Debug, Clone)]
 pub struct ConnectionInfo {
+    #[allow(dead_code)]
     pub id: String,
     pub created_at: Instant,
     pub last_used: Instant,

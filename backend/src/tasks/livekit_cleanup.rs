@@ -19,7 +19,7 @@ const FALLBACK_IDLE_THRESHOLD_SECS: i64 = 30 * 60; // 30 minutes
 /// Lance une tâche périodique qui nettoie les rooms et ingress LiveKit / SRS inactifs.
 pub fn start_livekit_cleanup_task(state: Arc<AppState>) {
     let immediate_state = state.clone();
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         // Flag partagé pour limiter la verbosité des logs de connexion
         let connection_error_logged = Arc::new(AtomicBool::new(false));
         let connection_error_logged_first = connection_error_logged.clone();

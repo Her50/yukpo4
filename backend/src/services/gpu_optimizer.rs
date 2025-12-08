@@ -12,6 +12,7 @@ use std::time::Instant;
 
 /// ?? Optimiseur GPU avec fallback CPU automatique
 pub struct GPUOptimizer {
+    #[allow(dead_code)]
     config: ProductionConfig,
 }
 

@@ -28,7 +28,7 @@ const SYNC_INTERVAL_SECS: u64 = 60;
 /// Lance un worker périodique qui synchronise les métriques LiveKit vers Postgres.
 pub fn start_live_analytics_task(state: Arc<AppState>) {
     let worker_state = state.clone();
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         // ✅ Délai initial pour laisser LiveKit démarrer (si self-hosted)
         // Attendre 10 secondes avant la première tentative
         log::info!("⏳ LiveKit Analytics: Attente de 10 secondes avant la première tentative de connexion...");

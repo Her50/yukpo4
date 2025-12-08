@@ -31,7 +31,9 @@ impl Default for BatchProcessorConfig {
 
 pub struct VideoBatchProcessor {
     queue_service: Arc<VideoQueueService>,
+    #[allow(dead_code)]
     pool: PgPool,
+    #[allow(dead_code)]
     config: BatchProcessorConfig,
     semaphore: Arc<Semaphore>,
 }

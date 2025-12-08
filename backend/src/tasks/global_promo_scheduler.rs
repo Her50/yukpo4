@@ -11,7 +11,7 @@ pub fn start_global_promo_scheduler(state: Arc<AppState>) {
         .parse()
         .unwrap_or(30);
 
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         let mut ticker = interval(Duration::from_secs(poll_interval_seconds));
         loop {
             ticker.tick().await;

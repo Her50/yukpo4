@@ -97,6 +97,7 @@ pub struct DeliveryMLModelsService {
     #[allow(unexpected_cfgs, dead_code)]
     #[cfg(feature = "onnx")]
     onnx_sessions: HashMap<ModelType, Arc<Session>>,
+    #[allow(dead_code)]
     #[cfg(not(feature = "onnx"))]
     onnx_sessions: HashMap<ModelType, ()>, // Placeholder quand ONNX n'est pas activé
     // ✅ NOUVEAU: Données pour apprentissage automatique

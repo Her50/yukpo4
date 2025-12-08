@@ -11,7 +11,9 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct ConferencesLivesService {
+    #[allow(dead_code)]
     pool: Arc<PgPool>,
+    #[allow(dead_code)]
     state: Arc<AppState>,
 }
 

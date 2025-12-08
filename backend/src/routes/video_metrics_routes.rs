@@ -18,5 +18,7 @@ pub async fn prometheus_metrics_handler() -> Response<String> {
 }
 
 pub fn video_metrics_routes() -> Router<Arc<AppState>> {
-    Router::new().route("/metrics/prometheus", get(prometheus_metrics_handler))
+    // Note: La route /metrics/prometheus est déjà définie dans metrics_routes.rs
+    // Cette fonction est conservée pour compatibilité mais ne définit plus de routes
+    Router::new()
 }

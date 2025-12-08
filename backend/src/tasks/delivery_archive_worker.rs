@@ -10,7 +10,7 @@ use std::time::Duration;
 /// Démarre le worker d'archivage automatique
 /// Exécute l'archivage quotidiennement à 2h du matin
 pub fn start_delivery_archive_worker(state: Arc<AppState>) {
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         info!("🔄 [DeliveryArchive] Worker d'archivage démarré");
 
         // Attendre jusqu'à 2h du matin pour la première exécution

@@ -193,7 +193,7 @@ impl DeliveryMatchingWorker {
 pub fn start_delivery_matching_worker(state: Arc<AppState>) {
     let config = DeliveryMatchingWorkerConfig::default();
     let worker = DeliveryMatchingWorker::new(state, config);
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         worker.run_forever().await;
     });
 }

@@ -13,6 +13,7 @@ const CATALOG_CACHE_TTL: u64 = 30; // 30 secondes
 const PRICE_CACHE_TTL: u64 = 60; // 1 minute
 
 pub struct GlobalPromoCache {
+    #[allow(dead_code)]
     redis: Arc<RedisClient>,
 }
 

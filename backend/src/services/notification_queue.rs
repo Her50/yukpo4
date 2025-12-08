@@ -19,6 +19,7 @@ pub struct NotificationJob {
 }
 
 pub struct NotificationQueue {
+    #[allow(dead_code)]
     redis: Arc<RedisClient>,
     queue_name: String,
 }

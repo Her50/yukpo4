@@ -10,7 +10,9 @@ use sqlx::PgPool;
 use std::sync::Arc;
 
 pub struct ConcoursEntreeService {
+    #[allow(dead_code)]
     pool: Arc<PgPool>,
+    #[allow(dead_code)]
     state: Arc<AppState>,
 }
 

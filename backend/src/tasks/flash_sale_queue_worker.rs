@@ -15,7 +15,9 @@ const BATCH_SIZE: usize = 100;
 const POLL_INTERVAL_MS: u64 = 100; // 100ms entre les polls
 
 pub struct FlashSaleQueueWorker {
+    #[allow(dead_code)]
     redis: Arc<RedisClient>,
+    #[allow(dead_code)]
     pool: Arc<PgPool>,
     cache: FlashSaleCache,
     stream_name: String,

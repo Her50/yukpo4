@@ -12,7 +12,9 @@ const BATCH_SIZE: usize = 50; // Traiter 50 notifications par batch
 const POLL_INTERVAL_MS: u64 = 500; // 500ms entre les polls
 
 pub struct NotificationQueueWorker {
+    #[allow(dead_code)]
     redis: Arc<RedisClient>,
+    #[allow(dead_code)]
     pool: Arc<PgPool>,
     queue: NotificationQueue,
 }

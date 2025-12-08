@@ -38,18 +38,24 @@ struct BatchProcessor {
 /// Opération produit en attente de traitement par lot
 #[derive(Clone, Debug)]
 struct PendingProductOperation {
+    #[allow(dead_code)]
     id: String,
+    #[allow(dead_code)]
     operation: ProductOperation,
     created_at: Instant,
+    #[allow(dead_code)]
     priority: OperationPriority,
 }
 
 /// Opération livraison en attente de traitement par lot
 #[derive(Clone, Debug)]
 struct PendingDeliveryOperation {
+    #[allow(dead_code)]
     id: String,
+    #[allow(dead_code)]
     operation: DeliveryOperation,
     created_at: Instant,
+    #[allow(dead_code)]
     priority: OperationPriority,
 }
 
@@ -80,9 +86,12 @@ pub enum DeliveryOperation {
 /// Opération service spécialisé en attente de traitement par lot
 #[derive(Clone, Debug)]
 struct PendingSpecializedServiceOperation {
+    #[allow(dead_code)]
     id: String,
+    #[allow(dead_code)]
     operation: SpecializedServiceOperation,
     created_at: Instant,
+    #[allow(dead_code)]
     priority: OperationPriority,
 }
 

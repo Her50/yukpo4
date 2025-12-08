@@ -27,6 +27,7 @@ pub struct FlashSaleReservationTicket {
 }
 
 pub struct FlashSaleReservationQueue {
+    #[allow(dead_code)]
     redis: Arc<RedisClient>,
     stream_name: String,
 }

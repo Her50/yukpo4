@@ -27,7 +27,7 @@ pub fn start_pipeline_health_worker(state: Arc<AppState>) {
         .parse()
         .unwrap_or(300);
 
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         let mut ticker = tokio::time::interval(Duration::from_secs(healthcheck_interval_secs));
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
