@@ -2,7 +2,6 @@ use crate::config::production_config::ProductionConfig;
 use crate::core::types::AppResult;
 use crate::models::input_model::MultiModalInput;
 use crate::services::orchestration_ia::convert_all_modals_to_images;
-#[cfg(feature = "gpu")]
 use base64::Engine;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;

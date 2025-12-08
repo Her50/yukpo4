@@ -2,7 +2,7 @@
  * Script pour exécuter les migrations directement sur la base de données
  * Même si elles sont déjà dans auto_migrate, ce script les exécute directement
  */
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use sqlx::postgres::PgPoolOptions;
 use std::fs;
 use std::path::Path;
 

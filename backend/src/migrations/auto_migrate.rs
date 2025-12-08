@@ -10435,9 +10435,17 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
     for line in sql.lines() {
         let trimmed = line.trim();
 
-        // Ignorer les lignes vides et les commentaires seuls
+        // Ignorer les lignes vides et les commentaires seuls UNIQUEMENT si on n'a pas de commande en cours
+        // Ne pas ignorer si on est dans une commande multi-lignes (comme CREATE TABLE)
         if trimmed.is_empty() || trimmed.starts_with("--") {
             if !in_dollar_block {
+                // Si on a déjà du contenu dans current, c'est qu'on est dans une commande multi-lignes
+                // On doit garder les commentaires et lignes vides pour préserver le contexte
+                if !current.trim().is_empty() {
+                    current.push_str(line);
+                    current.push_str("\n");
+                }
+                // Sinon, on ignore vraiment (début de fichier ou après une commande complète)
                 continue;
             }
         }

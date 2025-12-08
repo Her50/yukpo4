@@ -149,14 +149,16 @@ async fn handle_webrtc_socket(socket: WebSocket, manager: Arc<WebRTCSignalingMan
                     match serde_json::from_str::<SignalingMessage>(&text) {
                         Ok(signaling_msg) => {
                             // Premier message: enregistrer la connexion
-                            let mut uid = user_id_recv.write().await;
-                            if uid.is_none() {
-                                *uid = Some(signaling_msg.from.clone());
-                                drop(uid);
-                                manager_recv
-                                    .register_connection(
-                                        signaling_msg.from.clone(),
-                                        tx_recv.clone(),
+                            {
+                                let mut uid = user_id_recv.write().await;
+                                if uid.is_none() {
+                                    *uid = Some(signaling_msg.from.clone());
+                                }
+                            }
+                            manager_recv
+                                .register_connection(
+                                    signaling_msg.from.clone(),
+                                    tx_recv.clone(),
                                     )
                                     .await;
                             }

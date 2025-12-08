@@ -10,12 +10,19 @@ import { DependencyList, EffectCallback, useEffect as originalUseEffect } from '
 // Variable pour vérifier si le patch est déjà appliqué
 let isPatched = false;
 
+// ✅ CRITIQUE: Sauvegarder l'original AVANT toute modification
+// Cela évite les problèmes de récursion si le patch est appliqué après des imports
+let savedOriginalUseEffect: typeof originalUseEffect | null = null;
+
 // Wrapper sécurisé pour useEffect
 const safeUseEffect = (
     effect: EffectCallback,
     deps?: DependencyList
 ): void => {
-    return originalUseEffect(() => {
+    // ✅ CRITIQUE: Utiliser l'original sauvegardé ou l'original importé
+    const baseUseEffect = savedOriginalUseEffect || originalUseEffect;
+
+    return baseUseEffect(() => {
         let cleanup: ReturnType<EffectCallback> = undefined;
 
         try {
@@ -67,8 +74,18 @@ export const patchReactUseEffect = (ReactInstance: any) => {
             return;
         }
 
-        // Sauvegarder l'original
-        const originalUseEffect = ReactInstance.useEffect;
+        // ✅ CRITIQUE: Sauvegarder l'original AVANT toute modification
+        // Si déjà sauvegardé, utiliser celui-là pour éviter les problèmes de récursion
+        if (!savedOriginalUseEffect) {
+            savedOriginalUseEffect = ReactInstance.useEffect;
+        }
+        const originalToUse = savedOriginalUseEffect;
+
+        // ✅ CRITIQUE: Vérifier qu'on ne remplace pas déjà le patch (éviter récursion)
+        if (ReactInstance.useEffect === safeUseEffect) {
+            console.warn('[reactPatch] ⚠️ Patch déjà appliqué sur cette instance, ignoré');
+            return;
+        }
 
         // ✅ CRITIQUE: Remplacer React.useEffect avec protection
         try {

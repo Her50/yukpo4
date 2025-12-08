@@ -36,7 +36,7 @@ pub fn social_features_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         // Réactions
         .route(
-            "/api/videos/:video_id/reactions",
+            "/api/videos/{video_id}/reactions",
             post(add_reaction)
                 .layer(middleware::from_fn(optional_jwt_auth))
                 .get(get_reactions),

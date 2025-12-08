@@ -31,12 +31,14 @@ impl L1Cache {
     where
         T: DeserializeOwned,
     {
-        let data = self.data.read().ok()?;
-        let (value_bytes, inserted_at) = data.get(key)?;
+        let (value_bytes, inserted_at) = {
+            let data = self.data.read().ok()?;
+            let entry = data.get(key)?;
+            (entry.0.clone(), entry.1)
+        };
 
         // Vérifier expiration
         if inserted_at.elapsed() > self.default_ttl {
-            drop(data);
             let mut data = self.data.write().ok()?;
             data.remove(key);
             return None;

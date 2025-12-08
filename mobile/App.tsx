@@ -52,17 +52,23 @@ export default function App() {
   }
 
   // ✅ PATCH REACT: Appliquer le patch useEffect une fois au montage initial
+  // ✅ DÉLAI: Attendre que React soit complètement initialisé avant d'appliquer le patch
   React.useEffect(() => {
-    try {
-      const { patchReactUseEffect } = require('./src/utils/reactPatch');
-      if (patchReactUseEffect && typeof patchReactUseEffect === 'function') {
-        patchReactUseEffect(React);
-        console.log('[App] ✅ Patch React useEffect appliqué au montage');
+    // Délai minimal pour s'assurer que tous les hooks sont initialisés
+    const timer = setTimeout(() => {
+      try {
+        const { patchReactUseEffect } = require('./src/utils/reactPatch');
+        if (patchReactUseEffect && typeof patchReactUseEffect === 'function') {
+          patchReactUseEffect(React);
+          console.log('[App] ✅ Patch React useEffect appliqué au montage');
+        }
+      } catch (patchError) {
+        // Ne pas bloquer l'app si le patch échoue
+        console.warn('[App] ⚠️ Patch React non appliqué (non-bloquant):', patchError?.message || patchError);
       }
-    } catch (patchError) {
-      // Ne pas bloquer l'app si le patch échoue
-      console.warn('[App] ⚠️ Patch React non appliqué (non-bloquant):', patchError?.message || patchError);
-    }
+    }, 100); // Délai de 100ms pour laisser React s'initialiser
+
+    return () => clearTimeout(timer);
   }, []); // ✅ Exécuté une seule fois au montage
 
   // ✅ CORRECTION CRASH: initObservability dans useEffect pour éviter blocage

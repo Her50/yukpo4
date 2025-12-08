@@ -502,10 +502,10 @@ impl DeliveryMLModelsService {
                 interval.tick().await;
 
                 // Collecter les données pour export
-                let store = training_data.lock().unwrap();
-                let eta_count = store.eta_samples.len();
-                let demand_count = store.demand_samples.len();
-                drop(store); // Libérer le lock
+                let (eta_count, demand_count) = {
+                    let store = training_data.lock().unwrap();
+                    (store.eta_samples.len(), store.demand_samples.len())
+                };
 
                 if eta_count >= 100 || demand_count >= 100 {
                     log::info!(

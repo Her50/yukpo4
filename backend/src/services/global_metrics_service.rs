@@ -94,12 +94,7 @@ impl GlobalMetricsService {
             function_metrics.cache_misses += 1;
         }
         
-        // Libérer function_metrics avant d'appeler calculate_cache_hit_rate
-        // Note: drop() est inutile ici car les valeurs sont déjà libérées à la fin du scope
-        drop(function_metrics);
-        
-        // Libérer metrics avant d'appeler calculate_cache_hit_rate
-        drop(metrics);
+        // Les locks sont automatiquement libérés à la fin du scope
         
         // Calculer cache_hit_rate
         let cache_hit_rate = self.calculate_cache_hit_rate().await;
@@ -136,7 +131,7 @@ impl GlobalMetricsService {
         } else {
             0.0
         };
-        drop(response_times); // Libérer l'emprunt avant de réemprunter metrics
+        // Le lock est automatiquement libéré à la fin du scope
         
         let mut metrics = self.metrics.write().await;
         metrics.average_response_time_ms = avg_response_time;

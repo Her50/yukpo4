@@ -112,9 +112,8 @@ impl CollaborationService {
 
         session.collaborators.push(collaborator);
         session.updated_at = Utc::now();
-
         let session_clone = session.clone();
-        drop(sessions);
+        // Le lock sessions sera libéré à la fin du scope de la fonction
 
         // Publier le join sur Redis
         self.publish_message(CollaborationMessage {
@@ -142,12 +141,13 @@ impl CollaborationService {
     ) -> Result<(), String> {
         let mut sessions = self.sessions.write().await;
 
-        if let Some(session) = sessions.get_mut(session_id) {
-            session.collaborators.retain(|c| c.user_id != user_id);
-            session.updated_at = Utc::now();
+        {
+            let mut sessions = self.sessions.write().await;
+            if let Some(session) = sessions.get_mut(session_id) {
+                session.collaborators.retain(|c| c.user_id != user_id);
+                session.updated_at = Utc::now();
+            }
         }
-
-        drop(sessions);
 
         // Publier le leave sur Redis
         self.publish_message(CollaborationMessage {

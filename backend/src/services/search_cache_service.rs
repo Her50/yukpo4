@@ -67,26 +67,29 @@ impl SearchCacheService {
         cache_key: &str,
         query: &str,
     ) -> AppResult<Option<Vec<SearchResult>>> {
-        let mut stats = self.stats.write().await;
-        stats.total_requests += 1;
-        drop(stats);
+        {
+            let mut stats = self.stats.write().await;
+            stats.total_requests += 1;
+        }
 
         // Niveau 1: Cache mémoire (ultra-rapide, <1ms)
         {
             let mut cache = self.l1_memory_cache.write().await;
             if let Some(cached) = cache.get(cache_key) {
-                let mut stats = self.stats.write().await;
-                stats.l1_hits += 1;
-                drop(stats);
+                {
+                    let mut stats = self.stats.write().await;
+                    stats.l1_hits += 1;
+                }
 
                 log::debug!("[SearchCache] ✅ L1 hit: {}", cache_key);
                 return Ok(Some(cached.results.clone()));
             }
         }
 
-        let mut stats = self.stats.write().await;
-        stats.l1_misses += 1;
-        drop(stats);
+        {
+            let mut stats = self.stats.write().await;
+            stats.l1_misses += 1;
+        }
 
         // Niveau 2: Cache Redis (<5ms)
         if let Some(ref redis) = self.l2_redis_cache {
@@ -105,9 +108,10 @@ impl SearchCacheService {
                         },
                     );
 
-                    let mut stats = self.stats.write().await;
-                    stats.l2_hits += 1;
-                    drop(stats);
+                    {
+                        let mut stats = self.stats.write().await;
+                        stats.l2_hits += 1;
+                    }
 
                     log::debug!("[SearchCache] ✅ L2 hit: {}", cache_key);
                     return Ok(Some(cached));
@@ -115,7 +119,6 @@ impl SearchCacheService {
                 Ok(None) => {
                     let mut stats = self.stats.write().await;
                     stats.l2_misses += 1;
-                    drop(stats);
                 }
                 Err(e) => {
                     log::warn!("[SearchCache] ⚠️ Erreur L2: {}", e);
@@ -150,9 +153,10 @@ impl SearchCacheService {
                         .await;
                 }
 
-                let mut stats = self.stats.write().await;
-                stats.l4_hits += 1;
-                drop(stats);
+                {
+                    let mut stats = self.stats.write().await;
+                    stats.l4_hits += 1;
+                }
 
                 log::debug!("[SearchCache] ✅ L4 hit: {}", query);
                 return Ok(Some(cached.clone()));

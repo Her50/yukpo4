@@ -774,7 +774,7 @@ pub async fn orchestrer_intention_ia_hybride(
     let _state_cloned = state.clone();
 
     // Historisation asynchrone (non-bloquante)
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         // if let Err(e) = crate::services::ia_history_service::sauvegarder_ia_interaction(
         //     state_cloned.mongo.clone(),
         //     user_id,
@@ -794,7 +794,7 @@ pub async fn orchestrer_intention_ia_hybride(
         let final_result_cloned2 = final_result.clone();
         let app_ia_cloned = app_ia.clone();
 
-        tokio::spawn(async move {
+        let _ = tokio::spawn(async move {
             enregistrer_apprentissage_autonome_ultra_avance(
                 app_ia_cloned,
                 &interaction_id,
