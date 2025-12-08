@@ -1039,7 +1039,7 @@ pub async fn orchestrer_intention_ia_ultra_optimisee(
     let _state_cloned = state.clone();
 
     // Traitements en arri?re-plan (non-bloquant)
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         log_info("[BackgroundTasks] ?? D?marrage des traitements en arri?re-plan");
 
         // 1. Historisation (ESSENTIELLE pour l'apprentissage)

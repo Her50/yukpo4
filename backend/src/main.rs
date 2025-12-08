@@ -568,11 +568,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ Surveillance SLA
     tasks::delivery_sla_monitor::start_delivery_sla_monitor(app_state.clone());
     // ✅ Monitor des timeouts de validation d'étapes
-    tokio::spawn(
+    let _ = tokio::spawn(
         tasks::delivery_timeout_monitor::start_delivery_timeout_monitor(app_state.clone()),
     );
     // ✅ Monitor des timeouts de validation de commandes
-    tokio::spawn(tasks::order_timeout_monitor::start_order_timeout_monitor(
+    let _ = tokio::spawn(tasks::order_timeout_monitor::start_order_timeout_monitor(
         app_state.clone(),
     ));
     // ✅ Phase 2 : Archivage automatique des livraisons complétées
