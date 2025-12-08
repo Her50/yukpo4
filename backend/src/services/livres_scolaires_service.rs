@@ -78,7 +78,7 @@ impl LivresScolairesService {
 
         let limit = request.limit.unwrap_or(50);
         let offset = request.offset.unwrap_or(0);
-        let services::matching_emploi_service::haversine_distance_km::EARTH_RADIUS_KM = request.rayon_km.unwrap_or(10.0);
+        let _radius_km = request.rayon_km.unwrap_or(10.0);
 
         // Construire la requête SQL dynamiquement selon les filtres
         let mut conditions = vec![

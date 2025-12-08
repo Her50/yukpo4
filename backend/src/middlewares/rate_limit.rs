@@ -5,11 +5,10 @@ use axum::middleware::Next;
 use axum::{
     extract::Request,
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::Response,
 };
 use std::{
     collections::HashMap,
-    num::NonZeroU32,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,

@@ -6,7 +6,7 @@ use axum::{
     Router,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
+use sqlx::Row;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -58,7 +58,7 @@ pub async fn get_auto_optimization_settings(
 
     // Récupérer les paramètres depuis la base de données
     // Pour l'instant, on utilise une table dédiée ou on stocke dans user_settings
-    let query = if let Some(cid) = campaign_id {
+    let query = if campaign_id.is_some() {
         r#"
         SELECT auto_optimization_settings
         FROM publicites
@@ -83,7 +83,7 @@ pub async fn get_auto_optimization_settings(
     } {
         Ok(Some(row)) => {
             // Parser les paramètres JSON
-            let settings_json: Option<serde_json::Value> = if let Some(cid) = campaign_id {
+            let settings_json: Option<serde_json::Value> = if campaign_id.is_some() {
                 row.get("auto_optimization_settings")
             } else {
                 row.get("auto_optimization_settings")

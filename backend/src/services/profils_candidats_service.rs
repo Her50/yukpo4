@@ -237,7 +237,7 @@ impl ProfilsCandidatsService {
     pub async fn search_candidats(
         &self,
         secteur: Option<String>,
-        competences: Option<Vec<String>>,
+        _competences: Option<Vec<String>>,
         experience_min: Option<i32>,
         disponible: Option<bool>,
         page: Option<i64>,

@@ -139,8 +139,7 @@ use crate::{
     },
     services::cache_service::{cache_keys, CacheService}, // ✅ Phase 10 - Cache Redis
     services::courier_verification_service::{CourierVerificationService, VerifyCourierRequest}, // ✅ NOUVEAU : Service vérification coursier
-    services::delivery_payment_service::DeliveryPaymentService,
-    services::delivery_pricing_metrics::DELIVERY_PRICING_METRICS, // ✅ NOUVEAU : Métriques calcul coûts
+    services::delivery_payment_service::DeliveryPaymentService, // ✅ NOUVEAU : Métriques calcul coûts
     services::delivery_service::{
         CourierApplicationInput, CourierAssetInput, CreateDeliveryParams, DeliveryRecipientInput,
         DeliveryService, LocationInput, NewDeliveryParcelInput, PricingInput,

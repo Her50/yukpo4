@@ -182,8 +182,8 @@ impl SpotifyIntegrationService {
         offset: Option<u32>,
         genre: Option<&str>,
         mood: Option<&str>,
-        bpm_min: Option<u16>,
-        bpm_max: Option<u16>,
+        _bpm_min: Option<u16>,
+        _bpm_max: Option<u16>,
     ) -> AppResult<(Vec<AudioMetadata>, u32)> {
         let access_token = self.get_access_token().await?;
 

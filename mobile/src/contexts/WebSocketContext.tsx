@@ -32,20 +32,33 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     // Se connecter au WebSocket quand l'utilisateur est connecté
     useEffect(() => {
-        if (user?.id) {
-            console.log('[WebSocketContext] 🔌 Connexion WebSocket pour user:', user.id);
-            // DÉLAI AUGMENTÉ pour éviter les blocages au démarrage
-            setTimeout(() => {
-                try {
-                    websocketService.connect(user.id);
-                } catch (error) {
-                    console.error('[WebSocketContext] Erreur connexion WebSocket:', error);
-                }
-            }, 2000); // Délai réduit à 2s
+        if (!user?.id) {
+            return;
+        }
 
-            // Envoyer le statut en ligne
-            setTimeout(() => {
-                if (websocketService.isConnected()) {
+        // ✅ SÉCURITÉ: Vérifier que websocketService existe
+        if (!websocketService || typeof websocketService.connect !== 'function') {
+            console.warn('[WebSocketContext] websocketService.connect non disponible');
+            return;
+        }
+
+        console.log('[WebSocketContext] 🔌 Connexion WebSocket pour user:', user.id);
+
+        // DÉLAI AUGMENTÉ pour éviter les blocages au démarrage
+        const connectTimer = setTimeout(() => {
+            try {
+                if (websocketService && typeof websocketService.connect === 'function') {
+                    websocketService.connect(user.id);
+                }
+            } catch (error) {
+                console.error('[WebSocketContext] Erreur connexion WebSocket:', error);
+            }
+        }, 2000); // Délai réduit à 2s
+
+        // Envoyer le statut en ligne
+        const statusTimer = setTimeout(() => {
+            if (websocketService && typeof websocketService.isConnected === 'function' && websocketService.isConnected()) {
+                if (typeof websocketService.sendMessage === 'function') {
                     websocketService.sendMessage({
                         type: 'user_status',
                         data: {
@@ -55,48 +68,71 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                         }
                     });
                 }
-            }, 3000); // Délai réduit à 3s
-        }
+            }
+        }, 3000); // Délai réduit à 3s
 
         return () => {
+            // ✅ NETTOYAGE: Annuler les timers
+            clearTimeout(connectTimer);
+            clearTimeout(statusTimer);
+
             if (user?.id) {
                 // Envoyer le statut hors ligne avant de se déconnecter
-                if (websocketService.isConnected()) {
-                    websocketService.sendMessage({
-                        type: 'user_status',
-                        data: {
-                            user_id: user.id,
-                            status: 'offline',
-                            last_seen: new Date().toISOString()
-                        }
-                    });
+                if (websocketService && typeof websocketService.isConnected === 'function' && websocketService.isConnected()) {
+                    if (typeof websocketService.sendMessage === 'function') {
+                        websocketService.sendMessage({
+                            type: 'user_status',
+                            data: {
+                                user_id: user.id,
+                                status: 'offline',
+                                last_seen: new Date().toISOString()
+                            }
+                        });
+                    }
                 }
                 console.log('[WebSocketContext] 🔌 Déconnexion WebSocket');
-                websocketService.disconnect();
+                if (websocketService && typeof websocketService.disconnect === 'function') {
+                    websocketService.disconnect();
+                }
             }
         };
     }, [user?.id]);
 
     // Gérer les changements de statut de connexion
     useEffect(() => {
+        // ✅ SÉCURITÉ: Vérifier que websocketService existe
+        if (!websocketService || typeof websocketService.onStatusChange !== 'function') {
+            console.warn('[WebSocketContext] websocketService.onStatusChange non disponible');
+            return;
+        }
+
         const handleStatusChange = (status: 'online' | 'offline') => {
             console.log('[WebSocketContext] 📡 Statut connexion:', status);
             setIsConnected(status === 'online');
 
             if (status === 'online' && user?.id) {
                 // Renvoyer le statut utilisateur après reconnexion
-                websocketService.sendMessage({
-                    type: 'user_status',
-                    data: {
-                        user_id: user.id,
-                        status: 'online',
-                        last_seen: new Date().toISOString()
-                    }
-                });
+                if (websocketService && typeof websocketService.sendMessage === 'function') {
+                    websocketService.sendMessage({
+                        type: 'user_status',
+                        data: {
+                            user_id: user.id,
+                            status: 'online',
+                            last_seen: new Date().toISOString()
+                        }
+                    });
+                }
             }
         };
 
-        websocketService.onStatusChange(handleStatusChange);
+        const unsubscribe = websocketService.onStatusChange(handleStatusChange);
+
+        return () => {
+            // ✅ NETTOYAGE: Désabonner du changement de statut
+            if (unsubscribe && typeof unsubscribe === 'function') {
+                unsubscribe();
+            }
+        };
     }, [user?.id]);
 
     // Gérer les messages WebSocket
@@ -116,10 +152,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 case 'notification':
                     // Afficher une notification locale
                     const notification = message as NotificationMessage;
-                    console.log('[WebSocketContext] 🔔 Notification:', notification.data.title);
+                    console.log('[WebSocketContext] 🔔 Notification:', notification.data?.title);
 
-                    // Notifier tous les handlers enregistrés
-                    notificationHandlers.forEach(handler => handler(notification));
+                    // ✅ SÉCURITÉ: Notifier tous les handlers enregistrés (vérifier que ce sont des fonctions)
+                    notificationHandlers.forEach(handler => {
+                        if (typeof handler === 'function') {
+                            handler(notification);
+                        }
+                    });
 
                     // Afficher une alerte si l'app est au premier plan
                     if (notification.data.priority === 'high') {
@@ -133,10 +173,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
                 case 'chat_message':
                     const chatMessage = message as ChatMessage;
-                    console.log('[WebSocketContext] 💬 Message chat:', chatMessage.data.service_id);
+                    console.log('[WebSocketContext] 💬 Message chat:', chatMessage.data?.service_id);
 
-                    // Notifier tous les handlers enregistrés
-                    chatMessageHandlers.forEach(handler => handler(chatMessage));
+                    // ✅ SÉCURITÉ: Notifier tous les handlers enregistrés (vérifier que ce sont des fonctions)
+                    chatMessageHandlers.forEach(handler => {
+                        if (typeof handler === 'function') {
+                            handler(chatMessage);
+                        }
+                    });
 
                     // Incrémenter le compteur de messages non lus
                     setUnreadChats(prev => {
@@ -151,8 +195,12 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     const statusUpdate = message as UserStatusUpdate;
                     console.log('[WebSocketContext] 👤 Statut utilisateur:', statusUpdate.data.user_id, statusUpdate.data.status);
 
-                    // Notifier tous les handlers enregistrés
-                    userStatusHandlers.forEach(handler => handler(statusUpdate));
+                    // ✅ SÉCURITÉ: Notifier tous les handlers enregistrés (vérifier que ce sont des fonctions)
+                    userStatusHandlers.forEach(handler => {
+                        if (typeof handler === 'function') {
+                            handler(statusUpdate);
+                        }
+                    });
 
                     // Mettre à jour la liste des utilisateurs en ligne
                     setOnlineUsers(prev => {
@@ -189,7 +237,17 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             }
         };
 
-        websocketService.onMessage(handleMessage);
+        // ✅ SÉCURITÉ: Vérifier que websocketService.onMessage existe
+        if (websocketService && typeof websocketService.onMessage === 'function') {
+            const unsubscribe = websocketService.onMessage(handleMessage);
+
+            return () => {
+                // ✅ NETTOYAGE: Désabonner des messages
+                if (unsubscribe && typeof unsubscribe === 'function') {
+                    unsubscribe();
+                }
+            };
+        }
     }, [notificationHandlers, chatMessageHandlers, userStatusHandlers]);
 
     // Fonction pour envoyer un message

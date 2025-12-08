@@ -110,7 +110,7 @@ impl DeliveryVRPSolver {
     ) -> AppResult<VRPSolution> {
         let mut routes: Vec<OptimizedRoute> = vec![];
         let mut unassigned = deliveries.clone();
-        let services::live_stream_service::DEFAULT_MAX_PARTICIPANTS = 0;
+        let _total_distance = 0.0;
 
         for (courier_id, courier_lat, courier_lng) in courier_positions {
             if unassigned.is_empty() {

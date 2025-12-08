@@ -380,13 +380,21 @@ const MesServicesScreen: React.FC = () => {
   );
 
   useEffect(() => {
+    // ✅ SÉCURITÉ: Vérifier que DeviceEventEmitter existe
+    if (!DeviceEventEmitter || typeof DeviceEventEmitter.addListener !== 'function') {
+      console.warn('[MesServicesScreen] DeviceEventEmitter.addListener non disponible');
+      return;
+    }
+
     // Écouter les événements de création/modification de service/produit
     const subscription1 = DeviceEventEmitter.addListener('service:refresh', () => {
       logger.log('[MesServicesScreen] 🔄 Événement service:refresh reçu');
       // ✅ OPTIMISATION: Invalider le cache avant de recharger
       const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
       CacheManager.remove(cacheKey);
-      loadServices(true);
+      if (typeof loadServices === 'function') {
+        loadServices(true);
+      }
     });
 
     // ✅ NOUVEAU: Écouter les événements de création de produit
@@ -394,20 +402,31 @@ const MesServicesScreen: React.FC = () => {
       logger.log('[MesServicesScreen] 🔄 Événement product:created reçu');
       const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
       CacheManager.remove(cacheKey);
-      loadServices(true);
+      if (typeof loadServices === 'function') {
+        loadServices(true);
+      }
     });
 
     const subscription3 = DeviceEventEmitter.addListener('product:updated', () => {
       logger.log('[MesServicesScreen] 🔄 Événement product:updated reçu');
       const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
       CacheManager.remove(cacheKey);
-      loadServices(true);
+      if (typeof loadServices === 'function') {
+        loadServices(true);
+      }
     });
 
     return () => {
-      subscription1.remove();
-      subscription2.remove();
-      subscription3.remove();
+      // ✅ SÉCURITÉ: Vérifier que les subscriptions existent avant de les nettoyer
+      if (subscription1 && typeof subscription1.remove === 'function') {
+        subscription1.remove();
+      }
+      if (subscription2 && typeof subscription2.remove === 'function') {
+        subscription2.remove();
+      }
+      if (subscription3 && typeof subscription3.remove === 'function') {
+        subscription3.remove();
+      }
     };
   }, [loadServices]);
 

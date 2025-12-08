@@ -301,7 +301,7 @@ pub async fn get_enhanced_recommendations(
 async fn get_engagement_based_recommendations_enhanced(
     pool: &PgPool,
     state: &Arc<AppState>,
-    services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32,
+    _user_id: i32,
     limit: i32,
     categories: &[String],
     exclude_ids: &[String],

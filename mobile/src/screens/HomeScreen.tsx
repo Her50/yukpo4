@@ -17,7 +17,7 @@ import ServiceProductSelector from '../components/ServiceProductSelector';
 import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
-import { useLocation } from '../contexts/LocationContext';
+import { useLocationSafe } from '../contexts/LocationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation'; // ✅ NOUVEAU: Support orientation
 import { useScrollY } from '../hooks/useScrollY';
@@ -54,7 +54,7 @@ const HomeScreen: React.FC = () => {
     const navigation = ReactNavigation.useNavigation();
     const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
     const { language, setLanguage, t } = useLanguageSafe(); // ✅ SAFE: Context de langue avec traduction (ne crash jamais)
-    const { location } = useLocation(); // ✅ NOUVEAU PHASE 9: Pour contextualiser les recherches géographiques
+    const { location } = useLocationSafe(); // ✅ SAFE: Pour contextualiser les recherches géographiques (ne crash jamais)
     const { colors } = useTheme(); // ✅ NOUVEAU: Thème (clair/sombre)
     // ✅ NOUVEAU: Support orientation landscape
     const { orientation, isLandscape, width, height } = useDeviceOrientation();
@@ -107,12 +107,16 @@ const HomeScreen: React.FC = () => {
         const wasOpen = state.ui.showChatModal;
         dispatch({ type: 'TOGGLE_CHAT_MODAL' });
         // ✅ NOUVEAU 2025-01-27: Rafraîchir le compteur quand on ouvre le modal
-        if (!wasOpen) {
+        if (!wasOpen && loadUnreadChatCount) {
             // Charger le compteur après la définition de loadUnreadChatCount
-            const count = await loadUnreadChatCount();
-            dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: count });
+            try {
+                const count = await loadUnreadChatCount();
+                dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: count });
+            } catch (error) {
+                console.error('[HomeScreen] Erreur chargement chat count:', error);
+            }
         }
-    }, [state.ui.showChatModal]);
+    }, [state.ui.showChatModal, loadUnreadChatCount]);
 
     const handleNotificationPress = React.useCallback(() => {
         hapticPress(); // ✅ PHASE 2: Haptic feedback
@@ -131,9 +135,15 @@ const HomeScreen: React.FC = () => {
 
     // ✅ CORRECTION CRITIQUE: Stabiliser les dépendances pour éviter memory leak
     React.useEffect(() => {
+        // ✅ SÉCURITÉ: Vérifier que navigation.addListener existe
+        if (!navigation || typeof navigation.addListener !== 'function') {
+            console.warn('[HomeScreen] navigation.addListener non disponible');
+            return;
+        }
+
         const handleFocus = () => {
             console.log('[HomeScreen] 🔄 Écran focus - Rafraîchissement du solde...');
-            if (user?.id && refreshUser) {
+            if (user?.id && refreshUser && typeof refreshUser === 'function') {
                 refreshUser().catch(err => {
                     console.error('[HomeScreen] Erreur rafraîchissement solde:', err);
                 });
@@ -145,7 +155,10 @@ const HomeScreen: React.FC = () => {
         const unsubscribe = navigation.addListener('focus', handleFocus);
 
         return () => {
-            unsubscribe();
+            // ✅ SÉCURITÉ: Vérifier que unsubscribe est une fonction avant de l'appeler
+            if (unsubscribe && typeof unsubscribe === 'function') {
+                unsubscribe();
+            }
         };
     }, []); // ✅ CORRECTION: Deps vides pour éviter re-création du listener
 
@@ -205,6 +218,12 @@ const HomeScreen: React.FC = () => {
 
     // ✅ OPTIMISATION: Chargement parallèle des données initiales (gain: -50% temps)
     React.useEffect(() => {
+        // ✅ SÉCURITÉ: Vérifier que les fonctions existent avant de les utiliser
+        if (typeof loadUnreadChatCount !== 'function' || typeof loadUnreadNotificationsCount !== 'function') {
+            console.warn('[HomeScreen] Fonctions de chargement non disponibles');
+            return;
+        }
+
         const loadInitialData = async () => {
             if (!user?.id) {
                 dispatch({ type: 'SET_IS_COURIER', payload: false });
@@ -247,9 +266,19 @@ const HomeScreen: React.FC = () => {
 
     // ✅ OPTIMISATION: Rafraîchissement automatique des notifications
     React.useEffect(() => {
+        // ✅ SÉCURITÉ: Vérifier que la fonction existe avant de l'utiliser
+        if (typeof loadUnreadNotificationsCount !== 'function') {
+            console.warn('[HomeScreen] loadUnreadNotificationsCount non disponible');
+            return;
+        }
+
         const refreshNotifications = async () => {
-            const count = await loadUnreadNotificationsCount();
-            dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: count });
+            try {
+                const count = await loadUnreadNotificationsCount();
+                dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: count });
+            } catch (error) {
+                console.error('[HomeScreen] Erreur rafraîchissement notifications:', error);
+            }
         };
 
         refreshNotifications();
@@ -280,11 +309,24 @@ const HomeScreen: React.FC = () => {
         const handleOffline = () => {
             console.log('[HomeScreen] 📡 État de connexion: Hors ligne');
         };
-        offlineService.on('online', handleOnline);
-        offlineService.on('offline', handleOffline);
+
+        // ✅ SÉCURITÉ: Vérifier que offlineService existe et a les méthodes nécessaires
+        if (offlineService && typeof offlineService.on === 'function') {
+            offlineService.on('online', handleOnline);
+            offlineService.on('offline', handleOffline);
+        }
+
         const unsubscribe = () => {
-            offlineService.off('online', handleOnline);
-            offlineService.off('offline', handleOffline);
+            // ✅ SÉCURITÉ: Vérifier que offlineService.off existe (EventEmitter utilise 'off' ou 'removeListener')
+            if (offlineService) {
+                if (typeof offlineService.off === 'function') {
+                    offlineService.off('online', handleOnline);
+                    offlineService.off('offline', handleOffline);
+                } else if (typeof offlineService.removeListener === 'function') {
+                    offlineService.removeListener('online', handleOnline);
+                    offlineService.removeListener('offline', handleOffline);
+                }
+            }
         };
 
         // ✅ NOUVEAU: Initialiser gamification (streak, points)
@@ -361,11 +403,20 @@ const HomeScreen: React.FC = () => {
     const onRefresh = React.useCallback(async () => {
         dispatch({ type: 'SET_REFRESHING', payload: true });
         try {
+            // ✅ SÉCURITÉ: Vérifier que les fonctions existent avant de les utiliser
+            const refreshUserPromise = (user?.id && refreshUser && typeof refreshUser === 'function')
+                ? refreshUser()
+                : Promise.resolve();
+
+            const notificationsPromise = (typeof loadUnreadNotificationsCount === 'function')
+                ? loadUnreadNotificationsCount()
+                : Promise.resolve(0);
+
             // ✅ Charger toutes les données en parallèle
             const [userRefreshResult, behaviorResult, notificationsResult] = await Promise.allSettled([
-                user?.id && refreshUser ? refreshUser() : Promise.resolve(),
+                refreshUserPromise,
                 userBehaviorService.getPreferredCategories(5),
-                loadUnreadNotificationsCount(),
+                notificationsPromise,
             ]);
 
             // Traiter les résultats

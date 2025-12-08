@@ -73,19 +73,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 
   const scrollViewRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
-    if (isOpen && user?.id) {
-      loadChatHistories();
-    }
-  }, [isOpen, user?.id]);
-
-  useEffect(() => {
-    if (selectedChat) {
-      loadChatMessages(selectedChat.id);
-    }
-  }, [selectedChat]);
-
-  const loadChatHistories = async () => {
+  const loadChatHistories = useCallback(async () => {
     setLoading(true);
     try {
       // Charger les vraies conversations depuis l'API
@@ -112,9 +100,9 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
-  const loadChatMessages = async (chatId: string) => {
+  const loadChatMessages = useCallback(async (chatId: string) => {
     try {
       // Charger les vrais messages depuis l'API
       if (!user?.id || !selectedChat) {
@@ -148,7 +136,19 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
       console.error('Erreur chargement messages:', error);
       setChatMessages([]);
     }
-  };
+  }, [user?.id, selectedChat]);
+
+  useEffect(() => {
+    if (isOpen && user?.id) {
+      loadChatHistories();
+    }
+  }, [isOpen, user?.id, loadChatHistories]);
+
+  useEffect(() => {
+    if (selectedChat) {
+      loadChatMessages(selectedChat.id);
+    }
+  }, [selectedChat, loadChatMessages]);
 
   const loadChatMessagesOLD = async (chatId: string) => {
     try {

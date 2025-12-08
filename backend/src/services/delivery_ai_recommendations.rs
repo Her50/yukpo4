@@ -252,7 +252,7 @@ impl DeliveryAIRecommendationsService {
     /// Recommandations basées sur l'historique utilisateur
     async fn get_historical_recommendations(
         &self,
-        services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32,
+        _user_id: i32,
     ) -> AppResult<Vec<RecommendedProduct>> {
         // TODO: Requête base de données pour historique
         // Pour l'instant, retourner vide
@@ -262,8 +262,8 @@ impl DeliveryAIRecommendationsService {
     /// Recommandations basées sur la localisation
     async fn get_local_recommendations(
         &self,
-        services::matching_emploi_service::haversine_distance_km::EARTH_RADIUS_KM: f64,
-        services::matching_emploi_service::haversine_distance_km::EARTH_RADIUS_KM: f64,
+        _lat: f64,
+        _lng: f64,
     ) -> AppResult<Vec<RecommendedProduct>> {
         // TODO: Requête produits populaires dans la zone
         // Pour l'instant, retourner vide

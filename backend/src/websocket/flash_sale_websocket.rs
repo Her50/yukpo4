@@ -2,7 +2,6 @@
 // Permet aux clients de recevoir les mises à jour de stock en temps réel
 
 use crate::state::AppState;
-use crate::utils::redis_helper;
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -13,7 +12,6 @@ use axum::{
     Router,
 };
 use futures::{SinkExt, StreamExt};
-use redis::Client as RedisClient;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;

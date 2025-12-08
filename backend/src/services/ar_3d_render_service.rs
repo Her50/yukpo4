@@ -121,7 +121,7 @@ impl AR3DRenderService {
         &self,
         timeline_id: &str,
         scene_file: &str,
-        request: &ARPreviewRequest,
+        _request: &ARPreviewRequest,
     ) -> Result<String, String> {
         let output_path = format!("{}/preview_{}.mp4", self.render_output_dir, timeline_id);
 

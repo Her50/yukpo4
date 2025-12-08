@@ -11,7 +11,7 @@ use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::{core::types::AppError, middlewares::jwt::AuthenticatedUser, state::AppState};
+use crate::{middlewares::jwt::AuthenticatedUser, state::AppState};
 
 /// POST /api/comments/{comment_id}/media - Upload médias pour un commentaire
 pub async fn upload_comment_media(

@@ -114,10 +114,10 @@ impl VideoRateLimiter {
 
     /// ✅ Réinitialise le compteur pour un utilisateur (admin only)
     pub async fn reset_limit(&self, user_id: i32, endpoint: &str) -> AppResult<()> {
-        let key = format!("ratelimit:{}:{}", user_id, endpoint);
+        let _key = format!("ratelimit:{}:{}", user_id, endpoint);
 
         // ✅ TODO: Implémenter avec Redis
-        // redis_client.del(&key).await?;
+        // redis_client.del(&_key).await?;
 
         debug!(
             "[RateLimiter] Reset limit for user {} on {}",

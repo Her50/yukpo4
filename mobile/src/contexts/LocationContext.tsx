@@ -197,3 +197,28 @@ export const useLocation = (): LocationContextType => {
   }
   return context;
 };
+
+// ✅ HOOK SAFE: Fonctionne avec ou sans provider (ne crash jamais)
+export const useLocationSafe = (): LocationContextType => {
+  try {
+    const context = useContext(LocationContext);
+    if (context) {
+      return context;
+    }
+  } catch (error) {
+    console.warn('[LocationContext] Provider non disponible, utilisation du fallback');
+  }
+
+  // Fallback si le provider n'existe pas
+  return {
+    location: null,
+    errorMsg: null,
+    isLoading: false,
+    requestLocationPermission: async () => false,
+    getCurrentLocation: async () => null,
+    watchLocation: async () => null,
+    stopWatchingLocation: () => { },
+    getLocationAddress: async () => null,
+    calculateDistance: () => 0,
+  };
+};

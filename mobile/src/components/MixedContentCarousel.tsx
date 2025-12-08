@@ -170,32 +170,37 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
             // ✅ NOUVEAU: Charger et MÉLANGER les recommandations ML avec le contenu
             if (userId && userBehavior.length > 0) {
                 try {
-                    const recommendations = await mlRecommendationService.getPersonalizedContent(
-                        userId,
-                        userBehavior,
-                        null // location sera ajoutée si disponible
-                    );
+                    // ✅ SÉCURITÉ: Vérifier que mlRecommendationService existe
+                    if (mlRecommendationService && typeof (mlRecommendationService as any).getPersonalizedContent === 'function') {
+                        const recommendations = await (mlRecommendationService as any).getPersonalizedContent(
+                            userId,
+                            userBehavior,
+                            null // location sera ajoutée si disponible
+                        );
 
-                    if (recommendations.length > 0) {
-                        console.log('[MixedContentCarousel] ✅ Recommandations ML chargées:', recommendations.length);
+                        if (recommendations && recommendations.length > 0) {
+                            console.log('[MixedContentCarousel] ✅ Recommandations ML chargées:', recommendations.length);
 
-                        // ✅ NOUVEAU: Mélanger les recommandations ML avec le contenu existant
-                        setContent(prevContent => {
-                            const mlItems: ContentItem[] = recommendations.map((rec: any) => ({
-                                type: 'organic',
-                                is_paid: false,
-                                data: rec,
-                            }));
+                            // ✅ NOUVEAU: Mélanger les recommandations ML avec le contenu existant
+                            setContent(prevContent => {
+                                const mlItems: ContentItem[] = recommendations.map((rec: any) => ({
+                                    type: 'organic',
+                                    is_paid: false,
+                                    data: rec,
+                                }));
 
-                            // Mélanger: 30% recommandations ML au début, 70% contenu organique
-                            const mixed = [
-                                ...mlItems.slice(0, Math.min(3, mlItems.length)), // 3 premières recommandations ML
-                                ...prevContent,
-                                ...mlItems.slice(3), // Reste des recommandations ML
-                            ];
+                                // Mélanger: 30% recommandations ML au début, 70% contenu organique
+                                const mixed = [
+                                    ...mlItems.slice(0, Math.min(3, mlItems.length)), // 3 premières recommandations ML
+                                    ...prevContent,
+                                    ...mlItems.slice(3), // Reste des recommandations ML
+                                ];
 
-                            return mixed;
-                        });
+                                return mixed;
+                            });
+                        }
+                    } else {
+                        console.warn('[MixedContentCarousel] mlRecommendationService.getPersonalizedContent non disponible');
                     }
                 } catch (err) {
                     console.warn('[MixedContentCarousel] Erreur recommandations ML:', err);
@@ -204,6 +209,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
         };
 
         loadContentWithML();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userId, userBehavior]);
 
     // ✅ NOUVEAU: Initialiser le tracking des médias pour toutes les cartes
@@ -707,9 +713,12 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
             }
 
             if (imageUrls.length > 0) {
-                imagePrefetchService.prefetchBatch(imageUrls).catch(err => {
-                    console.warn('[MixedContentCarousel] Erreur préchargement batch:', err);
-                });
+                // ✅ SÉCURITÉ: Vérifier que imagePrefetchService existe
+                if (imagePrefetchService && typeof imagePrefetchService.prefetchBatch === 'function') {
+                    imagePrefetchService.prefetchBatch(imageUrls).catch((err: any) => {
+                        console.warn('[MixedContentCarousel] Erreur prefetch images:', err);
+                    });
+                }
             }
         }
     }, [currentIndex, safeContent]);

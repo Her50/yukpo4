@@ -1,6 +1,6 @@
 use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
-use sqlx::{query, postgres::PgRow, Row};
+use sqlx::{query, Row};
 use std::sync::Arc;
 
 use crate::core::types::AppResult;

@@ -171,7 +171,7 @@ impl TaxiAnalyticsService {
             });
 
         // Top zones
-        let top_zones = self.get_top_zones(start, end, 10).await.unwrap_or_default();
+        let top_zones = self.get_top_zones(start, end, Some(10)).await.unwrap_or_default();
 
         Ok(AnalyticsOverview {
             total_trips,
@@ -211,7 +211,7 @@ impl TaxiAnalyticsService {
         &self,
         start: NaiveDate,
         end: NaiveDate,
-        utils::livekit::DEFAULT_SERVER_TOKEN_TTL_SECS: i64,
+        _limit: Option<i64>,
     ) -> AppResult<Vec<ZoneStats>> {
         // TODO: Implémenter calcul top zones
         Ok(vec![])

@@ -5,8 +5,8 @@ use axum::{
     routing::get,
     Router,
 };
-use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
+use serde::Serialize;
+use sqlx::Row;
 use std::collections::HashMap;
 use std::sync::Arc;
 

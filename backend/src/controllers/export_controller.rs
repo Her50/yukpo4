@@ -92,7 +92,7 @@ pub async fn list_exports(
 
     let export_service = ExportService::new(Arc::new(state.pg.clone()), Arc::clone(&state.media_storage));
     let jobs = export_service
-        .list_jobs(user_id, limit, offset)
+        .list_jobs(user_id, Some(offset), Some(limit))
         .await
         .map_err(|e| AppError::Internal(e))?;
 

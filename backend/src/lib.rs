@@ -33,8 +33,7 @@ use crate::routes::{
     ar_routes::ar_routes, // ✅ NOUVEAU Phase 3.2: Routes pour preview AR/VR
     auth_routes::auth_routes,
     autocomplete_routes::autocomplete_routes,
-    bourse_livre_routes::bourse_livre_routes, // ✅ NOUVEAU 2025-01-27: Routes bourse du livre avec IA
-    chat_media_routes::create_chat_media_router, // ✅ NOUVEAU 2025-01-27: Routes pour upload médias chat vers S3/Wasabi
+    bourse_livre_routes::bourse_livre_routes, // ✅ NOUVEAU 2025-01-27: Routes pour upload médias chat vers S3/Wasabi
     chat_reactions_routes::create_chat_reactions_router,
     chat_routes::chat_routes,
     combination_routes::combination_routes,
@@ -103,8 +102,7 @@ use crate::routes::{
     upload_routes::upload_routes, // ✅ NOUVEAU: Routes upload préalable
     user_routes::user_routes,
     vehicle_model_routes::vehicle_model_routes,
-    video_hls_routes::video_hls_routes, // ✅ NOUVEAU: Routes HLS/DASH pour qualité adaptative
-    video_metrics_routes,
+    video_hls_routes::video_hls_routes,
     video_ml_routes::video_ml_routes, // ✅ NOUVEAU: Routes ML pour recommandations et hashtags
     video_routes::video_routes,       // ✅ NOUVEAU: Routes pour récupération des vidéos utilisateur
     weather_routes::weather_routes,

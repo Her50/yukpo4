@@ -170,10 +170,10 @@ impl VideoCacheService {
 
     /// ✅ Invalide le cache d'une session
     pub async fn invalidate_session(&self, session_id: Uuid) -> AppResult<()> {
-        let cache_key = format!("studio:session:{}", session_id);
+        let _cache_key = format!("studio:session:{}", session_id);
 
         // ✅ TODO: Implémenter avec Redis
-        // redis_client.del(cache_key).await?;
+        // redis_client.del(_cache_key).await?;
 
         debug!("[VideoCache] Invalidated session {}", session_id);
         Ok(())

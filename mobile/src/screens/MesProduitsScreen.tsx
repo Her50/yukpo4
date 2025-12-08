@@ -632,12 +632,23 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     React.useEffect(() => {
+        // ✅ SÉCURITÉ: Vérifier que DeviceEventEmitter existe
+        if (!DeviceEventEmitter || typeof DeviceEventEmitter.addListener !== 'function') {
+            console.warn('[MesProduitsScreen] DeviceEventEmitter.addListener non disponible');
+            return;
+        }
+
         const subscription = DeviceEventEmitter.addListener('service:refresh', () => {
-            loadProducts(true);
+            if (typeof loadProducts === 'function') {
+                loadProducts(true);
+            }
         });
 
         return () => {
-            subscription.remove();
+            // ✅ SÉCURITÉ: Vérifier que subscription existe avant de la nettoyer
+            if (subscription && typeof subscription.remove === 'function') {
+                subscription.remove();
+            }
         };
     }, [loadProducts]);
 

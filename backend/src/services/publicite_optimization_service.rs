@@ -188,7 +188,7 @@ async fn analyze_budget(
 /// Analyse le ciblage et suggère des optimisations
 async fn analyze_targeting(
     pool: &PgPool,
-    services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32,
+    _campaign_id: i32,
     targeting: &serde_json::Value,
     vues: i32,
     clics: i32,
@@ -229,8 +229,8 @@ async fn analyze_targeting(
 /// Analyse la planification et suggère des optimisations
 async fn analyze_schedule(
     schedule: &Option<serde_json::Value>,
-    services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32,
-    services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32,
+    _campaign_id: i32,
+    _user_id: i32,
 ) -> Result<Option<OptimizationSuggestion>, sqlx::Error> {
     // Si pas de planification, suggérer d'en ajouter une
     if schedule.is_none() || schedule.as_ref().unwrap().is_null() {
@@ -345,7 +345,7 @@ async fn analyze_bid_strategy(
     bid_strategy: &serde_json::Value,
     vues: i32,
     clics: i32,
-    services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32,
+    _campaign_id: i32,
 ) -> Result<Option<OptimizationSuggestion>, sqlx::Error> {
     let strategy_type = bid_strategy
         .get("type")

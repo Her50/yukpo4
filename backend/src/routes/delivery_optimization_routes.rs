@@ -21,7 +21,6 @@ use axum::{
 };
 use serde::Deserialize;
 use std::sync::Arc;
-use std::sync::Mutex;
 use uuid::Uuid;
 
 /// POST /api/delivery/vrp/solve

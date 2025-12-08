@@ -28,6 +28,7 @@ class OfflineService extends EventEmitter {
     private syncQueue: OfflineAction[] = [];
     private cache: Map<string, CachedData> = new Map();
     private syncInProgress: boolean = false;
+    private netInfoUnsubscribe: (() => void) | null = null; // ✅ SÉCURITÉ: Stocker la fonction de nettoyage
     private readonly CACHE_PREFIX = '@yukpo_cache:';
     private readonly QUEUE_KEY = '@yukpo_sync_queue';
     private readonly MAX_CACHE_SIZE = 1000; // Nombre max d'entrées en cache
@@ -43,8 +44,8 @@ class OfflineService extends EventEmitter {
         const netInfo = await NetInfo.fetch();
         this.isOnline = netInfo.isConnected ?? false;
 
-        // Écouter les changements de connexion
-        NetInfo.addEventListener(state => {
+        // ✅ SÉCURITÉ: NetInfo.addEventListener retourne une fonction de nettoyage
+        this.netInfoUnsubscribe = NetInfo.addEventListener(state => {
             const wasOnline = this.isOnline;
             this.isOnline = state.isConnected ?? false;
 
@@ -306,6 +307,19 @@ class OfflineService extends EventEmitter {
         this.syncQueue = [];
         await AsyncStorage.removeItem(this.QUEUE_KEY);
         this.emit('queue_updated', 0);
+    }
+
+    /**
+     * Nettoie les ressources (appelé lors de la destruction)
+     */
+    cleanup() {
+        // ✅ SÉCURITÉ: Nettoyer le listener NetInfo
+        if (this.netInfoUnsubscribe && typeof this.netInfoUnsubscribe === 'function') {
+            this.netInfoUnsubscribe();
+            this.netInfoUnsubscribe = null;
+        }
+        // Nettoyer tous les listeners EventEmitter
+        this.removeAllListeners();
     }
 }
 

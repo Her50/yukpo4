@@ -4,7 +4,7 @@
 //! par zone géographique et heure, permettant d'optimiser l'allocation des coursiers.
 
 use crate::core::types::AppResult;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -179,9 +179,9 @@ impl DeliveryDemandForecastingService {
     /// Obtient les zones à forte demande (heat map)
     pub async fn get_high_demand_zones(
         &mut self,
-        services::geonames_service::MAX_DEPTH: u8,
-        services::geonames_service::MAX_DEPTH: u8,
-        services::matching_emploi_service::haversine_distance_km::EARTH_RADIUS_KM: f64,
+        _start_date: NaiveDate,
+        _end_date: NaiveDate,
+        _radius_km: f64,
     ) -> AppResult<Vec<DemandForecast>> {
         // TODO: Implémenter requête toutes zones
         // Pour l'instant, retourner vide

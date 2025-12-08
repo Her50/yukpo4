@@ -570,9 +570,9 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Ces routes sont mergées explicitement dans lib.rs pour éviter les conflits
 
     // ✅ NOUVEAU: Routes pour système de publicité (intégrées directement)
-    use crate::controllers::bus_ticket_rating_controller;
-    use crate::controllers::chat_support_controller;
-    use crate::controllers::loyalty_controller;
+    
+    
+    
     use crate::controllers::media_product_controller;
     use crate::controllers::publicite_controller;
     let publicite_routes_inline = Router::new()
@@ -1395,7 +1395,7 @@ async fn handle_health_check(
         axum::http::StatusCode::OK
     };
 
-    let mut response = axum::response::Response::builder()
+    let response = axum::response::Response::builder()
         .status(http_status)
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -2145,7 +2145,7 @@ async fn handle_paginated_search(
     State(state): State<Arc<AppState>>,
     Json(request): Json<crate::services::native_search_service::PaginatedSearchRequest>,
 ) -> AppResult<impl IntoResponse> {
-    use crate::services::native_search_service::NativeSearchService;
+    
     use crate::utils::log::log_info;
 
     let start_time = std::time::Instant::now();

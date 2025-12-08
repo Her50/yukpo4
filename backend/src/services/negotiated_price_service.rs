@@ -200,7 +200,7 @@ impl NegotiatedPriceService {
         let offer_row = offer.ok_or_else(|| AppError::NotFound("Offre introuvable".into()))?;
 
         let merchant_id: i32 = offer_row.get::<i32, _>("merchant_user_id");
-        let services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32 = offer_row.get::<i32, _>("client_user_id");
+        let client_user_id: i32 = offer_row.get::<i32, _>("client_user_id");
         let status: String = offer_row.get::<String, _>("status");
         let expires_at: Option<chrono::DateTime<Utc>> = offer_row.get::<Option<chrono::DateTime<Utc>>, _>("expires_at");
 

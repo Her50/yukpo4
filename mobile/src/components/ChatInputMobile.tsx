@@ -16,7 +16,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { useLocation } from '../contexts/LocationContext'; // ✅ NOUVEAU: Pour GPS automatique
+import { useLocationSafe } from '../contexts/LocationContext'; // ✅ SAFE: Pour GPS automatique (ne crash jamais)
 import { useTheme } from '../contexts/ThemeContext'; // ✅ NOUVEAU: Support thème
 import { useDebounce } from '../hooks/useDebounce'; // ✅ OPTIMISATION: Debounce hook
 import { apiPost } from '../services/api'; // ✅ NOUVEAU: Pour autocomplete
@@ -51,8 +51,8 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
     isSearchMode = false, // ✅ NOUVEAU
     isCreateService = false // ✅ NOUVEAU
 }) => {
-    // ✅ NOUVEAU: Utiliser la position GPS du contexte pour l'autocomplete
-    const { location } = useLocation();
+    // ✅ SAFE: Utiliser la position GPS du contexte pour l'autocomplete (ne crash jamais)
+    const { location } = useLocationSafe();
     const { colors } = useTheme(); // ✅ NOUVEAU: Support thème
 
     const [text, setText] = useState('');

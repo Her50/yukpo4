@@ -215,7 +215,7 @@ Réponds SEULEMENT le JSON, rien d'autre."#,
         .ok_or_else(|| AppError::Internal("Champ 'scenes' manquant".to_string()))?;
 
     let mut scenes = Vec::new();
-    for (utils::prompt_sanitizer::sanitize_prompt_input::MAX_LENGTH, scene_json) in scenes_array.iter().enumerate() {
+    for (_idx, scene_json) in scenes_array.iter().enumerate() {
         let start_time = scene_json
             .get("start_time")
             .and_then(|v| v.as_f64())

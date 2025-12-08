@@ -3,9 +3,8 @@
  * Duet, Remix, Stitch, Réactions
  */
 use axum::{
-    extract::Path,
     middleware,
-    routing::{get, post},
+    routing::post,
     Router,
 };
 use std::sync::Arc;

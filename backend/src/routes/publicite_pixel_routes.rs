@@ -1,11 +1,10 @@
 use axum::{
     extract::{Json, Query, State},
-    http::StatusCode,
     response::Json as ResponseJson,
     routing::{get, post},
     Router,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::{

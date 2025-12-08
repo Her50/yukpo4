@@ -294,7 +294,7 @@ impl OptimizedMediaProcessor {
     }
 
     /// Génère un thumbnail (200x200)
-    async fn generate_thumbnail(&self, image_bytes: &[u8], services::live_stream_service::DEFAULT_MAX_PARTICIPANTS: i32) -> AppResult<String> {
+    async fn generate_thumbnail(&self, image_bytes: &[u8], _max_size: i32) -> AppResult<String> {
         #[cfg(feature = "image")]
         {
             use image::ImageFormat;

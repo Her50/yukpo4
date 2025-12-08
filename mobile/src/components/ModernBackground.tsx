@@ -58,14 +58,24 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
     const parallaxAnim = React.useRef(new RNAnimated.Value(0)).current;
 
     useEffect(() => {
-        if (scrollY) {
+        // ✅ SÉCURITÉ: Vérifier que scrollY existe et a la méthode addListener
+        if (!scrollY || typeof scrollY.addListener !== 'function') {
+            return;
+        }
+
+        try {
             const listener = scrollY.addListener(({ value }: { value: number }) => {
                 // Parallax: background se déplace 3x plus lentement que le scroll
                 parallaxAnim.setValue(value * 0.3);
             });
             return () => {
-                scrollY.removeListener(listener);
+                // ✅ SÉCURITÉ: Vérifier que scrollY et removeListener existent
+                if (scrollY && typeof scrollY.removeListener === 'function' && listener) {
+                    scrollY.removeListener(listener);
+                }
             };
+        } catch (error) {
+            console.warn('[ModernBackground] Erreur listener scrollY:', error);
         }
     }, [scrollY, parallaxAnim]);
 
