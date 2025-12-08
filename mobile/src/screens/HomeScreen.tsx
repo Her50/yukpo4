@@ -269,13 +269,18 @@ const HomeScreen: React.FC = () => {
         // ✅ SÉCURITÉ: Vérifier que la fonction existe avant de l'utiliser
         if (typeof loadUnreadNotificationsCount !== 'function') {
             console.warn('[HomeScreen] loadUnreadNotificationsCount non disponible');
-            return;
+            return () => {
+                // ✅ Retourner une fonction vide si la fonction n'est pas disponible
+            };
         }
 
         const refreshNotifications = async () => {
             try {
-                const count = await loadUnreadNotificationsCount();
-                dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: count });
+                // ✅ SÉCURITÉ: Vérifier à nouveau que la fonction existe avant de l'appeler
+                if (typeof loadUnreadNotificationsCount === 'function') {
+                    const count = await loadUnreadNotificationsCount();
+                    dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: count });
+                }
             } catch (error) {
                 console.error('[HomeScreen] Erreur rafraîchissement notifications:', error);
             }
@@ -285,11 +290,17 @@ const HomeScreen: React.FC = () => {
 
         const interval = setInterval(() => {
             console.log('[HomeScreen] 🔄 Rafraîchissement automatique des notifications');
-            refreshNotifications();
+            // ✅ SÉCURITÉ: Vérifier que la fonction existe avant de l'appeler dans l'intervalle
+            if (typeof loadUnreadNotificationsCount === 'function') {
+                refreshNotifications();
+            }
         }, 30000);
 
         return () => {
-            clearInterval(interval);
+            // ✅ SÉCURITÉ: Vérifier que interval existe avant de le nettoyer
+            if (interval) {
+                clearInterval(interval);
+            }
         };
     }, [loadUnreadNotificationsCount]);
 
@@ -353,7 +364,10 @@ const HomeScreen: React.FC = () => {
         analyticsService.trackScreenView('HomeScreen');
 
         return () => {
-            unsubscribe();
+            // ✅ SÉCURITÉ: Vérifier que unsubscribe est une fonction avant de l'appeler
+            if (unsubscribe && typeof unsubscribe === 'function') {
+                unsubscribe();
+            }
             // ✅ Flush analytics avant de quitter
             analyticsService.flush().catch(() => { });
         };

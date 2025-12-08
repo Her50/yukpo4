@@ -68,7 +68,14 @@ export const ImmersiveVideoPlayer: React.FC<ImmersiveVideoPlayerProps> = ({
         if (controlsVisible) {
             hideControlsTimeoutRef.current = setTimeout(() => {
                 setControlsVisible(false);
-                controlsOpacity.value = withTiming(0, { duration: 300 });
+                // ✅ SÉCURITÉ: Vérifier que withTiming est disponible
+                if (typeof withTiming === 'function') {
+                    try {
+                        controlsOpacity.value = withTiming(0, { duration: 300 });
+                    } catch (error) {
+                        console.warn('[ImmersiveVideoPlayer] Erreur animation hide controls:', error);
+                    }
+                }
             }, autoHideDelay);
         }
 
@@ -85,11 +92,25 @@ export const ImmersiveVideoPlayer: React.FC<ImmersiveVideoPlayerProps> = ({
         if (controlsVisible) {
             // Masquer immédiatement
             setControlsVisible(false);
-            controlsOpacity.value = withTiming(0, { duration: 200 });
+            // ✅ SÉCURITÉ: Vérifier que withTiming est disponible
+            if (typeof withTiming === 'function') {
+                try {
+                    controlsOpacity.value = withTiming(0, { duration: 200 });
+                } catch (error) {
+                    console.warn('[ImmersiveVideoPlayer] Erreur animation hide:', error);
+                }
+            }
         } else {
             // Afficher avec animation
             setControlsVisible(true);
-            controlsOpacity.value = withSpring(1, { damping: 15 });
+            // ✅ SÉCURITÉ: Vérifier que withSpring est disponible
+            if (typeof withSpring === 'function') {
+                try {
+                    controlsOpacity.value = withSpring(1, { damping: 15 });
+                } catch (error) {
+                    console.warn('[ImmersiveVideoPlayer] Erreur animation show:', error);
+                }
+            }
         }
     }, [controlsVisible, showControls]);
 

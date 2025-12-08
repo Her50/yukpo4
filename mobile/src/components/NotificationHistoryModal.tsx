@@ -1,5 +1,5 @@
 ﻿import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ReactNative from 'react-native';
 import { API_ENDPOINTS } from '../config/api.config';
 import { useAuth } from '../contexts/AuthContext';
@@ -123,6 +123,25 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
       setLoading(false);
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    if (isOpen && user?.id) {
+      loadNotifications();
+
+      // Rafraîchissement automatique toutes les 15 secondes quand le modal est ouvert
+      const interval = setInterval(() => {
+        console.log('[NotificationHistoryModal] 🔄 Rafraîchissement automatique des notifications');
+        if (typeof loadNotifications === 'function') {
+          loadNotifications();
+        }
+      }, 15000); // 15 secondes
+
+      // Nettoyer l'intervalle quand le modal se ferme
+      return () => {
+        clearInterval(interval);
+      };
+    }
+  }, [isOpen, user?.id, loadNotifications]);
 
   const normalizeNotificationsResponse = (response: any): any[] => {
     if (!response) {

@@ -85,7 +85,7 @@ impl FlashSaleQueueWorker {
             .arg(&self.consumer_group)
             .arg(&self.consumer_name)
             .arg("COUNT")
-            .arg(10)
+            .arg(BATCH_SIZE)
             .arg("STREAMS")
             .arg(&self.stream_name)
             .arg(">")

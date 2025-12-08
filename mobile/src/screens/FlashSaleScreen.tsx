@@ -58,7 +58,12 @@ const FlashSaleScreen: React.FC = () => {
         const interval = setInterval(() => {
             setNowMs(Date.now());
         }, 1000);
-        return () => clearInterval(interval);
+        return () => {
+            // ✅ SÉCURITÉ: Vérifier que interval existe avant de le nettoyer
+            if (interval) {
+                clearInterval(interval);
+            }
+        };
     }, []);
 
     const loadFlashSales = useCallback(async () => {

@@ -95,10 +95,14 @@ pub struct AdvancedTimeline {
     pub tracks: Vec<TimelineTrack>,
     pub fps: Option<u32>, // Frames par seconde (24, 30, 60)
     pub resolution: Option<Resolution>,
-    pub backgroundColor: Option<String>,
-    pub audioSampleRate: Option<u32>,
-    pub createdAt: Option<DateTime<Utc>>,
-    pub updatedAt: Option<DateTime<Utc>>,
+    #[serde(rename = "backgroundColor")]
+    pub background_color: Option<String>,
+    #[serde(rename = "audioSampleRate")]
+    pub audio_sample_rate: Option<u32>,
+    #[serde(rename = "createdAt")]
+    pub created_at: Option<DateTime<Utc>>,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 /// Résolution vidéo

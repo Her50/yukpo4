@@ -54,25 +54,8 @@ pub async fn deactivate_expired_products(pool: &PgPool) -> Result<usize, sqlx::E
     Ok(count)
 }
 
-/// Envoie une notification au prestataire pour un produit désactivé
-async fn send_product_deactivation_notification(
-    pool: &PgPool,
-    service_id: i32,
-    user_id: i32,
-    product_nom: &str,
-) -> Result<(), sqlx::Error> {
-    send_product_deactivation_notification_with_reason(
-        pool,
-        service_id,
-        user_id,
-        product_nom,
-        "expired_time",
-        &format!(
-            "Votre produit '{}' a été automatiquement désactivé après 30 jours. Réactivez-le pour 1000 FCFA pour le rendre visible à nouveau.",
-            product_nom
-        )
-    ).await
-}
+// Note: send_product_deactivation_notification a été supprimée car jamais utilisée.
+// Utiliser directement send_product_deactivation_notification_with_reason qui est plus flexible.
 
 /// ✅ NOUVEAU 2025-01-28: Envoie une notification avec raison spécifique
 async fn send_product_deactivation_notification_with_reason(

@@ -77,7 +77,8 @@ impl GenerativeVideoService {
     }
 
     /// Génère un storyboard depuis la description
-    async fn generate_storyboard(
+    /// Cette fonction peut être utilisée pour générer des storyboards de manière asynchrone
+    pub async fn generate_storyboard(
         app_ia: &Arc<AppIA>,
         request: &GenerateVideoRequest,
     ) -> Result<Storyboard, String> {
@@ -170,7 +171,8 @@ IMPORTANT:
     }
 
     /// Génère un clip vidéo pour une scène
-    async fn generate_clip(
+    /// Cette fonction peut être utilisée pour générer des clips individuels
+    pub async fn generate_clip(
         http: &reqwest::Client,
         scene: &StoryboardScene,
         provider: &GenerativeProvider,
@@ -236,7 +238,8 @@ IMPORTANT:
     }
 
     /// Obtient les credentials d'un provider depuis les variables d'environnement
-    fn get_provider_credentials(provider: &GenerativeProvider) -> Result<(String, String), String> {
+    /// Récupère les credentials (endpoint et API key) pour un provider donné
+    pub fn get_provider_credentials(provider: &GenerativeProvider) -> Result<(String, String), String> {
         match provider {
             GenerativeProvider::Runway => {
                 let endpoint = std::env::var("RUNWAY_API_URL")
@@ -310,7 +313,8 @@ IMPORTANT:
     }
 }
 
-fn provider_name(provider: &GenerativeProvider) -> &str {
+/// Retourne le nom lisible d'un provider de génération vidéo
+pub fn provider_name(provider: &GenerativeProvider) -> &str {
     match provider {
         GenerativeProvider::Runway => "Runway",
         GenerativeProvider::Pika => "Pika",

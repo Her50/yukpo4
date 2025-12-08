@@ -241,7 +241,7 @@ impl SpecializedNotificationsService {
 
         // ✅ Phase 6.1: Trouver utilisateurs dans la zone
         match find_taxis_in_zone(&*self.pool, latitude, longitude, radius_km).await {
-            Ok(taxis) => {
+            Ok(_taxis) => {
                 // Pour chaque taxi trouvé, notifier les utilisateurs dans la zone
                 match find_users_in_radius(&*self.pool, latitude, longitude, radius_km).await {
                     Ok(users) => {

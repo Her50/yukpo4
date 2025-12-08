@@ -120,7 +120,7 @@ impl VideoBatchProcessor {
     /// ✅ Traite un job individuel
     async fn process_single_job(
         queue_service: Arc<VideoQueueService>,
-        pool: PgPool,
+        _pool: PgPool,
         job: VideoJobQueueItem,
     ) -> AppResult<bool> {
         let start = Instant::now();

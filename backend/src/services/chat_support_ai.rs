@@ -141,6 +141,13 @@ pub async fn should_escalate_to_human(
 ) -> AppResult<bool> {
     info!("[ChatSupportAI] Évaluation escalade pour: {}", user_message);
 
+    // Construire le texte d'historique avant le format! pour éviter le warning de durée de vie
+    let history_text = if conversation_history.is_empty() {
+        "Aucun historique".to_string()
+    } else {
+        conversation_history.join("\n")
+    };
+
     let escalation_prompt = format!(
         r#"
 Analyse ce message utilisateur et détermine si un agent humain est nécessaire.
@@ -160,11 +167,7 @@ Escalade nécessaire si:
 Sinon réponds "no".
 "#,
         user_message,
-        if conversation_history.is_empty() {
-            "Aucun historique"
-        } else {
-            &conversation_history.join("\n")
-        }
+        history_text
     );
 
     match app_ia.predict(&escalation_prompt).await {

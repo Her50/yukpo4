@@ -189,8 +189,8 @@ impl TaxiAnalyticsService {
 
     async fn get_peak_hours_stats(
         &self,
-        start: NaiveDate,
-        end: NaiveDate,
+        _start: NaiveDate,
+        _end: NaiveDate,
     ) -> AppResult<Vec<PeakHourStats>> {
         // TODO: Implémenter calcul heures de pic
         Ok(vec![])
@@ -209,8 +209,8 @@ impl TaxiAnalyticsService {
 
     async fn get_top_zones(
         &self,
-        start: NaiveDate,
-        end: NaiveDate,
+        _start: NaiveDate,
+        _end: NaiveDate,
         _limit: Option<i64>,
     ) -> AppResult<Vec<ZoneStats>> {
         // TODO: Implémenter calcul top zones

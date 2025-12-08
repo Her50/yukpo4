@@ -1,7 +1,6 @@
 /**
  * Contrôleur pour le chat support en temps réel
  */
-
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::services::chat_support_ai::{generate_support_response, should_escalate_to_human};

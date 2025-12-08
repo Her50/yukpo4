@@ -59,7 +59,12 @@ const ModernErrorToast: React.FC<ModernErrorToastProps> = ({
                 const timer = setTimeout(() => {
                     handleClose();
                 }, duration);
-                return () => clearTimeout(timer);
+                return () => {
+                    // ✅ SÉCURITÉ: Vérifier que timer existe avant de le nettoyer
+                    if (timer) {
+                        clearTimeout(timer);
+                    }
+                };
             }
         } else {
             handleClose();

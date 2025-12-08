@@ -374,7 +374,7 @@ pub fn validate_product_data_strict(product_data: &Value) -> AppResult<()> {
 
 /// Notifie si la configuration de livraison est manquante pour un produit
 pub async fn notify_missing_delivery_config(
-    pool: &sqlx::PgPool,
+    _pool: &sqlx::PgPool,
     service_id: i32,
     product_index: i32,
 ) -> AppResult<()> {

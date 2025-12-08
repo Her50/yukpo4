@@ -78,11 +78,11 @@ impl PharmacyProductService {
         let mut bind_index = 1;
 
         let nom_produit_clone = nom_produit.clone();
-        if let Some(ref nom) = nom_produit_clone {
+        if let Some(ref _nom) = nom_produit_clone {
             updates.push(format!("nom_produit = ${}", bind_index));
             bind_index += 1;
         }
-        if let Some(p) = prix {
+        if let Some(_p) = prix {
             updates.push(format!("prix = ${}", bind_index));
             bind_index += 1;
         }

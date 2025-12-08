@@ -43,7 +43,12 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
             const timer = setTimeout(() => {
                 setIsInitialized(true);
             }, 300); // Petit délai pour éviter le flash
-            return () => clearTimeout(timer);
+            return () => {
+                // ✅ SÉCURITÉ: Vérifier que timer existe avant de le nettoyer
+                if (timer) {
+                    clearTimeout(timer);
+                }
+            };
         }
     }, [loading, isInitialized]);
 

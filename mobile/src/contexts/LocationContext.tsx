@@ -164,12 +164,25 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
   };
 
   useEffect(() => {
-    getCurrentLocation();
+    // ✅ SÉCURITÉ: Vérifier que getCurrentLocation est disponible
+    if (typeof getCurrentLocation === 'function') {
+      getCurrentLocation().catch((error) => {
+        console.warn('[LocationContext] Erreur getCurrentLocation dans useEffect:', error);
+      });
+    }
 
     return () => {
-      stopWatchingLocation();
+      // ✅ SÉCURITÉ: Vérifier que la fonction existe avant de l'appeler
+      if (typeof stopWatchingLocation === 'function') {
+        try {
+          stopWatchingLocation();
+        } catch (error) {
+          console.warn('[LocationContext] Erreur stopWatchingLocation dans cleanup:', error);
+        }
+      }
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ✅ CORRIGÉ: getCurrentLocation et stopWatchingLocation sont stables, pas besoin de les inclure
 
   const value: LocationContextType = {
     location,

@@ -9,6 +9,7 @@ use sqlx::PgPool;
 use std::f64::consts::PI;
 
 // Trait pour convertir en radians
+#[allow(dead_code)]
 trait ToRadians {
     fn to_radians(&self) -> f64;
 }
@@ -38,6 +39,12 @@ pub struct TaxiMatch {
     pub driver_rating: Option<f64>,
     pub driver_reviews_count: Option<i32>,
     pub is_verified_driver: bool,
+    // Champs supplémentaires pour affichage détaillé
+    pub user_id: i32,
+    pub gps_actuel: Option<String>,
+    pub tarif_base: i32,
+    pub tarif_par_km: i32,
+    pub devise: String,
 }
 
 pub struct TaxiMatchingService {
@@ -276,6 +283,12 @@ impl TaxiMatchingService {
             driver_rating: taxi.driver_rating,
             driver_reviews_count: taxi.driver_reviews_count,
             is_verified_driver: taxi.is_verified_driver,
+            // Inclure les champs supplémentaires pour utilisation future
+            user_id: taxi.user_id,
+            gps_actuel: taxi.gps_actuel.clone(),
+            tarif_base: taxi.tarif_base,
+            tarif_par_km: taxi.tarif_par_km,
+            devise: taxi.devise.clone(),
         }
     }
 }

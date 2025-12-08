@@ -6512,9 +6512,14 @@ pub async fn ensure_effects_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // DROP TRIGGER et CREATE TRIGGER doivent être exécutés séparément
+    sqlx::query("DROP TRIGGER IF EXISTS trigger_update_effects_updated_at ON effects")
+        .execute(pool)
+        .await
+        .ok(); // Ignorer l'erreur si le trigger n'existe pas
+
     sqlx::query(
         r#"
-        DROP TRIGGER IF EXISTS trigger_update_effects_updated_at ON effects;
         CREATE TRIGGER trigger_update_effects_updated_at
             BEFORE UPDATE ON effects
             FOR EACH ROW
@@ -6627,9 +6632,14 @@ pub async fn ensure_templates_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // DROP TRIGGER et CREATE TRIGGER doivent être exécutés séparément
+    sqlx::query("DROP TRIGGER IF EXISTS trigger_update_templates_updated_at ON video_templates")
+        .execute(pool)
+        .await
+        .ok(); // Ignorer l'erreur si le trigger n'existe pas
+
     sqlx::query(
         r#"
-        DROP TRIGGER IF EXISTS trigger_update_templates_updated_at ON video_templates;
         CREATE TRIGGER trigger_update_templates_updated_at
             BEFORE UPDATE ON video_templates
             FOR EACH ROW
@@ -10414,45 +10424,50 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
         if in_dollar_block {
             // Vérifier si la ligne contient la fin du bloc ($$ LANGUAGE ou END $$;)
             if trimmed.contains(&dollar_tag) {
-                if trimmed.contains("LANGUAGE") {
-                    // Fonction SQL se termine par $$ LANGUAGE plpgsql;
-                    // La commande se termine au point-virgule
-                    if trimmed.ends_with(';') {
+                // Détecter si c'est la fin du bloc ($$ suivi de LANGUAGE ou ;)
+                let dollar_pos = trimmed.find(&dollar_tag);
+                if let Some(pos) = dollar_pos {
+                    let after_dollar = &trimmed[pos + dollar_tag.len()..].trim();
+                    
+                    // Cas 1: $$ LANGUAGE plpgsql; (LANGUAGE après $$)
+                    if after_dollar.starts_with("LANGUAGE") {
+                        // Si le point-virgule est sur la même ligne
+                        if trimmed.ends_with(';') {
+                            commands.push(current.trim().to_string());
+                            current.clear();
+                            in_dollar_block = false;
+                            dollar_tag.clear();
+                            continue;
+                        }
+                        // Sinon, on continue à accumuler jusqu'au prochain ;
+                    }
+                    // Cas 2: END $$; (bloc DO)
+                    else if trimmed.contains("END") && trimmed.ends_with(&format!("{};", dollar_tag)) {
                         commands.push(current.trim().to_string());
                         current.clear();
                         in_dollar_block = false;
                         dollar_tag.clear();
-                        continue; // Passer à la ligne suivante (peut être un commentaire)
-                    } else {
-                        // LANGUAGE sur une ligne, point-virgule sur la suivante
-                        // On continue à accumuler jusqu'au prochain ;
+                        continue;
                     }
-                } else if trimmed.contains("END") && trimmed.ends_with(&format!("{};", dollar_tag))
-                {
-                    // Bloc DO $$ se termine par END $$;
-                    commands.push(current.trim().to_string());
-                    current.clear();
-                    in_dollar_block = false;
-                    dollar_tag.clear();
-                    continue;
-                } else if trimmed.ends_with(&format!("{};", dollar_tag))
-                    && !trimmed.contains("LANGUAGE")
-                {
-                    // Fin de bloc simple $$;
-                    commands.push(current.trim().to_string());
-                    current.clear();
-                    in_dollar_block = false;
-                    dollar_tag.clear();
-                    continue;
+                    // Cas 3: $$; simple (fin de bloc - pour CREATE FUNCTION ... AS $$ ... $$;)
+                    else if (after_dollar.is_empty() || after_dollar == ";") && trimmed.ends_with(';') {
+                        commands.push(current.trim().to_string());
+                        current.clear();
+                        in_dollar_block = false;
+                        dollar_tag.clear();
+                        continue;
+                    }
                 }
             }
-            // Si on est dans un bloc et qu'on trouve un point-virgule après LANGUAGE
+            // Si on est dans un bloc et qu'on trouve un point-virgule après LANGUAGE (sur ligne séparée)
+            // Ce cas est pour CREATE FUNCTION ... LANGUAGE plpgsql AS $$ ... $$; où LANGUAGE est avant AS
             if in_dollar_block
                 && current.contains("LANGUAGE")
                 && trimmed.ends_with(';')
                 && !trimmed.contains(&dollar_tag)
+                && trimmed.trim() == ";"
             {
-                // Le point-virgule final de la fonction
+                // Le point-virgule final de la fonction (ligne séparée après $$)
                 commands.push(current.trim().to_string());
                 current.clear();
                 in_dollar_block = false;

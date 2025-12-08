@@ -1996,7 +1996,7 @@ async fn estimate_delivery_costs(
                 "bike" | "velo" => crate::models::delivery_model::DeliveryEngineType::VeloCargo,
                 "motorcycle" | "moto" => crate::models::delivery_model::DeliveryEngineType::Moto,
                 "scooter" => crate::models::delivery_model::DeliveryEngineType::Scooter,
-                "tricycle" | "tricycle" => {
+                "tricycle" => {
                     crate::models::delivery_model::DeliveryEngineType::Tricycle
                 }
                 "car" | "voiture" => crate::models::delivery_model::DeliveryEngineType::Voiture,

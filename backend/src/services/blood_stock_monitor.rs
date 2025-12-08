@@ -8,14 +8,12 @@ use std::sync::Arc;
 
 pub struct BloodStockMonitor {
     pool: Arc<PgPool>,
-    state: Arc<AppState>,
 }
 
 impl BloodStockMonitor {
     pub fn new(state: Arc<AppState>) -> Self {
         Self {
             pool: Arc::new(state.pg.clone()),
-            state: state.clone(),
         }
     }
 

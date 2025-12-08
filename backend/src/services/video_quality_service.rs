@@ -256,7 +256,7 @@ impl VideoQualityService {
         Ok(video_url)
     }
 
-    async fn download_video(state: &Arc<AppState>, video_url: &str) -> Result<PathBuf> {
+    async fn download_video(_state: &Arc<AppState>, video_url: &str) -> Result<PathBuf> {
         let temp_dir = Path::new("temp/video_downloads");
         fs::create_dir_all(&temp_dir).await?;
 

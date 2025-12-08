@@ -9,6 +9,9 @@
 -- ============================================================================
 
 -- Créer la table parent si elle n'est pas déjà partitionnée
+-- NOTE: ALTER TABLE ... PARTITION BY ne peut pas être utilisé sur une table existante avec des données
+-- Cette migration est désactivée pour éviter les erreurs. Le partitionnement doit être fait manuellement
+-- ou lors de la création initiale de la table.
 DO $$
 BEGIN
     -- Vérifier si deliveries est déjà partitionnée
@@ -18,11 +21,9 @@ BEGIN
         WHERE c.relname = 'deliveries' 
         AND c.relkind = 'p'
     ) THEN
-        -- Convertir deliveries en table partitionnée
-        ALTER TABLE deliveries 
-        PARTITION BY RANGE (requested_at);
-        
-        RAISE NOTICE 'Table deliveries convertie en table partitionnée';
+        -- Ne pas essayer de convertir une table existante en partitionnée
+        -- Cela nécessite une migration complexe avec création d'une nouvelle table
+        RAISE NOTICE 'Table deliveries existe déjà - partitionnement désactivé (nécessite migration manuelle)';
     ELSE
         RAISE NOTICE 'Table deliveries déjà partitionnée';
     END IF;

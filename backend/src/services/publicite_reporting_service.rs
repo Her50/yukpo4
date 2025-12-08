@@ -154,12 +154,12 @@ impl PubliciteReportingService {
             let email: Option<String> = row.get("email");
 
             // Générer le rapport
-            let report_data = match format.as_str() {
+            let _report_data = match format.as_str() {
                 "excel" => Self::generate_excel_report(pool, user_id, 30).await?,
                 _ => continue,
             };
 
-            // TODO: Envoyer par email si email fourni
+            // TODO: Envoyer par email si email fourni (utiliser _report_data)
             if let Some(email_addr) = email {
                 log::info!("[Reporting] Envoi rapport {} à {}", report_id, email_addr);
                 // Intégrer avec email_service

@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS program_recommendations (
     
     -- Contraintes
     -- CONSTRAINT unique_recommendation UNIQUE (student_profile_id, etablissement_id, filiere, specialite)
+    -- Note: Contrainte commentée pour éviter les conflits
 );
 
 CREATE INDEX IF NOT EXISTS idx_program_recommendations_profile ON program_recommendations(student_profile_id, created_at DESC);

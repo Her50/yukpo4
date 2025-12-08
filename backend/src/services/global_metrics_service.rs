@@ -95,10 +95,11 @@ impl GlobalMetricsService {
         }
         
         // Libérer function_metrics avant d'appeler calculate_cache_hit_rate
-        std::mem::drop(function_metrics);
+        // Note: drop() est inutile ici car les valeurs sont déjà libérées à la fin du scope
+        drop(function_metrics);
         
         // Libérer metrics avant d'appeler calculate_cache_hit_rate
-        std::mem::drop(metrics);
+        drop(metrics);
         
         // Calculer cache_hit_rate
         let cache_hit_rate = self.calculate_cache_hit_rate().await;

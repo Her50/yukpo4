@@ -374,8 +374,8 @@ impl TaxiRouteOptimizationService {
     /// Prédire trafic avec ML
     async fn predict_traffic(
         &self,
-        origin: &RoutePoint,
-        destination: &RoutePoint,
+        _origin: &RoutePoint,
+        _destination: &RoutePoint,
     ) -> AppResult<TrafficInfo> {
         // TODO: Implémenter prédiction trafic ML
         // Pour l'instant, retourner valeurs par défaut

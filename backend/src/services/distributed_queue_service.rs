@@ -97,7 +97,7 @@ impl DistributedQueueService {
     }
 
     /// Récupère et traite un message de la queue
-    pub async fn dequeue(&self, timeout: Duration) -> AppResult<Option<QueueMessage>> {
+    pub async fn dequeue(&self, _timeout: Duration) -> AppResult<Option<QueueMessage>> {
         // Note: Implémentation simplifiée
         // En production, utiliser XREADGROUP pour consumer groups
 

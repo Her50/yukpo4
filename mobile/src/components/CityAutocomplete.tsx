@@ -56,7 +56,12 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
                 searchCities(value.trim());
             }, 300); // Debounce 300ms
 
-            return () => clearTimeout(debounceTimer);
+            return () => {
+                // ✅ SÉCURITÉ: Vérifier que debounceTimer existe avant de le nettoyer
+                if (debounceTimer) {
+                    clearTimeout(debounceTimer);
+                }
+            };
         } else {
             setSuggestions([]);
             setShowSuggestions(false);

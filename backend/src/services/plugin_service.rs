@@ -162,7 +162,7 @@ impl PluginService {
     /// Installe un plugin depuis un fichier
     pub async fn install_plugin(
         &self,
-        plugin_path: &Path,
+        _plugin_path: &Path,
         metadata: PluginMetadata,
     ) -> AppResult<String> {
         info!("[PluginService] Installation plugin: {}", metadata.id);
@@ -300,7 +300,7 @@ impl PluginService {
         &self,
         plugin_id: &str,
         new_version: &str,
-        plugin_path: &Path,
+        _plugin_path: &Path,
     ) -> AppResult<()> {
         info!(
             "[PluginService] Mise à jour plugin: {} -> {}",
@@ -558,7 +558,7 @@ impl PluginService {
     async fn execute_plugin_direct(
         &self,
         plugin: &InstalledPlugin,
-        input: serde_json::Value,
+        _input: serde_json::Value,
     ) -> AppResult<serde_json::Value> {
         warn!(
             "[PluginService] Exécution directe plugin {} (sandbox désactivé)",
@@ -692,7 +692,7 @@ impl PluginService {
     /// Exécute un plugin d'effet vidéo
     async fn execute_effect_plugin(
         &self,
-        plugin: &InstalledPlugin,
+        _plugin: &InstalledPlugin,
         input: serde_json::Value,
         _context: &SandboxContext,
     ) -> AppResult<serde_json::Value> {
@@ -707,7 +707,7 @@ impl PluginService {
     /// Exécute un plugin de transition
     async fn execute_transition_plugin(
         &self,
-        plugin: &InstalledPlugin,
+        _plugin: &InstalledPlugin,
         input: serde_json::Value,
         _context: &SandboxContext,
     ) -> AppResult<serde_json::Value> {
@@ -721,7 +721,7 @@ impl PluginService {
     /// Exécute un plugin de filtre
     async fn execute_filter_plugin(
         &self,
-        plugin: &InstalledPlugin,
+        _plugin: &InstalledPlugin,
         input: serde_json::Value,
         _context: &SandboxContext,
     ) -> AppResult<serde_json::Value> {
@@ -735,7 +735,7 @@ impl PluginService {
     /// Exécute un plugin générique
     async fn execute_generic_plugin(
         &self,
-        plugin: &InstalledPlugin,
+        _plugin: &InstalledPlugin,
         input: serde_json::Value,
         _context: &SandboxContext,
     ) -> AppResult<serde_json::Value> {

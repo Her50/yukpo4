@@ -41,38 +41,52 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
     useEffect(() => {
         const timer = setTimeout(() => {
             if (typeof withTiming === 'function' && typeof withSpring === 'function') {
-                opacity.value = withTiming(1, {
-                    duration,
-                    easing: Easing.out(Easing.ease),
-                });
+                try {
+                    opacity.value = withTiming(1, {
+                        duration,
+                        easing: Easing.out(Easing.ease),
+                    });
 
-                if (type === 'slide') {
-                    translateX.value = withSpring(0, {
-                        damping: 15,
-                        stiffness: 100,
-                    });
-                } else if (type === 'slideUp' || type === 'slideDown') {
-                    translateY.value = withSpring(0, {
-                        damping: 15,
-                        stiffness: 100,
-                    });
-                } else if (type === 'scale') {
-                    scale.value = withSpring(1, {
-                        damping: 15,
-                        stiffness: 100,
-                    });
-                }
+                    if (type === 'slide') {
+                        translateX.value = withSpring(0, {
+                            damping: 15,
+                            stiffness: 100,
+                        });
+                    } else if (type === 'slideUp' || type === 'slideDown') {
+                        translateY.value = withSpring(0, {
+                            damping: 15,
+                            stiffness: 100,
+                        });
+                    } else if (type === 'scale') {
+                        scale.value = withSpring(1, {
+                            damping: 15,
+                            stiffness: 100,
+                        });
+                    }
 
-                if (onAnimationComplete) {
-                    setTimeout(() => {
-                        onAnimationComplete();
-                    }, duration);
+                    if (onAnimationComplete && typeof onAnimationComplete === 'function') {
+                        setTimeout(() => {
+                            try {
+                                onAnimationComplete();
+                            } catch (error) {
+                                console.warn('[ScreenTransition] Erreur callback onAnimationComplete:', error);
+                            }
+                        }, duration);
+                    }
+                } catch (error) {
+                    console.warn('[ScreenTransition] Erreur animation:', error);
                 }
             }
         }, delay);
 
-        return () => clearTimeout(timer);
+        return () => {
+            // ✅ SÉCURITÉ: Vérifier que timer existe avant de le nettoyer
+            if (timer) {
+                clearTimeout(timer);
+            }
+        };
         // ✅ CORRIGÉ: Ne pas inclure les SharedValues dans les dépendances (elles sont stables)
+        // ✅ CORRIGÉ: Ne pas inclure onAnimationComplete pour éviter les re-renders infinis
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [type, duration, delay]);
 

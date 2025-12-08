@@ -112,8 +112,13 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
 
     useEffect(() => {
         return () => {
-            clearAutoScrollTimer();
-            clearResumeTimer();
+            // ✅ SÉCURITÉ: Vérifier que les fonctions existent avant de les appeler
+            if (typeof clearAutoScrollTimer === 'function') {
+                clearAutoScrollTimer();
+            }
+            if (typeof clearResumeTimer === 'function') {
+                clearResumeTimer();
+            }
         };
     }, []);
 
@@ -361,7 +366,12 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                 }
             }, 2000);
 
-            return () => clearTimeout(initialTimer);
+            return () => {
+                // ✅ SÉCURITÉ: Vérifier que initialTimer existe avant de le nettoyer
+                if (initialTimer) {
+                    clearTimeout(initialTimer);
+                }
+            };
         } else {
             // ✅ DIAGNOSTIC: Log visible pour comprendre pourquoi le scroll ne démarre pas
             console.log('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Scroll initial non démarré:', {

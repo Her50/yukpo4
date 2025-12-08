@@ -497,7 +497,12 @@ const VideoFeedScreen: React.FC = () => {
                 setCurrentDurationMs(Date.now() - currentStartTimeRef.current);
             }
         }, 500);
-        return () => clearInterval(interval);
+        return () => {
+            // ✅ SÉCURITÉ: Vérifier que interval existe avant de le nettoyer
+            if (interval) {
+                clearInterval(interval);
+            }
+        };
     }, [isPaused]);
 
 
@@ -532,11 +537,30 @@ const VideoFeedScreen: React.FC = () => {
 
     useEffect(() => {
         // ✅ OPTIMISÉ: Animation fade lors du changement de vidéo
-        fadeAnim.value = withTiming(0, { duration: 150 }, () => {
+        // ✅ SÉCURITÉ: Vérifier que withTiming est disponible
+        if (typeof withTiming !== 'function') {
+            console.warn('[VideoFeedScreen] withTiming non disponible, lecture vidéo sans animation');
             playActiveVideo(currentIndex).catch(() => undefined);
-            fadeAnim.value = withTiming(1, { duration: 150 });
-        });
-    }, [currentIndex, playActiveVideo, fadeAnim]);
+            return;
+        }
+
+        try {
+            fadeAnim.value = withTiming(0, { duration: 150 }, (finished) => {
+                if (finished) {
+                    playActiveVideo(currentIndex).catch(() => undefined);
+                    if (typeof withTiming === 'function') {
+                        fadeAnim.value = withTiming(1, { duration: 150 });
+                    }
+                }
+            });
+        } catch (error) {
+            console.warn('[VideoFeedScreen] Erreur animation fade:', error);
+            // Fallback: jouer la vidéo sans animation
+            playActiveVideo(currentIndex).catch(() => undefined);
+        }
+        // ✅ CORRIGÉ: Retirer fadeAnim des dépendances (SharedValue est stable)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentIndex, playActiveVideo]);
 
     useEffect(() => {
         playActiveVideo(currentIndexRef.current).catch(() => undefined);

@@ -134,7 +134,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON TABLE lab_examination_types IS 'Types d\'examens proposés par chaque laboratoire';
+COMMENT ON TABLE lab_examination_types IS 'Types d''examens proposés par chaque laboratoire';
 COMMENT ON TABLE lab_examinations IS 'Examens médicaux réalisés dans les laboratoires';
 COMMENT ON TABLE lab_analytics IS 'Statistiques quotidiennes des laboratoires pour analytics';
 

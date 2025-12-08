@@ -3,6 +3,8 @@
 //! Infrastructure pour modèles ML entraînables avec ONNX Runtime
 //! avec support pour apprentissage continu et prédictions améliorées.
 
+#![allow(unexpected_cfgs)]
+
 use crate::core::types::AppResult;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -14,6 +16,7 @@ use std::sync::Mutex;
 // ✅ Support ONNX Runtime pour modèles réels (toujours activé)
 // Note: Les imports ort sont conditionnels mais utilisés dans le code
 // On les importe toujours pour éviter les erreurs de compilation
+#[allow(unexpected_cfgs)]
 #[cfg(feature = "onnx")]
 use ort::{
     session::Session,
@@ -91,6 +94,7 @@ pub struct DeliveryMLModelsService {
     ml_predictions: Arc<AtomicU64>,
     fallback_predictions: Arc<AtomicU64>,
     // ✅ Sessions ONNX chargées (toujours activé)
+    #[allow(unexpected_cfgs)]
     #[cfg(feature = "onnx")]
     onnx_sessions: HashMap<ModelType, Arc<Session>>,
     #[cfg(not(feature = "onnx"))]
@@ -281,6 +285,7 @@ impl DeliveryMLModelsService {
         self.total_predictions.fetch_add(1, Ordering::Relaxed);
 
         // ✅ Essayer d'abord avec ONNX si disponible (toujours activé)
+        #[allow(unexpected_cfgs)]
         #[cfg(feature = "onnx")]
         {
             if let Some(session) = self.onnx_sessions.get(&ModelType::ETAPrediction) {
@@ -521,6 +526,7 @@ impl DeliveryMLModelsService {
 
     /// ✅ Charge les modèles ONNX depuis le disque (toujours activé)
     async fn load_onnx_models(&mut self) -> AppResult<()> {
+        #[allow(unexpected_cfgs)]
         #[cfg(feature = "onnx")]
         {
             let env = Arc::new(
@@ -564,6 +570,7 @@ impl DeliveryMLModelsService {
     }
 
     /// ✅ Prédit ETA avec modèle ONNX (toujours activé)
+    #[allow(unexpected_cfgs)]
     #[cfg(feature = "onnx")]
     async fn predict_eta_with_onnx(
         &self,

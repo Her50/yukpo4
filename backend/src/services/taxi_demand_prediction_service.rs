@@ -407,7 +407,7 @@ Retourne UNIQUEMENT un JSON avec:
         features: &DemandFeatures,
         zone: &PredictionZone,
         target: &DateTime<Utc>,
-        historical_data: &HistoricalData,
+        _historical_data: &HistoricalData,
     ) -> AppResult<DemandPrediction> {
         // Prédiction simple: moyenne historique + tendance + facteurs
         let base_demand = features.historical_avg;
@@ -618,8 +618,8 @@ Retourne UNIQUEMENT un JSON avec:
     /// Obtenir facteur événements
     async fn get_event_factor(
         &self,
-        zone: &PredictionZone,
-        target: &DateTime<Utc>,
+        _zone: &PredictionZone,
+        _target: &DateTime<Utc>,
     ) -> AppResult<f64> {
         // TODO: Intégrer base événements locaux
         // Pour l'instant, retourner facteur neutre

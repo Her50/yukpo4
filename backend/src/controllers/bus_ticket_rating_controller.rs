@@ -1,7 +1,6 @@
 /**
  * Contrôleur pour les avis et notations de tickets de bus
  */
-
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;

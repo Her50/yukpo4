@@ -549,7 +549,7 @@ impl ScalabilityService {
             ProductOperation::Create {
                 user_id,
                 service_id,
-                product_data,
+                product_data: _product_data,
             } => {
                 log::debug!(
                     "[ScalabilityService] Création produit pour user_id={}, service_id={:?}",

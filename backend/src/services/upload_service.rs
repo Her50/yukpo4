@@ -20,7 +20,7 @@ pub struct UploadedFileResponse {
 
 /// Stocke un fichier uploadé et retourne son URL
 pub async fn store_uploaded_file(
-    pool: &PgPool,
+    _pool: &PgPool,
     user_id: i32,
     field_name: &str,
     filename: &str,

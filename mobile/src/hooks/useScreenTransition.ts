@@ -41,6 +41,11 @@ export const useScreenTransition = (options: UseScreenTransitionOptions = {}) =>
         if (typeof withTiming === 'function' && typeof withSpring === 'function' && opacity && translateX && translateY && scale) {
             const timer = setTimeout(() => {
                 try {
+                    if (typeof withTiming !== 'function' || typeof withSpring !== 'function') {
+                        console.warn('[useScreenTransition] withTiming ou withSpring non disponible');
+                        return;
+                    }
+
                     opacity.value = withTiming(1, {
                         duration,
                         easing: Easing.out(Easing.ease),
@@ -63,9 +68,13 @@ export const useScreenTransition = (options: UseScreenTransitionOptions = {}) =>
                         });
                     }
 
-                    if (onComplete) {
+                    if (onComplete && typeof onComplete === 'function') {
                         setTimeout(() => {
-                            onComplete();
+                            try {
+                                onComplete();
+                            } catch (error) {
+                                console.warn('[useScreenTransition] Erreur callback onComplete:', error);
+                            }
                         }, duration);
                     }
                 } catch (error) {
@@ -73,44 +82,77 @@ export const useScreenTransition = (options: UseScreenTransitionOptions = {}) =>
                 }
             }, delay);
 
-            return () => clearTimeout(timer);
+            return () => {
+                // ✅ SÉCURITÉ: Vérifier que timer existe avant de le nettoyer
+                if (timer) {
+                    clearTimeout(timer);
+                }
+            };
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [type, duration, delay, onComplete]); // ✅ CORRIGÉ: Ne pas inclure les SharedValues
+    }, [type, duration, delay]); // ✅ CORRIGÉ: Retirer onComplete des dépendances pour éviter les re-renders infinis
 
     // Animation de sortie
     const exit = (callback?: () => void) => {
-        opacity.value = withTiming(0, {
-            duration: duration * 0.7,
-            easing: Easing.in(Easing.ease),
-        });
-
-        if (type === 'slide') {
-            translateX.value = withTiming(-50, {
-                duration: duration * 0.7,
-                easing: Easing.in(Easing.ease),
-            });
-        } else if (type === 'slideUp') {
-            translateY.value = withTiming(50, {
-                duration: duration * 0.7,
-                easing: Easing.in(Easing.ease),
-            });
-        } else if (type === 'slideDown') {
-            translateY.value = withTiming(-50, {
-                duration: duration * 0.7,
-                easing: Easing.in(Easing.ease),
-            });
-        } else if (type === 'scale') {
-            scale.value = withTiming(0.9, {
-                duration: duration * 0.7,
-                easing: Easing.in(Easing.ease),
-            });
+        // ✅ SÉCURITÉ: Vérifier que withTiming est disponible
+        if (typeof withTiming !== 'function') {
+            console.warn('[useScreenTransition] withTiming non disponible dans exit');
+            if (callback && typeof callback === 'function') {
+                try {
+                    callback();
+                } catch (error) {
+                    console.warn('[useScreenTransition] Erreur callback exit:', error);
+                }
+            }
+            return;
         }
 
-        if (callback) {
-            setTimeout(() => {
-                callback();
-            }, duration * 0.7);
+        try {
+            opacity.value = withTiming(0, {
+                duration: duration * 0.7,
+                easing: Easing.in(Easing.ease),
+            });
+
+            if (type === 'slide') {
+                translateX.value = withTiming(-50, {
+                    duration: duration * 0.7,
+                    easing: Easing.in(Easing.ease),
+                });
+            } else if (type === 'slideUp') {
+                translateY.value = withTiming(50, {
+                    duration: duration * 0.7,
+                    easing: Easing.in(Easing.ease),
+                });
+            } else if (type === 'slideDown') {
+                translateY.value = withTiming(-50, {
+                    duration: duration * 0.7,
+                    easing: Easing.in(Easing.ease),
+                });
+            } else if (type === 'scale') {
+                scale.value = withTiming(0.9, {
+                    duration: duration * 0.7,
+                    easing: Easing.in(Easing.ease),
+                });
+            }
+
+            if (callback && typeof callback === 'function') {
+                setTimeout(() => {
+                    try {
+                        callback();
+                    } catch (error) {
+                        console.warn('[useScreenTransition] Erreur callback exit:', error);
+                    }
+                }, duration * 0.7);
+            }
+        } catch (error) {
+            console.warn('[useScreenTransition] Erreur animation exit:', error);
+            if (callback && typeof callback === 'function') {
+                try {
+                    callback();
+                } catch (callbackError) {
+                    console.warn('[useScreenTransition] Erreur callback exit après erreur:', callbackError);
+                }
+            }
         }
     };
 

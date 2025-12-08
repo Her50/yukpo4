@@ -77,7 +77,12 @@ const OrderStatusScreen: React.FC = () => {
             }
         }, 10000);
 
-        return () => clearInterval(interval);
+        return () => {
+            // ✅ SÉCURITÉ: Vérifier que interval existe avant de le nettoyer
+            if (interval) {
+                clearInterval(interval);
+            }
+        };
     }, [orderId]);
 
     const onRefresh = () => {

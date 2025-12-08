@@ -40,11 +40,11 @@ impl TaxiPersonalizedRecommendationsService {
     pub async fn get_recommendations(
         &self,
         user_id: i32,
-        service_type: Option<String>,
-        location_lat: Option<f64>,
-        location_lng: Option<f64>,
-        radius_km: Option<f64>,
-        limit: Option<i64>,
+        _service_type: Option<String>,
+        _location_lat: Option<f64>,
+        _location_lng: Option<f64>,
+        _radius_km: Option<f64>,
+        _limit: Option<i64>,
     ) -> AppResult<Vec<PersonalizedRecommendation>> {
         info!(
             "[TaxiRecommendations] Recommandations pour user_id={}",

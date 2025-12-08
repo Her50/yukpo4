@@ -49,7 +49,7 @@ pub async fn analyze_and_suggest(
     let clics: i32 = pub_row.get::<Option<i32>, _>("clics").unwrap_or(0);
     let impressions: i32 = pub_row.get::<Option<i32>, _>("impressions").unwrap_or(0);
     let cout: i32 = pub_row.get::<Option<i32>, _>("cout").unwrap_or(0);
-    let status: String = pub_row.get::<String, _>("status");
+    let _status: String = pub_row.get::<String, _>("status");
     let targeting: serde_json::Value = pub_row
         .get::<Option<serde_json::Value>, _>("targeting")
         .unwrap_or(serde_json::json!({}));
@@ -187,7 +187,7 @@ async fn analyze_budget(
 
 /// Analyse le ciblage et suggère des optimisations
 async fn analyze_targeting(
-    pool: &PgPool,
+    _pool: &PgPool,
     _campaign_id: i32,
     targeting: &serde_json::Value,
     vues: i32,
@@ -405,7 +405,7 @@ fn calculate_overall_score(vues: i32, clics: i32, impressions: i32, cout: i32) -
 /// Calcule la tendance de performance
 async fn calculate_trend(pool: &PgPool, campaign_id: i32) -> Result<String, sqlx::Error> {
     // Comparer les performances récentes avec les performances globales
-    let recent_perf = sqlx::query(
+    let _recent_perf = sqlx::query(
         r#"
         SELECT 
             AVG(CASE WHEN vues > 0 THEN (clics::float / vues::float) * 100.0 ELSE 0.0 END) as recent_conversion

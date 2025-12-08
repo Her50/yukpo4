@@ -4,15 +4,15 @@
  */
 
 import React, { useCallback, useRef } from 'react';
+import { Dimensions } from 'react-native';
 import { PanGestureHandler, State, TapGestureHandler } from 'react-native-gesture-handler';
 import Animated, {
+    runOnJS,
     useAnimatedGestureHandler,
     useAnimatedStyle,
     useSharedValue,
     withSpring,
-    runOnJS,
 } from 'react-native-reanimated';
-import { Dimensions } from 'react-native';
 import { triggerHaptic } from '../../utils/hapticFeedback';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -97,8 +97,22 @@ export const VideoGestureHandler: React.FC<VideoGestureHandlerProps> = ({
             }
 
             // Reset position
-            translateY.value = withSpring(0);
-            translateX.value = withSpring(0);
+            // ✅ SÉCURITÉ: Vérifier que withSpring est disponible
+            if (typeof withSpring === 'function') {
+                try {
+                    translateY.value = withSpring(0);
+                    translateX.value = withSpring(0);
+                } catch (error) {
+                    console.warn('[VideoGestureHandler] Erreur animation reset:', error);
+                    // Fallback: reset direct sans animation
+                    translateY.value = 0;
+                    translateX.value = 0;
+                }
+            } else {
+                // Fallback: reset direct sans animation
+                translateY.value = 0;
+                translateX.value = 0;
+            }
         },
     });
 

@@ -198,7 +198,7 @@ impl PromptLoader {
     }
 }
 
-/// Instance globale du chargeur de prompts
+// Instance globale du chargeur de prompts
 lazy_static::lazy_static! {
     pub static ref PROMPT_LOADER: PromptLoader = PromptLoader::new(None);
 }

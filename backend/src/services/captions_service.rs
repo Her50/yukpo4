@@ -165,7 +165,6 @@ async fn segment_transcription(
     let mut subtitles = Vec::new();
     let mut current_text = String::new();
     let mut current_start = 0.0;
-    let mut word_index = 0;
 
     for word in &words {
         let word_with_space = if current_text.is_empty() {

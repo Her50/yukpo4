@@ -84,9 +84,16 @@ export const useWebSocket = (
   // Se connecter automatiquement si un userId est fourni
   useEffect(() => {
     if (userId && !isConnected && !isConnecting) {
-      connect();
+      if (typeof connect === 'function') {
+        try {
+          connect();
+        } catch (error) {
+          console.warn('[useWebSocket] Erreur lors de la connexion automatique:', error);
+        }
+      }
     }
-  }, [userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, isConnected, isConnecting]); // ✅ CORRIGÉ: connect est stable (useCallback), mais on inclut les dépendances nécessaires
 
   const connect = useCallback(() => {
     if (!isConnected && !isConnecting) {

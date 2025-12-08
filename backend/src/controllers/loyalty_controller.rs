@@ -2,7 +2,6 @@
  * Contrôleur pour le programme de fidélité
  * Gestion des points, niveaux, récompenses
  */
-
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;

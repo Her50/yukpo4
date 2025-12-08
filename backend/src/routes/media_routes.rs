@@ -56,16 +56,16 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // )
         // ✅ NOUVEAU 2025-01-27: Routes pour bibliothèque d'effets étendue
         .route("/api/effects", get(list_effects))
-        .route("/api/effects/:name", get(get_effect))
+        .route("/api/effects/{name}", get(get_effect))
         .route(
-            "/api/effects/category/:category",
+            "/api/effects/category/{category}",
             get(get_effects_by_category),
         )
         // ✅ NOUVEAU 2025-01-27: Routes pour bibliothèque de templates par industrie
         .route("/api/templates", get(list_templates))
-        .route("/api/templates/:name", get(get_template))
+        .route("/api/templates/{name}", get(get_template))
         .route(
-            "/api/templates/industry/:industry",
+            "/api/templates/industry/{industry}",
             get(get_templates_by_industry),
         )
         .layer(axum::middleware::from_fn(jwt_auth))

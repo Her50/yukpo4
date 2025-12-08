@@ -123,7 +123,12 @@ export const PubliciteCarouselPlacement: React.FC<PubliciteCarouselPlacementProp
             }).catch(() => undefined);
         }, 2000);
 
-        return () => clearTimeout(timeout);
+        return () => {
+            // ✅ SÉCURITÉ: Vérifier que timeout existe avant de le nettoyer
+            if (timeout) {
+                clearTimeout(timeout);
+            }
+        };
     }, [currentIndex, publicites, isFocused, userId]);
 
     const handleCTAClick = useCallback(

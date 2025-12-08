@@ -4,16 +4,16 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use log::{error, info, warn};
-use redis::{aio::{Connection, MultiplexedConnection}, RedisResult};
+use redis::{aio::MultiplexedConnection, RedisResult};
 use serde::{Deserialize, Serialize};
 
 use crate::config::redis_config::RedisConfig;
 use crate::core::types::{AppError, AppResult};
 
-/// ✅ Type énuméré pour gérer les deux types de connexions Redis
+/// ✅ Type énuméré pour gérer les connexions Redis
+/// Note: Utilise uniquement MultiplexedConnection (Connection est deprecated)
 enum RedisConnection {
     Multiplexed(MultiplexedConnection),
-    Standard(Connection),
 }
 
 pub struct RedisService {
@@ -28,7 +28,7 @@ impl RedisService {
 
         let connection = if config.cluster_mode {
             // ✅ Mode cluster - ClusterClient utilise get_connection_manager
-            let cluster_client = redis::cluster::ClusterClient::new(config.cluster_urls())?;
+            let _cluster_client = redis::cluster::ClusterClient::new(config.cluster_urls())?;
             // Pour le cluster, on utilise une connexion standard
             // Note: En production, considérer l'utilisation d'un pool de connexions
             // Note: redis::cluster n'a pas de get_connection_manager
