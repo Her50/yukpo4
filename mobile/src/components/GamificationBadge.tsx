@@ -171,18 +171,19 @@ const styles = StyleSheet.create({
     compactBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingHorizontal: 6, // ✅ RÉDUIT: De 8 à 6px
+        paddingVertical: 3, // ✅ RÉDUIT: De 4 à 3px
         backgroundColor: modernColors.primary,
-        borderRadius: 16,
-        gap: 4,
+        borderRadius: 12, // ✅ RÉDUIT: De 16 à 12px
+        gap: 3, // ✅ RÉDUIT: De 4 à 3px
+        minWidth: 0, // ✅ AJOUTÉ: Permet au badge de se rétrécir si nécessaire
     },
     compactIcon: {
-        fontSize: 14,
+        fontSize: 12, // ✅ RÉDUIT: De 14 à 12px
     },
     compactPoints: {
         color: '#FFFFFF',
-        fontSize: 11,
+        fontSize: 10, // ✅ RÉDUIT: De 11 à 10px
         fontWeight: '700',
     },
 });

@@ -23,8 +23,8 @@ import { SafeIcon } from './SafeIcon';
 import { SafeNativeView } from './SafeNativeView';
 import UserAvatarMenu from './UserAvatarMenu';
 
-const HEADER_MAX_HEIGHT = 80;
-const HEADER_MIN_HEIGHT = 50;
+const HEADER_MAX_HEIGHT = 60; // ✅ RÉDUIT: De 80 à 60px pour un header plus compact
+const HEADER_MIN_HEIGHT = 48; // ✅ RÉDUIT: De 50 à 48px
 const SCROLL_THRESHOLD = 100;
 
 interface HomeHeaderProps {
@@ -257,13 +257,13 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
 
                     {/* Colonne droite: Actions avec badges animés */}
                     <View style={styles.headerActionsCompact}>
-                        {/* ✅ Bouton livraison */}
+                        {/* ✅ Bouton livraison - Icône livreur (bike) pour représenter le service de livraison */}
                         <TouchableOpacity
                             style={styles.headerButtonCompact}
                             onPress={handleDeliveryPress}
                             activeOpacity={0.7}
                         >
-                            <SafeIcon name="package" size={18} color="#fff" type="lucide" />
+                            <SafeIcon name="bike" size={18} color="#fff" type="lucide" />
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.headerButtonCompact}
@@ -319,41 +319,45 @@ const styles = StyleSheet.create({
     },
     headerContent: {
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 8, // ✅ RÉDUIT: De 12 à 8px pour réduire la hauteur
+        justifyContent: 'center', // ✅ AJOUTÉ: Centrer verticalement
+        flex: 1, // ✅ AJOUTÉ: Prendre toute la hauteur disponible
     },
     headerRow: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'center', // ✅ Centrer verticalement tous les éléments
         paddingHorizontal: 4,
         width: '100%',
         justifyContent: 'space-between',
         gap: 4,
+        minHeight: 44, // ✅ AJOUTÉ: Hauteur minimale pour touch target
     },
     avatarContainer: {
-        width: 40,
-        height: 40,
-        marginRight: 6,
+        width: 36, // ✅ RÉDUIT: De 40 à 36px pour plus de compacité
+        height: 36, // ✅ RÉDUIT: De 40 à 36px
+        marginRight: 4, // ✅ RÉDUIT: De 6 à 4px
     },
     headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-start',
         minWidth: 0,
-        maxWidth: '35%',
+        maxWidth: '30%', // ✅ RÉDUIT: De 35% à 30% pour laisser plus d'espace au centre
         flexShrink: 1,
-        gap: 6,
+        gap: 4, // ✅ RÉDUIT: De 6 à 4px pour plus de compacité
     },
     brandTitleContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 4,
-        minWidth: 70,
+        paddingHorizontal: 8, // ✅ AUGMENTÉ: De 4 à 8px pour plus d'espace
+        minWidth: 80, // ✅ AUGMENTÉ: De 70 à 80px pour garantir l'espace
         flexShrink: 0,
+        zIndex: 1, // ✅ AJOUTÉ: S'assurer que le titre est au-dessus
     },
     brandTitleCompact: {
         width: '100%',
-        fontSize: 20,
+        fontSize: 18, // ✅ RÉDUIT: De 20 à 18px pour plus de compacité
         fontWeight: '900',
         textAlign: 'center',
         letterSpacing: -0.2,
@@ -374,13 +378,13 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         gap: 4,
         minWidth: 0,
-        maxWidth: '35%',
+        maxWidth: '30%', // ✅ RÉDUIT: De 35% à 30% pour symétrie avec la colonne gauche
         flexShrink: 1,
     },
     headerButtonCompact: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 32, // ✅ RÉDUIT: De 36 à 32px pour plus de compacité
+        height: 32, // ✅ RÉDUIT: De 36 à 32px
+        borderRadius: 16, // ✅ RÉDUIT: De 18 à 16px
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',

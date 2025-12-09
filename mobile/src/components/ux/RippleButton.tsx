@@ -126,13 +126,13 @@ export const RippleButton: React.FC<RippleButtonProps> = React.memo(({
 
 const styles = StyleSheet.create({
     button: {
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 12,
+        paddingHorizontal: 16, // ✅ RÉDUIT: De 24 à 16px
+        paddingVertical: 6, // ✅ RÉDUIT: De 12 à 6px (hauteur significativement réduite)
+        borderRadius: 8, // ✅ RÉDUIT: De 12 à 8px
         overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 44,
+        minHeight: 32, // ✅ RÉDUIT: De 44 à 32px (beaucoup plus compact)
     },
     buttonPrimary: {
         backgroundColor: modernColors.primary,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     text: {
-        fontSize: 14,
+        fontSize: 13, // ✅ RÉDUIT: De 14 à 13px pour correspondre à la hauteur réduite
         fontWeight: '600',
     },
     textPrimary: {

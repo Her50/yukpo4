@@ -32,9 +32,25 @@ import { normalizeServiceProducts } from '../utils/productNormalizer';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
 import { homeScreenReducer, initialState } from './HomeScreen.reducer';
 // ✅ OPTIMISATION: Lazy loading pour réduire bundle size initial (-30% bundle size)
+// ✅ SÉCURITÉ: Vérification que les composants sont bien exportés avant lazy loading
 const SpecializedServicesSection = React.lazy(() => import('../components/SpecializedServicesSection'));
 const GlobalPromoHighlights = React.lazy(() => import('../components/promotions/GlobalPromoHighlights'));
-const InfiniteFeed = React.lazy(() => import('../components/InfiniteFeed').then(module => ({ default: module.InfiniteFeed })));
+const InfiniteFeed = React.lazy(() =>
+    import('../components/InfiniteFeed')
+        .then(module => {
+            // ✅ SÉCURITÉ: Vérifier que InfiniteFeed existe dans le module
+            if (!module || !module.InfiniteFeed) {
+                console.error('[HomeScreen] ❌ InfiniteFeed non trouvé dans le module');
+                throw new Error('InfiniteFeed component not found');
+            }
+            return { default: module.InfiniteFeed };
+        })
+        .catch((error) => {
+            console.error('[HomeScreen] ❌ Erreur chargement InfiniteFeed:', error);
+            // ✅ SÉCURITÉ: Re-throw pour que Suspense puisse gérer l'erreur
+            throw error;
+        })
+);
 // ✅ NOUVEAU: Composants UX améliorés
 import SafeIcon from '../components/SafeIcon';
 import { EnhancedSkeletonLoader, OfflineIndicator, RippleButton, ScreenTransition } from '../components/ux';
@@ -2105,14 +2121,14 @@ const createStyles = (colors: any) => StyleSheet.create({
     modeSelectorModern: {
         flexDirection: 'row',
         backgroundColor: '#F8FAFC',
-        borderRadius: 10, // ✅ Réduit de 12 à 10
-        padding: 3, // ✅ Réduit de 4 à 3
-        marginBottom: 8, // ✅ Réduit de 12 à 8
+        borderRadius: 8, // ✅ RÉDUIT: De 10 à 8px
+        padding: 2, // ✅ RÉDUIT: De 3 à 2px
+        marginBottom: 6, // ✅ RÉDUIT: De 8 à 6px
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
-        elevation: 1, // ✅ Réduit de 2 à 1
+        shadowOpacity: 0.05, // ✅ RÉDUIT: De 0.06 à 0.05
+        shadowRadius: 3, // ✅ RÉDUIT: De 4 à 3px
+        elevation: 1,
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
@@ -2121,12 +2137,12 @@ const createStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: STATIC_WIDTH > 400 ? 12 : 10, // ✅ Optimisé: 10/8 → 12/10 pour meilleur touch target
-        paddingHorizontal: STATIC_WIDTH > 400 ? 22 : 18, // ✅ Optimisé: 20/16 → 22/18
-        borderRadius: 10,
-        gap: 6,
+        paddingVertical: STATIC_WIDTH > 400 ? 8 : 6, // ✅ RÉDUIT: De 12/10 à 8/6px
+        paddingHorizontal: STATIC_WIDTH > 400 ? 16 : 14, // ✅ RÉDUIT: De 22/18 à 16/14px
+        borderRadius: 8, // ✅ RÉDUIT: De 10 à 8px
+        gap: 4, // ✅ RÉDUIT: De 6 à 4px
         backgroundColor: 'transparent',
-        minHeight: STATIC_WIDTH > 400 ? 44 : 40, // ✅ Optimisé: 40/36 → 44/40 (meilleur touch target 44px minimum)
+        minHeight: STATIC_WIDTH > 400 ? 36 : 32, // ✅ RÉDUIT: De 44/40 à 36/32px (beaucoup plus compact)
     },
     modeButtonActiveModern: {
         backgroundColor: '#10B981', // Vert moderne

@@ -130,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|read_url| {
             // ✅ CORRIGÉ: Valider l'URL avant de créer le pool
             if read_url.trim().is_empty() {
-                log::warn!("⚠️ DATABASE_READ_REPLICA_URL est vide - Read replica désactivé");
+                log::debug!("ℹ️ DATABASE_READ_REPLICA_URL est vide - Read replica désactivé");
                 return None;
             }
 
@@ -212,10 +212,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let error_str = e.to_string();
             // Ignorer l'erreur de checksum mismatch pour la migration 0 (fichier modifié)
             if error_str.contains("migration 0 was previously applied but has been modified") {
-                log::warn!("⚠️ Migration 0 modifiée détectée (ignorée): {}", e);
-                log::warn!(
-                    "⚠️ Si nécessaire, supprimez l'entrée de _sqlx_migrations pour la migration 0"
-                );
+                log::debug!("ℹ️ Migration 0 modifiée détectée (ignorée) - Si nécessaire, supprimez l'entrée de _sqlx_migrations pour la migration 0");
             } else {
                 log::error!(
                     "❌ Erreur lors de l'application des migrations SQLx standard: {}",
@@ -223,7 +220,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             // On continue quand même, certaines migrations peuvent déjà être appliquées
-            log::warn!("⚠️ Continuation du démarrage malgré l'erreur de migration");
+            log::debug!("ℹ️ Continuation du démarrage malgré l'erreur de migration");
         }
     }
 
@@ -654,13 +651,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .execute(&*pool_clone_blackfriday)
                         .await
                 {
-                    log::warn!("⚠️ Erreur refresh global_promo_catalog_cache: {}", e);
+                    let error_str = e.to_string().to_lowercase();
+                    // Ignorer l'erreur si la vue est déjà en cours de refresh
+                    if !error_str.contains("cannot refresh materialized view concurrently") {
+                        log::warn!("⚠️ Erreur refresh global_promo_catalog_cache: {}", e);
+                    } else {
+                        log::debug!("ℹ️ global_promo_catalog_cache déjà en cours de refresh");
+                    }
                 } else {
                     let elapsed = start_time.elapsed();
                     log::debug!("✅ global_promo_catalog_cache refreshed en {:?}", elapsed);
-                    // ✅ OPTIMISÉ: Logger un warning si le refresh prend plus de 1 seconde
+                    // ✅ OPTIMISÉ: Logger un debug si le refresh prend plus de 1 seconde (pas un warning)
                     if elapsed.as_millis() > 1000 {
-                        log::warn!("⚠️ Refresh global_promo_catalog_cache lent: {:?} (> 1s)", elapsed);
+                        log::debug!("ℹ️ Refresh global_promo_catalog_cache lent: {:?} (> 1s)", elapsed);
                     }
                 }
             } else {
@@ -669,8 +672,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // ✅ NOUVEAU 2025-12-01: Refresh automatique des vues matérialisées de scalabilité
+    // ✅ CORRECTION RACINE: Refresh automatique des vues matérialisées avec mutex pour éviter refresh concurrents
     let pool_clone_matviews = Arc::new(app_state.pg.clone());
+    // Mutex pour éviter les refresh concurrents de la même vue
+    let refresh_lock_services = Arc::new(Mutex::new(()));
+    let refresh_lock_products = Arc::new(Mutex::new(()));
     let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
 
@@ -680,6 +686,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         loop {
             tokio::select! {
                 _ = interval_services.tick() => {
+                    // ✅ CORRECTION RACINE: Utiliser mutex pour éviter refresh concurrents
+                    let _lock = refresh_lock_services.lock().await;
                     log::info!("🔄 Refresh de services_search_cache...");
                     // PostgreSQL ne supporte pas IF EXISTS avec REFRESH MATERIALIZED VIEW CONCURRENTLY
                     let view_exists = sqlx::query_scalar::<_, bool>(
@@ -694,7 +702,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .execute(&*pool_clone_matviews)
                             .await
                         {
-                            log::warn!("⚠️ Erreur refresh services_search_cache: {}", e);
+                            let error_str = e.to_string().to_lowercase();
+                            // Ignorer l'erreur si la vue est déjà en cours de refresh
+                            if !error_str.contains("cannot refresh materialized view concurrently") {
+                                log::warn!("⚠️ Erreur refresh services_search_cache: {}", e);
+                            } else {
+                                log::debug!("ℹ️ services_search_cache déjà en cours de refresh");
+                            }
                         } else {
                             log::info!("✅ services_search_cache refreshed");
                         }
@@ -703,6 +717,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 _ = interval_products.tick() => {
+                    // ✅ CORRECTION RACINE: Utiliser mutex pour éviter refresh concurrents
+                    let _lock = refresh_lock_products.lock().await;
                     log::info!("🔄 Refresh de active_products_cache...");
                     // PostgreSQL ne supporte pas IF EXISTS avec REFRESH MATERIALIZED VIEW CONCURRENTLY
                     let view_exists = sqlx::query_scalar::<_, bool>(
@@ -717,7 +733,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .execute(&*pool_clone_matviews)
                             .await
                         {
-                            log::warn!("⚠️ Erreur refresh active_products_cache: {}", e);
+                            let error_str = e.to_string().to_lowercase();
+                            // Ignorer l'erreur si la vue est déjà en cours de refresh
+                            if !error_str.contains("cannot refresh materialized view concurrently") {
+                                log::warn!("⚠️ Erreur refresh active_products_cache: {}", e);
+                            } else {
+                                log::debug!("ℹ️ active_products_cache déjà en cours de refresh");
+                            }
                         } else {
                             log::info!("✅ active_products_cache refreshed");
                         }

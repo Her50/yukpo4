@@ -208,7 +208,13 @@ impl AppState {
                     Some(Arc::new(pool))
                 }
                 Err(e) => {
-                    log::warn!("⚠️ Impossible de créer le pool Redis: {}. Utilisation connexions directes.", e);
+                    let error_str = e.to_string().to_lowercase();
+                    // Détecter spécifiquement les erreurs TLS pour un message plus clair
+                    if error_str.contains("tls") || error_str.contains("the feature is not enabled") {
+                        log::debug!("ℹ️ Redis TLS non disponible - Utilisation connexions directes sans TLS");
+                    } else {
+                        log::warn!("⚠️ Impossible de créer le pool Redis: {}. Utilisation connexions directes.", e);
+                    }
                     None
                 }
             }

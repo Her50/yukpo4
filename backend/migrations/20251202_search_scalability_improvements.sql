@@ -53,24 +53,24 @@ FROM services s
 WHERE s.is_active = TRUE;
 
 -- Index GIN sur tsvector (ultra-rapide)
-CREATE INDEX idx_services_search_optimized_vector
+CREATE INDEX IF NOT EXISTS idx_services_search_optimized_vector
 ON services_search_optimized USING GIN (search_vector);
 
-CREATE INDEX idx_services_search_optimized_products_vector
+CREATE INDEX IF NOT EXISTS idx_services_search_optimized_products_vector
 ON services_search_optimized USING GIN (products_vector);
 
 -- Index composite pour filtres fréquents
-CREATE INDEX idx_services_search_optimized_category_active
+CREATE INDEX IF NOT EXISTS idx_services_search_optimized_category_active
 ON services_search_optimized (category, is_active, created_at DESC)
 WHERE is_active = TRUE;
 
 -- Index pour recherche GPS
-CREATE INDEX idx_services_search_optimized_gps
+CREATE INDEX IF NOT EXISTS idx_services_search_optimized_gps
 ON services_search_optimized (gps)
 WHERE gps IS NOT NULL AND gps != '0,0';
 
 -- ✅ CRITIQUE: Index unique pour permettre REFRESH CONCURRENTLY
-CREATE UNIQUE INDEX idx_services_search_optimized_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_services_search_optimized_unique
 ON services_search_optimized (service_id);
 
 -- =====================================================

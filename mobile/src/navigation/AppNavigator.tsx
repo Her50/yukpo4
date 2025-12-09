@@ -459,11 +459,15 @@ const MainStack = () => {
     return undefined;
   }, [user?.id]);
 
+  // ✅ NOUVEAU: État pour vérifier si l'utilisateur a des services/produits
+  const [hasServicesOrProducts, setHasServicesOrProducts] = React.useState(false);
+
   // ✅ CORRECTION CRASH: Vérifier si l'utilisateur a des services spécialisés avec timeout et délai
   useEffect(() => {
     const checkSpecializedServices = async () => {
       if (!user?.id) {
         setHasSpecializedServices(false);
+        setHasServicesOrProducts(false);
         return;
       }
 
@@ -471,7 +475,7 @@ const MainStack = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       try {
-        const { apiGet } = require('../services/api');
+        const { apiGet, servicesApi } = require('../services/api');
 
         // ✅ CORRECTION CRASH: Timeout de 5 secondes pour éviter blocage
         const timeoutPromise = new Promise<never>((_, reject) =>
@@ -487,6 +491,9 @@ const MainStack = () => {
           apiGet('/api/agences-voyage').catch(() => ({ success: false, data: [] })),
           apiGet('/api/covoiturages').catch(() => ({ success: false, data: [] })),
           apiGet('/api/taxis').catch(() => ({ success: false, data: [] })),
+          // ✅ NOUVEAU: Vérifier aussi les services et produits généraux
+          servicesApi.getUserServices().catch(() => ({ success: false, data: [] })),
+          apiGet(`/api/products/user/${user.id}`).catch(() => ({ success: false, data: [] })),
         ]);
 
         let results: any[];
@@ -495,12 +502,13 @@ const MainStack = () => {
         } catch (timeoutError) {
           console.warn('[AppNavigator] Timeout vérification services spécialisés');
           setHasSpecializedServices(false);
+          setHasServicesOrProducts(false);
           return;
         }
 
-        const [pharmacies, hopitaux, laboratoires, banques_sang, agences, covoiturages, taxis] = results;
+        const [pharmacies, hopitaux, laboratoires, banques_sang, agences, covoiturages, taxis, userServices, userProducts] = results;
 
-        const hasAny =
+        const hasSpecialized =
           (pharmacies.success && Array.isArray(pharmacies.data) && pharmacies.data.length > 0) ||
           (hopitaux.success && Array.isArray(hopitaux.data) && hopitaux.data.length > 0) ||
           (laboratoires.success && Array.isArray(laboratoires.data) && laboratoires.data.length > 0) ||
@@ -509,11 +517,18 @@ const MainStack = () => {
           (covoiturages.success && Array.isArray(covoiturages.data) && covoiturages.data.length > 0) ||
           (taxis.success && Array.isArray(taxis.data) && taxis.data.length > 0);
 
-        setHasSpecializedServices(hasAny);
+        // ✅ NOUVEAU: Vérifier si l'utilisateur a des services ou produits
+        const hasServices = userServices?.success && Array.isArray(userServices?.data) && userServices.data.length > 0;
+        const hasProducts = userProducts?.success && Array.isArray(userProducts?.data) && userProducts.data.length > 0;
+        const hasAny = hasSpecialized || hasServices || hasProducts;
+
+        setHasSpecializedServices(hasSpecialized);
+        setHasServicesOrProducts(hasAny);
       } catch (error) {
         console.error('[AppNavigator] Erreur vérification services spécialisés:', error);
         // ✅ En cas d'erreur, continuer sans bloquer l'app
         setHasSpecializedServices(false);
+        setHasServicesOrProducts(false);
       }
     };
 
@@ -595,38 +610,39 @@ const MainStack = () => {
           tabBarLabel: 'Vidéos',
         }}
       />
-      {/* ✅ MODIFIÉ: Onglet création vidéo renommé pour éviter confusion */}
-      <Tab.Screen
-        name="Video"
-        component={VideoCreationIntroScreenWithSafeArea}
-        options={{
-          tabBarLabel: 'Créer',
-        }}
-      />
-      {/* ✅ NOUVEAU 2025-11-26 : Remplacer "Mes Services" par "Gestion Services Spécialisés" si l'utilisateur en a */}
-      {hasSpecializedServices ? (
+      {/* ✅ MODIFIÉ: Onglet création vidéo conditionnel - uniquement si l'utilisateur a des services/produits */}
+      {hasServicesOrProducts && (
         <Tab.Screen
-          name="GestionServicesSpecialises"
-          component={GestionServicesSpecialisesScreenWithSafeArea}
+          name="Video"
+          component={VideoCreationIntroScreenWithSafeArea}
           options={{
-            tabBarLabel: 'Mes Services',
-            title: 'Gestion Services Spécialisés',
-          }}
-        />
-      ) : (
-        <Tab.Screen
-          name="Services"
-          component={MesProduitsScreenWithSafeArea}
-          options={{
-            tabBarLabel: 'Mes Services',
-            title: 'Mes Services',
+            tabBarLabel: 'Créer',
           }}
         />
       )}
-      {/* ✅ NOUVEAU : Masquer l'onglet Historique si l'utilisateur est coursier */}
-      {!isCourier && (
-        <Tab.Screen name="History" component={MesInteractionsScreenWithSafeArea} options={{ tabBarLabel: 'Historique' }} />
+      {/* ✅ MODIFIÉ: Onglet "Mes Services" conditionnel - uniquement si l'utilisateur a des services/produits */}
+      {hasServicesOrProducts && (
+        hasSpecializedServices ? (
+          <Tab.Screen
+            name="GestionServicesSpecialises"
+            component={GestionServicesSpecialisesScreenWithSafeArea}
+            options={{
+              tabBarLabel: 'Mes Services',
+              title: 'Gestion Services Spécialisés',
+            }}
+          />
+        ) : (
+          <Tab.Screen
+            name="Services"
+            component={MesProduitsScreenWithSafeArea}
+            options={{
+              tabBarLabel: 'Mes Services',
+              title: 'Mes Services',
+            }}
+          />
+        )
       )}
+      {/* ✅ SUPPRIMÉ: Onglet Historique (déjà accessible dans Mon Compte) */}
       {/* ✅ NOUVEAU : Ajouter onglet "Suivre mes courses" pour les coursiers */}
       {isCourier && (
         <Tab.Screen

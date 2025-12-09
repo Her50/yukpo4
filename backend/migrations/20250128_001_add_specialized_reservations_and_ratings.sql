@@ -32,11 +32,11 @@ CREATE TABLE IF NOT EXISTS specialized_reservations (
 );
 
 -- Index pour performances
-CREATE INDEX idx_specialized_reservations_service_id ON specialized_reservations(service_id);
-CREATE INDEX idx_specialized_reservations_user_id ON specialized_reservations(user_id);
-CREATE INDEX idx_specialized_reservations_prestataire_id ON specialized_reservations(prestataire_id);
-CREATE INDEX idx_specialized_reservations_status ON specialized_reservations(status);
-CREATE INDEX idx_specialized_reservations_service_type ON specialized_reservations(service_type);
+CREATE INDEX IF NOT EXISTS idx_specialized_reservations_service_id ON specialized_reservations(service_id);
+CREATE INDEX IF NOT EXISTS idx_specialized_reservations_user_id ON specialized_reservations(user_id);
+CREATE INDEX IF NOT EXISTS idx_specialized_reservations_prestataire_id ON specialized_reservations(prestataire_id);
+CREATE INDEX IF NOT EXISTS idx_specialized_reservations_status ON specialized_reservations(status);
+CREATE INDEX IF NOT EXISTS idx_specialized_reservations_service_type ON specialized_reservations(service_type);
 
 -- Table des avis et ratings
 CREATE TABLE IF NOT EXISTS specialized_ratings (
@@ -67,11 +67,11 @@ CREATE TABLE IF NOT EXISTS specialized_ratings (
 );
 
 -- Index pour performances
-CREATE INDEX idx_specialized_ratings_service_id ON specialized_ratings(service_id);
-CREATE INDEX idx_specialized_ratings_user_id ON specialized_ratings(user_id);
-CREATE INDEX idx_specialized_ratings_prestataire_id ON specialized_ratings(prestataire_id);
-CREATE INDEX idx_specialized_ratings_rating ON specialized_ratings(rating);
-CREATE INDEX idx_specialized_ratings_helpful_count ON specialized_ratings(helpful_count DESC);
+CREATE INDEX IF NOT EXISTS idx_specialized_ratings_service_id ON specialized_ratings(service_id);
+CREATE INDEX IF NOT EXISTS idx_specialized_ratings_user_id ON specialized_ratings(user_id);
+CREATE INDEX IF NOT EXISTS idx_specialized_ratings_prestataire_id ON specialized_ratings(prestataire_id);
+CREATE INDEX IF NOT EXISTS idx_specialized_ratings_rating ON specialized_ratings(rating);
+CREATE INDEX IF NOT EXISTS idx_specialized_ratings_helpful_count ON specialized_ratings(helpful_count DESC);
 
 -- Table pour votes "utile" sur les avis
 CREATE TABLE IF NOT EXISTS rating_helpful_votes (
@@ -84,8 +84,8 @@ CREATE TABLE IF NOT EXISTS rating_helpful_votes (
     UNIQUE(rating_id, user_id)
 );
 
-CREATE INDEX idx_rating_helpful_votes_rating_id ON rating_helpful_votes(rating_id);
-CREATE INDEX idx_rating_helpful_votes_user_id ON rating_helpful_votes(user_id);
+CREATE INDEX IF NOT EXISTS idx_rating_helpful_votes_rating_id ON rating_helpful_votes(rating_id);
+CREATE INDEX IF NOT EXISTS idx_rating_helpful_votes_user_id ON rating_helpful_votes(user_id);
 
 -- Trigger pour mettre à jour updated_at automatiquement
 CREATE OR REPLACE FUNCTION update_specialized_reservations_updated_at()

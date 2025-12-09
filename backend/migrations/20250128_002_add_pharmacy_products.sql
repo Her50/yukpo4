@@ -17,14 +17,14 @@ CREATE TABLE IF NOT EXISTS pharmacy_products (
 );
 
 -- Index pour recherche rapide
-CREATE INDEX idx_pharmacy_products_service_id ON pharmacy_products(pharmacy_service_id);
-CREATE INDEX idx_pharmacy_products_nom ON pharmacy_products(nom_produit);
-CREATE INDEX idx_pharmacy_products_disponible ON pharmacy_products(disponible);
-CREATE INDEX idx_pharmacy_products_categorie ON pharmacy_products(categorie);
-CREATE INDEX idx_pharmacy_products_prix ON pharmacy_products(prix);
+CREATE INDEX IF NOT EXISTS idx_pharmacy_products_service_id ON pharmacy_products(pharmacy_service_id);
+CREATE INDEX IF NOT EXISTS idx_pharmacy_products_nom ON pharmacy_products(nom_produit);
+CREATE INDEX IF NOT EXISTS idx_pharmacy_products_disponible ON pharmacy_products(disponible);
+CREATE INDEX IF NOT EXISTS idx_pharmacy_products_categorie ON pharmacy_products(categorie);
+CREATE INDEX IF NOT EXISTS idx_pharmacy_products_prix ON pharmacy_products(prix);
 
 -- Index composite pour recherche avec filtre
-CREATE INDEX idx_pharmacy_products_search ON pharmacy_products(pharmacy_service_id, disponible, prix);
+CREATE INDEX IF NOT EXISTS idx_pharmacy_products_search ON pharmacy_products(pharmacy_service_id, disponible, prix);
 
 -- Trigger pour mettre à jour updated_at automatiquement
 CREATE OR REPLACE FUNCTION update_pharmacy_products_updated_at()

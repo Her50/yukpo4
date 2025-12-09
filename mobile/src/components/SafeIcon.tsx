@@ -204,6 +204,13 @@ const iconToEmoji: { [key: string]: string } = {
     'MessageCircle': '💬',
     'truck': '🚚',
     'Truck': '🚚',
+    'bike': '🚴', // ✅ Livreur à vélo
+    'Bike': '🚴',
+    'bicycle': '🚴',
+    'Bicycle': '🚴',
+    'user-check': '👤✅', // ✅ Livreur (utilisateur vérifié)
+    'userCheck': '👤✅',
+    'UserCheck': '👤✅',
     'navigation': '🧭',
     'Navigation': '🧭',
     'sliders': '🎚️',
