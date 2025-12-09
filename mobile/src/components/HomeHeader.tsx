@@ -47,6 +47,7 @@ interface HomeHeaderProps {
     onShowChallenges?: () => void;
     onCloseLeaderboard?: () => void;
     onCloseChallenges?: () => void;
+    disabled?: boolean; // ✅ CORRIGÉ: Désactiver les boutons pendant navigation/chargement
 }
 
 export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
@@ -68,6 +69,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
     onShowChallenges,
     onCloseLeaderboard,
     onCloseChallenges,
+    disabled = false, // ✅ CORRIGÉ: Désactiver les boutons pendant navigation/chargement
 }) => {
     // ✅ REANIMATED 3: useSharedValue pour meilleure performance
     const scrollYShared = useSharedValue(0);
@@ -249,28 +251,32 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
 
                     {/* Titre principal PARFAITEMENT centré avec animation */}
                     <Animated.View style={[styles.brandTitleContainer, animatedTitleStyle]}>
-                        <Text style={styles.brandTitleCompact} numberOfLines={1} ellipsizeMode="tail">
-                            <Text style={styles.brandYuk}>Yuk</Text>
-                            <Text style={styles.brandPo}>po</Text>
-                        </Text>
+                        <View style={styles.brandTitleWrapper}>
+                            <Text style={styles.brandTitleCompact} numberOfLines={1} ellipsizeMode="tail">
+                                <Text style={styles.brandYuk}>Yuk</Text>
+                                <Text style={styles.brandPo}>po</Text>
+                            </Text>
+                        </View>
                     </Animated.View>
 
                     {/* Colonne droite: Actions avec badges animés */}
                     <View style={styles.headerActionsCompact}>
                         {/* ✅ Bouton livraison - Icône livreur (bike) pour représenter le service de livraison */}
                         <TouchableOpacity
-                            style={styles.headerButtonCompact}
+                            style={[styles.headerButtonCompact, disabled && styles.headerButtonDisabled]}
                             onPress={handleDeliveryPress}
+                            disabled={disabled}
                             activeOpacity={0.7}
                         >
-                            <SafeIcon name="bike" size={18} color="#fff" type="lucide" />
+                            <SafeIcon name="bike" size={18} color={disabled ? "#888" : "#fff"} type="lucide" />
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={styles.headerButtonCompact}
+                            style={[styles.headerButtonCompact, disabled && styles.headerButtonDisabled]}
                             onPress={handleChatPress}
+                            disabled={disabled}
                             activeOpacity={0.7}
                         >
-                            <Text style={styles.headerButtonIconCompact}>💬</Text>
+                            <Text style={[styles.headerButtonIconCompact, disabled && styles.headerButtonIconDisabled]}>💬</Text>
                             {/* ✅ NOUVEAU 2025-01-27: Badge pour messages non lus avec animation */}
                             {typeof unreadChatCount !== 'undefined' && unreadChatCount > 0 && (
                                 <Animated.View style={[styles.chatBadgeCompact, animatedChatBadgeStyle]}>
@@ -283,10 +289,11 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                             )}
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={styles.headerButtonCompact}
+                            style={[styles.headerButtonCompact, disabled && styles.headerButtonDisabled]}
                             onPress={handleNotificationPress}
                             onLongPress={onDebugNotifications}
                             delayLongPress={1000}
+                            disabled={disabled}
                             activeOpacity={0.7}
                         >
                             <Text style={styles.headerButtonIconCompact}>🔔</Text>
@@ -324,6 +331,7 @@ const styles = StyleSheet.create({
         alignItems: 'stretch', // ✅ Étirer sur toute la largeur
         flex: 1, // ✅ Prendre toute la hauteur disponible
         height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur du header
+        display: 'flex', // ✅ CORRIGÉ: Forcer display flex
     },
     headerRow: {
         flexDirection: 'row',
@@ -331,9 +339,10 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 4,
         width: '100%',
-        gap: 4,
+        gap: 8, // ✅ CORRIGÉ: Augmenter gap de 4 à 8px pour séparer le badge du texte
         height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour centrer parfaitement
         minHeight: 44, // ✅ Hauteur minimale pour touch target
+        display: 'flex', // ✅ CORRIGÉ: Forcer display flex
     },
     avatarContainer: {
         width: 36, // ✅ RÉDUIT: De 40 à 36px pour plus de compacité
@@ -347,20 +356,29 @@ const styles = StyleSheet.create({
         alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
         justifyContent: 'flex-start',
         minWidth: 0,
-        maxWidth: '30%', // ✅ RÉDUIT: De 35% à 30% pour laisser plus d'espace au centre
+        maxWidth: '28%', // ✅ CORRIGÉ: Réduire de 30% à 28% pour plus d'espace au centre
         flexShrink: 1,
         gap: 4, // ✅ RÉDUIT: De 6 à 4px pour plus de compacité
         height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour alignement parfait
+        paddingRight: 4, // ✅ CORRIGÉ: Ajouter padding à droite pour séparer du centre
     },
     brandTitleContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center', // ✅ CORRIGÉ: Centrer verticalement
-        paddingHorizontal: 8, // ✅ AUGMENTÉ: De 4 à 8px pour plus d'espace
-        minWidth: 80, // ✅ AUGMENTÉ: De 70 à 80px pour garantir l'espace
+        paddingHorizontal: 12, // ✅ CORRIGÉ: Augmenter de 8 à 12px pour séparer du badge
+        minWidth: 100, // ✅ CORRIGÉ: Augmenter de 80 à 100px pour garantir l'espace
         flexShrink: 0,
         zIndex: 1, // ✅ AJOUTÉ: S'assurer que le titre est au-dessus
         height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour centrer parfaitement
+        marginHorizontal: 4, // ✅ CORRIGÉ: Ajouter margin horizontal pour séparer des colonnes
+    },
+    brandTitleWrapper: {
+        // ✅ CORRIGÉ: Wrapper pour centrer parfaitement le texte verticalement
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%',
+        width: '100%',
     },
     brandTitleCompact: {
         width: '100%',
@@ -372,7 +390,9 @@ const styles = StyleSheet.create({
         textAlignVertical: 'center', // ✅ CORRIGÉ: Centrer verticalement le texte
         flexShrink: 0,
         overflow: 'visible',
-        lineHeight: 18, // ✅ CORRIGÉ: Définir lineHeight égal à fontSize pour centrage parfait
+        lineHeight: 20, // ✅ CORRIGÉ: Augmenter lineHeight de 18 à 20px pour meilleur centrage vertical
+        marginVertical: 0, // ✅ CORRIGÉ: Pas de margin vertical pour centrage parfait
+        paddingVertical: 0, // ✅ CORRIGÉ: Pas de padding vertical
     },
     brandYuk: {
         color: '#EAB308',
@@ -386,9 +406,10 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         gap: 4,
         minWidth: 0,
-        maxWidth: '30%', // ✅ RÉDUIT: De 35% à 30% pour symétrie avec la colonne gauche
+        maxWidth: '28%', // ✅ CORRIGÉ: Réduire de 30% à 28% pour symétrie avec la colonne gauche
         flexShrink: 1,
         height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour alignement parfait
+        paddingLeft: 4, // ✅ CORRIGÉ: Ajouter padding à gauche pour séparer du centre
     },
     headerButtonCompact: {
         width: 32, // ✅ RÉDUIT: De 36 à 32px pour plus de compacité
@@ -401,9 +422,18 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E5E7EB',
     },
+    headerButtonDisabled: {
+        // ✅ CORRIGÉ: Style pour boutons désactivés
+        opacity: 0.5,
+        backgroundColor: '#E5E7EB',
+    },
     headerButtonIconCompact: {
         fontSize: 16,
         color: '#374151',
+    },
+    headerButtonIconDisabled: {
+        // ✅ CORRIGÉ: Style pour icônes désactivées
+        opacity: 0.5,
     },
     notificationBadgeCompact: {
         position: 'absolute',

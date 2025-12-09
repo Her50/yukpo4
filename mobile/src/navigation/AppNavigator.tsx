@@ -1,4 +1,5 @@
 // Navigation ULTRA-SIMPLIFIÉE avec TOUS les providers nécessaires
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
@@ -410,7 +411,7 @@ const MainStack = () => {
   const [isCourier, setIsCourier] = useState(false);
   const [hasSpecializedServices, setHasSpecializedServices] = useState(false);
 
-  // ✅ CORRECTION CRASH: Vérifier si l'utilisateur est coursier avec timeout et délai
+  // ✅ CORRECTION CRASH: Vérifier si l'utilisateur est coursier avec timeout, délai et cache
   useEffect(() => {
     const checkCourierStatus = async () => {
       if (!user?.id) {
@@ -418,36 +419,68 @@ const MainStack = () => {
         return;
       }
 
-      // ✅ Délai de 1 seconde pour ne pas surcharger au démarrage
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
+      // ✅ OPTIMISATION: Vérifier le cache (durée de validité: 5 minutes)
+      const cacheKey = `courier_status_${user.id}`;
       try {
-        const { deliveryApi } = require('../services/api');
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+          const { value, timestamp } = JSON.parse(cached);
+          const cacheAge = Date.now() - timestamp;
+          const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-        // ✅ CORRECTION CRASH: Timeout de 5 secondes pour éviter blocage
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout')), 5000)
-        );
-
-        let response: any;
-        try {
-          response = await Promise.race([
-            deliveryApi.getMyCourierStatus(),
-            timeoutPromise
-          ]);
-        } catch (timeoutError) {
-          console.warn('[AppNavigator] Timeout vérification coursier');
-          setIsCourier(false);
-          return;
+          if (cacheAge < CACHE_DURATION) {
+            setIsCourier(value);
+            return; // Utiliser le cache, pas besoin de requête API
+          }
         }
-
-        const data = response.data || response;
-        setIsCourier(data.is_courier || false);
-      } catch (error) {
-        console.error('[AppNavigator] Erreur vérification coursier:', error);
-        // ✅ En cas d'erreur, continuer sans bloquer l'app
-        setIsCourier(false);
+      } catch (cacheError) {
+        // Ignorer les erreurs de cache, continuer avec la requête API
       }
+
+      // ✅ CORRIGÉ: Supprimer le délai bloquant - faire la vérification en arrière-plan
+      // Ne pas bloquer le démarrage de l'app
+
+      // ✅ CORRIGÉ: Utiliser requestIdleCallback ou setTimeout pour ne pas bloquer
+      setTimeout(async () => {
+        try {
+          const { deliveryApi } = require('../services/api');
+
+          // ✅ CORRIGÉ: Timeout réduit de 3s à 2s pour éviter les blocages
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 2000)
+          );
+
+          let response: any;
+          try {
+            response = await Promise.race([
+              deliveryApi.getMyCourierStatus(),
+              timeoutPromise
+            ]);
+          } catch (timeoutError) {
+            console.warn('[AppNavigator] Timeout vérification coursier');
+            setIsCourier(false);
+            return;
+          }
+
+          const data = response.data || response;
+          const isCourierValue = data.is_courier || false;
+          setIsCourier(isCourierValue);
+
+          // ✅ OPTIMISATION: Mettre en cache le résultat
+          try {
+            await AsyncStorage.setItem(cacheKey, JSON.stringify({
+              value: isCourierValue,
+              timestamp: Date.now()
+            }));
+          } catch (cacheError) {
+            // Ignorer les erreurs de sauvegarde du cache
+          }
+        } catch (error) {
+          console.error('[AppNavigator] Erreur vérification coursier:', error);
+          // ✅ En cas d'erreur, continuer sans bloquer l'app
+          setIsCourier(false);
+        }
+      }, 100); // ✅ CORRIGÉ: Délai minimal de 100ms au lieu de 1000ms
     };
 
     // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
@@ -462,7 +495,7 @@ const MainStack = () => {
   // ✅ NOUVEAU: État pour vérifier si l'utilisateur a des services/produits
   const [hasServicesOrProducts, setHasServicesOrProducts] = React.useState(false);
 
-  // ✅ CORRECTION CRASH: Vérifier si l'utilisateur a des services spécialisés avec timeout et délai
+  // ✅ CORRECTION CRASH: Vérifier si l'utilisateur a des services spécialisés avec timeout, délai et cache
   useEffect(() => {
     const checkSpecializedServices = async () => {
       if (!user?.id) {
@@ -471,65 +504,98 @@ const MainStack = () => {
         return;
       }
 
-      // ✅ Délai de 1 seconde pour ne pas surcharger au démarrage
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
+      // ✅ OPTIMISATION: Vérifier le cache (durée de validité: 5 minutes)
+      const cacheKey = `specialized_services_${user.id}`;
       try {
-        const { apiGet, servicesApi } = require('../services/api');
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+          const { hasSpecialized: cachedHasSpecialized, hasAny: cachedHasAny, timestamp } = JSON.parse(cached);
+          const cacheAge = Date.now() - timestamp;
+          const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-        // ✅ CORRECTION CRASH: Timeout de 5 secondes pour éviter blocage
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout')), 5000)
-        );
+          if (cacheAge < CACHE_DURATION) {
+            setHasSpecializedServices(cachedHasSpecialized);
+            setHasServicesOrProducts(cachedHasAny);
+            return; // Utiliser le cache, pas besoin de requête API
+          }
+        }
+      } catch (cacheError) {
+        // Ignorer les erreurs de cache, continuer avec la requête API
+      }
 
-        // Vérifier si l'utilisateur a au moins un service spécialisé
-        const apiCalls = Promise.all([
-          apiGet('/api/pharmacies').catch(() => ({ success: false, data: [] })),
-          apiGet('/api/hopitaux').catch(() => ({ success: false, data: [] })),
-          apiGet('/api/laboratoires').catch(() => ({ success: false, data: [] })),
-          apiGet('/api/banques-sang').catch(() => ({ success: false, data: [] })),
-          apiGet('/api/agences-voyage').catch(() => ({ success: false, data: [] })),
-          apiGet('/api/covoiturages').catch(() => ({ success: false, data: [] })),
-          apiGet('/api/taxis').catch(() => ({ success: false, data: [] })),
-          // ✅ NOUVEAU: Vérifier aussi les services et produits généraux
-          servicesApi.getUserServices().catch(() => ({ success: false, data: [] })),
-          apiGet(`/api/products/user/${user.id}`).catch(() => ({ success: false, data: [] })),
-        ]);
+      // ✅ CORRIGÉ: Supprimer le délai bloquant - faire la vérification en arrière-plan
+      // Ne pas bloquer le démarrage de l'app
 
-        let results: any[];
+      // ✅ CORRIGÉ: Utiliser setTimeout pour ne pas bloquer
+      setTimeout(async () => {
         try {
-          results = await Promise.race([apiCalls, timeoutPromise]);
-        } catch (timeoutError) {
-          console.warn('[AppNavigator] Timeout vérification services spécialisés');
+          const { apiGet, servicesApi } = require('../services/api');
+
+          // ✅ CORRIGÉ: Timeout réduit de 3s à 2s pour éviter les blocages
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 2000)
+          );
+
+          // Vérifier si l'utilisateur a au moins un service spécialisé
+          const apiCalls = Promise.all([
+            apiGet('/api/pharmacies').catch(() => ({ success: false, data: [] })),
+            apiGet('/api/hopitaux').catch(() => ({ success: false, data: [] })),
+            apiGet('/api/laboratoires').catch(() => ({ success: false, data: [] })),
+            apiGet('/api/banques-sang').catch(() => ({ success: false, data: [] })),
+            apiGet('/api/agences-voyage').catch(() => ({ success: false, data: [] })),
+            apiGet('/api/covoiturages').catch(() => ({ success: false, data: [] })),
+            apiGet('/api/taxis').catch(() => ({ success: false, data: [] })),
+            // ✅ NOUVEAU: Vérifier aussi les services et produits généraux
+            servicesApi.getUserServices().catch(() => ({ success: false, data: [] })),
+            apiGet(`/api/products/user/${user.id}`).catch(() => ({ success: false, data: [] })),
+          ]);
+
+          let results: any[];
+          try {
+            results = await Promise.race([apiCalls, timeoutPromise]);
+          } catch (timeoutError) {
+            console.warn('[AppNavigator] Timeout vérification services spécialisés');
+            setHasSpecializedServices(false);
+            setHasServicesOrProducts(false);
+            return;
+          }
+
+          const [pharmacies, hopitaux, laboratoires, banques_sang, agences, covoiturages, taxis, userServices, userProducts] = results;
+
+          const hasSpecialized =
+            (pharmacies.success && Array.isArray(pharmacies.data) && pharmacies.data.length > 0) ||
+            (hopitaux.success && Array.isArray(hopitaux.data) && hopitaux.data.length > 0) ||
+            (laboratoires.success && Array.isArray(laboratoires.data) && laboratoires.data.length > 0) ||
+            (banques_sang.success && Array.isArray(banques_sang.data) && banques_sang.data.length > 0) ||
+            (agences.success && Array.isArray(agences.data) && agences.data.length > 0) ||
+            (covoiturages.success && Array.isArray(covoiturages.data) && covoiturages.data.length > 0) ||
+            (taxis.success && Array.isArray(taxis.data) && taxis.data.length > 0);
+
+          // ✅ NOUVEAU: Vérifier si l'utilisateur a des services ou produits
+          const hasServices = userServices?.success && Array.isArray(userServices?.data) && userServices.data.length > 0;
+          const hasProducts = userProducts?.success && Array.isArray(userProducts?.data) && userProducts.data.length > 0;
+          const hasAny = hasSpecialized || hasServices || hasProducts;
+
+          setHasSpecializedServices(hasSpecialized);
+          setHasServicesOrProducts(hasAny);
+
+          // ✅ OPTIMISATION: Mettre en cache le résultat
+          try {
+            await AsyncStorage.setItem(cacheKey, JSON.stringify({
+              hasSpecialized,
+              hasAny,
+              timestamp: Date.now()
+            }));
+          } catch (cacheError) {
+            // Ignorer les erreurs de sauvegarde du cache
+          }
+        } catch (error) {
+          console.error('[AppNavigator] Erreur vérification services spécialisés:', error);
+          // ✅ En cas d'erreur, continuer sans bloquer l'app
           setHasSpecializedServices(false);
           setHasServicesOrProducts(false);
-          return;
         }
-
-        const [pharmacies, hopitaux, laboratoires, banques_sang, agences, covoiturages, taxis, userServices, userProducts] = results;
-
-        const hasSpecialized =
-          (pharmacies.success && Array.isArray(pharmacies.data) && pharmacies.data.length > 0) ||
-          (hopitaux.success && Array.isArray(hopitaux.data) && hopitaux.data.length > 0) ||
-          (laboratoires.success && Array.isArray(laboratoires.data) && laboratoires.data.length > 0) ||
-          (banques_sang.success && Array.isArray(banques_sang.data) && banques_sang.data.length > 0) ||
-          (agences.success && Array.isArray(agences.data) && agences.data.length > 0) ||
-          (covoiturages.success && Array.isArray(covoiturages.data) && covoiturages.data.length > 0) ||
-          (taxis.success && Array.isArray(taxis.data) && taxis.data.length > 0);
-
-        // ✅ NOUVEAU: Vérifier si l'utilisateur a des services ou produits
-        const hasServices = userServices?.success && Array.isArray(userServices?.data) && userServices.data.length > 0;
-        const hasProducts = userProducts?.success && Array.isArray(userProducts?.data) && userProducts.data.length > 0;
-        const hasAny = hasSpecialized || hasServices || hasProducts;
-
-        setHasSpecializedServices(hasSpecialized);
-        setHasServicesOrProducts(hasAny);
-      } catch (error) {
-        console.error('[AppNavigator] Erreur vérification services spécialisés:', error);
-        // ✅ En cas d'erreur, continuer sans bloquer l'app
-        setHasSpecializedServices(false);
-        setHasServicesOrProducts(false);
-      }
+      }, 200); // ✅ CORRIGÉ: Délai minimal de 200ms au lieu de 1000ms
     };
 
     // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise

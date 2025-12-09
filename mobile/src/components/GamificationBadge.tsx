@@ -173,12 +173,14 @@ const styles = StyleSheet.create({
         alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
         justifyContent: 'center', // ✅ CORRIGÉ: Centrer horizontalement
         paddingHorizontal: 6, // ✅ RÉDUIT: De 8 à 6px
-        paddingVertical: 3, // ✅ RÉDUIT: De 4 à 3px
+        paddingVertical: 4, // ✅ CORRIGÉ: Augmenter de 3 à 4px pour meilleur alignement vertical
         backgroundColor: modernColors.primary,
         borderRadius: 12, // ✅ RÉDUIT: De 16 à 12px
-        gap: 3, // ✅ RÉDUIT: De 4 à 3px
+        gap: 4, // ✅ CORRIGÉ: Augmenter de 3 à 4px pour séparer le trophée du nombre
         minWidth: 0, // ✅ AJOUTÉ: Permet au badge de se rétrécir si nécessaire
-        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour alignement avec "Yukpo"
+        maxWidth: 50, // ✅ CORRIGÉ: Limiter la largeur max pour éviter débordement
+        height: 28, // ✅ CORRIGÉ: Hauteur fixe au lieu de 100% pour meilleur contrôle
+        alignSelf: 'center', // ✅ CORRIGÉ: Centrer le badge dans son conteneur
     },
     compactIcon: {
         fontSize: 12, // ✅ RÉDUIT: De 14 à 12px

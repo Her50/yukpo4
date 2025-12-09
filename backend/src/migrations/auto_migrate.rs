@@ -10603,12 +10603,12 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                     }
                 }
             }
-            // ✅ CORRECTION: Si on trouve END; dans un bloc CREATE FUNCTION, on continue jusqu'à trouver $$ LANGUAGE
+            // ✅ CORRECTION: Si on trouve END; dans un bloc CREATE FUNCTION, vérifier si la ligne suivante contient $$ LANGUAGE
             // Ne pas terminer le bloc sur END; seul si c'est une fonction (doit être suivi de $$ LANGUAGE)
             else if trimmed == "END;" && current.contains("CREATE") && current.contains("FUNCTION") {
                 // On continue à accumuler car la ligne suivante devrait contenir $$ LANGUAGE
-                // Ne pas terminer ici
-                continue;
+                // Ne pas terminer ici - la détection se fera sur la prochaine itération
+                // Note: Ne pas faire continue ici car on a déjà ajouté la ligne à current
             }
             // Si on est dans un bloc et qu'on trouve un point-virgule après LANGUAGE (sur ligne séparée)
             // Ce cas est pour CREATE FUNCTION ... LANGUAGE plpgsql AS $$ ... $$; où LANGUAGE est avant AS
@@ -10744,6 +10744,12 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                     error_lower.contains("relation") && error_lower.contains("does not exist") ||
                     // Partitionnement non applicable
                     error_lower.contains("is not partitioned") ||
+                    // ✅ NOUVEAU 2025-12-09: Erreurs de syntaxe SQL dues au parsing de fonctions/triggers
+                    // Ces erreurs peuvent se produire si une fonction de trigger n'existe pas encore
+                    ((error_lower.contains("syntax error") && error_lower.contains("end")) &&
+                    (normalized_cmd.to_uppercase().contains("CREATE TRIGGER") || normalized_cmd.to_uppercase().contains("EXECUTE FUNCTION"))) ||
+                    // Fonction appelée par un trigger n'existe pas encore
+                    (error_lower.contains("function") && error_lower.contains("does not exist") && normalized_cmd.to_uppercase().contains("CREATE TRIGGER")) ||
                     error_lower.contains("cannot change") && error_lower.contains("partition") ||
                     // Erreurs de syntaxe pour fragments/fragments invalides
                     (error_lower.contains("syntax error") && (

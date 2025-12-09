@@ -110,7 +110,8 @@ class CDNService {
                     return cloudflareEndpoint;
                 }
             } catch (error) {
-                console.warn('[CDNService] Cloudflare non disponible, test Wasabi...');
+                // ✅ OPTIMISATION: Logger en debug au lieu de warn (fallback automatique fonctionnel)
+                console.debug('[CDNService] Cloudflare non disponible, test Wasabi...');
             }
         }
 
@@ -137,7 +138,8 @@ class CDNService {
                     return wasabiEndpoint;
                 }
             } catch (error) {
-                console.warn('[CDNService] Wasabi non disponible, fallback backend...');
+                // ✅ OPTIMISATION: Logger en debug au lieu de warn (fallback automatique fonctionnel)
+                console.debug('[CDNService] Wasabi non disponible, fallback backend...');
             }
         }
 

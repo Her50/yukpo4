@@ -79,9 +79,18 @@ const HomeScreen: React.FC = () => {
     const { scrollY, onScroll } = useScrollY(); // ✅ OPTIMISATION: Pour header collapsible
 
     // ✅ OPTIMISATION: Callbacks memoïsés pour éviter re-renders
+    // ✅ CORRIGÉ: Ajout d'un état pour éviter les clics multiples
+    const [isNavigating, setIsNavigating] = React.useState(false);
+
     const handleDeliveryPress = React.useCallback(() => {
+        // ✅ CORRIGÉ: Empêcher les clics multiples
+        if (isNavigating) return;
+
         hapticPress(); // ✅ PHASE 2: Haptic feedback
+        setIsNavigating(true);
         console.log('[HomeScreen] 🚚 Navigation vers Delivery');
+
+        // ✅ CORRIGÉ: Navigation immédiate sans délai
         try {
             const parentNavigation = (navigation as any).getParent();
             if (parentNavigation) {
@@ -93,8 +102,11 @@ const HomeScreen: React.FC = () => {
         } catch (error) {
             console.error('[HomeScreen] ❌ Erreur navigation vers Delivery:', error);
             Alert.alert('Erreur', 'Impossible d\'ouvrir la livraison.');
+        } finally {
+            // ✅ CORRIGÉ: Réinitialiser après un court délai
+            setTimeout(() => setIsNavigating(false), 500);
         }
-    }, [navigation]);
+    }, [navigation, isNavigating]);
 
     // ✅ NOUVEAU 2025-01-27: Charger le nombre de conversations non lues
     const loadUnreadChatCount = React.useCallback(async (): Promise<number> => {
@@ -118,26 +130,41 @@ const HomeScreen: React.FC = () => {
         }
     }, [user?.id]);
 
-    const handleChatPress = React.useCallback(async () => {
+    const handleChatPress = React.useCallback(() => {
+        // ✅ CORRIGÉ: Empêcher les clics multiples
+        if (isNavigating) return;
+
         hapticPress(); // ✅ PHASE 2: Haptic feedback
+        setIsNavigating(true);
         const wasOpen = state.ui.showChatModal;
         dispatch({ type: 'TOGGLE_CHAT_MODAL' });
-        // ✅ NOUVEAU 2025-01-27: Rafraîchir le compteur quand on ouvre le modal
+
+        // ✅ CORRIGÉ: Charger le compteur en arrière-plan SANS bloquer la navigation
         if (!wasOpen && loadUnreadChatCount) {
-            // Charger le compteur après la définition de loadUnreadChatCount
-            try {
-                const count = await loadUnreadChatCount();
-                dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: count });
-            } catch (error) {
-                console.error('[HomeScreen] Erreur chargement chat count:', error);
-            }
+            // ✅ CORRIGÉ: Ne pas attendre - charger en arrière-plan
+            loadUnreadChatCount()
+                .then((count) => {
+                    dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: count });
+                })
+                .catch((error) => {
+                    console.error('[HomeScreen] Erreur chargement chat count:', error);
+                });
         }
-    }, [state.ui.showChatModal, loadUnreadChatCount]);
+
+        // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour les modals)
+        setIsNavigating(false);
+    }, [state.ui.showChatModal, loadUnreadChatCount, isNavigating]);
 
     const handleNotificationPress = React.useCallback(() => {
+        // ✅ CORRIGÉ: Empêcher les clics multiples
+        if (isNavigating) return;
+
         hapticPress(); // ✅ PHASE 2: Haptic feedback
+        setIsNavigating(true);
         dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
-    }, []);
+        // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour les modals)
+        setTimeout(() => setIsNavigating(false), 100);
+    }, [isNavigating]);
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
@@ -250,31 +277,49 @@ const HomeScreen: React.FC = () => {
                 return;
             }
 
-            // ✅ Charger toutes les données en parallèle
-            const [notificationsResult, chatCountResult, behaviorResult, courierResult] = await Promise.allSettled([
-                loadUnreadNotificationsCount(),
-                loadUnreadChatCount(), // ✅ NOUVEAU 2025-01-27: Charger le nombre de conversations non lues
-                userBehaviorService.getPreferredCategories(5).catch(() => []),
-                deliveryApi.getMyCourierStatus().catch(() => ({ data: { is_courier: false } })),
-            ]);
+            // ✅ CORRIGÉ: Charger les données en arrière-plan avec timeout pour ne pas bloquer
+            const timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('Timeout')), 2000)
+            );
 
-            // Traiter les résultats
-            if (notificationsResult.status === 'fulfilled') {
-                dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: notificationsResult.value });
-            }
+            try {
+                // ✅ Charger toutes les données en parallèle avec timeout
+                const [notificationsResult, chatCountResult, behaviorResult, courierResult] = await Promise.race([
+                    Promise.allSettled([
+                        loadUnreadNotificationsCount(),
+                        loadUnreadChatCount(), // ✅ NOUVEAU 2025-01-27: Charger le nombre de conversations non lues
+                        userBehaviorService.getPreferredCategories(5).catch(() => []),
+                        deliveryApi.getMyCourierStatus().catch(() => ({ data: { is_courier: false } })),
+                    ]),
+                    timeoutPromise
+                ]) as PromiseSettledResult<any>[];
 
-            if (chatCountResult.status === 'fulfilled') {
-                dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: chatCountResult.value });
-            }
+                // Traiter les résultats
+                if (notificationsResult.status === 'fulfilled') {
+                    dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: notificationsResult.value });
+                }
 
-            if (behaviorResult.status === 'fulfilled') {
-                dispatch({ type: 'SET_USER_BEHAVIOR_CATEGORIES', payload: behaviorResult.value });
-            }
+                if (chatCountResult.status === 'fulfilled') {
+                    dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: chatCountResult.value });
+                }
 
-            if (courierResult.status === 'fulfilled') {
-                const data = (courierResult.value as any)?.data || courierResult.value;
-                const isCourierValue = data?.is_courier ?? data?.isCourier ?? false;
-                dispatch({ type: 'SET_IS_COURIER', payload: Boolean(isCourierValue) });
+                if (behaviorResult.status === 'fulfilled') {
+                    dispatch({ type: 'SET_USER_BEHAVIOR_CATEGORIES', payload: behaviorResult.value });
+                }
+
+                if (courierResult.status === 'fulfilled') {
+                    const data = (courierResult.value as any)?.data || courierResult.value;
+                    const isCourierValue = data?.is_courier ?? data?.isCourier ?? false;
+                    dispatch({ type: 'SET_IS_COURIER', payload: Boolean(isCourierValue) });
+                }
+            } catch (error) {
+                // ✅ CORRIGÉ: En cas de timeout, continuer sans bloquer
+                console.warn('[HomeScreen] Timeout chargement données initiales, continuation...');
+                // Définir des valeurs par défaut
+                dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: 0 });
+                dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: 0 });
+                dispatch({ type: 'SET_USER_BEHAVIOR_CATEGORIES', payload: [] });
+                dispatch({ type: 'SET_IS_COURIER', payload: false });
             }
         };
 
@@ -1249,6 +1294,7 @@ const HomeScreen: React.FC = () => {
                         onShowChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
                         onCloseLeaderboard={() => dispatch({ type: 'TOGGLE_LEADERBOARD' })}
                         onCloseChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
+                        disabled={isNavigating || state.ui.loading} // ✅ CORRIGÉ: Désactiver les boutons pendant navigation/chargement
                     />
 
                     {/* ✅ ZONE DE RECHERCHE FIXE - Juste après l'en-tête */}
@@ -1260,7 +1306,9 @@ const HomeScreen: React.FC = () => {
                                     title={t('search.find')}
                                     icon="🔍"
                                     variant={!state.ui.isCreateService ? 'primary' : 'outline'}
+                                    disabled={isNavigating || state.ui.loading}
                                     onPress={() => {
+                                        if (isNavigating || state.ui.loading) return;
                                         hapticSelect();
                                         dispatch({ type: 'SET_IS_CREATE_SERVICE', payload: false });
                                     }}
@@ -1272,7 +1320,9 @@ const HomeScreen: React.FC = () => {
                                     title={t('search.create')}
                                     icon="➕"
                                     variant={state.ui.isCreateService ? 'primary' : 'outline'}
+                                    disabled={isNavigating || state.ui.loading}
                                     onPress={() => {
+                                        if (isNavigating || state.ui.loading) return;
                                         hapticSelect();
                                         dispatch({ type: 'SET_IS_CREATE_SERVICE', payload: true });
                                     }}
