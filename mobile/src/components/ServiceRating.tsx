@@ -366,7 +366,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
           {reviews.length > 3 && (
             <TouchableOpacity style={styles.viewAllButton}>
               <Text style={styles.viewAllText}>
-                Voir tous les avis ({reviews.length})
+                Voir tous les avis ({String(reviews.length)})
               </Text>
             </TouchableOpacity>
           )}

@@ -116,7 +116,7 @@ const CovoiturageDriverProfile: React.FC<CovoiturageDriverProfileProps> = ({
                                 {renderStars(driver.note_moyenne)}
                             </View>
                             <Text style={styles.ratingText}>
-                                {driver.note_moyenne.toFixed(1)} ({driver.nombre_avis || 0} avis)
+                                {driver.note_moyenne.toFixed(1)} ({String(driver.nombre_avis || 0)} avis)
                             </Text>
                         </View>
                     )}
@@ -130,7 +130,7 @@ const CovoiturageDriverProfile: React.FC<CovoiturageDriverProfileProps> = ({
             <View style={styles.stats}>
                 <View style={styles.statItem}>
                     <SafeIcon name="car" size={20} color={modernColors.primary} />
-                    <Text style={styles.statValue}>{driver.nombre_trajets || 0}</Text>
+                    <Text style={styles.statValue}>{String(driver.nombre_trajets || 0)}</Text>
                     <Text style={styles.statLabel}>Trajets</Text>
                 </View>
                 <View style={styles.statItem}>
@@ -142,7 +142,7 @@ const CovoiturageDriverProfile: React.FC<CovoiturageDriverProfileProps> = ({
                 </View>
                 <View style={styles.statItem}>
                     <SafeIcon name="message-circle" size={20} color={modernColors.primary} />
-                    <Text style={styles.statValue}>{driver.nombre_avis || 0}</Text>
+                    <Text style={styles.statValue}>{String(driver.nombre_avis || 0)}</Text>
                     <Text style={styles.statLabel}>Avis</Text>
                 </View>
             </View>

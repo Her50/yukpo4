@@ -385,7 +385,7 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
           borderColor: modernColors.background,
         }}>
           <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '700' }}>
-            {badgeCount > 99 ? '99+' : badgeCount}
+            {badgeCount > 99 ? '99+' : String(badgeCount)}
           </Text>
         </View>
       )}

@@ -327,7 +327,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
                                 >
                                     <SafeIcon name="minus" size={16} color={modernColors.primary} />
                                 </TouchableOpacity>
-                                <Text style={styles.zoomText}>{Math.round(zoomLevel * 100)}%</Text>
+                                <Text style={styles.zoomText}>{String(Math.round(zoomLevel * 100))}%</Text>
                                 <TouchableOpacity
                                     style={styles.zoomButton}
                                     onPress={() => {
@@ -419,7 +419,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
                         {selectedSeats.length > 0 && (
                             <View style={styles.selectionInfo}>
                                 <Text style={styles.selectionTitle}>
-                                    {selectedSeats.length} place{selectedSeats.length > 1 ? 's' : ''} sélectionnée{selectedSeats.length > 1 ? 's' : ''}
+                                    {String(selectedSeats.length)} place{selectedSeats.length > 1 ? 's' : ''} sélectionnée{selectedSeats.length > 1 ? 's' : ''}
                                 </Text>
                                 <View style={styles.selectedSeatsList}>
                                     {selectedSeats.map((seat) => (
@@ -469,7 +469,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
                         {/* Bouton réserver */}
                         <TouchableOpacity style={styles.reserveButton} onPress={handleReserve}>
                             <Text style={styles.reserveButtonText}>
-                                Réserver {selectedSeats.length} place{selectedSeats.length > 1 ? 's' : ''}
+                                Réserver {String(selectedSeats.length)} place{selectedSeats.length > 1 ? 's' : ''}
                             </Text>
                         </TouchableOpacity>
                     </ScrollView>

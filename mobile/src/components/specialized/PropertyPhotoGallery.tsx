@@ -99,7 +99,7 @@ const PropertyPhotoGallery: React.FC<PropertyPhotoGalleryProps> = ({
                         <View style={styles.photoCountBadge}>
                             <SafeIcon name="image" size={16} color="#fff" />
                             <Text style={styles.photoCountText}>
-                                +{allMedia.length - 1}
+                                +{String(allMedia.length - 1)}
                             </Text>
                         </View>
                     )}
@@ -144,7 +144,7 @@ const PropertyPhotoGallery: React.FC<PropertyPhotoGalleryProps> = ({
                             onPress={() => handlePhotoPress(6)}
                         >
                             <Text style={styles.moreThumbnailsText}>
-                                +{allMedia.length - 6}
+                                +{String(allMedia.length - 6)}
                             </Text>
                         </TouchableOpacity>
                     )}
@@ -209,7 +209,7 @@ const PropertyPhotoGallery: React.FC<PropertyPhotoGalleryProps> = ({
                     {selectedIndex !== null && (
                         <View style={styles.imageIndicator}>
                             <Text style={styles.imageIndicatorText}>
-                                {selectedIndex + 1} / {allMedia.length}
+                                {String(selectedIndex + 1)} / {String(allMedia.length)}
                             </Text>
                         </View>
                     )}

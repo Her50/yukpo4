@@ -321,7 +321,7 @@ const DashboardScreen: React.FC = () => {
               activeOpacity={0.8}
             >
               <View style={[styles.serviceRank, { backgroundColor: modernColors.primary }]}>
-                <Text style={styles.rankNumber}>{index + 1}</Text>
+                <Text style={styles.rankNumber}>{String(index + 1)}</Text>
               </View>
               <View style={styles.serviceInfo}>
                 <Text style={styles.serviceTitle}>{service.title}</Text>
@@ -547,7 +547,7 @@ const DashboardScreen: React.FC = () => {
         <View style={styles.statsContainer}>
           <StatCard
             title="Services Actifs"
-            value={Number(dashboardData.activeServices) || 0}
+            value={String(Number(dashboardData.activeServices) || 0)}
             subtitle={`sur ${Number(dashboardData.totalServices) || 0} total`}
             icon="briefcase"
             color={modernColors.success}

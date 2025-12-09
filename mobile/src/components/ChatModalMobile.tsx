@@ -1114,7 +1114,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 <SafeIcon name="users" size={20} color={participants.length > 2 ? modernColors.primary : modernColors.text} />
                                 {participants.length > 2 && (
                                     <View style={styles.participantsBadge}>
-                                        <Text style={styles.participantsBadgeText}>{participants.length}</Text>
+                                        <Text style={styles.participantsBadgeText}>{String(participants.length)}</Text>
                                     </View>
                                 )}
                             </TouchableOpacity>
@@ -1778,7 +1778,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     <View style={styles.participantsContainer}>
                         <View style={styles.participantsHeader}>
                             <Text style={styles.participantsTitle}>
-                                👥 Participants ({participants.length})
+                                👥 Participants ({String(participants.length)})
                             </Text>
                             <TouchableOpacity onPress={() => setShowParticipantsList(false)}>
                                 <SafeIcon name="x" size={24} color={modernColors.text} />

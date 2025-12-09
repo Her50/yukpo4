@@ -1240,7 +1240,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                                 accessibilityRole="button"
                             >
                                 <Text style={dynamicStyles.showAllButtonText}>
-                                    Voir tous ({totalSearchResults != null ? totalSearchResults : 0})
+                                    Voir tous ({totalSearchResults != null ? String(totalSearchResults) : '0'})
                                 </Text>
                                 <SafeIcon name="chevron-right" size={16} color={colors.primary} />
                             </TouchableOpacity>

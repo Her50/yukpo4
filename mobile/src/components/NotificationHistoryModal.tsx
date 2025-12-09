@@ -422,7 +422,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
               </Text>
               {notifications.length > 0 && (
                 <Text style={styles.emptySubtext}>
-                  {notifications.length} notification(s) disponible(s) avec d'autres filtres
+                  {String(notifications.length)} notification(s) disponible(s) avec d'autres filtres
                 </Text>
               )}
             </View>

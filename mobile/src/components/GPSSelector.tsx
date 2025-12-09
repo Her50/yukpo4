@@ -161,7 +161,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                     <View style={styles.accuracyContainer}>
                                         <Text style={styles.checkIcon}>✅</Text>
                                         <Text style={styles.accuracyText}>
-                                            Précision: {location.coords.accuracy != null && Number.isFinite(location.coords.accuracy) ? Math.round(location.coords.accuracy) : '?'}m
+                                            Précision: {location.coords.accuracy != null && Number.isFinite(location.coords.accuracy) ? String(Math.round(location.coords.accuracy)) : '?'}m
                                         </Text>
                                     </View>
                                 </View>

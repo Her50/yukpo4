@@ -281,7 +281,7 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
                             {hasServicesInCategory(category.id) && (
                                 <View style={styles.badge}>
                                     <Text style={styles.badgeText}>
-                                        {userServicesByCategory[category.id]?.length || 0}
+                                        {String(userServicesByCategory[category.id]?.length || 0)}
                                     </Text>
                                 </View>
                             )}

@@ -164,7 +164,7 @@ export const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
                             </View>
                         ))}
                         {template.tags.length > 3 && (
-                            <Text style={styles.moreTagsText}>+{template.tags.length - 3}</Text>
+                            <Text style={styles.moreTagsText}>+{String(template.tags.length - 3)}</Text>
                         )}
                     </View>
                 </TouchableOpacity>
@@ -278,7 +278,7 @@ export const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
                 }
                 ListHeaderComponent={
                     <Text style={styles.resultsCount}>
-                        {filteredTemplates.length} template{filteredTemplates.length > 1 ? 's' : ''} trouvé
+                        {String(filteredTemplates.length)} template{filteredTemplates.length > 1 ? 's' : ''} trouvé
                         {filteredTemplates.length > 1 ? 's' : ''}
                     </Text>
                 }

@@ -87,7 +87,7 @@ const TopServicesCard: React.FC<TopServicesCardProps> = ({
                     >
                         <View style={styles.serviceHeader}>
                             <View style={styles.rankContainer}>
-                                <Text style={styles.rankText}>#{index + 1}</Text>
+                                <Text style={styles.rankText}>#{String(index + 1)}</Text>
                             </View>
                             <View style={[
                                 styles.statusBadge,

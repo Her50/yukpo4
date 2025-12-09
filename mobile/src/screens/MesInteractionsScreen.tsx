@@ -278,7 +278,7 @@ const MesInteractionsScreen: React.FC = () => {
             <View style={styles.headerTextContainer}>
               <Text style={styles.headerTitle}>Mes Interactions</Text>
               <Text style={styles.headerSubtitle}>
-                {interactions.length} interaction{interactions.length > 1 ? 's' : ''} • {favorites.length} favori{favorites.length > 1 ? 's' : ''}
+                {String(interactions.length)} interaction{interactions.length > 1 ? 's' : ''} • {String(favorites.length)} favori{favorites.length > 1 ? 's' : ''}
               </Text>
             </View>
           </View>
@@ -385,13 +385,13 @@ const MesInteractionsScreen: React.FC = () => {
               <View style={styles.additionalStatItem}>
                 <SafeIcon name="briefcase" size={16} color={modernColors.primary} />
                 <Text style={styles.additionalStatText}>
-                  {dashboardData.uniqueServices || 0} service{(dashboardData.uniqueServices || 0) > 1 ? 's' : ''} consulté{(dashboardData.uniqueServices || 0) > 1 ? 's' : ''}
+                  {String(dashboardData.uniqueServices || 0)} service{(dashboardData.uniqueServices || 0) > 1 ? 's' : ''} consulté{(dashboardData.uniqueServices || 0) > 1 ? 's' : ''}
                 </Text>
               </View>
               <View style={styles.additionalStatItem}>
                 <SafeIcon name="users" size={16} color={modernColors.primary} />
                 <Text style={styles.additionalStatText}>
-                  {dashboardData.uniqueProviders || 0} prestataire{(dashboardData.uniqueProviders || 0) > 1 ? 's' : ''}
+                  {String(dashboardData.uniqueProviders || 0)} prestataire{(dashboardData.uniqueProviders || 0) > 1 ? 's' : ''}
                 </Text>
               </View>
             </View>
@@ -411,7 +411,7 @@ const MesInteractionsScreen: React.FC = () => {
                     <SafeIcon name={category.icon} size={24} color={category.color} />
                   </View>
                   <Text style={styles.categoryName}>{category.name}</Text>
-                  <Text style={styles.categoryCount}>{category.count} interaction{category.count > 1 ? 's' : ''}</Text>
+                  <Text style={styles.categoryCount}>{String(category.count)} interaction{category.count > 1 ? 's' : ''}</Text>
 
                   {/* Types d'interactions */}
                   <View style={styles.categoryInteractionTypes}>

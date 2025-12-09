@@ -132,7 +132,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                                     ))}
                                     {template.effects.length > 10 && (
                                         <Text style={styles.moreTagsText}>
-                                            +{template.effects.length - 10}
+                                            +{String(template.effects.length - 10)}
                                         </Text>
                                     )}
                                 </View>

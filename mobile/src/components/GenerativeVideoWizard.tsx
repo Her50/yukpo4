@@ -316,19 +316,19 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
                 <View style={styles.storyboardContainer}>
                     <Text style={styles.storyboardTitle}>Storyboard généré</Text>
                     <Text style={styles.storyboardInfo}>
-                        {storyboard.scenes.length} scènes • {storyboard.total_duration}s
+                        {String(storyboard.scenes.length)} scènes • {String(storyboard.total_duration)}s
                     </Text>
                     <ScrollView style={styles.scenesList}>
                         {storyboard.scenes.map((scene) => (
                             <View key={scene.scene_number} style={styles.sceneItem}>
                                 <Text style={styles.sceneNumber}>
-                                    Scène {scene.scene_number}
+                                    Scène {String(scene.scene_number)}
                                 </Text>
                                 <Text style={styles.sceneDescription}>
                                     {scene.description}
                                 </Text>
                                 <Text style={styles.sceneDuration}>
-                                    {scene.duration_seconds}s
+                                    {String(scene.duration_seconds)}s
                                 </Text>
                             </View>
                         ))}
@@ -339,7 +339,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
             {job?.generated_clips && job.generated_clips.length > 0 && (
                 <View style={styles.clipsContainer}>
                     <Text style={styles.clipsTitle}>
-                        Clips générés: {job.generated_clips.length}/{storyboard?.scenes.length || 0}
+                        Clips générés: {String(job.generated_clips.length)}/{String(storyboard?.scenes.length || 0)}
                     </Text>
                 </View>
             )}

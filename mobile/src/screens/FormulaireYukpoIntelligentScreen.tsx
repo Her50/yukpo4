@@ -5122,7 +5122,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     </View>
                     <View style={styles.dataContent}>
                       <Text style={styles.dataLabel}>Images</Text>
-                      <Text style={styles.dataText}>{mediaFiles.images.length} image(s)</Text>
+                      <Text style={styles.dataText}>{String(mediaFiles.images.length)} image(s)</Text>
                     </View>
                   </View>
                 )}
@@ -5134,7 +5134,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     </View>
                     <View style={styles.dataContent}>
                       <Text style={styles.dataLabel}>Audio</Text>
-                      <Text style={styles.dataText}>{mediaFiles.audios.length} fichier(s) audio</Text>
+                      <Text style={styles.dataText}>{String(mediaFiles.audios.length)} fichier(s) audio</Text>
                     </View>
                   </View>
                 )}
@@ -5195,7 +5195,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       />
                     </View>
                     <Text style={styles.progressText}>
-                      {totalVisibleBlocks > 0 ? currentDisplayIndex + 1 : 0} / {totalVisibleBlocks || 0}
+                      {totalVisibleBlocks > 0 ? String(currentDisplayIndex + 1) : '0'} / {String(totalVisibleBlocks || 0)}
                     </Text>
                   </View>
 

@@ -148,7 +148,7 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                         {isRetrying && (
                             <View style={styles.retryInfo}>
                                 <Text style={styles.retryText}>
-                                    Réessai automatique dans quelques instants... ({retryCount + 1}/{maxRetries})
+                                    Réessai automatique dans quelques instants... ({String(retryCount + 1)}/{String(maxRetries)})
                                 </Text>
                             </View>
                         )}

@@ -2667,7 +2667,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
                                 {variants.length > 5 && (
                                   <Text style={styles.moreVariantsText}>
-                                    +{variants.length - 5} autres variantes
+                                    +{String(variants.length - 5)} autres variantes
                                   </Text>
                                 )}
                               </View>
@@ -3071,7 +3071,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 ))}
                                 {variants.length > 3 && (
                                   <Text style={styles.moreVariantsText}>
-                                    +{variants.length - 3} autres variantes
+                                    +{String(variants.length - 3)} autres variantes
                                   </Text>
                                 )}
                               </View>
