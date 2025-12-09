@@ -652,11 +652,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .await
                 {
                     let error_str = e.to_string().to_lowercase();
-                    // Ignorer l'erreur si la vue est déjà en cours de refresh
-                    if !error_str.contains("cannot refresh materialized view concurrently") {
-                        log::warn!("⚠️ Erreur refresh global_promo_catalog_cache: {}", e);
-                    } else {
+                    // ✅ CORRECTION: Ignorer silencieusement les erreurs attendues
+                    if error_str.contains("cannot refresh materialized view concurrently") {
                         log::debug!("ℹ️ global_promo_catalog_cache déjà en cours de refresh");
+                    } else if error_str.contains("does not have a unique index") {
+                        log::warn!("⚠️ global_promo_catalog_cache nécessite un index unique pour REFRESH CONCURRENTLY");
+                    } else {
+                        log::warn!("⚠️ Erreur refresh global_promo_catalog_cache: {}", e);
                     }
                 } else {
                     let elapsed = start_time.elapsed();
@@ -703,14 +705,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .await
                         {
                             let error_str = e.to_string().to_lowercase();
-                            // Ignorer l'erreur si la vue est déjà en cours de refresh
-                            if !error_str.contains("cannot refresh materialized view concurrently") {
-                                log::warn!("⚠️ Erreur refresh services_search_cache: {}", e);
-                            } else {
+                            // ✅ CORRECTION: Ignorer silencieusement les erreurs attendues
+                            if error_str.contains("cannot refresh materialized view concurrently") {
                                 log::debug!("ℹ️ services_search_cache déjà en cours de refresh");
+                            } else if error_str.contains("does not have a unique index") {
+                                log::warn!("⚠️ services_search_cache nécessite un index unique pour REFRESH CONCURRENTLY");
+                            } else {
+                                log::warn!("⚠️ Erreur refresh services_search_cache: {}", e);
                             }
                         } else {
-                            log::info!("✅ services_search_cache refreshed");
+                            log::debug!("✅ services_search_cache refreshed");
                         }
                     } else {
                         log::debug!("⚠️ Vue services_search_cache n'existe pas encore");
@@ -734,14 +738,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .await
                         {
                             let error_str = e.to_string().to_lowercase();
-                            // Ignorer l'erreur si la vue est déjà en cours de refresh
-                            if !error_str.contains("cannot refresh materialized view concurrently") {
-                                log::warn!("⚠️ Erreur refresh active_products_cache: {}", e);
-                            } else {
+                            // ✅ CORRECTION: Ignorer silencieusement les erreurs attendues
+                            if error_str.contains("cannot refresh materialized view concurrently") {
                                 log::debug!("ℹ️ active_products_cache déjà en cours de refresh");
+                            } else if error_str.contains("does not have a unique index") {
+                                log::warn!("⚠️ active_products_cache nécessite un index unique pour REFRESH CONCURRENTLY");
+                            } else {
+                                log::warn!("⚠️ Erreur refresh active_products_cache: {}", e);
                             }
                         } else {
-                            log::info!("✅ active_products_cache refreshed");
+                            log::debug!("✅ active_products_cache refreshed");
                         }
                     } else {
                         log::debug!("⚠️ Vue active_products_cache n'existe pas encore");

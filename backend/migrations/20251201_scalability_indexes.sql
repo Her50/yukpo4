@@ -102,6 +102,10 @@ SELECT
 FROM services s
 WHERE s.is_active = TRUE;
 
+-- ✅ CORRECTION: Index unique requis pour REFRESH MATERIALIZED VIEW CONCURRENTLY
+CREATE UNIQUE INDEX IF NOT EXISTS idx_services_search_cache_id_unique
+ON services_search_cache (id);
+
 -- Index sur la vue matérialisée
 CREATE INDEX IF NOT EXISTS idx_services_search_cache_vector
 ON services_search_cache USING GIN (search_vector);
@@ -114,28 +118,35 @@ ON services_search_cache (is_active, created_at DESC)
 WHERE is_active = TRUE;
 
 -- Vue matérialisée pour produits actifs (recharge toutes les 10 minutes)
+-- ✅ CORRECTION: Ajouter un identifiant unique pour chaque ligne (requis pour REFRESH CONCURRENTLY)
 CREATE MATERIALIZED VIEW IF NOT EXISTS active_products_cache AS
 SELECT 
+    (s.id::bigint * 1000000 + jsonb_array_elements.pos) as cache_id,
     s.id as service_id,
     s.user_id,
     s.category,
     s.gps,
-    jsonb_array_elements(
-        CASE 
-            WHEN jsonb_typeof(s.data->'produits') = 'array' 
-            THEN s.data->'produits'
-            WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-            THEN s.data->'produits'->'valeur'
-            ELSE '[]'::jsonb
-        END
-    ) as product,
+    jsonb_array_elements.product,
     s.created_at
 FROM services s
+CROSS JOIN LATERAL jsonb_array_elements(
+    CASE 
+        WHEN jsonb_typeof(s.data->'produits') = 'array' 
+        THEN s.data->'produits'
+        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+        THEN s.data->'produits'->'valeur'
+        ELSE '[]'::jsonb
+    END
+) WITH ORDINALITY AS jsonb_array_elements(product, pos)
 WHERE s.is_active = TRUE
 AND (
     jsonb_typeof(s.data->'produits') = 'array' OR
     jsonb_typeof(s.data->'produits'->'valeur') = 'array'
 );
+
+-- ✅ CORRECTION: Index unique requis pour REFRESH MATERIALIZED VIEW CONCURRENTLY
+CREATE UNIQUE INDEX IF NOT EXISTS idx_active_products_cache_id_unique
+ON active_products_cache (cache_id);
 
 -- Index sur la vue produits actifs
 CREATE INDEX IF NOT EXISTS idx_active_products_service_category

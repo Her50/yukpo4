@@ -8801,9 +8801,10 @@ pub async fn ensure_token_consumption_and_purchase_history_tables(
     .await?;
 
     if !token_consumption_exists || !purchase_history_exists {
-        warn!("⚠️ Tables token_consumption_logs ou purchase_history manquantes (seront créées par 0000_create_all_tables.sql)");
+        // ✅ CORRECTION: Réduire verbosité - passer en debug au lieu de warn
+        debug!("ℹ️ Tables token_consumption_logs ou purchase_history manquantes (seront créées par 0000_create_all_tables.sql)");
     } else {
-        info!("✅ Tables token_consumption_logs et purchase_history présentes");
+        debug!("✅ Tables token_consumption_logs et purchase_history présentes");
     }
 
     Ok(())
@@ -9058,9 +9059,10 @@ pub async fn ensure_product_models_tables(pool: &PgPool) -> Result<(), sqlx::Err
     .await?;
 
     if !product_models_exists {
-        warn!("⚠️ Tables de modèles produits manquantes (seront créées par 0000_create_all_tables.sql)");
+        // ✅ CORRECTION: Réduire verbosité - passer en debug au lieu de warn
+        debug!("ℹ️ Tables de modèles produits manquantes (seront créées par 0000_create_all_tables.sql)");
     } else {
-        info!("✅ Tables de modèles produits présentes");
+        debug!("✅ Tables de modèles produits présentes");
     }
 
     Ok(())
@@ -10563,14 +10565,15 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
 
         // Détecter fin du bloc $$
         if in_dollar_block {
-            // Vérifier si la ligne contient la fin du bloc ($$ LANGUAGE ou END $$;)
+            // ✅ CORRECTION: Vérifier d'abord si la ligne contient $$ LANGUAGE (fin de fonction)
+            // Cela doit être vérifié AVANT de vérifier END; seul
             if trimmed.contains(&dollar_tag) {
-                // Détecter si c'est la fin du bloc ($$ suivi de LANGUAGE ou ;)
                 let dollar_pos = trimmed.find(&dollar_tag);
                 if let Some(pos) = dollar_pos {
                     let after_dollar: &str = trimmed[pos + dollar_tag.len()..].trim();
                     
-                    // Cas 1: $$ LANGUAGE plpgsql; (LANGUAGE après $$)
+                    // Cas 1: $$ LANGUAGE plpgsql; (LANGUAGE après $$) - FIN DE FONCTION
+                    // C'est le cas le plus important : END; suivi de $$ LANGUAGE plpgsql;
                     if after_dollar.starts_with("LANGUAGE") {
                         // Si le point-virgule est sur la même ligne
                         if trimmed.ends_with(';') {
@@ -10582,7 +10585,7 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                         }
                         // Sinon, on continue à accumuler jusqu'au prochain ;
                     }
-                    // Cas 2: END $$; (bloc DO)
+                    // Cas 2: END $$; (bloc DO) - FIN DE BLOC DO
                     else if trimmed.contains("END") && trimmed.ends_with(&format!("{};", dollar_tag)) {
                         commands.push(current.trim().to_string());
                         current.clear();
@@ -10600,10 +10603,16 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                     }
                 }
             }
+            // ✅ CORRECTION: Si on trouve END; dans un bloc CREATE FUNCTION, on continue jusqu'à trouver $$ LANGUAGE
+            // Ne pas terminer le bloc sur END; seul si c'est une fonction (doit être suivi de $$ LANGUAGE)
+            else if trimmed == "END;" && current.contains("CREATE") && current.contains("FUNCTION") {
+                // On continue à accumuler car la ligne suivante devrait contenir $$ LANGUAGE
+                // Ne pas terminer ici
+                continue;
+            }
             // Si on est dans un bloc et qu'on trouve un point-virgule après LANGUAGE (sur ligne séparée)
             // Ce cas est pour CREATE FUNCTION ... LANGUAGE plpgsql AS $$ ... $$; où LANGUAGE est avant AS
-            if in_dollar_block
-                && current.contains("LANGUAGE")
+            else if current.contains("LANGUAGE")
                 && trimmed.ends_with(';')
                 && !trimmed.contains(&dollar_tag)
                 && trimmed.trim() == ";"
@@ -10704,6 +10713,12 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                 debug!("ℹ️ Erreur DROP TABLE (ignorée): {}", e);
             }
         } else {
+            // ✅ CORRECTION 2025-12-09: Ignorer ANALYZE dans les migrations (trop lent, exécuté séparément)
+            if normalized_cmd.to_uppercase().trim().starts_with("ANALYZE") {
+                debug!("ℹ️ ANALYZE ignoré dans migration (exécuté séparément pour éviter warnings)");
+                continue;
+            }
+            
             // Exécuter la commande normalisée
             if let Err(e) = sqlx::query(&normalized_cmd).execute(pool).await {
                 // Pour les autres erreurs, on les log mais on continue
@@ -10738,7 +10753,12 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                     // Commandes multiples dans prepared statement
                     error_lower.contains("cannot insert multiple commands into a prepared statement") ||
                     // Fonctions dans index predicate (IMMUTABLE requis)
-                    error_lower.contains("functions in index predicate must be marked immutable");
+                    error_lower.contains("functions in index predicate must be marked immutable") ||
+                    // ✅ CORRECTION 2025-12-09: Erreurs de connexion TLS (attendu lors de crashes serveur)
+                    error_lower.contains("peer closed connection without sending tls close_notify") ||
+                    error_lower.contains("connection reset by peer") ||
+                    error_lower.contains("broken pipe") ||
+                    error_lower.contains("terminating connection because of crash");
                 
                 if is_expected_error {
                     // Logger seulement au niveau debug pour réduire le bruit
@@ -11738,6 +11758,18 @@ pub async fn ensure_scalability_indexes(pool: &PgPool) -> Result<(), sqlx::Error
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    // ✅ CORRECTION 2025-12-09: Appliquer la correction des index uniques
+    let fix_migration_sql = include_str!("../../migrations/20251209_fix_materialized_views_unique_indexes.sql");
+    if let Err(e) = execute_multiple_sql_commands(pool, fix_migration_sql).await {
+        warn!("⚠️ Erreur lors de l'application de la correction des index uniques (peut être ignorée si déjà appliquée): {}", e);
+    }
+
+    // ✅ CORRECTION 2025-12-09: Appliquer l'optimisation des requêtes lentes
+    let optimize_slow_queries_sql = include_str!("../../migrations/20251209_optimize_slow_queries_indexes.sql");
+    if let Err(e) = execute_multiple_sql_commands(pool, optimize_slow_queries_sql).await {
+        warn!("⚠️ Erreur lors de l'optimisation des requêtes lentes (peut être ignorée si déjà appliquée): {}", e);
+    }
 
     info!("✅ Index et vues matérialisées de scalabilité créés");
     Ok(())

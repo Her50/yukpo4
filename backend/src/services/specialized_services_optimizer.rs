@@ -83,15 +83,19 @@ impl SpecializedServicesOptimizer {
         }
 
         // Vérifier les index existants
+        // ✅ CORRECTION: pg_indexes n'a pas indisunique, utiliser pg_index avec jointure correcte
         let indexes: Vec<(String, String, bool)> = sqlx::query_as(
             r#"
             SELECT 
-                tablename,
-                indexname,
-                indisunique
-            FROM pg_indexes
-            WHERE schemaname = 'public'
-              AND tablename IN ('services', 'pharmacies', 'hopitaux', 'laboratoires', 'agences_voyage', 'covoiturages', 'taxis')
+                t.relname::text as tablename,
+                c.relname::text as indexname,
+                COALESCE(i.indisunique, false) as indisunique
+            FROM pg_index i
+            JOIN pg_class c ON c.oid = i.indexrelid
+            JOIN pg_class t ON t.oid = i.indrelid
+            JOIN pg_namespace n ON n.oid = t.relnamespace
+            WHERE n.nspname = 'public'
+              AND t.relname IN ('services', 'pharmacies', 'hopitaux_cliniques', 'laboratoires_imagerie', 'agences_voyage', 'covoiturages', 'taxis_ville')
             "#
         )
         .fetch_all(&*self.pool)
