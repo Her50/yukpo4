@@ -21,6 +21,17 @@ interface AnimatedCardProps {
 
 export const AnimatedCard: React.FC<AnimatedCardProps> = React.memo(
     ({ children, index = 0, delay = 0, style }) => {
+        // ✅ DEBUG: Logger les children pour identifier les problèmes (TOUJOURS activé)
+        React.useEffect(() => {
+            try {
+                const { componentDebugger } = require('../utils/componentDebugger');
+                componentDebugger.enable();
+                componentDebugger.logComponent('AnimatedCard', { index, delay }, children);
+            } catch (e) {
+                // Ignorer si le debugger n'est pas disponible
+            }
+        }, [children, index, delay]);
+
         const opacity = useSharedValue(0);
         const translateY = useSharedValue(50);
         const scale = useSharedValue(0.9);

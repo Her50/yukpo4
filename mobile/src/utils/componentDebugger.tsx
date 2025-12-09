@@ -17,7 +17,7 @@ class ComponentDebugger {
     private static instance: ComponentDebugger;
     private debugLog: ComponentDebugInfo[] = [];
     private maxLogs = 50;
-    private enabled = __DEV__ || false; // Activer en dev, désactiver en prod par défaut
+    private enabled = true; // ✅ CRITIQUE: Toujours activé pour capturer les erreurs en production
 
     static getInstance(): ComponentDebugger {
         if (!ComponentDebugger.instance) {

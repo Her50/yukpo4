@@ -1215,7 +1215,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                         <View style={dynamicStyles.searchHeaderLeft}>
                             <SafeIcon name="search" size={18} color={colors.primary} />
                             <Text style={dynamicStyles.searchHeaderTitle}>
-                                Résultats pour "{typeof searchQuery === 'string' ? searchQuery : (searchQuery ? String(searchQuery) : '')}"
+                                Résultats pour "{typeof searchQuery === 'string' ? searchQuery : (searchQuery ? String(searchQuery) : 'recherche')}"
                             </Text>
                         </View>
                         <TouchableOpacity

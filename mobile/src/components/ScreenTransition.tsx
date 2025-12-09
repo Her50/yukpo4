@@ -31,15 +31,14 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
     style,
     onAnimationComplete,
 }) => {
-    // ✅ DEBUG: Logger les children pour identifier les problèmes
+    // ✅ DEBUG: Logger les children pour identifier les problèmes (TOUJOURS activé pour capturer les erreurs)
     React.useEffect(() => {
-        if (__DEV__) {
-            try {
-                const { componentDebugger } = require('../utils/componentDebugger');
-                componentDebugger.logComponent('ScreenTransition', { type, duration, delay }, children);
-            } catch (e) {
-                // Ignorer si le debugger n'est pas disponible
-            }
+        try {
+            const { componentDebugger } = require('../utils/componentDebugger');
+            componentDebugger.enable(); // ✅ CRITIQUE: Activer même en production pour capturer les erreurs
+            componentDebugger.logComponent('ScreenTransition', { type, duration, delay }, children);
+        } catch (e) {
+            // Ignorer si le debugger n'est pas disponible
         }
     }, [children, type, duration, delay]);
     const opacity = useSharedValue(0);
