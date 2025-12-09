@@ -73,7 +73,7 @@ async fn refresh_materialized_view(pool: &PgPool) -> AppResult<()> {
                 
                 if retry_count < MAX_RETRIES && is_connection_error {
                     retry_count += 1;
-                    let backoff_ms = 1000 * retry_count; // Backoff exponentiel: 1s, 2s, 3s
+                    let backoff_ms = 1000u64 * retry_count as u64; // Backoff exponentiel: 1s, 2s, 3s
                     log::debug!(
                         "[SearchCacheRefresh] ⚠️ Erreur connexion DB (retry {}/{}): {} - Attente {}ms",
                         retry_count, MAX_RETRIES, error_str, backoff_ms
