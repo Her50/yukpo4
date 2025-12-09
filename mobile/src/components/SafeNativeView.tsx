@@ -56,15 +56,32 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
     // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
     // Éviter de rendre des valeurs primitives directement
     const safeChildren = React.Children.map(children, (child, index) => {
-        // Si c'est une valeur primitive (string, number), l'envelopper dans un Text
-        if (typeof child === 'string' || typeof child === 'number') {
+        // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
+        if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
             return <Text key={index}>{String(child)}</Text>;
         }
         // Si c'est null ou undefined, retourner null
         if (child == null) {
             return null;
         }
-        return child;
+        // ✅ CRITIQUE: Si c'est un tableau, le traiter récursivement
+        if (Array.isArray(child)) {
+            return child.map((item, itemIndex) => {
+                if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                    return <Text key={`${index}-${itemIndex}`}>{String(item)}</Text>;
+                }
+                if (item == null) {
+                    return null;
+                }
+                return item;
+            });
+        }
+        // Si c'est un élément React valide, le retourner tel quel
+        if (React.isValidElement(child)) {
+            return child;
+        }
+        // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
+        return <Text key={index}>{String(child)}</Text>;
     });
 
     return (

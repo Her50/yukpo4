@@ -44,6 +44,9 @@ class RemoteLoggingService {
         // Cela garantit que TOUS les logs sont capturés, même ceux chargés avant
         this.interceptConsole();
 
+        // ✅ NOUVEAU : Intercepter les erreurs React Native spécifiques
+        this.interceptReactNativeErrors();
+
         // Démarrer le flush périodique
         this.startPeriodicFlush();
 
@@ -161,6 +164,58 @@ class RemoteLoggingService {
                 deviceInfo: this.getDeviceInfo(),
             });
         };
+    }
+
+    /**
+     * Intercepter les erreurs React Native spécifiques (ErrorBoundary, Promise rejections, etc.)
+     */
+    private interceptReactNativeErrors() {
+        try {
+            // Intercepter ErrorUtils (React Native)
+            if (typeof global !== 'undefined' && (global as any).ErrorUtils) {
+                const originalHandler = (global as any).ErrorUtils.getGlobalHandler();
+                (global as any).ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+                    this.addToQueue({
+                        level: 'error',
+                        message: `❌ Erreur ${isFatal ? 'FATALE' : 'non fatale'}: ${error.message}`,
+                        component: 'ReactNative',
+                        data: {
+                            name: error.name,
+                            message: error.message,
+                            isFatal,
+                        },
+                        timestamp: new Date().toISOString(),
+                        userId: this.userId,
+                        deviceInfo: this.getDeviceInfo(),
+                        stack: error.stack,
+                    });
+                    if (originalHandler) {
+                        originalHandler(error, isFatal);
+                    }
+                });
+            }
+
+            // Intercepter les Promise rejections non gérées
+            if (typeof global !== 'undefined' && global.Promise) {
+                const originalReject = Promise.reject;
+                Promise.reject = (reason: any) => {
+                    this.addToQueue({
+                        level: 'error',
+                        message: `❌ Promise rejection: ${reason?.message || String(reason)}`,
+                        component: 'Promise',
+                        data: reason,
+                        timestamp: new Date().toISOString(),
+                        userId: this.userId,
+                        deviceInfo: this.getDeviceInfo(),
+                        stack: reason?.stack,
+                    });
+                    return originalReject(reason);
+                };
+            }
+        } catch (error) {
+            // Ne pas logger pour éviter la récursion
+            this.originalConsole?.warn('[RemoteLoggingService] ⚠️ Erreur interception React Native:', error);
+        }
     }
 
     /**

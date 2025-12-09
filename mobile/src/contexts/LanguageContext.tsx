@@ -55,7 +55,9 @@ export const useLanguageSafe = () => {
         t: (key: string, params?: Record<string, string | number>) => {
             // Retourner les traductions françaises par défaut
             const template = translations['fr']?.[key] || key;
-            return interpolate(template, params);
+            const result = interpolate(template, params);
+            // ✅ CRITIQUE: S'assurer que le résultat est toujours une string (jamais undefined/null)
+            return typeof result === 'string' ? result : String(result || key);
         }
     };
 };
@@ -170,7 +172,9 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
         // TODO: Implémenter la vraie traduction avec i18n
         // Pour l'instant, retourne la clé
         const template = translations[language]?.[key] || translations['fr']?.[key] || key;
-        return interpolate(template, params);
+        const result = interpolate(template, params);
+        // ✅ CRITIQUE: S'assurer que le résultat est toujours une string (jamais undefined/null)
+        return typeof result === 'string' ? result : String(result || key);
     };
 
     // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides

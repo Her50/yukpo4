@@ -194,8 +194,9 @@ export const AutoTranslate: React.FC<{ children: React.ReactNode; context?: stri
             if (typeof children === 'string') {
                 try {
                     const result = await translateText(children, context);
-                    // ✅ CRITIQUE: translateText retourne une string, donc on peut directement l'utiliser
-                    setTranslatedContent(result);
+                    // ✅ CRITIQUE: translateText retourne une string, mais on doit s'assurer qu'elle est toujours wrappée
+                    // Ne pas stocker directement la string, mais la wrapper dans un Text
+                    setTranslatedContent(typeof result === 'string' ? result : String(result || children));
                 } catch (error) {
                     console.warn('⚠️ [AutoTranslate] Erreur traduction:', error);
                     // En cas d'erreur, garder children (qui est une string)
@@ -224,13 +225,28 @@ export const AutoTranslate: React.FC<{ children: React.ReactNode; context?: stri
         return null;
     }
 
+    // ✅ CRITIQUE: Vérifier si c'est une string (ne devrait jamais arriver après wrapPrimitivesInText, mais sécurité)
+    if (typeof wrappedContent === 'string' || typeof wrappedContent === 'number' || typeof wrappedContent === 'boolean') {
+        return <Text>{String(wrappedContent)}</Text>;
+    }
+
     // Si le résultat est un tableau, filtrer les null et retourner dans un fragment
     if (Array.isArray(wrappedContent)) {
         const filteredContent = wrappedContent.filter(item => item !== null && item !== undefined);
         if (filteredContent.length === 0) {
             return null;
         }
-        return <>{filteredContent}</>;
+        // ✅ CRITIQUE: S'assurer que chaque élément du tableau est un élément React valide
+        const safeFilteredContent = filteredContent.map((item, index) => {
+            if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                return <Text key={index}>{String(item)}</Text>;
+            }
+            if (React.isValidElement(item)) {
+                return item;
+            }
+            return <Text key={index}>{String(item)}</Text>;
+        });
+        return <>{safeFilteredContent}</>;
     }
 
     // Si c'est déjà un élément React valide, le retourner directement
@@ -238,8 +254,8 @@ export const AutoTranslate: React.FC<{ children: React.ReactNode; context?: stri
         return wrappedContent;
     }
 
-    // Fallback: retourner dans un fragment (déjà encapsulé par wrapPrimitivesInText)
-    return <>{wrappedContent}</>;
+    // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
+    return <Text>{String(wrappedContent)}</Text>;
 };
 
 // Hook pour traduire du texte dans les composants
