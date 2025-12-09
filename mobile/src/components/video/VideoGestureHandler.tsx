@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useRef } from 'react';
-import { Dimensions } from 'react-native';
+import { Dimensions, Text } from 'react-native';
 import { PanGestureHandler, State, TapGestureHandler } from 'react-native-gesture-handler';
 import Animated, {
     runOnJS,
@@ -152,7 +152,17 @@ export const VideoGestureHandler: React.FC<VideoGestureHandlerProps> = ({
     });
 
     if (!enabled) {
-        return <>{children}</>;
+        // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+        const safeChildren = React.Children.map(children, (child, index) => {
+            if (typeof child === 'string' || typeof child === 'number') {
+                return <Text key={index}>{String(child)}</Text>;
+            }
+            if (child == null) {
+                return null;
+            }
+            return child;
+        });
+        return <>{safeChildren}</>;
     }
 
     return (

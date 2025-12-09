@@ -162,7 +162,7 @@ export const VideoProgressModal: React.FC<VideoProgressModalProps> = ({
                                 />
                             </View>
                             <Text style={styles.progressText}>
-                                {Math.round(progress.progress)}%
+                                {String(Math.round(progress.progress))}%
                             </Text>
                         </View>
                     )}

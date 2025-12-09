@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { StyleSheet, TouchableOpacityProps } from 'react-native';
+import { StyleSheet, Text, TouchableOpacityProps } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     Extrapolate,
@@ -132,7 +132,17 @@ export const EnhancedTouchable: React.FC<EnhancedTouchableProps> = React.memo(({
                 ]}
                 {...props}
             >
-                {children}
+                {React.Children.map(children, (child, index) => {
+                    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+                    // Éviter de rendre des valeurs primitives directement
+                    if (typeof child === 'string' || typeof child === 'number') {
+                        return <Text key={index}>{String(child)}</Text>;
+                    }
+                    if (child == null) {
+                        return null;
+                    }
+                    return child;
+                })}
             </Animated.View>
         </GestureDetector>
     );

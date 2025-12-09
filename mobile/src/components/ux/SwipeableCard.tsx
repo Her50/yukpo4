@@ -132,7 +132,17 @@ export const SwipeableCard: React.FC<SwipeableCardProps> = React.memo(({
 
             <GestureDetector gesture={panGesture}>
                 <Animated.View style={[styles.card, animatedStyle]}>
-                    {children}
+                    {React.Children.map(children, (child, index) => {
+                        // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+                        // Éviter de rendre des valeurs primitives directement
+                        if (typeof child === 'string' || typeof child === 'number') {
+                            return <Text key={index}>{String(child)}</Text>;
+                        }
+                        if (child == null) {
+                            return null;
+                        }
+                        return child;
+                    })}
                 </Animated.View>
             </GestureDetector>
         </View>

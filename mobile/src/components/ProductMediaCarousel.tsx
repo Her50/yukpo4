@@ -360,7 +360,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                 {allMedia.length > 1 && (
                     <View style={styles.counter}>
                         <Text style={styles.counterText}>
-                            {currentIndex + 1} / {allMedia.length}
+                            {String(currentIndex + 1)} / {String(allMedia.length)}
                         </Text>
                     </View>
                 )}

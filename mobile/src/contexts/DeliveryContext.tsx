@@ -7,6 +7,7 @@ import React, {
     useRef,
     useState,
 } from 'react';
+import { Text } from 'react-native';
 
 import * as Network from 'expo-network';
 
@@ -736,7 +737,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ]
     );
 
-    return <DeliveryContext.Provider value={contextValue}>{children}</DeliveryContext.Provider>;
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    const safeChildren = React.Children.map(children, (child, index) => {
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+
+    return <DeliveryContext.Provider value={contextValue}>{safeChildren}</DeliveryContext.Provider>;
 };
 
 export const useDeliveryContext = (): DeliveryContextValue => {

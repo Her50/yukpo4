@@ -1,5 +1,6 @@
 // Composant de monitoring des performances pour détecter les problèmes de crash
 import React, { useEffect, useRef } from 'react';
+import { Text } from 'react-native';
 import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
 
 interface PerformanceMetrics {
@@ -120,7 +121,17 @@ export const PerformanceWrapper: React.FC<PerformanceWrapperProps> = ({
         };
     });
 
-    return <>{children}</>;
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    const safeChildren = React.Children.map(children, (child, index) => {
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+    return <>{safeChildren}</>;
 };
 
 export default PerformanceMonitor;

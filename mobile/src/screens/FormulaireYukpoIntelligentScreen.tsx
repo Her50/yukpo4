@@ -3118,11 +3118,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <View style={styles.statsBox}>
               <SafeIcon name="bar-chart-2" size={14} color={modernColors.success} />
               <Text style={styles.statsText}>
-                {nbModalites} modalité{nbModalites > 1 ? 's' : ''} créée{nbModalites > 1 ? 's' : ''}
+                {String(nbModalites)} modalité{nbModalites > 1 ? 's' : ''} créée{nbModalites > 1 ? 's' : ''}
               </Text>
               <View style={styles.statsDot} />
               <Text style={styles.statsSubtext}>
-                {nbCaracteristiques} caractéristique{nbCaracteristiques > 1 ? 's' : ''}
+                {String(nbCaracteristiques)} caractéristique{nbCaracteristiques > 1 ? 's' : ''}
               </Text>
             </View>
           )}

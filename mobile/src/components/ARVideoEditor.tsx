@@ -480,7 +480,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                             <View style={styles.recordingInfo}>
                                 <View style={styles.recordingDot} />
                                 <Text style={styles.recordingDuration}>
-                                    {Math.floor(recordingDuration / 60)}:
+                                    {String(Math.floor(recordingDuration / 60))}:
                                     {(recordingDuration % 60).toString().padStart(2, '0')}
                                 </Text>
                             </View>

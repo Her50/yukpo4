@@ -1,7 +1,7 @@
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { createGlassmorphismStyle, getCurrentTheme } from '../theme/advancedTheme';
 
 interface GlassmorphismCardProps {
@@ -47,7 +47,17 @@ const GlassmorphismCard: React.FC<GlassmorphismCardProps> = ({
 
             {/* Contenu */}
             <View style={styles.content}>
-                {children}
+                {React.Children.map(children, (child, index) => {
+                    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+                    // Éviter de rendre des valeurs primitives directement
+                    if (typeof child === 'string' || typeof child === 'number') {
+                        return <Text key={index}>{String(child)}</Text>;
+                    }
+                    if (child == null) {
+                        return null;
+                    }
+                    return child;
+                })}
             </View>
         </View>
     );

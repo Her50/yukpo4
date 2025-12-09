@@ -6,6 +6,7 @@ import React, {
     useMemo,
     useState,
 } from 'react';
+import { Text } from 'react-native';
 
 import { shoppingApi, walletApi } from '../services/api';
 import {
@@ -337,7 +338,18 @@ export const ShoppingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ]
     );
 
-    return <ShoppingContext.Provider value={value}>{children}</ShoppingContext.Provider>;
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    const safeChildren = React.Children.map(children, (child, index) => {
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+
+    return <ShoppingContext.Provider value={value}>{safeChildren}</ShoppingContext.Provider>;
 };
 
 export const useShoppingContext = () => {

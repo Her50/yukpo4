@@ -1,6 +1,7 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { Text } from 'react-native';
 import { authApi } from '../services/api';
 import { jwtDecode } from '../utils/jwtDecode';
 
@@ -310,9 +311,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshUser,
   };
 
+  // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+  const safeChildren = React.Children.map(children, (child, index) => {
+    if (typeof child === 'string' || typeof child === 'number') {
+      return <Text key={index}>{String(child)}</Text>;
+    }
+    if (child == null) {
+      return null;
+    }
+    return child;
+  });
+
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {safeChildren}
     </AuthContext.Provider>
   );
 };

@@ -1210,7 +1210,7 @@ const CreatePubliciteScreen: React.FC = () => {
                                     <View style={styles.videoDuration}>
                                         <SafeIcon name="play" size={12} color="#fff" />
                                         <Text style={styles.videoDurationText}>
-                                            {Math.round((video.duration || 0) / 1000)}s
+                                            {String(Math.round((video.duration || 0) / 1000))}s
                                         </Text>
                                     </View>
                                 </View>

@@ -123,9 +123,20 @@ export const IntelligentLanguageProvider: React.FC<IntelligentLanguageProviderPr
         ...intelligentLanguage,
     };
 
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    const safeChildren = React.Children.map(children, (child, index) => {
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+
     return (
         <IntelligentLanguageContext.Provider value={contextValue}>
-            {children}
+            {safeChildren}
         </IntelligentLanguageContext.Provider>
     );
 };

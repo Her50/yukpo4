@@ -296,7 +296,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                     <Text style={styles.quickAccessName}>{type.name}</Text>
                                     {type.count > 0 && (
                                         <Text style={styles.quickAccessCount}>
-                                            {type.count} service{type.count > 1 ? 's' : ''}
+                                            {String(type.count)} service{type.count > 1 ? 's' : ''}
                                         </Text>
                                     )}
                                 </TouchableOpacity>
@@ -377,7 +377,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                     <Text style={styles.quickAccessName}>{type.name}</Text>
                                     {type.count > 0 && (
                                         <Text style={styles.quickAccessCount}>
-                                            {type.count} service{type.count > 1 ? 's' : ''}
+                                            {String(type.count)} service{type.count > 1 ? 's' : ''}
                                         </Text>
                                     )}
                                 </TouchableOpacity>
@@ -566,7 +566,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                         <Text style={styles.quickAccessName}>{type.name}</Text>
                                         {type.count > 0 && (
                                             <Text style={styles.quickAccessCount}>
-                                                {type.count} menu{type.count > 1 ? 's' : ''}
+                                                {String(type.count)} menu{type.count > 1 ? 's' : ''}
                                             </Text>
                                         )}
                                     </TouchableOpacity>

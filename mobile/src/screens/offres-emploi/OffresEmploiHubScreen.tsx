@@ -84,19 +84,19 @@ const OffresEmploiHubScreen: React.FC = () => {
             {stats && (
                 <View style={styles.statsContainer}>
                     <View style={styles.statCard}>
-                        <Text style={styles.statValue}>{stats.total_offres || 0}</Text>
+                        <Text style={styles.statValue}>{String(stats.total_offres || 0)}</Text>
                         <Text style={styles.statLabel}>Offres actives</Text>
                     </View>
                     <View style={styles.statCard}>
-                        <Text style={styles.statValue}>{stats.total_candidatures || 0}</Text>
+                        <Text style={styles.statValue}>{String(stats.total_candidatures || 0)}</Text>
                         <Text style={styles.statLabel}>Candidatures</Text>
                     </View>
                     <View style={styles.statCard}>
-                        <Text style={styles.statValue}>{stats.candidatures_attente || 0}</Text>
+                        <Text style={styles.statValue}>{String(stats.candidatures_attente || 0)}</Text>
                         <Text style={styles.statLabel}>En attente</Text>
                     </View>
                     <View style={styles.statCard}>
-                        <Text style={styles.statValue}>{stats.meilleurs_matchings || 0}</Text>
+                        <Text style={styles.statValue}>{String(stats.meilleurs_matchings || 0)}</Text>
                         <Text style={styles.statLabel}>Matchings</Text>
                     </View>
                 </View>

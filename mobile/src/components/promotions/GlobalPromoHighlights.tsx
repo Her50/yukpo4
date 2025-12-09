@@ -84,7 +84,7 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
         return (
             <NativeCard style={styles.card}>
                 <Text style={styles.title}>🔥 Black Friday collectif</Text>
-                <Text style={styles.errorText}>{error}</Text>
+                <Text style={styles.errorText}>{typeof error === 'string' ? error : error?.message || 'Erreur inconnue'}</Text>
                 <NativeButton title="Réessayer" onPress={refresh} variant="secondary" />
             </NativeCard>
         );

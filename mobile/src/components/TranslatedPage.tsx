@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { View, ViewProps } from 'react-native';
+import { Text, View, ViewProps } from 'react-native';
 import { useTranslation } from '../hooks/useTranslation';
 
 interface TranslatedPageProps extends ViewProps {
@@ -33,6 +33,20 @@ const TranslatedPage: React.FC<TranslatedPageProps> = ({
         }
     }, [autoTranslate, hasTranslated, onTranslationComplete]);
 
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    // Éviter de rendre des valeurs primitives directement
+    const safeChildren = React.Children.map(children, (child, index) => {
+        // Si c'est une valeur primitive (string, number), l'envelopper dans un Text
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        // Si c'est null ou undefined, retourner null
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+
     return (
         <View
             style={[
@@ -43,7 +57,7 @@ const TranslatedPage: React.FC<TranslatedPageProps> = ({
             ]}
             {...viewProps}
         >
-            {children}
+            {safeChildren}
         </View>
     );
 };

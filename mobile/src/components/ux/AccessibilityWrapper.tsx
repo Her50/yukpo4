@@ -85,7 +85,17 @@ export const AccessibilityWrapper: React.FC<AccessibilityWrapperProps> = ({
             accessibilityValue={accessibilityValue}
             testID={testID}
         >
-            {children}
+            {React.Children.map(children, (child, index) => {
+                // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+                // Éviter de rendre des valeurs primitives directement
+                if (typeof child === 'string' || typeof child === 'number') {
+                    return <Text key={index}>{String(child)}</Text>;
+                }
+                if (child == null) {
+                    return null;
+                }
+                return child;
+            })}
         </View>
     );
 };
@@ -159,7 +169,17 @@ export const AccessibleText: React.FC<{
             testID={testID}
         >
             <View style={style}>
-                {children}
+                {React.Children.map(children, (child, index) => {
+                    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+                    // Éviter de rendre des valeurs primitives directement
+                    if (typeof child === 'string' || typeof child === 'number') {
+                        return <Text key={index}>{String(child)}</Text>;
+                    }
+                    if (child == null) {
+                        return null;
+                    }
+                    return child;
+                })}
             </View>
         </AccessibilityWrapper>
     );
@@ -190,7 +210,17 @@ export const AccessibleButton: React.FC<{
             }}
             style={style}
         >
-            {children}
+            {React.Children.map(children, (child, index) => {
+                // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+                // Éviter de rendre des valeurs primitives directement
+                if (typeof child === 'string' || typeof child === 'number') {
+                    return <Text key={index}>{String(child)}</Text>;
+                }
+                if (child == null) {
+                    return null;
+                }
+                return child;
+            })}
         </AccessibilityWrapper>
     );
 };

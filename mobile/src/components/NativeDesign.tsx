@@ -28,6 +28,20 @@ export const NativeCard: React.FC<NativeCardProps> = ({
 }) => {
     const CardComponent = onPress ? TouchableOpacity : View;
 
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    // Éviter de rendre des valeurs primitives directement
+    const safeChildren = React.Children.map(children, (child, index) => {
+        // Si c'est une valeur primitive (string, number), l'envelopper dans un Text
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        // Si c'est null ou undefined, retourner null
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+
     return (
         <CardComponent
             style={[
@@ -38,7 +52,7 @@ export const NativeCard: React.FC<NativeCardProps> = ({
             onPress={onPress}
             activeOpacity={onPress ? 0.8 : 1}
         >
-            {children}
+            {safeChildren}
         </CardComponent>
     );
 };
@@ -108,9 +122,23 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
 }) => {
     const backgroundColor = colors[0] || modernColors.primary;
 
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    // Éviter de rendre des valeurs primitives directement
+    const safeChildren = React.Children.map(children, (child, index) => {
+        // Si c'est une valeur primitive (string, number), l'envelopper dans un Text
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        // Si c'est null ou undefined, retourner null
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+
     return (
         <View style={[styles.gradient, { backgroundColor }, style]}>
-            {children}
+            {safeChildren}
         </View>
     );
 };

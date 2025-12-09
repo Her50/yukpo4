@@ -260,7 +260,7 @@ const TaxiDetailsScreen: React.FC = () => {
                                     <View style={styles.ratingRow}>
                                         <SafeIcon name="star" size={16} color="#F59E0B" />
                                         <Text style={styles.ratingText}>
-                                            {taxi.driver.rating.toFixed(1)} ({taxi.driver.reviews_count || 0} avis)
+                                            {taxi.driver.rating.toFixed(1)} ({String(taxi.driver.reviews_count || 0)} avis)
                                         </Text>
                                     </View>
                                 )}

@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
@@ -31,7 +31,17 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ children }) => {
     );
   }
 
-  return <>{children}</>;
+  // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+  const safeChildren = React.Children.map(children, (child, index) => {
+    if (typeof child === 'string' || typeof child === 'number') {
+      return <Text key={index}>{String(child)}</Text>;
+    }
+    if (child == null) {
+      return null;
+    }
+    return child;
+  });
+  return <>{safeChildren}</>;
 };
 
 const styles = StyleSheet.create({

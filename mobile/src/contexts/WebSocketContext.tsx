@@ -3,7 +3,7 @@
  * Gère la connexion WebSocket persistante et les notifications push
  */
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Text } from 'react-native';
 import websocketService, { ChatMessage, NotificationMessage, UserStatusUpdate } from '../services/websocketService';
 import { useAuth } from './AuthContext';
 
@@ -312,9 +312,20 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         registerUserStatusHandler
     };
 
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    const safeChildren = React.Children.map(children, (child, index) => {
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+
     return (
         <WebSocketContext.Provider value={value}>
-            {children}
+            {safeChildren}
         </WebSocketContext.Provider>
     );
 };

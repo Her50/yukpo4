@@ -1,8 +1,9 @@
 // Composant pour charger les providers lourds de manière progressive
 // après que l'écran principal soit déjà affiché
 import React, { useEffect, useState } from 'react';
-import { GlobalIAStatsProvider } from './intelligence/GlobalIAStats';
+import { Text } from 'react-native';
 import { LocationProvider } from '../contexts/LocationContext';
+import { GlobalIAStatsProvider } from './intelligence/GlobalIAStats';
 
 // ✅ PROTECTION: Wrapper avec ErrorBoundary spécifique pour chaque provider
 const SafeLocationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -10,7 +11,17 @@ const SafeLocationProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return <LocationProvider>{children}</LocationProvider>;
   } catch (error) {
     console.error('[DeferredProviders] Erreur LocationProvider:', error);
-    return <>{children}</>; // Continuer sans LocationProvider
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    const safeChildren = React.Children.map(children, (child, index) => {
+      if (typeof child === 'string' || typeof child === 'number') {
+        return <Text key={index}>{String(child)}</Text>;
+      }
+      if (child == null) {
+        return null;
+      }
+      return child;
+    });
+    return <>{safeChildren}</>;
   }
 };
 
@@ -19,7 +30,17 @@ const SafeGlobalIAStatsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return <GlobalIAStatsProvider>{children}</GlobalIAStatsProvider>;
   } catch (error) {
     console.error('[DeferredProviders] Erreur GlobalIAStatsProvider:', error);
-    return <>{children}</>; // Continuer sans GlobalIAStatsProvider
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    const safeChildren = React.Children.map(children, (child, index) => {
+      if (typeof child === 'string' || typeof child === 'number') {
+        return <Text key={index}>{String(child)}</Text>;
+      }
+      if (child == null) {
+        return null;
+      }
+      return child;
+    });
+    return <>{safeChildren}</>;
   }
 };
 
@@ -60,7 +81,17 @@ const DeferredProviders: React.FC<DeferredProvidersProps> = ({ children }) => {
   // ✅ ÉTAPE 1: Afficher l'écran IMMÉDIATEMENT (sans providers lourds)
   if (!locationReady) {
     console.log('[DeferredProviders] ⚡ Rendu immédiat sans providers lourds');
-    return <>{children}</>;
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    const safeChildren = React.Children.map(children, (child, index) => {
+      if (typeof child === 'string' || typeof child === 'number') {
+        return <Text key={index}>{String(child)}</Text>;
+      }
+      if (child == null) {
+        return null;
+      }
+      return child;
+    });
+    return <>{safeChildren}</>;
   }
 
   // ✅ ÉTAPE 2: LocationProvider chargé (+500ms) avec protection

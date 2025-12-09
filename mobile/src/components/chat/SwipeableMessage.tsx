@@ -3,6 +3,7 @@ import {
     Animated,
     PanResponder,
     StyleSheet,
+    Text,
     View
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
@@ -153,7 +154,17 @@ const SwipeableMessage: React.FC<SwipeableMessageProps> = ({
                 ]}
                 {...panResponder.panHandlers}
             >
-                {children}
+                {React.Children.map(children, (child, index) => {
+                    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+                    // Éviter de rendre des valeurs primitives directement
+                    if (typeof child === 'string' || typeof child === 'number') {
+                        return <Text key={index}>{String(child)}</Text>;
+                    }
+                    if (child == null) {
+                        return null;
+                    }
+                    return child;
+                })}
             </Animated.View>
         </View>
     );

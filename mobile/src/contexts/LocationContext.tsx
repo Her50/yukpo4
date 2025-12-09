@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { Text } from 'react-native';
 
 interface LocationContextType {
   location: Location.LocationObject | null;
@@ -196,9 +197,20 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     calculateDistance,
   };
 
+  // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+  const safeChildren = React.Children.map(children, (child, index) => {
+    if (typeof child === 'string' || typeof child === 'number') {
+      return <Text key={index}>{String(child)}</Text>;
+    }
+    if (child == null) {
+      return null;
+    }
+    return child;
+  });
+
   return (
     <LocationContext.Provider value={value}>
-      {children}
+      {safeChildren}
     </LocationContext.Provider>
   );
 };

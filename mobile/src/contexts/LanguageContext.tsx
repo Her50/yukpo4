@@ -2,6 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Text } from 'react-native';
 
 interface LanguageContextType {
     language: string;
@@ -172,9 +173,20 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
         return interpolate(template, params);
     };
 
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    const safeChildren = React.Children.map(children, (child, index) => {
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+
     return (
         <LanguageContext.Provider value={{ language, setLanguage, t }}>
-            {children}
+            {safeChildren}
         </LanguageContext.Provider>
     );
 };

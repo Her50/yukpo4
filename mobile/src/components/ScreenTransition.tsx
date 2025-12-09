@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { StyleSheet, ViewStyle } from 'react-native';
+import { StyleSheet, Text, ViewStyle } from 'react-native';
 import Animated, {
     Easing,
     useAnimatedStyle,
@@ -109,9 +109,23 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
         };
     });
 
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    // Éviter de rendre des valeurs primitives directement
+    const safeChildren = React.Children.map(children, (child, index) => {
+        // Si c'est une valeur primitive (string, number), l'envelopper dans un Text
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        // Si c'est null ou undefined, retourner null
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+
     return (
         <Animated.View style={[styles.container, animatedStyle, style]}>
-            {children}
+            {safeChildren}
         </Animated.View>
     );
 });

@@ -63,20 +63,20 @@ const ServicesInteragisScreen: React.FC = () => {
                 const servicesData = data.services || [];
                 setServices(servicesData);
 
-                // Extraire les catégories et types disponibles
+                // Extraire les catï¿½gories et types disponibles
                 const categories = [...new Set(servicesData.map((s: InteractedService) => s.category))];
                 const types = [...new Set(servicesData.map((s: InteractedService) => s.interactionType))];
                 setAvailableCategories(categories);
                 setAvailableTypes(types);
             } else {
-                // Charger depuis AsyncStorage si l'API échoue
+                // Charger depuis AsyncStorage si l'API ï¿½choue
                 const savedServices = await AsyncStorage.getItem('interactedServices');
                 if (savedServices) {
                     try {
                         const parsedServices = JSON.parse(savedServices);
                         setServices(parsedServices);
 
-                        // Extraire les catégories et types disponibles
+                        // Extraire les catï¿½gories et types disponibles
                         const categories = [...new Set(parsedServices.map((s: InteractedService) => s.category))];
                         const types = [...new Set(parsedServices.map((s: InteractedService) => s.interactionType))];
                         setAvailableCategories(categories);
@@ -186,16 +186,16 @@ const ServicesInteragisScreen: React.FC = () => {
                 <View style={styles.header}>
                     <Text style={styles.title}>Mon historique</Text>
                     <Text style={styles.subtitle}>
-                        Retrouvez tous vos échanges et interactions avec les services
+                        Retrouvez tous vos ï¿½changes et interactions avec les services
                     </Text>
                 </View>
 
                 {/* Filtres et recherche */}
                 <View style={styles.filtersCard}>
-                                <TextInput
+                    <TextInput
                         style={styles.searchInput}
-                                    placeholder="Rechercher un service..."
-                                    value={searchTerm}
+                        placeholder="Rechercher un service..."
+                        value={searchTerm}
                         onChangeText={setSearchTerm}
                         placeholderTextColor="#9CA3AF"
                     />
@@ -217,13 +217,13 @@ const ServicesInteragisScreen: React.FC = () => {
                                 onPress={() => setFilterType(type)}
                             >
                                 <Text style={[styles.filterButtonText, filterType === type && styles.filterButtonTextActive]}>
-                                        {type === 'message' ? 'Messages' :
-                                            type === 'call' ? 'Appels' :
-                                                type === 'video' ? 'Vidéos' :
-                                                    type === 'review' ? 'Avis' :
-                                                        type === 'favorite' ? 'Favoris' :
-                                                            type === 'share' ? 'Partages' :
-                                                                type === 'view' ? 'Vues' : type}
+                                    {type === 'message' ? 'Messages' :
+                                        type === 'call' ? 'Appels' :
+                                            type === 'video' ? 'Vidï¿½os' :
+                                                type === 'review' ? 'Avis' :
+                                                    type === 'favorite' ? 'Favoris' :
+                                                        type === 'share' ? 'Partages' :
+                                                            type === 'view' ? 'Vues' : type}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -231,8 +231,8 @@ const ServicesInteragisScreen: React.FC = () => {
 
                     <TouchableOpacity style={styles.refreshButton} onPress={loadInteractedServices}>
                         <Text style={styles.refreshButtonText}>?? Actualiser</Text>
-                            </TouchableOpacity>
-                        </View>
+                    </TouchableOpacity>
+                </View>
 
                 {/* Liste des services */}
                 <View style={styles.servicesList}>
@@ -241,8 +241,8 @@ const ServicesInteragisScreen: React.FC = () => {
                             <Text style={styles.emptyIcon}>??</Text>
                             <Text style={styles.emptyTitle}>Aucun service interagi</Text>
                             <Text style={styles.emptySubtitle}>
-                                    Commencez à interagir avec des services pour les voir apparaître ici
-                                </Text>
+                                Commencez ï¿½ interagir avec des services pour les voir apparaï¿½tre ici
+                            </Text>
                         </View>
                     ) : (
                         filteredServices.map((service) => (
@@ -255,11 +255,11 @@ const ServicesInteragisScreen: React.FC = () => {
                                             ) : (
                                                 <View style={styles.avatarFallback}>
                                                     <Text style={styles.avatarText}>
-                                                    {service.prestataireName.charAt(0).toUpperCase()}
+                                                        {service.prestataireName.charAt(0).toUpperCase()}
                                                     </Text>
                                                 </View>
                                             )}
-                                                </View>
+                                        </View>
 
                                         <View style={styles.serviceDetails}>
                                             <View style={styles.serviceTitleRow}>
@@ -280,7 +280,7 @@ const ServicesInteragisScreen: React.FC = () => {
                                                 <Text style={styles.metaItem}>?? {service.location}</Text>
                                                 <Text style={styles.metaItem}>? {service.prestataireRating}</Text>
                                                 <Text style={styles.metaItem}>?? {formatTimeAgo(service.lastInteraction)}</Text>
-                                        </View>
+                                            </View>
                                         </View>
                                     </View>
 
@@ -288,47 +288,47 @@ const ServicesInteragisScreen: React.FC = () => {
                                         <TouchableOpacity style={styles.actionButton}>
                                             <Text style={[styles.actionIcon, service.isFavorite && styles.favoriteActive]}>
                                                 {service.isFavorite ? '??' : '??'}
-                                                </Text>
+                                            </Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity style={styles.actionButton}>
                                             <Text style={styles.actionIcon}>??</Text>
                                         </TouchableOpacity>
-                                            </View>
-                                        </View>
+                                    </View>
+                                </View>
 
                                 <View style={styles.serviceFooter}>
                                     <View style={styles.serviceStats}>
                                         <Text style={styles.interactionCount}>
-                                            {getInteractionIcon(service.interactionType)} {service.interactionCount} interactions
+                                            {getInteractionIcon(service.interactionType)} {String(service.interactionCount)} interactions
                                         </Text>
                                         <Text style={styles.price}>{service.price.toLocaleString()} FCFA</Text>
                                     </View>
 
                                     <View style={styles.serviceButtons}>
-                                            <TouchableOpacity
+                                        <TouchableOpacity
                                             style={styles.chatButton}
-                                                onPress={() => {
+                                            onPress={() => {
                                                 Alert.alert("Chat", `Chat avec ${service.prestataireName}`);
                                             }}
                                         >
                                             <Text style={styles.chatButtonText}>?? Chat</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
                                             style={styles.callButton}
-                                                onPress={() => {
+                                            onPress={() => {
                                                 Alert.alert("Appel", `Appel vers ${service.prestataireName}`);
                                             }}
                                         >
                                             <Text style={styles.callButtonText}>?? Appeler</Text>
-                                            </TouchableOpacity>
-                                        </View>
+                                        </TouchableOpacity>
                                     </View>
+                                </View>
                             </View>
                         ))
                     )}
                 </View>
             </ScrollView>
-            </View>
+        </View>
     );
 };
 

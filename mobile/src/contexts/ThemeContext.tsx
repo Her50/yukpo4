@@ -4,7 +4,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { Appearance, useColorScheme } from 'react-native';
+import { Appearance, Text, useColorScheme } from 'react-native';
 
 type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -94,7 +94,18 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         colors,
     };
 
-    return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    const safeChildren = React.Children.map(children, (child, index) => {
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+
+    return <ThemeContext.Provider value={value}>{safeChildren}</ThemeContext.Provider>;
 };
 
 export const useTheme = (): ThemeContextType => {

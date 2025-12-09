@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -64,9 +64,23 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = React.memo(
             ],
         }));
 
+        // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+        // Éviter de rendre des valeurs primitives directement
+        const safeChildren = React.Children.map(children, (child, index) => {
+            // Si c'est une valeur primitive (string, number), l'envelopper dans un Text
+            if (typeof child === 'string' || typeof child === 'number') {
+                return <Text key={index}>{String(child)}</Text>;
+            }
+            // Si c'est null ou undefined, retourner null
+            if (child == null) {
+                return null;
+            }
+            return child;
+        });
+
         return (
             <Animated.View style={[styles.card, animatedStyle, style]}>
-                {children}
+                {safeChildren}
             </Animated.View>
         );
     }

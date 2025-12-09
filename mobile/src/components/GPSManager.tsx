@@ -1,7 +1,8 @@
 ﻿import * as React from "react";
 import { useEffect } from 'react';
-import { useAutoGPSTracking } from '../hooks/useAutoGPSTracking';
+import { Text } from 'react-native';
 import { useUserContext } from '../context/UserContext';
+import { useAutoGPSTracking } from '../hooks/useAutoGPSTracking';
 
 interface GPSManagerProps {
   children: React.ReactNode;
@@ -28,11 +29,20 @@ const GPSManager: React.FC<GPSManagerProps> = ({ children }) => {
     };
   }, [isTracking, stopTracking]);
 
-  // Retourner seulement les enfants sans interface de debug
-  return <>{children}</>;
+  // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+  const safeChildren = React.Children.map(children, (child, index) => {
+    if (typeof child === 'string' || typeof child === 'number') {
+      return <Text key={index}>{String(child)}</Text>;
+    }
+    if (child == null) {
+      return null;
+    }
+    return child;
+  });
+  return <>{safeChildren}</>;
 };
 
-export default GPSManager; 
+export default GPSManager;
 
 
 

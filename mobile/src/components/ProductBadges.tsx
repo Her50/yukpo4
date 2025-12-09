@@ -147,7 +147,7 @@ export const ProductBadges: React.FC<ProductBadgesProps> = ({ product, service }
             ))}
             {badges.length > 3 && (
                 <View style={[styles.badge, styles.badgeMore]}>
-                    <Text style={styles.badgeTextMore}>+{badges.length - 3}</Text>
+                    <Text style={styles.badgeTextMore}>+{String(badges.length - 3)}</Text>
                 </View>
             )}
         </View>

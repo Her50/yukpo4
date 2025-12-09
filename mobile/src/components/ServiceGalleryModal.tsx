@@ -242,19 +242,19 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                 {hasMedia && (
                     <View style={styles.counterContainer}>
                         <Text style={styles.counterText}>
-                            {selectedImageIndex + 1} / {allMedia.length}
+                            {String(selectedImageIndex + 1)} / {String(allMedia.length)}
                         </Text>
                         <View style={styles.mediaTypeContainer}>
                             {images.length > 0 && (
                                 <Badge style={styles.mediaTypeBadge}>
                                     <Image size={12} color="white" />
-                                    <Text style={styles.mediaTypeText}> {images.length}</Text>
+                                    <Text style={styles.mediaTypeText}> {String(images.length)}</Text>
                                 </Badge>
                             )}
                             {videos.length > 0 && (
                                 <Badge style={styles.mediaTypeBadge}>
                                     <Video size={12} color="white" />
-                                    <Text style={styles.mediaTypeText}> {videos.length}</Text>
+                                    <Text style={styles.mediaTypeText}> {String(videos.length)}</Text>
                                 </Badge>
                             )}
                         </View>
@@ -311,7 +311,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                         <Text style={styles.sectionIcon}>🎨</Text>
                                         <Text style={styles.sectionTitle}>Identité Visuelle</Text>
                                         <Text style={styles.sectionCount}>
-                                            {categorizedMedia.branding.images.length + categorizedMedia.branding.videos.length}
+                                            {String(categorizedMedia.branding.images.length + categorizedMedia.branding.videos.length)}
                                         </Text>
                                     </View>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaThumbnails}>
@@ -347,7 +347,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                         <Text style={styles.sectionIcon}>📦</Text>
                                         <Text style={styles.sectionTitle}>Produits</Text>
                                         <Text style={styles.sectionCount}>
-                                            {categorizedMedia.products.images.length + categorizedMedia.products.videos.length}
+                                            {String(categorizedMedia.products.images.length + categorizedMedia.products.videos.length)}
                                         </Text>
                                     </View>
                                     {Object.entries(categorizedMedia.products.byType).map(([typeLabel, media]) => {
@@ -393,7 +393,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                         <Text style={styles.sectionIcon}>🖼️</Text>
                                         <Text style={styles.sectionTitle}>Réalisations</Text>
                                         <Text style={styles.sectionCount}>
-                                            {categorizedMedia.realisations.images.length + categorizedMedia.realisations.videos.length}
+                                            {String(categorizedMedia.realisations.images.length + categorizedMedia.realisations.videos.length)}
                                         </Text>
                                     </View>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaThumbnails}>
@@ -434,11 +434,11 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                 <View style={styles.mediaStats}>
                                     <View style={styles.statItem}>
                                         <Image size={16} color={theme.colors.primary} />
-                                        <Text style={styles.statText}>{images.length} image{images.length > 1 ? 's' : ''}</Text>
+                                        <Text style={styles.statText}>{String(images.length)} image{images.length > 1 ? 's' : ''}</Text>
                                     </View>
                                     <View style={styles.statItem}>
                                         <Video size={16} color={theme.colors.primary} />
-                                        <Text style={styles.statText}>{videos.length} vidéo{videos.length > 1 ? 's' : ''}</Text>
+                                        <Text style={styles.statText}>{String(videos.length)} vidéo{videos.length > 1 ? 's' : ''}</Text>
                                     </View>
                                 </View>
                             </Card.Content>

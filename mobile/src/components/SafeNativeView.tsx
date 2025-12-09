@@ -1,6 +1,6 @@
 // Composant SafeAreaView natif pour remplacer react-native-safe-area-context
 import React from 'react';
-import { Dimensions, Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { Dimensions, Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
 
 const { height, width } = Dimensions.get('window');
 
@@ -53,9 +53,23 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
         style,
     ];
 
+    // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
+    // Éviter de rendre des valeurs primitives directement
+    const safeChildren = React.Children.map(children, (child, index) => {
+        // Si c'est une valeur primitive (string, number), l'envelopper dans un Text
+        if (typeof child === 'string' || typeof child === 'number') {
+            return <Text key={index}>{String(child)}</Text>;
+        }
+        // Si c'est null ou undefined, retourner null
+        if (child == null) {
+            return null;
+        }
+        return child;
+    });
+
     return (
         <View style={containerStyle} testID={testID}>
-            {children}
+            {safeChildren}
         </View>
     );
 };

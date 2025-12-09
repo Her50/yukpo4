@@ -391,12 +391,12 @@ const HopitalDetailsScreen: React.FC = () => {
                                     <View style={styles.waitTimeValue}>
                                         <Text style={styles.waitTimeMinutes}>
                                             {wt.avg_wait_time_minutes
-                                                ? `${Math.round(wt.avg_wait_time_minutes)} min`
+                                                ? `${String(Math.round(wt.avg_wait_time_minutes))} min`
                                                 : 'N/A'}
                                         </Text>
                                         {wt.max_wait_time_minutes && (
                                             <Text style={styles.waitTimeMax}>
-                                                Max: {Math.round(wt.max_wait_time_minutes)} min
+                                                Max: {String(Math.round(wt.max_wait_time_minutes))} min
                                             </Text>
                                         )}
                                     </View>
