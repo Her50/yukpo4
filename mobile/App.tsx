@@ -86,6 +86,15 @@ export default function App() {
     } catch (error) {
       console.error('[App] ⚠️ Erreur initialisation observability:', error);
     }
+
+    // ✅ CRITIQUE: Initialiser ComponentDebugger au démarrage pour capturer toutes les erreurs
+    try {
+      const { componentDebugger } = require('./src/utils/componentDebugger');
+      componentDebugger.enable();
+      console.log('[App] ✅ ComponentDebugger initialisé et activé');
+    } catch (error) {
+      console.warn('[App] ⚠️ Erreur initialisation ComponentDebugger:', error);
+    }
   }, []);
 
   // ✅ CORRECTION CRASH: Prefetch des données de localisation en lazy loading avec délai

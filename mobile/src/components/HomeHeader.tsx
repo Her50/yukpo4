@@ -224,7 +224,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                             compact={true}
                         />
                         {/* ✅ NOUVEAU: Badge gamification compact - SÉPARÉ du titre Yukpo */}
-                        {user?.id && (
+                        {user?.id ? (
                             <View style={{ marginRight: 8 }}> {/* ✅ CORRIGÉ: Ajouter margin pour séparer du titre */}
                                 <GamificationBadge
                                     userId={user.id}
@@ -235,9 +235,9 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                                     }}
                                 />
                             </View>
-                        )}
+                        ) : null}
                         {/* ✅ NOUVEAU: Modals gamification - HORS du headerLeft pour éviter conflits */}
-                        {user?.id && (
+                        {user?.id ? (
                             <>
                                 <LeaderboardModal
                                     visible={showLeaderboard}
@@ -250,7 +250,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                                     userId={user.id}
                                 />
                             </>
-                        )}
+                        ) : null}
                     </View>
 
                     {/* Titre principal PARFAITEMENT centré avec animation */}
@@ -282,13 +282,13 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                         >
                             <Text style={[styles.headerButtonIconCompact, disabled && styles.headerButtonIconDisabled]}>💬</Text>
                             {/* ✅ NOUVEAU 2025-01-27: Badge pour messages non lus avec animation */}
-                            {typeof unreadChatCount !== 'undefined' && unreadChatCount != null && unreadChatCount > 0 && (
+                            {typeof unreadChatCount !== 'undefined' && unreadChatCount != null && unreadChatCount > 0 ? (
                                 <Animated.View style={[styles.chatBadgeCompact, animatedChatBadgeStyle]}>
                                     <Text style={styles.chatBadgeText}>
                                         {unreadChatCount < 10 ? String(unreadChatCount) : '9+'}
                                     </Text>
                                 </Animated.View>
-                            )}
+                            ) : null}
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.headerButtonCompact, disabled && styles.headerButtonDisabled]}
@@ -299,15 +299,15 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                             activeOpacity={0.7}
                         >
                             <Text style={styles.headerButtonIconCompact}>🔔</Text>
-                            {unreadNotificationsCount != null && unreadNotificationsCount > 0 && (
+                            {unreadNotificationsCount != null && unreadNotificationsCount > 0 ? (
                                 <Animated.View style={[styles.notificationBadgeCompact, animatedNotificationBadgeStyle]}>
-                                    {unreadNotificationsCount < 10 && (
+                                    {unreadNotificationsCount < 10 ? (
                                         <Text style={styles.notificationBadgeText}>
                                             {String(unreadNotificationsCount)}
                                         </Text>
-                                    )}
+                                    ) : null}
                                 </Animated.View>
-                            )}
+                            ) : null}
                         </TouchableOpacity>
                     </View>
                 </View>
