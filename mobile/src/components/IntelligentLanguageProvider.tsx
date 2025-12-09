@@ -1,9 +1,9 @@
 ﻿// 🌍 Fournisseur intelligent de gestion des langues
-import { useIntelligentLanguage } from '../hooks/useIntelligentLanguage';
-import { languageDetectionService } from '../services/languageDetectionService';
 import * as React from "react";
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
+import { useIntelligentLanguage } from '../hooks/useIntelligentLanguage';
+import { languageDetectionService } from '../services/languageDetectionService';
 
 interface IntelligentLanguageContextType {
     // État
@@ -168,12 +168,60 @@ export const AutoTranslate: React.FC<{ children: React.ReactNode; context?: stri
         return undefined;
     }, [children, context, translateText]);
 
-    // ✅ CORRECTION CRITIQUE: Encapsuler le contenu dans un composant Text si c'est une chaîne
-    if (typeof translatedContent === 'string') {
-        return <Text>{translatedContent}</Text>;
+    // ✅ CORRECTION CRITIQUE: Encapsuler le contenu dans un composant Text si c'est une valeur primitive
+    // En React Native, toutes les valeurs primitives (string, number, boolean) doivent être dans un <Text>
+
+    // Cas 1: translatedContent est null ou undefined
+    if (translatedContent === null || translatedContent === undefined) {
+        // Si children est une string, l'encapsuler dans <Text>
+        if (typeof children === 'string') {
+            return <Text>{children}</Text>;
+        }
+        // Sinon, retourner children tel quel (peut être un élément React ou null)
+        return <>{children}</>;
     }
 
-    return <>{translatedContent}</>;
+    // Cas 2: translatedContent est une valeur primitive (string, number, boolean)
+    if (typeof translatedContent === 'string' || typeof translatedContent === 'number' || typeof translatedContent === 'boolean') {
+        return <Text>{String(translatedContent)}</Text>;
+    }
+
+    // Cas 3: translatedContent est un élément React valide
+    if (React.isValidElement(translatedContent)) {
+        return translatedContent;
+    }
+
+    // Cas 4: translatedContent est un tableau
+    if (Array.isArray(translatedContent)) {
+        // Vérifier si le tableau contient des primitives qui doivent être encapsulées
+        const processedContent = translatedContent.map((item, index) => {
+            if (item === null || item === undefined) {
+                return null;
+            }
+            if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                return <Text key={index}>{String(item)}</Text>;
+            }
+            if (React.isValidElement(item)) {
+                return item;
+            }
+            // Si c'est un objet non-React, essayer de le convertir en string
+            return <Text key={index}>{String(item)}</Text>;
+        });
+        return <>{processedContent}</>;
+    }
+
+    // Cas 5: Fallback - translatedContent est un objet non-React
+    // Essayer de le convertir en string et l'encapsuler dans <Text>
+    try {
+        return <Text>{String(translatedContent)}</Text>;
+    } catch (error) {
+        console.warn('⚠️ [AutoTranslate] Impossible de convertir translatedContent en string:', error);
+        // Dernier recours: retourner children
+        if (typeof children === 'string') {
+            return <Text>{children}</Text>;
+        }
+        return <>{children}</>;
+    }
 };
 
 // Hook pour traduire du texte dans les composants

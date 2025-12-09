@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { AccessibilityInfo, Platform, View, ViewProps } from 'react-native';
+import { AccessibilityInfo, Platform, Text, View, ViewProps } from 'react-native';
 
 interface AccessibilityWrapperProps extends ViewProps {
     children: React.ReactNode;
@@ -145,9 +145,9 @@ export const AccessibleText: React.FC<{
                 accessibilityRole={accessibilityRole}
                 testID={testID}
             >
-                <View style={style}>
+                <Text style={style}>
                     {children}
-                </View>
+                </Text>
             </AccessibilityWrapper>
         );
     }
