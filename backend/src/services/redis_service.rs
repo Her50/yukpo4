@@ -20,6 +20,7 @@ pub enum RedisConnection {
 
 pub struct RedisService {
     connection_manager: Arc<Mutex<RedisConnection>>,
+    #[allow(dead_code)]
     config: RedisConfig,
 }
 

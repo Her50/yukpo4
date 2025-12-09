@@ -41,6 +41,7 @@ const { NavigationContainer } = require('@react-navigation/native');
 import ErrorBoundary from './src/components/ErrorBoundary';
 import GPSTrackingManager from './src/components/GPSTrackingManager';
 import RemoteLoggingInitializer from './src/components/RemoteLoggingInitializer';
+import { ToasterProvider } from './src/components/ToasterProvider';
 import { linking } from './src/config/linking';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { DeliveryProvider } from './src/contexts/DeliveryContext';
@@ -126,38 +127,40 @@ export default function App() {
         <SafeAreaProvider>
           <ThemeProvider>
             <PaperProvider theme={theme}>
-              <LanguageProvider>
-                <LocationProvider>
-                  <AuthProvider>
-                    <RemoteLoggingInitializer />
-                    <WebSocketProvider>
-                      <FeatureFlagProvider>
-                        <DeliveryProvider>
-                          <ShoppingProvider>
-                            <StatusBar style="auto" />
-                            <GPSTrackingManager />
-                            <NavigationContainer
-                              linking={linking}
-                              fallback={null}
-                              onReady={() => {
-                                console.log('[NavigationContainer] ✅ Navigation prête avec Deep Linking');
-                              }}
-                              onStateChange={() => {
-                                console.log('[NavigationContainer] 📍 Navigation changée');
-                              }}
-                              onUnhandledAction={(action: any) => {
-                                console.warn('[NavigationContainer] ⚠️ Action non gérée:', action);
-                              }}
-                            >
-                              <AppNavigator />
-                            </NavigationContainer>
-                          </ShoppingProvider>
-                        </DeliveryProvider>
-                      </FeatureFlagProvider>
-                    </WebSocketProvider>
-                  </AuthProvider>
-                </LocationProvider>
-              </LanguageProvider>
+              <ToasterProvider>
+                <LanguageProvider>
+                  <LocationProvider>
+                    <AuthProvider>
+                      <RemoteLoggingInitializer />
+                      <WebSocketProvider>
+                        <FeatureFlagProvider>
+                          <DeliveryProvider>
+                            <ShoppingProvider>
+                              <StatusBar style="auto" />
+                              <GPSTrackingManager />
+                              <NavigationContainer
+                                linking={linking}
+                                fallback={null}
+                                onReady={() => {
+                                  console.log('[NavigationContainer] ✅ Navigation prête avec Deep Linking');
+                                }}
+                                onStateChange={() => {
+                                  console.log('[NavigationContainer] 📍 Navigation changée');
+                                }}
+                                onUnhandledAction={(action: any) => {
+                                  console.warn('[NavigationContainer] ⚠️ Action non gérée:', action);
+                                }}
+                              >
+                                <AppNavigator />
+                              </NavigationContainer>
+                            </ShoppingProvider>
+                          </DeliveryProvider>
+                        </FeatureFlagProvider>
+                      </WebSocketProvider>
+                    </AuthProvider>
+                  </LocationProvider>
+                </LanguageProvider>
+              </ToasterProvider>
             </PaperProvider>
           </ThemeProvider>
         </SafeAreaProvider>

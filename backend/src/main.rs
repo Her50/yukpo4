@@ -560,7 +560,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // ✅ Phase 7: Tâche d'optimisation périodique
-    start_optimization_task(Arc::new(app_state.pg.clone()), app_state.clone());
+    let pool_clone_optimization = Arc::new(app_state.pg.clone());
+    let app_state_clone_optimization = app_state.clone();
+    let _ = tokio::spawn(async move {
+        start_optimization_task(pool_clone_optimization, app_state_clone_optimization).await;
+    });
     // ✅ Scheduler pour les campagnes promos globales (Black Friday, etc.)
     tasks::global_promo_scheduler::start_global_promo_scheduler(app_state.clone());
     // ✅ Worker pipeline health (alerting interne)
@@ -612,13 +616,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // ✅ NOUVEAU 2025-12-02: Refresh automatique de la vue matérialisée de recherche
-    tasks::search_cache_refresh::start_search_cache_refresh_task(app_state.pg.clone());
+    let pool_clone_search_cache = app_state.pg.clone();
+    let _ = tokio::spawn(async move {
+        tasks::search_cache_refresh::start_search_cache_refresh_task(pool_clone_search_cache).await;
+    });
 
-    // ✅ NOUVEAU: Refresh automatique de la vue matérialisée Black Friday (toutes les 30 secondes)
+    // ✅ OPTIMISÉ 2025-12-09: Refresh automatique de la vue matérialisée Black Friday (configurable, défaut: 60s)
     let pool_clone_blackfriday = Arc::new(app_state.pg.clone());
     let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
-        let mut interval_blackfriday = interval(Duration::from_secs(30)); // Toutes les 30 secondes
+        
+        // ✅ OPTIMISÉ: Intervalle configurable via variable d'environnement (défaut: 60s au lieu de 30s)
+        let refresh_interval_secs: u64 = std::env::var("GLOBAL_PROMO_CACHE_REFRESH_INTERVAL_SECS")
+            .unwrap_or_else(|_| "60".to_string())
+            .parse()
+            .unwrap_or(60);
+        
+        let mut interval_blackfriday = interval(Duration::from_secs(refresh_interval_secs));
+        log::info!("🔄 Refresh global_promo_catalog_cache configuré: intervalle = {}s", refresh_interval_secs);
 
         loop {
             interval_blackfriday.tick().await;
@@ -633,6 +648,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap_or(false);
 
             if view_exists {
+                let start_time = std::time::Instant::now();
                 if let Err(e) =
                     sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY global_promo_catalog_cache")
                         .execute(&*pool_clone_blackfriday)
@@ -640,7 +656,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 {
                     log::warn!("⚠️ Erreur refresh global_promo_catalog_cache: {}", e);
                 } else {
-                    log::debug!("✅ global_promo_catalog_cache refreshed");
+                    let elapsed = start_time.elapsed();
+                    log::debug!("✅ global_promo_catalog_cache refreshed en {:?}", elapsed);
+                    // ✅ OPTIMISÉ: Logger un warning si le refresh prend plus de 1 seconde
+                    if elapsed.as_millis() > 1000 {
+                        log::warn!("⚠️ Refresh global_promo_catalog_cache lent: {:?} (> 1s)", elapsed);
+                    }
                 }
             } else {
                 log::debug!("⚠️ Vue global_promo_catalog_cache n'existe pas encore");

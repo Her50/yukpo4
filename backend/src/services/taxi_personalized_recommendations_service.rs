@@ -28,6 +28,7 @@ pub struct MatchFactor {
 
 /// Service de recommandations
 pub struct TaxiPersonalizedRecommendationsService {
+    #[allow(dead_code)]
     pool: Arc<PgPool>,
 }
 

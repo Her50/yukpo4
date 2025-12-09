@@ -9,6 +9,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 
 pub struct ARPreviewService {
+    #[allow(dead_code)]
     pool: Arc<PgPool>,
     render_service: AR3DRenderService,
 }

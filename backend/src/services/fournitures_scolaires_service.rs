@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 pub struct FournituresScolairesService {
     pool: Arc<PgPool>,
+    #[allow(dead_code)]
     state: Arc<AppState>,
 }
 

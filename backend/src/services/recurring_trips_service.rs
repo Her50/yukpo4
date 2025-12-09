@@ -340,7 +340,9 @@ impl RecurringTripsService {
 #[derive(Debug, sqlx::FromRow)]
 struct RecurringTripRow {
     id: i32,
+    #[allow(dead_code)]
     service_id: i32,
+    #[allow(dead_code)]
     user_id: i32,
     recurrence_type: Option<String>,
     recurrence_days: Option<Vec<i16>>,

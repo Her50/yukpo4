@@ -371,11 +371,16 @@ impl CovoiturageMatchingService {
 #[derive(Debug)]
 struct TripData {
     id: i32,
+    #[allow(dead_code)]
     depart: String,
+    #[allow(dead_code)]
     destination: String,
+    #[allow(dead_code)]
     gps_depart: Option<String>,
+    #[allow(dead_code)]
     gps_destination: Option<String>,
     heure_depart: String,
+    #[allow(dead_code)]
     nombre_places: i32,
     places_disponibles: i32,
     prix_par_place: i32,

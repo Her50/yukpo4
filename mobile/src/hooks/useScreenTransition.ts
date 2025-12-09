@@ -43,7 +43,8 @@ export const useScreenTransition = (options: UseScreenTransitionOptions = {}) =>
                 try {
                     if (typeof withTiming !== 'function' || typeof withSpring !== 'function') {
                         console.warn('[useScreenTransition] withTiming ou withSpring non disponible');
-                        return;
+                        // ✅ CRITIQUE: Retourner explicitement undefined
+                        return undefined;
                     }
 
                     opacity.value = withTiming(1, {

@@ -257,6 +257,7 @@ pub struct QRCodeValidation {
 struct QRCodeRow {
     id: i32,
     reservation_id: i32,
+    #[allow(dead_code)]
     qr_code: String,
     status: String,
     expires_at: chrono::DateTime<chrono::Utc>,

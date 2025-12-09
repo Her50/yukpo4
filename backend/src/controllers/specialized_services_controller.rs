@@ -706,22 +706,15 @@ pub async fn create_travel_agency(
 
 #[derive(Debug, Deserialize)]
 pub struct CreateCovoiturageRequest {
-    #[allow(dead_code)]
     pub service_id: i32,
-    #[allow(dead_code)]
     pub depart: String,
-    #[allow(dead_code)]
     pub destination: String,
-    #[allow(dead_code)]
     pub gps_depart: Option<String>,
-    #[allow(dead_code)]
     pub gps_destination: Option<String>,
-    #[allow(dead_code)]
     pub date_depart: String,  // Format ISO 8601
     pub heure_depart: String, // Format HH:MM
     pub type_vehicule: Option<String>,
     pub marque_modele: Option<String>,
-    #[allow(dead_code)]
     pub nombre_places: i32,
     pub places_disponibles: i32,
     pub prix_par_place: i32,

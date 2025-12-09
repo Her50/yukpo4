@@ -61,7 +61,9 @@ struct SpotifySearchResponse {
 struct SpotifyTracksResponse {
     items: Vec<SpotifyTrack>,
     total: u32,
+    #[allow(dead_code)]
     limit: u32,
+    #[allow(dead_code)]
     offset: u32,
 }
 

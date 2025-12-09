@@ -63,7 +63,10 @@ export const ImmersiveVideoPlayer: React.FC<ImmersiveVideoPlayerProps> = ({
 
     // Auto-hide des contrôles
     useEffect(() => {
-        if (!autoHideControls || !showControls) return;
+        if (!autoHideControls || !showControls) {
+            // ✅ CRITIQUE: Retourner explicitement undefined
+            return undefined;
+        }
 
         if (controlsVisible) {
             hideControlsTimeoutRef.current = setTimeout(() => {

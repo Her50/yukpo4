@@ -9,6 +9,7 @@ use std::str::FromStr;
 /// Service pour la gestion des alertes emploi
 pub struct AlertesEmploiService {
     pool: PgPool,
+    #[allow(dead_code)]
     redis_client: Option<redis::Client>,
 }
 
