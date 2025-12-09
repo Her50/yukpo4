@@ -4005,7 +4005,7 @@ pub async fn creer_service(
     };
     // Utilisation directe de gps_lat et gps_lon dans la boucle, plus besoin de gps_lat_fallback/gps_lon_fallback
     // Génération et insertion des embeddings pour chaque champ du service
-    let mut embedding_tasks = Vec::new();
+    let mut embedding_tasks: Vec<(String, tokio::task::JoinHandle<Result<serde_json::Value, reqwest::Error>>)> = Vec::new();
 
     // Préparation des données d'embedding en parallèle
     let map = if let Some(obj) = data_obj.as_object() {
@@ -4053,7 +4053,7 @@ pub async fn creer_service(
             let mut token_tracker = token_tracker.clone();
             let valeur = valeur.clone();
 
-            let _ = tokio::spawn(async move {
+            tokio::spawn(async move {
                 let mut value_for_embedding = value_str.clone();
                 let mut meta_lang: Option<String> = None;
                 let mut meta_unite: Option<String> = None;
@@ -4223,7 +4223,7 @@ pub async fn creer_service(
 
             // Optionnel : mettre à jour le statut du service une fois les embeddings terminés
             // (peut être implémenté plus tard si nécessaire)
-        })
+        });
     };
 
     // Ne pas attendre la fin des embeddings, retourner immédiatement
