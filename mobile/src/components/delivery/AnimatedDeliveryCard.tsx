@@ -14,7 +14,7 @@ interface AnimatedDeliveryCardProps {
     index?: number;
 }
 
-const AnimatedDeliveryCard: React.FC<AnimatedDeliveryCardProps> = ({
+const AnimatedDeliveryCard: React.FC<AnimatedDeliveryCardProps> = React.memo(({
     delivery,
     onPress,
     index = 0,
@@ -88,7 +88,16 @@ const AnimatedDeliveryCard: React.FC<AnimatedDeliveryCardProps> = ({
             </TouchableOpacity>
         </Animated.View>
     );
-};
+}, (prevProps, nextProps) => {
+    // ✅ OPTIMISATION: Éviter les re-renders inutiles
+    return (
+        prevProps.delivery.id === nextProps.delivery.id &&
+        prevProps.delivery.status === nextProps.delivery.status &&
+        prevProps.index === nextProps.index
+    );
+});
+
+AnimatedDeliveryCard.displayName = 'AnimatedDeliveryCard';
 
 export default AnimatedDeliveryCard;
 

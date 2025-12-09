@@ -170,21 +170,28 @@ const styles = StyleSheet.create({
     },
     compactBadge: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
+        justifyContent: 'center', // ✅ CORRIGÉ: Centrer horizontalement
         paddingHorizontal: 6, // ✅ RÉDUIT: De 8 à 6px
         paddingVertical: 3, // ✅ RÉDUIT: De 4 à 3px
         backgroundColor: modernColors.primary,
         borderRadius: 12, // ✅ RÉDUIT: De 16 à 12px
         gap: 3, // ✅ RÉDUIT: De 4 à 3px
         minWidth: 0, // ✅ AJOUTÉ: Permet au badge de se rétrécir si nécessaire
+        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour alignement avec "Yukpo"
     },
     compactIcon: {
         fontSize: 12, // ✅ RÉDUIT: De 14 à 12px
+        lineHeight: 12, // ✅ CORRIGÉ: Définir lineHeight égal à fontSize pour alignement
+        textAlignVertical: 'center', // ✅ CORRIGÉ: Centrer verticalement
     },
     compactPoints: {
         color: '#FFFFFF',
         fontSize: 10, // ✅ RÉDUIT: De 11 à 10px
         fontWeight: '700',
+        lineHeight: 10, // ✅ CORRIGÉ: Définir lineHeight égal à fontSize pour alignement
+        textAlignVertical: 'center', // ✅ CORRIGÉ: Centrer verticalement
+        includeFontPadding: false, // ✅ CORRIGÉ: Désactiver le padding de police
     },
 });
 

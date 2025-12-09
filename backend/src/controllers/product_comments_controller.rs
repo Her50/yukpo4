@@ -790,7 +790,7 @@ async fn load_comment_stats(
         SELECT 
             COUNT(*) FILTER (WHERE NOT is_deleted) as total_comments,
             COUNT(*) FILTER (WHERE rating IS NOT NULL AND NOT is_deleted) as rating_count,
-            COALESCE(AVG(rating) FILTER (WHERE rating IS NOT NULL AND NOT is_deleted), 0) as average_rating
+            COALESCE(AVG(rating) FILTER (WHERE rating IS NOT NULL AND NOT is_deleted), 0)::DOUBLE PRECISION as average_rating
         FROM product_comments
         WHERE service_id = $1 AND parent_comment_id IS NULL
         "#,

@@ -313,3 +313,6 @@ const styles = StyleSheet.create({
 
 InfiniteFeed.displayName = 'InfiniteFeed';
 
+// ✅ CORRIGÉ: Ajouter export default pour cohérence avec les autres composants lazy
+export default InfiniteFeed;
+

@@ -306,14 +306,16 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
 
         const safeContent = Array.isArray(content) ? content : [];
 
-        if (safeContent.length > 1 && currentIndex === 0 && !isPaused) {
-            console.log('[MixedContentCarousel] ⏱️ [DIAGNOSTIC] Programmation scroll initial dans 2 secondes...', {
+        // ✅ CORRIGÉ: Simplifier les conditions - démarrer même avec 1 élément pour test
+        if (safeContent.length >= 1 && currentIndex === 0 && !isPaused) {
+            console.log('[MixedContentCarousel] ⏱️ [DIAGNOSTIC] Programmation scroll initial dans 1 seconde...', {
                 contentLength: safeContent.length,
                 currentIndex,
                 isPaused,
                 scrollViewMounted
             });
 
+            // ✅ CORRIGÉ: Réduire le délai de 2s à 1s pour démarrage plus rapide
             const initialTimer = setTimeout(() => {
                 const safeContent = Array.isArray(content) ? content : [];
                 console.log('[MixedContentCarousel] 🎬 [DIAGNOSTIC] Tentative scroll initial après 2s:', {
@@ -323,7 +325,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                     scrollViewReady: scrollViewRef.current ? typeof scrollViewRef.current.scrollTo === 'function' : false
                 });
 
-                if (scrollViewRef.current && safeContent.length > 1 && scrollViewMounted) {
+                // ✅ CORRIGÉ: Simplifier - ne pas dépendre strictement de scrollViewMounted
+                if (scrollViewRef.current && safeContent.length >= 1) {
                     // ✅ CORRIGÉ: Vérifier que scrollTo est disponible
                     if (typeof scrollViewRef.current.scrollTo !== 'function') {
                         console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] scrollTo n\'est pas une fonction');
@@ -369,7 +372,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                                 safeContent.length <= 1 ? 'Contenu insuffisant' : 'Raison inconnue'
                     });
                 }
-            }, 2000);
+            }, 1000); // ✅ CORRIGÉ: Délai réduit de 2s à 1s
 
             return () => {
                 // ✅ SÉCURITÉ: Vérifier que initialTimer existe avant de le nettoyer
@@ -383,7 +386,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                 contentLength: safeContent.length,
                 currentIndex,
                 isPaused,
-                reason: safeContent.length <= 1 ? 'Pas assez de contenu (besoin > 1)' :
+                reason: safeContent.length < 1 ? 'Pas de contenu' :
                     currentIndex !== 0 ? `Index actuel ${currentIndex} (besoin 0)` :
                         isPaused ? 'En pause' : 'Raison inconnue'
             });

@@ -166,21 +166,29 @@ const styles = StyleSheet.create({
   // Version compacte (header)
   compactButton: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
+    justifyContent: 'center', // ✅ CORRIGÉ: Centrer horizontalement
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 8, // ✅ Réduit de 12 à 8 pour libérer de l'espace
-    paddingVertical: 6, // ✅ Réduit de 8 à 6 pour libérer de l'espace
+    paddingVertical: 4, // ✅ CORRIGÉ: Réduit de 6 à 4 pour meilleur alignement
     borderRadius: 20,
     gap: 4, // ✅ Réduit de 6 à 4 pour libérer de l'espace
+    height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour alignement avec "Yukpo"
+    minHeight: 32, // ✅ CORRIGÉ: Hauteur minimale pour touch target
   },
   flagEmoji: {
     fontSize: 18,
+    lineHeight: 18, // ✅ CORRIGÉ: Définir lineHeight égal à fontSize pour alignement
+    textAlignVertical: 'center', // ✅ CORRIGÉ: Centrer verticalement
   },
   languageCode: {
     fontSize: 11, // ✅ Réduit de 12 à 11 pour libérer de l'espace
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.3, // ✅ Réduit de 0.5 à 0.3 pour libérer de l'espace
+    lineHeight: 11, // ✅ CORRIGÉ: Définir lineHeight égal à fontSize pour alignement
+    textAlignVertical: 'center', // ✅ CORRIGÉ: Centrer verticalement
+    includeFontPadding: false, // ✅ CORRIGÉ: Désactiver le padding de police
   },
 
   // Modal

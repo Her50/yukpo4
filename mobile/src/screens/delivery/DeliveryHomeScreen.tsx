@@ -70,7 +70,7 @@ const DeliveryHomeScreen: React.FC = () => {
         setRefreshing(false);
     }, [refreshActiveDeliveries]);
 
-    // ✅ CORRIGÉ: Navigation simplifiée et robuste
+    // ✅ OPTIMISÉ: Navigation immédiate sans délai artificiel
     const handleStartShopping = useCallback(() => {
         if (navigating) return;
 
@@ -81,9 +81,8 @@ const DeliveryHomeScreen: React.FC = () => {
             // Navigation vers le nouveau flux shopping amélioré
             navigation.navigate('DeliveryShoppingFlowNew' as never);
             console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingFlowNew');
-            // ✅ CORRIGÉ : Réinitialiser immédiatement après navigation réussie
-            // L'état sera aussi réinitialisé par useFocusEffect au retour
-            setTimeout(() => setNavigating(false), 500);
+            // ✅ OPTIMISÉ: Réinitialiser immédiatement (pas de setTimeout)
+            setNavigating(false);
         } catch (error: any) {
             console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
             setNavigating(false); // Réinitialiser en cas d'erreur
@@ -105,9 +104,8 @@ const DeliveryHomeScreen: React.FC = () => {
             // ✅ NOUVEAU: Navigation vers le nouveau flux amélioré
             navigation.navigate('DeliveryParcelFlowNew' as never);
             console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryParcelFlowNew');
-            // ✅ CORRIGÉ : Réinitialiser immédiatement après navigation réussie
-            // L'état sera aussi réinitialisé par useFocusEffect au retour
-            setTimeout(() => setNavigating(false), 500);
+            // ✅ OPTIMISÉ: Réinitialiser immédiatement (pas de setTimeout)
+            setNavigating(false);
         } catch (error: any) {
             console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
             setNavigating(false); // Réinitialiser en cas d'erreur
@@ -130,8 +128,8 @@ const DeliveryHomeScreen: React.FC = () => {
             // Navigation directe vers le tracking
             navigation.navigate('DeliveryShoppingTracking', { deliveryId });
             console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingTracking');
-            // ✅ CORRIGÉ : Réinitialiser immédiatement après navigation réussie
-            setTimeout(() => setNavigating(false), 500);
+            // ✅ OPTIMISÉ: Réinitialiser immédiatement (pas de setTimeout)
+            setNavigating(false);
         } catch (error: any) {
             console.error('[DeliveryHomeScreen] ❌ Erreur navigation:', error);
             setNavigating(false); // Réinitialiser en cas d'erreur

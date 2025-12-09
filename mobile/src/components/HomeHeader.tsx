@@ -319,41 +319,48 @@ const styles = StyleSheet.create({
     },
     headerContent: {
         paddingHorizontal: 16,
-        paddingVertical: 8, // ✅ RÉDUIT: De 12 à 8px pour réduire la hauteur
-        justifyContent: 'center', // ✅ AJOUTÉ: Centrer verticalement
-        flex: 1, // ✅ AJOUTÉ: Prendre toute la hauteur disponible
+        paddingVertical: 0, // ✅ CORRIGÉ: Pas de padding vertical pour centrer parfaitement
+        justifyContent: 'center', // ✅ Centrer verticalement
+        alignItems: 'stretch', // ✅ Étirer sur toute la largeur
+        flex: 1, // ✅ Prendre toute la hauteur disponible
+        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur du header
     },
     headerRow: {
         flexDirection: 'row',
-        alignItems: 'center', // ✅ Centrer verticalement tous les éléments
+        alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement tous les éléments
+        justifyContent: 'space-between',
         paddingHorizontal: 4,
         width: '100%',
-        justifyContent: 'space-between',
         gap: 4,
-        minHeight: 44, // ✅ AJOUTÉ: Hauteur minimale pour touch target
+        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour centrer parfaitement
+        minHeight: 44, // ✅ Hauteur minimale pour touch target
     },
     avatarContainer: {
         width: 36, // ✅ RÉDUIT: De 40 à 36px pour plus de compacité
         height: 36, // ✅ RÉDUIT: De 40 à 36px
         marginRight: 4, // ✅ RÉDUIT: De 6 à 4px
+        justifyContent: 'center', // ✅ CORRIGÉ: Centrer verticalement
+        alignItems: 'center', // ✅ CORRIGÉ: Centrer horizontalement
     },
     headerLeft: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
         justifyContent: 'flex-start',
         minWidth: 0,
         maxWidth: '30%', // ✅ RÉDUIT: De 35% à 30% pour laisser plus d'espace au centre
         flexShrink: 1,
         gap: 4, // ✅ RÉDUIT: De 6 à 4px pour plus de compacité
+        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour alignement parfait
     },
     brandTitleContainer: {
         flex: 1,
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'center', // ✅ CORRIGÉ: Centrer verticalement
         paddingHorizontal: 8, // ✅ AUGMENTÉ: De 4 à 8px pour plus d'espace
         minWidth: 80, // ✅ AUGMENTÉ: De 70 à 80px pour garantir l'espace
         flexShrink: 0,
         zIndex: 1, // ✅ AJOUTÉ: S'assurer que le titre est au-dessus
+        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour centrer parfaitement
     },
     brandTitleCompact: {
         width: '100%',
@@ -361,10 +368,11 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         textAlign: 'center',
         letterSpacing: -0.2,
-        includeFontPadding: false,
-        textAlignVertical: 'center',
+        includeFontPadding: false, // ✅ CORRIGÉ: Désactiver le padding de police pour alignement précis
+        textAlignVertical: 'center', // ✅ CORRIGÉ: Centrer verticalement le texte
         flexShrink: 0,
         overflow: 'visible',
+        lineHeight: 18, // ✅ CORRIGÉ: Définir lineHeight égal à fontSize pour centrage parfait
     },
     brandYuk: {
         color: '#EAB308',
@@ -374,12 +382,13 @@ const styles = StyleSheet.create({
     },
     headerActionsCompact: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
         justifyContent: 'flex-end',
         gap: 4,
         minWidth: 0,
         maxWidth: '30%', // ✅ RÉDUIT: De 35% à 30% pour symétrie avec la colonne gauche
         flexShrink: 1,
+        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour alignement parfait
     },
     headerButtonCompact: {
         width: 32, // ✅ RÉDUIT: De 36 à 32px pour plus de compacité

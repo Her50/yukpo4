@@ -311,13 +311,14 @@ const HomeScreen: React.FC = () => {
 
         refreshNotifications();
 
+        // ✅ OPTIMISÉ: Intervalle augmenté à 2 minutes pour réduire la charge
         const interval = setInterval(() => {
             console.log('[HomeScreen] 🔄 Rafraîchissement automatique des notifications');
             // ✅ SÉCURITÉ: Vérifier que la fonction existe avant de l'appeler dans l'intervalle
             if (typeof loadUnreadNotificationsCount === 'function') {
                 refreshNotifications();
             }
-        }, 30000);
+        }, 120000); // 2 minutes au lieu de 30 secondes
 
         return () => {
             // ✅ SÉCURITÉ: Vérifier que interval existe avant de le nettoyer
@@ -1307,49 +1308,32 @@ const HomeScreen: React.FC = () => {
                             { id: 'feed', type: 'feed' }, // ✅ PHASE 2: Feed infini
                         ]}
                         keyExtractor={(item) => item.id}
-                        // ✅ NOUVEAU: getItemLayout pour performance optimale (+40% performance)
-                        getItemLayout={(data, index) => {
-                            // Hauteurs estimées des sections
-                            const SPECIALIZED_HEIGHT = 600; // ✅ NOUVEAU: Section services spécialisés (5 catégories)
-
-                            const CAROUSEL_HEADER_HEIGHT = 40; // carouselHeader
-                            const CAROUSEL_HEIGHT = STATIC_HEIGHT * 0.55 + 120; // carouselWrapper (minHeight + marginBottom)
-                            const CAROUSEL_TOTAL = CAROUSEL_HEADER_HEIGHT + CAROUSEL_HEIGHT;
-
-                            const PROMO_HEIGHT = 180; // GlobalPromoHighlights hauteur estimée
-
-                            const FEED_HEADER_HEIGHT = 80; // feedHeader
-                            const FEED_MIN_HEIGHT = 400; // InfiniteFeed hauteur minimale
-                            const FEED_TOTAL = FEED_HEADER_HEIGHT + FEED_MIN_HEIGHT + 40; // + marginBottom
-
-                            let offset = 0;
-
-                            if (index === 0) {
-                                // ✅ NOUVEAU: Services spécialisés
-                                return { length: SPECIALIZED_HEIGHT, offset: 0, index };
-                            } else if (index === 1) {
-                                // Carousel
-                                return { length: CAROUSEL_TOTAL, offset: SPECIALIZED_HEIGHT, index };
-                            } else if (index === 2) {
-                                // Promo
-                                return { length: PROMO_HEIGHT, offset: SPECIALIZED_HEIGHT + CAROUSEL_TOTAL, index };
-                            } else {
-                                // Feed
-                                return { length: FEED_TOTAL, offset: SPECIALIZED_HEIGHT + CAROUSEL_TOTAL + PROMO_HEIGHT, index };
-                            }
-                        }}
+                        // ✅ CORRIGÉ: Retirer getItemLayout pour éviter conflits d'affichage
+                        // React Native calculera automatiquement les hauteurs réelles
+                        // Cela évite les problèmes de sections mal positionnées ou coupées
                         renderItem={({ item }) => {
                             // ✅ NOUVEAU: Section Services Spécialisés (AVANT le carousel pour visibilité)
                             if (item.type === 'specialized') {
                                 return (
                                     <AnimatedCard index={0} delay={0}>
-                                        <Suspense fallback={
-                                            <View style={{ padding: 20, alignItems: 'center' }}>
-                                                <ActivityIndicator size="small" color={modernColors.primary} />
-                                            </View>
-                                        }>
-                                            <SpecializedServicesSection />
-                                        </Suspense>
+                                        <ErrorBoundary
+                                            fallback={
+                                                <View style={{ padding: 20, alignItems: 'center', backgroundColor: modernColors.surface, borderRadius: 12, margin: 16 }}>
+                                                    <Text style={{ fontSize: 16, fontWeight: '600', color: modernColors.text, marginBottom: 8 }}>⚠️ Erreur de chargement</Text>
+                                                    <Text style={{ fontSize: 14, color: modernColors.textSecondary, textAlign: 'center' }}>
+                                                        Impossible de charger les services spécialisés. Veuillez réessayer.
+                                                    </Text>
+                                                </View>
+                                            }
+                                        >
+                                            <Suspense fallback={
+                                                <View style={{ padding: 20, alignItems: 'center' }}>
+                                                    <ActivityIndicator size="small" color={modernColors.primary} />
+                                                </View>
+                                            }>
+                                                <SpecializedServicesSection />
+                                            </Suspense>
+                                        </ErrorBoundary>
                                     </AnimatedCard>
                                 );
                             }
@@ -1393,13 +1377,19 @@ const HomeScreen: React.FC = () => {
                                                 searchQuery={state.data.searchQuery}
                                                 totalSearchResults={state.data.totalSearchResults}
                                                 onShowAllResults={() => {
-                                                    (navigation as any).navigate('ResultatBesoin', {
-                                                        results: state.data.searchResults,
-                                                        type: 'recherche_besoin',
-                                                        searchQuery: state.data.searchQuery,
-                                                        hasError: false,
-                                                        error: null
-                                                    });
+                                                    // ✅ CORRIGÉ: Navigation sécurisée avec gestion d'erreur
+                                                    try {
+                                                        navigation.navigate('ResultatBesoin' as never, {
+                                                            results: state.data.searchResults,
+                                                            type: 'recherche_besoin',
+                                                            searchQuery: state.data.searchQuery,
+                                                            hasError: false,
+                                                            error: null
+                                                        } as never);
+                                                    } catch (error) {
+                                                        console.error('[HomeScreen] ❌ Erreur navigation vers ResultatBesoin:', error);
+                                                        Alert.alert('Erreur', 'Impossible d\'ouvrir les résultats de recherche.');
+                                                    }
                                                 }}
                                                 onClearSearch={() => {
                                                     dispatch({ type: 'CLEAR_SEARCH' });
@@ -1412,13 +1402,24 @@ const HomeScreen: React.FC = () => {
                             if (item.type === 'promo') {
                                 return (
                                     <AnimatedCard index={1} delay={100}>
-                                        <Suspense fallback={
-                                            <View style={{ padding: 20, alignItems: 'center' }}>
-                                                <ActivityIndicator size="small" color={modernColors.primary} />
-                                            </View>
-                                        }>
-                                            <GlobalPromoHighlights />
-                                        </Suspense>
+                                        <ErrorBoundary
+                                            fallback={
+                                                <View style={{ padding: 20, alignItems: 'center', backgroundColor: modernColors.surface, borderRadius: 12, margin: 16 }}>
+                                                    <Text style={{ fontSize: 16, fontWeight: '600', color: modernColors.text, marginBottom: 8 }}>⚠️ Erreur de chargement</Text>
+                                                    <Text style={{ fontSize: 14, color: modernColors.textSecondary, textAlign: 'center' }}>
+                                                        Impossible de charger les promotions. Veuillez réessayer.
+                                                    </Text>
+                                                </View>
+                                            }
+                                        >
+                                            <Suspense fallback={
+                                                <View style={{ padding: 20, alignItems: 'center' }}>
+                                                    <ActivityIndicator size="small" color={modernColors.primary} />
+                                                </View>
+                                            }>
+                                                <GlobalPromoHighlights />
+                                            </Suspense>
+                                        </ErrorBoundary>
                                     </AnimatedCard>
                                 );
                             }
@@ -1444,24 +1445,41 @@ const HomeScreen: React.FC = () => {
                                                 <Text style={styles.feedTitle}>Découvrir plus</Text>
                                                 <Text style={styles.feedSubtitle}>Explorer d'autres produits et services</Text>
                                             </View>
-                                            <Suspense fallback={
-                                                <View style={{ padding: 20, alignItems: 'center' }}>
-                                                    <ActivityIndicator size="small" color={modernColors.primary} />
-                                                </View>
-                                            }>
-                                                <InfiniteFeed
-                                                    userId={user?.id}
-                                                    location={state.metadata.selectedLocation ? {
-                                                        lat: state.metadata.selectedLocation.lat,
-                                                        lng: state.metadata.selectedLocation.lng,
-                                                    } : null}
-                                                    onItemPress={(item) => {
-                                                        (navigation as any).navigate('ProductDetail', {
-                                                            productId: item.id || item.service_id,
-                                                        });
-                                                    }}
-                                                />
-                                            </Suspense>
+                                            <ErrorBoundary
+                                                fallback={
+                                                    <View style={{ padding: 20, alignItems: 'center', backgroundColor: modernColors.surface, borderRadius: 12, margin: 16 }}>
+                                                        <Text style={{ fontSize: 16, fontWeight: '600', color: modernColors.text, marginBottom: 8 }}>⚠️ Erreur de chargement</Text>
+                                                        <Text style={{ fontSize: 14, color: modernColors.textSecondary, textAlign: 'center' }}>
+                                                            Impossible de charger le feed. Veuillez réessayer.
+                                                        </Text>
+                                                    </View>
+                                                }
+                                            >
+                                                <Suspense fallback={
+                                                    <View style={{ padding: 20, alignItems: 'center' }}>
+                                                        <ActivityIndicator size="small" color={modernColors.primary} />
+                                                    </View>
+                                                }>
+                                                    <InfiniteFeed
+                                                        userId={user?.id}
+                                                        location={state.metadata.selectedLocation ? {
+                                                            lat: state.metadata.selectedLocation.lat,
+                                                            lng: state.metadata.selectedLocation.lng,
+                                                        } : null}
+                                                        onItemPress={(item) => {
+                                                            // ✅ CORRIGÉ: Navigation sécurisée avec gestion d'erreur
+                                                            try {
+                                                                navigation.navigate('ProductDetail' as never, {
+                                                                    productId: item.id || item.service_id,
+                                                                } as never);
+                                                            } catch (error) {
+                                                                console.error('[HomeScreen] ❌ Erreur navigation vers ProductDetail:', error);
+                                                                Alert.alert('Erreur', 'Impossible d\'ouvrir les détails du produit.');
+                                                            }
+                                                        }}
+                                                    />
+                                                </Suspense>
+                                            </ErrorBoundary>
                                         </View>
                                     </AnimatedCard>
                                 );
