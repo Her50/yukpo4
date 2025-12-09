@@ -140,6 +140,37 @@ export const useIntelligentLanguageContext = (): IntelligentLanguageContextType 
 };
 
 // Composant pour marquer les éléments à traduire automatiquement
+// ✅ Fonction helper pour encapsuler récursivement les primitives dans <Text>
+const wrapPrimitivesInText = (content: React.ReactNode, key?: string | number): React.ReactNode => {
+    // Null ou undefined
+    if (content === null || content === undefined) {
+        return null;
+    }
+
+    // Primitives (string, number, boolean)
+    if (typeof content === 'string' || typeof content === 'number' || typeof content === 'boolean') {
+        return <Text key={key}>{String(content)}</Text>;
+    }
+
+    // Élément React valide
+    if (React.isValidElement(content)) {
+        return content;
+    }
+
+    // Tableau - traiter récursivement chaque élément
+    if (Array.isArray(content)) {
+        return content.map((item, index) => wrapPrimitivesInText(item, index));
+    }
+
+    // Objet non-React - convertir en string
+    try {
+        return <Text key={key}>{String(content)}</Text>;
+    } catch (error) {
+        console.warn('⚠️ [AutoTranslate] Impossible de convertir en string:', error);
+        return null;
+    }
+};
+
 export const AutoTranslate: React.FC<{ children: React.ReactNode; context?: string }> = ({
     children,
     context = 'ui'
@@ -152,11 +183,16 @@ export const AutoTranslate: React.FC<{ children: React.ReactNode; context?: stri
             if (typeof children === 'string') {
                 try {
                     const result = await translateText(children, context);
+                    // ✅ CRITIQUE: translateText retourne une string, donc on peut directement l'utiliser
                     setTranslatedContent(result);
                 } catch (error) {
                     console.warn('⚠️ [AutoTranslate] Erreur traduction:', error);
+                    // En cas d'erreur, garder children (qui est une string)
                     setTranslatedContent(children);
                 }
+            } else {
+                // Si children n'est pas une string, le laisser tel quel
+                setTranslatedContent(children);
             }
         };
 
@@ -168,60 +204,31 @@ export const AutoTranslate: React.FC<{ children: React.ReactNode; context?: stri
         return undefined;
     }, [children, context, translateText]);
 
-    // ✅ CORRECTION CRITIQUE: Encapsuler le contenu dans un composant Text si c'est une valeur primitive
+    // ✅ CORRECTION CRITIQUE: Utiliser la fonction helper pour encapsuler toutes les primitives
     // En React Native, toutes les valeurs primitives (string, number, boolean) doivent être dans un <Text>
+    const wrappedContent = wrapPrimitivesInText(translatedContent);
 
-    // Cas 1: translatedContent est null ou undefined
-    if (translatedContent === null || translatedContent === undefined) {
-        // Si children est une string, l'encapsuler dans <Text>
-        if (typeof children === 'string') {
-            return <Text>{children}</Text>;
+    // Si le résultat est null ou undefined, retourner null
+    if (wrappedContent === null || wrappedContent === undefined) {
+        return null;
+    }
+
+    // Si le résultat est un tableau, filtrer les null et retourner dans un fragment
+    if (Array.isArray(wrappedContent)) {
+        const filteredContent = wrappedContent.filter(item => item !== null && item !== undefined);
+        if (filteredContent.length === 0) {
+            return null;
         }
-        // Sinon, retourner children tel quel (peut être un élément React ou null)
-        return <>{children}</>;
+        return <>{filteredContent}</>;
     }
 
-    // Cas 2: translatedContent est une valeur primitive (string, number, boolean)
-    if (typeof translatedContent === 'string' || typeof translatedContent === 'number' || typeof translatedContent === 'boolean') {
-        return <Text>{String(translatedContent)}</Text>;
+    // Si c'est déjà un élément React valide, le retourner directement
+    if (React.isValidElement(wrappedContent)) {
+        return wrappedContent;
     }
 
-    // Cas 3: translatedContent est un élément React valide
-    if (React.isValidElement(translatedContent)) {
-        return translatedContent;
-    }
-
-    // Cas 4: translatedContent est un tableau
-    if (Array.isArray(translatedContent)) {
-        // Vérifier si le tableau contient des primitives qui doivent être encapsulées
-        const processedContent = translatedContent.map((item, index) => {
-            if (item === null || item === undefined) {
-                return null;
-            }
-            if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
-                return <Text key={index}>{String(item)}</Text>;
-            }
-            if (React.isValidElement(item)) {
-                return item;
-            }
-            // Si c'est un objet non-React, essayer de le convertir en string
-            return <Text key={index}>{String(item)}</Text>;
-        });
-        return <>{processedContent}</>;
-    }
-
-    // Cas 5: Fallback - translatedContent est un objet non-React
-    // Essayer de le convertir en string et l'encapsuler dans <Text>
-    try {
-        return <Text>{String(translatedContent)}</Text>;
-    } catch (error) {
-        console.warn('⚠️ [AutoTranslate] Impossible de convertir translatedContent en string:', error);
-        // Dernier recours: retourner children
-        if (typeof children === 'string') {
-            return <Text>{children}</Text>;
-        }
-        return <>{children}</>;
-    }
+    // Fallback: retourner dans un fragment (déjà encapsulé par wrapPrimitivesInText)
+    return <>{wrappedContent}</>;
 };
 
 // Hook pour traduire du texte dans les composants

@@ -282,13 +282,11 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                         >
                             <Text style={[styles.headerButtonIconCompact, disabled && styles.headerButtonIconDisabled]}>💬</Text>
                             {/* ✅ NOUVEAU 2025-01-27: Badge pour messages non lus avec animation */}
-                            {typeof unreadChatCount !== 'undefined' && unreadChatCount > 0 && (
+                            {typeof unreadChatCount !== 'undefined' && unreadChatCount != null && unreadChatCount > 0 && (
                                 <Animated.View style={[styles.chatBadgeCompact, animatedChatBadgeStyle]}>
-                                    {unreadChatCount < 10 ? (
-                                        <Text style={styles.chatBadgeText}>{unreadChatCount}</Text>
-                                    ) : (
-                                        <Text style={styles.chatBadgeText}>9+</Text>
-                                    )}
+                                    <Text style={styles.chatBadgeText}>
+                                        {unreadChatCount < 10 ? String(unreadChatCount) : '9+'}
+                                    </Text>
                                 </Animated.View>
                             )}
                         </TouchableOpacity>
@@ -301,10 +299,12 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                             activeOpacity={0.7}
                         >
                             <Text style={styles.headerButtonIconCompact}>🔔</Text>
-                            {unreadNotificationsCount > 0 && (
+                            {unreadNotificationsCount != null && unreadNotificationsCount > 0 && (
                                 <Animated.View style={[styles.notificationBadgeCompact, animatedNotificationBadgeStyle]}>
                                     {unreadNotificationsCount < 10 && (
-                                        <Text style={styles.notificationBadgeText}>{unreadNotificationsCount}</Text>
+                                        <Text style={styles.notificationBadgeText}>
+                                            {String(unreadNotificationsCount)}
+                                        </Text>
                                     )}
                                 </Animated.View>
                             )}

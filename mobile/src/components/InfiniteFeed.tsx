@@ -5,7 +5,7 @@
  */
 
 import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
@@ -279,7 +279,16 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
         <FlatList
             data={items}
             renderItem={renderItem}
-            keyExtractor={(item) => `feed-${item.id || item.service_id || Math.random()}`}
+            keyExtractor={(item) => {
+                // ✅ SÉCURITÉ: S'assurer que la clé est toujours une string valide
+                if (item?.id != null) {
+                    return `feed-${String(item.id)}`;
+                }
+                if (item?.service_id != null) {
+                    return `feed-service-${String(item.service_id)}`;
+                }
+                return `feed-${Math.random().toString(36).substring(7)}`;
+            }}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.5}
             ListFooterComponent={renderFooter}

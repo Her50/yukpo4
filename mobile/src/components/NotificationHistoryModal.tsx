@@ -327,9 +327,9 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             <Text style={styles.headerTitle} numberOfLines={1}>
               🔔 Notifications
             </Text>
-            {unreadCount > 0 && (
+            {unreadCount != null && unreadCount > 0 && (
               <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>{unreadCount} non lues</Text>
+                <Text style={styles.unreadBadgeText}>{String(unreadCount)} non lues</Text>
               </View>
             )}
           </View>

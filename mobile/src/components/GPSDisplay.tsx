@@ -87,11 +87,15 @@ const GPSDisplay: React.FC<GPSDisplayProps> = ({
                     <View style={styles.gpsDetails}>
                         <View style={styles.coordItem}>
                             <Text style={styles.coordLabel}>Lat:</Text>
-                            <Text style={styles.coordValue}>{location.lat.toFixed(6)}</Text>
+                            <Text style={styles.coordValue}>
+                                {location.lat != null && Number.isFinite(location.lat) ? location.lat.toFixed(6) : '0.000000'}
+                            </Text>
                         </View>
                         <View style={styles.coordItem}>
                             <Text style={styles.coordLabel}>Lng:</Text>
-                            <Text style={styles.coordValue}>{location.lng.toFixed(6)}</Text>
+                            <Text style={styles.coordValue}>
+                                {location.lng != null && Number.isFinite(location.lng) ? location.lng.toFixed(6) : '0.000000'}
+                            </Text>
                         </View>
                     </View>
                 )}

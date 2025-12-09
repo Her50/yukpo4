@@ -230,7 +230,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
           <View style={styles.ratingDetails}>
             {renderStars(Math.round(stats?.rating || 0), false, 20)}
             <Text style={styles.ratingCount}>
-              {stats?.totalRatings || 0} avis
+              {stats?.totalRatings != null ? String(stats.totalRatings) : '0'} avis
             </Text>
           </View>
         </View>
@@ -342,7 +342,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
                       styles.helpfulText,
                       review.is_helpful && styles.helpfulTextActive
                     ]}>
-                      Utile ({review.helpful_count})
+                      Utile ({review.helpful_count != null ? String(review.helpful_count) : '0'})
                     </Text>
                   </TouchableOpacity>
 

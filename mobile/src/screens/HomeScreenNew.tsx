@@ -244,14 +244,6 @@ const HomeScreenNew: React.FC = () => {
                         </View>
 
                         <View style={styles.headerRight}>
-                            {/* Météo */}
-                            {weather && (
-                                <View style={styles.weatherContainer}>
-                                    <Text style={styles.weatherIcon}>{weather.icon}</Text>
-                                    <Text style={styles.weatherTemp}>{weather.temperature}°C</Text>
-                                </View>
-                            )}
-
                             {/* Boutons header */}
                             <View style={styles.headerButtonsRow}>
                                 <TouchableOpacity
@@ -268,7 +260,7 @@ const HomeScreenNew: React.FC = () => {
                                     {unreadNotificationsCount > 0 && (
                                         <View style={styles.notificationBadge}>
                                             <Text style={styles.notificationBadgeText}>
-                                                {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                                                {unreadNotificationsCount > 9 ? '9+' : String(unreadNotificationsCount)}
                                             </Text>
                                         </View>
                                     )}

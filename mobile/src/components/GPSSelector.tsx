@@ -110,7 +110,11 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
         }
     };
 
-    const formatCoordinates = (lat: number, lng: number) => {
+    const formatCoordinates = (lat: number | null | undefined, lng: number | null | undefined) => {
+        // ✅ SÉCURITÉ: Vérifier que lat et lng sont des nombres valides
+        if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return '0.000000, 0.000000';
+        }
         return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     };
 
@@ -157,7 +161,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                     <View style={styles.accuracyContainer}>
                                         <Text style={styles.checkIcon}>✅</Text>
                                         <Text style={styles.accuracyText}>
-                                            Précision: {Math.round(location.coords.accuracy)}m
+                                            Précision: {location.coords.accuracy != null && Number.isFinite(location.coords.accuracy) ? Math.round(location.coords.accuracy) : '?'}m
                                         </Text>
                                     </View>
                                 </View>

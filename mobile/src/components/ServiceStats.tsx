@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { theme } from '../theme/theme';
+import React from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import useServiceStats from '../hooks/useServiceStats';
+import { theme } from '../theme/theme';
 
 interface ServiceStatsProps {
   serviceId: string;
@@ -52,7 +52,7 @@ const ServiceStats: React.FC<ServiceStatsProps> = ({ serviceId, compact = false 
     <View style={[styles.statItem, compact && styles.compactStatItem]}>
       <Text style={styles.statIcon}>{icon}</Text>
       <Text style={[styles.statValue, compact && styles.compactStatValue]}>
-        {value.toLocaleString('fr-FR')}
+        {value != null && Number.isFinite(value) ? value.toLocaleString('fr-FR') : '0'}
       </Text>
       {!compact && (
         <Text style={styles.statLabel}>{label}</Text>
@@ -64,11 +64,11 @@ const ServiceStats: React.FC<ServiceStatsProps> = ({ serviceId, compact = false 
     <View style={[styles.ratingContainer, compact && styles.compactRatingContainer]}>
       <Text style={styles.ratingIcon}>⭐</Text>
       <Text style={[styles.ratingValue, compact && styles.compactRatingValue]}>
-        {stats.rating.toFixed(1)}
+        {stats.rating != null && Number.isFinite(stats.rating) ? stats.rating.toFixed(1) : '0.0'}
       </Text>
       {!compact && (
         <Text style={styles.ratingLabel}>
-          ({stats.reviews} avis)
+          ({stats.reviews != null ? String(stats.reviews) : '0'} avis)
         </Text>
       )}
     </View>
@@ -90,7 +90,7 @@ const ServiceStats: React.FC<ServiceStatsProps> = ({ serviceId, compact = false 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Statistiques du service</Text>
-      
+
       <View style={styles.statsGrid}>
         {renderStatItem('👁️', stats.views, 'Vues')}
         {renderStatItem('❤️', stats.likes, 'Likes')}

@@ -255,8 +255,8 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
                     style={styles.compactWeatherCard}
                     onPress={() => setShowForecastModal(true)}
                 >
-                    <Text style={styles.compactWeatherIcon}>{weather.icon}</Text>
-                    <Text style={styles.compactTemperature}>{weather.temperature}°C</Text>
+                    <Text style={styles.compactWeatherIcon}>{weather.icon || '🌤️'}</Text>
+                    <Text style={styles.compactTemperature}>{weather.temperature != null ? `${weather.temperature}°C` : '--°C'}</Text>
                 </TouchableOpacity>
 
 
@@ -279,19 +279,19 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ location, onLocationPress
                 <View style={styles.weatherHeader}>
                     <Text style={styles.weatherIcon}>{weather.icon}</Text>
                     <View style={styles.weatherInfo}>
-                        <Text style={styles.temperature}>{weather.temperature}°C</Text>
-                        <Text style={styles.description}>{weather.description}</Text>
+                        <Text style={styles.temperature}>{weather.temperature != null ? `${weather.temperature}°C` : '--°C'}</Text>
+                        <Text style={styles.description}>{weather.description || 'Météo'}</Text>
                     </View>
                 </View>
 
                 <View style={styles.weatherDetails}>
                     <View style={styles.detailItem}>
                         <Text style={styles.detailIcon}>💧</Text>
-                        <Text style={styles.detailText}>{weather.humidity}%</Text>
+                        <Text style={styles.detailText}>{weather.humidity != null ? `${weather.humidity}%` : '--%'}</Text>
                     </View>
                     <View style={styles.detailItem}>
                         <Text style={styles.detailIcon}>💨</Text>
-                        <Text style={styles.detailText}>{weather.windSpeed} km/h</Text>
+                        <Text style={styles.detailText}>{weather.windSpeed != null ? `${weather.windSpeed} km/h` : '-- km/h'}</Text>
                     </View>
                 </View>
 

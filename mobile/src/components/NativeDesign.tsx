@@ -63,6 +63,9 @@ export const NativeButton: React.FC<NativeButtonProps> = ({
     style,
     testID,
 }) => {
+    // ✅ SÉCURITÉ: S'assurer que title est toujours une string valide
+    const safeTitle = typeof title === 'string' ? title : (title != null ? String(title) : '');
+
     const buttonStyle = [
         styles.button,
         styles[`button_${variant}`],
@@ -86,7 +89,7 @@ export const NativeButton: React.FC<NativeButtonProps> = ({
             activeOpacity={0.8}
             testID={testID}
         >
-            <Text style={textStyle}>{title}</Text>
+            <Text style={textStyle}>{safeTitle}</Text>
         </TouchableOpacity>
     );
 };

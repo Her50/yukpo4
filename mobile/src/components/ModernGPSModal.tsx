@@ -468,9 +468,9 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     <View style={styles.coordsBarContent}>
                         <SafeIcon name="map-pin" size={12} color={modernColors.primary} />
                         <Text style={styles.coordsBarLabel}>COORDONNÉES:</Text>
-                        {selectedLocation ? (
+                        {selectedLocation && selectedLocation.lat != null && selectedLocation.lng != null ? (
                             <Text style={styles.coordsBarValue} numberOfLines={1}>
-                                {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                                {Number.isFinite(selectedLocation.lat) ? selectedLocation.lat.toFixed(6) : '0.000000'}, {Number.isFinite(selectedLocation.lng) ? selectedLocation.lng.toFixed(6) : '0.000000'}
                             </Text>
                         ) : (
                             <Text style={styles.coordsBarPlaceholder}>Aucune sélection</Text>

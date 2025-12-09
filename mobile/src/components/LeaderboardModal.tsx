@@ -53,7 +53,8 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         }
     };
 
-    const getRankIcon = (rank: number) => {
+    const getRankIcon = (rank: number | null | undefined) => {
+        if (rank == null) return '#?';
         if (rank === 1) return '🥇';
         if (rank === 2) return '🥈';
         if (rank === 3) return '🥉';
@@ -89,7 +90,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     {/* Rang utilisateur */}
                     {userId && userRank > 0 && (
                         <View style={styles.userRankContainer}>
-                            <Text style={styles.userRankText}>Votre rang: #{userRank}</Text>
+                            <Text style={styles.userRankText}>Votre rang: #{userRank != null ? String(userRank) : '?'}</Text>
                         </View>
                     )}
 
@@ -109,7 +110,9 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                                         index < 3 && styles.entryTop,
                                     ]}
                                 >
-                                    <Text style={styles.rank}>{getRankIcon(entry.rank)}</Text>
+                                    <Text style={styles.rank}>
+                                        {entry.rank != null ? getRankIcon(entry.rank) : '#?'}
+                                    </Text>
                                     <View style={styles.avatarContainer}>
                                         {entry.avatar ? (
                                             <Text style={styles.avatarEmoji}>{entry.avatar}</Text>
@@ -123,7 +126,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                                     </View>
                                     <View style={styles.userInfo}>
                                         <Text style={styles.username}>{entry.username}</Text>
-                                        <Text style={styles.points}>{entry.points} pts</Text>
+                                        <Text style={styles.points}>{entry.points != null ? String(entry.points) : '0'} pts</Text>
                                     </View>
                                 </View>
                             ))}

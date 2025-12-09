@@ -145,7 +145,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                             >
                                 <Text style={styles.balanceLabel}>Solde</Text>
                                 <Text style={styles.balanceAmount}>
-                                    {balance.toLocaleString('fr-FR')} <Text style={styles.balanceCurrency}>FCFA</Text>
+                                    {(balance != null ? balance : 0).toLocaleString('fr-FR')} <Text style={styles.balanceCurrency}>FCFA</Text>
                                 </Text>
                             </TouchableOpacity>
 

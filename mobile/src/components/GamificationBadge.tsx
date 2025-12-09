@@ -95,7 +95,7 @@ export const GamificationBadge: React.FC<GamificationBadgeProps> = ({
             >
                 <Animated.View style={[styles.compactBadge, animatedStyle]}>
                     <Text style={styles.compactIcon}>🏆</Text>
-                    <Text style={styles.compactPoints}>{points}</Text>
+                    <Text style={styles.compactPoints}>{points != null ? String(points) : '0'}</Text>
                 </Animated.View>
             </TouchableOpacity>
         );
@@ -111,12 +111,12 @@ export const GamificationBadge: React.FC<GamificationBadgeProps> = ({
                 <View style={styles.badgeRow}>
                     <Text style={styles.icon}>🏆</Text>
                     <View style={styles.stats}>
-                        <Text style={styles.points}>{points} pts</Text>
-                        {streak > 0 && (
-                            <Text style={styles.streak}>🔥 {streak}j</Text>
+                        <Text style={styles.points}>{points != null ? String(points) : '0'} pts</Text>
+                        {streak != null && streak > 0 && (
+                            <Text style={styles.streak}>🔥 {String(streak)}j</Text>
                         )}
-                        {badges > 0 && (
-                            <Text style={styles.badges}>⭐ {badges}</Text>
+                        {badges != null && badges > 0 && (
+                            <Text style={styles.badges}>⭐ {String(badges)}</Text>
                         )}
                     </View>
                 </View>

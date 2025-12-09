@@ -208,7 +208,7 @@ const RelatedProductsSection: React.FC<{ product: any; service: any; navigation:
               </Text>
               {productPrice && (
                 <Text style={relatedProductsStyles.productPrice}>
-                  {typeof productPrice === 'number' ? productPrice.toFixed(0) : productPrice} FCFA
+                  {typeof productPrice === 'number' ? productPrice.toFixed(0) : (productPrice != null ? String(productPrice) : '0')} FCFA
                 </Text>
               )}
             </TouchableOpacity>
@@ -1326,10 +1326,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
     // Ne logger que si vraiment nécessaire (debug uniquement)
     // console.debug(`[ProductCard] Pas de distance pour service ${product.service_id}`);
   }
-  const formattedDistance = hasDistance
-    ? distanceKm! < 1
-      ? `${Math.round(distanceKm! * 1000)}m`
-      : `${distanceKm!.toFixed(distanceKm! < 10 ? 1 : 0)}km`
+  const formattedDistance = hasDistance && distanceKm != null && Number.isFinite(distanceKm)
+    ? distanceKm < 1
+      ? `${Math.round(distanceKm * 1000)}m`
+      : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)}km`
     : null;
 
   // Pays (pour drapeau) - Extraction améliorée depuis plusieurs sources
@@ -2240,14 +2240,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <Animated.View style={[styles.trendingBadge, animatedTrendingBadgeStyle]}>
                               <Text style={styles.trendingEmoji}>🔥🔥</Text>
                               <Text style={styles.trendingText}>Tendance</Text>
-                              <Text style={styles.trendingCount}>{usageCount}×</Text>
+                              <Text style={styles.trendingCount}>{usageCount != null ? String(usageCount) : '0'}×</Text>
                             </Animated.View>
                           )}
                           {!isTrending && isPopular && (
                             <Animated.View style={[styles.popularBadge, animatedPopularBadgeStyle]}>
                               <Text style={styles.popularEmoji}>🔥</Text>
                               <Text style={styles.popularText}>Populaire</Text>
-                              <Text style={styles.popularCount}>{usageCount}×</Text>
+                              <Text style={styles.popularCount}>{usageCount != null ? String(usageCount) : '0'}×</Text>
                             </Animated.View>
                           )}
                         </View>
@@ -2308,14 +2308,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <Animated.View style={[styles.trendingBadge, animatedTrendingBadgeStyle]}>
                               <Text style={styles.trendingEmoji}>🔥🔥</Text>
                               <Text style={styles.trendingText}>Tendance</Text>
-                              <Text style={styles.trendingCount}>{usageCount}×</Text>
+                              <Text style={styles.trendingCount}>{usageCount != null ? String(usageCount) : '0'}×</Text>
                             </Animated.View>
                           )}
                           {!isTrending && isPopular && (
                             <Animated.View style={[styles.popularBadge, animatedPopularBadgeStyle]}>
                               <Text style={styles.popularEmoji}>🔥</Text>
                               <Text style={styles.popularText}>Populaire</Text>
-                              <Text style={styles.popularCount}>{usageCount}×</Text>
+                              <Text style={styles.popularCount}>{usageCount != null ? String(usageCount) : '0'}×</Text>
                             </Animated.View>
                           )}
                         </View>
@@ -2495,9 +2495,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 {googleRating && (
                                   <View style={styles.googleMetaChip}>
                                     <SafeIcon name="star" size={12} color="#F59E0B" />
-                                    <Text style={styles.googleMetaText}>{googleRating.toFixed(1)}</Text>
+                                    <Text style={styles.googleMetaText}>
+                                      {googleRating != null && Number.isFinite(googleRating) ? googleRating.toFixed(1) : '0.0'}
+                                    </Text>
                                     {typeof googleRatingCount === 'number' && googleRatingCount > 0 && (
-                                      <Text style={styles.googleMetaSubText}>({googleRatingCount})</Text>
+                                      <Text style={styles.googleMetaSubText}>({String(googleRatingCount)})</Text>
                                     )}
                                   </View>
                                 )}
@@ -2551,7 +2553,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 {totalReactions > 0 && (
                                   <View style={styles.compactStatPillMuted}>
                                     <Text style={styles.compactStatEmoji}>🎭</Text>
-                                    <Text style={styles.compactStatValue}>{totalReactions}</Text>
+                                    <Text style={styles.compactStatValue}>{totalReactions != null ? String(totalReactions) : '0'}</Text>
                                     <Text style={styles.compactStatLabel}>réactions</Text>
                                   </View>
                                 )}
@@ -2559,7 +2561,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 {usageCount > 0 && (
                                   <View style={styles.compactStatPillMuted}>
                                     <Text style={styles.compactStatEmoji}>🔥</Text>
-                                    <Text style={styles.compactStatValue}>{usageCount}</Text>
+                                    <Text style={styles.compactStatValue}>{usageCount != null ? String(usageCount) : '0'}</Text>
                                     <Text style={styles.compactStatLabel}>recherches</Text>
                                   </View>
                                 )}
@@ -2586,7 +2588,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 ))}
                                 {!isExpanded && hasMoreCaracs && (
                                   <View style={styles.chipMore}>
-                                    <Text style={styles.chipMoreText}>+{productVector.length - maxDisplayedCaracs}</Text>
+                                    <Text style={styles.chipMoreText}>
+                                      +{productVector.length != null && maxDisplayedCaracs != null ? String(productVector.length - maxDisplayedCaracs) : '0'}
+                                    </Text>
                                   </View>
                                 )}
                               </ScrollView>

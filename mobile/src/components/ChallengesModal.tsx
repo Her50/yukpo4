@@ -125,13 +125,13 @@ export const ChallengesModal: React.FC<ChallengesModalProps> = ({
                                                 />
                                             </View>
                                             <Text style={styles.progressText}>
-                                                {challenge.current} / {challenge.target}
+                                                {challenge.current != null ? String(challenge.current) : '0'} / {challenge.target != null ? String(challenge.target) : '0'}
                                             </Text>
                                         </View>
 
                                         <View style={styles.rewardContainer}>
                                             <Text style={styles.rewardLabel}>Récompense:</Text>
-                                            <Text style={styles.rewardValue}>+{challenge.reward} pts</Text>
+                                            <Text style={styles.rewardValue}>+{challenge.reward != null ? String(challenge.reward) : '0'} pts</Text>
                                         </View>
 
                                         {isExpired && !challenge.completed && (

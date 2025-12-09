@@ -545,9 +545,14 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
     }, [isRecording]);
 
     // Formater la durée d'enregistrement
-    const formatDuration = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
+    const formatDuration = (seconds: number | null | undefined) => {
+        // ✅ SÉCURITÉ: Vérifier que seconds est un nombre valide
+        if (seconds == null || !Number.isFinite(seconds) || seconds < 0) {
+            return '0:00';
+        }
+        const safeSeconds = Math.floor(seconds);
+        const mins = Math.floor(safeSeconds / 60);
+        const secs = safeSeconds % 60;
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
@@ -925,7 +930,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         <View key={`doc-${index}`} style={styles.documentItem}>
                             <Text style={styles.documentIcon}>📄</Text>
                             <Text style={styles.documentName} numberOfLines={1}>
-                                Document PDF {index + 1}
+                                Document PDF {index != null ? String(index + 1) : ''}
                             </Text>
                             <TouchableOpacity onPress={() => setDocuments(documents.filter((_, i) => i !== index))}>
                                 <Text style={styles.closeIconSmall}>❌</Text>
@@ -938,7 +943,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         <View key={`excel-${index}`} style={styles.excelItem}>
                             <Text style={styles.excelIcon}>📊</Text>
                             <Text style={styles.documentName} numberOfLines={1}>
-                                Excel {index + 1}
+                                Excel {index != null ? String(index + 1) : ''}
                             </Text>
                             <TouchableOpacity onPress={() => setExcelFiles(excelFiles.filter((_, i) => i !== index))}>
                                 <Text style={styles.closeIconSmall}>❌</Text>
@@ -951,7 +956,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         <View key={`video-${index}`} style={styles.videoItem}>
                             <Text style={styles.videoIcon}>🎥</Text>
                             <Text style={styles.documentName} numberOfLines={1}>
-                                Vidéo {index + 1}
+                                Vidéo {index != null ? String(index + 1) : ''}
                             </Text>
                             <TouchableOpacity onPress={() => setVideos(videos.filter((_, i) => i !== index))}>
                                 <Text style={styles.closeIconSmall}>❌</Text>

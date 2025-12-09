@@ -57,7 +57,7 @@ const GlobalIAStatsPanel: React.FC<GlobalIAStatsPanelProps> = ({
             <View style={styles.compactContainer}>
                 <Brain size={16} color={theme.colors.primary} />
                 <Text style={styles.compactText}>
-                    {stats.totalServices} services, {stats.totalTokens} tokens
+                    {stats.totalServices != null ? stats.totalServices : 0} services, {stats.totalTokens != null ? stats.totalTokens : 0} tokens
                 </Text>
             </View>
         );
@@ -85,7 +85,7 @@ const GlobalIAStatsPanel: React.FC<GlobalIAStatsPanelProps> = ({
 
                 <View style={styles.summary}>
                     <Text style={styles.summaryText}>
-                        Votre IA a généré {stats.totalServices} services avec un taux de succès de {stats.successRate}%
+                        Votre IA a généré {stats.totalServices != null ? stats.totalServices : 0} services avec un taux de succès de {stats.successRate != null ? stats.successRate : 0}%
                     </Text>
                 </View>
             </Card.Content>

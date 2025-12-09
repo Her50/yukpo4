@@ -63,7 +63,7 @@ export const LocationDisplayModern: React.FC<LocationDisplayModernProps> = ({
       }
 
       // Priorité 3: Distance calculée
-      if (service.distance !== undefined) {
+      if (service.distance !== undefined && service.distance != null && Number.isFinite(service.distance)) {
         const distanceText = service.distance < 1
           ? `${Math.round(service.distance * 1000)}m`
           : `${service.distance.toFixed(1)}km`;

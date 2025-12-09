@@ -32,13 +32,27 @@ const formatPrice = (value?: number | null) => {
 
 const GlobalPromoHighlightsComponent: React.FC = () => {
     const navigation = useNavigation<any>();
-    const { catalog, loading, error, refresh } = useGlobalPromos();
+    const { entries, events, selectedEvent, loadingEvents, loadingEntries, loading, error, refresh } = useGlobalPromos();
     const { isEnabled } = useFeatureFlags();
     const [isInitialized, setIsInitialized] = React.useState(false);
 
+    // ✅ CORRIGÉ: Construire catalog à partir de entries et selectedEvent
+    const catalog = React.useMemo(() => {
+        if (!selectedEvent || !entries || entries.length === 0) {
+            return [];
+        }
+        // Construire le catalog en combinant entries avec l'event sélectionné
+        return entries.map(entry => ({
+            entry,
+            event: selectedEvent,
+            product: entry.product || null
+        }));
+    }, [entries, selectedEvent]);
+
     // ✅ CORRIGÉ: Éviter le flash rapide au démarrage
     React.useEffect(() => {
-        if (!loading && !isInitialized) {
+        const isLoading = loadingEvents || loadingEntries;
+        if (!isLoading && !isInitialized) {
             // Attendre que le chargement initial soit terminé avant d'afficher
             const timer = setTimeout(() => {
                 setIsInitialized(true);
@@ -50,10 +64,11 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
                 }
             };
         }
-    }, [loading, isInitialized]);
+    }, [loadingEvents, loadingEntries, isInitialized]);
 
     // ✅ CORRIGÉ: Ne rien afficher pendant le chargement initial pour éviter le flash
-    if (loading && !isInitialized) {
+    const isLoading = loadingEvents || loadingEntries;
+    if (isLoading && !isInitialized) {
         return null;
     }
 
@@ -70,12 +85,12 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
             <NativeCard style={styles.card}>
                 <Text style={styles.title}>🔥 Black Friday collectif</Text>
                 <Text style={styles.errorText}>{error}</Text>
-                <NativeButton label="Réessayer" onPress={refresh} variant="secondary" />
+                <NativeButton title="Réessayer" onPress={refresh} variant="secondary" />
             </NativeCard>
         );
     }
 
-    if (!safeCatalog.length && !loading) {
+    if (!safeCatalog.length && !isLoading) {
         return null;
     }
 
@@ -89,20 +104,20 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
                 </View>
                 <View style={{ gap: 8 }}>
                     <NativeButton
-                        label={loading ? 'Chargement...' : 'Actualiser'}
+                        title={isLoading ? 'Chargement...' : 'Actualiser'}
                         onPress={refresh}
                         variant="ghost"
-                        disabled={loading}
+                        disabled={isLoading}
                         size="sm"
                     />
                     <NativeButton
-                        label="Voir tout"
+                        title="Voir tout"
                         onPress={() => navigation.navigate('GlobalPromoCatalog')}
                         size="sm"
                         variant="secondary"
                     />
                     <NativeButton
-                        label="Ajouter mon service"
+                        title="Ajouter mon service"
                         onPress={() => navigation.navigate('GlobalPromoSubmission')}
                         size="sm"
                     />
@@ -115,28 +130,46 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
                 contentContainerStyle={styles.carousel}
             >
                 {safeCatalog.map((item) => {
+                    // ✅ SÉCURITÉ: Vérifier que item et ses propriétés existent
+                    if (!item || !item.entry || !item.event) {
+                        return null;
+                    }
+
                     const snapshot = item.product?.snapshot ?? {};
                     const imageUri = getSnapshotImage(snapshot);
+
+                    // ✅ CORRIGÉ: S'assurer que serviceId est une string valide
+                    const serviceId = item.entry?.serviceId != null ? String(item.entry.serviceId) : '0';
                     const title =
                         snapshot.title ||
                         snapshot.nom_service ||
-                        `Service #${item.entry.serviceId}`;
+                        `Service #${serviceId}`;
+
+                    // ✅ CORRIGÉ: S'assurer que badge est toujours une string
                     const badge =
                         snapshot.badge ||
-                        item.event.displayName ||
+                        item.event?.displayName ||
                         'Promo nationale';
+
+                    // ✅ SÉCURITÉ: Vérifier que entry.id existe pour la key
+                    const itemKey = item.entry?.id || item.entry?.serviceId || Math.random().toString();
 
                     return (
                         <TouchableOpacity
-                            key={item.entry.id}
+                            key={itemKey}
                             style={styles.promoCard}
                             activeOpacity={0.9}
-                            onPress={() =>
-                                navigation.navigate('ServiceDetail', {
-                                    serviceId: item.entry.serviceId,
-                                    promoCampaignId: item.event.id,
-                                })
-                            }
+                            onPress={() => {
+                                // ✅ SÉCURITÉ: Vérifier que serviceId existe avant navigation
+                                const navServiceId = item.entry?.serviceId;
+                                const navEventId = item.event?.id;
+                                if (navServiceId && navEventId) {
+                                    navigation.navigate('ServiceDetail', {
+                                        serviceId: String(navServiceId),
+                                        promoCampaignId: String(navEventId),
+                                    });
+                                }
+                            }}
                         >
                             {imageUri ? (
                                 <Image source={{ uri: imageUri }} style={styles.image} />
@@ -146,20 +179,20 @@ const GlobalPromoHighlightsComponent: React.FC = () => {
                                 </View>
                             )}
                             <View style={styles.promoContent}>
-                                <Text style={styles.badge}>{badge}</Text>
+                                <Text style={styles.badge}>{badge || 'Promo'}</Text>
                                 <Text style={styles.promoTitle} numberOfLines={2}>
-                                    {title}
+                                    {title || 'Service'}
                                 </Text>
                                 <View style={styles.priceRow}>
-                                    <Text style={styles.priceText}>{formatPrice(item.entry.promoPriceCfa)}</Text>
-                                    {item.entry.discountPercentage && (
+                                    <Text style={styles.priceText}>{formatPrice(item.entry?.promoPriceCfa)}</Text>
+                                    {item.entry?.discountPercentage != null && item.entry.discountPercentage > 0 && (
                                         <Text style={styles.discount}>
-                                            -{item.entry.discountPercentage}%
+                                            -{String(item.entry.discountPercentage)}%
                                         </Text>
                                     )}
                                 </View>
                                 <Text style={styles.promoFooter}>
-                                    {item.event.status === 'live'
+                                    {item.event?.status === 'live'
                                         ? '⚡ Actif maintenant'
                                         : 'Programmation centralisée'}
                                 </Text>

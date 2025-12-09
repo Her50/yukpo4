@@ -1229,14 +1229,14 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                     </View>
                     <View style={dynamicStyles.searchHeaderBottom}>
                         <Text style={dynamicStyles.searchHeaderCount}>
-                            {Array.isArray(searchResults) ? searchResults.length : 0} résultat(s) affiché(s)
-                            {totalSearchResults != null && Array.isArray(searchResults) && totalSearchResults > searchResults.length ? ` sur ${totalSearchResults}` : ''}
+                            {Array.isArray(searchResults) ? String(searchResults.length) : '0'} résultat(s) affiché(s)
+                            {totalSearchResults != null && Array.isArray(searchResults) && totalSearchResults > searchResults.length ? ` sur ${String(totalSearchResults)}` : ''}
                         </Text>
                         {totalSearchResults != null && totalSearchResults > searchResults.length && onShowAllResults && (
                             <TouchableOpacity
                                 style={dynamicStyles.showAllButton}
                                 onPress={onShowAllResults}
-                                accessibilityLabel={`Voir tous les ${totalSearchResults} résultats`}
+                                accessibilityLabel={`Voir tous les ${totalSearchResults != null ? String(totalSearchResults) : '0'} résultats`}
                                 accessibilityRole="button"
                             >
                                 <Text style={dynamicStyles.showAllButtonText}>

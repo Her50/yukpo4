@@ -539,9 +539,9 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                       </Text>
                     </View>
 
-                    {chat.unreadCount > 0 && (
+                    {chat.unreadCount != null && chat.unreadCount > 0 && (
                       <View style={styles.unreadCountBadge}>
-                        <Text style={styles.unreadCountText}>{chat.unreadCount}</Text>
+                        <Text style={styles.unreadCountText}>{String(chat.unreadCount)}</Text>
                       </View>
                     )}
                   </View>

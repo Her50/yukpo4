@@ -635,7 +635,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                         <View style={styles.recordingIndicator}>
                             <View style={styles.recordingDot} />
                             <Text style={styles.recordingText}>
-                                Enregistrement... {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                                Enregistrement... {recordingDuration != null && Number.isFinite(recordingDuration) ? `${Math.floor(recordingDuration / 60)}:${(recordingDuration % 60).toString().padStart(2, '0')}` : '0:00'}
                             </Text>
                         </View>
                     )}

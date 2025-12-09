@@ -121,7 +121,7 @@ const TopServicesCard: React.FC<TopServicesCardProps> = ({
                                 </View>
                             </View>
 
-                            {service.rating && (
+                            {service.rating && typeof service.rating === 'number' && (
                                 <View style={styles.ratingContainer}>
                                     <Text style={styles.ratingIcon}>⭐</Text>
                                     <Text style={styles.ratingText}>{service.rating.toFixed(1)}</Text>

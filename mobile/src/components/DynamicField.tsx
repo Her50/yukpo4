@@ -296,7 +296,7 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
                         {localValue && (
                             <Text style={styles.gpsValue}>
                                 {typeof localValue === 'string' ? localValue :
-                                    `${localValue.latitude?.toFixed(4)}, ${localValue.longitude?.toFixed(4)}`}
+                                    `${localValue.latitude != null && Number.isFinite(localValue.latitude) ? localValue.latitude.toFixed(4) : '0.0000'}, ${localValue.longitude != null && Number.isFinite(localValue.longitude) ? localValue.longitude.toFixed(4) : '0.0000'}`}
                             </Text>
                         )}
                     </View>

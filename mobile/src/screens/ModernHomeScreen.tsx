@@ -1,5 +1,6 @@
 // @ts-nocheck
 // Écran d'accueil ultra-moderne avec animations et glassmorphism
+import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
@@ -10,11 +11,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { SafeIcon } from '../components/SafeIcon';
-import { NativeCard, NativeGradient } from '../components/NativeDesign';
-import { SafeNativeView } from '../components/SafeNativeView';
 import ModernCard from '../components/ModernCard';
+import { NativeGradient } from '../components/NativeDesign';
+import { SafeIcon } from '../components/SafeIcon';
+import { SafeNativeView } from '../components/SafeNativeView';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 
 const { width } = Dimensions.get('window');
@@ -65,7 +65,7 @@ const ModernHomeScreen: React.FC = () => {
         <SafeIcon name={iconName} size={20} color={color} />
         <Text style={styles.statTitle}>{title}</Text>
       </View>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={[styles.statValue, { color }]}>{value != null ? String(value) : ''}</Text>
       {trend && (
         <View style={styles.trendContainer}>
           <SafeIcon name="up" size={12} color={modernColors.success} />

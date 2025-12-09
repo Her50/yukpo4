@@ -527,7 +527,7 @@ const DashboardScreen: React.FC = () => {
           />
           <AnalyticsCard
             title="Services actifs"
-            value={dashboardData.activeServices.toString()}
+            value={dashboardData.activeServices != null ? String(dashboardData.activeServices) : '0'}
             change={5.2}
             trend="up"
             icon="briefcase"
@@ -535,7 +535,7 @@ const DashboardScreen: React.FC = () => {
           />
           <AnalyticsCard
             title="Note moyenne"
-            value={dashboardData.averageRating.toFixed(1)}
+            value={dashboardData.averageRating != null && Number.isFinite(dashboardData.averageRating) ? dashboardData.averageRating.toFixed(1) : '0.0'}
             change={0}
             trend="neutral"
             icon="star"
