@@ -142,7 +142,7 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                         <Text style={styles.title}>Oups ! Une erreur s'est produite</Text>
 
                         <Text style={styles.message}>
-                            L'application a rencontré une erreur inattendue. {canRetry && 'Tentative de récupération automatique...'}
+                            L'application a rencontré une erreur inattendue.{canRetry ? ' Tentative de récupération automatique...' : ''}
                         </Text>
 
                         {isRetrying && (

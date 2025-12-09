@@ -187,8 +187,7 @@ const HashtagDiscoveryScreen: React.FC = () => {
                     </Text>
                     {hashtagInfo && (
                         <Text style={styles.hashtagSubtitle}>
-                            {formatCount(hashtagInfo.video_count)} vidéos
-                            {hashtagInfo.is_trending && ' • 🔥 Tendance'}
+                            {formatCount(hashtagInfo.video_count)} vidéos{hashtagInfo.is_trending ? ' • 🔥 Tendance' : ''}
                         </Text>
                     )}
                 </View>

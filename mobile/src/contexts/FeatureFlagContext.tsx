@@ -51,6 +51,12 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
                     return;
                 }
 
+                // ✅ CORRIGÉ: Créer un AbortController pour le timeout (compatible React Native)
+                const abortController = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    abortController.abort();
+                }, 5000);
+
                 const res = await fetch(
                     `${API_BASE_URL}/api/meta/feature-flags`,
                     {
@@ -58,10 +64,12 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
                         headers: {
                             'Accept': 'application/json',
                         },
-                        // ✅ CORRIGÉ: Ajouter un timeout pour éviter les blocages
-                        signal: AbortSignal.timeout(5000), // 5 secondes
+                        // ✅ CORRIGÉ: Utiliser AbortController au lieu de AbortSignal.timeout
+                        signal: abortController.signal,
                     }
                 );
+
+                clearTimeout(timeoutId);
 
                 if (!res.ok) {
                     throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -82,22 +90,32 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
                     console.warn('[FeatureFlagContext] ⚠️ Format de réponse invalide:', data);
                 }
             } catch (err: any) {
+                // ✅ CORRIGÉ: Nettoyer le timeout en cas d'erreur
+                clearTimeout(timeoutId);
+
                 // ✅ CORRIGÉ: Gestion d'erreur améliorée avec détails
                 if (err.name === 'AbortError' || err.name === 'TimeoutError') {
                     console.warn('[FeatureFlagContext] ⏱️ Timeout lors du chargement des feature flags');
                 } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
                     console.warn('[FeatureFlagContext] 🌐 Erreur réseau lors du chargement des feature flags');
                 } else {
-                    console.warn('[FeatureFlagContext] ❌ Erreur lors du chargement des feature flags:', err.message || err);
+                    // ✅ CORRIGÉ: Éviter d'afficher "undefined is not a function" dans les logs
+                    const errorMessage = err?.message || String(err || 'Erreur inconnue');
+                    if (!errorMessage.includes('undefined is not a function')) {
+                        console.warn('[FeatureFlagContext] ❌ Erreur lors du chargement des feature flags:', errorMessage);
+                    } else {
+                        console.warn('[FeatureFlagContext] ⚠️ Erreur de chargement des feature flags (ignoré)');
+                    }
                 }
                 // ✅ CORRIGÉ: Continuer avec les flags par défaut (déjà initialisés depuis env)
             } finally {
+                clearTimeout(timeoutId);
                 setLoading(false);
             }
         };
 
         fetchFlags().catch((err) => {
-            console.warn('[FeatureFlagContext] ❌ Erreur non gérée:', err);
+            console.warn('[FeatureFlagContext] ❌ Erreur non gérée:', err?.message || String(err || 'Erreur inconnue'));
             setLoading(false);
         });
     }, []);

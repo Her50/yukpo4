@@ -80,10 +80,10 @@ export const GiftSelector: React.FC<GiftSelectorProps> = ({ onSelect, onClose })
                                 selectedCategory === category && styles.categoryTextActive,
                             ]}
                         >
-                            {category === 'cheap' && '💰'}
-                            {category === 'medium' && '💎'}
-                            {category === 'expensive' && '🏆'}
-                            {category === 'premium' && '👑'}
+                            {category === 'cheap' ? '💰' :
+                                category === 'medium' ? '💎' :
+                                    category === 'expensive' ? '🏆' :
+                                        category === 'premium' ? '👑' : ''}
                         </Text>
                     </TouchableOpacity>
                 ))}

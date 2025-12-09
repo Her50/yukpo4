@@ -3,6 +3,7 @@
  * Garantit l'équité : produits payants ont TOUJOURS plus de visibilité que gratuits
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -95,6 +96,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
     // ✅ NOUVEAU: Filtres rapides
     const [selectedFilter, setSelectedFilter] = useState<'all' | 'popular' | 'nearby' | 'new'>('all');
     const [scrollIndicatorVisible, setScrollIndicatorVisible] = useState(true);
+    const [filterLoaded, setFilterLoaded] = useState(false);
 
     const clearAutoScrollTimer = () => {
         if (autoScrollTimerRef.current) {
@@ -109,6 +111,39 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
             resumeTimerRef.current = null;
         }
     };
+
+    // ✅ NOUVEAU: Charger le filtre sauvegardé au montage
+    useEffect(() => {
+        const loadSavedFilter = async () => {
+            try {
+                const savedFilter = await AsyncStorage.getItem('mixedContentCarousel_filter');
+                if (savedFilter && ['all', 'popular', 'nearby', 'new'].includes(savedFilter)) {
+                    setSelectedFilter(savedFilter as 'all' | 'popular' | 'nearby' | 'new');
+                    console.log('[MixedContentCarousel] ✅ Filtre sauvegardé chargé:', savedFilter);
+                }
+            } catch (error) {
+                console.warn('[MixedContentCarousel] ⚠️ Erreur chargement filtre sauvegardé:', error);
+            } finally {
+                setFilterLoaded(true);
+            }
+        };
+        loadSavedFilter();
+    }, []);
+
+    // ✅ NOUVEAU: Sauvegarder le filtre quand il change
+    useEffect(() => {
+        if (!filterLoaded) return; // Ne pas sauvegarder avant le chargement initial
+
+        const saveFilter = async () => {
+            try {
+                await AsyncStorage.setItem('mixedContentCarousel_filter', selectedFilter);
+                console.log('[MixedContentCarousel] ✅ Filtre sauvegardé:', selectedFilter);
+            } catch (error) {
+                console.warn('[MixedContentCarousel] ⚠️ Erreur sauvegarde filtre:', error);
+            }
+        };
+        saveFilter();
+    }, [selectedFilter, filterLoaded]);
 
     useEffect(() => {
         return () => {
@@ -660,13 +695,25 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                                     serviceId: service.id || service.service_id,
                                     service: {
                                         ...service,
-                                        // ✅ CORRIGÉ: S'assurer que service.data contient les bonnes propriétés
-                                        data: service.data || {
-                                            nom_produit: productData.nom ? { valeur: productData.nom } : undefined,
-                                            titre_service: service.data?.titre_service || (service.titre ? { valeur: service.titre } : undefined),
-                                            description: productData.description ? { valeur: productData.description } : undefined,
-                                            prix_produit: productData.prix ? { valeur: productData.prix } : undefined,
-                                        }
+                                        // ✅ CORRIGÉ: S'assurer que service.data contient les bonnes propriétés (sans undefined)
+                                        data: service.data || (() => {
+                                            const serviceData: any = {};
+                                            if (productData.nom) {
+                                                serviceData.nom_produit = { valeur: productData.nom };
+                                            }
+                                            if (service.data?.titre_service) {
+                                                serviceData.titre_service = service.data.titre_service;
+                                            } else if (service.titre) {
+                                                serviceData.titre_service = { valeur: service.titre };
+                                            }
+                                            if (productData.description) {
+                                                serviceData.description = { valeur: productData.description };
+                                            }
+                                            if (productData.prix) {
+                                                serviceData.prix_produit = { valeur: productData.prix };
+                                            }
+                                            return serviceData;
+                                        })()
                                     },
                                     product_index: typeof product.product_index === 'number' ? product.product_index : index
                                 }
@@ -685,14 +732,22 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                                 prix: service.prix || '0',
                                 devise: service.devise || 'XAF',
                                 serviceId: service.id || service.service_id,
-                                // ✅ CORRIGÉ: S'assurer que service.data est correctement structuré
+                                // ✅ CORRIGÉ: S'assurer que service.data est correctement structuré (sans undefined)
                                 service: {
                                     ...service,
-                                    data: service.data || {
-                                        titre_service: service.titre ? { valeur: service.titre } : undefined,
-                                        nom_produit: service.nom ? { valeur: service.nom } : undefined,
-                                        description: service.description ? { valeur: service.description } : undefined,
-                                    }
+                                    data: service.data || (() => {
+                                        const serviceData: any = {};
+                                        if (service.titre) {
+                                            serviceData.titre_service = { valeur: service.titre };
+                                        }
+                                        if (service.nom) {
+                                            serviceData.nom_produit = { valeur: service.nom };
+                                        }
+                                        if (service.description) {
+                                            serviceData.description = { valeur: service.description };
+                                        }
+                                        return serviceData;
+                                    })()
                                 }
                             }
                         });
@@ -1160,7 +1215,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                         <View style={dynamicStyles.searchHeaderLeft}>
                             <SafeIcon name="search" size={18} color={colors.primary} />
                             <Text style={dynamicStyles.searchHeaderTitle}>
-                                Résultats pour "{searchQuery}"
+                                Résultats pour "{typeof searchQuery === 'string' ? searchQuery : (searchQuery ? String(searchQuery) : '')}"
                             </Text>
                         </View>
                         <TouchableOpacity
@@ -1174,10 +1229,10 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                     </View>
                     <View style={dynamicStyles.searchHeaderBottom}>
                         <Text style={dynamicStyles.searchHeaderCount}>
-                            {searchResults.length} résultat(s) affiché(s)
-                            {totalSearchResults > searchResults.length && ` sur ${totalSearchResults}`}
+                            {Array.isArray(searchResults) ? searchResults.length : 0} résultat(s) affiché(s)
+                            {totalSearchResults != null && Array.isArray(searchResults) && totalSearchResults > searchResults.length ? ` sur ${totalSearchResults}` : null}
                         </Text>
-                        {totalSearchResults > searchResults.length && onShowAllResults && (
+                        {totalSearchResults != null && totalSearchResults > searchResults.length && onShowAllResults && (
                             <TouchableOpacity
                                 style={dynamicStyles.showAllButton}
                                 onPress={onShowAllResults}
@@ -1185,7 +1240,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                                 accessibilityRole="button"
                             >
                                 <Text style={dynamicStyles.showAllButtonText}>
-                                    Voir tous ({totalSearchResults})
+                                    Voir tous ({totalSearchResults != null ? totalSearchResults : 0})
                                 </Text>
                                 <SafeIcon name="chevron-right" size={16} color={colors.primary} />
                             </TouchableOpacity>
@@ -1236,10 +1291,10 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
             {/* ✅ Barres de progression (comme Instagram Stories) */}
             <View style={dynamicStyles.progressBars}>
                 {safeContent.map((_, index) => (
-                    <View key={index} style={styles.progressBar}>
+                    <View key={index} style={dynamicStyles.progressBar}>
                         <View
                             style={[
-                                styles.progressFill,
+                                dynamicStyles.progressFill,
                                 {
                                     width: index < currentIndex ? '100%' :
                                         index === currentIndex ? '50%' : '0%'
@@ -1344,7 +1399,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                                     </Text>
                                     {item.is_paid && item.boost_level && (
                                         <Text style={styles.boostLevel}>
-                                            {item.boost_level.toUpperCase()}
+                                            {typeof item.boost_level === 'string' ? item.boost_level.toUpperCase() : String(item.boost_level || '').toUpperCase()}
                                         </Text>
                                     )}
                                 </View>
@@ -1366,12 +1421,12 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                                 })()}
 
                                 {/* ✅ Badge durée vidéo si présent */}
-                                {item.data?.videos && item.data.videos.length > 0 && (
+                                {Array.isArray(item.data?.videos) && item.data.videos.length > 0 ? (
                                     <View style={styles.videoBadge}>
                                         <SafeIcon name="video" size={14} color="#FFFFFF" />
                                         <Text style={styles.videoDuration}>0:15</Text>
                                     </View>
-                                )}
+                                ) : null}
 
                                 {/* Contenu de la carte */}
                                 <ProductCard
@@ -1384,12 +1439,20 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                                     service={item.data.service || {
                                         id: item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id,
                                         service_id: item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id,
-                                        data: item.data.service?.data || {
-                                            titre_service: item.data.nom ? { valeur: item.data.nom } : undefined,
-                                            nom_produit: item.data.nom ? { valeur: item.data.nom } : undefined,
-                                            description: item.data.description ? { valeur: item.data.description } : undefined,
-                                            prix_produit: item.data.prix ? { valeur: item.data.prix } : undefined,
-                                        }
+                                        data: item.data.service?.data || (() => {
+                                            const serviceData: any = {};
+                                            if (item.data.nom) {
+                                                serviceData.titre_service = { valeur: item.data.nom };
+                                                serviceData.nom_produit = { valeur: item.data.nom };
+                                            }
+                                            if (item.data.description) {
+                                                serviceData.description = { valeur: item.data.description };
+                                            }
+                                            if (item.data.prix) {
+                                                serviceData.prix_produit = { valeur: item.data.prix };
+                                            }
+                                            return serviceData;
+                                        })()
                                     }}
                                     prestataire={item.data.prestataire}
                                     onPress={() => handleCardClick(item, index)}

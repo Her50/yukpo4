@@ -1,11 +1,14 @@
 /**
  * SpecializedServicesButton - Bouton élégant pour accéder aux services spécialisés
  * Remplace le scroll horizontal par un bouton cliquable
+ * ✅ AMÉLIORÉ: État de chargement, gestion d'erreur, accessibilité améliorée
  */
 
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
+import React, { useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -23,28 +26,65 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
     onPress,
 }) => {
     const navigation = useNavigation();
+    const [isNavigating, setIsNavigating] = useState(false);
 
-    const handlePress = () => {
+    const handlePress = async () => {
+        // ✅ AMÉLIORÉ: Empêcher les clics multiples
+        if (isNavigating) {
+            return;
+        }
+
         hapticPress();
-        if (onPress) {
-            onPress();
-        } else {
-            // Navigation par défaut vers la page des services spécialisés
-            (navigation as any).navigate('SpecializedServicesHub');
+        setIsNavigating(true);
+
+        try {
+            if (onPress) {
+                // ✅ AMÉLIORÉ: Gérer les handlers async
+                const result = onPress();
+                if (result instanceof Promise) {
+                    await result;
+                }
+            } else {
+                // ✅ AMÉLIORÉ: Navigation avec gestion d'erreur
+                const navResult = (navigation as any).navigate('SpecializedServicesHub');
+                if (navResult === false) {
+                    throw new Error('Navigation failed');
+                }
+            }
+        } catch (error) {
+            console.error('[SpecializedServicesButton] Erreur navigation:', error);
+            // ✅ AMÉLIORÉ: Afficher un message d'erreur à l'utilisateur
+            Alert.alert(
+                'Erreur',
+                'Impossible d\'accéder aux services spécialisés. Veuillez réessayer.',
+                [{ text: 'OK' }]
+            );
+        } finally {
+            // ✅ AMÉLIORÉ: Réinitialiser l'état après un court délai pour permettre l'animation
+            setTimeout(() => {
+                setIsNavigating(false);
+            }, 300);
         }
     };
 
     return (
         <TouchableOpacity
-            style={styles.container}
+            style={[styles.container, isNavigating && styles.containerLoading]}
             onPress={handlePress}
             activeOpacity={0.8}
+            disabled={isNavigating}
             accessibilityLabel="Accéder aux services spécialisés"
             accessibilityRole="button"
+            accessibilityHint="Ouvre la page des services spécialisés : santé, transport, immobilier, éducation et cuisine"
+            accessibilityState={{ disabled: isNavigating }}
         >
             <View style={styles.content}>
                 <View style={styles.iconContainer}>
-                    <SafeIcon name="sparkles" size={32} color={modernColors.primary} type="lucide" />
+                    {isNavigating ? (
+                        <ActivityIndicator size="small" color={modernColors.primary} />
+                    ) : (
+                        <SafeIcon name="sparkles" size={32} color={modernColors.primary} type="lucide" />
+                    )}
                 </View>
                 <View style={styles.textContainer}>
                     <Text style={styles.title}>Services Spécialisés</Text>
@@ -53,7 +93,11 @@ export const SpecializedServicesButton: React.FC<SpecializedServicesButtonProps>
                     </Text>
                 </View>
                 <View style={styles.arrowContainer}>
-                    <SafeIcon name="chevron-right" size={24} color={modernColors.primary} type="lucide" />
+                    {isNavigating ? (
+                        <ActivityIndicator size="small" color={modernColors.primary} />
+                    ) : (
+                        <SafeIcon name="chevron-right" size={24} color={modernColors.primary} type="lucide" />
+                    )}
                 </View>
             </View>
         </TouchableOpacity>
@@ -74,6 +118,9 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 4,
+    },
+    containerLoading: {
+        opacity: 0.7,
     },
     content: {
         flexDirection: 'row',

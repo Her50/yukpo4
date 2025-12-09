@@ -667,10 +667,10 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                     <Text style={styles.recipientName}>{recipientName}</Text>
 
                     <Text style={styles.callStatus}>
-                        {callState === 'connecting' && 'Connexion...'}
-                        {callState === 'ringing' && '🔔 Sonnerie en cours...'}
-                        {callState === 'active' && formatDuration(callDuration)}
-                        {callState === 'ended' && 'Appel terminé'}
+                        {callState === 'connecting' ? 'Connexion...' :
+                            callState === 'ringing' ? '🔔 Sonnerie en cours...' :
+                                callState === 'active' ? formatDuration(callDuration) :
+                                    callState === 'ended' ? 'Appel terminé' : ''}
                     </Text>
 
                     {/* ✅ Indicateur sonore pendant ringing */}

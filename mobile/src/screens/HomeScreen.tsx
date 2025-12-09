@@ -1429,7 +1429,7 @@ const HomeScreen: React.FC = () => {
                                     <AnimatedCard index={0} delay={0}>
                                         <SpecializedServicesButton
                                             onPress={() => {
-                                                hapticPress();
+                                                // ✅ AMÉLIORÉ: Retirer le double appel haptique (déjà géré dans le bouton)
                                                 (navigation as any).navigate('SpecializedServicesHub');
                                             }}
                                         />

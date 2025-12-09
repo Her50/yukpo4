@@ -293,11 +293,10 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
             {job && (
                 <View style={styles.progressContainer}>
                     <Text style={styles.progressLabel}>
-                        {job.progress.stage === 'generating_storyboard' && 'Génération du storyboard...'}
-                        {job.progress.stage === 'generating_clips' &&
-                            `Génération des clips (${job.progress.current_scene || 0}/${job.progress.total_scenes || 0})...`}
-                        {job.progress.stage === 'assembling' && 'Assemblage de la vidéo...'}
-                        {job.progress.message || 'Traitement en cours...'}
+                        {job.progress.stage === 'generating_storyboard' ? 'Génération du storyboard...' :
+                            job.progress.stage === 'generating_clips' ? `Génération des clips (${job.progress.current_scene || 0}/${job.progress.total_scenes || 0})...` :
+                                job.progress.stage === 'assembling' ? 'Assemblage de la vidéo...' :
+                                    job.progress.message || 'Traitement en cours...'}
                     </Text>
                     <View style={styles.progressBar}>
                         <View

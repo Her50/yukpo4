@@ -425,8 +425,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
                                     {selectedSeats.map((seat) => (
                                         <View key={seat.seat_id} style={styles.selectedSeatBadge}>
                                             <Text style={styles.selectedSeatText}>
-                                                Place {seat.seat_number}
-                                                {seat.is_premium && ' ⭐'}
+                                                Place {seat.seat_number}{seat.is_premium ? ' ⭐' : ''}
                                             </Text>
                                         </View>
                                     ))}

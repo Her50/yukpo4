@@ -1,6 +1,6 @@
 ﻿import * as React from "react";
 import { useEffect, useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useUserContext } from '../context/UserContext';
 import { gpsTrackingService } from '../services/gpsTrackingService';
 
@@ -131,68 +131,165 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
   }
 
   return (
-    <View style="fixed bottom-4 right-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-200 dark:border-gray-700 max-w-sm">
-      <View style="flex items-center justify-between mb-3">
-        <Text style="text-sm font-semibold text-gray-900 dark:text-white">
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>
           📍 Tracking GPS
         </Text>
-        <View style={`w-3 h-3 rounded-full ${isTracking ? 'bg-green-500' : 'bg-red-500'}`} />
+        <View style={[styles.statusDot, isTracking ? styles.statusDotActive : styles.statusDotInactive]} />
       </View>
 
-      <View style="space-y-2 text-xs">
-        <View>
-          <Text style="text-gray-600 dark:text-gray-400">Statut:</Text>
-          <Text style={`ml-2 font-medium ${isTracking ? 'text-green-600' : 'text-red-600'}`}>
+      <View style={styles.content}>
+        <View style={styles.row}>
+          <Text style={styles.label}>Statut:</Text>
+          <Text style={[styles.value, isTracking ? styles.valueActive : styles.valueInactive]}>
             {isTracking ? 'Actif' : 'Inactif'}
           </Text>
         </View>
 
         {currentLocation && (
-          <View>
-            <Text style="text-gray-600 dark:text-gray-400">Position:</Text>
-            <Text style="ml-2 font-mono text-gray-900 dark:text-white">
+          <View style={styles.row}>
+            <Text style={styles.label}>Position:</Text>
+            <Text style={styles.locationValue}>
               {currentLocation}
             </Text>
           </View>
         )}
 
         {lastUpdate && (
-          <View>
-            <Text style="text-gray-600 dark:text-gray-400">Dernière mise à jour:</Text>
-            <Text style="ml-2 text-gray-900 dark:text-white">
+          <View style={styles.row}>
+            <Text style={styles.label}>Dernière mise à jour:</Text>
+            <Text style={styles.value}>
               {lastUpdate.toLocaleTimeString()}
             </Text>
           </View>
         )}
       </View>
 
-      <View style="flex space-x-2 mt-3">
+      <View style={styles.actions}>
         {!isTracking ? (
           <TouchableOpacity
             onPress={startGPSTracking}
-            style="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+            style={[styles.button, styles.buttonStart]}
           >
-            Démarrer
+            <Text style={styles.buttonText}>Démarrer</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             onPress={stopGPSTracking}
-            style="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+            style={[styles.button, styles.buttonStop]}
           >
-            Arrêter
+            <Text style={styles.buttonText}>Arrêter</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity
           onPress={getCurrentLocation}
-          style="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+          style={[styles.button, styles.buttonRefresh]}
         >
-          Actualiser
+          <Text style={styles.buttonText}>Actualiser</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 16,
+    maxWidth: 300,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  statusDotActive: {
+    backgroundColor: '#10B981',
+  },
+  statusDotInactive: {
+    backgroundColor: '#EF4444',
+  },
+  content: {
+    gap: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  label: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginRight: 8,
+  },
+  value: {
+    fontSize: 12,
+    color: '#111827',
+    fontWeight: '500',
+  },
+  valueActive: {
+    color: '#059669',
+  },
+  valueInactive: {
+    color: '#DC2626',
+  },
+  locationValue: {
+    fontSize: 12,
+    fontFamily: 'monospace',
+    color: '#111827',
+    marginLeft: 8,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  button: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonStart: {
+    backgroundColor: '#059669',
+  },
+  buttonStop: {
+    backgroundColor: '#DC2626',
+  },
+  buttonRefresh: {
+    backgroundColor: '#2563EB',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+});
 
 export default GPSAutoTracker;
 

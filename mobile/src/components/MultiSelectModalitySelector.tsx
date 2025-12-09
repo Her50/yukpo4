@@ -238,8 +238,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
             {/* Indicateur du nombre d'options disponibles */}
             {allOptions.length > 0 && !loading && (
                 <Text style={styles.optionsCount}>
-                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}
-                    {allOptions.some(opt => !opt.includes('🆕')) && ' (inclut les modalités partagées)'}
+                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('🆕')) ? ' (inclut les modalités partagées)' : ''}
                 </Text>
             )}
             {loading && (

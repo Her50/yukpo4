@@ -468,10 +468,10 @@ const MesInteractionsScreen: React.FC = () => {
         {/* Liste des interactions */}
         <View style={styles.interactionsSection}>
           <Text style={styles.sectionTitle}>
-            {selectedFilter === 'all' && 'Toutes les interactions'}
-            {selectedFilter === 'favorites' && 'Mes favoris'}
-            {selectedFilter === 'messages' && 'Mes messages'}
-            {selectedFilter === 'reviews' && 'Mes avis'}
+            {selectedFilter === 'all' ? 'Toutes les interactions' :
+              selectedFilter === 'favorites' ? 'Mes favoris' :
+                selectedFilter === 'messages' ? 'Mes messages' :
+                  selectedFilter === 'reviews' ? 'Mes avis' : ''}
           </Text>
 
           {filteredInteractions.length === 0 ? (

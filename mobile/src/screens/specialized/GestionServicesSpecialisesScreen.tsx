@@ -873,12 +873,12 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 <View style={styles.serviceInfo}>
                     <Text style={styles.serviceName}>{getServiceName(item)}</Text>
                     <Text style={styles.serviceType}>
-                        {item.type === 'pharmacie' && 'Pharmacie'}
-                        {item.type === 'hopital' && 'Hôpital/Clinique'}
-                        {item.type === 'laboratoire' && 'Laboratoire'}
-                        {item.type === 'agence_voyage' && 'Agence de Voyage'}
-                        {item.type === 'covoiturage' && 'Covoiturage'}
-                        {item.type === 'taxi' && 'Taxi'}
+                        {item.type === 'pharmacie' ? 'Pharmacie' :
+                            item.type === 'hopital' ? 'Hôpital/Clinique' :
+                                item.type === 'laboratoire' ? 'Laboratoire' :
+                                    item.type === 'agence_voyage' ? 'Agence de Voyage' :
+                                        item.type === 'covoiturage' ? 'Covoiturage' :
+                                            item.type === 'taxi' ? 'Taxi' : ''}
                     </Text>
                 </View>
                 <View style={styles.statusBadge}>

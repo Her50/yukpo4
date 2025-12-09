@@ -194,8 +194,7 @@ export const CampaignScheduler: React.FC<CampaignSchedulerProps> = ({
                 <View style={styles.summaryBox}>
                     <SafeIcon name="info" size={16} color={modernColors.info} />
                     <Text style={styles.summaryText}>
-                        La campagne sera active du {formatDate(schedule.startDate)} au {formatDate(schedule.endDate)}
-                        {schedule.pauseOnWeekends && ' (pauses weekends activées)'}
+                        La campagne sera active du {formatDate(schedule.startDate)} au {formatDate(schedule.endDate)}{schedule.pauseOnWeekends ? ' (pauses weekends activées)' : ''}
                     </Text>
                 </View>
             )}
