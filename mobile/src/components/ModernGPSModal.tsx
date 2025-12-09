@@ -51,11 +51,16 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
     useEffect(() => {
         if (visible) {
-            requestLocationPermission();
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            requestLocationPermission().catch(error => {
+                console.error('[ModernGPSModal] Erreur requestLocationPermission:', error);
+            });
             if (currentLocation) {
                 setSelectedLocation(currentLocation);
             }
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [visible, currentLocation]);
 
     const requestLocationPermission = async () => {

@@ -375,34 +375,35 @@ pub async fn get_analytics(
     );
 
     let livre_id_filter = params.livre_id;
-    let analytics: Option<crate::models::book_exchange::BookAnalytics> = if let Some(livre_id) = livre_id_filter {
-        sqlx::query_as::<_, crate::models::book_exchange::BookAnalytics>(
-            r#"
+    let analytics: Option<crate::models::book_exchange::BookAnalytics> =
+        if let Some(livre_id) = livre_id_filter {
+            sqlx::query_as::<_, crate::models::book_exchange::BookAnalytics>(
+                r#"
             SELECT * FROM book_analytics
             WHERE user_id = $1 AND livre_id = $2
             ORDER BY periode_debut DESC
             LIMIT 1
             "#,
-        )
-        .bind(user_id)
-        .bind(livre_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
-    } else {
-        sqlx::query_as::<_, crate::models::book_exchange::BookAnalytics>(
-            r#"
+            )
+            .bind(user_id)
+            .bind(livre_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
+        } else {
+            sqlx::query_as::<_, crate::models::book_exchange::BookAnalytics>(
+                r#"
             SELECT * FROM book_analytics
             WHERE user_id = $1
             ORDER BY periode_debut DESC
             LIMIT 1
             "#,
-        )
-        .bind(user_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
-    };
+            )
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
+        };
 
     Ok(Json(json!({ "success": true, "analytics": analytics })))
 }

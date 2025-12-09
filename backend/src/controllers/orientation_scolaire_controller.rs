@@ -775,34 +775,35 @@ pub async fn get_analytics(
     );
 
     let etablissement_id_filter = params.etablissement_id;
-    let analytics: Option<crate::models::orientation_ai::OrientationAnalytics> = if let Some(etablissement_id) = etablissement_id_filter {
-        sqlx::query_as::<_, crate::models::orientation_ai::OrientationAnalytics>(
-            r#"
+    let analytics: Option<crate::models::orientation_ai::OrientationAnalytics> =
+        if let Some(etablissement_id) = etablissement_id_filter {
+            sqlx::query_as::<_, crate::models::orientation_ai::OrientationAnalytics>(
+                r#"
             SELECT * FROM orientation_analytics
             WHERE user_id = $1 AND etablissement_id = $2
             ORDER BY periode_debut DESC
             LIMIT 1
             "#,
-        )
-        .bind(user_id)
-        .bind(etablissement_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
-    } else {
-        sqlx::query_as::<_, crate::models::orientation_ai::OrientationAnalytics>(
-            r#"
+            )
+            .bind(user_id)
+            .bind(etablissement_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
+        } else {
+            sqlx::query_as::<_, crate::models::orientation_ai::OrientationAnalytics>(
+                r#"
             SELECT * FROM orientation_analytics
             WHERE user_id = $1
             ORDER BY periode_debut DESC
             LIMIT 1
             "#,
-        )
-        .bind(user_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
-    };
+            )
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur récupération analytics: {}", e)))?
+        };
 
     Ok(Json(json!({ "success": true, "analytics": analytics })))
 }

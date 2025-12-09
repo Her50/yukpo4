@@ -1,5 +1,29 @@
-import { StatusBar } from 'expo-status-bar';
+// ✅ CRITIQUE: PATCH REACT DOIT ÊTRE IMPORTÉ EN PREMIER AVANT TOUT
+// Utiliser require pour charger le patch AVANT React
+const { patchReactUseEffect } = require('./src/utils/reactPatch');
+
+// ✅ CRITIQUE: Importer React et patcher IMMÉDIATEMENT
 import * as React from 'react';
+
+// ✅ CRITIQUE: Appliquer le patch IMMÉDIATEMENT après import de React
+// ET patcher aussi le module require('react') directement
+try {
+  if (typeof React !== 'undefined' && React.useEffect) {
+    patchReactUseEffect(React);
+    console.log('[App] ✅ Patch React useEffect appliqué en premier');
+  }
+
+  // ✅ CRITIQUE: Patcher aussi le module require('react') directement
+  const reactModule = require('react');
+  if (reactModule && reactModule.useEffect) {
+    patchReactUseEffect(reactModule);
+    console.log('[App] ✅ Patch React module direct appliqué');
+  }
+} catch (patchError) {
+  console.error('[App] ⚠️ Erreur application patch (non-bloquant):', patchError);
+}
+
+import { StatusBar } from 'expo-status-bar';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider } from 'react-native-paper';
@@ -50,9 +74,6 @@ export default function App() {
   } catch (logError) {
     // Ignorer les erreurs de log
   }
-
-  // ✅ PATCH TEMPORAIREMENT DÉSACTIVÉ - Le patch arrive trop tard pour intercepter les useEffect
-  // Le problème doit être corrigé directement dans les useEffect qui retournent des valeurs non-fonction
 
   // ✅ CORRECTION CRASH: initObservability dans useEffect pour éviter blocage
   React.useEffect(() => {

@@ -140,11 +140,16 @@ pub async fn add_loyalty_points(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<AddPointsRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[add_loyalty_points] User: {}, Points: {}, Reason: {}", payload.user_id, payload.points, payload.reason);
+    info!(
+        "[add_loyalty_points] User: {}, Points: {}, Reason: {}",
+        payload.user_id, payload.points, payload.reason
+    );
 
     // Vérifier que l'utilisateur peut ajouter des points pour lui-même
     if payload.user_id != user.id {
-        return Err(AppError::Forbidden("Vous ne pouvez ajouter des points que pour votre propre compte".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous ne pouvez ajouter des points que pour votre propre compte".to_string(),
+        ));
     }
 
     // Insérer la transaction
@@ -184,11 +189,16 @@ pub async fn redeem_loyalty_points(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<RedeemPointsRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[redeem_loyalty_points] User: {}, Points: {}, Reward: {}", payload.user_id, payload.points, payload.reward_id);
+    info!(
+        "[redeem_loyalty_points] User: {}, Points: {}, Reward: {}",
+        payload.user_id, payload.points, payload.reward_id
+    );
 
     // Vérifier que l'utilisateur peut utiliser ses propres points
     if payload.user_id != user.id {
-        return Err(AppError::Forbidden("Vous ne pouvez utiliser que vos propres points".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous ne pouvez utiliser que vos propres points".to_string(),
+        ));
     }
 
     // Vérifier que l'utilisateur a assez de points
@@ -230,7 +240,10 @@ pub async fn redeem_loyalty_points(
         .fetch_optional(&state.pg)
         .await
         .map_err(|e| {
-            error!("[redeem_loyalty_points] Erreur vérification récompense: {}", e);
+            error!(
+                "[redeem_loyalty_points] Erreur vérification récompense: {}",
+                e
+            );
             AppError::Internal(format!("Erreur vérification récompense: {}", e))
         })?;
 
@@ -245,7 +258,10 @@ pub async fn redeem_loyalty_points(
         RETURNING id
     "#;
 
-    let description = format!("Échange de {} points pour récompense: {}", payload.points, payload.reward_id);
+    let description = format!(
+        "Échange de {} points pour récompense: {}",
+        payload.points, payload.reward_id
+    );
 
     let row = sqlx::query(redeem_query)
         .bind(payload.user_id)
@@ -288,7 +304,10 @@ pub async fn get_loyalty_transactions(
         .map(|v| v as i32)
         .unwrap_or(50);
 
-    info!("[get_loyalty_transactions] User ID: {}, Limit: {}", user_id, limit);
+    info!(
+        "[get_loyalty_transactions] User ID: {}, Limit: {}",
+        user_id, limit
+    );
 
     let query = r#"
         SELECT 
@@ -357,13 +376,10 @@ pub async fn get_loyalty_rewards(
         ORDER BY points_cost ASC
     "#;
 
-    let rows = sqlx::query(query)
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[get_loyalty_rewards] Erreur: {}", e);
-            AppError::Internal(format!("Erreur récupération récompenses: {}", e))
-        })?;
+    let rows = sqlx::query(query).fetch_all(&state.pg).await.map_err(|e| {
+        error!("[get_loyalty_rewards] Erreur: {}", e);
+        AppError::Internal(format!("Erreur récupération récompenses: {}", e))
+    })?;
 
     let rewards: Vec<LoyaltyReward> = rows
         .iter()
@@ -413,4 +429,3 @@ fn get_next_level_points(current_level: &str) -> i32 {
         _ => 1000,
     }
 }
-

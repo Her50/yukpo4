@@ -3,7 +3,10 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::services::plugin_service::{PluginCategory, PluginMetadata, PluginService};
-use axum::{extract::{Query, State, Path}, Json};
+use axum::{
+    extract::{Path, Query, State},
+    Json,
+};
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

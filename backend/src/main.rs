@@ -142,7 +142,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             log::info!("✅ Read replica PostgreSQL configuré - Scaling horizontal activé");
-            
+
             // ✅ CORRIGÉ: Utiliser connect_lazy avec gestion d'erreur au lieu de expect
             match PgPoolOptions::new()
                 .max_connections(30) // Plus de connexions pour lectures
@@ -212,11 +212,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let error_str = e.to_string();
             // Ignorer l'erreur de checksum mismatch pour la migration 0 (fichier modifié)
             if error_str.contains("migration 0 was previously applied but has been modified") {
+                log::warn!("⚠️ Migration 0 modifiée détectée (ignorée): {}", e);
                 log::warn!(
-                    "⚠️ Migration 0 modifiée détectée (ignorée): {}",
-                    e
+                    "⚠️ Si nécessaire, supprimez l'entrée de _sqlx_migrations pour la migration 0"
                 );
-                log::warn!("⚠️ Si nécessaire, supprimez l'entrée de _sqlx_migrations pour la migration 0");
             } else {
                 log::error!(
                     "❌ Erreur lors de l'application des migrations SQLx standard: {}",
@@ -354,7 +353,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             use yukpomnang_backend::utils::redis_helper;
 
             // Tester la connexion avec retry (3 tentatives, 1 seconde entre chaque)
-            let (is_available, error_detail) = redis_helper::check_redis_health_with_error(&client).await;
+            let (is_available, error_detail) =
+                redis_helper::check_redis_health_with_error(&client).await;
             match is_available {
                 true => {
                     log::info!("✅ Connexion Redis établie avec succès");
@@ -369,9 +369,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if let Some(ref err) = error_detail {
                         log::warn!("   🔍 Détails de l'erreur: {}", err);
                         // Analyser l'erreur pour donner des suggestions
-                        if err.contains("TLS") || err.contains("tls") || err.contains("certificate") {
+                        if err.contains("TLS") || err.contains("tls") || err.contains("certificate")
+                        {
                             log::warn!("   💡 Problème TLS détecté - Vérifiez que l'URL utilise 'rediss://' (avec double 's')");
-                        } else if err.contains("connection") || err.contains("Connection") || err.contains("refused") {
+                        } else if err.contains("connection")
+                            || err.contains("Connection")
+                            || err.contains("refused")
+                        {
                             log::warn!("   💡 Problème de connexion réseau - Vérifiez:");
                             log::warn!("      - Que le serveur Redis est accessible");
                             log::warn!("      - Les credentials (username/password)");
@@ -501,9 +505,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Créer une nouvelle instance de FlashSaleCache pour le worker
         use yukpomnang_backend::services::flash_sale_cache::FlashSaleCache;
         let redis_client_arc = Arc::new(app_state.redis_client.clone());
-        let cache_for_worker = FlashSaleCache::new(
-            redis_client_arc.clone()
-        );
+        let cache_for_worker = FlashSaleCache::new(redis_client_arc.clone());
         let worker = tasks::flash_sale_queue_worker::FlashSaleQueueWorker::new(
             redis_client_arc.clone(),
             Arc::new(app_state.pg.clone()),
@@ -621,15 +623,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         loop {
             interval_blackfriday.tick().await;
             log::debug!("🔄 Refresh de global_promo_catalog_cache...");
-            if let Err(e) = sqlx::query(
-                "REFRESH MATERIALIZED VIEW CONCURRENTLY IF EXISTS global_promo_catalog_cache",
+            // PostgreSQL ne supporte pas IF EXISTS avec REFRESH MATERIALIZED VIEW CONCURRENTLY
+            // Vérifier d'abord si la vue existe
+            let view_exists = sqlx::query_scalar::<_, bool>(
+                "SELECT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'global_promo_catalog_cache')"
             )
-            .execute(&*pool_clone_blackfriday)
+            .fetch_one(&*pool_clone_blackfriday)
             .await
-            {
-                log::warn!("⚠️ Erreur refresh global_promo_catalog_cache: {}", e);
+            .unwrap_or(false);
+
+            if view_exists {
+                if let Err(e) =
+                    sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY global_promo_catalog_cache")
+                        .execute(&*pool_clone_blackfriday)
+                        .await
+                {
+                    log::warn!("⚠️ Erreur refresh global_promo_catalog_cache: {}", e);
+                } else {
+                    log::debug!("✅ global_promo_catalog_cache refreshed");
+                }
             } else {
-                log::debug!("✅ global_promo_catalog_cache refreshed");
+                log::debug!("⚠️ Vue global_promo_catalog_cache n'existe pas encore");
             }
         }
     });
@@ -646,24 +660,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tokio::select! {
                 _ = interval_services.tick() => {
                     log::info!("🔄 Refresh de services_search_cache...");
-                    if let Err(e) = sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY IF EXISTS services_search_cache")
-                        .execute(&*pool_clone_matviews)
-                        .await
-                    {
-                        log::warn!("⚠️ Erreur refresh services_search_cache: {}", e);
+                    // PostgreSQL ne supporte pas IF EXISTS avec REFRESH MATERIALIZED VIEW CONCURRENTLY
+                    let view_exists = sqlx::query_scalar::<_, bool>(
+                        "SELECT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'services_search_cache')"
+                    )
+                    .fetch_one(&*pool_clone_matviews)
+                    .await
+                    .unwrap_or(false);
+
+                    if view_exists {
+                        if let Err(e) = sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_cache")
+                            .execute(&*pool_clone_matviews)
+                            .await
+                        {
+                            log::warn!("⚠️ Erreur refresh services_search_cache: {}", e);
+                        } else {
+                            log::info!("✅ services_search_cache refreshed");
+                        }
                     } else {
-                        log::info!("✅ services_search_cache refreshed");
+                        log::debug!("⚠️ Vue services_search_cache n'existe pas encore");
                     }
                 }
                 _ = interval_products.tick() => {
                     log::info!("🔄 Refresh de active_products_cache...");
-                    if let Err(e) = sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY IF EXISTS active_products_cache")
-                        .execute(&*pool_clone_matviews)
-                        .await
-                    {
-                        log::warn!("⚠️ Erreur refresh active_products_cache: {}", e);
+                    // PostgreSQL ne supporte pas IF EXISTS avec REFRESH MATERIALIZED VIEW CONCURRENTLY
+                    let view_exists = sqlx::query_scalar::<_, bool>(
+                        "SELECT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'active_products_cache')"
+                    )
+                    .fetch_one(&*pool_clone_matviews)
+                    .await
+                    .unwrap_or(false);
+
+                    if view_exists {
+                        if let Err(e) = sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY active_products_cache")
+                            .execute(&*pool_clone_matviews)
+                            .await
+                        {
+                            log::warn!("⚠️ Erreur refresh active_products_cache: {}", e);
+                        } else {
+                            log::info!("✅ active_products_cache refreshed");
+                        }
                     } else {
-                        log::info!("✅ active_products_cache refreshed");
+                        log::debug!("⚠️ Vue active_products_cache n'existe pas encore");
                     }
                 }
             }

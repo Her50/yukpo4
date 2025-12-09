@@ -652,7 +652,7 @@ pub async fn get_active_publicites(
             "#,
             requested_placement
         );
-        
+
         sqlx::query(&query_with_targeting)
             .bind(user_age.unwrap_or(30))
             .bind(user_gender.as_deref().unwrap_or("all"))

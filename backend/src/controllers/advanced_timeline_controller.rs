@@ -10,9 +10,7 @@ use std::sync::Arc;
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
-    models::advanced_timeline_model::{
-        AdvancedTimelineRequest, AdvancedTimelineResponse,
-    },
+    models::advanced_timeline_model::{AdvancedTimelineRequest, AdvancedTimelineResponse},
     services::advanced_timeline_service::AdvancedTimelineService,
     state::AppState,
 };

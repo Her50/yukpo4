@@ -308,9 +308,15 @@ pub async fn list_return_trip_requests(
             return_from: row.get::<String, _>("return_from"),
             return_to: row.get::<String, _>("return_to"),
             preferred_return_date: row.get::<String, _>("preferred_return_date"),
-            preferred_return_time: row.try_get::<Option<String>, _>("preferred_return_time").ok().flatten(),
+            preferred_return_time: row
+                .try_get::<Option<String>, _>("preferred_return_time")
+                .ok()
+                .flatten(),
             status: row.get::<String, _>("status"),
-            matched_product_id: row.try_get::<Option<String>, _>("matched_product_id").ok().flatten(),
+            matched_product_id: row
+                .try_get::<Option<String>, _>("matched_product_id")
+                .ok()
+                .flatten(),
             number_of_seats: row.get::<i32, _>("number_of_seats"),
             created_at: row
                 .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
@@ -385,12 +391,18 @@ pub async fn get_return_trip_request(
                 return_from: row.get::<String, _>("return_from"),
                 return_to: row.get::<String, _>("return_to"),
                 preferred_return_date: row.get::<String, _>("preferred_return_date"),
-                preferred_return_time: row.try_get::<Option<String>, _>("preferred_return_time").ok().flatten(),
+                preferred_return_time: row
+                    .try_get::<Option<String>, _>("preferred_return_time")
+                    .ok()
+                    .flatten(),
                 date_flexibility_days: row.get::<i32, _>("date_flexibility_days"),
                 passenger_names: row.get::<Vec<String>, _>("passenger_names"),
                 number_of_seats: row.get::<i32, _>("number_of_seats"),
                 status: row.get::<String, _>("status"),
-                matched_product_id: row.try_get::<Option<String>, _>("matched_product_id").ok().flatten(),
+                matched_product_id: row
+                    .try_get::<Option<String>, _>("matched_product_id")
+                    .ok()
+                    .flatten(),
                 matched_at: row
                     .try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("matched_at")
                     .ok()
@@ -468,7 +480,9 @@ pub async fn confirm_return_trip_request(
     let (matched_product_id, number_of_seats, status): (Option<String>, i32, String) =
         match request_row {
             Some(row) => (
-                row.try_get::<Option<String>, _>("matched_product_id").ok().flatten(),
+                row.try_get::<Option<String>, _>("matched_product_id")
+                    .ok()
+                    .flatten(),
                 row.get::<i32, _>("number_of_seats"),
                 row.get::<String, _>("status"),
             ),

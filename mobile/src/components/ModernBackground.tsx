@@ -60,7 +60,8 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
     useEffect(() => {
         // ✅ SÉCURITÉ: Vérifier que scrollY existe et a la méthode addListener
         if (!scrollY || typeof scrollY.addListener !== 'function') {
-            return;
+            // ✅ CRITIQUE: Retourner explicitement undefined
+            return undefined;
         }
 
         try {

@@ -41,6 +41,7 @@ pub struct VideoScalabilityService {
     cache_service: Arc<VideoCacheService>,
     rate_limiter: Arc<VideoRateLimiter>,
     batch_processor: Arc<VideoBatchProcessor>,
+    #[allow(dead_code)]
     config: ScalabilityConfig,
 }
 

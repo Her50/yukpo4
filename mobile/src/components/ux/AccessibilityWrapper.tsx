@@ -44,7 +44,10 @@ export const AccessibilityWrapper: React.FC<AccessibilityWrapperProps> = ({
 
     React.useEffect(() => {
         if (Platform.OS === 'ios' || Platform.OS === 'android') {
-            AccessibilityInfo.isScreenReaderEnabled().then(setIsScreenReaderEnabled);
+            // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+            AccessibilityInfo.isScreenReaderEnabled().then(setIsScreenReaderEnabled).catch(error => {
+                console.error('[AccessibilityWrapper] Erreur isScreenReaderEnabled:', error);
+            });
 
             const subscription = AccessibilityInfo.addEventListener('change', (enabled) => {
                 setIsScreenReaderEnabled(enabled);
@@ -54,6 +57,8 @@ export const AccessibilityWrapper: React.FC<AccessibilityWrapperProps> = ({
                 subscription?.remove();
             };
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined si la condition n'est pas remplie
+        return undefined;
     }, []);
 
     // ✅ Améliorer les labels pour les lecteurs d'écran
@@ -92,8 +97,13 @@ export const useAccessibility = () => {
 
     React.useEffect(() => {
         if (Platform.OS === 'ios' || Platform.OS === 'android') {
-            AccessibilityInfo.isScreenReaderEnabled().then(setIsScreenReaderEnabled);
-            AccessibilityInfo.isReduceMotionEnabled().then(setIsReduceMotionEnabled);
+            // ✅ CRITIQUE: Appeler les fonctions async mais ne pas retourner leurs Promises
+            AccessibilityInfo.isScreenReaderEnabled().then(setIsScreenReaderEnabled).catch(error => {
+                console.error('[useAccessibility] Erreur isScreenReaderEnabled:', error);
+            });
+            AccessibilityInfo.isReduceMotionEnabled().then(setIsReduceMotionEnabled).catch(error => {
+                console.error('[useAccessibility] Erreur isReduceMotionEnabled:', error);
+            });
 
             const screenReaderSubscription = AccessibilityInfo.addEventListener('change', (enabled) => {
                 setIsScreenReaderEnabled(enabled);
@@ -108,6 +118,8 @@ export const useAccessibility = () => {
                 reduceMotionSubscription?.remove();
             };
         }
+        // ✅ CRITIQUE: Retourner explicitement undefined si la condition n'est pas remplie
+        return undefined;
     }, []);
 
     return {

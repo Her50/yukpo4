@@ -153,7 +153,12 @@ const RelatedProductsSection: React.FC<{ product: any; service: any; navigation:
       }
     };
 
-    loadRelatedProducts();
+    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    loadRelatedProducts().catch(error => {
+      console.error('[ProductCard] Erreur loadRelatedProducts:', error);
+    });
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
   }, [product?.service_id, service?.id]);
 
   if (loadingRelated || relatedProducts.length === 0) {
@@ -1612,7 +1617,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
   }, [resolvedProductId, serviceId]);
 
   useEffect(() => {
-    loadReactions();
+    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    loadReactions().catch(error => {
+      console.error('[ProductCard] Erreur loadReactions:', error);
+    });
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
   }, [loadReactions]);
 
   // ✅ AMÉLIORÉ: Charger les stats des commentaires avec retry automatique
@@ -1657,7 +1667,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
   }, [commentServiceId]);
 
   useEffect(() => {
-    loadCommentStats();
+    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    loadCommentStats().catch(error => {
+      console.error('[ProductCard] Erreur loadCommentStats:', error);
+    });
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
   }, [loadCommentStats]);
 
   // ✅ GÉANT-LEVEL: Handler pour réagir avec optimistic update (Instagram style)

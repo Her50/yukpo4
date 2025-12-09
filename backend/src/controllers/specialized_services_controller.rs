@@ -3151,6 +3151,7 @@ pub struct SearchCovoituragesNearbyQuery {
     pub lng: f64,
     pub radius_km: Option<f64>,
     pub page: Option<i64>,
+    #[allow(dead_code)]
     pub limit: Option<i64>,
 }
 

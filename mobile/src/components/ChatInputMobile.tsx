@@ -296,7 +296,12 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
             }
         };
 
-        fetchSuggestions();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        fetchSuggestions().catch(error => {
+            console.error('[ChatInputMobile] Erreur fetchSuggestions:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [debouncedText, showAutocomplete, isSearchMode, gpsData, location]);
 
     // Animations pour l'enregistrement audio

@@ -570,9 +570,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Ces routes sont mergées explicitement dans lib.rs pour éviter les conflits
 
     // ✅ NOUVEAU: Routes pour système de publicité (intégrées directement)
-    
-    
-    
+
     use crate::controllers::media_product_controller;
     use crate::controllers::publicite_controller;
     let publicite_routes_inline = Router::new()
@@ -1757,12 +1755,12 @@ Format JSON attendu :
                             let mut seeds_sous_caracs = serde_json::Map::new();
                             let mut seeds_product_vector: Vec<String> = Vec::new();
                             let mut seeds_product_labels: Vec<String> = Vec::new();
-                            
+
                             if let Some(preferred_seed) = seeds.first() {
                                 // Extraire product_vector et product_labels de la combinaison préférée
                                 seeds_product_vector = preferred_seed.product_vector.clone();
                                 seeds_product_labels = preferred_seed.product_labels.clone();
-                                
+
                                 // Convertir product_vector + product_labels en format sous_caracteristiques
                                 // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position dans chaque dimension
                                 // Chaque label correspond à une dimension, chaque valeur du vector correspond à la valeur choisie
@@ -1771,7 +1769,7 @@ Format JSON attendu :
                                         // ✅ CORRIGÉ: Toujours créer un nouveau tableau avec la valeur préférée en PREMIÈRE position
                                         // Cela garantit que la valeur préférée par l'IA sera toujours affichée en premier dans le formulaire
                                         let mut values_array = vec![serde_json::Value::String(value.clone())];
-                                        
+
                                         // Si d'autres valeurs existent déjà (depuis d'autres sources), les ajouter après
                                         if let Some(existing_arr) = seeds_sous_caracs.get(label) {
                                             if let Some(existing_vals) = existing_arr.as_array() {
@@ -1785,12 +1783,12 @@ Format JSON attendu :
                                                 }
                                             }
                                         }
-                                        
+
                                         // Insérer avec la valeur préférée en première position
                                         seeds_sous_caracs.insert(label.clone(), serde_json::Value::Array(values_array));
                                     }
                                 }
-                                
+
                                 log::info!("[handle_creation_service_direct] ✅ Sous-caractéristiques extraites depuis seeds: {} dimensions", seeds_sous_caracs.len());
                             }
 
@@ -1807,7 +1805,7 @@ Format JSON attendu :
                                     log::warn!("[handle_creation_service_direct] Erreur sauvegarde seeds: {}", e);
                                 }
                             }
-                            
+
                             // ✅ NOUVEAU 2025-11-28 : Stocker les seeds pour inclusion dans la réponse
                             combination_info = json!({
                                 "status": "in_progress",
@@ -2145,7 +2143,6 @@ async fn handle_paginated_search(
     State(state): State<Arc<AppState>>,
     Json(request): Json<crate::services::native_search_service::PaginatedSearchRequest>,
 ) -> AppResult<impl IntoResponse> {
-    
     use crate::utils::log::log_info;
 
     let start_time = std::time::Instant::now();
@@ -2169,7 +2166,7 @@ async fn handle_paginated_search(
     let query_clone = request.query.clone();
     let specialized_type_clone = request.specialized_type.clone();
     let category_filter_clone = request.category_filter.clone();
-    
+
     let response = search_service.intelligent_search_paginated(request).await?;
 
     let duration = start_time.elapsed();

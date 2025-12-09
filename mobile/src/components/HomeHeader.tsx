@@ -77,7 +77,8 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
     // ✅ Convertir Animated.Value en SharedValue pour compatibilité
     useEffect(() => {
         if (!scrollY || typeof scrollY.addListener !== 'function') {
-            return;
+            // ✅ CRITIQUE: Retourner explicitement undefined
+            return undefined;
         }
 
         try {

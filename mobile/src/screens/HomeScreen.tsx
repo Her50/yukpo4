@@ -138,7 +138,8 @@ const HomeScreen: React.FC = () => {
         // ✅ SÉCURITÉ: Vérifier que navigation.addListener existe
         if (!navigation || typeof navigation.addListener !== 'function') {
             console.warn('[HomeScreen] navigation.addListener non disponible');
-            return;
+            // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire)
+            return undefined;
         }
 
         const handleFocus = () => {

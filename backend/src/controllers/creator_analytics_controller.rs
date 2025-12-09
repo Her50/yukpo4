@@ -190,27 +190,26 @@ pub async fn get_creator_analytics(
     .await;
 
     let videos: Vec<VideoAnalytics> = match videos_rows {
-        Ok(rows) => {
-            rows.into_iter().map(|row| {
-                VideoAnalytics {
-                    video_id: row.get::<String, _>("video_id"),
-                    title: row.get::<String, _>("title"),
-                    views: row.get::<i64, _>("views"),
-                    likes: row.get::<i64, _>("likes"),
-                    saves: row.get::<i64, _>("saves"),
-                    shares: row.get::<i64, _>("shares"),
-                    comments: row.get::<i64, _>("comments"),
-                    avg_watch_duration_ms: row.get::<i64, _>("avg_watch_duration_ms"),
-                    completion_rate: row.get::<f64, _>("completion_rate"),
-                    engagement_rate: row.get::<f64, _>("engagement_rate"),
-                    reach: row.get::<i64, _>("reach"),
-                    impressions: row.get::<i64, _>("impressions"),
-                    ctr: row.get::<f64, _>("ctr"),
-                    created_at: row.get::<String, _>("created_at"),
-                    last_updated: row.get::<String, _>("last_updated"),
-                }
-            }).collect()
-        },
+        Ok(rows) => rows
+            .into_iter()
+            .map(|row| VideoAnalytics {
+                video_id: row.get::<String, _>("video_id"),
+                title: row.get::<String, _>("title"),
+                views: row.get::<i64, _>("views"),
+                likes: row.get::<i64, _>("likes"),
+                saves: row.get::<i64, _>("saves"),
+                shares: row.get::<i64, _>("shares"),
+                comments: row.get::<i64, _>("comments"),
+                avg_watch_duration_ms: row.get::<i64, _>("avg_watch_duration_ms"),
+                completion_rate: row.get::<f64, _>("completion_rate"),
+                engagement_rate: row.get::<f64, _>("engagement_rate"),
+                reach: row.get::<i64, _>("reach"),
+                impressions: row.get::<i64, _>("impressions"),
+                ctr: row.get::<f64, _>("ctr"),
+                created_at: row.get::<String, _>("created_at"),
+                last_updated: row.get::<String, _>("last_updated"),
+            })
+            .collect(),
         Err(e) => {
             log::error!("❌ [CreatorAnalytics] Erreur récupération vidéos: {}", e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
@@ -435,7 +434,7 @@ pub async fn get_video_analytics(
                 last_updated: row.get::<String, _>("last_updated"),
             };
             Ok(Json(analytics))
-        },
+        }
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             log::error!("❌ [CreatorAnalytics] Erreur: {}", e);

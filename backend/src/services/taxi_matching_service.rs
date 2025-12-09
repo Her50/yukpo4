@@ -128,7 +128,7 @@ impl TaxiMatchingService {
             let distance_km: f64 = row.get::<f64, _>("distance_km");
             let tarif_base: i32 = row.get::<i32, _>("tarif_base");
             let tarif_par_km: i32 = row.get::<i32, _>("tarif_par_km");
-            
+
             // Estimation prix (base + distance * tarif/km)
             // Pour taxi, estimation basée sur distance (ex: 5km moyen)
             let estimated_distance_km = if let (Some(dest_lat), Some(dest_lng)) = (destination_lat, destination_lng) {
@@ -137,9 +137,9 @@ impl TaxiMatchingService {
             } else {
                 5.0 // Distance moyenne par défaut
             };
-            
+
             let estimated_price = tarif_base + (estimated_distance_km * tarif_par_km as f64) as i32;
-            
+
             // Estimation temps arrivée (distance * 2 min/km en ville)
             let estimated_arrival_minutes = (distance_km * 2.0) as i32;
 

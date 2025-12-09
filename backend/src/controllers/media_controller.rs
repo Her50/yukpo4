@@ -296,7 +296,7 @@ pub async fn get_service_media(
                 "[get_service_media] Query error pour service_id={}: {e:?}",
                 service_id
             );
-            
+
             // ✅ Gérer différents types d'erreurs
             match &e {
                 sqlx::Error::RowNotFound => {
@@ -322,7 +322,7 @@ pub async fn get_service_media(
                 }
                 _ => {}
             }
-            
+
             // ✅ Pour les autres erreurs, retourner une erreur générique mais informative
             return Err(AppError::Database(format!(
                 "Erreur lors de la récupération des médias: {}",
@@ -557,7 +557,7 @@ pub async fn list_effects(
         limit: query.limit,
         offset: query.offset,
     };
-    
+
     let response = service.list_effects(params).await?;
     let effects = response.effects;
     let total = response.total;

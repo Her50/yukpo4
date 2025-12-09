@@ -1285,7 +1285,7 @@ pub async fn get_services_for_prestataire(
         Err(e) => {
             let error_msg = e.to_string();
             error!("[get_services_for_prestataire] Erreur requête SQL après 5 tentatives: {}", error_msg);
-            
+
             // ✅ CORRIGÉ: Message d'erreur plus informatif pour le client
             let user_friendly_error = if error_msg.contains("peer closed connection") 
                 || error_msg.contains("TLS close_notify")
@@ -1295,7 +1295,7 @@ pub async fn get_services_for_prestataire(
             } else {
                 "Erreur lors de la récupération des services. Veuillez réessayer."
             };
-            
+
             return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
                 "error": user_friendly_error,
                 "error_code": "DB_CONNECTION_ERROR",

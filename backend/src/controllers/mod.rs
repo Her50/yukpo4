@@ -26,10 +26,10 @@ pub mod bus_return_trip_controller; // ✅ 2025-01-28: Contrôleur pour demandes
 pub mod bus_seat_management_controller; // ✅ 2025-11-27: Contrôleur pour gestion manuelle places non disponibles
 pub mod bus_ticket_controller; // ✅ 2025-11-27: Contrôleur pour tickets bus avec agences de voyage
 pub mod bus_ticket_payment_controller; // ✅ 2025-11-27: Contrôleur pour paiement tickets bus avec commission
-pub mod bus_ticket_validation_controller; // ✅ 2025-11-27: Contrôleur pour validation tickets bus avec QR code
 pub mod bus_ticket_rating_controller; // ✅ NOUVEAU: Contrôleur pour ratings tickets bus
-pub mod combination_progress_controller; // ✅ NOUVEAU 2025-11-03: Contrôleur pour progression génération combinaisons
+pub mod bus_ticket_validation_controller; // ✅ 2025-11-27: Contrôleur pour validation tickets bus avec QR code
 pub mod chat_support_controller; // ✅ NOUVEAU: Contrôleur pour support chat
+pub mod combination_progress_controller; // ✅ NOUVEAU 2025-11-03: Contrôleur pour progression génération combinaisons
 pub mod content_engagement_controller;
 pub mod conversation_controller; // ✅ NOUVEAU: Contrôleur pour @mentions et multi-participants
 pub mod creator_analytics_controller; // ✅ NOUVEAU: Contrôleur pour analytics créateurs

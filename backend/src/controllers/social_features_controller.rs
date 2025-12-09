@@ -107,7 +107,7 @@ pub async fn create_duet(
             duet_video_url = EXCLUDED.duet_video_url,
             updated_at = NOW()
         RETURNING id, created_at
-        "#
+        "#,
     )
     .bind(&duet_id)
     .bind(&payload.original_video_id)
@@ -119,8 +119,9 @@ pub async fn create_duet(
     match result {
         Ok(Some(row)) => {
             let duet_id_val: String = row.get::<String, _>("id");
-            let created_at: chrono::DateTime<chrono::Utc> = row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
-            
+            let created_at: chrono::DateTime<chrono::Utc> =
+                row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+
             // Récupérer nom créateur
             let creator_name = sqlx::query_scalar::<_, Option<String>>(
                 "SELECT COALESCE(nom_complet, email) FROM users WHERE id = $1",
@@ -208,8 +209,9 @@ pub async fn create_remix(
     match result {
         Ok(Some(row)) => {
             let remix_id_val: String = row.get::<String, _>("id");
-            let created_at: chrono::DateTime<chrono::Utc> = row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
-            
+            let created_at: chrono::DateTime<chrono::Utc> =
+                row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+
             Ok(Json(serde_json::json!({
                 "success": true,
                 "data": {
@@ -222,7 +224,7 @@ pub async fn create_remix(
                     "created_at": created_at.to_rfc3339()
                 }
             })))
-        },
+        }
         Ok(None) => {
             // Fallback
             Ok(Json(serde_json::json!({
@@ -237,7 +239,7 @@ pub async fn create_remix(
                     "created_at": chrono::Utc::now().to_rfc3339()
                 }
             })))
-        },
+        }
         Err(_) => {
             // Fallback
             Ok(Json(serde_json::json!({
@@ -288,8 +290,9 @@ pub async fn create_stitch(
     match result {
         Ok(Some(row)) => {
             let stitch_id_val: String = row.get::<String, _>("id");
-            let created_at: chrono::DateTime<chrono::Utc> = row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
-            
+            let created_at: chrono::DateTime<chrono::Utc> =
+                row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+
             Ok(Json(serde_json::json!({
                 "success": true,
                 "data": {
@@ -303,7 +306,7 @@ pub async fn create_stitch(
                     "created_at": created_at.to_rfc3339()
                 }
             })))
-        },
+        }
         Ok(None) => {
             // Fallback
             Ok(Json(serde_json::json!({
@@ -319,7 +322,7 @@ pub async fn create_stitch(
                     "created_at": chrono::Utc::now().to_rfc3339()
                 }
             })))
-        },
+        }
         Err(_) => {
             // Fallback
             Ok(Json(serde_json::json!({
@@ -375,7 +378,7 @@ pub async fn add_reaction(
             type_reaction = EXCLUDED.type_reaction,
             updated_at = NOW()
         RETURNING id, created_at
-        "#
+        "#,
     )
     .bind(reaction_uuid)
     .bind(video_uuid)
@@ -387,8 +390,9 @@ pub async fn add_reaction(
     match result {
         Ok(Some(row)) => {
             let reaction_id: uuid::Uuid = row.get::<uuid::Uuid, _>("id");
-            let created_at: chrono::DateTime<chrono::Utc> = row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
-            
+            let created_at: chrono::DateTime<chrono::Utc> =
+                row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+
             let user_name = sqlx::query_scalar::<_, Option<String>>(
                 "SELECT COALESCE(nom_complet, email) FROM users WHERE id = $1",
             )
@@ -454,7 +458,7 @@ pub async fn get_reactions(
             })));
         }
     };
-    
+
     let reactions_rows = sqlx::query(
         r#"
         SELECT 
@@ -468,7 +472,7 @@ pub async fn get_reactions(
         WHERE vr.video_id = $1
         ORDER BY vr.created_at DESC
         LIMIT 100
-        "#
+        "#,
     )
     .bind(video_uuid)
     .fetch_all(&state.pg)

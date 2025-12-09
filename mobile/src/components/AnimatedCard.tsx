@@ -30,7 +30,7 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = React.memo(
             const animationDelay = index * 100 + delay;
 
             if (typeof withTiming === 'function' && typeof withSpring === 'function' && opacity && translateY && scale) {
-                setTimeout(() => {
+                const timeoutId = setTimeout(() => {
                     try {
                         opacity.value = withTiming(1, { duration: 300 });
                         translateY.value = withSpring(0, {
@@ -45,7 +45,14 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = React.memo(
                         console.warn('[AnimatedCard] Erreur animation:', error);
                     }
                 }, animationDelay);
+
+                return () => {
+                    // ✅ CRITIQUE: Nettoyer le timeout
+                    clearTimeout(timeoutId);
+                };
             }
+            // ✅ CRITIQUE: Retourner explicitement undefined si la condition n'est pas remplie
+            return undefined;
             // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [index, delay]); // ✅ CORRIGÉ: Ne pas inclure les SharedValues (elles sont stables)
 

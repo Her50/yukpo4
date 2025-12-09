@@ -42,8 +42,7 @@ pub struct ChatMessage {
     pub attachments: Option<Vec<Attachment>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[derive(Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Attachment {
     pub type_: String,
     pub url: String,
@@ -80,11 +79,16 @@ pub async fn start_chat_session(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<StartChatRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[start_chat_session] User: {}, Topic: {:?}", payload.user_id, payload.topic);
+    info!(
+        "[start_chat_session] User: {}, Topic: {:?}",
+        payload.user_id, payload.topic
+    );
 
     // Vérifier que l'utilisateur peut démarrer une session pour lui-même
     if payload.user_id != user.id {
-        return Err(AppError::Forbidden("Vous ne pouvez démarrer une session que pour votre propre compte".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous ne pouvez démarrer une session que pour votre propre compte".to_string(),
+        ));
     }
 
     let session_id = Uuid::new_v4().to_string();
@@ -113,8 +117,13 @@ pub async fn start_chat_session(
     let session = ChatSession {
         id: row.get::<String, _>("id"),
         status: row.get::<String, _>("status"),
-        created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").timestamp(),
-        last_message_at: row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at").map(|dt| dt.timestamp()).unwrap_or(0),
+        created_at: row
+            .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+            .timestamp(),
+        last_message_at: row
+            .get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at")
+            .map(|dt| dt.timestamp())
+            .unwrap_or(0),
         agent_name: None,
         agent_avatar: None,
     };
@@ -135,7 +144,10 @@ pub async fn send_chat_message(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<SendMessageRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[send_chat_message] Session: {}, User: {}", payload.session_id, user.id);
+    info!(
+        "[send_chat_message] Session: {}, User: {}",
+        payload.session_id, user.id
+    );
 
     // Vérifier que la session appartient à l'utilisateur
     let session_check = r#"
@@ -159,7 +171,9 @@ pub async fn send_chat_message(
 
     let session_user_id: i32 = session_row.as_ref().unwrap().get::<i32, _>("user_id");
     if session_user_id != user.id {
-        return Err(AppError::Forbidden("Cette session ne vous appartient pas".to_string()));
+        return Err(AppError::Forbidden(
+            "Cette session ne vous appartient pas".to_string(),
+        ));
     }
 
     let message_id = Uuid::new_v4().to_string();
@@ -173,10 +187,13 @@ pub async fn send_chat_message(
     "#;
 
     let attachments_json = payload.attachments.as_ref().map(|a| {
-        json!(a.iter().map(|att| json!({
-            "type": att.type_,
-            "url": att.url
-        })).collect::<Vec<_>>())
+        json!(a
+            .iter()
+            .map(|att| json!({
+                "type": att.type_,
+                "url": att.url
+            }))
+            .collect::<Vec<_>>())
     });
 
     let row = sqlx::query(query)
@@ -214,18 +231,16 @@ pub async fn send_chat_message(
         id: row.get::<String, _>("id"),
         text: row.get::<String, _>("text"),
         sender: row.get::<String, _>("sender"),
-        timestamp: row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp").timestamp(),
+        timestamp: row
+            .get::<chrono::DateTime<chrono::Utc>, _>("timestamp")
+            .timestamp(),
         read: row.get::<bool, _>("read"),
         attachments: payload.attachments.clone(),
     };
 
     // ✅ NOUVEAU 2025-01-27: Générer une réponse IA automatique
-    let ai_response = generate_ai_support_response(
-        &state,
-        &payload.session_id,
-        &payload.text,
-        user.id,
-    ).await;
+    let ai_response =
+        generate_ai_support_response(&state, &payload.session_id, &payload.text, user.id).await;
 
     // Retourner le message utilisateur + réponse IA si générée
     let mut response_data = json!({
@@ -237,10 +252,7 @@ pub async fn send_chat_message(
         response_data["ai_response"] = json!(ai_msg);
     }
 
-    Ok((
-        StatusCode::OK,
-        Json(response_data),
-    ))
+    Ok((StatusCode::OK, Json(response_data)))
 }
 
 /// ✅ NOUVEAU 2025-01-27: Générer une réponse IA automatique
@@ -250,7 +262,10 @@ async fn generate_ai_support_response(
     user_message: &str,
     user_id: i32,
 ) -> Result<ChatMessage, AppError> {
-    info!("[generate_ai_support_response] Génération réponse IA pour session: {}", session_id);
+    info!(
+        "[generate_ai_support_response] Génération réponse IA pour session: {}",
+        session_id
+    );
 
     // Récupérer l'historique de conversation
     let history_query = r#"
@@ -308,13 +323,10 @@ async fn generate_ai_support_response(
     })?;
 
     // Détecter si escalade nécessaire
-    let needs_escalation = should_escalate_to_human(
-        state.ia.clone(),
-        user_message,
-        &conversation_history,
-    )
-    .await
-    .unwrap_or(false);
+    let needs_escalation =
+        should_escalate_to_human(state.ia.clone(), user_message, &conversation_history)
+            .await
+            .unwrap_or(false);
 
     // Ajouter note d'escalade si nécessaire
     let final_response = if needs_escalation {
@@ -342,23 +354,30 @@ async fn generate_ai_support_response(
         .fetch_one(&state.pg)
         .await
         .map_err(|e| {
-            error!("[generate_ai_support_response] Erreur insertion réponse IA: {}", e);
+            error!(
+                "[generate_ai_support_response] Erreur insertion réponse IA: {}",
+                e
+            );
             AppError::Internal(format!("Erreur insertion réponse IA: {}", e))
         })?;
 
     // Mettre à jour last_message_at
-    sqlx::query("UPDATE chat_support_sessions SET last_message_at = to_timestamp($1) WHERE id = $2")
-        .bind(ai_timestamp)
-        .bind(session_id)
-        .execute(&state.pg)
-        .await
-        .ok();
+    sqlx::query(
+        "UPDATE chat_support_sessions SET last_message_at = to_timestamp($1) WHERE id = $2",
+    )
+    .bind(ai_timestamp)
+    .bind(session_id)
+    .execute(&state.pg)
+    .await
+    .ok();
 
     let ai_message = ChatMessage {
         id: ai_row.get::<String, _>("id"),
         text: ai_row.get::<String, _>("text"),
         sender: ai_row.get::<String, _>("sender"),
-        timestamp: ai_row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp").timestamp(),
+        timestamp: ai_row
+            .get::<chrono::DateTime<chrono::Utc>, _>("timestamp")
+            .timestamp(),
         read: ai_row.get::<bool, _>("read"),
         attachments: None,
     };
@@ -384,7 +403,10 @@ pub async fn get_chat_messages(
         .map(|v| v as i32)
         .unwrap_or(50);
 
-    info!("[get_chat_messages] Session: {}, Limit: {}", session_id, limit);
+    info!(
+        "[get_chat_messages] Session: {}, Limit: {}",
+        session_id, limit
+    );
 
     // Vérifier que la session appartient à l'utilisateur
     let session_check = r#"
@@ -408,7 +430,9 @@ pub async fn get_chat_messages(
 
     let session_user_id: i32 = session_row.as_ref().unwrap().get::<i32, _>("user_id");
     if session_user_id != user.id {
-        return Err(AppError::Forbidden("Cette session ne vous appartient pas".to_string()));
+        return Err(AppError::Forbidden(
+            "Cette session ne vous appartient pas".to_string(),
+        ));
     }
 
     // Récupérer les messages
@@ -441,23 +465,27 @@ pub async fn get_chat_messages(
         .map(|row| {
             let attachments: Option<String> = row.get::<Option<String>, _>("attachments");
             let attachments_parsed = attachments.and_then(|a| {
-                serde_json::from_str::<Vec<serde_json::Value>>(&a).ok().map(|v| {
-                    v.iter()
-                        .filter_map(|item| {
-                            Some(Attachment {
-                                type_: item.get("type")?.as_str()?.to_string(),
-                                url: item.get("url")?.as_str()?.to_string(),
+                serde_json::from_str::<Vec<serde_json::Value>>(&a)
+                    .ok()
+                    .map(|v| {
+                        v.iter()
+                            .filter_map(|item| {
+                                Some(Attachment {
+                                    type_: item.get("type")?.as_str()?.to_string(),
+                                    url: item.get("url")?.as_str()?.to_string(),
+                                })
                             })
-                        })
-                        .collect()
-                })
+                            .collect()
+                    })
             });
 
             ChatMessage {
                 id: row.get::<String, _>("id"),
                 text: row.get::<String, _>("text"),
                 sender: row.get::<String, _>("sender"),
-                timestamp: row.get::<chrono::DateTime<chrono::Utc>, _>("timestamp").timestamp(),
+                timestamp: row
+                    .get::<chrono::DateTime<chrono::Utc>, _>("timestamp")
+                    .timestamp(),
                 read: row.get::<bool, _>("read"),
                 attachments: attachments_parsed,
             }
@@ -515,8 +543,13 @@ pub async fn get_chat_sessions(
         .map(|row| ChatSession {
             id: row.get::<String, _>("id"),
             status: row.get::<String, _>("status"),
-            created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").timestamp(),
-            last_message_at: row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at").map(|dt| dt.timestamp()).unwrap_or(0),
+            created_at: row
+                .get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                .timestamp(),
+            last_message_at: row
+                .get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_message_at")
+                .map(|dt| dt.timestamp())
+                .unwrap_or(0),
             agent_name: row.get::<Option<String>, _>("agent_name"),
             agent_avatar: row.get::<Option<String>, _>("agent_avatar"),
         })
@@ -538,7 +571,10 @@ pub async fn close_chat_session(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CloseChatRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[close_chat_session] Session: {}, User: {}", payload.session_id, user.id);
+    info!(
+        "[close_chat_session] Session: {}, User: {}",
+        payload.session_id, user.id
+    );
 
     // Vérifier que la session appartient à l'utilisateur
     let session_check = r#"
@@ -562,7 +598,9 @@ pub async fn close_chat_session(
 
     let session_user_id: i32 = session_row.as_ref().unwrap().get::<i32, _>("user_id");
     if session_user_id != user.id {
-        return Err(AppError::Forbidden("Cette session ne vous appartient pas".to_string()));
+        return Err(AppError::Forbidden(
+            "Cette session ne vous appartient pas".to_string(),
+        ));
     }
 
     // Mettre à jour le statut de la session
@@ -594,4 +632,3 @@ pub async fn close_chat_session(
         })),
     ))
 }
-

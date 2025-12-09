@@ -4,39 +4,63 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text } from 'react-native';
 import { offlineService } from '../../services/offlineService';
 import { SafeIcon } from '../SafeIcon';
-import { modernColors } from '../../theme/modernTheme';
 
 export const OfflineIndicator: React.FC = React.memo(() => {
     const [isOnline, setIsOnline] = useState(true);
     const slideAnim = React.useRef(new Animated.Value(-100)).current;
 
     useEffect(() => {
-        setIsOnline(offlineService.getIsOnline());
-        
-        const unsubscribe = offlineService.onConnectionChange((online) => {
-            setIsOnline(online);
-            
-            if (!online) {
-                // Afficher l'indicateur
+        // ✅ SÉCURITÉ: Vérifier que offlineService existe
+        if (!offlineService) {
+            console.warn('[OfflineIndicator] offlineService non disponible');
+            return undefined;
+        }
+
+        // ✅ SÉCURITÉ: Utiliser isConnected() pour l'état initial
+        if (typeof offlineService.isConnected === 'function') {
+            setIsOnline(offlineService.isConnected());
+        }
+
+        // ✅ SÉCURITÉ: Utiliser EventEmitter.on pour écouter les changements
+        const handleOnline = () => {
+            setIsOnline(true);
+            // Masquer l'indicateur après 2 secondes
+            setTimeout(() => {
                 Animated.spring(slideAnim, {
-                    toValue: 0,
+                    toValue: -100,
                     useNativeDriver: true,
                 }).start();
-            } else {
-                // Masquer l'indicateur après 2 secondes
-                setTimeout(() => {
-                    Animated.spring(slideAnim, {
-                        toValue: -100,
-                        useNativeDriver: true,
-                    }).start();
-                }, 2000);
-            }
-        });
+            }, 2000);
+        };
 
-        return unsubscribe;
+        const handleOffline = () => {
+            setIsOnline(false);
+            // Afficher l'indicateur
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                useNativeDriver: true,
+            }).start();
+        };
+
+        // ✅ SÉCURITÉ: Vérifier que offlineService.on existe (EventEmitter)
+        if (typeof offlineService.on === 'function') {
+            offlineService.on('online', handleOnline);
+            offlineService.on('offline', handleOffline);
+
+            // ✅ CRITIQUE: Retourner une fonction de cleanup valide
+            return () => {
+                if (typeof offlineService.off === 'function') {
+                    offlineService.off('online', handleOnline);
+                    offlineService.off('offline', handleOffline);
+                }
+            };
+        }
+
+        // ✅ CRITIQUE: Retourner undefined si EventEmitter n'est pas disponible
+        return undefined;
     }, []);
 
     if (isOnline) {

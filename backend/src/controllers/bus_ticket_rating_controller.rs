@@ -67,7 +67,9 @@ pub async fn rate_bus_ticket(
 
     // Valider la note (1-5)
     if payload.rating < 1 || payload.rating > 5 {
-        return Err(AppError::BadRequest("La note doit être entre 1 et 5".to_string()));
+        return Err(AppError::BadRequest(
+            "La note doit être entre 1 et 5".to_string(),
+        ));
     }
 
     // Vérifier que le ticket appartient à l'utilisateur
@@ -93,7 +95,9 @@ pub async fn rate_bus_ticket(
 
     let ticket_user_id: i32 = ticket_row.as_ref().unwrap().get("user_id");
     if ticket_user_id != user.id {
-        return Err(AppError::Forbidden("Ce ticket ne vous appartient pas".to_string()));
+        return Err(AppError::Forbidden(
+            "Ce ticket ne vous appartient pas".to_string(),
+        ));
     }
 
     // Vérifier si l'utilisateur a déjà noté ce ticket
@@ -212,9 +216,15 @@ pub async fn get_ticket_rating_stats(
     Query(params): Query<serde_json::Value>,
 ) -> AppResult<impl IntoResponse> {
     let product_id = params.get("product_id").and_then(|v| v.as_str());
-    let agency_id = params.get("agency_id").and_then(|v| v.as_i64()).map(|v| v as i32);
+    let agency_id = params
+        .get("agency_id")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
 
-    info!("[get_ticket_rating_stats] Product: {:?}, Agency: {:?}", product_id, agency_id);
+    info!(
+        "[get_ticket_rating_stats] Product: {:?}, Agency: {:?}",
+        product_id, agency_id
+    );
 
     // Construire la requête selon les filtres
     let mut query = String::from(
@@ -279,5 +289,3 @@ pub async fn get_ticket_rating_stats(
         })),
     ))
 }
-
-

@@ -31,17 +31,18 @@ pub async fn list_pending_documents(
     Extension(AuthenticatedUser { id: admin_id, .. }): Extension<AuthenticatedUser>,
     Query(query): Query<ListPendingDocumentsQuery>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[list_pending_documents] Admin user_id={} liste documents pending", admin_id);
+    info!(
+        "[list_pending_documents] Admin user_id={} liste documents pending",
+        admin_id
+    );
 
     // Vérifier que l'utilisateur est admin
-    let is_admin: bool = sqlx::query_scalar(
-        "SELECT role = 'admin' FROM users WHERE id = $1"
-    )
-    .bind(admin_id)
-    .fetch_optional(&state.pg)
-    .await?
-    .unwrap_or(false);
-    
+    let is_admin: bool = sqlx::query_scalar("SELECT role = 'admin' FROM users WHERE id = $1")
+        .bind(admin_id)
+        .fetch_optional(&state.pg)
+        .await?
+        .unwrap_or(false);
+
     if !is_admin {
         return Err(AppError::Forbidden("Accès admin requis".to_string()));
     }
@@ -125,25 +126,30 @@ pub async fn list_pending_documents(
     // Convertir en JSON avec extraction résultats IA
     let mut docs_json = Vec::new();
     for row in documents {
-        let metadata: Option<serde_json::Value> = row.get::<Option<serde_json::Value>, _>("metadata");
-        
+        let metadata: Option<serde_json::Value> =
+            row.get::<Option<serde_json::Value>, _>("metadata");
+
         // Extraire résultats IA du metadata
         // Structure: metadata.ai_analysis.extracted_data.confidence_score
-        let (ai_confidence_score, ai_recommendation, has_ai_analysis) = if let Some(ref meta) = metadata {
+        let (ai_confidence_score, ai_recommendation, has_ai_analysis) = if let Some(ref meta) =
+            metadata
+        {
             if let Some(ai_analysis) = meta.get("ai_analysis") {
                 // Les résultats sont dans extracted_data
                 if let Some(extracted_data) = ai_analysis.get("extracted_data") {
-                    let confidence = extracted_data.get("confidence_score")
+                    let confidence = extracted_data
+                        .get("confidence_score")
                         .and_then(|v| v.as_f64());
-                    let recommendation = extracted_data.get("recommendation")
+                    let recommendation = extracted_data
+                        .get("recommendation")
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
                     (confidence, recommendation, true)
                 } else {
                     // Fallback: chercher directement dans ai_analysis
-                    let confidence = ai_analysis.get("confidence_score")
-                        .and_then(|v| v.as_f64());
-                    let recommendation = ai_analysis.get("recommendation")
+                    let confidence = ai_analysis.get("confidence_score").and_then(|v| v.as_f64());
+                    let recommendation = ai_analysis
+                        .get("recommendation")
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
                     let has_ai = confidence.is_some() || recommendation.is_some();
@@ -173,7 +179,10 @@ pub async fn list_pending_documents(
         }));
     }
 
-    info!("[list_pending_documents] ✅ {} documents pending trouvés", docs_json.len());
+    info!(
+        "[list_pending_documents] ✅ {} documents pending trouvés",
+        docs_json.len()
+    );
 
     Ok(Json(json!({
         "success": true,
@@ -201,14 +210,18 @@ pub async fn verify_document_manual(
     Path(document_id): Path<i32>,
     Json(payload): Json<VerifyDocumentRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[verify_document_manual] Admin user_id={} vérifie document ID={}, status={}", 
-          admin_id, document_id, payload.status);
+    info!(
+        "[verify_document_manual] Admin user_id={} vérifie document ID={}, status={}",
+        admin_id, document_id, payload.status
+    );
 
     // TODO: Vérifier que l'utilisateur est admin (voir commentaire ci-dessus)
 
     // Validation
     if !["approved", "rejected"].contains(&payload.status.as_str()) {
-        return Err(AppError::BadRequest("Status doit être 'approved' ou 'rejected'".to_string()));
+        return Err(AppError::BadRequest(
+            "Status doit être 'approved' ou 'rejected'".to_string(),
+        ));
     }
 
     let kyc_service = KYCService::new(Arc::new(state.pg.clone())).await;
@@ -225,10 +238,14 @@ pub async fn verify_document_manual(
         verified_at: Some(chrono::Utc::now()),
     };
 
-    kyc_service.verify_document(document_id, result, Some(admin_id)).await?;
+    kyc_service
+        .verify_document(document_id, result, Some(admin_id))
+        .await?;
 
-    info!("[verify_document_manual] ✅ Document ID={} vérifié manuellement par admin ID={}", 
-          document_id, admin_id);
+    info!(
+        "[verify_document_manual] ✅ Document ID={} vérifié manuellement par admin ID={}",
+        document_id, admin_id
+    );
 
     Ok(Json(json!({
         "success": true,
@@ -243,7 +260,10 @@ pub async fn get_document_details(
     Extension(AuthenticatedUser { id: admin_id, .. }): Extension<AuthenticatedUser>,
     Path(document_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_document_details] Admin user_id={} récupère document ID={}", admin_id, document_id);
+    info!(
+        "[get_document_details] Admin user_id={} récupère document ID={}",
+        admin_id, document_id
+    );
 
     let document = sqlx::query(
         r#"
@@ -268,7 +288,7 @@ pub async fn get_document_details(
         FROM user_documents ud
         INNER JOIN users u ON u.id = ud.user_id
         WHERE ud.id = $1
-        "#
+        "#,
     )
     .bind(document_id)
     .fetch_optional(&state.pg)
@@ -281,7 +301,10 @@ pub async fn get_document_details(
     let doc_row = match document {
         Some(row) => row,
         None => {
-            return Err(AppError::NotFound(format!("Document ID {} non trouvé", document_id)));
+            return Err(AppError::NotFound(format!(
+                "Document ID {} non trouvé",
+                document_id
+            )));
         }
     };
 
@@ -310,4 +333,3 @@ pub async fn get_document_details(
         "data": doc_json
     })))
 }
-

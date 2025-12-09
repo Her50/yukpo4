@@ -86,6 +86,7 @@ impl EmbeddingStatus {
 
 /// ? Service de suivi des embeddings
 pub struct EmbeddingTracker {
+    #[allow(dead_code)]
     pool: sqlx::PgPool,
     redis_client: redis::Client,
 }

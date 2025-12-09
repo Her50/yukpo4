@@ -28,7 +28,8 @@ export const useSafeEffect = (
         // Skip first run si demandé
         if (skipFirstRun && isFirstRun.current) {
             isFirstRun.current = false;
-            return;
+            // ✅ CRITIQUE: Retourner explicitement undefined
+            return undefined;
         }
 
         // Validation des dépendances

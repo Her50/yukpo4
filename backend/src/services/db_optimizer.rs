@@ -25,7 +25,9 @@ pub struct ServiceSummary {
 
 /// Service optimis? pour les requ?tes de base de donn?es
 pub struct DbOptimizer {
+    #[allow(dead_code)]
     pool: PgPool,
+    #[allow(dead_code)]
     redis_client: Option<redis::Client>,
 }
 

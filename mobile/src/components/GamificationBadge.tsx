@@ -35,7 +35,8 @@ export const GamificationBadge: React.FC<GamificationBadgeProps> = ({
     useEffect(() => {
         if (!userId) {
             setLoading(false);
-            return;
+            // ✅ CRITIQUE: Retourner explicitement undefined
+            return undefined;
         }
 
         const loadGamification = async () => {
@@ -69,7 +70,12 @@ export const GamificationBadge: React.FC<GamificationBadgeProps> = ({
             }
         };
 
-        loadGamification();
+        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+        loadGamification().catch(error => {
+            console.error('[GamificationBadge] Erreur loadGamification:', error);
+        });
+        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+        return undefined;
     }, [userId]);
 
     const animatedStyle = useAnimatedStyle(() => ({

@@ -520,8 +520,8 @@ pub async fn validate_video_generation_prerequisites(
             );
 
             warn!(
-                "[VideoGeneration] ❌ Validation échouée pour service_id={}, product_index={}, auto_generate_images={}:\n{}", 
-                service_id, 
+                "[VideoGeneration] ❌ Validation échouée pour service_id={}, product_index={}, auto_generate_images={}:\n{}",
+                service_id,
                 product_index,
                 payload.auto_generate_images.unwrap_or(false),
                 error_msg

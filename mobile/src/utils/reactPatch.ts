@@ -81,6 +81,22 @@ export const patchReactUseEffect = (ReactInstance: any) => {
         }
         const originalToUse = savedOriginalUseEffect;
 
+        // ✅ CRITIQUE: Patcher le module 'react' AVANT tout autre code
+        // Utiliser Object.defineProperty pour intercepter même les imports directs
+        try {
+            const reactModule = require('react');
+            if (reactModule && reactModule.useEffect) {
+                Object.defineProperty(reactModule, 'useEffect', {
+                    value: safeUseEffect,
+                    writable: true,
+                    configurable: true
+                });
+                console.log('[reactPatch] ✅ Module react patché via defineProperty');
+            }
+        } catch (defineError) {
+            console.warn('[reactPatch] ⚠️ Impossible de patcher via defineProperty:', defineError);
+        }
+
         // ✅ CRITIQUE: Vérifier qu'on ne remplace pas déjà le patch (éviter récursion)
         if (ReactInstance.useEffect === safeUseEffect) {
             console.warn('[reactPatch] ⚠️ Patch déjà appliqué sur cette instance, ignoré');
