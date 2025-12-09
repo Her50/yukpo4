@@ -31,6 +31,17 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
     style,
     onAnimationComplete,
 }) => {
+    // ✅ DEBUG: Logger les children pour identifier les problèmes
+    React.useEffect(() => {
+        if (__DEV__) {
+            try {
+                const { componentDebugger } = require('../utils/componentDebugger');
+                componentDebugger.logComponent('ScreenTransition', { type, duration, delay }, children);
+            } catch (e) {
+                // Ignorer si le debugger n'est pas disponible
+            }
+        }
+    }, [children, type, duration, delay]);
     const opacity = useSharedValue(0);
     const translateX = useSharedValue(type === 'slide' ? 50 : 0);
     const translateY = useSharedValue(
@@ -188,9 +199,36 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
         return mapped;
     })();
 
+    // ✅ CRITIQUE: Double vérification avant rendu pour éviter les strings non wrappées
+    const finalChildren = React.useMemo(() => {
+        if (safeChildren == null) {
+            return null;
+        }
+
+        // ✅ CRITIQUE: Si safeChildren est une string/number/boolean, la wrapper
+        if (typeof safeChildren === 'string' || typeof safeChildren === 'number' || typeof safeChildren === 'boolean') {
+            return <Text>{String(safeChildren)}</Text>;
+        }
+
+        // ✅ CRITIQUE: Si c'est un tableau, vérifier chaque élément
+        if (Array.isArray(safeChildren)) {
+            return safeChildren.map((child, idx) => {
+                if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                    return <Text key={idx}>{String(child)}</Text>;
+                }
+                if (child == null) {
+                    return null;
+                }
+                return child;
+            }).filter(child => child != null);
+        }
+
+        return safeChildren;
+    }, [safeChildren]);
+
     return (
         <Animated.View style={[styles.container, animatedStyle, style]}>
-            {safeChildren}
+            {finalChildren}
         </Animated.View>
     );
 });

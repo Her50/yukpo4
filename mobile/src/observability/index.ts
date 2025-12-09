@@ -78,13 +78,20 @@ const recordMetric = (name: string, value: number, unit: MetricUnit, tags?: Reco
         metrics.gauge(name, value, { unit, tags });
         return;
     }
-    // Fallback: breadcrumb for manual monitoring
-    Sentry.Native.addBreadcrumb({
-        category: 'metrics',
-        level: 'info',
-        message: `${name}=${value}`,
-        data: { unit, ...tags },
-    });
+    // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
+    if (Sentry.Native && typeof Sentry.Native.addBreadcrumb === 'function') {
+        try {
+            Sentry.Native.addBreadcrumb({
+                category: 'metrics',
+                level: 'info',
+                message: `${name}=${value}`,
+                data: { unit, ...tags },
+            });
+        } catch (error) {
+            // ✅ CRITIQUE: Ne pas bloquer si Sentry n'est pas disponible
+            console.warn('[observability] ⚠️ Erreur enregistrement métrique:', error);
+        }
+    }
 };
 
 const startFpsMonitor = () => {
@@ -108,12 +115,19 @@ const startFpsMonitor = () => {
         }
 
         if (lowFpsCounter >= fpsConfig.fpsWarningDebounce) {
-            Sentry.Native.captureMessage(
-                `[Performance] FPS moyen ${fps.toFixed(
-                    1,
-                )} durant ${fpsConfig.fpsSampleInterval / 1000}s (seuil ${fpsConfig.fpsWarningThreshold})`,
-                'warning',
-            );
+            // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
+            if (Sentry.Native && typeof Sentry.Native.captureMessage === 'function') {
+                try {
+                    Sentry.Native.captureMessage(
+                        `[Performance] FPS moyen ${fps.toFixed(
+                            1,
+                        )} durant ${fpsConfig.fpsSampleInterval / 1000}s (seuil ${fpsConfig.fpsWarningThreshold})`,
+                        'warning',
+                    );
+                } catch (error) {
+                    console.warn('[observability] ⚠️ Erreur capture message FPS:', error);
+                }
+            }
             lowFpsCounter = 0;
         }
     }, fpsConfig.fpsSampleInterval);
@@ -148,40 +162,59 @@ export const initObservability = () => {
         return;
     }
 
-    const extra = readExtra();
-    const envName =
-        extra.environment ||
-        extra.eas?.branch ||
-        process.env.EXPO_PUBLIC_APP_ENV ||
-        (__DEV__ ? 'development' : 'production');
-    const dsn = extra.sentryDsn || process.env.EXPO_PUBLIC_SENTRY_DSN;
-    const observabilityConfig = extra.observability ?? {};
+    try {
+        const extra = readExtra();
+        const envName =
+            extra.environment ||
+            extra.eas?.branch ||
+            process.env.EXPO_PUBLIC_APP_ENV ||
+            (__DEV__ ? 'development' : 'production');
+        const dsn = extra.sentryDsn || process.env.EXPO_PUBLIC_SENTRY_DSN;
+        const observabilityConfig = extra.observability ?? {};
 
-    fpsConfig = {
-        fpsSampleInterval: observabilityConfig.fpsSampleInterval ?? 6000,
-        fpsWarningThreshold: observabilityConfig.fpsWarningThreshold ?? 45,
-        fpsWarningDebounce: observabilityConfig.fpsWarningDebounce ?? 2,
-    };
+        fpsConfig = {
+            fpsSampleInterval: observabilityConfig.fpsSampleInterval ?? 6000,
+            fpsWarningThreshold: observabilityConfig.fpsWarningThreshold ?? 45,
+            fpsWarningDebounce: observabilityConfig.fpsWarningDebounce ?? 2,
+        };
 
-    Sentry.init({
-        dsn: dsn || undefined,
-        enableInExpoDevelopment: true,
-        debug: __DEV__,
-        environment: envName,
-        tracesSampleRate: observabilityConfig.traceSampleRate ?? 0.2,
-    });
+        // ✅ CORRIGÉ: Vérifier si Sentry est disponible avant initialisation
+        if (typeof Sentry !== 'undefined' && Sentry.init) {
+            Sentry.init({
+                dsn: dsn || undefined,
+                enableInExpoDevelopment: true,
+                debug: __DEV__,
+                environment: envName,
+                tracesSampleRate: observabilityConfig.traceSampleRate ?? 0.2,
+            });
 
-    Sentry.Native.setTag('app.platform', 'mobile');
-    if (extra.eas?.projectId) {
-        Sentry.Native.setTag('eas.projectId', extra.eas.projectId);
+            // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
+            if (Sentry.Native && typeof Sentry.Native.setTag === 'function') {
+                try {
+                    Sentry.Native.setTag('app.platform', 'mobile');
+                    if (extra.eas?.projectId) {
+                        Sentry.Native.setTag('eas.projectId', extra.eas.projectId);
+                    }
+                } catch (nativeError) {
+                    console.warn('[observability] ⚠️ Sentry Native Client non disponible:', nativeError);
+                }
+            } else {
+                console.warn('[observability] ⚠️ Sentry Native Client non disponible, utilisation limitée');
+            }
+        } else {
+            console.warn('[observability] ⚠️ Sentry non disponible, observability désactivée');
+        }
+
+        startFpsMonitor();
+
+        appStateSubscription?.remove();
+        appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+
+        initialized = true;
+    } catch (error) {
+        console.error('[observability] ❌ Erreur initialisation observability:', error);
+        // ✅ CRITIQUE: Ne pas bloquer l'app si l'observability échoue
     }
-
-    startFpsMonitor();
-
-    appStateSubscription?.remove();
-    appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
-
-    initialized = true;
 };
 
 export const recordWebSocketStatusChange = (status: 'online' | 'offline', metadata?: { durationMs?: number }) => {
@@ -190,12 +223,19 @@ export const recordWebSocketStatusChange = (status: 'online' | 'offline', metada
         recordMetric('mobile.ws.connect_time_ms', metadata.durationMs, 'millisecond');
     }
 
-    Sentry.Native.addBreadcrumb({
-        category: 'websocket',
-        level: status === 'online' ? 'info' : 'warning',
-        message: `WebSocket ${status}`,
-        data: metadata,
-    });
+    // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
+    if (Sentry.Native && typeof Sentry.Native.addBreadcrumb === 'function') {
+        try {
+            Sentry.Native.addBreadcrumb({
+                category: 'websocket',
+                level: status === 'online' ? 'info' : 'warning',
+                message: `WebSocket ${status}`,
+                data: metadata,
+            });
+        } catch (error) {
+            console.warn('[observability] ⚠️ Erreur enregistrement breadcrumb WebSocket:', error);
+        }
+    }
 };
 
 export const recordWebSocketReconnect = (attempt: number, delayMs: number) => {
@@ -204,15 +244,29 @@ export const recordWebSocketReconnect = (attempt: number, delayMs: number) => {
     metrics?.increment?.('mobile.ws.reconnect_attempts', 1, { unit: 'none', tags: { attempt: String(attempt) } });
 
     if (attempt >= 3) {
-        Sentry.Native.captureMessage(
-            `[WebSocket] ${attempt} tentatives de reconnexion (delay ${delayMs}ms)`,
-            attempt >= 5 ? 'error' : 'warning',
-        );
+        // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
+        if (Sentry.Native && typeof Sentry.Native.captureMessage === 'function') {
+            try {
+                Sentry.Native.captureMessage(
+                    `[WebSocket] ${attempt} tentatives de reconnexion (delay ${delayMs}ms)`,
+                    attempt >= 5 ? 'error' : 'warning',
+                );
+            } catch (error) {
+                console.warn('[observability] ⚠️ Erreur capture message WebSocket:', error);
+            }
+        }
     }
 };
 
 export const recordWebSocketError = (error: unknown) => {
-    Sentry.Native.captureException(error);
+    // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
+    if (Sentry.Native && typeof Sentry.Native.captureException === 'function') {
+        try {
+            Sentry.Native.captureException(error);
+        } catch (sentryError) {
+            console.warn('[observability] ⚠️ Erreur capture exception WebSocket:', sentryError);
+        }
+    }
 };
 
 export const recordWebSocketMessage = (type: string) => {
@@ -220,7 +274,14 @@ export const recordWebSocketMessage = (type: string) => {
 };
 
 export const captureHandledError = (error: unknown, context?: Record<string, unknown>) => {
-    Sentry.Native.captureException(error, { extra: context });
+    // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
+    if (Sentry.Native && typeof Sentry.Native.captureException === 'function') {
+        try {
+            Sentry.Native.captureException(error, { extra: context });
+        } catch (sentryError) {
+            console.warn('[observability] ⚠️ Erreur capture exception:', sentryError);
+        }
+    }
 };
 
 type PreviewMetricPayload = {
@@ -249,18 +310,25 @@ export const recordPreviewMetrics = (payload: PreviewMetricPayload) => {
     const warningsCount = payload.warnings?.length ?? 0;
     recordMetric('mobile.preview.warnings', warningsCount, 'none', { template: templateTag });
 
-    Sentry.Native.addBreadcrumb({
-        category: 'preview',
-        level: warningsCount > 0 ? 'warning' : 'info',
-        message: `Preview ${payload.template ?? 'unknown'} (${warningsCount} warnings)`,
-        data: {
-            template: payload.template,
-            clipCount: payload.clipCount,
-            durationSeconds: payload.durationSeconds,
-            latencyMs: payload.latencyMs,
-            warnings: payload.warnings,
-        },
-    });
+    // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
+    if (Sentry.Native && typeof Sentry.Native.addBreadcrumb === 'function') {
+        try {
+            Sentry.Native.addBreadcrumb({
+                category: 'preview',
+                level: warningsCount > 0 ? 'warning' : 'info',
+                message: `Preview ${payload.template ?? 'unknown'} (${warningsCount} warnings)`,
+                data: {
+                    template: payload.template,
+                    clipCount: payload.clipCount,
+                    durationSeconds: payload.durationSeconds,
+                    latencyMs: payload.latencyMs,
+                    warnings: payload.warnings,
+                },
+            });
+        } catch (error) {
+            console.warn('[observability] ⚠️ Erreur enregistrement breadcrumb preview:', error);
+        }
+    }
 };
 
 

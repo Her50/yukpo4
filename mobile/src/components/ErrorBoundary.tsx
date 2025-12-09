@@ -23,8 +23,44 @@ class ErrorBoundary extends Component<Props, State> {
     }
 
     componentDidCatch(error: Error, errorInfo: any) {
-        console.error('ErrorBoundary caught an error:', error, errorInfo);
-        Sentry.Native.captureException(error, { extra: errorInfo });
+        // ✅ AMÉLIORATION: Logging détaillé avec contexte
+        const detailedError = {
+            message: error?.message,
+            stack: error?.stack,
+            componentStack: errorInfo?.componentStack,
+            errorInfo,
+            timestamp: new Date().toISOString(),
+            platform: require('react-native').Platform.OS,
+        };
+
+        console.error('🚨 [ErrorBoundary] Erreur capturée:', detailedError);
+
+        // ✅ AMÉLIORATION: Logger les composants suspects si disponible
+        try {
+            const { componentDebugger } = require('../utils/componentDebugger');
+            const problematicLogs = componentDebugger.getProblematicLogs();
+            if (problematicLogs.length > 0) {
+                const errorMessage = `🚨 [ErrorBoundary] ${problematicLogs.length} composant(s) avec children primitifs détectés`;
+                console.error(errorMessage, problematicLogs);
+
+                // ✅ CRITIQUE: Envoyer au backend via remoteLoggingService
+                try {
+                    const { remoteLoggingService } = require('../services/remoteLoggingService');
+                    remoteLoggingService.error(
+                        errorMessage,
+                        'ErrorBoundary',
+                        { problematicLogs },
+                        error?.stack
+                    );
+                } catch (e) {
+                    // Ignorer si le service n'est pas disponible
+                }
+            }
+        } catch (e) {
+            // Ignorer si le debugger n'est pas disponible
+        }
+
+        Sentry.Native.captureException(error, { extra: detailedError });
     }
 
     handleRetry = () => {

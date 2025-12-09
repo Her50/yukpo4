@@ -16,6 +16,17 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
     children,
     scrollY,
 }) => {
+    // ✅ DEBUG: Logger les children pour identifier les problèmes
+    React.useEffect(() => {
+        if (__DEV__) {
+            try {
+                const { componentDebugger } = require('../utils/componentDebugger');
+                componentDebugger.logComponent('ModernBackground', { variant, scrollY: scrollY ? 'present' : 'null' }, children);
+            } catch (e) {
+                // Ignorer si le debugger n'est pas disponible
+            }
+        }
+    }, [children, variant, scrollY]);
     const getGradientColors = () => {
         switch (variant) {
             case 'home':
@@ -118,82 +129,41 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
 
             {/* Contenu principal */}
             <View style={styles.content}>
-                {(() => {
-                    // ✅ CRITIQUE: Gérer le cas où children est null/undefined
-                    if (children == null) {
+                {React.Children.map(children, (child, index) => {
+                    // ✅ CRITIQUE: Si c'est null ou undefined, retourner null
+                    if (child == null) {
                         return null;
                     }
 
-                    // ✅ CRITIQUE: Si children est une primitive, la wrapper directement
-                    if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
-                        return <Text>{String(children)}</Text>;
-                    }
-
-                    // ✅ CRITIQUE: Si children est un tableau, le traiter récursivement
-                    if (Array.isArray(children)) {
-                        const safeChildren = children
-                            .map((child, index) => {
-                                if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
-                                    return <Text key={index}>{String(child)}</Text>;
-                                }
-                                if (child == null) {
-                                    return null;
-                                }
-                                if (React.isValidElement(child)) {
-                                    return child;
-                                }
-                                return <Text key={index}>{String(child)}</Text>;
-                            })
-                            .filter(child => child != null); // Filtrer les null/undefined
-
-                        return safeChildren.length > 0 ? safeChildren : null;
-                    }
-
-                    // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
-                    const mappedChildren = React.Children.map(children, (child, index) => {
-                        // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
-                        if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
-                            return <Text key={index}>{String(child)}</Text>;
-                        }
-                        // Si c'est null ou undefined, retourner null
-                        if (child == null) {
-                            return null;
-                        }
-                        // Si c'est un tableau, le traiter récursivement
-                        if (Array.isArray(child)) {
-                            return child.map((item, itemIndex) => {
-                                if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
-                                    return <Text key={`${index}-${itemIndex}`}>{String(item)}</Text>;
-                                }
-                                if (item == null) {
-                                    return null;
-                                }
-                                if (React.isValidElement(item)) {
-                                    return item;
-                                }
-                                return <Text key={`${index}-${itemIndex}`}>{String(item)}</Text>;
-                            });
-                        }
-                        // Si c'est un élément React valide, le retourner tel quel
-                        if (React.isValidElement(child)) {
-                            return child;
-                        }
-                        // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
+                    // ✅ CRITIQUE: Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
+                    if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
                         return <Text key={index}>{String(child)}</Text>;
-                    });
-
-                    // ✅ CRITIQUE: Filtrer les null/undefined du résultat
-                    if (mappedChildren == null) {
-                        return null;
                     }
 
-                    if (Array.isArray(mappedChildren)) {
-                        const filtered = mappedChildren.filter(child => child != null);
-                        return filtered.length > 0 ? filtered : null;
+                    // ✅ CRITIQUE: Si c'est un tableau, le traiter récursivement
+                    if (Array.isArray(child)) {
+                        return child.map((item, itemIndex) => {
+                            if (item == null) {
+                                return null;
+                            }
+                            if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                                return <Text key={`${index}-${itemIndex}`}>{String(item)}</Text>;
+                            }
+                            if (React.isValidElement(item)) {
+                                return item;
+                            }
+                            return <Text key={`${index}-${itemIndex}`}>{String(item)}</Text>;
+                        });
                     }
 
-                    return mappedChildren;
-                })()}
+                    // ✅ CRITIQUE: Si c'est un élément React valide, le retourner tel quel
+                    if (React.isValidElement(child)) {
+                        return child;
+                    }
+
+                    // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
+                    return <Text key={index}>{String(child)}</Text>;
+                })}
             </View>
         </View>
     );
