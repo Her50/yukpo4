@@ -132,17 +132,82 @@ export const SwipeableCard: React.FC<SwipeableCardProps> = React.memo(({
 
             <GestureDetector gesture={panGesture}>
                 <Animated.View style={[styles.card, animatedStyle]}>
-                    {React.Children.map(children, (child, index) => {
-                        // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
-                        // Éviter de rendre des valeurs primitives directement
-                        if (typeof child === 'string' || typeof child === 'number') {
-                            return <Text key={index}>{String(child)}</Text>;
-                        }
-                        if (child == null) {
+                    {(() => {
+                        // ✅ CRITIQUE: Gérer le cas où children est null/undefined
+                        if (children == null) {
                             return null;
                         }
-                        return child;
-                    })}
+
+                        // ✅ CRITIQUE: Si children est une primitive, la wrapper directement
+                        if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
+                            return <Text>{String(children)}</Text>;
+                        }
+
+                        // ✅ CRITIQUE: Si children est un tableau, le traiter récursivement
+                        if (Array.isArray(children)) {
+                            const safeArray = children
+                                .map((child, idx) => {
+                                    if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                                        return <Text key={idx}>{String(child)}</Text>;
+                                    }
+                                    if (child == null) {
+                                        return null;
+                                    }
+                                    if (React.isValidElement(child)) {
+                                        return child;
+                                    }
+                                    return <Text key={idx}>{String(child)}</Text>;
+                                })
+                                .filter(child => child != null); // Filtrer les null/undefined
+
+                            return safeArray.length > 0 ? safeArray : null;
+                        }
+
+                        // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
+                        const mapped = React.Children.map(children, (child, idx) => {
+                            // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
+                            if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                                return <Text key={idx}>{String(child)}</Text>;
+                            }
+                            // Si c'est null ou undefined, retourner null
+                            if (child == null) {
+                                return null;
+                            }
+                            // Si c'est un tableau, le traiter récursivement
+                            if (Array.isArray(child)) {
+                                return child.map((item, itemIndex) => {
+                                    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                                        return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
+                                    }
+                                    if (item == null) {
+                                        return null;
+                                    }
+                                    if (React.isValidElement(item)) {
+                                        return item;
+                                    }
+                                    return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
+                                });
+                            }
+                            // Si c'est un élément React valide, le retourner tel quel
+                            if (React.isValidElement(child)) {
+                                return child;
+                            }
+                            // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
+                            return <Text key={idx}>{String(child)}</Text>;
+                        });
+
+                        // ✅ CRITIQUE: Filtrer les null/undefined du résultat
+                        if (mapped == null) {
+                            return null;
+                        }
+
+                        if (Array.isArray(mapped)) {
+                            const filtered = mapped.filter(child => child != null);
+                            return filtered.length > 0 ? filtered : null;
+                        }
+
+                        return mapped;
+                    })()}
                 </Animated.View>
             </GestureDetector>
         </View>
