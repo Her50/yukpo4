@@ -19,9 +19,9 @@ services:
       chmod +x /opt/blender/blender && \
       blender --version && \
       cd backend && \
-      export SQLX_OFFLINE=false && \
-      echo "✅ SQLX_OFFLINE configuré à false dans buildCommand" && \
-      echo "Mode SQLx: ONLINE (vérification DB à la compilation)" && \
+      export SQLX_OFFLINE=true && \
+      echo "✅ SQLX_OFFLINE configuré à true dans buildCommand" && \
+      echo "Mode SQLx: OFFLINE (utilisation des métadonnées .sqlx)" && \
       cargo build --release
     startCommand: cd backend && ./target/release/yukpomnang_backend
     envVars:
@@ -60,12 +60,13 @@ services:
         # ⚠️ IMPORTANT: Render.com ne supporte pas GPU, utiliser CPU uniquement
       - key: AR_RENDER_OUTPUT_DIR
         value: "/tmp/ar_renders"
-      # ✅ SQLx Configuration - Mode online pour vérification DB à la compilation
+      # ✅ SQLx Configuration - Mode offline pour compilation sans DB
       - key: SQLX_OFFLINE
-        value: "false"
-        # ✅ IMPORTANT: Mode online activé pour vérification DB pendant la compilation
-        # SQLx vérifie les requêtes SQL directement contre la base de données
-        # ⚠️ Nécessite que DATABASE_URL soit accessible pendant le build
+        value: "true"
+        # ✅ IMPORTANT: Mode offline activé - utilise les métadonnées .sqlx pré-générées
+        # SQLx lit les fichiers .sqlx/query-*.json au lieu de se connecter à la base
+        # ✅ Nécessite que les métadonnées soient à jour (cargo sqlx prepare)
+        # ✅ Compatible avec Render.com où la DB n'est pas accessible pendant le build
     healthCheckPath: /api/ping
     # ✅ NOUVEAU 2025-12-02: Health check pour load balancer
     # Le load balancer vérifie automatiquement la santé de chaque instance
