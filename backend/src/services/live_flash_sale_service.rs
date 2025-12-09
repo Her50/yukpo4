@@ -394,7 +394,20 @@ impl LiveFlashSaleService {
 
     pub async fn process_timers(state: Arc<AppState>) {
         if let Err(err) = Self::process_timers_inner(state.clone()).await {
-            log::error!("process_timers live flash sales failed: {:?}", err);
+            let error_str = format!("{:?}", err);
+            let error_lower = error_str.to_lowercase();
+            
+            // ✅ OPTIMISATION: Logger en debug pour les erreurs de connexion DB attendues
+            let is_connection_error = error_lower.contains("peer closed connection")
+                || error_lower.contains("connection reset by peer")
+                || error_lower.contains("broken pipe")
+                || error_lower.contains("tls close_notify");
+            
+            if is_connection_error {
+                log::debug!("process_timers live flash sales: erreur connexion DB attendue (ignorée): {:?}", err);
+            } else {
+                log::error!("process_timers live flash sales failed: {:?}", err);
+            }
         }
     }
 

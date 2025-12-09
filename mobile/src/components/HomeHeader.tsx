@@ -223,9 +223,9 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                             onLanguageChange={onLanguageChange}
                             compact={true}
                         />
-                        {/* ✅ NOUVEAU: Badge gamification compact */}
+                        {/* ✅ NOUVEAU: Badge gamification compact - SÉPARÉ du titre Yukpo */}
                         {user?.id && (
-                            <>
+                            <View style={{ marginRight: 8 }}> {/* ✅ CORRIGÉ: Ajouter margin pour séparer du titre */}
                                 <GamificationBadge
                                     userId={user.id}
                                     compact={true}
@@ -234,7 +234,11 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                                         onShowLeaderboard?.();
                                     }}
                                 />
-                                {/* ✅ NOUVEAU: Modals gamification */}
+                            </View>
+                        )}
+                        {/* ✅ NOUVEAU: Modals gamification - HORS du headerLeft pour éviter conflits */}
+                        {user?.id && (
+                            <>
                                 <LeaderboardModal
                                     visible={showLeaderboard}
                                     onClose={() => onCloseLeaderboard?.()}
@@ -326,12 +330,12 @@ const styles = StyleSheet.create({
     },
     headerContent: {
         paddingHorizontal: 16,
-        paddingVertical: 0, // ✅ CORRIGÉ: Pas de padding vertical pour centrer parfaitement
+        paddingVertical: 0,
         justifyContent: 'center', // ✅ Centrer verticalement
-        alignItems: 'stretch', // ✅ Étirer sur toute la largeur
-        flex: 1, // ✅ Prendre toute la hauteur disponible
-        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur du header
-        display: 'flex', // ✅ CORRIGÉ: Forcer display flex
+        alignItems: 'stretch',
+        height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Utiliser la hauteur fixe du header
+        minHeight: HEADER_MAX_HEIGHT,
+        maxHeight: HEADER_MAX_HEIGHT,
     },
     headerRow: {
         flexDirection: 'row',
@@ -339,10 +343,10 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 4,
         width: '100%',
-        gap: 8, // ✅ CORRIGÉ: Augmenter gap de 4 à 8px pour séparer le badge du texte
-        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour centrer parfaitement
-        minHeight: 44, // ✅ Hauteur minimale pour touch target
-        display: 'flex', // ✅ CORRIGÉ: Forcer display flex
+        gap: 8,
+        height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Hauteur fixe égale au header
+        minHeight: HEADER_MAX_HEIGHT,
+        maxHeight: HEADER_MAX_HEIGHT,
     },
     avatarContainer: {
         width: 36, // ✅ RÉDUIT: De 40 à 36px pour plus de compacité
@@ -356,43 +360,39 @@ const styles = StyleSheet.create({
         alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
         justifyContent: 'flex-start',
         minWidth: 0,
-        maxWidth: '28%', // ✅ CORRIGÉ: Réduire de 30% à 28% pour plus d'espace au centre
+        maxWidth: '28%',
         flexShrink: 1,
-        gap: 4, // ✅ RÉDUIT: De 6 à 4px pour plus de compacité
-        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour alignement parfait
-        paddingRight: 4, // ✅ CORRIGÉ: Ajouter padding à droite pour séparer du centre
+        gap: 4,
+        height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Hauteur fixe égale au header
+        paddingRight: 4,
     },
     brandTitleContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center', // ✅ CORRIGÉ: Centrer verticalement
-        paddingHorizontal: 12, // ✅ CORRIGÉ: Augmenter de 8 à 12px pour séparer du badge
-        minWidth: 100, // ✅ CORRIGÉ: Augmenter de 80 à 100px pour garantir l'espace
+        paddingHorizontal: 12,
+        minWidth: 100,
         flexShrink: 0,
-        zIndex: 1, // ✅ AJOUTÉ: S'assurer que le titre est au-dessus
-        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour centrer parfaitement
-        marginHorizontal: 4, // ✅ CORRIGÉ: Ajouter margin horizontal pour séparer des colonnes
+        zIndex: 1,
+        height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Hauteur fixe égale au header
+        marginHorizontal: 4,
     },
     brandTitleWrapper: {
-        // ✅ CORRIGÉ: Wrapper pour centrer parfaitement le texte verticalement
         justifyContent: 'center',
         alignItems: 'center',
-        height: '100%',
+        height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Hauteur fixe
         width: '100%',
     },
     brandTitleCompact: {
-        width: '100%',
-        fontSize: 18, // ✅ RÉDUIT: De 20 à 18px pour plus de compacité
+        fontSize: 18,
         fontWeight: '900',
         textAlign: 'center',
         letterSpacing: -0.2,
-        includeFontPadding: false, // ✅ CORRIGÉ: Désactiver le padding de police pour alignement précis
-        textAlignVertical: 'center', // ✅ CORRIGÉ: Centrer verticalement le texte
-        flexShrink: 0,
-        overflow: 'visible',
-        lineHeight: 20, // ✅ CORRIGÉ: Augmenter lineHeight de 18 à 20px pour meilleur centrage vertical
-        marginVertical: 0, // ✅ CORRIGÉ: Pas de margin vertical pour centrage parfait
-        paddingVertical: 0, // ✅ CORRIGÉ: Pas de padding vertical
+        includeFontPadding: false, // ✅ CORRIGÉ: Désactiver le padding de police
+        textAlignVertical: 'center', // ✅ CORRIGÉ: Centrer verticalement
+        lineHeight: 20, // ✅ CORRIGÉ: LineHeight égal à la hauteur du texte
+        marginVertical: 0,
+        paddingVertical: 0,
     },
     brandYuk: {
         color: '#EAB308',
@@ -406,10 +406,10 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         gap: 4,
         minWidth: 0,
-        maxWidth: '28%', // ✅ CORRIGÉ: Réduire de 30% à 28% pour symétrie avec la colonne gauche
+        maxWidth: '28%',
         flexShrink: 1,
-        height: '100%', // ✅ CORRIGÉ: Prendre 100% de la hauteur pour alignement parfait
-        paddingLeft: 4, // ✅ CORRIGÉ: Ajouter padding à gauche pour séparer du centre
+        height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Hauteur fixe égale au header
+        paddingLeft: 4,
     },
     headerButtonCompact: {
         width: 32, // ✅ RÉDUIT: De 36 à 32px pour plus de compacité

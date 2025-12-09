@@ -56,9 +56,24 @@ pub fn start_pipeline_health_worker(state: Arc<AppState>) {
                     .await;
                 }
                 Err(err) => {
-                    log::error!(
-                        "[PipelineWorker] Impossible de calculer le health pipeline: {err:?}"
-                    );
+                    let error_str = format!("{:?}", err);
+                    let error_lower = error_str.to_lowercase();
+                    
+                    // ✅ OPTIMISATION: Logger en debug pour les erreurs de connexion DB attendues
+                    let is_connection_error = error_lower.contains("peer closed connection")
+                        || error_lower.contains("connection reset by peer")
+                        || error_lower.contains("broken pipe")
+                        || error_lower.contains("tls close_notify");
+                    
+                    if is_connection_error {
+                        log::debug!(
+                            "[PipelineWorker] Erreur connexion DB attendue (ignorée): {err:?}"
+                        );
+                    } else {
+                        log::error!(
+                            "[PipelineWorker] Impossible de calculer le health pipeline: {err:?}"
+                        );
+                    }
                 }
             }
         }

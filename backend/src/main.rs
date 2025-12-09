@@ -710,6 +710,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 log::debug!("ℹ️ services_search_cache déjà en cours de refresh");
                             } else if error_str.contains("does not have a unique index") {
                                 log::warn!("⚠️ services_search_cache nécessite un index unique pour REFRESH CONCURRENTLY");
+                            } else if error_str.contains("peer closed connection")
+                                || error_str.contains("connection reset by peer")
+                                || error_str.contains("broken pipe")
+                                || error_str.contains("tls close_notify")
+                            {
+                                // ✅ OPTIMISATION: Logger en debug pour les erreurs de connexion DB attendues
+                                log::debug!("⚠️ Erreur connexion DB (ignorée) refresh services_search_cache: {}", e);
                             } else {
                                 log::warn!("⚠️ Erreur refresh services_search_cache: {}", e);
                             }
@@ -743,6 +750,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 log::debug!("ℹ️ active_products_cache déjà en cours de refresh");
                             } else if error_str.contains("does not have a unique index") {
                                 log::warn!("⚠️ active_products_cache nécessite un index unique pour REFRESH CONCURRENTLY");
+                            } else if error_str.contains("peer closed connection")
+                                || error_str.contains("connection reset by peer")
+                                || error_str.contains("broken pipe")
+                                || error_str.contains("tls close_notify")
+                            {
+                                // ✅ OPTIMISATION: Logger en debug pour les erreurs de connexion DB attendues
+                                log::debug!("⚠️ Erreur connexion DB (ignorée) refresh active_products_cache: {}", e);
                             } else {
                                 log::warn!("⚠️ Erreur refresh active_products_cache: {}", e);
                             }

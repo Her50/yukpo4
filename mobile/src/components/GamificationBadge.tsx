@@ -170,30 +170,31 @@ const styles = StyleSheet.create({
     },
     compactBadge: {
         flexDirection: 'row',
-        alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
-        justifyContent: 'center', // ✅ CORRIGÉ: Centrer horizontalement
-        paddingHorizontal: 6, // ✅ RÉDUIT: De 8 à 6px
-        paddingVertical: 4, // ✅ CORRIGÉ: Augmenter de 3 à 4px pour meilleur alignement vertical
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 6,
         backgroundColor: modernColors.primary,
-        borderRadius: 12, // ✅ RÉDUIT: De 16 à 12px
-        gap: 4, // ✅ CORRIGÉ: Augmenter de 3 à 4px pour séparer le trophée du nombre
-        minWidth: 0, // ✅ AJOUTÉ: Permet au badge de se rétrécir si nécessaire
-        maxWidth: 50, // ✅ CORRIGÉ: Limiter la largeur max pour éviter débordement
-        height: 28, // ✅ CORRIGÉ: Hauteur fixe au lieu de 100% pour meilleur contrôle
-        alignSelf: 'center', // ✅ CORRIGÉ: Centrer le badge dans son conteneur
+        borderRadius: 16,
+        gap: 6, // ✅ CORRIGÉ: Gap pour séparer le trophée du texte
+        minWidth: 0,
+        maxWidth: 80, // ✅ CORRIGÉ: Augmenter pour permettre "4 Yukpo"
+        height: 36, // ✅ CORRIGÉ: Hauteur fixe pour alignement parfait avec le header
+        alignSelf: 'center',
     },
     compactIcon: {
-        fontSize: 12, // ✅ RÉDUIT: De 14 à 12px
-        lineHeight: 12, // ✅ CORRIGÉ: Définir lineHeight égal à fontSize pour alignement
-        textAlignVertical: 'center', // ✅ CORRIGÉ: Centrer verticalement
+        fontSize: 16,
+        lineHeight: 16, // ✅ CORRIGÉ: LineHeight égal à fontSize
+        textAlignVertical: 'center',
+        includeFontPadding: false,
     },
     compactPoints: {
-        color: '#FFFFFF',
-        fontSize: 10, // ✅ RÉDUIT: De 11 à 10px
+        fontSize: 13,
         fontWeight: '700',
-        lineHeight: 10, // ✅ CORRIGÉ: Définir lineHeight égal à fontSize pour alignement
-        textAlignVertical: 'center', // ✅ CORRIGÉ: Centrer verticalement
-        includeFontPadding: false, // ✅ CORRIGÉ: Désactiver le padding de police
+        color: '#FFFFFF',
+        lineHeight: 13, // ✅ CORRIGÉ: LineHeight égal à fontSize
+        textAlignVertical: 'center',
+        includeFontPadding: false,
     },
 });
 

@@ -92,9 +92,24 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
     const [userServices, setUserServices] = useState<UserService[]>([]);
     const [userServicesByCategory, setUserServicesByCategory] = useState<Record<string, UserService[]>>({});
 
+    // ✅ CORRIGÉ: Cache pour éviter les requêtes redondantes
+    const servicesCacheRef = React.useRef<{ data: UserService[]; timestamp: number } | null>(null);
+    const CACHE_DURATION = 60000; // 60 secondes (plus long car moins fréquent)
+
     // ✅ Charger les services de l'utilisateur pour détecter prestataire vs client
     useEffect(() => {
         if (user?.id) {
+            // ✅ CORRIGÉ: Vérifier le cache avant de faire une requête
+            if (servicesCacheRef.current) {
+                const cacheAge = Date.now() - servicesCacheRef.current.timestamp;
+                if (cacheAge < CACHE_DURATION) {
+                    console.log('[SpecializedServicesSection] ✅ Utilisation du cache (âge:', cacheAge, 'ms)');
+                    setUserServices(servicesCacheRef.current.data);
+                    setLoading(false);
+                    return;
+                }
+            }
+
             // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
             loadUserServices().catch(error => {
                 console.error('[SpecializedServicesSection] Erreur loadUserServices:', error);
@@ -113,6 +128,11 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
 
             if (response.success && response.data) {
                 const services = (response.data as any).services || [];
+                // ✅ CORRIGÉ: Mettre en cache les résultats
+                servicesCacheRef.current = {
+                    data: services,
+                    timestamp: Date.now()
+                };
                 setUserServices(services);
 
                 // ✅ Grouper par catégorie

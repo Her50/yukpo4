@@ -33,7 +33,8 @@ import { navigateToVideoWizard } from '../utils/videoNavigation';
 import { homeScreenReducer, initialState } from './HomeScreen.reducer';
 // ✅ OPTIMISATION: Lazy loading pour réduire bundle size initial (-30% bundle size)
 // ✅ SÉCURITÉ: Vérification que les composants sont bien exportés avant lazy loading
-const SpecializedServicesSection = React.lazy(() => import('../components/SpecializedServicesSection'));
+// ✅ CORRIGÉ: Remplacer par un bouton simple au lieu du scroll horizontal
+import { SpecializedServicesButton } from '../components/SpecializedServicesButton';
 const GlobalPromoHighlights = React.lazy(() => import('../components/promotions/GlobalPromoHighlights'));
 const InfiniteFeed = React.lazy(() =>
     import('../components/InfiniteFeed')
@@ -82,31 +83,64 @@ const HomeScreen: React.FC = () => {
     // ✅ CORRIGÉ: Ajout d'un état pour éviter les clics multiples
     const [isNavigating, setIsNavigating] = React.useState(false);
 
+    // ✅ CORRIGÉ: Safety reset - forcer la réinitialisation si bloqué trop longtemps
+    React.useEffect(() => {
+        if (isNavigating) {
+            const timeout = setTimeout(() => {
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: isNavigating bloqué depuis 5s, réinitialisation forcée');
+                setIsNavigating(false);
+            }, 5000);
+            return () => clearTimeout(timeout);
+        }
+    }, [isNavigating]);
+
+    // ✅ CORRIGÉ: Safety reset pour loading
+    React.useEffect(() => {
+        if (state.ui.loading) {
+            const timeout = setTimeout(() => {
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: loading bloqué depuis 10s, réinitialisation forcée');
+                dispatch({ type: 'SET_LOADING', payload: false });
+            }, 10000);
+            return () => clearTimeout(timeout);
+        }
+    }, [state.ui.loading]);
+
     const handleDeliveryPress = React.useCallback(() => {
         // ✅ CORRIGÉ: Empêcher les clics multiples
-        if (isNavigating) return;
+        if (isNavigating || state.ui.loading) {
+            console.warn('[HomeScreen] ⚠️ Navigation bloquée - isNavigating:', isNavigating, 'loading:', state.ui.loading);
+            return;
+        }
 
+        console.log('[HomeScreen] 🚚 Début navigation vers Delivery');
         hapticPress(); // ✅ PHASE 2: Haptic feedback
         setIsNavigating(true);
-        console.log('[HomeScreen] 🚚 Navigation vers Delivery');
 
-        // ✅ CORRIGÉ: Navigation immédiate sans délai
+        // ✅ CORRIGÉ: Navigation immédiate sans délai avec try-catch robuste
         try {
+            console.log('[HomeScreen] 🚚 Tentative navigation...');
             const parentNavigation = (navigation as any).getParent();
             if (parentNavigation) {
+                console.log('[HomeScreen] 🚚 Utilisation parentNavigation');
                 parentNavigation.navigate('Delivery');
             } else {
+                console.log('[HomeScreen] 🚚 Utilisation navigation directe');
                 (navigation as any).navigate('Delivery');
             }
+            console.log('[HomeScreen] ✅ Navigation réussie');
             hapticSuccess(); // ✅ PHASE 2: Feedback succès
         } catch (error) {
             console.error('[HomeScreen] ❌ Erreur navigation vers Delivery:', error);
+            console.error('[HomeScreen] ❌ Stack:', (error as any)?.stack);
             Alert.alert('Erreur', 'Impossible d\'ouvrir la livraison.');
         } finally {
             // ✅ CORRIGÉ: Réinitialiser après un court délai
-            setTimeout(() => setIsNavigating(false), 500);
+            setTimeout(() => {
+                console.log('[HomeScreen] 🔄 Réinitialisation isNavigating');
+                setIsNavigating(false);
+            }, 500);
         }
-    }, [navigation, isNavigating]);
+    }, [navigation, isNavigating, state.ui.loading]);
 
     // ✅ NOUVEAU 2025-01-27: Charger le nombre de conversations non lues
     const loadUnreadChatCount = React.useCallback(async (): Promise<number> => {
@@ -132,39 +166,66 @@ const HomeScreen: React.FC = () => {
 
     const handleChatPress = React.useCallback(() => {
         // ✅ CORRIGÉ: Empêcher les clics multiples
-        if (isNavigating) return;
+        if (isNavigating || state.ui.loading) {
+            console.warn('[HomeScreen] ⚠️ Chat bloqué - isNavigating:', isNavigating, 'loading:', state.ui.loading);
+            return;
+        }
 
+        console.log('[HomeScreen] 💬 Début ouverture chat');
         hapticPress(); // ✅ PHASE 2: Haptic feedback
         setIsNavigating(true);
         const wasOpen = state.ui.showChatModal;
-        dispatch({ type: 'TOGGLE_CHAT_MODAL' });
 
-        // ✅ CORRIGÉ: Charger le compteur en arrière-plan SANS bloquer la navigation
-        if (!wasOpen && loadUnreadChatCount) {
-            // ✅ CORRIGÉ: Ne pas attendre - charger en arrière-plan
-            loadUnreadChatCount()
-                .then((count) => {
-                    dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: count });
-                })
-                .catch((error) => {
-                    console.error('[HomeScreen] Erreur chargement chat count:', error);
-                });
+        try {
+            dispatch({ type: 'TOGGLE_CHAT_MODAL' });
+            console.log('[HomeScreen] ✅ Chat modal togglé');
+
+            // ✅ CORRIGÉ: Charger le compteur en arrière-plan SANS bloquer la navigation
+            if (!wasOpen && loadUnreadChatCount) {
+                // ✅ CORRIGÉ: Ne pas attendre - charger en arrière-plan
+                loadUnreadChatCount()
+                    .then((count) => {
+                        dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: count });
+                    })
+                    .catch((error) => {
+                        console.error('[HomeScreen] Erreur chargement chat count:', error);
+                    });
+            }
+        } catch (error) {
+            console.error('[HomeScreen] ❌ Erreur ouverture chat:', error);
+        } finally {
+            // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour les modals)
+            setTimeout(() => {
+                console.log('[HomeScreen] 🔄 Réinitialisation isNavigating (chat)');
+                setIsNavigating(false);
+            }, 100);
         }
-
-        // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour les modals)
-        setIsNavigating(false);
-    }, [state.ui.showChatModal, loadUnreadChatCount, isNavigating]);
+    }, [state.ui.showChatModal, loadUnreadChatCount, isNavigating, state.ui.loading]);
 
     const handleNotificationPress = React.useCallback(() => {
         // ✅ CORRIGÉ: Empêcher les clics multiples
-        if (isNavigating) return;
+        if (isNavigating || state.ui.loading) {
+            console.warn('[HomeScreen] ⚠️ Notifications bloquées - isNavigating:', isNavigating, 'loading:', state.ui.loading);
+            return;
+        }
 
+        console.log('[HomeScreen] 🔔 Début ouverture notifications');
         hapticPress(); // ✅ PHASE 2: Haptic feedback
         setIsNavigating(true);
-        dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
-        // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour les modals)
-        setTimeout(() => setIsNavigating(false), 100);
-    }, [isNavigating]);
+
+        try {
+            dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
+            console.log('[HomeScreen] ✅ Notification modal togglé');
+        } catch (error) {
+            console.error('[HomeScreen] ❌ Erreur ouverture notifications:', error);
+        } finally {
+            // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour les modals)
+            setTimeout(() => {
+                console.log('[HomeScreen] 🔄 Réinitialisation isNavigating (notifications)');
+                setIsNavigating(false);
+            }, 100);
+        }
+    }, [isNavigating, state.ui.loading]);
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
@@ -1362,28 +1423,16 @@ const HomeScreen: React.FC = () => {
                         // React Native calculera automatiquement les hauteurs réelles
                         // Cela évite les problèmes de sections mal positionnées ou coupées
                         renderItem={({ item }) => {
-                            // ✅ NOUVEAU: Section Services Spécialisés (AVANT le carousel pour visibilité)
+                            // ✅ CORRIGÉ: Bouton élégant pour services spécialisés (au lieu du scroll horizontal)
                             if (item.type === 'specialized') {
                                 return (
                                     <AnimatedCard index={0} delay={0}>
-                                        <ErrorBoundary
-                                            fallback={
-                                                <View style={{ padding: 20, alignItems: 'center', backgroundColor: modernColors.surface, borderRadius: 12, margin: 16 }}>
-                                                    <Text style={{ fontSize: 16, fontWeight: '600', color: modernColors.text, marginBottom: 8 }}>⚠️ Erreur de chargement</Text>
-                                                    <Text style={{ fontSize: 14, color: modernColors.textSecondary, textAlign: 'center' }}>
-                                                        Impossible de charger les services spécialisés. Veuillez réessayer.
-                                                    </Text>
-                                                </View>
-                                            }
-                                        >
-                                            <Suspense fallback={
-                                                <View style={{ padding: 20, alignItems: 'center' }}>
-                                                    <ActivityIndicator size="small" color={modernColors.primary} />
-                                                </View>
-                                            }>
-                                                <SpecializedServicesSection />
-                                            </Suspense>
-                                        </ErrorBoundary>
+                                        <SpecializedServicesButton
+                                            onPress={() => {
+                                                hapticPress();
+                                                (navigation as any).navigate('SpecializedServicesHub');
+                                            }}
+                                        />
                                     </AnimatedCard>
                                 );
                             }

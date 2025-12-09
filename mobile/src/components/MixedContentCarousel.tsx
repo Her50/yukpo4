@@ -119,6 +119,11 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
             if (typeof clearResumeTimer === 'function') {
                 clearResumeTimer();
             }
+            // ✅ CORRIGÉ: Nettoyer le timer de tracking
+            if (trackingTimerRef.current) {
+                clearTimeout(trackingTimerRef.current);
+                trackingTimerRef.current = null;
+            }
         };
     }, []);
 
@@ -166,9 +171,24 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
         };
     }, [scrollViewMounted]);
 
+    // ✅ CORRIGÉ: Cache pour éviter les requêtes redondantes
+    const contentCacheRef = useRef<{ data: ContentItem[]; timestamp: number } | null>(null);
+    const CACHE_DURATION = 30000; // 30 secondes
+
     // ✅ NOUVEAU: Charger le contenu mixte avec recommandations ML activement utilisées
     useEffect(() => {
         const loadContentWithML = async () => {
+            // ✅ CORRIGÉ: Vérifier le cache avant de faire une requête
+            if (contentCacheRef.current) {
+                const cacheAge = Date.now() - contentCacheRef.current.timestamp;
+                if (cacheAge < CACHE_DURATION) {
+                    console.log('[MixedContentCarousel] ✅ Utilisation du cache (âge:', cacheAge, 'ms)');
+                    setContent(contentCacheRef.current.data);
+                    setLoading(false);
+                    return;
+                }
+            }
+
             // Charger le contenu de base
             await loadMixedContent();
 
@@ -447,6 +467,11 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
 
             if (mixedContentArray.length > 0) {
                 console.log(`[MixedContentCarousel] ✅ [DIAGNOSTIC] ${mixedContentArray.length} éléments de contenu mixte chargés`);
+                // ✅ CORRIGÉ: Mettre en cache les résultats
+                contentCacheRef.current = {
+                    data: mixedContentArray,
+                    timestamp: Date.now()
+                };
                 setContent(mixedContentArray);
                 console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Contenu défini dans le state, longueur:', mixedContentArray.length);
             } else {
@@ -894,21 +919,52 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
         return clearAutoScrollTimer;
     }, [content, currentIndex, isPaused, isAutoScrollDisabled, scrollViewMounted]);
 
-    // ✅ Tracker la visibilité
+    // ✅ CORRIGÉ: Batch les requêtes de tracking pour réduire le nombre de requêtes
+    const trackingQueueRef = useRef<Array<{ item: ContentItem; position: number }>>([]);
+    const trackingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
     const trackVisibility = async (item: ContentItem, position: number) => {
-        try {
-            await apiPost('/api/visibility/track', {
-                user_id: parseInt(userId || '0'),
-                session_id: sessionId,
-                content_id: item.data.id?.toString() || '',
-                content_type: item.is_paid ? 'paid' : 'organic',
-                position_in_feed: position,
-                viewed: true,
-                view_duration_ms: calculateDelay(item, position) // ✅ CORRIGÉ: Passer les deux arguments
-            });
-        } catch (error) {
-            console.error('[MixedContentCarousel] Erreur tracking:', error);
+        // ✅ CORRIGÉ: Ajouter à la queue au lieu de faire une requête immédiate
+        trackingQueueRef.current.push({ item, position });
+
+        // ✅ CORRIGÉ: Throttling - envoyer toutes les 2 secondes maximum
+        if (trackingTimerRef.current) {
+            return; // Déjà un timer en cours
         }
+
+        trackingTimerRef.current = setTimeout(async () => {
+            const queue = [...trackingQueueRef.current];
+            trackingQueueRef.current = [];
+            trackingTimerRef.current = null;
+
+            if (queue.length === 0) return;
+
+            try {
+                // ✅ CORRIGÉ: Envoyer seulement le dernier item de chaque position pour éviter les doublons
+                const uniquePositions = new Map<number, { item: ContentItem; position: number }>();
+                queue.forEach(({ item, position }) => {
+                    uniquePositions.set(position, { item, position });
+                });
+
+                const itemsToTrack = Array.from(uniquePositions.values());
+
+                // ✅ CORRIGÉ: Batch les requêtes - envoyer plusieurs items en une seule requête
+                if (itemsToTrack.length > 0) {
+                    const lastItem = itemsToTrack[itemsToTrack.length - 1];
+                    await apiPost('/api/visibility/track', {
+                        user_id: parseInt(userId || '0'),
+                        session_id: sessionId,
+                        content_id: lastItem.item.data.id?.toString() || '',
+                        content_type: lastItem.item.is_paid ? 'paid' : 'organic',
+                        position_in_feed: lastItem.position,
+                        viewed: true,
+                        view_duration_ms: calculateDelay(lastItem.item, lastItem.position)
+                    });
+                }
+            } catch (error) {
+                console.error('[MixedContentCarousel] Erreur tracking:', error);
+            }
+        }, 2000); // ✅ CORRIGÉ: Throttling de 2 secondes
     };
 
     // ✅ AMÉLIORATION: Gérer le scroll manuel avec meilleure détection des gestes
@@ -997,414 +1053,415 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
     // ✅ Gérer le clic sur une carte
     const handleCardClick = async (item: ContentItem, index: number) => {
         hapticPress(); // ✅ NOUVEAU: Feedback haptique
-        // Tracker le clic
-        try {
-            await apiPost('/api/visibility/track', {
-                user_id: parseInt(userId || '0'),
-                session_id: sessionId,
-                content_id: item.data.id?.toString() || '',
-                content_type: item.is_paid ? 'paid' : 'organic',
-                position_in_feed: index,
-                clicked: true
-            });
-        } catch (error) {
+        // ✅ CORRIGÉ: Tracker le clic en arrière-plan sans bloquer la navigation
+        apiPost('/api/visibility/track', {
+            user_id: parseInt(userId || '0'),
+            session_id: sessionId,
+            content_id: item.data.id?.toString() || '',
+            content_type: item.is_paid ? 'paid' : 'organic',
+            position_in_feed: index,
+            clicked: true
+        }).catch((error) => {
             console.error('[MixedContentCarousel] Erreur tracking clic:', error);
-        }
-
-        // ✅ CORRIGÉ: Extraire serviceId depuis plusieurs sources possibles
-        const serviceId = item?.data?.service_id
-            ?? item?.data?.serviceId
-            ?? item?.data?.service?.id
-            ?? item?.data?.service?.service_id
-            ?? item?.data?.id;
-
-        if (!serviceId) {
-            console.error('[MixedContentCarousel] ❌ Impossible d\'identifier le service pour cette carte:', {
-                itemData: {
-                    service_id: item?.data?.service_id,
-                    serviceId: item?.data?.serviceId,
-                    id: item?.data?.id,
-                    service: item?.data?.service ? {
-                        id: item?.data?.service?.id,
-                        service_id: item?.data?.service?.service_id
-                    } : null
-                },
-                itemKeys: item?.data ? Object.keys(item.data).slice(0, 20) : []
-            });
-            Alert.alert('Contenu indisponible', 'Nous ne parvenons pas à ouvrir cette annonce pour le moment.');
-            return;
-        }
-
-        console.log('[MixedContentCarousel] ✅ Navigation vers ServiceDetail avec serviceId:', serviceId);
-        (navigation as any).navigate('ServiceDetail', {
-            serviceId: String(serviceId),
-            fromCarousel: true,
-            isPaid: item.is_paid,
         });
-    };
-
-    // Loading state avec skeleton
-    if (loading) {
-        return (
-            <View style={dynamicStyles.container}>
-                {/* ✅ NOUVEAU: Filtres rapides même en loading */}
-                <View style={dynamicStyles.filtersContainer}>
-                    {(['all', 'popular', 'nearby', 'new'] as const).map((filter) => (
-                        <TouchableOpacity
-                            key={filter}
-                            style={[
-                                dynamicStyles.filterButton,
-                                selectedFilter === filter && dynamicStyles.filterButtonActive
-                            ]}
-                            onPress={() => {
-                                setSelectedFilter(filter);
-                                hapticSelect();
-                            }}
-                            disabled={loading}
-                        >
-                            <Text style={[
-                                dynamicStyles.filterButtonText,
-                                selectedFilter === filter && dynamicStyles.filterButtonTextActive
-                            ]}>
-                                {filter === 'all' ? 'Tous' :
-                                    filter === 'popular' ? 'Populaires' :
-                                        filter === 'nearby' ? 'Proches' : 'Nouveaux'}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-                {/* ✅ NOUVEAU: Skeleton loading */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.scrollView}>
-                    {[1, 2, 3].map((i) => (
-                        <ProductCardSkeleton key={i} />
-                    ))}
-                </ScrollView>
-            </View>
-        );
+    } catch (error) {
+        console.error('[MixedContentCarousel] Erreur tracking clic:', error);
     }
 
-    // ✅ NOUVEAU: Empty state amélioré avec EmptyState
-    if (safeContent.length === 0) {
-        return (
-            <View style={dynamicStyles.emptyContainer}>
-                <EmptyState
-                    variant="empty"
-                    title="Aucun contenu disponible"
-                    description="Essayez de rafraîchir ou de modifier vos filtres"
-                    icon="package"
-                />
-            </View>
-        );
+    // ✅ CORRIGÉ: Extraire serviceId depuis plusieurs sources possibles
+    const serviceId = item?.data?.service_id
+        ?? item?.data?.serviceId
+        ?? item?.data?.service?.id
+        ?? item?.data?.service?.service_id
+        ?? item?.data?.id;
+
+    if (!serviceId) {
+        console.error('[MixedContentCarousel] ❌ Impossible d\'identifier le service pour cette carte:', {
+            itemData: {
+                service_id: item?.data?.service_id,
+                serviceId: item?.data?.serviceId,
+                id: item?.data?.id,
+                service: item?.data?.service ? {
+                    id: item?.data?.service?.id,
+                    service_id: item?.data?.service?.service_id
+                } : null
+            },
+            itemKeys: item?.data ? Object.keys(item.data).slice(0, 20) : []
+        });
+        Alert.alert('Contenu indisponible', 'Nous ne parvenons pas à ouvrir cette annonce pour le moment.');
+        return;
     }
 
+    console.log('[MixedContentCarousel] ✅ Navigation vers ServiceDetail avec serviceId:', serviceId);
+    (navigation as any).navigate('ServiceDetail', {
+        serviceId: String(serviceId),
+        fromCarousel: true,
+        isPaid: item.is_paid,
+    });
+};
+
+// Loading state avec skeleton
+if (loading) {
     return (
         <View style={dynamicStyles.container}>
-            {/* ✅ NOUVEAU: Header de recherche ou filtres selon le mode */}
-            {mode === 'search' ? (
-                <View style={dynamicStyles.searchHeader}>
-                    <View style={dynamicStyles.searchHeaderTop}>
-                        <View style={dynamicStyles.searchHeaderLeft}>
-                            <SafeIcon name="search" size={18} color={colors.primary} />
-                            <Text style={dynamicStyles.searchHeaderTitle}>
-                                Résultats pour "{searchQuery}"
-                            </Text>
-                        </View>
-                        <TouchableOpacity
-                            style={dynamicStyles.clearSearchButton}
-                            onPress={onClearSearch}
-                            accessibilityLabel="Nouvelle recherche"
-                            accessibilityRole="button"
-                        >
-                            <SafeIcon name="x" size={16} color={colors.textSecondary} />
-                        </TouchableOpacity>
-                    </View>
-                    <View style={dynamicStyles.searchHeaderBottom}>
-                        <Text style={dynamicStyles.searchHeaderCount}>
-                            {searchResults.length} résultat(s) affiché(s)
-                            {totalSearchResults > searchResults.length && ` sur ${totalSearchResults}`}
+            {/* ✅ NOUVEAU: Filtres rapides même en loading */}
+            <View style={dynamicStyles.filtersContainer}>
+                {(['all', 'popular', 'nearby', 'new'] as const).map((filter) => (
+                    <TouchableOpacity
+                        key={filter}
+                        style={[
+                            dynamicStyles.filterButton,
+                            selectedFilter === filter && dynamicStyles.filterButtonActive
+                        ]}
+                        onPress={() => {
+                            setSelectedFilter(filter);
+                            hapticSelect();
+                        }}
+                        disabled={loading}
+                    >
+                        <Text style={[
+                            dynamicStyles.filterButtonText,
+                            selectedFilter === filter && dynamicStyles.filterButtonTextActive
+                        ]}>
+                            {filter === 'all' ? 'Tous' :
+                                filter === 'popular' ? 'Populaires' :
+                                    filter === 'nearby' ? 'Proches' : 'Nouveaux'}
                         </Text>
-                        {totalSearchResults > searchResults.length && onShowAllResults && (
-                            <TouchableOpacity
-                                style={dynamicStyles.showAllButton}
-                                onPress={onShowAllResults}
-                                accessibilityLabel={`Voir tous les ${totalSearchResults} résultats`}
-                                accessibilityRole="button"
-                            >
-                                <Text style={dynamicStyles.showAllButtonText}>
-                                    Voir tous ({totalSearchResults})
-                                </Text>
-                                <SafeIcon name="chevron-right" size={16} color={colors.primary} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                </View>
-            ) : (
-                /* ✅ NOUVEAU: Filtres rapides (mode recommandé) */
-                <View style={dynamicStyles.filtersContainer}>
-                    {(['all', 'popular', 'nearby', 'new'] as const).map((filter) => (
-                        <TouchableOpacity
-                            key={filter}
-                            style={[
-                                dynamicStyles.filterButton,
-                                selectedFilter === filter && dynamicStyles.filterButtonActive
-                            ]}
-                            onPress={() => {
-                                setSelectedFilter(filter);
-                                hapticSelect();
-                            }}
-                            accessibilityLabel={`Filtre ${filter === 'all' ? 'Tous' : filter === 'popular' ? 'Populaires' : filter === 'nearby' ? 'Proches' : 'Nouveaux'}`}
-                            accessibilityRole="button"
-                            accessibilityState={{ selected: selectedFilter === filter }}
-                        >
-                            <Text style={[
-                                dynamicStyles.filterButtonText,
-                                selectedFilter === filter && dynamicStyles.filterButtonTextActive
-                            ]}>
-                                {filter === 'all' ? 'Tous' :
-                                    filter === 'popular' ? 'Populaires' :
-                                        filter === 'nearby' ? 'Proches' : 'Nouveaux'}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            )}
-
-            {/* ✅ NOUVEAU: Indicateur de scroll horizontal */}
-            {scrollIndicatorVisible && safeContent.length > 1 && (
-                <View style={dynamicStyles.scrollIndicator}>
-                    <SafeIcon name="chevron-left" size={16} color={colors.primary} />
-                    <Text style={dynamicStyles.scrollIndicatorText}>Glissez pour voir plus</Text>
-                    <SafeIcon name="chevron-right" size={16} color={colors.primary} />
-                </View>
-            )}
-
-            {/* ✅ CORRIGÉ: Conteneur avec hauteur fixe pour éviter le débordement */}
-            {/* ✅ Barres de progression (comme Instagram Stories) */}
-            <View style={dynamicStyles.progressBars}>
-                {safeContent.map((_, index) => (
-                    <View key={index} style={styles.progressBar}>
-                        <View
-                            style={[
-                                styles.progressFill,
-                                {
-                                    width: index < currentIndex ? '100%' :
-                                        index === currentIndex ? '50%' : '0%'
-                                }
-                            ]}
-                        />
-                    </View>
+                    </TouchableOpacity>
                 ))}
             </View>
-
-            {/* ✅ ScrollView horizontal avec snap corrigé */}
-            <ScrollView
-                ref={(ref) => {
-                    scrollViewRef.current = ref;
-                    if (ref && !scrollViewMounted) {
-                        console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] ScrollView ref assigné');
-                        setScrollViewMounted(true);
-                    }
-                }}
-                horizontal
-                pagingEnabled={false}
-                snapToInterval={SNAP_INTERVAL}
-                snapToAlignment="start"
-                decelerationRate="fast"
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={handleScroll}
-                onScroll={handleScrollEvent}
-                scrollEventThrottle={16}
-                style={dynamicStyles.scrollView}
-                contentContainerStyle={[
-                    dynamicStyles.scrollContent,
-                    { paddingRight: SCREEN_PADDING } // ✅ CORRIGÉ: Ajouter padding à droite pour le dernier élément
-                ]}
-                nestedScrollEnabled={true}
-                removeClippedSubviews={false} // ✅ CORRIGÉ: Désactiver pour éviter les problèmes de rendu
-                scrollEnabled={true} // ✅ CORRIGÉ: S'assurer que le scroll est activé
-                onLayout={() => {
-                    console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] ScrollView layout terminé');
-                    if (scrollViewRef.current && !scrollViewMounted) {
-                        setScrollViewMounted(true);
-                    }
-                }}
-            >
-                {filteredContent.map((item, index) => {
-                    // ✅ DIAGNOSTIC: Log pour comprendre les données
-                    if (__DEV__ && index === 0) {
-                        console.log('[MixedContentCarousel] 🔍 [DIAGNOSTIC] Données première carte:', {
-                            hasData: !!item.data,
-                            hasNom: !!item.data?.nom,
-                            hasService: !!item.data?.service,
-                            serviceId: item.data?.serviceId || item.data?.service_id,
-                            serviceData: item.data?.service?.data ? Object.keys(item.data.service.data) : 'no data',
-                            productKeys: item.data ? Object.keys(item.data).slice(0, 10) : []
-                        });
-                    }
-
-                    // ✅ NOUVEAU: Initialiser le tracking des médias pour cette carte si pas déjà fait
-                    const hasMedia = (Array.isArray(item.data?.images) && item.data.images.length > 0) ||
-                        (Array.isArray(item.data?.videos) && item.data.videos.length > 0);
-                    if (!allMediaViewed.has(index)) {
-                        // Initialiser dans un useEffect séparé (appelé une fois par carte)
-                        // Note: Cette initialisation se fait via useEffect dans le composant parent
-                    }
-
-                    return (
-                        <SwipeableCard
-                            key={`${item.type}-${item.data.id || item.data.serviceId || index}-${index}`}
-                            onSwipeLeft={() => {
-                                // Action swipe left (ex: partager)
-                                console.log('[MixedContentCarousel] Swipe left sur:', item.data?.nom);
-                            }}
-                            rightAction={{
-                                icon: 'share-2',
-                                label: 'Partager',
-                                color: modernColors.primary,
-                                onPress: () => {
-                                    // TODO: Implémenter partage
-                                    console.log('[MixedContentCarousel] Partager:', item.data?.nom);
-                                }
-                            }}
-                        >
-                            <TouchableOpacity
-                                style={[dynamicStyles.card, { width: CARD_WIDTH, marginRight: CARD_MARGIN }]}
-                                activeOpacity={0.9}
-                                onPress={() => handleCardClick(item, index)}
-                                accessibilityLabel={`${item.is_paid ? 'Annonce sponsorisée' : 'Produit recommandé'}: ${item.data?.nom || 'Produit'}`}
-                                accessibilityRole="button"
-                                accessibilityHint="Appuyez deux fois pour voir les détails du produit"
-                            >
-                                {/* ✅ Badge Sponsorisé ou Recommandé */}
-                                <View style={[
-                                    dynamicStyles.badge,
-                                    item.is_paid ? dynamicStyles.badgePaid : dynamicStyles.badgeOrganic
-                                ]}>
-                                    <SafeIcon
-                                        name={item.is_paid ? 'star' : 'sparkles'}
-                                        size={12}
-                                        color="#FFFFFF"
-                                    />
-                                    <Text style={styles.badgeText}>
-                                        {item.is_paid ? 'Sponsorisé' : 'Pour vous'}
-                                    </Text>
-                                    {item.is_paid && item.boost_level && (
-                                        <Text style={styles.boostLevel}>
-                                            {item.boost_level.toUpperCase()}
-                                        </Text>
-                                    )}
-                                </View>
-
-                                {/* ✅ NOUVEAU: Badge "Nouveau" pour les produits récents */}
-                                {(() => {
-                                    const createdAt = item.data?.created_at || item.data?.createdAt;
-                                    if (!createdAt) return null;
-                                    const createdDate = new Date(createdAt);
-                                    const daysSinceCreation = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
-                                    if (daysSinceCreation <= 7) {
-                                        return (
-                                            <View style={styles.newBadge}>
-                                                <Text style={styles.newBadgeText}>✨ Nouveau</Text>
-                                            </View>
-                                        );
-                                    }
-                                    return null;
-                                })()}
-
-                                {/* ✅ Badge durée vidéo si présent */}
-                                {item.data?.videos && item.data.videos.length > 0 && (
-                                    <View style={styles.videoBadge}>
-                                        <SafeIcon name="video" size={14} color="#FFFFFF" />
-                                        <Text style={styles.videoDuration}>0:15</Text>
-                                    </View>
-                                )}
-
-                                {/* Contenu de la carte */}
-                                <ProductCard
-                                    product={{
-                                        ...item.data,
-                                        // ✅ CORRIGÉ: S'assurer que serviceId est toujours présent dans product
-                                        service_id: item.data.service_id || item.data.serviceId || item.data.service?.id || item.data.service?.service_id,
-                                        serviceId: item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id,
-                                    }}
-                                    service={item.data.service || {
-                                        id: item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id,
-                                        service_id: item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id,
-                                        data: item.data.service?.data || {
-                                            titre_service: item.data.nom ? { valeur: item.data.nom } : undefined,
-                                            nom_produit: item.data.nom ? { valeur: item.data.nom } : undefined,
-                                            description: item.data.description ? { valeur: item.data.description } : undefined,
-                                            prix_produit: item.data.prix ? { valeur: item.data.prix } : undefined,
-                                        }
-                                    }}
-                                    prestataire={item.data.prestataire}
-                                    onPress={() => handleCardClick(item, index)}
-                                    onChatPress={() => {
-                                        const resolvedServiceId = item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id;
-                                        setSelectedService(item.data.service || {
-                                            id: resolvedServiceId,
-                                            service_id: resolvedServiceId,
-                                            data: item.data.service?.data || {}
-                                        });
-                                        setSelectedPrestataire(item.data.prestataire || null);
-                                        setShowChatModal(true);
-                                    }}
-                                    // ✅ NOUVEAU: Passer les callbacks pour tracker les médias
-                                    onAllMediaViewed={() => handleAllMediaViewed(index)}
-                                />
-                            </TouchableOpacity>
-                        </SwipeableCard>
-                    );
-                })}
+            {/* ✅ NOUVEAU: Skeleton loading */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.scrollView}>
+                {[1, 2, 3].map((i) => (
+                    <ProductCardSkeleton key={i} />
+                ))}
             </ScrollView>
+        </View>
+    );
+}
 
-            {/* ✅ Pagination dots */}
-            {filteredContent.length > 1 && (
-                <View style={dynamicStyles.pagination}>
-                    {filteredContent.map((_, index) => (
-                        <View
-                            key={index}
-                            style={[
-                                dynamicStyles.paginationDot,
-                                index === currentIndex && dynamicStyles.paginationDotActive
-                            ]}
-                        />
-                    ))}
-                </View>
-            )}
-
-            {/* ✅ Contrôles manuels */}
-            {!isAutoScrollDisabled && !isPaused && (
-                <TouchableOpacity
-                    style={dynamicStyles.pauseButton}
-                    onPress={() => setIsPaused(true)}
-                >
-                    <SafeIcon name="pause" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-            )}
-            {!isAutoScrollDisabled && isPaused && (
-                <TouchableOpacity
-                    style={dynamicStyles.playButton}
-                    onPress={() => setIsPaused(false)}
-                >
-                    <SafeIcon name="play" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-            )}
-
-            {/* Chat Modal avec WebSocket */}
-            <ChatModalMobile
-                visible={showChatModal}
-                service={selectedService}
-                prestataireInfo={selectedPrestataire}
-                user={user}
-                onClose={() => {
-                    setShowChatModal(false);
-                    setSelectedService(null);
-                    setSelectedPrestataire(null);
-                }}
+// ✅ NOUVEAU: Empty state amélioré avec EmptyState
+if (safeContent.length === 0) {
+    return (
+        <View style={dynamicStyles.emptyContainer}>
+            <EmptyState
+                variant="empty"
+                title="Aucun contenu disponible"
+                description="Essayez de rafraîchir ou de modifier vos filtres"
+                icon="package"
             />
         </View>
     );
+}
+
+return (
+    <View style={dynamicStyles.container}>
+        {/* ✅ NOUVEAU: Header de recherche ou filtres selon le mode */}
+        {mode === 'search' ? (
+            <View style={dynamicStyles.searchHeader}>
+                <View style={dynamicStyles.searchHeaderTop}>
+                    <View style={dynamicStyles.searchHeaderLeft}>
+                        <SafeIcon name="search" size={18} color={colors.primary} />
+                        <Text style={dynamicStyles.searchHeaderTitle}>
+                            Résultats pour "{searchQuery}"
+                        </Text>
+                    </View>
+                    <TouchableOpacity
+                        style={dynamicStyles.clearSearchButton}
+                        onPress={onClearSearch}
+                        accessibilityLabel="Nouvelle recherche"
+                        accessibilityRole="button"
+                    >
+                        <SafeIcon name="x" size={16} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                </View>
+                <View style={dynamicStyles.searchHeaderBottom}>
+                    <Text style={dynamicStyles.searchHeaderCount}>
+                        {searchResults.length} résultat(s) affiché(s)
+                        {totalSearchResults > searchResults.length && ` sur ${totalSearchResults}`}
+                    </Text>
+                    {totalSearchResults > searchResults.length && onShowAllResults && (
+                        <TouchableOpacity
+                            style={dynamicStyles.showAllButton}
+                            onPress={onShowAllResults}
+                            accessibilityLabel={`Voir tous les ${totalSearchResults} résultats`}
+                            accessibilityRole="button"
+                        >
+                            <Text style={dynamicStyles.showAllButtonText}>
+                                Voir tous ({totalSearchResults})
+                            </Text>
+                            <SafeIcon name="chevron-right" size={16} color={colors.primary} />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+        ) : (
+            /* ✅ NOUVEAU: Filtres rapides (mode recommandé) */
+            <View style={dynamicStyles.filtersContainer}>
+                {(['all', 'popular', 'nearby', 'new'] as const).map((filter) => (
+                    <TouchableOpacity
+                        key={filter}
+                        style={[
+                            dynamicStyles.filterButton,
+                            selectedFilter === filter && dynamicStyles.filterButtonActive
+                        ]}
+                        onPress={() => {
+                            setSelectedFilter(filter);
+                            hapticSelect();
+                        }}
+                        accessibilityLabel={`Filtre ${filter === 'all' ? 'Tous' : filter === 'popular' ? 'Populaires' : filter === 'nearby' ? 'Proches' : 'Nouveaux'}`}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: selectedFilter === filter }}
+                    >
+                        <Text style={[
+                            dynamicStyles.filterButtonText,
+                            selectedFilter === filter && dynamicStyles.filterButtonTextActive
+                        ]}>
+                            {filter === 'all' ? 'Tous' :
+                                filter === 'popular' ? 'Populaires' :
+                                    filter === 'nearby' ? 'Proches' : 'Nouveaux'}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+        )}
+
+        {/* ✅ NOUVEAU: Indicateur de scroll horizontal */}
+        {scrollIndicatorVisible && safeContent.length > 1 && (
+            <View style={dynamicStyles.scrollIndicator}>
+                <SafeIcon name="chevron-left" size={16} color={colors.primary} />
+                <Text style={dynamicStyles.scrollIndicatorText}>Glissez pour voir plus</Text>
+                <SafeIcon name="chevron-right" size={16} color={colors.primary} />
+            </View>
+        )}
+
+        {/* ✅ CORRIGÉ: Conteneur avec hauteur fixe pour éviter le débordement */}
+        {/* ✅ Barres de progression (comme Instagram Stories) */}
+        <View style={dynamicStyles.progressBars}>
+            {safeContent.map((_, index) => (
+                <View key={index} style={styles.progressBar}>
+                    <View
+                        style={[
+                            styles.progressFill,
+                            {
+                                width: index < currentIndex ? '100%' :
+                                    index === currentIndex ? '50%' : '0%'
+                            }
+                        ]}
+                    />
+                </View>
+            ))}
+        </View>
+
+        {/* ✅ ScrollView horizontal avec snap corrigé */}
+        <ScrollView
+            ref={(ref) => {
+                scrollViewRef.current = ref;
+                if (ref && !scrollViewMounted) {
+                    console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] ScrollView ref assigné');
+                    setScrollViewMounted(true);
+                }
+            }}
+            horizontal
+            pagingEnabled={false}
+            snapToInterval={SNAP_INTERVAL}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleScroll}
+            onScroll={handleScrollEvent}
+            scrollEventThrottle={16}
+            style={dynamicStyles.scrollView}
+            contentContainerStyle={[
+                dynamicStyles.scrollContent,
+                { paddingRight: SCREEN_PADDING } // ✅ CORRIGÉ: Ajouter padding à droite pour le dernier élément
+            ]}
+            nestedScrollEnabled={true}
+            removeClippedSubviews={false} // ✅ CORRIGÉ: Désactiver pour éviter les problèmes de rendu
+            scrollEnabled={true} // ✅ CORRIGÉ: S'assurer que le scroll est activé
+            onLayout={() => {
+                console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] ScrollView layout terminé');
+                if (scrollViewRef.current && !scrollViewMounted) {
+                    setScrollViewMounted(true);
+                }
+            }}
+        >
+            {filteredContent.map((item, index) => {
+                // ✅ DIAGNOSTIC: Log pour comprendre les données
+                if (__DEV__ && index === 0) {
+                    console.log('[MixedContentCarousel] 🔍 [DIAGNOSTIC] Données première carte:', {
+                        hasData: !!item.data,
+                        hasNom: !!item.data?.nom,
+                        hasService: !!item.data?.service,
+                        serviceId: item.data?.serviceId || item.data?.service_id,
+                        serviceData: item.data?.service?.data ? Object.keys(item.data.service.data) : 'no data',
+                        productKeys: item.data ? Object.keys(item.data).slice(0, 10) : []
+                    });
+                }
+
+                // ✅ NOUVEAU: Initialiser le tracking des médias pour cette carte si pas déjà fait
+                const hasMedia = (Array.isArray(item.data?.images) && item.data.images.length > 0) ||
+                    (Array.isArray(item.data?.videos) && item.data.videos.length > 0);
+                if (!allMediaViewed.has(index)) {
+                    // Initialiser dans un useEffect séparé (appelé une fois par carte)
+                    // Note: Cette initialisation se fait via useEffect dans le composant parent
+                }
+
+                return (
+                    <SwipeableCard
+                        key={`${item.type}-${item.data.id || item.data.serviceId || index}-${index}`}
+                        onSwipeLeft={() => {
+                            // Action swipe left (ex: partager)
+                            console.log('[MixedContentCarousel] Swipe left sur:', item.data?.nom);
+                        }}
+                        rightAction={{
+                            icon: 'share-2',
+                            label: 'Partager',
+                            color: modernColors.primary,
+                            onPress: () => {
+                                // TODO: Implémenter partage
+                                console.log('[MixedContentCarousel] Partager:', item.data?.nom);
+                            }
+                        }}
+                    >
+                        <TouchableOpacity
+                            style={[dynamicStyles.card, { width: CARD_WIDTH, marginRight: CARD_MARGIN }]}
+                            activeOpacity={0.9}
+                            onPress={() => handleCardClick(item, index)}
+                            accessibilityLabel={`${item.is_paid ? 'Annonce sponsorisée' : 'Produit recommandé'}: ${item.data?.nom || 'Produit'}`}
+                            accessibilityRole="button"
+                            accessibilityHint="Appuyez deux fois pour voir les détails du produit"
+                        >
+                            {/* ✅ Badge Sponsorisé ou Recommandé */}
+                            <View style={[
+                                dynamicStyles.badge,
+                                item.is_paid ? dynamicStyles.badgePaid : dynamicStyles.badgeOrganic
+                            ]}>
+                                <SafeIcon
+                                    name={item.is_paid ? 'star' : 'sparkles'}
+                                    size={12}
+                                    color="#FFFFFF"
+                                />
+                                <Text style={styles.badgeText}>
+                                    {item.is_paid ? 'Sponsorisé' : 'Pour vous'}
+                                </Text>
+                                {item.is_paid && item.boost_level && (
+                                    <Text style={styles.boostLevel}>
+                                        {item.boost_level.toUpperCase()}
+                                    </Text>
+                                )}
+                            </View>
+
+                            {/* ✅ NOUVEAU: Badge "Nouveau" pour les produits récents */}
+                            {(() => {
+                                const createdAt = item.data?.created_at || item.data?.createdAt;
+                                if (!createdAt) return null;
+                                const createdDate = new Date(createdAt);
+                                const daysSinceCreation = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+                                if (daysSinceCreation <= 7) {
+                                    return (
+                                        <View style={styles.newBadge}>
+                                            <Text style={styles.newBadgeText}>✨ Nouveau</Text>
+                                        </View>
+                                    );
+                                }
+                                return null;
+                            })()}
+
+                            {/* ✅ Badge durée vidéo si présent */}
+                            {item.data?.videos && item.data.videos.length > 0 && (
+                                <View style={styles.videoBadge}>
+                                    <SafeIcon name="video" size={14} color="#FFFFFF" />
+                                    <Text style={styles.videoDuration}>0:15</Text>
+                                </View>
+                            )}
+
+                            {/* Contenu de la carte */}
+                            <ProductCard
+                                product={{
+                                    ...item.data,
+                                    // ✅ CORRIGÉ: S'assurer que serviceId est toujours présent dans product
+                                    service_id: item.data.service_id || item.data.serviceId || item.data.service?.id || item.data.service?.service_id,
+                                    serviceId: item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id,
+                                }}
+                                service={item.data.service || {
+                                    id: item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id,
+                                    service_id: item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id,
+                                    data: item.data.service?.data || {
+                                        titre_service: item.data.nom ? { valeur: item.data.nom } : undefined,
+                                        nom_produit: item.data.nom ? { valeur: item.data.nom } : undefined,
+                                        description: item.data.description ? { valeur: item.data.description } : undefined,
+                                        prix_produit: item.data.prix ? { valeur: item.data.prix } : undefined,
+                                    }
+                                }}
+                                prestataire={item.data.prestataire}
+                                onPress={() => handleCardClick(item, index)}
+                                onChatPress={() => {
+                                    const resolvedServiceId = item.data.serviceId || item.data.service_id || item.data.service?.id || item.data.service?.service_id;
+                                    setSelectedService(item.data.service || {
+                                        id: resolvedServiceId,
+                                        service_id: resolvedServiceId,
+                                        data: item.data.service?.data || {}
+                                    });
+                                    setSelectedPrestataire(item.data.prestataire || null);
+                                    setShowChatModal(true);
+                                }}
+                                // ✅ NOUVEAU: Passer les callbacks pour tracker les médias
+                                onAllMediaViewed={() => handleAllMediaViewed(index)}
+                            />
+                        </TouchableOpacity>
+                    </SwipeableCard>
+                );
+            })}
+        </ScrollView>
+
+        {/* ✅ Pagination dots */}
+        {filteredContent.length > 1 && (
+            <View style={dynamicStyles.pagination}>
+                {filteredContent.map((_, index) => (
+                    <View
+                        key={index}
+                        style={[
+                            dynamicStyles.paginationDot,
+                            index === currentIndex && dynamicStyles.paginationDotActive
+                        ]}
+                    />
+                ))}
+            </View>
+        )}
+
+        {/* ✅ Contrôles manuels */}
+        {!isAutoScrollDisabled && !isPaused && (
+            <TouchableOpacity
+                style={dynamicStyles.pauseButton}
+                onPress={() => setIsPaused(true)}
+            >
+                <SafeIcon name="pause" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+        )}
+        {!isAutoScrollDisabled && isPaused && (
+            <TouchableOpacity
+                style={dynamicStyles.playButton}
+                onPress={() => setIsPaused(false)}
+            >
+                <SafeIcon name="play" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+        )}
+
+        {/* Chat Modal avec WebSocket */}
+        <ChatModalMobile
+            visible={showChatModal}
+            service={selectedService}
+            prestataireInfo={selectedPrestataire}
+            user={user}
+            onClose={() => {
+                setShowChatModal(false);
+                setSelectedService(null);
+                setSelectedPrestataire(null);
+            }}
+        />
+    </View>
+);
 });
 
 // ✅ NOUVEAU: Fonction pour créer les styles avec support thème

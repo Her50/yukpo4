@@ -48,9 +48,24 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
     const [page, setPage] = useState(1);
     const [error, setError] = useState<string | null>(null);
 
+    // ✅ CORRIGÉ: Cache pour éviter les requêtes redondantes
+    const itemsCacheRef = useRef<{ data: any[]; timestamp: number } | null>(null);
+    const CACHE_DURATION = 30000; // 30 secondes
+
     // Charger les premiers items si initialItems est vide
     useEffect(() => {
         if (initialItems.length === 0 && !loading) {
+            // ✅ CORRIGÉ: Vérifier le cache avant de faire une requête
+            if (itemsCacheRef.current) {
+                const cacheAge = Date.now() - itemsCacheRef.current.timestamp;
+                if (cacheAge < CACHE_DURATION) {
+                    console.log('[InfiniteFeed] ✅ Utilisation du cache (âge:', cacheAge, 'ms)');
+                    setItems(itemsCacheRef.current.data);
+                    setLoading(false);
+                    return;
+                }
+            }
+
             // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
             loadMoreItems(true).catch(error => {
                 console.error('[InfiniteFeed] Erreur loadMoreItems:', error);
@@ -95,6 +110,11 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
                 setHasMore(false);
             } else {
                 if (isInitial) {
+                    // ✅ CORRIGÉ: Mettre en cache les résultats
+                    itemsCacheRef.current = {
+                        data: newItems,
+                        timestamp: Date.now()
+                    };
                     setItems(newItems);
                     setPage(1);
                 } else {
