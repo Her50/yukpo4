@@ -1,5 +1,5 @@
-// ✅ NOUVEAU 2025-12-02: Tâche de rafraîchissement automatique de la vue matérialisée
-// Exécutée toutes les 2 minutes pour maintenir les performances de recherche
+// ✅ OPTIMISÉ 2025-12-10: Tâche de rafraîchissement automatique de la vue matérialisée
+// Exécutée toutes les 5 minutes (au lieu de 2) pour réduire la charge sur le pool de connexions
 
 use crate::core::types::AppResult;
 use crate::utils::log::log_info;
@@ -11,8 +11,17 @@ use tokio::time::interval;
 pub async fn start_search_cache_refresh_task(pool: PgPool) {
     log_info("[SearchCacheRefresh] 🚀 Démarrage de la tâche de rafraîchissement automatique");
 
-    // Intervalle de 2 minutes
-    let mut interval_timer = interval(Duration::from_secs(120));
+    // ✅ OPTIMISÉ 2025-12-10: Intervalle augmenté à 5 minutes pour réduire la charge
+    // Configurable via variable d'environnement (défaut: 300s)
+    let refresh_interval_secs: u64 = std::env::var("SEARCH_CACHE_REFRESH_INTERVAL_SECS")
+        .unwrap_or_else(|_| "300".to_string())
+        .parse()
+        .unwrap_or(300);
+    let mut interval_timer = interval(Duration::from_secs(refresh_interval_secs));
+    log::info!(
+        "[SearchCacheRefresh] 🔄 Intervalle de refresh configuré: {}s (5 min)",
+        refresh_interval_secs
+    );
 
     let _ = tokio::spawn(async move {
         loop {
@@ -37,16 +46,25 @@ pub async fn start_search_cache_refresh_task(pool: PgPool) {
 async fn refresh_materialized_view(pool: &PgPool) -> AppResult<()> {
     let start = std::time::Instant::now();
 
+    // ✅ OPTIMISÉ 2025-12-10: Timeout augmenté à 30s car refresh_services_search_optimized() peut prendre 6-7s
+    // Si un pool séparé est utilisé pour les opérations longues, ce timeout peut être plus élevé
+    const REFRESH_TIMEOUT_SECS: u64 = 30;
+    
     // ✅ OPTIMISATION: Retry avec backoff exponentiel pour les erreurs de connexion
     let mut retry_count = 0;
     const MAX_RETRIES: u32 = 3;
     
     loop {
-        match sqlx::query("SELECT refresh_services_search_optimized()")
-            .execute(pool)
-            .await
+        // ✅ OPTIMISÉ: Ajouter un timeout sur la requête de refresh
+        let query_future = sqlx::query("SELECT refresh_services_search_optimized()")
+            .execute(pool);
+        
+        match tokio::time::timeout(
+            Duration::from_secs(REFRESH_TIMEOUT_SECS),
+            query_future
+        ).await
         {
-            Ok(_) => {
+            Ok(Ok(_)) => {
                 let duration = start.elapsed();
                 if retry_count > 0 {
                     log_info(&format!(
@@ -61,7 +79,7 @@ async fn refresh_materialized_view(pool: &PgPool) -> AppResult<()> {
                 }
                 return Ok(());
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 let error_str = e.to_string();
                 let error_lower = error_str.to_lowercase();
                 
@@ -94,6 +112,16 @@ async fn refresh_materialized_view(pool: &PgPool) -> AppResult<()> {
                         e
                     )));
                 }
+            }
+            Err(_) => {
+                // ✅ OPTIMISÉ 2025-12-10: Timeout sur le refresh (10s)
+                let duration = start.elapsed();
+                log::warn!(
+                    "[SearchCacheRefresh] ⏱️ Timeout après {}s (limite: {}s) - Refresh trop lent, ignoré",
+                    duration.as_secs(),
+                    REFRESH_TIMEOUT_SECS
+                );
+                return Ok(()); // Retourner OK pour ne pas bloquer les prochains refreshes
             }
         }
     }

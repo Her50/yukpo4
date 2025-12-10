@@ -13,7 +13,14 @@ const testStorage = async (retryCount: number = 0): Promise<boolean> => {
     try {
         // ✅ CRITIQUE: Attendre un peu si c'est le premier essai (AsyncStorage peut ne pas être prêt immédiatement)
         if (retryCount === 0) {
-            await new Promise(resolve => setTimeout(resolve, 100)); // Attendre 100ms
+            await new Promise(resolve => setTimeout(resolve, 200)); // ✅ AUGMENTÉ: De 100ms à 200ms pour plus de stabilité
+        }
+
+        // ✅ CRITIQUE: Vérifier que AsyncStorage est bien disponible avant d'essayer de l'utiliser
+        if (!AsyncStorage || typeof AsyncStorage.setItem !== 'function') {
+            console.warn('[SafeStorage] ⚠️ AsyncStorage non disponible (module non chargé)');
+            storageAvailable = false;
+            return false;
         }
 
         const testKey = '__storage_test__';
@@ -26,9 +33,11 @@ const testStorage = async (retryCount: number = 0): Promise<boolean> => {
         const errorMsg = error?.message || String(error);
 
         // ✅ CRITIQUE: Si c'est "Driver not found" ou "No available storage method found", réessayer avec délai
-        if ((errorMsg.includes('Driver not found') || errorMsg.includes('No available storage method found')) && retryCount < 3) {
-            console.warn(`[SafeStorage] ⚠️ Erreur storage (tentative ${retryCount + 1}/3), réessai dans 500ms...`);
-            await new Promise(resolve => setTimeout(resolve, 500)); // Attendre 500ms avant de réessayer
+        if ((errorMsg.includes('Driver not found') || errorMsg.includes('No available storage method found')) && retryCount < 5) {
+            // ✅ AUGMENTÉ: De 3 à 5 tentatives avec délai progressif
+            const delay = Math.min(500 * (retryCount + 1), 2000); // Délai progressif : 500ms, 1000ms, 1500ms, 2000ms, 2000ms
+            console.warn(`[SafeStorage] ⚠️ Erreur storage (tentative ${retryCount + 1}/5), réessai dans ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
             return testStorage(retryCount + 1);
         }
 

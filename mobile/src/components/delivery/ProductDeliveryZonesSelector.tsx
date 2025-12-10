@@ -13,6 +13,8 @@ import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { NativeButton } from '../NativeDesign';
 import SafeIcon from '../SafeIcon';
+// ✅ CORRIGÉ: Utiliser SafeStorage au lieu d'AsyncStorage directement
+import SafeStorage from '../../utils/safeStorage';
 
 interface DeliveryZone {
     id: string;
@@ -65,7 +67,8 @@ const ProductDeliveryZonesSelector: React.FC<ProductDeliveryZonesSelectorProps> 
 
     const loadProductZones = async () => {
         try {
-            const token = await require('@react-native-async-storage/async-storage').default.getItem('auth_token');
+            // ✅ CORRIGÉ: Utiliser SafeStorage au lieu d'AsyncStorage directement
+            const token = await SafeStorage.getItem('auth_token');
             const response = await fetch(
                 `${require('../../config/environment').config.API_BASE_URL}/api/products/${serviceId}/${productIndex}/zones`,
                 {

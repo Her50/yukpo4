@@ -240,6 +240,9 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                     decelerationRate="fast"
                     snapToInterval={CAROUSEL_WIDTH}
                     snapToAlignment="start"
+                    nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll imbriqué
+                    scrollEnabled={true} // ✅ CORRIGÉ: S'assurer que le scroll est activé
+                    bounces={true} // ✅ CORRIGÉ: Permettre le rebond pour meilleure UX
                 >
                     {allMedia.map((media, index) => {
                         // ✅ NOUVEAU: Ne rendre que les médias préchargés ou proches
@@ -315,7 +318,19 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                                                 }
                                             }}
                                             onError={(error) => {
-                                                console.error('[ProductMediaCarousel] ❌ Erreur vidéo:', error);
+                                                // ✅ CORRIGÉ: Ne pas logger les erreurs 404 (vidéos introuvables) comme erreurs critiques
+                                                const errorMessage = error?.message || String(error);
+                                                if (errorMessage.includes('404') || errorMessage.includes('Response code: 404')) {
+                                                    console.debug('[ProductMediaCarousel] ⚠️ Vidéo introuvable (404) - ignoré:', media.uri);
+                                                    // ✅ Arrêter la vidéo si elle ne peut pas être chargée
+                                                    const videoRef = videoRefs.current.get(index);
+                                                    if (videoRef) {
+                                                        videoRef.pauseAsync().catch(() => undefined);
+                                                    }
+                                                    setPlayingVideoIndex(null);
+                                                } else {
+                                                    console.error('[ProductMediaCarousel] ❌ Erreur vidéo:', error);
+                                                }
                                             }}
                                         />
                                         <TouchableOpacity

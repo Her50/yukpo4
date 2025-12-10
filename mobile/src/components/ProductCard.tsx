@@ -194,7 +194,7 @@ const RelatedProductsSection: React.FC<{ product: any; service: any; navigation:
             >
               {productImage ? (
                 <OptimizedImage
-                  source={{ uri: productImage }}
+                  uri={productImage}
                   style={relatedProductsStyles.productImage}
                   resizeMode="cover"
                 />
@@ -2402,7 +2402,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                     product.adresse ||
                                     product.ville ||
                                     product.region ||
-                                    prestataire?.adresse || // ✅ NOUVEAU: Vérifier prestataire.adresse
+                                    (prestataire?.adresse && typeof prestataire.adresse === 'string' ? prestataire.adresse : null) || // ✅ CORRIGÉ: Vérifier que prestataire.adresse est une string
                                     service?.adresse_complete ||
                                     service?.adresse ||
                                     'Localisation disponible'}
@@ -2982,7 +2982,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                           )}
 
                           {/* ✅ AMÉLIORÉ 2025-11-29: Localisation hiérarchique détaillée - Toujours afficher si disponible */}
-                          {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete || prestataire?.adresse) && (
+                          {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete || (prestataire?.adresse && typeof prestataire.adresse === 'string' && prestataire.adresse.trim().length > 0)) && (
                             <View style={styles.locationSection}>
                               <View style={styles.locationRow}>
                                 <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
@@ -2993,7 +2993,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                     product.adresse ||
                                     product.ville ||
                                     product.region ||
-                                    prestataire?.adresse ||
+                                    (prestataire?.adresse && typeof prestataire.adresse === 'string' ? prestataire.adresse : null) ||
                                     service?.adresse_complete ||
                                     service?.adresse ||
                                     'Localisation disponible'}

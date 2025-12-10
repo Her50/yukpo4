@@ -11777,6 +11777,12 @@ pub async fn ensure_scalability_indexes(pool: &PgPool) -> Result<(), sqlx::Error
         warn!("⚠️ Erreur lors de l'optimisation des requêtes lentes (peut être ignorée si déjà appliquée): {}", e);
     }
 
+    // ✅ CORRECTION 2025-12-10: Vérifier et corriger l'erreur u_client.name dans les vues/fonctions
+    let fix_u_client_name_sql = include_str!("../../migrations/20251210_fix_u_client_name_error.sql");
+    if let Err(e) = execute_multiple_sql_commands(pool, fix_u_client_name_sql).await {
+        warn!("⚠️ Erreur lors de la vérification u_client.name (peut être ignorée si déjà appliquée): {}", e);
+    }
+
     info!("✅ Index et vues matérialisées de scalabilité créés");
     Ok(())
 }

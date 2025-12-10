@@ -132,13 +132,13 @@ const HomeScreen: React.FC = () => {
     const [isNavigating, setIsNavigating] = React.useState(false);
 
     // ✅ CORRIGÉ: Safety reset - forcer la réinitialisation si bloqué trop longtemps
-    // ✅ RÉDUIT: Timeout de 5s à 2s pour navigation plus réactive
+    // ✅ RÉDUIT: Timeout de 2s à 500ms pour navigation plus réactive
     React.useEffect(() => {
         if (isNavigating) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: isNavigating bloqué depuis 2s, réinitialisation forcée');
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: isNavigating bloqué depuis 500ms, réinitialisation forcée');
                 setIsNavigating(false);
-            }, 2000); // ✅ RÉDUIT: De 5s à 2s
+            }, 500); // ✅ RÉDUIT: De 2s à 500ms pour réactivité maximale
             return () => clearTimeout(timeout);
         }
     }, [isNavigating]);
@@ -148,9 +148,9 @@ const HomeScreen: React.FC = () => {
     React.useEffect(() => {
         if (state.ui.loading) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: loading bloqué depuis 5s, réinitialisation forcée');
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: loading bloqué depuis 3s, réinitialisation forcée');
                 dispatch({ type: 'SET_LOADING', payload: false });
-            }, 5000); // ✅ RÉDUIT: De 10s à 5s
+            }, 3000); // ✅ RÉDUIT: De 5s à 3s pour réactivité
             return () => clearTimeout(timeout);
         }
     }, [state.ui.loading]);
@@ -1595,7 +1595,14 @@ const HomeScreen: React.FC = () => {
                                                     </View>
                                                 }
                                             >
-                                                <GlobalPromoHighlights />
+                                                {/* ✅ CORRIGÉ: Vérifier que GlobalPromoHighlights est bien chargé avant de l'utiliser */}
+                                                {GlobalPromoHighlights ? (
+                                                    <GlobalPromoHighlights />
+                                                ) : (
+                                                    <View style={{ padding: 20, alignItems: 'center' }}>
+                                                        <Text style={{ fontSize: 14, color: '#666' }}>Promotions non disponibles</Text>
+                                                    </View>
+                                                )}
                                             </Suspense>
                                         </ErrorBoundary>
                                     </AnimatedCard>
@@ -1654,35 +1661,42 @@ const HomeScreen: React.FC = () => {
                                                         </View>
                                                     }
                                                 >
-                                                    <InfiniteFeed
-                                                        userId={user?.id}
-                                                        location={state.metadata.selectedLocation ? {
-                                                            lat: state.metadata.selectedLocation.lat,
-                                                            lng: state.metadata.selectedLocation.lng,
-                                                        } : null}
-                                                        onItemPress={(item) => {
-                                                            // ✅ AMÉLIORÉ: Navigation sécurisée avec gestion d'erreur et haptic feedback
-                                                            try {
-                                                                hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
-                                                                const productId = item.id || item.service_id;
-                                                                if (!productId) {
-                                                                    console.warn('[HomeScreen] ⚠️ ProductId manquant pour l\'item:', item);
-                                                                    Alert.alert('Erreur', 'Identifiant du produit manquant.');
-                                                                    return;
+                                                    {/* ✅ CORRIGÉ: Vérifier que InfiniteFeed est bien chargé avant de l'utiliser */}
+                                                    {InfiniteFeed ? (
+                                                        <InfiniteFeed
+                                                            userId={user?.id}
+                                                            location={state.metadata.selectedLocation ? {
+                                                                lat: state.metadata.selectedLocation.lat,
+                                                                lng: state.metadata.selectedLocation.lng,
+                                                            } : null}
+                                                            onItemPress={(item) => {
+                                                                // ✅ AMÉLIORÉ: Navigation sécurisée avec gestion d'erreur et haptic feedback
+                                                                try {
+                                                                    hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
+                                                                    const productId = item.id || item.service_id;
+                                                                    if (!productId) {
+                                                                        console.warn('[HomeScreen] ⚠️ ProductId manquant pour l\'item:', item);
+                                                                        Alert.alert('Erreur', 'Identifiant du produit manquant.');
+                                                                        return;
+                                                                    }
+                                                                    navigation.navigate('ProductDetail' as never, {
+                                                                        productId: String(productId), // ✅ S'assurer que c'est une string
+                                                                    } as never);
+                                                                } catch (error: any) {
+                                                                    console.error('[HomeScreen] ❌ Erreur navigation vers ProductDetail:', {
+                                                                        error: error?.message || String(error),
+                                                                        stack: error?.stack,
+                                                                        item: item
+                                                                    });
+                                                                    Alert.alert('Erreur', 'Impossible d\'ouvrir les détails du produit. Veuillez réessayer.');
                                                                 }
-                                                                navigation.navigate('ProductDetail' as never, {
-                                                                    productId: String(productId), // ✅ S'assurer que c'est une string
-                                                                } as never);
-                                                            } catch (error: any) {
-                                                                console.error('[HomeScreen] ❌ Erreur navigation vers ProductDetail:', {
-                                                                    error: error?.message || String(error),
-                                                                    stack: error?.stack,
-                                                                    item: item
-                                                                });
-                                                                Alert.alert('Erreur', 'Impossible d\'ouvrir les détails du produit. Veuillez réessayer.');
-                                                            }
-                                                        }}
-                                                    />
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <View style={{ padding: 20, alignItems: 'center' }}>
+                                                            <Text style={{ fontSize: 14, color: '#666' }}>Feed non disponible</Text>
+                                                        </View>
+                                                    )}
                                                 </Suspense>
                                             </ErrorBoundary>
                                         </View>
@@ -1690,7 +1704,9 @@ const HomeScreen: React.FC = () => {
                                 );
                             }
                             // ✅ CRITIQUE: Retourner un View vide au lieu de null pour éviter les problèmes de rendu
-                            return <View key="empty-item" style={{ height: 0, width: 0 }} />;
+                            // ✅ SÉCURITÉ: Logger pour debug si un type inattendu est rencontré
+                            console.warn('[HomeScreen] ⚠️ Type d\'item inattendu dans FlatList:', item?.type);
+                            return <View key={`empty-item-${item?.id || 'unknown'}`} style={{ height: 0, width: 0 }} />;
                         }}
                         onScroll={onScroll}
                         scrollEventThrottle={16}

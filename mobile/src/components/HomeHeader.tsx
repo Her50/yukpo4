@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
         flexShrink: 1,
         gap: 6, // ✅ AUGMENTÉ: De 4 à 6px pour mieux séparer les éléments
         height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Hauteur fixe égale au header
-        paddingRight: 8, // ✅ AUGMENTÉ: De 4 à 8px pour séparer du titre Yukpo
+        paddingRight: 16, // ✅ CORRIGÉ: Augmenté de 8 à 16px pour bien séparer le trophée du texte Yukpo
     },
     brandTitleContainer: {
         flex: 1,

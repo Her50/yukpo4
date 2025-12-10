@@ -70,9 +70,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Pour gérer des millions de livraisons: 200-500 connexions par instance
     // et déployer 4-8 instances avec load balancer
     let max_connections: u32 = env::var("DB_POOL_SIZE")
-        .unwrap_or_else(|_| "200".to_string()) // ✅ Phase 1: Augmenté à 200 (était 100)
+        .unwrap_or_else(|_| "300".to_string()) // ✅ OPTIMISÉ 2025-12-10: Augmenté à 300 pour réduire les timeouts d'acquisition
         .parse()
-        .unwrap_or(200);
+        .unwrap_or(300);
 
     let min_connections: u32 = env::var("DB_POOL_MIN_SIZE")
         .unwrap_or_else(|_| "20".to_string()) // ✅ Phase 1: Augmenté à 20 (était 10)
@@ -89,9 +89,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .max_connections(max_connections)
         .min_connections(min_connections) // ✅ Maintenir un minimum de connexions
         .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
-        .idle_timeout(Some(std::time::Duration::from_secs(300))) // ✅ CORRIGÉ: Réduit de 600s à 300s (5 min) pour éviter les connexions mortes
-        .max_lifetime(Some(std::time::Duration::from_secs(1800))) // 30 minutes max par connexion
+        .idle_timeout(Some(std::time::Duration::from_secs(90))) // ✅ OPTIMISÉ 2025-12-10: Réduit à 90s (1.5 min) pour éviter les connexions mortes et crashes PostgreSQL
+        .max_lifetime(Some(std::time::Duration::from_secs(1800))) // ✅ OPTIMISÉ 2025-12-10: Augmenté à 1800s (30 min) pour réduire les reconnexions fréquentes
         .test_before_acquire(true) // ✅ Tester la connexion avant utilisation
+        .after_connect(|conn, _meta| {
+            // ✅ NOUVEAU 2025-12-10: Configurer la connexion pour éviter les timeouts et crashes
+            Box::pin(async move {
+                // Définir un statement_timeout pour éviter les requêtes qui bloquent trop longtemps
+                sqlx::query("SET statement_timeout = '30s'")
+                    .execute(&mut *conn)
+                    .await?;
+                // Définir idle_in_transaction_session_timeout pour éviter les transactions qui restent ouvertes
+                sqlx::query("SET idle_in_transaction_session_timeout = '60s'")
+                    .execute(&mut *conn)
+                    .await?;
+                Ok(())
+            })
+        })
         // ✅ CORRIGÉ 2025-11-27: Amélioration de la gestion des connexions PostgreSQL
         // - test_before_acquire permet de détecter les connexions mortes avant utilisation
         // - idle_timeout réduit pour éviter les connexions mortes qui causent "crash of another server process"
@@ -123,6 +137,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         min_connections,
         acquire_timeout_secs
     );
+
+    // ✅ NOUVEAU 2025-12-10: Créer un pool séparé pour les opérations longues (refresh materialized views)
+    // Ce pool est dédié aux opérations qui peuvent prendre plusieurs secondes et ne doit pas bloquer le pool principal
+    let pg_pool_long_ops = if let Ok(long_ops_url) = env::var("DATABASE_URL_LONG_OPS") {
+        // Pool dédié pour opérations longues (refresh materialized views, etc.)
+        match PgPoolOptions::new()
+            .max_connections(5) // Pool réduit pour opérations longues
+            .min_connections(1)
+            .acquire_timeout(std::time::Duration::from_secs(60)) // Timeout plus long pour opérations longues
+            .idle_timeout(Some(std::time::Duration::from_secs(300))) // 5 minutes
+            .max_lifetime(Some(std::time::Duration::from_secs(1800))) // 30 minutes
+            .test_before_acquire(false) // Pas besoin de tester avant acquisition pour opérations longues
+            .connect(&long_ops_url)
+            .await
+        {
+            Ok(pool) => {
+                log::info!("✅ Pool PostgreSQL longues opérations créé");
+                Some(pool)
+            }
+            Err(e) => {
+                log::warn!("⚠️ Impossible de créer le pool longues opérations: {}, utilisation du pool principal", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
 
     // ✅ NOUVEAU 2025-12-02: Créer le pool PostgreSQL read replica (lectures) si configuré
     let pg_read_pool = env::var("DATABASE_READ_REPLICA_URL")
@@ -677,10 +718,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CORRECTION RACINE: Refresh automatique des vues matérialisées avec mutex pour éviter refresh concurrents
     let pool_clone_matviews = Arc::new(app_state.pg.clone());
     // Mutex pour éviter les refresh concurrents de la même vue
+    // ✅ OPTIMISÉ 2025-12-10: Passer le pool longues opérations à la tâche de refresh
+    let pool_long_ops_for_refresh = pg_pool_long_ops.clone();
     let refresh_lock_services = Arc::new(Mutex::new(()));
     let refresh_lock_products = Arc::new(Mutex::new(()));
     let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
+
+        // ✅ OPTIMISÉ 2025-12-10: Utiliser un pool séparé pour les opérations longues si disponible
+        let pool_for_refresh = if let Some(ref long_ops_pool) = pool_long_ops_for_refresh {
+            long_ops_pool.clone()
+        } else {
+            pool_clone_matviews.clone()
+        };
 
         let mut interval_services = interval(Duration::from_secs(300)); // Toutes les 5 minutes pour services_search_cache
         let mut interval_products = interval(Duration::from_secs(600)); // Toutes les 10 minutes pour active_products_cache
@@ -700,8 +750,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .unwrap_or(false);
 
                     if view_exists {
+                        // ✅ OPTIMISÉ 2025-12-10: Utiliser pool séparé pour opérations longues
                         if let Err(e) = sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_cache")
-                            .execute(&*pool_clone_matviews)
+                            .execute(&*pool_for_refresh)
                             .await
                         {
                             let error_str = e.to_string().to_lowercase();
@@ -740,8 +791,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .unwrap_or(false);
 
                     if view_exists {
+                        // ✅ OPTIMISÉ 2025-12-10: Utiliser pool séparé pour opérations longues
                         if let Err(e) = sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY active_products_cache")
-                            .execute(&*pool_clone_matviews)
+                            .execute(&*pool_for_refresh)
                             .await
                         {
                             let error_str = e.to_string().to_lowercase();
