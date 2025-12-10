@@ -1,6 +1,5 @@
 // ✅ Phase 9 - Amélioration : Composant pour uploader des médias de preuve (pickup/delivery) - Mobile
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../../utils/safeStorage';
 import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
@@ -19,6 +18,7 @@ import { deliveryApi } from '../../services/api';
 import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliveryProofMedia } from '../../types/delivery';
+import SafeStorage from '../../utils/safeStorage';
 import { NativeCard } from '../NativeDesign';
 import SafeIcon from '../SafeIcon';
 import DeliveryProofVideoRecorder from './DeliveryProofVideoRecorder';

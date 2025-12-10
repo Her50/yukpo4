@@ -1,5 +1,4 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../../utils/safeStorage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -28,6 +27,7 @@ import { offlineStorage } from '../../services/offline_storage';
 import { pushNotificationService } from '../../services/push_notifications';
 import { syncService } from '../../services/sync_service';
 import { modernColors } from '../../theme/modernTheme';
+import SafeStorage from '../../utils/safeStorage';
 
 interface SpecializedService {
     id: number;
