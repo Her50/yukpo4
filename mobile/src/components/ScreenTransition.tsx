@@ -127,8 +127,51 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
             return null;
         }
 
-        // ✅ CRITIQUE: Si children est une primitive, la wrapper directement
-        if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
+        // ✅ CRITIQUE: Si children est un boolean false, retourner null (React Native ne peut pas rendre false)
+        if (typeof children === 'boolean') {
+            // ✅ CRITIQUE: Logger si on détecte un boolean false
+            if (!children) {
+                try {
+                    const { componentDebugger } = require('../utils/componentDebugger');
+                    const { remoteLoggingService } = require('../services/remoteLoggingService');
+                    const errorMsg = `🚨 [ScreenTransition] BOOLEAN FALSE DÉTECTÉ - Retour null`;
+                    console.warn(errorMsg);
+                    componentDebugger.logComponent('ScreenTransition', { type, duration, delay, hasBooleanFalse: true }, children);
+                    remoteLoggingService.warn(errorMsg, 'ScreenTransition', {
+                        children: String(children),
+                        type,
+                        duration,
+                        delay
+                    });
+                } catch (e) {
+                    // Ignorer si les services ne sont pas disponibles
+                }
+            }
+            return null; // Toujours null pour boolean (React Native ne peut pas rendre false)
+        }
+
+        // ✅ CRITIQUE: Si children est une string/number, la wrapper directement
+        if (typeof children === 'string' || typeof children === 'number') {
+            // ✅ CRITIQUE: Vérifier si c'est la string "false" (qui pourrait venir d'un boolean converti)
+            if (children === 'false' || children === 'true') {
+                try {
+                    const { componentDebugger } = require('../utils/componentDebugger');
+                    const { remoteLoggingService } = require('../services/remoteLoggingService');
+                    const errorMsg = `🚨 [ScreenTransition] STRING DÉTECTÉE DIRECTEMENT: "${children}"`;
+                    console.error(errorMsg);
+                    componentDebugger.logComponent('ScreenTransition', { type, duration, delay, hasStringChild: true, isBooleanString: true }, children);
+                    remoteLoggingService.error(errorMsg, 'ScreenTransition', {
+                        children: String(children),
+                        childrenType: 'boolean',
+                        type,
+                        duration,
+                        delay
+                    }, new Error().stack);
+                } catch (e) {
+                    // Ignorer si les services ne sont pas disponibles
+                }
+                return null; // Ne pas rendre "false" ou "true" comme string
+            }
             // ✅ CRITIQUE: Logger immédiatement si on détecte une string
             try {
                 const { componentDebugger } = require('../utils/componentDebugger');
@@ -152,7 +195,11 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
         if (Array.isArray(children)) {
             const safeArray = children
                 .map((child, index) => {
-                    if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                    // ✅ CRITIQUE: Filtrer les boolean false (React Native ne peut pas les rendre)
+                    if (typeof child === 'boolean') {
+                        return null; // Toujours null pour boolean
+                    }
+                    if (typeof child === 'string' || typeof child === 'number') {
                         return <Text key={index}>{String(child)}</Text>;
                     }
                     if (child == null) {
@@ -163,15 +210,60 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
                     }
                     return <Text key={index}>{String(child)}</Text>;
                 })
-                .filter(child => child != null); // Filtrer les null/undefined
+                .filter(child => child != null && child !== false); // Filtrer null, undefined et false
 
             return safeArray.length > 0 ? safeArray : null;
         }
 
         // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
         const mapped = React.Children.map(children, (child, index) => {
-            // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
-            if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+            // ✅ CRITIQUE: Si c'est un boolean false, retourner null (React Native ne peut pas rendre false)
+            if (typeof child === 'boolean') {
+                if (!child) {
+                    try {
+                        const { componentDebugger } = require('../utils/componentDebugger');
+                        const { remoteLoggingService } = require('../services/remoteLoggingService');
+                        const errorMsg = `🚨 [ScreenTransition] BOOLEAN FALSE DÉTECTÉ DANS React.Children.map - Retour null`;
+                        console.warn(errorMsg, { child, index, childrenType: typeof child });
+                        componentDebugger.logComponent('ScreenTransition', { type, duration, delay, hasBooleanFalse: true, childIndex: index }, child);
+                        remoteLoggingService.warn(errorMsg, 'ScreenTransition', {
+                            child: String(child),
+                            childIndex: index,
+                            childrenType: typeof child,
+                            allChildren: Array.isArray(children) ? children.length : 'not array',
+                            type,
+                            duration
+                        });
+                    } catch (e) {
+                        // Ignorer si les services ne sont pas disponibles
+                    }
+                }
+                return null; // Toujours null pour boolean
+            }
+
+            // Si c'est une valeur primitive (string, number), l'envelopper dans un Text
+            if (typeof child === 'string' || typeof child === 'number') {
+                // ✅ CRITIQUE: Vérifier si c'est la string "false" (qui pourrait venir d'un boolean converti)
+                if (child === 'false' || child === 'true') {
+                    try {
+                        const { componentDebugger } = require('../utils/componentDebugger');
+                        const { remoteLoggingService } = require('../services/remoteLoggingService');
+                        const errorMsg = `🚨 [ScreenTransition] STRING DÉTECTÉE DANS React.Children.map: "${child}"`;
+                        console.error(errorMsg, { child, index, childrenType: 'boolean' });
+                        componentDebugger.logComponent('ScreenTransition', { type, duration, delay, hasStringChild: true, childIndex: index, isBooleanString: true }, child);
+                        remoteLoggingService.error(errorMsg, 'ScreenTransition', {
+                            child: String(child),
+                            childIndex: index,
+                            childrenType: 'boolean',
+                            allChildren: Array.isArray(children) ? children.length : 'not array',
+                            type,
+                            duration
+                        }, new Error().stack);
+                    } catch (e) {
+                        // Ignorer si les services ne sont pas disponibles
+                    }
+                    return null; // Ne pas rendre "false" ou "true" comme string
+                }
                 // ✅ CRITIQUE: Logger immédiatement si on détecte une string dans React.Children.map
                 try {
                     const { componentDebugger } = require('../utils/componentDebugger');
@@ -198,18 +290,24 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
             }
             // Si c'est un tableau, le traiter récursivement
             if (Array.isArray(child)) {
-                return child.map((item, itemIndex) => {
-                    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                return child
+                    .map((item, itemIndex) => {
+                        // ✅ CRITIQUE: Filtrer les boolean false
+                        if (typeof item === 'boolean') {
+                            return null; // Toujours null pour boolean
+                        }
+                        if (typeof item === 'string' || typeof item === 'number') {
+                            return <Text key={`${index}-${itemIndex}`}>{String(item)}</Text>;
+                        }
+                        if (item == null) {
+                            return null;
+                        }
+                        if (React.isValidElement(item)) {
+                            return item;
+                        }
                         return <Text key={`${index}-${itemIndex}`}>{String(item)}</Text>;
-                    }
-                    if (item == null) {
-                        return null;
-                    }
-                    if (React.isValidElement(item)) {
-                        return item;
-                    }
-                    return <Text key={`${index}-${itemIndex}`}>{String(item)}</Text>;
-                });
+                    })
+                    .filter(item => item != null && item !== false); // Filtrer null, undefined et false
             }
             // Si c'est un élément React valide, vérifier récursivement ses children
             if (React.isValidElement(child)) {
@@ -221,8 +319,40 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
                         const wrapStringsInChildren = (childrenToCheck: any, keyPrefix: string = ''): any => {
                             if (childrenToCheck == null) return null;
 
+                            // ✅ CRITIQUE: Si c'est un boolean, retourner null AVANT toute conversion en string
+                            if (typeof childrenToCheck === 'boolean') {
+                                // ✅ CRITIQUE: Logger si on détecte un boolean false
+                                if (!childrenToCheck) {
+                                    try {
+                                        const { remoteLoggingService } = require('../services/remoteLoggingService');
+                                        remoteLoggingService.warn(
+                                            `🚨 [ScreenTransition] STRING DÉTECTÉE DANS ScreenTransition: "false"`,
+                                            'ScreenTransition',
+                                            { child: 'false', childComponent: 'ScreenTransition', childrenType: 'boolean' }
+                                        );
+                                    } catch (e) {
+                                        // Ignorer si les services ne sont pas disponibles
+                                    }
+                                }
+                                return null; // Toujours null pour boolean (React Native ne peut pas rendre false)
+                            }
+
                             // Si c'est une primitive, la wrapper dans Text
-                            if (typeof childrenToCheck === 'string' || typeof childrenToCheck === 'number' || typeof childrenToCheck === 'boolean') {
+                            if (typeof childrenToCheck === 'string' || typeof childrenToCheck === 'number') {
+                                // ✅ CRITIQUE: Vérifier si c'est la string "false" (qui pourrait venir d'un boolean converti)
+                                if (childrenToCheck === 'false' || childrenToCheck === 'true') {
+                                    try {
+                                        const { remoteLoggingService } = require('../services/remoteLoggingService');
+                                        remoteLoggingService.warn(
+                                            `🚨 [ScreenTransition] STRING DÉTECTÉE DANS ScreenTransition: "${childrenToCheck}"`,
+                                            'ScreenTransition',
+                                            { child: String(childrenToCheck), childComponent: 'ScreenTransition', childrenType: 'boolean' }
+                                        );
+                                    } catch (e) {
+                                        // Ignorer si les services ne sont pas disponibles
+                                    }
+                                    return null; // Ne pas rendre "false" ou "true" comme string
+                                }
                                 console.warn('[ScreenTransition] ⚠️ String détectée et wrappée:', String(childrenToCheck).substring(0, 50));
                                 return <Text key={`${keyPrefix}-text`}>{String(childrenToCheck)}</Text>;
                             }
@@ -263,8 +393,17 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
                 }
                 return child;
             }
+            // ✅ CRITIQUE: Fallback - vérifier si c'est un boolean avant de convertir en string
+            if (typeof child === 'boolean') {
+                return null; // Toujours null pour boolean (React Native ne peut pas rendre false)
+            }
+            // ✅ CRITIQUE: Fallback - vérifier si la conversion en string donne "false" ou "true"
+            const childString = String(child);
+            if (childString === 'false' || childString === 'true') {
+                return null; // Ne pas rendre "false" ou "true" comme string
+            }
             // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
-            return <Text key={index}>{String(child)}</Text>;
+            return <Text key={index}>{childString}</Text>;
         });
 
         // ✅ CRITIQUE: Filtrer les null/undefined du résultat
@@ -286,22 +425,33 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
             return null;
         }
 
-        // ✅ CRITIQUE: Si safeChildren est une string/number/boolean, la wrapper
-        if (typeof safeChildren === 'string' || typeof safeChildren === 'number' || typeof safeChildren === 'boolean') {
+        // ✅ CRITIQUE: Si safeChildren est un boolean false, retourner null (React Native ne peut pas rendre false)
+        if (typeof safeChildren === 'boolean') {
+            return safeChildren ? null : null; // Toujours null pour boolean
+        }
+
+        // ✅ CRITIQUE: Si safeChildren est une string/number, la wrapper
+        if (typeof safeChildren === 'string' || typeof safeChildren === 'number') {
             return <Text>{String(safeChildren)}</Text>;
         }
 
-        // ✅ CRITIQUE: Si c'est un tableau, vérifier chaque élément
+        // ✅ CRITIQUE: Si c'est un tableau, vérifier chaque élément et filtrer les false
         if (Array.isArray(safeChildren)) {
-            return safeChildren.map((child, idx) => {
-                if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
-                    return <Text key={idx}>{String(child)}</Text>;
-                }
-                if (child == null) {
-                    return null;
-                }
-                return child;
-            }).filter(child => child != null);
+            return safeChildren
+                .map((child, idx) => {
+                    // ✅ CRITIQUE: Filtrer les boolean false (React Native ne peut pas les rendre)
+                    if (typeof child === 'boolean') {
+                        return child ? null : null; // Toujours null pour boolean
+                    }
+                    if (typeof child === 'string' || typeof child === 'number') {
+                        return <Text key={idx}>{String(child)}</Text>;
+                    }
+                    if (child == null) {
+                        return null;
+                    }
+                    return child;
+                })
+                .filter(child => child != null && child !== false); // Filtrer null et false
         }
 
         return safeChildren;
