@@ -1,5 +1,6 @@
 // ✅ Phase 9 - Amélioration : Composant pour uploader des médias de preuve (pickup/delivery) - Mobile
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../../utils/safeStorage';
 import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
@@ -152,7 +153,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
             formData.append('proof_type', proofType);
 
             // Récupérer le token depuis AsyncStorage
-            const token = await AsyncStorage.getItem('token');
+            const token = await SafeStorage.getItem('token');
             const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
             const response = await fetch(`${baseUrl}/api/media/upload-proof`, {

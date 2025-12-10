@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 
 const PENDING_DEEP_LINK_KEY = '@yukpomnang:pending_deep_link';
 
@@ -14,7 +15,7 @@ interface PendingDeepLink {
  */
 export const savePendingDeepLink = async (deepLink: PendingDeepLink): Promise<void> => {
     try {
-        await AsyncStorage.setItem(PENDING_DEEP_LINK_KEY, JSON.stringify(deepLink));
+        await SafeStorage.setItem(PENDING_DEEP_LINK_KEY, JSON.stringify(deepLink));
         console.log('✅ Deep link sauvegardé:', deepLink);
     } catch (error) {
         console.error('❌ Erreur sauvegarde deep link:', error);
@@ -30,7 +31,7 @@ export const savePendingDeepLink = async (deepLink: PendingDeepLink): Promise<vo
  */
 export const handlePendingDeepLink = async (navigation: any): Promise<boolean> => {
     try {
-        const pendingData = await AsyncStorage.getItem(PENDING_DEEP_LINK_KEY);
+        const pendingData = await SafeStorage.getItem(PENDING_DEEP_LINK_KEY);
         
         if (!pendingData) {
             console.log('ℹ️ Aucun deep link en attente');
@@ -43,14 +44,14 @@ export const handlePendingDeepLink = async (navigation: any): Promise<boolean> =
         const ageMinutes = (Date.now() - deepLink.timestamp) / (1000 * 60);
         if (ageMinutes > 60) {
             console.log('⚠️ Deep link expiré (>1h), ignoré');
-            await AsyncStorage.removeItem(PENDING_DEEP_LINK_KEY);
+            await SafeStorage.removeItem(PENDING_DEEP_LINK_KEY);
             return false;
         }
 
         console.log('🔗 Traitement deep link en attente:', deepLink.type);
 
         // Supprimer de AsyncStorage avant navigation
-        await AsyncStorage.removeItem(PENDING_DEEP_LINK_KEY);
+        await SafeStorage.removeItem(PENDING_DEEP_LINK_KEY);
 
         // Rediriger selon le type
         if (deepLink.type === 'product' && deepLink.productId && deepLink.serviceId) {
@@ -75,7 +76,7 @@ export const handlePendingDeepLink = async (navigation: any): Promise<boolean> =
         return false;
     } catch (error) {
         console.error('❌ Erreur traitement deep link:', error);
-        await AsyncStorage.removeItem(PENDING_DEEP_LINK_KEY);
+        await SafeStorage.removeItem(PENDING_DEEP_LINK_KEY);
         return false;
     }
 };
@@ -85,7 +86,7 @@ export const handlePendingDeepLink = async (navigation: any): Promise<boolean> =
  */
 export const clearPendingDeepLink = async (): Promise<void> => {
     try {
-        await AsyncStorage.removeItem(PENDING_DEEP_LINK_KEY);
+        await SafeStorage.removeItem(PENDING_DEEP_LINK_KEY);
         console.log('✅ Deep link en attente effacé');
     } catch (error) {
         console.error('❌ Erreur effacement deep link:', error);

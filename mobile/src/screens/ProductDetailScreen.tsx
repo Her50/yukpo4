@@ -1,5 +1,6 @@
 // @ts-nocheck
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -44,7 +45,7 @@ const ProductDetailScreen: React.FC = () => {
             // Vérifier si l'utilisateur est connecté
             if (!user) {
                 // Sauvegarder la destination pour redirection après login
-                await AsyncStorage.setItem(PENDING_DEEP_LINK_KEY, JSON.stringify({
+                await SafeStorage.setItem(PENDING_DEEP_LINK_KEY, JSON.stringify({
                     type: 'product',
                     productId,
                     serviceId,

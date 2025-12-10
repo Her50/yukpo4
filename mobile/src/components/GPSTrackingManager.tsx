@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,7 +28,7 @@ const GPSTrackingManager: React.FC = () => {
             }
 
             try {
-                const gpsEnabled = await AsyncStorage.getItem('gpsEnabled');
+                const gpsEnabled = await SafeStorage.getItem('gpsEnabled');
                 const isGPSEnabled = gpsEnabled !== null ? JSON.parse(gpsEnabled) : false;
 
                 console.log('[GPSTrackingManager] GPS activé:', isGPSEnabled);

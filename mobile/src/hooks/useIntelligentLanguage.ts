@@ -3,11 +3,12 @@
  * Détection automatique, apprentissage des préférences utilisateur, traduction contextuelle
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import * as Localization from 'expo-localization';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { languageDetectionService } from '../services/languageDetectionService';
+import SafeStorage from '../utils/safeStorage';
 
 const LANGUAGE_STORAGE_KEY = 'intelligent_language_preference';
 const TRANSLATION_CACHE_KEY = 'translation_cache';
@@ -42,14 +43,14 @@ export const useIntelligentLanguage = () => {
         const loadSavedData = async () => {
             try {
                 // Charger la langue préférée
-                const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+                const savedLanguage = await SafeStorage.getItem(LANGUAGE_STORAGE_KEY);
                 if (savedLanguage) {
                     setCurrentLanguage(savedLanguage);
                     setContextLanguage(savedLanguage);
                 }
 
                 // Charger le cache de traduction
-                const cached = await AsyncStorage.getItem(TRANSLATION_CACHE_KEY);
+                const cached = await SafeStorage.getItem(TRANSLATION_CACHE_KEY);
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     setTranslationCache(parsed);
@@ -57,7 +58,7 @@ export const useIntelligentLanguage = () => {
                 }
 
                 // Charger les statistiques d'usage
-                const stats = await AsyncStorage.getItem(LANGUAGE_USAGE_KEY);
+                const stats = await SafeStorage.getItem(LANGUAGE_USAGE_KEY);
                 if (stats) {
                     const parsed = JSON.parse(stats);
                     setLanguageUsageStats(parsed);
@@ -77,7 +78,7 @@ export const useIntelligentLanguage = () => {
     useEffect(() => {
         const saveCache = async () => {
             try {
-                await AsyncStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(cacheRef.current));
+                await SafeStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(cacheRef.current));
             } catch (error) {
                 console.error('[useIntelligentLanguage] Erreur sauvegarde cache:', error);
             }
@@ -92,7 +93,7 @@ export const useIntelligentLanguage = () => {
         setIsDetecting(true);
         try {
             // 1. Vérifier la langue sauvegardée
-            const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+            const savedLanguage = await SafeStorage.getItem(LANGUAGE_STORAGE_KEY);
             if (savedLanguage) {
                 setCurrentLanguage(savedLanguage);
                 setContextLanguage(savedLanguage);
@@ -120,7 +121,7 @@ export const useIntelligentLanguage = () => {
                     const detectedLanguage = mostUsedLanguage;
                     setCurrentLanguage(detectedLanguage);
                     setContextLanguage(detectedLanguage);
-                    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, detectedLanguage);
+                    await SafeStorage.setItem(LANGUAGE_STORAGE_KEY, detectedLanguage);
                     setDetectionResult({
                         source: 'usage_stats',
                         language: detectedLanguage,
@@ -135,7 +136,7 @@ export const useIntelligentLanguage = () => {
             const detectedLanguage = ['fr', 'en'].includes(systemLanguage) ? systemLanguage : 'fr';
             setCurrentLanguage(detectedLanguage);
             setContextLanguage(detectedLanguage);
-            await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, detectedLanguage);
+            await SafeStorage.setItem(LANGUAGE_STORAGE_KEY, detectedLanguage);
             setDetectionResult({
                 source: 'system',
                 language: detectedLanguage,
@@ -154,7 +155,7 @@ export const useIntelligentLanguage = () => {
         try {
             setCurrentLanguage(language);
             setContextLanguage(language);
-            await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+            await SafeStorage.setItem(LANGUAGE_STORAGE_KEY, language);
 
             // Enregistrer l'usage
             languageDetectionService.recordLanguageUsage(language, 'mobile');
@@ -205,9 +206,9 @@ export const useIntelligentLanguage = () => {
     // Nettoyer les données de langue
     const clearLanguageData = useCallback(async () => {
         try {
-            await AsyncStorage.removeItem(LANGUAGE_STORAGE_KEY);
-            await AsyncStorage.removeItem(TRANSLATION_CACHE_KEY);
-            await AsyncStorage.removeItem(LANGUAGE_USAGE_KEY);
+            await SafeStorage.removeItem(LANGUAGE_STORAGE_KEY);
+            await SafeStorage.removeItem(TRANSLATION_CACHE_KEY);
+            await SafeStorage.removeItem(LANGUAGE_USAGE_KEY);
             setTranslationCache({});
             setLanguageUsageStats([]);
             cacheRef.current = {};

@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Migration vers des composants React Native natifs pour éviter les crashes
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import * as React from 'react';
 import { useState } from 'react';
 import ReactNative from 'react-native';
@@ -88,7 +89,7 @@ const SettingsScreen: React.FC = () => {
       setLoading(true);
 
       // Sauvegarder les paramètres localement
-      await AsyncStorage.setItem('userSettings', JSON.stringify(settings));
+      await SafeStorage.setItem('userSettings', JSON.stringify(settings));
 
       // Mettre à jour le profil utilisateur si nécessaire
       if (settings.name !== user?.name || settings.email !== user?.email) {

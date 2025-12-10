@@ -1,9 +1,9 @@
-﻿import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as React from 'react';
+﻿import * as React from 'react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 import { authApi } from '../services/api';
 import { jwtDecode } from '../utils/jwtDecode';
+import SafeStorage from '../utils/safeStorage';
 
 interface User {
   id: string;
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('auth_token');
+      const token = await SafeStorage.getItem('auth_token');
 
       if (token) {
         const decoded = jwtDecode<DecodedToken>(token);
@@ -101,7 +101,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           setUser(userData);
         } else {
-          await AsyncStorage.removeItem('auth_token');
+          await SafeStorage.removeItem('auth_token');
           setUser(null);
         }
       } else {
@@ -109,7 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('[AuthContext] Erreur auth:', error);
-      await AsyncStorage.removeItem('auth_token');
+      await SafeStorage.removeItem('auth_token');
       setUser(null);
     } finally {
       setLoading(false);
@@ -156,7 +156,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (decoded.exp * 1000 > Date.now()) {
           // Sauvegarder le token
-          await AsyncStorage.setItem('auth_token', token);
+          await SafeStorage.setItem('auth_token', token);
 
           const userData: User = {
             id: String(decoded.sub),
@@ -214,7 +214,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const decoded = jwtDecode<DecodedToken>(response.data.token);
 
           if (decoded.exp * 1000 > Date.now()) {
-            await AsyncStorage.setItem('auth_token', response.data.token);
+            await SafeStorage.setItem('auth_token', response.data.token);
 
             const newUserData: User = {
               id: String(decoded.sub),
@@ -258,7 +258,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       await authApi.logout();
-      await AsyncStorage.removeItem('auth_token');
+      await SafeStorage.removeItem('auth_token');
       setUser(null);
       console.log('[AuthContext] Déconnexion réussie');
     } catch (error) {
@@ -272,7 +272,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      const token = await AsyncStorage.getItem('auth_token');
+      const token = await SafeStorage.getItem('auth_token');
       if (token) {
         const decoded = jwtDecode<DecodedToken>(token);
 
@@ -292,7 +292,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('[AuthContext] Utilisateur actualisé depuis JWT:', userData);
         } else {
           console.log('[AuthContext] Token expiré lors de l\'actualisation');
-          await AsyncStorage.removeItem('auth_token');
+          await SafeStorage.removeItem('auth_token');
           setUser(null);
         }
       }

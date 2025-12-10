@@ -1,8 +1,9 @@
 // 🌍 Context de Langue - Gestion globale de la langue de l'application
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import * as Location from 'expo-location';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
+import SafeStorage from '../utils/safeStorage';
 
 interface LanguageContextType {
     language: string;
@@ -81,13 +82,13 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
 
     const loadLanguage = async () => {
         try {
-            const savedLanguage = await AsyncStorage.getItem('app_language');
+            const savedLanguage = await SafeStorage.getItem('app_language');
             if (savedLanguage) {
                 setLanguageState(savedLanguage);
             } else {
                 // Par défaut français pour éviter les problèmes de GPS
                 setLanguageState('fr');
-                await AsyncStorage.setItem('app_language', 'fr');
+                await SafeStorage.setItem('app_language', 'fr');
             }
         } catch (error) {
             console.error('Erreur chargement langue:', error);
@@ -160,7 +161,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     const setLanguage = async (lang: string) => {
         try {
             setLanguageState(lang);
-            await AsyncStorage.setItem('app_language', lang);
+            await SafeStorage.setItem('app_language', lang);
             console.log('[Language] Langue changée:', lang);
         } catch (error) {
             console.error('Erreur sauvegarde langue:', error);

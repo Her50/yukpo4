@@ -2,9 +2,10 @@
  * Context pour la gestion du thème (clair/sombre)
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Appearance, Text, useColorScheme } from 'react-native';
+import SafeStorage from '../utils/safeStorage';
 
 type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -29,7 +30,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     useEffect(() => {
         const loadTheme = async () => {
             try {
-                const savedMode = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+                const savedMode = await SafeStorage.getItem(THEME_STORAGE_KEY);
                 if (savedMode && (savedMode === 'light' || savedMode === 'dark' || savedMode === 'auto')) {
                     setThemeModeState(savedMode as ThemeMode);
                 }
@@ -70,7 +71,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const setThemeMode = async (mode: ThemeMode) => {
         setThemeModeState(mode);
         try {
-            await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
+            await SafeStorage.setItem(THEME_STORAGE_KEY, mode);
         } catch (error) {
             console.error('[ThemeContext] Erreur sauvegarde thème:', error);
         }

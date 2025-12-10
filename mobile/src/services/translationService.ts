@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { ENVIRONMENT } from '../config/environment';
 
 export interface TranslationResult {
@@ -54,7 +55,7 @@ export class TranslationService {
      */
     private async loadLanguage(): Promise<void> {
         try {
-            const savedLanguage = await AsyncStorage.getItem('yukpo_language');
+            const savedLanguage = await SafeStorage.getItem('yukpo_language');
             if (savedLanguage && SUPPORTED_LANGUAGES.some(lang => lang.code === savedLanguage)) {
                 this.currentLanguage = savedLanguage;
             }
@@ -68,7 +69,7 @@ export class TranslationService {
      */
     private async saveLanguage(language: string): Promise<void> {
         try {
-            await AsyncStorage.setItem('yukpo_language', language);
+            await SafeStorage.setItem('yukpo_language', language);
             this.currentLanguage = language;
         } catch (error) {
             console.warn('Erreur lors de la sauvegarde de la langue:', error);

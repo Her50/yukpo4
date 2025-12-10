@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../../utils/safeStorage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -240,7 +241,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
     // ✅ NOUVEAU: Charger la préférence de mode d'affichage
     const loadViewModePreference = async () => {
         try {
-            const savedMode = await AsyncStorage.getItem('specialized_services_view_mode');
+            const savedMode = await SafeStorage.getItem('specialized_services_view_mode');
             if (savedMode === 'card' || savedMode === 'list') {
                 setViewMode(savedMode);
             }
@@ -252,7 +253,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
     // ✅ NOUVEAU: Sauvegarder la préférence de mode d'affichage
     const saveViewModePreference = async (mode: 'card' | 'list') => {
         try {
-            await AsyncStorage.setItem('specialized_services_view_mode', mode);
+            await SafeStorage.setItem('specialized_services_view_mode', mode);
         } catch (error) {
             console.error('Erreur sauvegarde préférence mode:', error);
         }

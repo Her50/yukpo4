@@ -3,7 +3,8 @@
  * Gère les URLs CDN, le fallback, et la détection de la région
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { ENVIRONMENT } from '../config/environment';
 
 interface CDNConfig {
@@ -57,7 +58,7 @@ class CDNService {
 
         try {
             // Charger la configuration sauvegardée
-            const saved = await AsyncStorage.getItem('cdn_config');
+            const saved = await SafeStorage.getItem('cdn_config');
             if (saved) {
                 this.config = JSON.parse(saved);
             }
@@ -106,7 +107,7 @@ class CDNService {
                         fallback: endpoints.filter(e => e.name !== 'Cloudflare').map(e => e.url),
                         region: cloudflareEndpoint.region,
                     };
-                    await AsyncStorage.setItem('cdn_config', JSON.stringify(this.config));
+                    await SafeStorage.setItem('cdn_config', JSON.stringify(this.config));
                     return cloudflareEndpoint;
                 }
             } catch (error) {
@@ -134,7 +135,7 @@ class CDNService {
                         fallback: [cloudflareEndpoint?.url || ''].filter(Boolean),
                         region: wasabiEndpoint.region,
                     };
-                    await AsyncStorage.setItem('cdn_config', JSON.stringify(this.config));
+                    await SafeStorage.setItem('cdn_config', JSON.stringify(this.config));
                     return wasabiEndpoint;
                 }
             } catch (error) {
@@ -233,7 +234,7 @@ class CDNService {
                 fallback: CDN_ENDPOINTS.filter(e => e.name !== endpointName).map(e => e.url),
                 region: endpoint.region,
             };
-            await AsyncStorage.setItem('cdn_config', JSON.stringify(this.config));
+            await SafeStorage.setItem('cdn_config', JSON.stringify(this.config));
         }
     }
 
@@ -241,7 +242,7 @@ class CDNService {
      * Réinitialise la détection CDN
      */
     async resetDetection(): Promise<void> {
-        await AsyncStorage.removeItem('cdn_config');
+        await SafeStorage.removeItem('cdn_config');
         this.config = null;
         this.selectedEndpoint = null;
         await this.detectBestEndpoint();

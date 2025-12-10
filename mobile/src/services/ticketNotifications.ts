@@ -3,7 +3,8 @@
  * Gère les rappels, confirmations, et alertes
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { analytics } from './analytics';
@@ -65,7 +66,7 @@ class TicketNotificationService {
             this.expoPushToken = tokenData.data;
 
             // Sauvegarder le token
-            await AsyncStorage.setItem('expo_push_token', this.expoPushToken);
+            await SafeStorage.setItem('expo_push_token', this.expoPushToken);
 
             // Envoyer le token au backend
             await this.registerTokenWithBackend(this.expoPushToken);
@@ -245,7 +246,7 @@ class TicketNotificationService {
             }
 
             // Supprimer les IDs sauvegardés
-            await AsyncStorage.removeItem(`notification_ids_${paymentId}`);
+            await SafeStorage.removeItem(`notification_ids_${paymentId}`);
         } catch (error) {
             console.error('[TicketNotifications] Erreur annulation notifications:', error);
         }
@@ -261,10 +262,10 @@ class TicketNotificationService {
     ) {
         try {
             const key = `notification_ids_${paymentId}`;
-            const existing = await AsyncStorage.getItem(key);
+            const existing = await SafeStorage.getItem(key);
             const ids = existing ? JSON.parse(existing) : {};
             ids[type] = identifier;
-            await AsyncStorage.setItem(key, JSON.stringify(ids));
+            await SafeStorage.setItem(key, JSON.stringify(ids));
         } catch (error) {
             console.error('[TicketNotifications] Erreur sauvegarde ID:', error);
         }
@@ -276,7 +277,7 @@ class TicketNotificationService {
     private async getNotificationIds(paymentId: string): Promise<string[]> {
         try {
             const key = `notification_ids_${paymentId}`;
-            const data = await AsyncStorage.getItem(key);
+            const data = await SafeStorage.getItem(key);
             if (data) {
                 const ids = JSON.parse(data);
                 return Object.values(ids) as string[];

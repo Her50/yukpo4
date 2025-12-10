@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../../utils/safeStorage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -82,7 +83,7 @@ const VideoCreationIntroScreen: React.FC = () => {
     // useEffect(() => {
     //     const checkTutorial = async () => {
     //         try {
-    //             const hasSeenTutorial = await AsyncStorage.getItem('video_creation_tutorial_seen');
+    //             const hasSeenTutorial = await SafeStorage.getItem('video_creation_tutorial_seen');
     //             if (!hasSeenTutorial) {
     //                 // Attendre un peu pour que l'écran soit chargé
     //                 setTimeout(() => {
@@ -661,11 +662,11 @@ const VideoCreationIntroScreen: React.FC = () => {
                 visible={showTutorial}
                 onClose={async () => {
                     setShowTutorial(false);
-                    await AsyncStorage.setItem('video_creation_tutorial_seen', 'true');
+                    await SafeStorage.setItem('video_creation_tutorial_seen', 'true');
                 }}
                 onSkip={async () => {
                     setShowTutorial(false);
-                    await AsyncStorage.setItem('video_creation_tutorial_seen', 'true');
+                    await SafeStorage.setItem('video_creation_tutorial_seen', 'true');
                 }}
             />
         </SafeNativeView>

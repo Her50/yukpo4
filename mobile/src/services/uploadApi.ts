@@ -1,7 +1,8 @@
 // src/services/uploadApi.ts
 // Service d'upload préalable de fichiers (avant création de service)
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { config } from '../config/environment';
 
 export interface UploadedFile {
@@ -32,7 +33,7 @@ export const uploadFiles = async (files: Array<{ uri: string; type: string; name
 
     try {
         // Récupérer le token
-        const token = await AsyncStorage.getItem('auth_token');
+        const token = await SafeStorage.getItem('auth_token');
         const API_BASE_URL = config.API_BASE_URL;
 
         // ✅ OPTIMISATION: Créer UN SEUL FormData avec TOUS les fichiers

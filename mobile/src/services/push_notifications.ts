@@ -165,7 +165,7 @@ export class PushNotificationService {
     async loadPreferences(): Promise<NotificationPreferences> {
         try {
             const { AsyncStorage } = require('@react-native-async-storage/async-storage');
-            const saved = await AsyncStorage.getItem('notification_preferences');
+            const saved = await SafeStorage.getItem('notification_preferences');
             if (saved) {
                 this.preferences = JSON.parse(saved);
             }
@@ -183,7 +183,7 @@ export class PushNotificationService {
         try {
             this.preferences = { ...this.preferences, ...preferences };
             const { AsyncStorage } = require('@react-native-async-storage/async-storage');
-            await AsyncStorage.setItem('notification_preferences', JSON.stringify(this.preferences));
+            await SafeStorage.setItem('notification_preferences', JSON.stringify(this.preferences));
         } catch (error) {
             console.error('[PushNotificationService] Erreur sauvegarde préférences:', error);
             throw error;

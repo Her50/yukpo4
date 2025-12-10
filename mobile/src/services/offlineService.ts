@@ -1,9 +1,10 @@
 // ✅ Service de gestion mode offline
 // Cache local, queue de synchronisation, détection connexion
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import NetInfo from '@react-native-community/netinfo';
 import { EventEmitter } from 'events';
+import SafeStorage from '../utils/safeStorage';
 
 export interface OfflineAction {
     id: string;
@@ -107,11 +108,11 @@ class OfflineService extends EventEmitter {
             // Supprimer la plus ancienne entrée
             const oldestKey = Array.from(this.cache.keys())[0];
             this.cache.delete(oldestKey);
-            await AsyncStorage.removeItem(oldestKey);
+            await SafeStorage.removeItem(oldestKey);
         }
 
         this.cache.set(cacheKey, cachedData);
-        await AsyncStorage.setItem(cacheKey, JSON.stringify(cachedData));
+        await SafeStorage.setItem(cacheKey, JSON.stringify(cachedData));
     }
 
     /**
@@ -128,14 +129,14 @@ class OfflineService extends EventEmitter {
             } else {
                 // Expiré
                 this.cache.delete(cacheKey);
-                await AsyncStorage.removeItem(cacheKey);
+                await SafeStorage.removeItem(cacheKey);
                 return null;
             }
         }
 
         // Vérifier le stockage local
         try {
-            const stored = await AsyncStorage.getItem(cacheKey);
+            const stored = await SafeStorage.getItem(cacheKey);
             if (stored) {
                 const cachedData: CachedData = JSON.parse(stored);
                 if (Date.now() - cachedData.timestamp < cachedData.ttl) {
@@ -144,7 +145,7 @@ class OfflineService extends EventEmitter {
                     return cachedData.data as T;
                 } else {
                     // Expiré
-                    await AsyncStorage.removeItem(cacheKey);
+                    await SafeStorage.removeItem(cacheKey);
                     return null;
                 }
             }
@@ -161,7 +162,7 @@ class OfflineService extends EventEmitter {
     async removeCache(key: string): Promise<void> {
         const cacheKey = `${this.CACHE_PREFIX}${key}`;
         this.cache.delete(cacheKey);
-        await AsyncStorage.removeItem(cacheKey);
+        await SafeStorage.removeItem(cacheKey);
     }
 
     /**
@@ -169,9 +170,9 @@ class OfflineService extends EventEmitter {
      */
     async clearCache(): Promise<void> {
         this.cache.clear();
-        const keys = await AsyncStorage.getAllKeys();
+        const keys = await SafeStorage.getAllKeys();
         const cacheKeys = keys.filter(k => k.startsWith(this.CACHE_PREFIX));
-        await AsyncStorage.multiRemove(cacheKeys);
+        await SafeStorage.multiRemove(cacheKeys);
     }
 
     /**
@@ -182,7 +183,7 @@ class OfflineService extends EventEmitter {
         for (const [key, cached] of this.cache.entries()) {
             if (now - cached.timestamp >= cached.ttl) {
                 this.cache.delete(key);
-                AsyncStorage.removeItem(key);
+                SafeStorage.removeItem(key);
             }
         }
     }
@@ -273,7 +274,7 @@ class OfflineService extends EventEmitter {
      */
     private async loadQueue() {
         try {
-            const stored = await AsyncStorage.getItem(this.QUEUE_KEY);
+            const stored = await SafeStorage.getItem(this.QUEUE_KEY);
             if (stored) {
                 this.syncQueue = JSON.parse(stored);
             }
@@ -287,7 +288,7 @@ class OfflineService extends EventEmitter {
      */
     private async saveQueue() {
         try {
-            await AsyncStorage.setItem(this.QUEUE_KEY, JSON.stringify(this.syncQueue));
+            await SafeStorage.setItem(this.QUEUE_KEY, JSON.stringify(this.syncQueue));
         } catch (error) {
             console.error('[OfflineService] Error saving queue:', error);
         }
@@ -305,7 +306,7 @@ class OfflineService extends EventEmitter {
      */
     async clearQueue(): Promise<void> {
         this.syncQueue = [];
-        await AsyncStorage.removeItem(this.QUEUE_KEY);
+        await SafeStorage.removeItem(this.QUEUE_KEY);
         this.emit('queue_updated', 0);
     }
 

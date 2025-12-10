@@ -1,4 +1,5 @@
-﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -25,7 +26,7 @@ const HeaderController: React.FC = () => {
     // Essayer de charger le solde depuis AsyncStorage au démarrage
     const loadStoredBalance = async () => {
       try {
-        const storedBalance = await AsyncStorage.getItem('tokens_balance');
+        const storedBalance = await SafeStorage.getItem('tokens_balance');
         if (storedBalance) {
           const balance = parseInt(storedBalance, 10);
           if (!isNaN(balance)) {
@@ -63,7 +64,7 @@ const HeaderController: React.FC = () => {
           console.log('[HeaderController] Solde récupéré:', balance);
           setTokensBalance(balance);
           // Sauvegarder dans AsyncStorage pour affichage immédiat
-          await AsyncStorage.setItem('tokens_balance', balance.toString());
+          await SafeStorage.setItem('tokens_balance', balance.toString());
         }
       } catch (error) {
         console.error('[HeaderController] Erreur récupération solde:', error);
@@ -88,7 +89,7 @@ const HeaderController: React.FC = () => {
           onPress: async () => {
             try {
               await logout();
-              await AsyncStorage.removeItem('tokens_balance');
+              await SafeStorage.removeItem('tokens_balance');
               setTokensBalance(null);
               navigation.navigate('Login' as never);
             } catch (error) {

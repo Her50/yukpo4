@@ -1,5 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../utils/safeStorage';
 
 // Interface pour la réponse IA
 export interface IAResponse {
@@ -20,11 +21,11 @@ export interface IAResponseWithHeaders {
 // Essaie plusieurs clés pour compatibilité (auth_token, token)
 const getToken = async (): Promise<string | null> => {
   // Essayer 'auth_token' d'abord (nouvelle clé)
-  let token = await AsyncStorage.getItem('auth_token');
+  let token = await SafeStorage.getItem('auth_token');
 
   if (!token) {
     // Fallback vers 'token' (ancienne clé, compatibilité avec le frontend)
-    token = await AsyncStorage.getItem('token');
+    token = await SafeStorage.getItem('token');
     console.log('[yukpoclient] Token récupéré depuis clé "token" (fallback)');
   } else {
     console.log('[yukpoclient] Token récupéré depuis clé "auth_token"');

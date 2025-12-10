@@ -1,6 +1,7 @@
 // @ts-nocheck
 // HomeScreen moderne inspiré du frontend avec ChatInputMobile intégré
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
@@ -66,7 +67,7 @@ const HomeScreenNew: React.FC = () => {
         const checkGPSAndActivate = async () => {
             try {
                 // Vérifier si le GPS est activé dans les paramètres
-                const gpsEnabled = await AsyncStorage.getItem('gpsEnabled');
+                const gpsEnabled = await SafeStorage.getItem('gpsEnabled');
                 const isGPSEnabled = gpsEnabled !== null ? JSON.parse(gpsEnabled) : true; // Par défaut activé
 
                 if (isGPSEnabled) {

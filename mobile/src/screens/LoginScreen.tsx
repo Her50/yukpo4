@@ -1,21 +1,21 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
-import { authApi } from '../services/api';
 import { APP_CONFIG } from '../config/appConfig';
+import { authApi } from '../services/api';
+// âœ… CORRIGÃ‰: Utiliser SafeStorage pour Ã©viter les erreurs "Driver not found"
+import SafeStorage from '../utils/safeStorage';
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -34,31 +34,31 @@ const LoginScreen: React.FC = () => {
 
     try {
       const response = await authApi.login(email, password);
-      
-      console.log('[LoginScreen] Réponse API:', response);
+
+      console.log('[LoginScreen] Rï¿½ponse API:', response);
 
       if (response.success && response.data?.token) {
-        console.log('[LoginScreen] Connexion réussie, token reçu');
-        
+        console.log('[LoginScreen] Connexion rï¿½ussie, token reï¿½u');
+
         // Sauvegarder le token
-        await AsyncStorage.setItem('auth_token', response.data.token);
-        
+        await SafeStorage.setItem('auth_token', response.data.token);
+
         // Sauvegarder le solde de tokens
         if (response.data.tokens_balance !== undefined) {
-          await AsyncStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
-          console.log('[LoginScreen] Solde sauvegardé:', response.data.tokens_balance);
+          await SafeStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
+          console.log('[LoginScreen] Solde sauvegardï¿½:', response.data.tokens_balance);
         }
 
         // Redirection vers l'accueil
         navigation.navigate('Home' as never);
-        
+
       } else {
         console.error('[LoginScreen] Erreur de connexion:', response.error);
         setError(response.error || 'Erreur de connexion');
       }
     } catch (error: any) {
       console.error('[LoginScreen] Erreur lors de la connexion:', error);
-      setError('Erreur de connexion au serveur. Vérifiez votre connexion internet.');
+      setError('Erreur de connexion au serveur. Vï¿½rifiez votre connexion internet.');
     } finally {
       setLoading(false);
     }
@@ -69,14 +69,14 @@ const LoginScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.content}>
           <Text style={styles.title}>Connexion Yukpo</Text>
-          
+
           <Text style={styles.subtitle}>
             Connectez-vous avec votre compte Google ou Facebook
           </Text>
@@ -126,8 +126,8 @@ const LoginScreen: React.FC = () => {
               <Text style={styles.errorText}>{error}</Text>
             )}
 
-            <TouchableOpacity 
-              style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+            <TouchableOpacity
+              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={loading}
             >
@@ -141,7 +141,7 @@ const LoginScreen: React.FC = () => {
 
           <TouchableOpacity onPress={handleRegister} style={styles.registerLink}>
             <Text style={styles.registerText}>
-              Pas encore inscrit ? <Text style={styles.registerLinkText}>Créer un compte</Text>
+              Pas encore inscrit ? <Text style={styles.registerLinkText}>Crï¿½er un compte</Text>
             </Text>
           </TouchableOpacity>
 

@@ -1,7 +1,8 @@
 // ✅ Phase 6.2: Service de stockage hors ligne pour services spécialisés
 // Utilise AsyncStorage pour sauvegarder les données en cache
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 
 const STORAGE_KEYS = {
     SERVICES_LIST: '@specialized_services:list',
@@ -59,7 +60,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
     // Services
     async saveServices(services: CachedService[]): Promise<void> {
         try {
-            await AsyncStorage.setItem(
+            await SafeStorage.setItem(
                 STORAGE_KEYS.SERVICES_LIST,
                 JSON.stringify(services)
             );
@@ -72,7 +73,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
 
     async getServices(): Promise<CachedService[] | null> {
         try {
-            const data = await AsyncStorage.getItem(STORAGE_KEYS.SERVICES_LIST);
+            const data = await SafeStorage.getItem(STORAGE_KEYS.SERVICES_LIST);
             if (!data) return null;
             return JSON.parse(data) as CachedService[];
         } catch (error) {
@@ -83,7 +84,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
 
     async clearServices(): Promise<void> {
         try {
-            await AsyncStorage.removeItem(STORAGE_KEYS.SERVICES_LIST);
+            await SafeStorage.removeItem(STORAGE_KEYS.SERVICES_LIST);
         } catch (error) {
             console.error('[OfflineStorage] Erreur suppression services:', error);
         }
@@ -92,7 +93,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
     // Statistiques
     async saveStatistics(stats: any): Promise<void> {
         try {
-            await AsyncStorage.setItem(
+            await SafeStorage.setItem(
                 STORAGE_KEYS.SERVICES_STATS,
                 JSON.stringify(stats)
             );
@@ -103,7 +104,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
 
     async getStatistics(): Promise<any | null> {
         try {
-            const data = await AsyncStorage.getItem(STORAGE_KEYS.SERVICES_STATS);
+            const data = await SafeStorage.getItem(STORAGE_KEYS.SERVICES_STATS);
             if (!data) return null;
             return JSON.parse(data);
         } catch (error) {
@@ -123,7 +124,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
                 retries: 0,
             };
             queue.push(newItem);
-            await AsyncStorage.setItem(
+            await SafeStorage.setItem(
                 STORAGE_KEYS.SYNC_QUEUE,
                 JSON.stringify(queue)
             );
@@ -136,7 +137,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
 
     async getSyncQueue(): Promise<SyncQueueItem[]> {
         try {
-            const data = await AsyncStorage.getItem(STORAGE_KEYS.SYNC_QUEUE);
+            const data = await SafeStorage.getItem(STORAGE_KEYS.SYNC_QUEUE);
             if (!data) return [];
             return JSON.parse(data) as SyncQueueItem[];
         } catch (error) {
@@ -149,7 +150,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
         try {
             const queue = await this.getSyncQueue();
             const filtered = queue.filter((item) => item.id !== id);
-            await AsyncStorage.setItem(
+            await SafeStorage.setItem(
                 STORAGE_KEYS.SYNC_QUEUE,
                 JSON.stringify(filtered)
             );
@@ -160,7 +161,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
 
     async clearSyncQueue(): Promise<void> {
         try {
-            await AsyncStorage.removeItem(STORAGE_KEYS.SYNC_QUEUE);
+            await SafeStorage.removeItem(STORAGE_KEYS.SYNC_QUEUE);
         } catch (error) {
             console.error('[OfflineStorage] Erreur suppression queue:', error);
         }
@@ -169,7 +170,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
     // Métadonnées
     async setLastSync(timestamp: number): Promise<void> {
         try {
-            await AsyncStorage.setItem(
+            await SafeStorage.setItem(
                 STORAGE_KEYS.LAST_SYNC,
                 timestamp.toString()
             );
@@ -180,7 +181,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
 
     async getLastSync(): Promise<number | null> {
         try {
-            const data = await AsyncStorage.getItem(STORAGE_KEYS.LAST_SYNC);
+            const data = await SafeStorage.getItem(STORAGE_KEYS.LAST_SYNC);
             if (!data) return null;
             return parseInt(data, 10);
         } catch (error) {
@@ -191,7 +192,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
 
     async setOfflineMode(isOffline: boolean): Promise<void> {
         try {
-            await AsyncStorage.setItem(
+            await SafeStorage.setItem(
                 STORAGE_KEYS.OFFLINE_MODE,
                 isOffline ? 'true' : 'false'
             );
@@ -202,7 +203,7 @@ class OfflineStorageServiceImpl implements OfflineStorageService {
 
     async getOfflineMode(): Promise<boolean> {
         try {
-            const data = await AsyncStorage.getItem(STORAGE_KEYS.OFFLINE_MODE);
+            const data = await SafeStorage.getItem(STORAGE_KEYS.OFFLINE_MODE);
             return data === 'true';
         } catch (error) {
             console.error('[OfflineStorage] Erreur récupération offline mode:', error);

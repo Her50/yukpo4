@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../utils/safeStorage';
 
 import { GeneratedVideoResponse, VideoCostEstimation, VideoGenerationPayload } from '../types/VideoGeneration';
 import type { CreateVoiceProfilePayload } from '../types/audio';
@@ -118,13 +119,11 @@ export interface StartVideoJobResponse {
   status: string;
 }
 
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 // Fonction pour récupérer le token d'authentification
 const getAuthToken = async (): Promise<string | null> => {
   try {
-    if (AsyncStorage && typeof AsyncStorage.getItem === 'function') {
-      return await AsyncStorage.getItem('auth_token');
-    }
-    return null;
+    return await SafeStorage.getItem('auth_token');
   } catch (error) {
     console.error('Erreur récupération token:', error);
     return null;
@@ -134,9 +133,7 @@ const getAuthToken = async (): Promise<string | null> => {
 // Fonction pour sauvegarder le token d'authentification
 const saveAuthToken = async (token: string): Promise<void> => {
   try {
-    if (AsyncStorage && typeof AsyncStorage.setItem === 'function') {
-      await AsyncStorage.setItem('auth_token', token);
-    }
+    await SafeStorage.setItem('auth_token', token);
   } catch (error) {
     console.error('Erreur sauvegarde token:', error);
   }
@@ -145,9 +142,7 @@ const saveAuthToken = async (token: string): Promise<void> => {
 // Fonction pour supprimer le token
 const removeAuthToken = async (): Promise<void> => {
   try {
-    if (AsyncStorage && typeof AsyncStorage.removeItem === 'function') {
-      await AsyncStorage.removeItem('auth_token');
-    }
+    await SafeStorage.removeItem('auth_token');
   } catch (error) {
     console.error('Erreur suppression token:', error);
   }
@@ -214,7 +209,7 @@ export const apiCall = async <T>(
     // Vérifier le solde de tokens
     const tokensRemaining = response.headers.get('x-tokens-remaining');
     if (tokensRemaining) {
-      await AsyncStorage.setItem('tokens_balance', tokensRemaining);
+      await SafeStorage.setItem('tokens_balance', tokensRemaining);
     }
 
     let data;
@@ -402,7 +397,7 @@ export const authApi = {
       console.log('[authApi.login] ✅ Token trouvé, sauvegarde...');
       await saveAuthToken(response.data.token);
       if (response.data.tokens_balance !== undefined) {
-        await AsyncStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
+        await SafeStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
       }
     } else {
       console.error('[authApi.login] ❌ Token non trouvé dans response.data');
@@ -445,7 +440,7 @@ export const authApi = {
     if (response.data?.token) {
       await saveAuthToken(response.data.token);
       if (response.data.tokens_balance !== undefined) {
-        await AsyncStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
+        await SafeStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
       }
       return { success: true, data: response.data };
     }
@@ -456,7 +451,7 @@ export const authApi = {
   // Déconnexion
   logout: async () => {
     await removeAuthToken();
-    await AsyncStorage.removeItem('tokens_balance');
+    await SafeStorage.removeItem('tokens_balance');
   },
 
   // Vérifier le token et récupérer les infos utilisateur
@@ -591,7 +586,7 @@ export interface DropoffShareResponse {
   dropoff_pending: boolean;
 }
 
-// ✅ Cache pour les supermarchés (mobile) - AsyncStorage déjà importé en haut du fichier
+// ✅ Cache pour les supermarchés (mobile) - SafeStorage utilisé
 
 interface CachedSupermarkets {
   supermarkets: any[];
@@ -613,14 +608,14 @@ const getCacheKey = (lat: number, lng: number, radius: number): string => {
 const getCachedSupermarkets = async (lat: number, lng: number, radiusKm: number): Promise<any[] | null> => {
   try {
     const cacheKey = getCacheKey(lat, lng, radiusKm);
-    const cached = await AsyncStorage.getItem(cacheKey);
+    const cached = await SafeStorage.getItem(cacheKey);
     if (!cached) return null;
 
     const data: CachedSupermarkets = JSON.parse(cached);
     const now = Date.now();
 
     if (now - data.timestamp > CACHE_DURATION_MS) {
-      await AsyncStorage.removeItem(cacheKey);
+      await SafeStorage.removeItem(cacheKey);
       return null;
     }
 
@@ -646,7 +641,7 @@ const setCachedSupermarkets = async (lat: number, lng: number, radiusKm: number,
       longitude: lng,
       radiusKm,
     };
-    await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+    await SafeStorage.setItem(cacheKey, JSON.stringify(data));
   } catch (error) {
     console.warn('Erreur écriture cache supermarchés:', error);
   }
@@ -943,68 +938,6 @@ export const deliveryApi = {
   // ✅ Phase 9 - Amélioration : Gestion des médias de preuve de livraison
   listProofMedia: async (deliveryId: string) => {
     return apiCall(`/api/delivery/${deliveryId}/proof-media`);
-  },
-  // ✅ NOUVEAU 2025-01-27: Uploader un média (image, audio, vidéo) pour le chat vers S3/Wasabi
-  uploadChatMedia: async (fileData: string | { uri: string; type: string; name: string }): Promise<ApiResponse<{ url: string; storage_path: string }>> => {
-    try {
-      const token = await getAuthToken();
-      if (!token) {
-        return { success: false, error: 'Non authentifié' };
-      }
-
-      // Créer FormData (React Native compatible)
-      const formData = new FormData();
-
-      // Si c'est une data URI (base64), on doit la convertir
-      if (typeof fileData === 'string' && fileData.startsWith('data:')) {
-        // Extraire les données base64
-        const base64Data = fileData.split(',')[1];
-        const mimeType = fileData.split(';')[0].split(':')[1];
-        const fileName = `file_${Date.now()}.${mimeType.split('/')[1] || 'jpg'}`;
-
-        formData.append('file', {
-          uri: fileData,
-          type: mimeType,
-          name: fileName,
-        } as any);
-      } else if (typeof fileData === 'object' && fileData.uri) {
-        // Si c'est un objet avec URI (fichier local)
-        formData.append('file', {
-          uri: fileData.uri,
-          type: fileData.type || 'application/octet-stream',
-          name: fileData.name || `file_${Date.now()}`,
-        } as any);
-      } else {
-        // Fallback: traiter comme string URI
-        formData.append('file', {
-          uri: fileData as string,
-          type: 'application/octet-stream',
-          name: `file_${Date.now()}`,
-        } as any);
-      }
-
-      const uploadResponse = await fetch(`${API_BASE_URL}/api/chat/media/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-        body: formData,
-      });
-
-      const data = await uploadResponse.json();
-      return {
-        success: uploadResponse.ok && data.success,
-        data: data.files?.[0] || data,
-        error: data.error || (!uploadResponse.ok ? `Erreur ${uploadResponse.status}` : undefined),
-      };
-    } catch (error: any) {
-      console.error('[API] Erreur upload média chat:', error);
-      return {
-        success: false,
-        error: error?.message || 'Erreur upload média',
-      };
-    }
   },
 
   uploadProofMedia: async (deliveryId: string, payload: {

@@ -71,8 +71,17 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
             return null;
         }
 
-        // ✅ CRITIQUE: Si children est une primitive, la wrapper directement
-        if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
+        // ✅ CRITIQUE: Si children est un boolean, retourner null (React Native ne peut pas rendre false)
+        if (typeof children === 'boolean') {
+            return null; // Toujours null pour boolean (React Native ne peut pas rendre false)
+        }
+
+        // ✅ CRITIQUE: Si children est une primitive (string/number), la wrapper directement
+        if (typeof children === 'string' || typeof children === 'number') {
+            // ✅ CRITIQUE: Vérifier si c'est la string "false" (qui pourrait venir d'un boolean converti)
+            if (children === 'false' || children === 'true') {
+                return null; // Ne pas rendre "false" ou "true" comme string
+            }
             // ✅ CRITIQUE: Logger immédiatement si on détecte une string
             try {
                 const { componentDebugger } = require('../utils/componentDebugger');
@@ -96,7 +105,15 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
         if (Array.isArray(children)) {
             const safeArray = children
                 .map((child, idx) => {
-                    if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                    // ✅ CRITIQUE: Filtrer les boolean false (React Native ne peut pas les rendre)
+                    if (typeof child === 'boolean') {
+                        return null; // Toujours null pour boolean
+                    }
+                    if (typeof child === 'string' || typeof child === 'number') {
+                        // ✅ CRITIQUE: Vérifier si c'est la string "false" (qui pourrait venir d'un boolean converti)
+                        if (child === 'false' || child === 'true') {
+                            return null; // Ne pas rendre "false" ou "true" comme string
+                        }
                         return <Text key={idx}>{String(child)}</Text>;
                     }
                     if (child == null) {
@@ -107,15 +124,24 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
                     }
                     return <Text key={idx}>{String(child)}</Text>;
                 })
-                .filter(child => child != null); // Filtrer les null/undefined
+                .filter(child => child != null && child !== false); // Filtrer null, undefined et false
 
             return safeArray.length > 0 ? safeArray : null;
         }
 
         // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
         const mapped = React.Children.map(children, (child, idx) => {
-            // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
-            if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+            // ✅ CRITIQUE: Si c'est un boolean, retourner null (React Native ne peut pas rendre false)
+            if (typeof child === 'boolean') {
+                return null; // Toujours null pour boolean
+            }
+
+            // Si c'est une valeur primitive (string, number), l'envelopper dans un Text
+            if (typeof child === 'string' || typeof child === 'number') {
+                // ✅ CRITIQUE: Vérifier si c'est la string "false" (qui pourrait venir d'un boolean converti)
+                if (child === 'false' || child === 'true') {
+                    return null; // Ne pas rendre "false" ou "true" comme string
+                }
                 // ✅ CRITIQUE: Logger immédiatement si on détecte une string dans React.Children.map
                 try {
                     const { componentDebugger } = require('../utils/componentDebugger');
@@ -142,25 +168,44 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
             }
             // Si c'est un tableau, le traiter récursivement
             if (Array.isArray(child)) {
-                return child.map((item, itemIndex) => {
-                    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                return child
+                    .map((item, itemIndex) => {
+                        // ✅ CRITIQUE: Filtrer les boolean false (React Native ne peut pas les rendre)
+                        if (typeof item === 'boolean') {
+                            return null; // Toujours null pour boolean
+                        }
+                        if (typeof item === 'string' || typeof item === 'number') {
+                            // ✅ CRITIQUE: Vérifier si c'est la string "false" (qui pourrait venir d'un boolean converti)
+                            if (item === 'false' || item === 'true') {
+                                return null; // Ne pas rendre "false" ou "true" comme string
+                            }
+                            return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
+                        }
+                        if (item == null) {
+                            return null;
+                        }
+                        if (React.isValidElement(item)) {
+                            return item;
+                        }
                         return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                    }
-                    if (item == null) {
-                        return null;
-                    }
-                    if (React.isValidElement(item)) {
-                        return item;
-                    }
-                    return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                });
+                    })
+                    .filter(item => item != null && item !== false); // Filtrer null, undefined et false
             }
             // Si c'est un élément React valide, le retourner tel quel
             if (React.isValidElement(child)) {
                 return child;
             }
+            // ✅ CRITIQUE: Fallback - vérifier si c'est un boolean avant de convertir en string
+            if (typeof child === 'boolean') {
+                return null; // Toujours null pour boolean (React Native ne peut pas rendre false)
+            }
+            // ✅ CRITIQUE: Fallback - vérifier si la conversion en string donne "false" ou "true"
+            const childString = String(child);
+            if (childString === 'false' || childString === 'true') {
+                return null; // Ne pas rendre "false" ou "true" comme string
+            }
             // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
-            return <Text key={idx}>{String(child)}</Text>;
+            return <Text key={idx}>{childString}</Text>;
         });
 
         // ✅ CRITIQUE: Filtrer les null/undefined du résultat

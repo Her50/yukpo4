@@ -3,7 +3,8 @@
  * Améliore la conversion de +25% via tests optimisés
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { apiGet, apiPost } from './api';
 
 interface ABTestVariant {
@@ -51,7 +52,7 @@ class ABTestingService {
     // ✅ Charger les variants de l'utilisateur
     private async loadUserVariants(userId: string): Promise<void> {
         try {
-            const stored = await AsyncStorage.getItem(`${this.STORAGE_KEY}_${userId}`);
+            const stored = await SafeStorage.getItem(`${this.STORAGE_KEY}_${userId}`);
             if (stored) {
                 const variants = JSON.parse(stored);
                 for (const [testId, variantId] of Object.entries(variants)) {
@@ -132,7 +133,7 @@ class ABTestingService {
             for (const [testId, variantId] of this.userVariants.entries()) {
                 variants[testId] = variantId;
             }
-            await AsyncStorage.setItem(`${this.STORAGE_KEY}_${userId}`, JSON.stringify(variants));
+            await SafeStorage.setItem(`${this.STORAGE_KEY}_${userId}`, JSON.stringify(variants));
         } catch (error) {
             console.error('[ABTesting] Erreur sauvegarde variants:', error);
         }

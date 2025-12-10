@@ -130,13 +130,13 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
 
             {/* Contenu principal */}
             <View style={styles.content}>
-                {(() => {
+                {React.useMemo(() => {
                     // ✅ CRITIQUE: Gérer le cas où children est null/undefined
                     if (children == null) {
                         return null;
                     }
 
-                    // ✅ CRITIQUE: Si children est un boolean false, retourner null (React Native ne peut pas rendre false)
+                    // ✅ CRITIQUE: Si children est un boolean false, retourner null IMMÉDIATEMENT (React Native ne peut pas rendre false)
                     if (typeof children === 'boolean') {
                         if (!children) {
                             try {
@@ -357,7 +357,7 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
                     }
 
                     return mapped;
-                })()}
+                }, [children, variant])}
             </View>
         </View>
     );

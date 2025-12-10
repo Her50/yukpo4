@@ -97,8 +97,9 @@ const ProductDeliveryZonesSelector: React.FC<ProductDeliveryZonesSelectorProps> 
     const handleSave = async () => {
         setSaving(true);
         try {
-            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-            const token = await AsyncStorage.getItem('auth_token');
+            // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+            const SafeStorage = require('../../utils/safeStorage').default;
+            const token = await SafeStorage.getItem('auth_token');
             const response = await fetch(
                 `${require('../../config/environment').config.API_BASE_URL}/api/products/${serviceId}/${productIndex}/zones`,
                 {

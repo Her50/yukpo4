@@ -8,7 +8,8 @@
  * - Des patterns détectés (IA/ML léger)
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { getFieldOptions } from '../data/productModalities';
 import { MODELES_PAR_MARQUE_AUTO } from '../utils/parseExistingModalities';
 import { apiGet } from './api';
@@ -241,7 +242,7 @@ class IntelligentProductAutocomplete {
                 ? `@yukpomnang_history_${fieldKey}_${userId}`
                 : `@yukpomnang_history_${fieldKey}`;
 
-            const historyJson = await AsyncStorage.getItem(storageKey);
+            const historyJson = await SafeStorage.getItem(storageKey);
             if (!historyJson) return [];
 
             const history: string[] = JSON.parse(historyJson);
@@ -264,7 +265,7 @@ class IntelligentProductAutocomplete {
                 ? `@yukpomnang_history_${fieldKey}_${userId}`
                 : `@yukpomnang_history_${fieldKey}`;
 
-            const historyJson = await AsyncStorage.getItem(storageKey);
+            const historyJson = await SafeStorage.getItem(storageKey);
             let history: string[] = historyJson ? JSON.parse(historyJson) : [];
 
             // Retirer si déjà présent
@@ -276,7 +277,7 @@ class IntelligentProductAutocomplete {
             // Limiter à 20 entrées
             history = history.slice(0, 20);
 
-            await AsyncStorage.setItem(storageKey, JSON.stringify(history));
+            await SafeStorage.setItem(storageKey, JSON.stringify(history));
         } catch (error) {
             console.error('[IntelligentAutocomplete] Erreur sauvegarde historique:', error);
         }

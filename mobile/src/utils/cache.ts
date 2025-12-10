@@ -3,7 +3,8 @@
  * Utilise AsyncStorage pour mettre en cache les données
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 
 export interface CacheEntry<T> {
     data: T;
@@ -18,7 +19,7 @@ export class CacheManager {
      */
     static async get<T>(key: string, ttl: number = this.DEFAULT_TTL): Promise<T | null> {
         try {
-            const cached = await AsyncStorage.getItem(key);
+            const cached = await SafeStorage.getItem(key);
             if (!cached) {
                 return null;
             }
@@ -29,7 +30,7 @@ export class CacheManager {
             // Vérifier si le cache est expiré
             if (now - entry.timestamp > ttl) {
                 // Supprimer l'entrée expirée
-                await AsyncStorage.removeItem(key);
+                await SafeStorage.removeItem(key);
                 return null;
             }
 
@@ -49,7 +50,7 @@ export class CacheManager {
                 data,
                 timestamp: Date.now(),
             };
-            await AsyncStorage.setItem(key, JSON.stringify(entry));
+            await SafeStorage.setItem(key, JSON.stringify(entry));
         } catch (error) {
             console.error(`[CacheManager] Erreur écriture cache ${key}:`, error);
         }
@@ -60,7 +61,7 @@ export class CacheManager {
      */
     static async remove(key: string): Promise<void> {
         try {
-            await AsyncStorage.removeItem(key);
+            await SafeStorage.removeItem(key);
         } catch (error) {
             console.error(`[CacheManager] Erreur suppression cache ${key}:`, error);
         }
@@ -71,9 +72,9 @@ export class CacheManager {
      */
     static async clear(): Promise<void> {
         try {
-            const keys = await AsyncStorage.getAllKeys();
+            const keys = await SafeStorage.getAllKeys();
             const cacheKeys = keys.filter(key => key.startsWith('cache_'));
-            await AsyncStorage.multiRemove(cacheKeys);
+            await SafeStorage.multiRemove(cacheKeys);
         } catch (error) {
             console.error('[CacheManager] Erreur vidage cache:', error);
         }

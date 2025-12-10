@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import * as ReactNavigation from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { Suspense, useReducer } from 'react';
@@ -29,6 +29,7 @@ import { modernColors } from '../theme/modernTheme';
 import { cleanupGhostNotifications, debugNotifications, printNotificationReport } from '../utils/debugNotifications';
 import { hapticPress, hapticSelect, hapticSuccess } from '../utils/hapticFeedback'; // ✅ PHASE 2: Haptic feedback
 import { normalizeServiceProducts } from '../utils/productNormalizer';
+import SafeStorage from '../utils/safeStorage';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
 import { homeScreenReducer, initialState } from './HomeScreen.reducer';
 // ✅ OPTIMISATION: Lazy loading pour réduire bundle size initial (-30% bundle size)
@@ -610,7 +611,7 @@ const HomeScreen: React.FC = () => {
                 }
 
                 // Vérifier si le GPS est activé dans les paramètres
-                const gpsEnabled = await AsyncStorage.getItem('gpsEnabled');
+                const gpsEnabled = await SafeStorage.getItem('gpsEnabled');
                 const isGPSEnabled = gpsEnabled !== null ? JSON.parse(gpsEnabled) : true; // Par défaut activé
 
                 if (isGPSEnabled) {

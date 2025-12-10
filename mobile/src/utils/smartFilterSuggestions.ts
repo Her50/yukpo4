@@ -425,7 +425,7 @@ export const saveFilterToHistory = async (
         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
         
         // Récupérer l'historique existant
-        const historyJson = await AsyncStorage.getItem(FILTER_HISTORY_KEY);
+        const historyJson = await SafeStorage.getItem(FILTER_HISTORY_KEY);
         let history: FilterHistory[] = historyJson ? JSON.parse(historyJson) : [];
 
         // Ajouter le nouveau filtre
@@ -440,7 +440,7 @@ export const saveFilterToHistory = async (
         history = history.slice(0, MAX_HISTORY_SIZE);
 
         // Sauvegarder
-        await AsyncStorage.setItem(FILTER_HISTORY_KEY, JSON.stringify(history));
+        await SafeStorage.setItem(FILTER_HISTORY_KEY, JSON.stringify(history));
     } catch (error) {
         console.error('[smartFilterSuggestions] Erreur sauvegarde historique:', error);
     }
@@ -452,7 +452,7 @@ export const saveFilterToHistory = async (
 export const getFilterHistory = async (category?: string): Promise<FilterHistory[]> => {
     try {
         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        const historyJson = await AsyncStorage.getItem(FILTER_HISTORY_KEY);
+        const historyJson = await SafeStorage.getItem(FILTER_HISTORY_KEY);
         let history: FilterHistory[] = historyJson ? JSON.parse(historyJson) : [];
 
         // Filtrer par catégorie si spécifiée

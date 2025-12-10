@@ -1,9 +1,10 @@
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import { apiPost } from '../services/api';
+import SafeStorage from '../utils/safeStorage';
 
 const PUSH_TOKEN_KEY = '@yukpomnang:push_token';
 
@@ -127,7 +128,7 @@ export const useNotifications = (userId?: string) => {
     useEffect(() => {
         // Charger le token sauvegardé
         const loadToken = async () => {
-            const savedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+            const savedToken = await SafeStorage.getItem(PUSH_TOKEN_KEY);
             if (savedToken) {
                 setExpoPushToken(savedToken);
                 if (userId) {
@@ -142,7 +143,7 @@ export const useNotifications = (userId?: string) => {
         registerForPushNotificationsAsync().then(async (token) => {
             if (token) {
                 setExpoPushToken(token);
-                await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+                await SafeStorage.setItem(PUSH_TOKEN_KEY, token);
                 if (userId) {
                     await registerPushToken(token, userId);
                 }
@@ -159,7 +160,7 @@ export const useNotifications = (userId?: string) => {
         responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
             console.log('👆 Notification cliquée:', response);
             const data = response.notification.request.content.data as NotificationData;
-            
+
             // Gérer la navigation en fonction du type de notification
             if (data.type === 'return_bus_available') {
                 // Navigation vers le bus retour disponible

@@ -121,13 +121,14 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
 
     // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
     // Éviter de rendre des valeurs primitives directement
-    const safeChildren = (() => {
+    // ✅ NOUVEAU: Utiliser cleanChildren pour un nettoyage cohérent
+    const safeChildren = React.useMemo(() => {
         // ✅ CRITIQUE: Gérer le cas où children est null/undefined
         if (children == null) {
             return null;
         }
 
-        // ✅ CRITIQUE: Si children est un boolean false, retourner null (React Native ne peut pas rendre false)
+        // ✅ CRITIQUE: Si children est un boolean false, retourner null IMMÉDIATEMENT (React Native ne peut pas rendre false)
         if (typeof children === 'boolean') {
             // ✅ CRITIQUE: Logger si on détecte un boolean false
             if (!children) {
@@ -417,7 +418,7 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
         }
 
         return mapped;
-    })();
+    }, [children, type, duration, delay]);
 
     // ✅ CRITIQUE: Double vérification avant rendu pour éviter les strings non wrappées
     const finalChildren = React.useMemo(() => {
@@ -432,6 +433,10 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
 
         // ✅ CRITIQUE: Si safeChildren est une string/number, la wrapper
         if (typeof safeChildren === 'string' || typeof safeChildren === 'number') {
+            // ✅ CRITIQUE: Vérifier si c'est la string "false" (qui pourrait venir d'un boolean converti)
+            if (safeChildren === 'false' || safeChildren === 'true') {
+                return null; // Ne pas rendre "false" ou "true" comme string
+            }
             return <Text>{String(safeChildren)}</Text>;
         }
 
@@ -441,9 +446,13 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
                 .map((child, idx) => {
                     // ✅ CRITIQUE: Filtrer les boolean false (React Native ne peut pas les rendre)
                     if (typeof child === 'boolean') {
-                        return child ? null : null; // Toujours null pour boolean
+                        return null; // Toujours null pour boolean
                     }
                     if (typeof child === 'string' || typeof child === 'number') {
+                        // ✅ CRITIQUE: Vérifier si c'est la string "false" (qui pourrait venir d'un boolean converti)
+                        if (child === 'false' || child === 'true') {
+                            return null; // Ne pas rendre "false" ou "true" comme string
+                        }
                         return <Text key={idx}>{String(child)}</Text>;
                     }
                     if (child == null) {

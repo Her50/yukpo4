@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useState } from 'react';
 import {
     Animated,
@@ -122,7 +123,7 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
         const loadCachedFilters = async () => {
             try {
                 const cacheKey = `filters_cache_${category}`;
-                const cached = await AsyncStorage.getItem(cacheKey);
+                const cached = await SafeStorage.getItem(cacheKey);
 
                 if (cached) {
                     const cachedFilters = JSON.parse(cached);
@@ -158,7 +159,7 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
         // ✅ OPTIMISATION 4: Sauvegarder les filtres dans le cache
         try {
             const cacheKey = `filters_cache_${category}`;
-            await AsyncStorage.setItem(cacheKey, JSON.stringify(filters));
+            await SafeStorage.setItem(cacheKey, JSON.stringify(filters));
             console.log(`[CategoryFilters] Filtres sauvegardés en cache pour ${category}`);
         } catch (error) {
             console.error('[CategoryFilters] Erreur sauvegarde cache:', error);

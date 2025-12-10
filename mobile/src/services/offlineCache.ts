@@ -3,7 +3,8 @@
  * Gère le stockage local et la synchronisation
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import NetInfo from '@react-native-community/netinfo';
 import { apiPost } from './api';
 
@@ -78,11 +79,11 @@ class OfflineCacheService {
                 expiresAt: Date.now() + ttlMinutes * 60 * 1000,
             };
 
-            const existing = await AsyncStorage.getItem(CACHE_KEYS.SEARCH_RESULTS);
+            const existing = await SafeStorage.getItem(CACHE_KEYS.SEARCH_RESULTS);
             const cache = existing ? JSON.parse(existing) : {};
             cache[query] = cached;
 
-            await AsyncStorage.setItem(CACHE_KEYS.SEARCH_RESULTS, JSON.stringify(cache));
+            await SafeStorage.setItem(CACHE_KEYS.SEARCH_RESULTS, JSON.stringify(cache));
         } catch (error) {
             console.error('[OfflineCache] Erreur cache recherche:', error);
         }
@@ -93,7 +94,7 @@ class OfflineCacheService {
      */
     async getCachedSearchResults(query: string): Promise<any[] | null> {
         try {
-            const existing = await AsyncStorage.getItem(CACHE_KEYS.SEARCH_RESULTS);
+            const existing = await SafeStorage.getItem(CACHE_KEYS.SEARCH_RESULTS);
             if (!existing) return null;
 
             const cache = JSON.parse(existing);
@@ -104,7 +105,7 @@ class OfflineCacheService {
             // Vérifier expiration
             if (Date.now() > cached.expiresAt) {
                 delete cache[query];
-                await AsyncStorage.setItem(CACHE_KEYS.SEARCH_RESULTS, JSON.stringify(cache));
+                await SafeStorage.setItem(CACHE_KEYS.SEARCH_RESULTS, JSON.stringify(cache));
                 return null;
             }
 
@@ -126,11 +127,11 @@ class OfflineCacheService {
                 timestamp: Date.now(),
             };
 
-            const existing = await AsyncStorage.getItem(CACHE_KEYS.TICKETS);
+            const existing = await SafeStorage.getItem(CACHE_KEYS.TICKETS);
             const tickets = existing ? JSON.parse(existing) : {};
             tickets[ticketId] = cached;
 
-            await AsyncStorage.setItem(CACHE_KEYS.TICKETS, JSON.stringify(tickets));
+            await SafeStorage.setItem(CACHE_KEYS.TICKETS, JSON.stringify(tickets));
         } catch (error) {
             console.error('[OfflineCache] Erreur cache ticket:', error);
         }
@@ -141,7 +142,7 @@ class OfflineCacheService {
      */
     async getCachedTicket(ticketId: string): Promise<any | null> {
         try {
-            const existing = await AsyncStorage.getItem(CACHE_KEYS.TICKETS);
+            const existing = await SafeStorage.getItem(CACHE_KEYS.TICKETS);
             if (!existing) return null;
 
             const tickets = JSON.parse(existing);
@@ -159,7 +160,7 @@ class OfflineCacheService {
      */
     async getAllCachedTickets(): Promise<any[]> {
         try {
-            const existing = await AsyncStorage.getItem(CACHE_KEYS.TICKETS);
+            const existing = await SafeStorage.getItem(CACHE_KEYS.TICKETS);
             if (!existing) return [];
 
             const tickets = JSON.parse(existing);
@@ -235,7 +236,7 @@ class OfflineCacheService {
      */
     private async saveSyncQueue() {
         try {
-            await AsyncStorage.setItem(CACHE_KEYS.PENDING_ACTIONS, JSON.stringify(this.syncQueue));
+            await SafeStorage.setItem(CACHE_KEYS.PENDING_ACTIONS, JSON.stringify(this.syncQueue));
         } catch (error) {
             console.error('[OfflineCache] Erreur sauvegarde queue:', error);
         }
@@ -246,7 +247,7 @@ class OfflineCacheService {
      */
     private async loadSyncQueue() {
         try {
-            const existing = await AsyncStorage.getItem(CACHE_KEYS.PENDING_ACTIONS);
+            const existing = await SafeStorage.getItem(CACHE_KEYS.PENDING_ACTIONS);
             if (existing) {
                 this.syncQueue = JSON.parse(existing);
             }
@@ -261,7 +262,7 @@ class OfflineCacheService {
     async cleanExpiredCache() {
         try {
             // Nettoyer recherches expirées
-            const existing = await AsyncStorage.getItem(CACHE_KEYS.SEARCH_RESULTS);
+            const existing = await SafeStorage.getItem(CACHE_KEYS.SEARCH_RESULTS);
             if (existing) {
                 const cache = JSON.parse(existing);
                 const now = Date.now();
@@ -270,11 +271,11 @@ class OfflineCacheService {
                         delete cache[key];
                     }
                 });
-                await AsyncStorage.setItem(CACHE_KEYS.SEARCH_RESULTS, JSON.stringify(cache));
+                await SafeStorage.setItem(CACHE_KEYS.SEARCH_RESULTS, JSON.stringify(cache));
             }
 
             // Nettoyer tickets anciens (garder 30 jours)
-            const ticketsExisting = await AsyncStorage.getItem(CACHE_KEYS.TICKETS);
+            const ticketsExisting = await SafeStorage.getItem(CACHE_KEYS.TICKETS);
             if (ticketsExisting) {
                 const tickets = JSON.parse(ticketsExisting);
                 const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -283,7 +284,7 @@ class OfflineCacheService {
                         delete tickets[key];
                     }
                 });
-                await AsyncStorage.setItem(CACHE_KEYS.TICKETS, JSON.stringify(tickets));
+                await SafeStorage.setItem(CACHE_KEYS.TICKETS, JSON.stringify(tickets));
             }
         } catch (error) {
             console.error('[OfflineCache] Erreur nettoyage cache:', error);

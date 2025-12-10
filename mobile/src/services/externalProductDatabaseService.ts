@@ -11,7 +11,8 @@
  * - APIs gouvernementales
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { EnrichedProduct } from '../data/enrichedProductDatabase';
 
 export interface ExternalProductSource {
@@ -472,7 +473,7 @@ class ExternalProductDatabaseService {
         // TODO: Intégrer avec enrichedProductDatabase.ts
         // Pour l'instant, sauvegarder dans AsyncStorage
         const key = `@yukpomnang_external_product_${product.id}`;
-        await AsyncStorage.setItem(key, JSON.stringify(product));
+        await SafeStorage.setItem(key, JSON.stringify(product));
     }
 
     /**
@@ -480,11 +481,11 @@ class ExternalProductDatabaseService {
      */
     private async updateProduct(id: string, updates: Partial<EnrichedProduct>): Promise<void> {
         const key = `@yukpomnang_external_product_${id}`;
-        const existingJson = await AsyncStorage.getItem(key);
+        const existingJson = await SafeStorage.getItem(key);
         if (existingJson) {
             const existing = JSON.parse(existingJson);
             const updated = { ...existing, ...updates };
-            await AsyncStorage.setItem(key, JSON.stringify(updated));
+            await SafeStorage.setItem(key, JSON.stringify(updated));
         }
     }
 
@@ -495,7 +496,7 @@ class ExternalProductDatabaseService {
         const source = this.sources.get(sourceId);
         if (source) {
             source.lastSync = new Date().toISOString();
-            await AsyncStorage.setItem(
+            await SafeStorage.setItem(
                 `@yukpomnang_source_${sourceId}`,
                 JSON.stringify(source)
             );

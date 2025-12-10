@@ -1,5 +1,6 @@
 // @ts-nocheck
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useState } from 'react';
 import ReactNative from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
@@ -70,7 +71,7 @@ const ServicesInteragisScreen: React.FC = () => {
                 setAvailableTypes(types);
             } else {
                 // Charger depuis AsyncStorage si l'API �choue
-                const savedServices = await AsyncStorage.getItem('interactedServices');
+                const savedServices = await SafeStorage.getItem('interactedServices');
                 if (savedServices) {
                     try {
                         const parsedServices = JSON.parse(savedServices);
@@ -95,7 +96,7 @@ const ServicesInteragisScreen: React.FC = () => {
         } catch (error) {
             console.error('Erreur chargement services interagis:', error);
             // Fallback: charger depuis AsyncStorage
-            const savedServices = await AsyncStorage.getItem('interactedServices');
+            const savedServices = await SafeStorage.getItem('interactedServices');
             if (savedServices) {
                 try {
                     const parsedServices = JSON.parse(savedServices);

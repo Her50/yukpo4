@@ -2,7 +2,8 @@
  * Service de recommandations de trajets
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { apiGet } from './api';
 
 interface TripRecommendation {
@@ -33,7 +34,7 @@ class TripRecommendationsService {
     async recordTrip(departureCity: string, arrivalCity: string) {
         try {
             const route = `${departureCity} → ${arrivalCity}`;
-            const existing = await AsyncStorage.getItem(this.HISTORY_KEY);
+            const existing = await SafeStorage.getItem(this.HISTORY_KEY);
             const history: UserTripHistory[] = existing ? JSON.parse(existing) : [];
 
             const existingIndex = history.findIndex((h) => h.route === route);
@@ -54,7 +55,7 @@ class TripRecommendationsService {
             history.sort((a, b) => b.timestamp - a.timestamp);
             const limited = history.slice(0, 50);
 
-            await AsyncStorage.setItem(this.HISTORY_KEY, JSON.stringify(limited));
+            await SafeStorage.setItem(this.HISTORY_KEY, JSON.stringify(limited));
         } catch (error) {
             console.error('[TripRecommendations] Erreur enregistrement:', error);
         }
@@ -65,7 +66,7 @@ class TripRecommendationsService {
      */
     async getTripHistory(): Promise<UserTripHistory[]> {
         try {
-            const existing = await AsyncStorage.getItem(this.HISTORY_KEY);
+            const existing = await SafeStorage.getItem(this.HISTORY_KEY);
             return existing ? JSON.parse(existing) : [];
         } catch (error) {
             console.error('[TripRecommendations] Erreur récupération historique:', error);
@@ -78,7 +79,7 @@ class TripRecommendationsService {
      */
     async getFavoriteTrips(): Promise<string[]> {
         try {
-            const existing = await AsyncStorage.getItem(this.FAVORITES_KEY);
+            const existing = await SafeStorage.getItem(this.FAVORITES_KEY);
             return existing ? JSON.parse(existing) : [];
         } catch (error) {
             console.error('[TripRecommendations] Erreur récupération favoris:', error);
@@ -94,7 +95,7 @@ class TripRecommendationsService {
             const favorites = await this.getFavoriteTrips();
             if (!favorites.includes(route)) {
                 favorites.push(route);
-                await AsyncStorage.setItem(this.FAVORITES_KEY, JSON.stringify(favorites));
+                await SafeStorage.setItem(this.FAVORITES_KEY, JSON.stringify(favorites));
             }
         } catch (error) {
             console.error('[TripRecommendations] Erreur ajout favori:', error);
@@ -108,7 +109,7 @@ class TripRecommendationsService {
         try {
             const favorites = await this.getFavoriteTrips();
             const filtered = favorites.filter((f) => f !== route);
-            await AsyncStorage.setItem(this.FAVORITES_KEY, JSON.stringify(filtered));
+            await SafeStorage.setItem(this.FAVORITES_KEY, JSON.stringify(filtered));
         } catch (error) {
             console.error('[TripRecommendations] Erreur retrait favori:', error);
         }

@@ -3,7 +3,8 @@
  * Améliore les performances de +50% et réduit la latence de -60%
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { Platform } from 'react-native';
 
 interface CacheEntry<T> {
@@ -84,7 +85,7 @@ class AdvancedCacheService {
     // ✅ Niveau 2: Cache AsyncStorage (rapide, ~10-50ms)
     private async getDiskCache<T>(key: string): Promise<T | null> {
         try {
-            const stored = await AsyncStorage.getItem(`cache_${key}`);
+            const stored = await SafeStorage.getItem(`cache_${key}`);
             if (!stored) {
                 return null;
             }
@@ -93,14 +94,14 @@ class AdvancedCacheService {
 
             // Vérifier expiration
             if (Date.now() - entry.timestamp > entry.ttl) {
-                await AsyncStorage.removeItem(`cache_${key}`);
+                await SafeStorage.removeItem(`cache_${key}`);
                 return null;
             }
 
             // Mettre à jour statistiques
             entry.accessCount++;
             entry.lastAccessed = Date.now();
-            await AsyncStorage.setItem(`cache_${key}`, JSON.stringify(entry));
+            await SafeStorage.setItem(`cache_${key}`, JSON.stringify(entry));
 
             // ✅ Promouvoir en cache mémoire si fréquemment accédé
             if (entry.accessCount > 3) {
@@ -124,7 +125,7 @@ class AdvancedCacheService {
                 lastAccessed: Date.now(),
             };
 
-            await AsyncStorage.setItem(`cache_${key}`, JSON.stringify(entry));
+            await SafeStorage.setItem(`cache_${key}`, JSON.stringify(entry));
         } catch (error) {
             console.error('[AdvancedCache] Erreur écriture disque:', error);
         }
@@ -172,7 +173,7 @@ class AdvancedCacheService {
     async invalidate(key: string): Promise<void> {
         this.memoryCache.delete(key);
         try {
-            await AsyncStorage.removeItem(`cache_${key}`);
+            await SafeStorage.removeItem(`cache_${key}`);
         } catch (error) {
             console.error('[AdvancedCache] Erreur invalidation:', error);
         }
@@ -182,9 +183,9 @@ class AdvancedCacheService {
     async clear(): Promise<void> {
         this.memoryCache.clear();
         try {
-            const keys = await AsyncStorage.getAllKeys();
+            const keys = await SafeStorage.getAllKeys();
             const cacheKeys = keys.filter(k => k.startsWith('cache_'));
-            await AsyncStorage.multiRemove(cacheKeys);
+            await SafeStorage.multiRemove(cacheKeys);
         } catch (error) {
             console.error('[AdvancedCache] Erreur nettoyage:', error);
         }
@@ -239,16 +240,16 @@ class AdvancedCacheService {
 
         // Nettoyer cache disque
         try {
-            const keys = await AsyncStorage.getAllKeys();
+            const keys = await SafeStorage.getAllKeys();
             const cacheKeys = keys.filter(k => k.startsWith('cache_'));
 
             for (const key of cacheKeys) {
                 try {
-                    const stored = await AsyncStorage.getItem(key);
+                    const stored = await SafeStorage.getItem(key);
                     if (stored) {
                         const entry: CacheEntry<any> = JSON.parse(stored);
                         if (now - entry.timestamp > entry.ttl) {
-                            await AsyncStorage.removeItem(key);
+                            await SafeStorage.removeItem(key);
                         }
                     }
                 } catch (error) {

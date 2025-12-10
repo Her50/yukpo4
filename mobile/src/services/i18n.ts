@@ -3,7 +3,8 @@
  * Support multi-langues
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import * as Localization from 'expo-localization';
 import { I18n } from 'i18n-js';
 
@@ -166,7 +167,7 @@ class I18nService {
 
     private async init() {
         // Charger la langue sauvegardée
-        const savedLanguage = await AsyncStorage.getItem(STORAGE_KEY);
+        const savedLanguage = await SafeStorage.getItem(STORAGE_KEY);
         if (savedLanguage) {
             this.setLocale(savedLanguage);
         } else {
@@ -183,7 +184,7 @@ class I18nService {
         if (translations[locale as keyof typeof translations]) {
             this.currentLocale = locale;
             i18n.locale = locale;
-            await AsyncStorage.setItem(STORAGE_KEY, locale);
+            await SafeStorage.setItem(STORAGE_KEY, locale);
         }
     }
 

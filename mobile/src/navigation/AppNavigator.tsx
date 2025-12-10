@@ -1,12 +1,13 @@
 // Navigation ULTRA-SIMPLIFIÉE avec TOUS les providers nécessaires
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { modernColors } from '../theme/modernTheme';
+import SafeStorage from '../utils/safeStorage';
 import { defaultScreenOptions, transitionConfig } from './transitions'; // ✅ PHASE 3: Transitions personnalisées
 import { markNavigatorSafeAreaHandled, withNavigatorSafeArea } from './withNavigatorSafeArea';
 
@@ -422,7 +423,7 @@ const MainStack = () => {
       // ✅ OPTIMISATION: Vérifier le cache (durée de validité: 5 minutes)
       const cacheKey = `courier_status_${user.id}`;
       try {
-        const cached = await AsyncStorage.getItem(cacheKey);
+        const cached = await SafeStorage.getItem(cacheKey);
         if (cached) {
           const { value, timestamp } = JSON.parse(cached);
           const cacheAge = Date.now() - timestamp;
@@ -468,7 +469,7 @@ const MainStack = () => {
 
           // ✅ OPTIMISATION: Mettre en cache le résultat
           try {
-            await AsyncStorage.setItem(cacheKey, JSON.stringify({
+            await SafeStorage.setItem(cacheKey, JSON.stringify({
               value: isCourierValue,
               timestamp: Date.now()
             }));
@@ -507,7 +508,7 @@ const MainStack = () => {
       // ✅ OPTIMISATION: Vérifier le cache (durée de validité: 5 minutes)
       const cacheKey = `specialized_services_${user.id}`;
       try {
-        const cached = await AsyncStorage.getItem(cacheKey);
+        const cached = await SafeStorage.getItem(cacheKey);
         if (cached) {
           const { hasSpecialized: cachedHasSpecialized, hasAny: cachedHasAny, timestamp } = JSON.parse(cached);
           const cacheAge = Date.now() - timestamp;
@@ -581,7 +582,7 @@ const MainStack = () => {
 
           // ✅ OPTIMISATION: Mettre en cache le résultat
           try {
-            await AsyncStorage.setItem(cacheKey, JSON.stringify({
+            await SafeStorage.setItem(cacheKey, JSON.stringify({
               hasSpecialized,
               hasAny,
               timestamp: Date.now()

@@ -3,7 +3,8 @@
  * Améliore la compréhension utilisateur de +80%
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../utils/safeStorage';
 import { apiPost } from './api';
 
 interface AnalyticsEvent {
@@ -44,7 +45,7 @@ class AnalyticsService {
     // ✅ Charger la queue depuis le stockage
     private async loadQueue(): Promise<void> {
         try {
-            const stored = await AsyncStorage.getItem(this.STORAGE_KEY);
+            const stored = await SafeStorage.getItem(this.STORAGE_KEY);
             if (stored) {
                 this.eventQueue = JSON.parse(stored);
             }
@@ -56,7 +57,7 @@ class AnalyticsService {
     // ✅ Sauvegarder la queue
     private async saveQueue(): Promise<void> {
         try {
-            await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.eventQueue));
+            await SafeStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.eventQueue));
         } catch (error) {
             console.error('[Analytics] Erreur sauvegarde queue:', error);
         }

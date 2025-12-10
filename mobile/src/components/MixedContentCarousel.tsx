@@ -3,7 +3,8 @@
  * Garantit l'équité : produits payants ont TOUJOURS plus de visibilité que gratuits
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -116,7 +117,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
     useEffect(() => {
         const loadSavedFilter = async () => {
             try {
-                const savedFilter = await AsyncStorage.getItem('mixedContentCarousel_filter');
+                const savedFilter = await SafeStorage.getItem('mixedContentCarousel_filter');
                 if (savedFilter && ['all', 'popular', 'nearby', 'new'].includes(savedFilter)) {
                     setSelectedFilter(savedFilter as 'all' | 'popular' | 'nearby' | 'new');
                     console.log('[MixedContentCarousel] ✅ Filtre sauvegardé chargé:', savedFilter);
@@ -136,7 +137,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
 
         const saveFilter = async () => {
             try {
-                await AsyncStorage.setItem('mixedContentCarousel_filter', selectedFilter);
+                await SafeStorage.setItem('mixedContentCarousel_filter', selectedFilter);
                 console.log('[MixedContentCarousel] ✅ Filtre sauvegardé:', selectedFilter);
             } catch (error) {
                 console.warn('[MixedContentCarousel] ⚠️ Erreur sauvegarde filtre:', error);

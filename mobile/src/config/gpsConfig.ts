@@ -40,7 +40,7 @@ export const CRASH_PREVENTION_CONFIG = {
 export const isGPSEnabled = async (): Promise<boolean> => {
     try {
         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        const gpsEnabled = await AsyncStorage.getItem('gpsEnabled');
+        const gpsEnabled = await SafeStorage.getItem('gpsEnabled');
         return gpsEnabled !== null ? JSON.parse(gpsEnabled) : GPS_CONFIG.AUTO_GPS_ENABLED;
     } catch (error) {
         console.error('Erreur vérification GPS:', error);

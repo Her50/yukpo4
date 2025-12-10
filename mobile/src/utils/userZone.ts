@@ -1,5 +1,6 @@
 // ✅ NOUVEAU: Service pour récupérer la zone géographique de l'utilisateur
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import * as Location from 'expo-location';
 
 // Mapping pays code ISO → emoji/drapeau
@@ -62,7 +63,7 @@ export const getCountryCodeFromGPS = (lat: number, lng: number): string | null =
 export const getUserZone = async (): Promise<string> => {
     try {
         // 1. Essayer de récupérer depuis AsyncStorage (settings)
-        const savedZone = await AsyncStorage.getItem('userCountryCode');
+        const savedZone = await SafeStorage.getItem('userCountryCode');
         if (savedZone) {
             console.log('[UserZone] Zone depuis settings:', savedZone);
             return savedZone;
@@ -86,7 +87,7 @@ export const getUserZone = async (): Promise<string> => {
                 const countryCode = getCountryCodeFromGPS(latitude, longitude);
                 if (countryCode) {
                     // Sauvegarder pour usage futur
-                    await AsyncStorage.setItem('userCountryCode', countryCode);
+                    await SafeStorage.setItem('userCountryCode', countryCode);
                     console.log('[UserZone] Zone détectée depuis GPS:', countryCode);
                     return countryCode;
                 }
@@ -101,7 +102,7 @@ export const getUserZone = async (): Promise<string> => {
                     if (reverseGeocode && reverseGeocode.length > 0) {
                         const country = reverseGeocode[0].countryCode;
                         if (country && COUNTRY_CODE_MAP[country]) {
-                            await AsyncStorage.setItem('userCountryCode', country);
+                            await SafeStorage.setItem('userCountryCode', country);
                             console.log('[UserZone] Zone depuis géocodage:', country);
                             return country;
                         }

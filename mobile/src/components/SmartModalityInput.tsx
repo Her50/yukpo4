@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Animated,
@@ -65,7 +66,7 @@ export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
             const storageKey = userId
                 ? `@yukpomnang_last_used_${fieldKey}_${userId}`
                 : `@yukpomnang_last_used_${fieldKey}`;
-            const lastUsed = await AsyncStorage.getItem(storageKey);
+            const lastUsed = await SafeStorage.getItem(storageKey);
 
             if (lastUsed) {
                 setLastUsedValue(lastUsed);
@@ -87,7 +88,7 @@ export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
             const storageKey = userId
                 ? `@yukpomnang_last_used_${fieldKey}_${userId}`
                 : `@yukpomnang_last_used_${fieldKey}`;
-            await AsyncStorage.setItem(storageKey, modalityValue);
+            await SafeStorage.setItem(storageKey, modalityValue);
             setLastUsedValue(modalityValue);
             console.log(`✅ [SmartModalityInput] Dernière valeur mémorisée pour ${fieldKey}: ${modalityValue}`);
         } catch (error) {

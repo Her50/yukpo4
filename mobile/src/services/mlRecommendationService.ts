@@ -8,7 +8,8 @@
  * 2. Les sections TensorFlow Lite sont déjà activées ci-dessous
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 // ✅ INTÉGRÉ: TensorFlow Lite activé (import conditionnel)
 // Le service fonctionne en mode fallback si TensorFlow n'est pas disponible
 let tf: any = null;
@@ -119,7 +120,7 @@ class MLRecommendationService {
      */
     private async loadHistory(): Promise<void> {
         try {
-            const stored = await AsyncStorage.getItem('ml_interaction_history');
+            const stored = await SafeStorage.getItem('ml_interaction_history');
             if (stored) {
                 this.interactionHistory = JSON.parse(stored);
                 this.updateCategoryWeights();
@@ -134,7 +135,7 @@ class MLRecommendationService {
      */
     private async saveHistory(): Promise<void> {
         try {
-            await AsyncStorage.setItem('ml_interaction_history', JSON.stringify(this.interactionHistory));
+            await SafeStorage.setItem('ml_interaction_history', JSON.stringify(this.interactionHistory));
         } catch (error) {
             console.warn('[MLRecommendationService] Erreur sauvegarde historique:', error);
         }
@@ -401,7 +402,7 @@ class MLRecommendationService {
     async reset(): Promise<void> {
         this.interactionHistory = [];
         this.categoryWeights.clear();
-        await AsyncStorage.removeItem('ml_interaction_history');
+        await SafeStorage.removeItem('ml_interaction_history');
     }
 }
 

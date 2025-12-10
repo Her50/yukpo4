@@ -3,7 +3,8 @@
  * Analyse le comportement utilisateur pour déterminer la langue préférée
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 
 const BEHAVIOR_DATA_KEY = 'language_behavior_data';
 const USAGE_STATS_KEY = 'language_usage_stats';
@@ -143,7 +144,7 @@ class LanguageDetectionService {
      */
     loadBehaviorData = async () => {
         try {
-            const data = await AsyncStorage.getItem(BEHAVIOR_DATA_KEY);
+            const data = await SafeStorage.getItem(BEHAVIOR_DATA_KEY);
             if (data) {
                 this.behaviorData = JSON.parse(data);
                 // Nettoyer les données obsolètes au chargement
@@ -160,7 +161,7 @@ class LanguageDetectionService {
      */
     private saveBehaviorData = async () => {
         try {
-            await AsyncStorage.setItem(BEHAVIOR_DATA_KEY, JSON.stringify(this.behaviorData));
+            await SafeStorage.setItem(BEHAVIOR_DATA_KEY, JSON.stringify(this.behaviorData));
         } catch (error) {
             console.error('[languageDetectionService] Erreur sauvegarde données:', error);
         }
@@ -171,7 +172,7 @@ class LanguageDetectionService {
      */
     loadUsageStats = async () => {
         try {
-            const data = await AsyncStorage.getItem(USAGE_STATS_KEY);
+            const data = await SafeStorage.getItem(USAGE_STATS_KEY);
             if (data) {
                 const parsed = JSON.parse(data);
                 this.usageStats = new Map(Object.entries(parsed));
@@ -188,7 +189,7 @@ class LanguageDetectionService {
     private saveUsageStats = async () => {
         try {
             const serialized = Object.fromEntries(this.usageStats);
-            await AsyncStorage.setItem(USAGE_STATS_KEY, JSON.stringify(serialized));
+            await SafeStorage.setItem(USAGE_STATS_KEY, JSON.stringify(serialized));
         } catch (error) {
             console.error('[languageDetectionService] Erreur sauvegarde stats:', error);
         }
@@ -201,8 +202,8 @@ class LanguageDetectionService {
         try {
             this.behaviorData = [];
             this.usageStats.clear();
-            await AsyncStorage.removeItem(BEHAVIOR_DATA_KEY);
-            await AsyncStorage.removeItem(USAGE_STATS_KEY);
+            await SafeStorage.removeItem(BEHAVIOR_DATA_KEY);
+            await SafeStorage.removeItem(USAGE_STATS_KEY);
         } catch (error) {
             console.error('[languageDetectionService] Erreur réinitialisation:', error);
         }

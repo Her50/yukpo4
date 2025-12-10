@@ -1,5 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import SafeStorage from '../utils/safeStorage';
 
 import { config } from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
@@ -580,7 +581,7 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
             cleanupDeliverySocket();
             setDeliveryRealtimeConnecting(true);
             setDeliveryRealtimeError(null);
-            const token = user?.token ?? (await AsyncStorage.getItem('auth_token'));
+            const token = user?.token ?? (await SafeStorage.getItem('auth_token'));
             if (!token) {
                 setDeliveryRealtimeConnecting(false);
                 setDeliveryRealtimeError('Authentification requise pour le suivi livraison.');

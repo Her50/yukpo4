@@ -1,5 +1,6 @@
 // Service de tracking du comportement utilisateur
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../utils/safeStorage';
 
 interface SearchHistory {
     query: string;
@@ -54,7 +55,7 @@ class UserBehaviorService {
 
             behavior.lastUpdated = Date.now();
 
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(behavior));
+            await SafeStorage.setItem(STORAGE_KEY, JSON.stringify(behavior));
             console.log('[UserBehavior] Recherche enregistrée:', { query, category });
         } catch (error) {
             console.error('[UserBehavior] Erreur tracking:', error);
@@ -71,7 +72,7 @@ class UserBehaviorService {
 
             behavior.lastUpdated = Date.now();
 
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(behavior));
+            await SafeStorage.setItem(STORAGE_KEY, JSON.stringify(behavior));
         } catch (error) {
             console.error('[UserBehavior] Erreur tracking produit:', error);
         }
@@ -80,7 +81,7 @@ class UserBehaviorService {
     // Obtenir le comportement de l'utilisateur
     async getBehavior(): Promise<UserBehavior> {
         try {
-            const stored = await AsyncStorage.getItem(STORAGE_KEY);
+            const stored = await SafeStorage.getItem(STORAGE_KEY);
             if (stored) {
                 return JSON.parse(stored);
             }
@@ -118,7 +119,7 @@ class UserBehaviorService {
     // Réinitialiser le comportement
     async resetBehavior(): Promise<void> {
         try {
-            await AsyncStorage.removeItem(STORAGE_KEY);
+            await SafeStorage.removeItem(STORAGE_KEY);
             console.log('[UserBehavior] Comportement réinitialisé');
         } catch (error) {
             console.error('[UserBehavior] Erreur reset:', error);
@@ -137,7 +138,7 @@ class UserBehaviorService {
             const weight = event === 'join' ? 2 : 1;
             behavior.livePreferences[liveId] = (behavior.livePreferences[liveId] || 0) + weight;
             behavior.lastUpdated = Date.now();
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(behavior));
+            await SafeStorage.setItem(STORAGE_KEY, JSON.stringify(behavior));
             console.log('[UserBehavior] Live interest enregistré:', { liveId, event });
         } catch (error) {
             console.error('[UserBehavior] Erreur tracking live:', error);

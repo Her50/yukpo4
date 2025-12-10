@@ -5,7 +5,8 @@
  * - Sélection multiple de places (famille/amis)
  * - Paiement complet immédiat (caution = prix ticket)
  */
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
@@ -76,7 +77,7 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
     useEffect(() => {
         const loadSavedName = async () => {
             try {
-                const saved = await AsyncStorage.getItem(PASSENGER_NAME_KEY);
+                const saved = await SafeStorage.getItem(PASSENGER_NAME_KEY);
                 if (saved) {
                     setSavedPassengerName(saved);
                     setPassengerNames([saved]);
@@ -159,7 +160,7 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
 
         // Sauvegarder le premier nom pour les prochaines fois
         try {
-            await AsyncStorage.setItem(PASSENGER_NAME_KEY, passengerNames[0].trim());
+            await SafeStorage.setItem(PASSENGER_NAME_KEY, passengerNames[0].trim());
         } catch (error) {
             console.error('Erreur sauvegarde nom:', error);
         }
@@ -430,7 +431,7 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
 
         // Sauvegarder le premier nom
         try {
-            await AsyncStorage.setItem(PASSENGER_NAME_KEY, passengerNames[0].trim());
+            await SafeStorage.setItem(PASSENGER_NAME_KEY, passengerNames[0].trim());
         } catch (error) {
             console.error('Erreur sauvegarde nom:', error);
         }

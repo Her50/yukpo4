@@ -3,10 +3,11 @@
  * et gestion de l'historique de recherche
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiPost } from '../services/api';
 import { debounce } from '../utils/debounce';
+import SafeStorage from '../utils/safeStorage';
 
 const SEARCH_HISTORY_KEY = '@yukpo_search_history';
 const MAX_HISTORY_ITEMS = 10;
@@ -44,7 +45,7 @@ export const useSearchAutocomplete = () => {
 
   const loadSearchHistory = useCallback(async () => {
     try {
-      const historyJson = await AsyncStorage.getItem(SEARCH_HISTORY_KEY);
+      const historyJson = await SafeStorage.getItem(SEARCH_HISTORY_KEY);
       if (historyJson) {
         const history = JSON.parse(historyJson) as SearchHistoryItem[];
         // Trier par timestamp décroissant et limiter
@@ -62,7 +63,7 @@ export const useSearchAutocomplete = () => {
     if (!query.trim()) return;
 
     try {
-      const historyJson = await AsyncStorage.getItem(SEARCH_HISTORY_KEY);
+      const historyJson = await SafeStorage.getItem(SEARCH_HISTORY_KEY);
       let history: SearchHistoryItem[] = historyJson ? JSON.parse(historyJson) : [];
 
       // Supprimer les doublons et mettre à jour le timestamp
@@ -85,7 +86,7 @@ export const useSearchAutocomplete = () => {
 
   const clearHistory = useCallback(async () => {
     try {
-      await AsyncStorage.removeItem(SEARCH_HISTORY_KEY);
+      await SafeStorage.removeItem(SEARCH_HISTORY_KEY);
       setSearchHistory([]);
     } catch (error) {
       console.error('[useSearchAutocomplete] Erreur suppression historique:', error);
@@ -94,11 +95,11 @@ export const useSearchAutocomplete = () => {
 
   const removeFromHistory = useCallback(async (query: string) => {
     try {
-      const historyJson = await AsyncStorage.getItem(SEARCH_HISTORY_KEY);
+      const historyJson = await SafeStorage.getItem(SEARCH_HISTORY_KEY);
       if (historyJson) {
         let history = JSON.parse(historyJson) as SearchHistoryItem[];
         history = history.filter((item) => item.query !== query);
-        await AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+        await SafeStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
         setSearchHistory(history);
       }
     } catch (error) {

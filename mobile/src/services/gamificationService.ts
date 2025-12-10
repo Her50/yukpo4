@@ -3,7 +3,8 @@
  * Améliore la rétention de +40%
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../utils/safeStorage';
 import { apiGet, apiPost } from './api';
 
 interface UserPoints {
@@ -55,7 +56,7 @@ class GamificationService {
     // ✅ Points
     async getPoints(userId: string): Promise<UserPoints> {
         try {
-            const stored = await AsyncStorage.getItem(`${STORAGE_KEY_POINTS}_${userId}`);
+            const stored = await SafeStorage.getItem(`${STORAGE_KEY_POINTS}_${userId}`);
             if (stored) {
                 return JSON.parse(stored);
             }
@@ -99,7 +100,7 @@ class GamificationService {
                 timestamp: Date.now(),
             };
 
-            await AsyncStorage.setItem(`${STORAGE_KEY_POINTS}_${userId}`, JSON.stringify(points));
+            await SafeStorage.setItem(`${STORAGE_KEY_POINTS}_${userId}`, JSON.stringify(points));
 
             // ✅ Sync avec backend
             if (syncWithBackend) {
@@ -126,7 +127,7 @@ class GamificationService {
     // ✅ Badges
     async getBadges(userId: string): Promise<Badge[]> {
         try {
-            const stored = await AsyncStorage.getItem(`${STORAGE_KEY_BADGES}_${userId}`);
+            const stored = await SafeStorage.getItem(`${STORAGE_KEY_BADGES}_${userId}`);
             if (stored) {
                 return JSON.parse(stored);
             }
@@ -144,7 +145,7 @@ class GamificationService {
 
             if (badge && !badge.unlockedAt) {
                 badge.unlockedAt = Date.now();
-                await AsyncStorage.setItem(`${STORAGE_KEY_BADGES}_${userId}`, JSON.stringify(badges));
+                await SafeStorage.setItem(`${STORAGE_KEY_BADGES}_${userId}`, JSON.stringify(badges));
 
                 // ✅ Sync avec backend
                 apiPost('/api/gamification/badges', {
@@ -235,7 +236,7 @@ class GamificationService {
     // ✅ Streaks
     async getStreak(userId: string): Promise<Streak> {
         try {
-            const stored = await AsyncStorage.getItem(`${STORAGE_KEY_STREAK}_${userId}`);
+            const stored = await SafeStorage.getItem(`${STORAGE_KEY_STREAK}_${userId}`);
             if (stored) {
                 return JSON.parse(stored);
             }
@@ -275,7 +276,7 @@ class GamificationService {
                 streak.longest = streak.current;
             }
 
-            await AsyncStorage.setItem(`${STORAGE_KEY_STREAK}_${userId}`, JSON.stringify(streak));
+            await SafeStorage.setItem(`${STORAGE_KEY_STREAK}_${userId}`, JSON.stringify(streak));
 
             // ✅ Vérifier badges streak
             if (streak.current === 7 && !(await this.getBadges(userId)).find(b => b.id === 'streak_7')?.unlockedAt) {

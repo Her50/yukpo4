@@ -95,8 +95,9 @@ export const calculateAbandonmentRate = (
 export const storeMetric = (key: string, value: number | string) => {
     try {
         // Utiliser AsyncStorage pour persister
-        // import AsyncStorage from '@react-native-async-storage/async-storage';
-        // await AsyncStorage.setItem(`metric_${key}`, JSON.stringify(value));
+        // // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
+        // await SafeStorage.setItem(`metric_${key}`, JSON.stringify(value));
     } catch (error) {
         console.error('[Metrics] Erreur stockage:', error);
     }
@@ -107,8 +108,9 @@ export const storeMetric = (key: string, value: number | string) => {
  */
 export const getStoredMetric = async (key: string): Promise<number | string | null> => {
     try {
-        // import AsyncStorage from '@react-native-async-storage/async-storage';
-        // const value = await AsyncStorage.getItem(`metric_${key}`);
+        // // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
+        // const value = await SafeStorage.getItem(`metric_${key}`);
         // return value ? JSON.parse(value) : null;
         return null;
     } catch (error) {

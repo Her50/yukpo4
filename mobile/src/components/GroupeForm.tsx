@@ -3,7 +3,8 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 // import { motion, AnimatePresence } from 'framer-motion'; // Animation React Native
 // import DynamicField from "@/components/intelligence/DynamicFields";
 // import { Button } from "@/components/ui/buttons";
@@ -35,7 +36,7 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
   useEffect(() => {
     const loadTampon = async () => {
       try {
-        const tampon = await AsyncStorage.getItem("tampon_groupe_local");
+        const tampon = await SafeStorage.getItem("tampon_groupe_local");
         if (tampon) {
           const parsed = JSON.parse(tampon);
           const existants = parsed[groupe.groupe_actuel] || {};
@@ -81,10 +82,10 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
     setErreurs((prev) => ({ ...prev, [champNom]: "" }));
 
     try {
-      const tamponStr = await AsyncStorage.getItem("tampon_groupe_local");
+      const tamponStr = await SafeStorage.getItem("tampon_groupe_local");
       const tampon = tamponStr ? JSON.parse(tamponStr) : {};
       tampon[groupe.groupe_actuel] = { ...tampon[groupe.groupe_actuel], [champNom]: valeur };
-      await AsyncStorage.setItem("tampon_groupe_local", JSON.stringify(tampon));
+      await SafeStorage.setItem("tampon_groupe_local", JSON.stringify(tampon));
     } catch (error) {
       console.error('Erreur sauvegarde tampon:', error);
     }

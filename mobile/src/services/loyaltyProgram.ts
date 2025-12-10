@@ -3,7 +3,8 @@
  * Points, réductions, niveaux, récompenses
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import { analytics } from './analytics';
 import { apiGet, apiPost } from './api';
 
@@ -203,7 +204,7 @@ class LoyaltyProgramService {
      */
     private async cachePoints(points: LoyaltyPoints) {
         try {
-            await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify(points));
+            await SafeStorage.setItem(this.STORAGE_KEY, JSON.stringify(points));
         } catch (error) {
             console.error('[Loyalty] Erreur cache points:', error);
         }
@@ -214,7 +215,7 @@ class LoyaltyProgramService {
      */
     private async getCachedPoints(): Promise<LoyaltyPoints | null> {
         try {
-            const cached = await AsyncStorage.getItem(this.STORAGE_KEY);
+            const cached = await SafeStorage.getItem(this.STORAGE_KEY);
             return cached ? JSON.parse(cached) : null;
         } catch (error) {
             return null;
@@ -226,7 +227,7 @@ class LoyaltyProgramService {
      */
     private async cacheRewards(rewards: LoyaltyReward[]) {
         try {
-            await AsyncStorage.setItem(this.REWARDS_KEY, JSON.stringify(rewards));
+            await SafeStorage.setItem(this.REWARDS_KEY, JSON.stringify(rewards));
         } catch (error) {
             console.error('[Loyalty] Erreur cache récompenses:', error);
         }

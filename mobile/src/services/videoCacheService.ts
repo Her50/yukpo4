@@ -3,7 +3,8 @@
  * Gère le cache vidéo avec nettoyage automatique et préchargement
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import * as FileSystem from 'expo-file-system';
 
 const CACHE_DIR = `${FileSystem.cacheDirectory}video_cache/`;
@@ -45,7 +46,7 @@ class VideoCacheService {
      */
     private async loadCacheMap(): Promise<void> {
         try {
-            const cached = await AsyncStorage.getItem('video_cache_map');
+            const cached = await SafeStorage.getItem('video_cache_map');
             if (cached) {
                 const entries = JSON.parse(cached) as CacheEntry[];
                 entries.forEach(entry => {
@@ -63,7 +64,7 @@ class VideoCacheService {
     private async saveCacheMap(): Promise<void> {
         try {
             const entries = Array.from(this.cacheMap.values());
-            await AsyncStorage.setItem('video_cache_map', JSON.stringify(entries));
+            await SafeStorage.setItem('video_cache_map', JSON.stringify(entries));
         } catch (error) {
             console.error('[VideoCacheService] Erreur sauvegarde cache map:', error);
         }
@@ -240,7 +241,7 @@ class VideoCacheService {
         try {
             await FileSystem.deleteAsync(CACHE_DIR, { idempotent: true });
             this.cacheMap.clear();
-            await AsyncStorage.removeItem('video_cache_map');
+            await SafeStorage.removeItem('video_cache_map');
             this.isInitialized = false;
         } catch (error) {
             console.error('[VideoCacheService] Erreur nettoyage cache complet:', error);

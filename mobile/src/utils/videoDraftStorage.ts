@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import type { MusicMode } from '../types/audio';
 
 export interface VideoDraft {
@@ -50,7 +51,7 @@ export const saveVideoDraft = async (draft: Partial<VideoDraft>): Promise<void> 
                     timestamp: Date.now(),
                 } as VideoDraft;
 
-                await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(fullDraft));
+                await SafeStorage.setItem(DRAFT_KEY, JSON.stringify(fullDraft));
                 console.log('[VideoDraftStorage] ✅ Brouillon sauvegardé');
             } catch (error) {
                 console.error('[VideoDraftStorage] ❌ Erreur sauvegarde brouillon:', error);
@@ -66,7 +67,7 @@ export const saveVideoDraft = async (draft: Partial<VideoDraft>): Promise<void> 
  */
 export const loadVideoDraft = async (): Promise<VideoDraft | null> => {
     try {
-        const draftJson = await AsyncStorage.getItem(DRAFT_KEY);
+        const draftJson = await SafeStorage.getItem(DRAFT_KEY);
         if (!draftJson) {
             return null;
         }
@@ -77,7 +78,7 @@ export const loadVideoDraft = async (): Promise<VideoDraft | null> => {
         const age = Date.now() - draft.timestamp;
         if (age > DRAFT_MAX_AGE) {
             console.log('[VideoDraftStorage] ⏰ Brouillon expiré, suppression');
-            await AsyncStorage.removeItem(DRAFT_KEY);
+            await SafeStorage.removeItem(DRAFT_KEY);
             return null;
         }
 
@@ -94,7 +95,7 @@ export const loadVideoDraft = async (): Promise<VideoDraft | null> => {
  */
 export const clearVideoDraft = async (): Promise<void> => {
     try {
-        await AsyncStorage.removeItem(DRAFT_KEY);
+        await SafeStorage.removeItem(DRAFT_KEY);
         console.log('[VideoDraftStorage] ✅ Brouillon supprimé');
     } catch (error) {
         console.error('[VideoDraftStorage] ❌ Erreur suppression brouillon:', error);

@@ -3,7 +3,8 @@
  * Détecte la qualité de connexion et sélectionne la qualité vidéo appropriée
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import NetInfo from '@react-native-community/netinfo';
 
 export type VideoQuality = '360p' | '480p' | '720p' | '1080p' | 'auto';
@@ -59,7 +60,7 @@ class AdaptiveVideoService {
      */
     async initialize(): Promise<void> {
         try {
-            const saved = await AsyncStorage.getItem('video_quality_preference');
+            const saved = await SafeStorage.getItem('video_quality_preference');
             if (saved && this.isValidQuality(saved)) {
                 this.qualityPreference = saved as VideoQuality;
             }
@@ -173,7 +174,7 @@ class AdaptiveVideoService {
         }
 
         this.qualityPreference = quality;
-        await AsyncStorage.setItem('video_quality_preference', quality);
+        await SafeStorage.setItem('video_quality_preference', quality);
     }
 
     /**

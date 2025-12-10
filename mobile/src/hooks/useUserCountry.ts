@@ -1,8 +1,9 @@
 // ✅ HOOK POUR DÉTECTER LE PAYS DE L'UTILISATEUR
 // Détecte via : 1) Profil utilisateur, 2) GPS, 3) Sélection manuelle, 4) Défaut Cameroun
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import { useEffect, useState } from 'react';
+import SafeStorage from '../utils/safeStorage';
 
 export interface UserCountryInfo {
     code: string; // Code ISO (CM, CI, SN, etc.)
@@ -102,7 +103,7 @@ const useUserCountry = (): {
     const detectUserCountry = async () => {
         try {
             // 1️⃣ Vérifier si déjà stocké localement (choix manuel de l'utilisateur)
-            const stored = await AsyncStorage.getItem('user_country_code');
+            const stored = await SafeStorage.getItem('user_country_code');
             if (stored) {
                 console.log('[useUserCountry] Pays récupéré du stockage:', stored);
                 setCountryCode(stored);
@@ -111,14 +112,14 @@ const useUserCountry = (): {
             }
 
             // 2️⃣ Essayer de détecter via profil utilisateur (si connecté)
-            const userProfile = await AsyncStorage.getItem('user_profile');
+            const userProfile = await SafeStorage.getItem('user_profile');
             if (userProfile) {
                 try {
                     const profile = JSON.parse(userProfile);
                     if (profile.country_code) {
                         console.log('[useUserCountry] Pays détecté depuis profil:', profile.country_code);
                         setCountryCode(profile.country_code);
-                        await AsyncStorage.setItem('user_country_code', profile.country_code);
+                        await SafeStorage.setItem('user_country_code', profile.country_code);
                         setIsLoading(false);
                         return;
                     }
@@ -128,7 +129,7 @@ const useUserCountry = (): {
             }
 
             // 3️⃣ Essayer de détecter via GPS (si disponible)
-            const gpsData = await AsyncStorage.getItem('user_gps_location');
+            const gpsData = await SafeStorage.getItem('user_gps_location');
             if (gpsData) {
                 try {
                     const gps = JSON.parse(gpsData);
@@ -136,7 +137,7 @@ const useUserCountry = (): {
                         const detected = detectCountryFromGPS(gps.latitude, gps.longitude);
                         console.log('[useUserCountry] Pays détecté via GPS:', detected);
                         setCountryCode(detected);
-                        await AsyncStorage.setItem('user_country_code', detected);
+                        await SafeStorage.setItem('user_country_code', detected);
                         setIsLoading(false);
                         return;
                     }
@@ -160,7 +161,7 @@ const useUserCountry = (): {
     // Fonction pour changer manuellement le pays
     const updateCountryCode = async (code: string) => {
         try {
-            await AsyncStorage.setItem('user_country_code', code);
+            await SafeStorage.setItem('user_country_code', code);
             setCountryCode(code);
             console.log('[useUserCountry] Pays mis à jour:', code);
         } catch (error) {

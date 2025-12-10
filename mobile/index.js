@@ -19,10 +19,10 @@ if (global.ErrorUtils) {
             platform: Platform.OS
         });
 
-        // Essayer de sauvegarder l'erreur dans AsyncStorage pour analyse ultérieure
+        // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
         try {
-            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-            AsyncStorage.setItem('last_crash_error', JSON.stringify({
+            const SafeStorage = require('./src/utils/safeStorage').default;
+            SafeStorage.setItem('last_crash_error', JSON.stringify({
                 message: error?.message,
                 stack: error?.stack,
                 timestamp: new Date().toISOString(),

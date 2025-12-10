@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useState } from 'react';
 import {
     FlatList,
@@ -59,7 +60,7 @@ const SmartApplianceInput: React.FC<SmartApplianceInputProps> = ({
             let models: string[] = [];
 
             // 1. Charger depuis le cache local (rapide)
-            const cached = await AsyncStorage.getItem(cacheKey);
+            const cached = await SafeStorage.getItem(cacheKey);
             if (cached) {
                 models = JSON.parse(cached) as string[];
                 setAllModels(models);
@@ -79,7 +80,7 @@ const SmartApplianceInput: React.FC<SmartApplianceInputProps> = ({
                     const merged = [...new Set([...dbModels, ...models])];
 
                     // Mettre à jour le cache local
-                    await AsyncStorage.setItem(cacheKey, JSON.stringify(merged));
+                    await SafeStorage.setItem(cacheKey, JSON.stringify(merged));
                     setAllModels(merged);
                 }
             } catch (dbError) {
@@ -96,7 +97,7 @@ const SmartApplianceInput: React.FC<SmartApplianceInputProps> = ({
             const storageKey = brand
                 ? `@yukpomnang_last_appliance_${brand}`
                 : '@yukpomnang_last_appliance';
-            const lastUsed = await AsyncStorage.getItem(storageKey);
+            const lastUsed = await SafeStorage.getItem(storageKey);
 
             if (lastUsed) {
                 setLastUsedValue(lastUsed);
@@ -116,7 +117,7 @@ const SmartApplianceInput: React.FC<SmartApplianceInputProps> = ({
             const storageKey = brand
                 ? `@yukpomnang_last_appliance_${brand}`
                 : '@yukpomnang_last_appliance';
-            await AsyncStorage.setItem(storageKey, modelValue);
+            await SafeStorage.setItem(storageKey, modelValue);
             setLastUsedValue(modelValue);
         } catch (error) {
             console.error('[SmartApplianceInput] Erreur sauvegarde dernière valeur:', error);
@@ -139,7 +140,7 @@ const SmartApplianceInput: React.FC<SmartApplianceInputProps> = ({
                 // 1. Sauvegarder dans le cache local
                 const updated = [...allModels, normalized];
                 const cacheKey = `@yukpomnang_appliances_${brand}`;
-                await AsyncStorage.setItem(cacheKey, JSON.stringify(updated));
+                await SafeStorage.setItem(cacheKey, JSON.stringify(updated));
                 setAllModels(updated);
 
                 // 2. Sauvegarder dans la base de données

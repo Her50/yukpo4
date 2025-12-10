@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useState } from 'react';
 import {
     FlatList,
@@ -74,7 +75,7 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
             let structures: string[] = [];
 
             // 1. Charger depuis le cache local (rapide)
-            const cached = await AsyncStorage.getItem(storageKey);
+            const cached = await SafeStorage.getItem(storageKey);
             if (cached) {
                 structures = JSON.parse(cached) as string[];
                 setAllStructures(structures);
@@ -92,7 +93,7 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
                     const merged = [...new Set([...dbStructures, ...structures])];
 
                     // Mettre à jour le cache local
-                    await AsyncStorage.setItem(storageKey, JSON.stringify(merged));
+                    await SafeStorage.setItem(storageKey, JSON.stringify(merged));
                     setAllStructures(merged);
 
                     console.log(`🌐 [AutocompleteStructure] ${dbStructures.length} structures chargées de la DB, ${merged.length} au total`);
@@ -111,7 +112,7 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
         try {
             const lastUsedKey = LAST_USED_KEYS[type];
             const userKey = userId ? `${lastUsedKey}_${userId}` : lastUsedKey;
-            const lastUsed = await AsyncStorage.getItem(userKey);
+            const lastUsed = await SafeStorage.getItem(userKey);
             
             if (lastUsed) {
                 setLastUsedValue(lastUsed);
@@ -132,7 +133,7 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
         try {
             const lastUsedKey = LAST_USED_KEYS[type];
             const userKey = userId ? `${lastUsedKey}_${userId}` : lastUsedKey;
-            await AsyncStorage.setItem(userKey, structureName);
+            await SafeStorage.setItem(userKey, structureName);
             setLastUsedValue(structureName);
             console.log(`✅ [AutocompleteStructure] Dernière valeur mémorisée: ${structureName}`);
         } catch (error) {
@@ -156,7 +157,7 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
                 // 1. Sauvegarder dans le cache local (immédiat)
                 const updated = [...allStructures, normalized];
                 const storageKey = STORAGE_KEYS[type];
-                await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
+                await SafeStorage.setItem(storageKey, JSON.stringify(updated));
                 setAllStructures(updated);
                 console.log(`✅ [AutocompleteStructure] Structure sauvegardée localement: ${normalized}`);
 
