@@ -283,7 +283,7 @@ async fn get_leaderboard(
         r#"
         SELECT 
             gs.user_id,
-            u.name as username,
+            COALESCE(u.nom_complet, u.email, 'Utilisateur') as username,
             gs.total_points,
             gs.total_completed_deliveries as total_deliveries,
             gs.current_level,

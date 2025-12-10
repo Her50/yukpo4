@@ -36,21 +36,69 @@ import { homeScreenReducer, initialState } from './HomeScreen.reducer';
 // ✅ SÉCURITÉ: Vérification que les composants sont bien exportés avant lazy loading
 // ✅ CORRIGÉ: Remplacer par un bouton simple au lieu du scroll horizontal
 import { SpecializedServicesButton } from '../components/SpecializedServicesButton';
-const GlobalPromoHighlights = React.lazy(() => import('../components/promotions/GlobalPromoHighlights'));
+const GlobalPromoHighlights = React.lazy(() =>
+    import('../components/promotions/GlobalPromoHighlights')
+        .then(module => {
+            // ✅ SÉCURITÉ: Gérer les deux types d'export (named et default)
+            // GlobalPromoHighlights n'a que default export, pas de named export
+            const GlobalPromoComponent = module.default;
+            if (!GlobalPromoComponent) {
+                console.error('[HomeScreen] ❌ GlobalPromoHighlights non trouvé dans le module', module);
+                // ✅ CRITIQUE: Retourner un composant de fallback au lieu de throw pour éviter de bloquer l'app
+                const FallbackComponent: React.FC = () => (
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, color: '#666' }}>
+                            Promotions non disponibles
+                        </Text>
+                    </View>
+                );
+                return { default: FallbackComponent };
+            }
+            return { default: GlobalPromoComponent };
+        })
+        .catch((error) => {
+            console.error('[HomeScreen] ❌ Erreur chargement GlobalPromoHighlights:', error);
+            // ✅ CRITIQUE: Retourner un composant de fallback au lieu de throw pour éviter de bloquer l'app
+            const FallbackComponent: React.FC = () => (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, color: '#666' }}>
+                        Erreur de chargement des promotions
+                    </Text>
+                </View>
+            );
+            return { default: FallbackComponent };
+        })
+);
 const InfiniteFeed = React.lazy(() =>
     import('../components/InfiniteFeed')
         .then(module => {
-            // ✅ SÉCURITÉ: Vérifier que InfiniteFeed existe dans le module
-            if (!module || !module.InfiniteFeed) {
-                console.error('[HomeScreen] ❌ InfiniteFeed non trouvé dans le module');
-                throw new Error('InfiniteFeed component not found');
+            // ✅ CORRIGÉ: Gérer les deux types d'export (named et default)
+            const InfiniteFeedComponent = module.InfiniteFeed || module.default;
+            if (!InfiniteFeedComponent) {
+                console.error('[HomeScreen] ❌ InfiniteFeed non trouvé dans le module', module);
+                // ✅ CRITIQUE: Retourner un composant de fallback au lieu de throw pour éviter de bloquer l'app
+                const FallbackComponent: React.FC<any> = () => (
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, color: '#666' }}>
+                            Feed non disponible
+                        </Text>
+                    </View>
+                );
+                return { default: FallbackComponent };
             }
-            return { default: module.InfiniteFeed };
+            return { default: InfiniteFeedComponent };
         })
         .catch((error) => {
             console.error('[HomeScreen] ❌ Erreur chargement InfiniteFeed:', error);
-            // ✅ SÉCURITÉ: Re-throw pour que Suspense puisse gérer l'erreur
-            throw error;
+            // ✅ CRITIQUE: Retourner un composant de fallback au lieu de throw pour éviter de bloquer l'app
+            const FallbackComponent: React.FC<any> = () => (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, color: '#666' }}>
+                        Erreur de chargement du feed
+                    </Text>
+                </View>
+            );
+            return { default: FallbackComponent };
         })
 );
 // ✅ NOUVEAU: Composants UX améliorés
@@ -1431,7 +1479,13 @@ const HomeScreen: React.FC = () => {
                                         <SpecializedServicesButton
                                             onPress={() => {
                                                 // ✅ AMÉLIORÉ: Retirer le double appel haptique (déjà géré dans le bouton)
-                                                (navigation as any).navigate('SpecializedServicesHub');
+                                                try {
+                                                    hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
+                                                    (navigation as any).navigate('SpecializedServicesHub');
+                                                } catch (error) {
+                                                    console.error('[HomeScreen] ❌ Erreur navigation vers SpecializedServicesHub:', error);
+                                                    Alert.alert('Erreur', 'Impossible d\'ouvrir les services spécialisés.');
+                                                }
                                             }}
                                         />
                                     </AnimatedCard>
@@ -1477,8 +1531,9 @@ const HomeScreen: React.FC = () => {
                                                 searchQuery={state.data.searchQuery}
                                                 totalSearchResults={state.data.totalSearchResults}
                                                 onShowAllResults={() => {
-                                                    // ✅ CORRIGÉ: Navigation sécurisée avec gestion d'erreur
+                                                    // ✅ AMÉLIORÉ: Navigation sécurisée avec gestion d'erreur et haptic feedback
                                                     try {
+                                                        hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
                                                         navigation.navigate('ResultatBesoin' as never, {
                                                             results: state.data.searchResults,
                                                             type: 'recherche_besoin',
@@ -1504,7 +1559,10 @@ const HomeScreen: React.FC = () => {
                                     <AnimatedCard index={1} delay={100}>
                                         <ErrorBoundary
                                             fallback={
-                                                <View style={{ padding: 20, alignItems: 'center', backgroundColor: modernColors.surface, borderRadius: 12, margin: 16 }}>
+                                                <View
+                                                    style={{ padding: 20, alignItems: 'center', backgroundColor: modernColors.surface, borderRadius: 12, margin: 16 }}
+                                                    pointerEvents="box-none" // ✅ CRITIQUE: Permettre les interactions dans le fallback
+                                                >
                                                     <Text style={{ fontSize: 16, fontWeight: '600', color: modernColors.text, marginBottom: 8 }}>⚠️ Erreur de chargement</Text>
                                                     <Text style={{ fontSize: 14, color: modernColors.textSecondary, textAlign: 'center' }}>
                                                         Impossible de charger les promotions. Veuillez réessayer.
@@ -1512,11 +1570,16 @@ const HomeScreen: React.FC = () => {
                                                 </View>
                                             }
                                         >
-                                            <Suspense fallback={
-                                                <View style={{ padding: 20, alignItems: 'center' }}>
-                                                    <ActivityIndicator size="small" color={modernColors.primary} />
-                                                </View>
-                                            }>
+                                            <Suspense
+                                                fallback={
+                                                    <View style={{ padding: 20, alignItems: 'center' }}>
+                                                        <ActivityIndicator size="small" color={modernColors.primary} />
+                                                        <Text style={{ marginTop: 8, fontSize: 12, color: modernColors.textSecondary }}>
+                                                            Chargement des promotions...
+                                                        </Text>
+                                                    </View>
+                                                }
+                                            >
                                                 <GlobalPromoHighlights />
                                             </Suspense>
                                         </ErrorBoundary>
@@ -1547,7 +1610,10 @@ const HomeScreen: React.FC = () => {
                                             </View>
                                             <ErrorBoundary
                                                 fallback={
-                                                    <View style={{ padding: 20, alignItems: 'center', backgroundColor: modernColors.surface, borderRadius: 12, margin: 16 }}>
+                                                    <View
+                                                        style={{ padding: 20, alignItems: 'center', backgroundColor: modernColors.surface, borderRadius: 12, margin: 16 }}
+                                                        pointerEvents="box-none" // ✅ CRITIQUE: Permettre les interactions dans le fallback
+                                                    >
                                                         <Text style={{ fontSize: 16, fontWeight: '600', color: modernColors.text, marginBottom: 8 }}>⚠️ Erreur de chargement</Text>
                                                         <Text style={{ fontSize: 14, color: modernColors.textSecondary, textAlign: 'center' }}>
                                                             Impossible de charger le feed. Veuillez réessayer.
@@ -1555,11 +1621,16 @@ const HomeScreen: React.FC = () => {
                                                     </View>
                                                 }
                                             >
-                                                <Suspense fallback={
-                                                    <View style={{ padding: 20, alignItems: 'center' }}>
-                                                        <ActivityIndicator size="small" color={modernColors.primary} />
-                                                    </View>
-                                                }>
+                                                <Suspense
+                                                    fallback={
+                                                        <View style={{ padding: 20, alignItems: 'center' }}>
+                                                            <ActivityIndicator size="small" color={modernColors.primary} />
+                                                            <Text style={{ marginTop: 8, fontSize: 12, color: modernColors.textSecondary }}>
+                                                                Chargement du feed...
+                                                            </Text>
+                                                        </View>
+                                                    }
+                                                >
                                                     <InfiniteFeed
                                                         userId={user?.id}
                                                         location={state.metadata.selectedLocation ? {
@@ -1567,14 +1638,25 @@ const HomeScreen: React.FC = () => {
                                                             lng: state.metadata.selectedLocation.lng,
                                                         } : null}
                                                         onItemPress={(item) => {
-                                                            // ✅ CORRIGÉ: Navigation sécurisée avec gestion d'erreur
+                                                            // ✅ AMÉLIORÉ: Navigation sécurisée avec gestion d'erreur et haptic feedback
                                                             try {
+                                                                hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
+                                                                const productId = item.id || item.service_id;
+                                                                if (!productId) {
+                                                                    console.warn('[HomeScreen] ⚠️ ProductId manquant pour l\'item:', item);
+                                                                    Alert.alert('Erreur', 'Identifiant du produit manquant.');
+                                                                    return;
+                                                                }
                                                                 navigation.navigate('ProductDetail' as never, {
-                                                                    productId: item.id || item.service_id,
+                                                                    productId: String(productId), // ✅ S'assurer que c'est une string
                                                                 } as never);
-                                                            } catch (error) {
-                                                                console.error('[HomeScreen] ❌ Erreur navigation vers ProductDetail:', error);
-                                                                Alert.alert('Erreur', 'Impossible d\'ouvrir les détails du produit.');
+                                                            } catch (error: any) {
+                                                                console.error('[HomeScreen] ❌ Erreur navigation vers ProductDetail:', {
+                                                                    error: error?.message || String(error),
+                                                                    stack: error?.stack,
+                                                                    item: item
+                                                                });
+                                                                Alert.alert('Erreur', 'Impossible d\'ouvrir les détails du produit. Veuillez réessayer.');
                                                             }
                                                         }}
                                                     />
@@ -1584,7 +1666,8 @@ const HomeScreen: React.FC = () => {
                                     </AnimatedCard>
                                 );
                             }
-                            return null;
+                            // ✅ CRITIQUE: Retourner un View vide au lieu de null pour éviter les problèmes de rendu
+                            return <View key="empty-item" style={{ height: 0, width: 0 }} />;
                         }}
                         onScroll={onScroll}
                         scrollEventThrottle={16}
@@ -2462,25 +2545,32 @@ const createStyles = (colors: any) => StyleSheet.create({
         color: '#6B7280',
         fontWeight: '500',
     },
-    // ✅ PHASE 2: Styles pour le feed infini
+    // ✅ AMÉLIORÉ: Styles pour le feed infini - Réduction espace blanc et meilleure UX
     feedContainer: {
-        marginTop: 24,
-        marginBottom: 40,
+        marginTop: 16, // ✅ RÉDUIT: De 24 à 16 pour réduire l'espace blanc
+        marginBottom: 24, // ✅ RÉDUIT: De 40 à 24 pour réduire l'espace blanc
+        paddingHorizontal: 4, // ✅ NOUVEAU: Padding horizontal minimal
+        backgroundColor: 'rgba(255, 255, 255, 0.03)', // ✅ NOUVEAU: Fond subtil pour délimiter la zone
+        borderRadius: 16, // ✅ NOUVEAU: Bordures arrondies
+        paddingVertical: 8, // ✅ NOUVEAU: Padding vertical minimal
     },
     feedHeader: {
-        paddingHorizontal: 20,
-        paddingBottom: 16,
+        paddingHorizontal: 16, // ✅ RÉDUIT: De 20 à 16 pour plus de compacité
+        paddingBottom: 12, // ✅ RÉDUIT: De 16 à 12 pour plus de compacité
+        marginBottom: 8, // ✅ NOUVEAU: Marge en bas pour séparer du contenu
     },
     feedTitle: {
-        fontSize: 20,
+        fontSize: 22, // ✅ AUGMENTÉ: De 20 à 22 pour plus de visibilité
         fontWeight: '700',
-        color: '#1F2937',
-        marginBottom: 4,
+        color: '#1F2937', // ✅ AMÉLIORÉ: Couleur plus foncée pour meilleur contraste
+        marginBottom: 6, // ✅ AUGMENTÉ: De 4 à 6 pour meilleur espacement
+        letterSpacing: -0.3, // ✅ NOUVEAU: Espacement des lettres pour modernité
     },
     feedSubtitle: {
-        fontSize: 14,
-        color: '#6B7280',
+        fontSize: 15, // ✅ AUGMENTÉ: De 14 à 15 pour meilleure lisibilité
+        color: '#64748B', // ✅ AMÉLIORÉ: Couleur plus claire mais toujours lisible
         fontWeight: '400',
+        lineHeight: 20, // ✅ NOUVEAU: Hauteur de ligne pour meilleure lisibilité
     },
     // ✅ NOUVEAU : Bouton floating coursier
     floatingCourierButton: {

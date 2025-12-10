@@ -38,7 +38,7 @@ export const cleanChildren = (children: React.ReactNode, keyPrefix: string = '')
             return null; // Ne pas rendre "false" ou "true" comme string
         }
         // ✅ CRITIQUE: Wrapper les autres strings/nombres dans Text
-        return <Text key={ keyPrefix }> { str } </Text>;
+        return <Text key={keyPrefix}>{str}</Text>;
     }
 
     // ✅ CRITIQUE: Si c'est un tableau, traiter chaque élément
@@ -77,7 +77,7 @@ export const cleanChildren = (children: React.ReactNode, keyPrefix: string = '')
         }
         return null;
     }
-    return <Text key={ keyPrefix }> { str } </Text>;
+    return <Text key={keyPrefix}>{str}</Text>;
 };
 
 /**

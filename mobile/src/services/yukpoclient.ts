@@ -103,7 +103,7 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
     // Mettre à jour le solde de tokens
     const remaining = iaResponse.headers.get('x-tokens-remaining');
     if (remaining) {
-      await AsyncStorage.setItem('tokens_balance', remaining);
+      await SafeStorage.setItem('tokens_balance', remaining);
     }
 
     return {
@@ -183,7 +183,7 @@ export async function rechercherServices(input: any): Promise<any> {
     // Mettre à jour le solde de tokens
     const remaining = response.headers.get('x-tokens-remaining');
     if (remaining) {
-      await AsyncStorage.setItem('tokens_balance', remaining);
+      await SafeStorage.setItem('tokens_balance', remaining);
     }
 
     console.log('[yukpoclient] Retour du résultat complet');
@@ -256,7 +256,7 @@ export async function creerService(donneesStructurees: any, tokensIAExterne?: nu
     // Mettre à jour le solde de tokens
     const remaining = response.headers.get('x-tokens-remaining');
     if (remaining) {
-      await AsyncStorage.setItem('tokens_balance', remaining);
+      await SafeStorage.setItem('tokens_balance', remaining);
     }
 
     return { data, headers: response.headers };

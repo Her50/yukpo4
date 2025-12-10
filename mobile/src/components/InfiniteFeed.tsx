@@ -258,9 +258,15 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
             <View style={styles.emptyContainer}>
                 <EmptyState
                     variant={error ? 'error' : 'empty'}
-                    title={error ? 'Erreur de chargement' : 'Aucun contenu disponible'}
-                    description={error || 'Essayez de rafraîchir ou de modifier vos filtres'}
-                    icon={error ? 'alert-circle' : 'package'}
+                    title={error ? 'Erreur de chargement' : 'Découvrez nos services'}
+                    description={error || 'Explorez une large sélection de produits et services près de chez vous. Utilisez la recherche pour trouver ce que vous cherchez !'}
+                    icon={error ? 'alert-circle' : 'sparkles'} // ✅ AMÉLIORÉ: Icône plus engageante
+                    actionLabel={error ? 'Réessayer' : 'Rechercher'}
+                    onAction={error ? () => {
+                        // Réessayer le chargement
+                        setError(null);
+                        loadMoreItems(true).catch(console.error);
+                    } : undefined}
                 />
             </View>
         );
@@ -329,9 +335,14 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     emptyContainer: {
-        paddingVertical: 40,
+        paddingVertical: 60, // ✅ AMÉLIORÉ: Plus d'espace vertical
+        paddingHorizontal: 20, // ✅ NOUVEAU: Padding horizontal
         alignItems: 'center',
         justifyContent: 'center',
+        minHeight: 400, // ✅ NOUVEAU: Hauteur minimale pour éviter l'espace vide
+        backgroundColor: 'rgba(255, 255, 255, 0.02)', // ✅ NOUVEAU: Fond subtil pour la zone vide
+        borderRadius: 16, // ✅ NOUVEAU: Bordures arrondies
+        marginHorizontal: 16, // ✅ NOUVEAU: Marges horizontales
     },
     emptyText: {
         fontSize: 16,

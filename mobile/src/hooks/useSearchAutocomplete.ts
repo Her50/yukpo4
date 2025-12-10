@@ -77,7 +77,7 @@ export const useSearchAutocomplete = () => {
       };
 
       history = [newItem, ...history].slice(0, MAX_HISTORY_ITEMS);
-      await AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+      await SafeStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
       setSearchHistory(history);
     } catch (error) {
       console.error('[useSearchAutocomplete] Erreur sauvegarde historique:', error);

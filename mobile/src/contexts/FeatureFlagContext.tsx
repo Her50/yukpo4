@@ -43,6 +43,9 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
 
     useEffect(() => {
         const fetchFlags = async () => {
+            // ✅ CORRIGÉ: Déclarer timeoutId avant le try pour qu'il soit accessible dans catch et finally
+            let timeoutId: NodeJS.Timeout | null = null;
+
             try {
                 // ✅ CORRIGÉ: Utiliser la configuration centralisée API_BASE_URL
                 if (!API_BASE_URL) {
@@ -53,7 +56,7 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
 
                 // ✅ CORRIGÉ: Créer un AbortController pour le timeout (compatible React Native)
                 const abortController = new AbortController();
-                const timeoutId = setTimeout(() => {
+                timeoutId = setTimeout(() => {
                     abortController.abort();
                 }, 5000);
 
@@ -69,7 +72,10 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
                     }
                 );
 
-                clearTimeout(timeoutId);
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
 
                 if (!res.ok) {
                     throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -91,7 +97,10 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
                 }
             } catch (err: any) {
                 // ✅ CORRIGÉ: Nettoyer le timeout en cas d'erreur
-                clearTimeout(timeoutId);
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
 
                 // ✅ CORRIGÉ: Gestion d'erreur améliorée avec détails
                 if (err.name === 'AbortError' || err.name === 'TimeoutError') {
@@ -109,7 +118,10 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
                 }
                 // ✅ CORRIGÉ: Continuer avec les flags par défaut (déjà initialisés depuis env)
             } finally {
-                clearTimeout(timeoutId);
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
                 setLoading(false);
             }
         };

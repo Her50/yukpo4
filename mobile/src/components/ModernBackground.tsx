@@ -1,7 +1,9 @@
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect } from 'react';
-import { Dimensions, Animated as RNAnimated, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Animated as RNAnimated, StyleSheet, View } from 'react-native';
+// ✅ CORRIGÉ: Utiliser cleanChildren pour éviter les erreurs de rendu
+import { cleanChildren } from '../utils/safeChildren';
 
 const { width, height } = Dimensions.get('window');
 
@@ -99,7 +101,10 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
     return (
         <View style={styles.container}>
             {/* Arrière-plan avec dégradés animés + Parallax */}
-            <RNAnimated.View style={[styles.backgroundContainer, parallaxStyle]}>
+            <RNAnimated.View
+                style={[styles.backgroundContainer, parallaxStyle]}
+                pointerEvents="none" // ✅ CRITIQUE: Ne pas bloquer les interactions utilisateur
+            >
                 {gradients.map((colors, index) => (
                     <LinearGradient
                         key={index}
@@ -126,238 +131,12 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
                 intensity={20}
                 tint="light"
                 style={styles.blurOverlay}
+                pointerEvents="none" // ✅ CRITIQUE: Ne pas bloquer les interactions utilisateur
             />
 
             {/* Contenu principal */}
             <View style={styles.content}>
-                {React.useMemo(() => {
-                    // ✅ CRITIQUE: Gérer le cas où children est null/undefined
-                    if (children == null) {
-                        return null;
-                    }
-
-                    // ✅ CRITIQUE: Si children est un boolean false, retourner null IMMÉDIATEMENT (React Native ne peut pas rendre false)
-                    if (typeof children === 'boolean') {
-                        if (!children) {
-                            try {
-                                const { componentDebugger } = require('../utils/componentDebugger');
-                                const { remoteLoggingService } = require('../services/remoteLoggingService');
-                                const errorMsg = `🚨 [ModernBackground] BOOLEAN FALSE DÉTECTÉ DIRECTEMENT - Retour null`;
-                                console.warn(errorMsg);
-                                componentDebugger.logComponent('ModernBackground', { variant, hasBooleanFalse: true }, children);
-                                remoteLoggingService.warn(errorMsg, 'ModernBackground', { children: String(children) });
-                            } catch (e) {
-                                // Ignorer si les services ne sont pas disponibles
-                            }
-                        }
-                        return null; // Toujours null pour boolean
-                    }
-
-                    // ✅ CRITIQUE: Si children est une string/number, la wrapper directement
-                    if (typeof children === 'string' || typeof children === 'number') {
-                        // ✅ CRITIQUE: Vérifier si c'est la string "false" (qui pourrait venir d'un boolean converti)
-                        if (children === 'false' || children === 'true') {
-                            try {
-                                const { componentDebugger } = require('../utils/componentDebugger');
-                                const { remoteLoggingService } = require('../services/remoteLoggingService');
-                                const errorMsg = `🚨 [ModernBackground] STRING DÉTECTÉE DANS ScreenTransition: "${children}"`;
-                                console.error(errorMsg);
-                                componentDebugger.logComponent('ModernBackground', { variant, hasStringChild: true, isBooleanString: true }, children);
-                                remoteLoggingService.error(errorMsg, 'ModernBackground', {
-                                    child: String(children),
-                                    childComponent: 'ScreenTransition',
-                                    childrenType: 'boolean'
-                                }, new Error().stack);
-                            } catch (e) {
-                                // Ignorer si les services ne sont pas disponibles
-                            }
-                            return null; // Ne pas rendre "false" ou "true" comme string
-                        }
-                        // ✅ CRITIQUE: Logger immédiatement si on détecte une string
-                        try {
-                            const { componentDebugger } = require('../utils/componentDebugger');
-                            const { remoteLoggingService } = require('../services/remoteLoggingService');
-                            const errorMsg = `🚨 [ModernBackground] STRING DÉTECTÉE DIRECTEMENT: "${String(children).substring(0, 50)}"`;
-                            console.error(errorMsg);
-                            componentDebugger.logComponent('ModernBackground', { variant, hasStringChild: true }, children);
-                            remoteLoggingService.error(errorMsg, 'ModernBackground', { children: String(children).substring(0, 100) }, new Error().stack);
-                        } catch (e) {
-                            // Ignorer si les services ne sont pas disponibles
-                        }
-                        return <Text>{String(children)}</Text>;
-                    }
-
-                    // ✅ CRITIQUE: Si children est un tableau, le traiter récursivement
-                    if (Array.isArray(children)) {
-                        const safeArray = children
-                            .map((child, idx) => {
-                                if (child == null) {
-                                    return null;
-                                }
-                                // ✅ CRITIQUE: Filtrer les boolean false
-                                if (typeof child === 'boolean') {
-                                    return null; // Toujours null pour boolean
-                                }
-                                if (typeof child === 'string' || typeof child === 'number') {
-                                    return <Text key={idx}>{String(child)}</Text>;
-                                }
-                                if (React.isValidElement(child)) {
-                                    return child;
-                                }
-                                return <Text key={idx}>{String(child)}</Text>;
-                            })
-                            .filter(child => child != null && child !== false); // Filtrer null, undefined et false
-                        return safeArray.length > 0 ? safeArray : null;
-                    }
-
-                    // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
-                    const mapped = React.Children.map(children, (child, index) => {
-                        // ✅ CRITIQUE: Si c'est null ou undefined, retourner null
-                        if (child == null) {
-                            return null;
-                        }
-
-                        // ✅ CRITIQUE: Si c'est un boolean false, retourner null
-                        if (typeof child === 'boolean') {
-                            if (!child) {
-                                try {
-                                    const { componentDebugger } = require('../utils/componentDebugger');
-                                    const { remoteLoggingService } = require('../services/remoteLoggingService');
-                                    const errorMsg = `🚨 [ModernBackground] BOOLEAN FALSE DÉTECTÉ DANS React.Children.map - Retour null`;
-                                    console.warn(errorMsg, { child, index, childrenType: typeof child });
-                                    componentDebugger.logComponent('ModernBackground', { variant, hasBooleanFalse: true, childIndex: index }, child);
-                                    remoteLoggingService.warn(errorMsg, 'ModernBackground', {
-                                        child: String(child),
-                                        childIndex: index,
-                                        childrenType: typeof child,
-                                        allChildren: Array.isArray(children) ? children.length : 'not array'
-                                    });
-                                } catch (e) {
-                                    // Ignorer si les services ne sont pas disponibles
-                                }
-                            }
-                            return null; // Toujours null pour boolean
-                        }
-
-                        // ✅ CRITIQUE: Si c'est une valeur primitive (string, number), l'envelopper dans un Text
-                        if (typeof child === 'string' || typeof child === 'number') {
-                            // ✅ CRITIQUE: Vérifier si c'est la string "false" (qui pourrait venir d'un boolean converti)
-                            if (child === 'false' || child === 'true') {
-                                try {
-                                    const { componentDebugger } = require('../utils/componentDebugger');
-                                    const { remoteLoggingService } = require('../services/remoteLoggingService');
-                                    const errorMsg = `🚨 [ModernBackground] STRING DÉTECTÉE DANS ScreenTransition: "${child}"`;
-                                    console.error(errorMsg, { child, index, childrenType: typeof child });
-                                    componentDebugger.logComponent('ModernBackground', { variant, hasStringChild: true, childIndex: index, isBooleanString: true }, child);
-                                    remoteLoggingService.error(errorMsg, 'ModernBackground', {
-                                        child: String(child),
-                                        childIndex: index,
-                                        childrenType: 'boolean',
-                                        childComponent: 'ScreenTransition',
-                                        allChildren: Array.isArray(children) ? children.length : 'not array'
-                                    }, new Error().stack);
-                                } catch (e) {
-                                    // Ignorer si les services ne sont pas disponibles
-                                }
-                                return null; // Ne pas rendre "false" ou "true" comme string
-                            }
-
-                            // ✅ CRITIQUE: Logger immédiatement si on détecte une string dans React.Children.map
-                            try {
-                                const { componentDebugger } = require('../utils/componentDebugger');
-                                const { remoteLoggingService } = require('../services/remoteLoggingService');
-                                const errorMsg = `🚨 [ModernBackground] STRING DÉTECTÉE DANS React.Children.map: "${String(child).substring(0, 50)}"`;
-                                console.error(errorMsg, { child, index, childrenType: typeof child });
-                                componentDebugger.logComponent('ModernBackground', { variant, hasStringChild: true, childIndex: index }, child);
-                                remoteLoggingService.error(errorMsg, 'ModernBackground', {
-                                    child: String(child).substring(0, 100),
-                                    childIndex: index,
-                                    childrenType: typeof child,
-                                    allChildren: Array.isArray(children) ? children.length : 'not array'
-                                }, new Error().stack);
-                            } catch (e) {
-                                // Ignorer si les services ne sont pas disponibles
-                            }
-                            return <Text key={index}>{String(child)}</Text>;
-                        }
-
-                        // ✅ CRITIQUE: Si c'est un tableau, le traiter récursivement
-                        if (Array.isArray(child)) {
-                            return child
-                                .map((item, itemIndex) => {
-                                    if (item == null) {
-                                        return null;
-                                    }
-                                    // ✅ CRITIQUE: Filtrer les boolean false
-                                    if (typeof item === 'boolean') {
-                                        return null; // Toujours null pour boolean
-                                    }
-                                    if (typeof item === 'string' || typeof item === 'number') {
-                                        return <Text key={`${index}-${itemIndex}`}>{String(item)}</Text>;
-                                    }
-                                    if (React.isValidElement(item)) {
-                                        return item;
-                                    }
-                                    return <Text key={`${index}-${itemIndex}`}>{String(item)}</Text>;
-                                })
-                                .filter(item => item != null && item !== false); // Filtrer null, undefined et false
-                        }
-
-                        // ✅ CRITIQUE: Si c'est un élément React valide, le retourner tel quel
-                        // ✅ CORRIGÉ: Ne PAS modifier les children des composants qui gèrent déjà leurs propres children
-                        // Ces composants (ScreenTransition, AnimatedCard, SafeNativeView, etc.) gèrent déjà leurs propres children
-                        if (React.isValidElement(child)) {
-                            // ✅ NOUVEAU: Liste des composants qui gèrent déjà leurs propres children
-                            const componentName = (child as any).type?.displayName || (child as any).type?.name || 'Unknown';
-                            const componentsThatHandleChildren = [
-                                'ScreenTransition',
-                                'AnimatedCard',
-                                'SafeNativeView',
-                                'ModernBackground',
-                                'Animated.View',
-                                'View',
-                                'ScrollView',
-                                'FlatList'
-                            ];
-
-                            // Si c'est un composant qui gère déjà ses children, le retourner tel quel
-                            // Ne pas essayer de modifier ses children car cela peut causer des erreurs
-                            if (componentsThatHandleChildren.some(name => componentName.includes(name))) {
-                                return child;
-                            }
-
-                            // Pour les autres composants, on peut vérifier mais ne pas modifier
-                            // (laisser le composant gérer ses propres children ou laisser React gérer l'erreur)
-                            return child;
-                        }
-
-                        // ✅ CRITIQUE: Vérifier si c'est un boolean AVANT de convertir en string
-                        if (typeof child === 'boolean') {
-                            return null; // Toujours null pour boolean (React Native ne peut pas rendre false)
-                        }
-
-                        // ✅ CRITIQUE: Fallback - vérifier si la conversion en string donne "false" ou "true"
-                        const childString = String(child);
-                        if (childString === 'false' || childString === 'true') {
-                            return null; // Ne pas rendre "false" ou "true" comme string
-                        }
-
-                        // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
-                        return <Text key={index}>{childString}</Text>;
-                    });
-
-                    // ✅ CRITIQUE: Filtrer les null/undefined du résultat
-                    if (mapped == null) {
-                        return null;
-                    }
-
-                    if (Array.isArray(mapped)) {
-                        const filtered = mapped.filter(child => child != null && child !== false); // Filtrer null, undefined et false
-                        return filtered.length > 0 ? filtered : null;
-                    }
-
-                    return mapped;
-                }, [children, variant])}
+                {React.useMemo(() => cleanChildren(children, 'ModernBackground'), [children])}
             </View>
         </View>
     );

@@ -78,11 +78,12 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
 
     const loadRecentSearches = async () => {
         try {
-            // TODO: Charger depuis AsyncStorage
-            // const stored = await AsyncStorage.getItem('recent_city_searches');
-            // if (stored) {
-            //     setRecentSearches(JSON.parse(stored));
-            // }
+            // ✅ Utiliser SafeStorage au lieu d'AsyncStorage direct
+            const { SafeStorage } = await import('../utils/safeStorage');
+            const stored = await SafeStorage.getItem('recent_city_searches');
+            if (stored) {
+                setRecentSearches(JSON.parse(stored));
+            }
         } catch (error) {
             console.error('[CityAutocomplete] Erreur chargement recherches récentes:', error);
         }
@@ -92,8 +93,9 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
         try {
             const updated = [city, ...recentSearches.filter(s => s !== city)].slice(0, 5);
             setRecentSearches(updated);
-            // TODO: Sauvegarder dans AsyncStorage
-            // await AsyncStorage.setItem('recent_city_searches', JSON.stringify(updated));
+            // ✅ Utiliser SafeStorage au lieu d'AsyncStorage direct
+            const { SafeStorage } = await import('../utils/safeStorage');
+            await SafeStorage.setItem('recent_city_searches', JSON.stringify(updated));
         } catch (error) {
             console.error('[CityAutocomplete] Erreur sauvegarde recherche:', error);
         }

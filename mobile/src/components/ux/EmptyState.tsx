@@ -5,8 +5,8 @@
 
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeIcon } from '../SafeIcon';
 import { modernColors } from '../../theme/modernTheme';
+import { SafeIcon } from '../SafeIcon';
 
 interface EmptyStateProps {
     icon?: string;
@@ -27,7 +27,7 @@ export const EmptyState: React.FC<EmptyStateProps> = React.memo(({
 }) => {
     const getIcon = () => {
         if (icon) return icon;
-        
+
         switch (variant) {
             case 'search':
                 return 'search';
@@ -68,24 +68,24 @@ export const EmptyState: React.FC<EmptyStateProps> = React.memo(({
     return (
         <View style={styles.container}>
             <View style={styles.iconContainer}>
-                <SafeIcon 
-                    name={getIcon()} 
-                    size={64} 
+                <SafeIcon
+                    name={getIcon()}
+                    size={64}
                     color={colors.icon}
                     type="lucide"
                 />
             </View>
-            
+
             <Text style={[styles.title, { color: colors.title }]}>
                 {title}
             </Text>
-            
+
             {description && (
                 <Text style={[styles.description, { color: colors.description }]}>
                     {description}
                 </Text>
             )}
-            
+
             {actionLabel && onAction && (
                 <TouchableOpacity
                     style={styles.actionButton}
@@ -106,35 +106,46 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 32,
-        paddingVertical: 64,
+        paddingVertical: 80, // ✅ AMÉLIORÉ: Plus d'espace vertical
+        minHeight: 300, // ✅ NOUVEAU: Hauteur minimale pour éviter l'espace vide
     },
     iconContainer: {
         marginBottom: 24,
-        opacity: 0.8,
+        opacity: 0.9, // ✅ AMÉLIORÉ: Opacité augmentée pour plus de visibilité
+        padding: 20, // ✅ NOUVEAU: Padding autour de l'icône
+        backgroundColor: 'rgba(102, 126, 234, 0.1)', // ✅ NOUVEAU: Fond subtil pour l'icône
+        borderRadius: 50, // ✅ NOUVEAU: Cercle autour de l'icône
     },
     title: {
-        fontSize: 20,
+        fontSize: 22, // ✅ AMÉLIORÉ: Taille augmentée
         fontWeight: '700',
         textAlign: 'center',
-        marginBottom: 8,
+        marginBottom: 12, // ✅ AMÉLIORÉ: Plus d'espace
     },
     description: {
-        fontSize: 14,
+        fontSize: 15, // ✅ AMÉLIORÉ: Taille augmentée
         textAlign: 'center',
-        lineHeight: 20,
-        marginBottom: 24,
+        lineHeight: 22, // ✅ AMÉLIORÉ: Meilleure lisibilité
+        marginBottom: 32, // ✅ AMÉLIORÉ: Plus d'espace avant le bouton
+        paddingHorizontal: 16, // ✅ NOUVEAU: Padding horizontal
     },
     actionButton: {
         backgroundColor: modernColors.primary,
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 12,
+        paddingHorizontal: 32, // ✅ AMÉLIORÉ: Plus large
+        paddingVertical: 14, // ✅ AMÉLIORÉ: Plus haut
+        borderRadius: 14, // ✅ AMÉLIORÉ: Bordures plus arrondies
         marginTop: 8,
+        shadowColor: modernColors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4, // ✅ NOUVEAU: Ombre pour Android
     },
     actionButtonText: {
         color: '#FFFFFF',
-        fontSize: 14,
+        fontSize: 15, // ✅ AMÉLIORÉ: Taille augmentée
         fontWeight: '600',
+        letterSpacing: 0.5, // ✅ NOUVEAU: Espacement des lettres
     },
 });
 

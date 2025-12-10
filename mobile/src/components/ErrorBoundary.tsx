@@ -69,8 +69,20 @@ class ErrorBoundary extends Component<Props, State> {
 
     render() {
         if (this.state.hasError) {
+            // ✅ AMÉLIORÉ: Logger l'erreur pour debugging
+            console.error('[ErrorBoundary] 🚨 Erreur capturée, affichage du fallback:', {
+                error: this.state.error?.message,
+                hasFallback: !!this.props.fallback,
+                stack: this.state.error?.stack
+            });
+
             if (this.props.fallback) {
-                return this.props.fallback;
+                // ✅ CRITIQUE: S'assurer que le fallback permet les interactions
+                return (
+                    <View style={{ flex: 1 }} pointerEvents="box-none">
+                        {this.props.fallback}
+                    </View>
+                );
             }
 
             return (

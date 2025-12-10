@@ -163,10 +163,10 @@ pub async fn get_user_conversations(
             c.id,
             c.client_id::text,
             c.prestataire_id::text,
-            COALESCE(u_client.name, 'Client') as client_name,
-            COALESCE(u_prestataire.name, 'Prestataire') as prestataire_name,
-            u_client.avatar as client_photo,
-            u_prestataire.avatar as prestataire_photo,
+            COALESCE(u_client.nom_complet, u_client.email, 'Client') as client_name,
+            COALESCE(u_prestataire.nom_complet, u_prestataire.email, 'Prestataire') as prestataire_name,
+            u_client.avatar_url as client_photo,
+            u_prestataire.avatar_url as prestataire_photo,
             COALESCE(
                 (SELECT content FROM chat_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1),
                 'Nouvelle conversation'

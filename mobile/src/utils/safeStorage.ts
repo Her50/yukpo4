@@ -8,9 +8,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 let storageAvailable = true;
 let storageError: Error | null = null;
 
-// Tester la disponibilité du storage au démarrage
-const testStorage = async (): Promise<boolean> => {
+// ✅ AMÉLIORÉ: Tester la disponibilité du storage avec délai pour éviter "Driver not found"
+const testStorage = async (retryCount: number = 0): Promise<boolean> => {
     try {
+        // ✅ CRITIQUE: Attendre un peu si c'est le premier essai (AsyncStorage peut ne pas être prêt immédiatement)
+        if (retryCount === 0) {
+            await new Promise(resolve => setTimeout(resolve, 100)); // Attendre 100ms
+        }
+
         const testKey = '__storage_test__';
         await AsyncStorage.setItem(testKey, 'test');
         await AsyncStorage.removeItem(testKey);
@@ -18,17 +23,41 @@ const testStorage = async (): Promise<boolean> => {
         storageError = null;
         return true;
     } catch (error: any) {
-        console.warn('[SafeStorage] ⚠️ AsyncStorage non disponible:', error?.message || error);
+        const errorMsg = error?.message || String(error);
+
+        // ✅ CRITIQUE: Si c'est "Driver not found" ou "No available storage method found", réessayer avec délai
+        if ((errorMsg.includes('Driver not found') || errorMsg.includes('No available storage method found')) && retryCount < 3) {
+            console.warn(`[SafeStorage] ⚠️ Erreur storage (tentative ${retryCount + 1}/3), réessai dans 500ms...`);
+            await new Promise(resolve => setTimeout(resolve, 500)); // Attendre 500ms avant de réessayer
+            return testStorage(retryCount + 1);
+        }
+
+        console.warn('[SafeStorage] ⚠️ AsyncStorage non disponible:', errorMsg);
         storageAvailable = false;
         storageError = error;
         return false;
     }
 };
 
-// Tester immédiatement
+// ✅ AMÉLIORÉ: Tester avec délai initial pour éviter les erreurs au démarrage
+// ✅ CRITIQUE: Tester immédiatement ET avec délai pour couvrir tous les cas
 testStorage().catch(() => {
-    // Ignorer les erreurs de test initial
+    // Premier test immédiat (peut échouer, c'est normal)
 });
+
+// Test avec délai pour les cas où AsyncStorage n'est pas prêt immédiatement
+setTimeout(() => {
+    testStorage().catch(() => {
+        // Ignorer les erreurs de test initial
+    });
+}, 300); // Attendre 300ms avant le deuxième test
+
+// Test final après 1 seconde pour les cas très lents
+setTimeout(() => {
+    testStorage().catch(() => {
+        // Ignorer les erreurs de test final
+    });
+}, 1000);
 
 export const SafeStorage = {
     /**
@@ -39,18 +68,38 @@ export const SafeStorage = {
     },
 
     /**
-     * Récupère un élément du storage
+     * Récupère un élément du storage avec retry automatique
      */
-    async getItem(key: string): Promise<string | null> {
+    async getItem(key: string, retryCount: number = 0): Promise<string | null> {
+        // ✅ AMÉLIORÉ: Si storage non disponible, réessayer de tester avant de retourner null
+        if (!storageAvailable && retryCount === 0) {
+            const available = await testStorage();
+            if (available) {
+                storageAvailable = true;
+            } else {
+                console.warn('[SafeStorage] ⚠️ Storage non disponible, retour null pour:', key);
+                return null;
+            }
+        }
+
         if (!storageAvailable) {
-            console.warn('[SafeStorage] ⚠️ Storage non disponible, retour null pour:', key);
             return null;
         }
 
         try {
             return await AsyncStorage.getItem(key);
         } catch (error: any) {
-            console.error('[SafeStorage] ❌ Erreur getItem:', error?.message || error);
+            const errorMsg = error?.message || String(error);
+
+            // ✅ CRITIQUE: Si c'est "Driver not found" ou "No available storage method found", réessayer avec délai
+            if ((errorMsg.includes('Driver not found') || errorMsg.includes('No available storage method found')) && retryCount < 2) {
+                console.warn(`[SafeStorage] ⚠️ Erreur "Driver not found" (tentative ${retryCount + 1}/2), réessai dans 300ms...`);
+                await new Promise(resolve => setTimeout(resolve, 300));
+                storageAvailable = false; // Forcer le retest
+                return this.getItem(key, retryCount + 1);
+            }
+
+            console.error('[SafeStorage] ❌ Erreur getItem:', errorMsg);
             // Réessayer de tester le storage
             const available = await testStorage();
             if (!available) {
@@ -67,11 +116,21 @@ export const SafeStorage = {
     },
 
     /**
-     * Sauvegarde un élément dans le storage
+     * Sauvegarde un élément dans le storage avec retry automatique
      */
-    async setItem(key: string, value: string): Promise<boolean> {
+    async setItem(key: string, value: string, retryCount: number = 0): Promise<boolean> {
+        // ✅ AMÉLIORÉ: Si storage non disponible, réessayer de tester avant de retourner false
+        if (!storageAvailable && retryCount === 0) {
+            const available = await testStorage();
+            if (available) {
+                storageAvailable = true;
+            } else {
+                console.warn('[SafeStorage] ⚠️ Storage non disponible, impossible de sauvegarder:', key);
+                return false;
+            }
+        }
+
         if (!storageAvailable) {
-            console.warn('[SafeStorage] ⚠️ Storage non disponible, impossible de sauvegarder:', key);
             return false;
         }
 
@@ -79,7 +138,17 @@ export const SafeStorage = {
             await AsyncStorage.setItem(key, value);
             return true;
         } catch (error: any) {
-            console.error('[SafeStorage] ❌ Erreur setItem:', error?.message || error);
+            const errorMsg = error?.message || String(error);
+
+            // ✅ CRITIQUE: Si c'est "Driver not found" ou "No available storage method found", réessayer avec délai
+            if ((errorMsg.includes('Driver not found') || errorMsg.includes('No available storage method found')) && retryCount < 2) {
+                console.warn(`[SafeStorage] ⚠️ Erreur "Driver not found" (tentative ${retryCount + 1}/2), réessai dans 300ms...`);
+                await new Promise(resolve => setTimeout(resolve, 300));
+                storageAvailable = false; // Forcer le retest
+                return this.setItem(key, value, retryCount + 1);
+            }
+
+            console.error('[SafeStorage] ❌ Erreur setItem:', errorMsg);
             // Réessayer de tester le storage
             const available = await testStorage();
             if (!available) {
@@ -97,11 +166,21 @@ export const SafeStorage = {
     },
 
     /**
-     * Supprime un élément du storage
+     * Supprime un élément du storage avec retry automatique
      */
-    async removeItem(key: string): Promise<boolean> {
+    async removeItem(key: string, retryCount: number = 0): Promise<boolean> {
+        // ✅ AMÉLIORÉ: Si storage non disponible, réessayer de tester avant de retourner false
+        if (!storageAvailable && retryCount === 0) {
+            const available = await testStorage();
+            if (available) {
+                storageAvailable = true;
+            } else {
+                console.warn('[SafeStorage] ⚠️ Storage non disponible, impossible de supprimer:', key);
+                return false;
+            }
+        }
+
         if (!storageAvailable) {
-            console.warn('[SafeStorage] ⚠️ Storage non disponible, impossible de supprimer:', key);
             return false;
         }
 
@@ -109,7 +188,17 @@ export const SafeStorage = {
             await AsyncStorage.removeItem(key);
             return true;
         } catch (error: any) {
-            console.error('[SafeStorage] ❌ Erreur removeItem:', error?.message || error);
+            const errorMsg = error?.message || String(error);
+
+            // ✅ CRITIQUE: Si c'est "Driver not found" ou "No available storage method found", réessayer avec délai
+            if ((errorMsg.includes('Driver not found') || errorMsg.includes('No available storage method found')) && retryCount < 2) {
+                console.warn(`[SafeStorage] ⚠️ Erreur "Driver not found" (tentative ${retryCount + 1}/2), réessai dans 300ms...`);
+                await new Promise(resolve => setTimeout(resolve, 300));
+                storageAvailable = false; // Forcer le retest
+                return this.removeItem(key, retryCount + 1);
+            }
+
+            console.error('[SafeStorage] ❌ Erreur removeItem:', errorMsg);
             // Réessayer de tester le storage
             const available = await testStorage();
             if (!available) {

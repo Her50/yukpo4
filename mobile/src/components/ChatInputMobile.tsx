@@ -1681,30 +1681,31 @@ const createStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#10B981',
-        paddingVertical: 8, // ✅ Réduit de 10 à 8 pour compacter
-        paddingHorizontal: 20, // ✅ Réduit de 24 à 20 pour compacter
-        borderRadius: 8, // ✅ Réduit de 10 à 8
-        gap: 4, // ✅ Réduit de 5 à 4
+        backgroundColor: '#10B981', // ✅ Vert moderne pour meilleur contraste
+        paddingVertical: 12, // ✅ AMÉLIORÉ: Augmenté de 8 à 12 pour meilleure visibilité
+        paddingHorizontal: 24, // ✅ AMÉLIORÉ: Augmenté de 20 à 24 pour meilleure visibilité
+        borderRadius: 10, // ✅ AMÉLIORÉ: Augmenté de 8 à 10 pour meilleure apparence
+        gap: 6, // ✅ AMÉLIORÉ: Augmenté de 4 à 6 pour meilleur espacement
         borderWidth: 1,
         borderColor: '#10B981',
         shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 4,
+        shadowOffset: { width: 0, height: 3 }, // ✅ AMÉLIORÉ: Augmenté pour meilleure ombre
+        shadowOpacity: 0.4, // ✅ AMÉLIORÉ: Augmenté pour meilleure ombre
+        shadowRadius: 6, // ✅ AMÉLIORÉ: Augmenté pour meilleure ombre
+        elevation: 5, // ✅ AMÉLIORÉ: Augmenté pour Android
         marginTop: 0,
         flex: 1,
-        minWidth: 100, // ✅ Réduit de 120 à 100 pour compacter
+        minWidth: 120, // ✅ AMÉLIORÉ: Augmenté de 100 à 120 pour meilleure visibilité
     },
     submitButtonDisabled: {
         backgroundColor: '#9CA3AF',
         elevation: 0,
     },
     submitButtonText: {
-        fontSize: 11, // ✅ Réduit de 12 à 11 pour compacter
+        fontSize: 15, // ✅ AMÉLIORÉ: Augmenté de 11 à 15 pour meilleure visibilité
         fontWeight: '700',
-        color: '#FFF',
+        color: '#FFFFFF', // ✅ AMÉLIORÉ: Couleur blanche explicite pour meilleur contraste
+        letterSpacing: 0.3, // ✅ NOUVEAU: Espacement des lettres pour meilleure lisibilité
     },
     sendButtonCompact: {
         backgroundColor: '#20B2AA', // Turquoise/cyan cohérent

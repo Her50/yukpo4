@@ -2,7 +2,9 @@
  * Utilitaires pour mesurer les métriques de performance et business
  */
 
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import { analytics } from '../services/analytics';
+import SafeStorage from './safeStorage';
 
 interface PerformanceMetrics {
     screenLoadTime: number;
@@ -92,12 +94,10 @@ export const calculateAbandonmentRate = (
 /**
  * Stocker une métrique localement
  */
-export const storeMetric = (key: string, value: number | string) => {
+export const storeMetric = async (key: string, value: number | string) => {
     try {
-        // Utiliser AsyncStorage pour persister
-        // // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-        import SafeStorage from './safeStorage';
-        // await SafeStorage.setItem(`metric_${key}`, JSON.stringify(value));
+        // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+        await SafeStorage.setItem(`metric_${key}`, JSON.stringify(value));
     } catch (error) {
         console.error('[Metrics] Erreur stockage:', error);
     }
@@ -108,11 +108,9 @@ export const storeMetric = (key: string, value: number | string) => {
  */
 export const getStoredMetric = async (key: string): Promise<number | string | null> => {
     try {
-        // // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-        import SafeStorage from './safeStorage';
-        // const value = await SafeStorage.getItem(`metric_${key}`);
-        // return value ? JSON.parse(value) : null;
-        return null;
+        // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+        const value = await SafeStorage.getItem(`metric_${key}`);
+        return value ? JSON.parse(value) : null;
     } catch (error) {
         console.error('[Metrics] Erreur récupération:', error);
         return null;

@@ -108,13 +108,22 @@ class AnalyticsService {
                 console.log('[Analytics] Event:', eventData.event, eventData.properties);
             }
 
-            // Envoyer à Sentry (breadcrumbs)
-            Sentry.addBreadcrumb({
-                category: 'analytics',
-                message: eventData.event,
-                level: 'info',
-                data: eventData.properties,
-            });
+            // ✅ CORRIGÉ: Vérifier que Sentry est disponible avant utilisation
+            if (Sentry && typeof Sentry.addBreadcrumb === 'function') {
+                try {
+                    Sentry.addBreadcrumb({
+                        category: 'analytics',
+                        message: eventData.event,
+                        level: 'info',
+                        data: eventData.properties,
+                    });
+                } catch (sentryError) {
+                    // Ne pas bloquer si Sentry échoue
+                    if (__DEV__) {
+                        console.warn('[Analytics] Erreur Sentry (non-bloquant):', sentryError);
+                    }
+                }
+            }
 
             // TODO: Intégrer Mixpanel ou Amplitude
             // if (MIXPANEL_TOKEN) {
@@ -146,10 +155,20 @@ class AnalyticsService {
                 console.log('[Analytics] User identified:', userId, traits);
             }
 
-            Sentry.setUser({
-                id: userId,
-                ...traits,
-            });
+            // ✅ CORRIGÉ: Vérifier que Sentry est disponible avant utilisation
+            if (Sentry && typeof Sentry.setUser === 'function') {
+                try {
+                    Sentry.setUser({
+                        id: userId,
+                        ...traits,
+                    });
+                } catch (sentryError) {
+                    // Ne pas bloquer si Sentry échoue
+                    if (__DEV__) {
+                        console.warn('[Analytics] Erreur Sentry setUser (non-bloquant):', sentryError);
+                    }
+                }
+            }
 
             // TODO: Intégrer Mixpanel ou Amplitude
             // if (MIXPANEL_TOKEN) {
@@ -194,10 +213,19 @@ class AnalyticsService {
             ...context,
         });
 
-        // Envoyer à Sentry
-        Sentry.captureException(error, {
-            extra: context,
-        });
+        // ✅ CORRIGÉ: Vérifier que Sentry est disponible avant utilisation
+        if (Sentry && typeof Sentry.captureException === 'function') {
+            try {
+                Sentry.captureException(error, {
+                    extra: context,
+                });
+            } catch (sentryError) {
+                // Ne pas bloquer si Sentry échoue
+                if (__DEV__) {
+                    console.warn('[Analytics] Erreur Sentry captureException (non-bloquant):', sentryError);
+                }
+            }
+        }
     }
 
     /**

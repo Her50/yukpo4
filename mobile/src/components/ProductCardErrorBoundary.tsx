@@ -41,8 +41,21 @@ class ProductCardErrorBoundary extends Component<Props, State> {
             this.props.onError(error, errorInfo);
         }
 
-        // TODO: Envoyer à Sentry ou autre service de monitoring
-        // Sentry.captureException(error, { contexts: { productCard: { productId: this.props.productId } } });
+        // ✅ Envoyer à Sentry si disponible
+        try {
+            const Sentry = require('@sentry/react-native');
+            if (Sentry && typeof Sentry.captureException === 'function') {
+                Sentry.captureException(error, {
+                    contexts: {
+                        productCard: {
+                            productId: this.props.productId,
+                        },
+                    },
+                });
+            }
+        } catch (sentryError) {
+            // Sentry non disponible ou erreur d'import, ignorer
+        }
     }
 
     handleRetry = () => {

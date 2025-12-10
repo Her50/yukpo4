@@ -4,13 +4,15 @@
  */
 
 import React, { useEffect } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withSpring,
     withTiming,
 } from 'react-native-reanimated';
+// ✅ CORRIGÉ: Utiliser cleanChildren pour éviter les erreurs de rendu
+import { cleanChildren } from '../utils/safeChildren';
 
 interface AnimatedCardProps {
     children: React.ReactNode;
@@ -67,143 +69,24 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = React.memo(
             // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [index, delay]); // ✅ CORRIGÉ: Ne pas inclure les SharedValues (elles sont stables)
 
-        const animatedStyle = useAnimatedStyle(() => ({
-            opacity: opacity.value,
-            transform: [
-                { translateY: translateY.value },
-                { scale: scale.value },
-            ],
-        }));
+        const animatedStyle = useAnimatedStyle(() => {
+            return {
+                opacity: opacity.value,
+                transform: [
+                    { translateY: translateY.value },
+                    { scale: scale.value },
+                ] as any,
+            };
+        });
 
-        // ✅ CORRIGÉ: S'assurer que les enfants sont toujours des éléments React valides
-        // Éviter de rendre des valeurs primitives directement
-        const safeChildren = (() => {
-            // ✅ CRITIQUE: Gérer le cas où children est null/undefined
-            if (children == null) {
-                return null;
-            }
-
-            // ✅ CRITIQUE: Si children est une primitive, la wrapper directement
-            if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
-                return <Text>{String(children)}</Text>;
-            }
-
-            // ✅ CRITIQUE: Si children est un tableau, le traiter récursivement
-            if (Array.isArray(children)) {
-                const safeArray = children
-                    .map((child, idx) => {
-                        if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
-                            return <Text key={idx}>{String(child)}</Text>;
-                        }
-                        if (child == null) {
-                            return null;
-                        }
-                        if (React.isValidElement(child)) {
-                            return child;
-                        }
-                        return <Text key={idx}>{String(child)}</Text>;
-                    })
-                    .filter(child => child != null); // Filtrer les null/undefined
-
-                return safeArray.length > 0 ? safeArray : null;
-            }
-
-            // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
-            const mapped = React.Children.map(children, (child, idx) => {
-                // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
-                if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
-                    return <Text key={idx}>{String(child)}</Text>;
-                }
-                // Si c'est null ou undefined, retourner null
-                if (child == null) {
-                    return null;
-                }
-                // Si c'est un tableau, le traiter récursivement
-                if (Array.isArray(child)) {
-                    return child.map((item, itemIndex) => {
-                        if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
-                            return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                        }
-                        if (item == null) {
-                            return null;
-                        }
-                        if (React.isValidElement(item)) {
-                            return item;
-                        }
-                        return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                    });
-                }
-                // Si c'est un élément React valide, vérifier récursivement ses children
-                if (React.isValidElement(child)) {
-                    // ✅ NOUVEAU: Vérifier récursivement les children de l'élément pour détecter et wrapper les strings
-                    try {
-                        const childProps = (child as any).props;
-                        if (childProps && childProps.children) {
-                            // Fonction récursive pour wrapper les strings dans les children
-                            const wrapStringsInChildren = (childrenToCheck: any, keyPrefix: string = ''): any => {
-                                if (childrenToCheck == null) return null;
-
-                                // Si c'est une primitive, la wrapper dans Text
-                                if (typeof childrenToCheck === 'string' || typeof childrenToCheck === 'number' || typeof childrenToCheck === 'boolean') {
-                                    console.warn('[AnimatedCard] ⚠️ String détectée et wrappée:', String(childrenToCheck).substring(0, 50));
-                                    return <Text key={`${keyPrefix}-text`}>{String(childrenToCheck)}</Text>;
-                                }
-
-                                // Si c'est un tableau, traiter chaque élément
-                                if (Array.isArray(childrenToCheck)) {
-                                    return childrenToCheck.map((item, itemIdx) => wrapStringsInChildren(item, `${keyPrefix}-${itemIdx}`));
-                                }
-
-                                // Si c'est un élément React valide, vérifier ses children
-                                if (React.isValidElement(childrenToCheck)) {
-                                    const props = (childrenToCheck as any).props;
-                                    if (props && props.children) {
-                                        const wrappedChildren = wrapStringsInChildren(props.children, keyPrefix);
-                                        // Cloner l'élément avec les children wrappés
-                                        return React.cloneElement(childrenToCheck as React.ReactElement, {
-                                            ...props,
-                                            children: wrappedChildren
-                                        });
-                                    }
-                                }
-
-                                return childrenToCheck;
-                            };
-
-                            const wrappedChildren = wrapStringsInChildren(childProps.children, `child-${idx}`);
-                            if (wrappedChildren !== childProps.children) {
-                                // Les children ont été modifiés, cloner l'élément avec les nouveaux children
-                                return React.cloneElement(child as React.ReactElement, {
-                                    ...childProps,
-                                    children: wrappedChildren
-                                });
-                            }
-                        }
-                    } catch (e) {
-                        // Ignorer les erreurs de vérification
-                        console.warn('[AnimatedCard] Erreur vérification récursive:', e);
-                    }
-                    return child;
-                }
-                // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
-                return <Text key={idx}>{String(child)}</Text>;
-            });
-
-            // ✅ CRITIQUE: Filtrer les null/undefined du résultat
-            if (mapped == null) {
-                return null;
-            }
-
-            if (Array.isArray(mapped)) {
-                const filtered = mapped.filter(child => child != null);
-                return filtered.length > 0 ? filtered : null;
-            }
-
-            return mapped;
-        })();
+        // ✅ CORRIGÉ: Utiliser cleanChildren pour un nettoyage cohérent et éviter les erreurs de rendu
+        const safeChildren = React.useMemo(() => cleanChildren(children, 'AnimatedCard'), [children]);
 
         return (
-            <Animated.View style={[styles.card, animatedStyle, style]}>
+            <Animated.View
+                style={[styles.card, animatedStyle, style]}
+                pointerEvents="box-none" // ✅ CRITIQUE: Permettre les interactions des enfants
+            >
                 {safeChildren}
             </Animated.View>
         );
