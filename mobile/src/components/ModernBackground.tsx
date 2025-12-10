@@ -215,6 +215,35 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
 
                         // ✅ CRITIQUE: Si c'est un élément React valide, le retourner tel quel
                         if (React.isValidElement(child)) {
+                            // ✅ NOUVEAU: Vérifier récursivement les children de l'élément pour détecter les strings
+                            try {
+                                const childProps = (child as any).props;
+                                if (childProps && childProps.children) {
+                                    // Vérifier si les children contiennent des strings non wrappées
+                                    const checkChildren = (childrenToCheck: any): boolean => {
+                                        if (childrenToCheck == null) return false;
+                                        if (typeof childrenToCheck === 'string' || typeof childrenToCheck === 'number' || typeof childrenToCheck === 'boolean') {
+                                            return true; // String détectée
+                                        }
+                                        if (Array.isArray(childrenToCheck)) {
+                                            return childrenToCheck.some(checkChildren);
+                                        }
+                                        if (React.isValidElement(childrenToCheck)) {
+                                            const props = (childrenToCheck as any).props;
+                                            if (props && props.children) {
+                                                return checkChildren(props.children);
+                                            }
+                                        }
+                                        return false;
+                                    };
+
+                                    if (checkChildren(childProps.children)) {
+                                        console.warn('[ModernBackground] ⚠️ String détectée dans les children d\'un élément React:', child.type);
+                                    }
+                                }
+                            } catch (e) {
+                                // Ignorer les erreurs de vérification
+                            }
                             return child;
                         }
 

@@ -73,6 +73,22 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
 
         // ✅ CRITIQUE: Si children est une primitive, la wrapper directement
         if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
+            // ✅ CRITIQUE: Logger immédiatement si on détecte une string
+            try {
+                const { componentDebugger } = require('../utils/componentDebugger');
+                const { remoteLoggingService } = require('../services/remoteLoggingService');
+                const errorMsg = `🚨 [SafeNativeView] STRING DÉTECTÉE DIRECTEMENT: "${String(children).substring(0, 50)}"`;
+                console.error(errorMsg);
+                componentDebugger.logComponent('SafeNativeView', { edges, backgroundColor, testID, hasStringChild: true }, children);
+                remoteLoggingService.error(errorMsg, 'SafeNativeView', {
+                    children: String(children).substring(0, 100),
+                    edges,
+                    backgroundColor,
+                    testID
+                }, new Error().stack);
+            } catch (e) {
+                // Ignorer si les services ne sont pas disponibles
+            }
             return <Text>{String(children)}</Text>;
         }
 
@@ -100,6 +116,24 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
         const mapped = React.Children.map(children, (child, idx) => {
             // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
             if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                // ✅ CRITIQUE: Logger immédiatement si on détecte une string dans React.Children.map
+                try {
+                    const { componentDebugger } = require('../utils/componentDebugger');
+                    const { remoteLoggingService } = require('../services/remoteLoggingService');
+                    const errorMsg = `🚨 [SafeNativeView] STRING DÉTECTÉE DANS React.Children.map: "${String(child).substring(0, 50)}"`;
+                    console.error(errorMsg, { child, idx, childrenType: typeof child });
+                    componentDebugger.logComponent('SafeNativeView', { edges, backgroundColor, testID, hasStringChild: true, childIndex: idx }, child);
+                    remoteLoggingService.error(errorMsg, 'SafeNativeView', {
+                        child: String(child).substring(0, 100),
+                        childIndex: idx,
+                        childrenType: typeof child,
+                        allChildren: Array.isArray(children) ? children.length : 'not array',
+                        edges,
+                        backgroundColor
+                    }, new Error().stack);
+                } catch (e) {
+                    // Ignorer si les services ne sont pas disponibles
+                }
                 return <Text key={idx}>{String(child)}</Text>;
             }
             // Si c'est null ou undefined, retourner null

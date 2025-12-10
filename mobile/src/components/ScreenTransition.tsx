@@ -129,6 +129,22 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
 
         // ✅ CRITIQUE: Si children est une primitive, la wrapper directement
         if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
+            // ✅ CRITIQUE: Logger immédiatement si on détecte une string
+            try {
+                const { componentDebugger } = require('../utils/componentDebugger');
+                const { remoteLoggingService } = require('../services/remoteLoggingService');
+                const errorMsg = `🚨 [ScreenTransition] STRING DÉTECTÉE DIRECTEMENT: "${String(children).substring(0, 50)}"`;
+                console.error(errorMsg);
+                componentDebugger.logComponent('ScreenTransition', { type, duration, delay, hasStringChild: true }, children);
+                remoteLoggingService.error(errorMsg, 'ScreenTransition', {
+                    children: String(children).substring(0, 100),
+                    type,
+                    duration,
+                    delay
+                }, new Error().stack);
+            } catch (e) {
+                // Ignorer si les services ne sont pas disponibles
+            }
             return <Text>{String(children)}</Text>;
         }
 
@@ -156,6 +172,24 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
         const mapped = React.Children.map(children, (child, index) => {
             // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
             if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                // ✅ CRITIQUE: Logger immédiatement si on détecte une string dans React.Children.map
+                try {
+                    const { componentDebugger } = require('../utils/componentDebugger');
+                    const { remoteLoggingService } = require('../services/remoteLoggingService');
+                    const errorMsg = `🚨 [ScreenTransition] STRING DÉTECTÉE DANS React.Children.map: "${String(child).substring(0, 50)}"`;
+                    console.error(errorMsg, { child, index, childrenType: typeof child });
+                    componentDebugger.logComponent('ScreenTransition', { type, duration, delay, hasStringChild: true, childIndex: index }, child);
+                    remoteLoggingService.error(errorMsg, 'ScreenTransition', {
+                        child: String(child).substring(0, 100),
+                        childIndex: index,
+                        childrenType: typeof child,
+                        allChildren: Array.isArray(children) ? children.length : 'not array',
+                        type,
+                        duration
+                    }, new Error().stack);
+                } catch (e) {
+                    // Ignorer si les services ne sont pas disponibles
+                }
                 return <Text key={index}>{String(child)}</Text>;
             }
             // Si c'est null ou undefined, retourner null
