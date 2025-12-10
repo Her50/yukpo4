@@ -173,13 +173,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 8,
-        paddingVertical: 6,
+        paddingVertical: 4, // ✅ RÉDUIT: De 6 à 4px pour plus de compacité
         backgroundColor: modernColors.primary,
-        borderRadius: 16,
-        gap: 6, // ✅ CORRIGÉ: Gap pour séparer le trophée du texte
+        borderRadius: 14, // ✅ RÉDUIT: De 16 à 14px pour plus de compacité
+        gap: 4, // ✅ RÉDUIT: De 6 à 4px pour plus de compacité
         minWidth: 0,
-        maxWidth: 80, // ✅ CORRIGÉ: Augmenter pour permettre "4 Yukpo"
-        height: 36, // ✅ CORRIGÉ: Hauteur fixe pour alignement parfait avec le header
+        maxWidth: 70, // ✅ RÉDUIT: De 80 à 70px pour éviter la confusion avec Yukpo
+        height: 32, // ✅ RÉDUIT: De 36 à 32px pour s'aligner avec le header compact
         alignSelf: 'center',
     },
     compactIcon: {

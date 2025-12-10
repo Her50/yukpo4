@@ -5,6 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { modernColors } from '../theme/modernTheme';
 import SafeStorage from '../utils/safeStorage';
@@ -655,20 +656,49 @@ const MainStack = () => {
         tabBarItemStyle: {
           paddingHorizontal: 2,
         },
-        // ✅ NOUVEAU: Animation de transition entre tabs
-        tabBarButton: (props) => (
-          <TouchableOpacity
-            {...props}
-            onPress={(e) => {
+        // ✅ CORRIGÉ: Animation de transition entre tabs avec gestion d'erreur
+        tabBarButton: (props) => {
+          // ✅ CRITIQUE: S'assurer que props.onPress est toujours appelé en premier
+          const handlePress = (e: any) => {
+            try {
+              // ✅ CRITIQUE: Appeler props.onPress en premier pour la navigation
+              if (props.onPress && typeof props.onPress === 'function') {
+                props.onPress(e);
+              }
+              // ✅ Ensuite, ajouter le haptic feedback
               handleTabPress(route.name);
-              props.onPress?.(e);
-            }}
-            activeOpacity={0.7}
-          />
-        ),
+            } catch (error) {
+              console.error('[AppNavigator] Erreur navigation TabBar:', error);
+              // ✅ FALLBACK: Réessayer la navigation en cas d'erreur
+              if (props.onPress && typeof props.onPress === 'function') {
+                props.onPress(e);
+              }
+            }
+          };
+
+          return (
+            <TouchableOpacity
+              {...props}
+              onPress={handlePress}
+              activeOpacity={0.7}
+              disabled={false} // ✅ CORRIGÉ: Ne jamais désactiver les boutons de la TabBar
+            />
+          );
+        },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreenWithSafeArea} options={{ tabBarLabel: 'Accueil' }} />
+      {/* ✅ NOUVEAU: Onglet Services Spécialisés juste après Accueil */}
+      <Tab.Screen
+        name="SpecializedServicesHub"
+        component={SpecializedServicesHubScreenWithSafeArea}
+        options={{
+          tabBarLabel: 'Services',
+          tabBarIcon: ({ focused, color, size }) => (
+            <SafeIcon name="sparkles" size={size} color={focused ? modernColors.primary : color} type="lucide" />
+          ),
+        }}
+      />
       {/* ✅ NOUVEAU: Onglet feed vidéos (lecture/visualisation) */}
       <Tab.Screen
         name="Videos"

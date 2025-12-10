@@ -1088,6 +1088,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                     multiline
                     numberOfLines={2}
                     textAlignVertical="top"
+                    editable={!loading} // ✅ CORRIGÉ: Permettre la saisie même si loading (sauf si vraiment en train de soumettre)
                     accessibilityLabel={isCreateService ? "Zone de saisie pour créer un service" : "Zone de saisie pour rechercher un service"}
                     accessibilityHint={isCreateService ? "Tapez votre description ou ajoutez des médias pour créer un service" : "Tapez votre recherche ou ajoutez des médias pour trouver un service"}
                 />

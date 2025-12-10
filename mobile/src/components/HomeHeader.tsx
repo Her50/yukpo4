@@ -23,8 +23,8 @@ import { SafeIcon } from './SafeIcon';
 import { SafeNativeView } from './SafeNativeView';
 import UserAvatarMenu from './UserAvatarMenu';
 
-const HEADER_MAX_HEIGHT = 60; // ✅ RÉDUIT: De 80 à 60px pour un header plus compact
-const HEADER_MIN_HEIGHT = 48; // ✅ RÉDUIT: De 50 à 48px
+const HEADER_MAX_HEIGHT = 56; // ✅ RÉDUIT: De 60 à 56px pour réduire l'espace vide en haut
+const HEADER_MIN_HEIGHT = 44; // ✅ RÉDUIT: De 48 à 44px
 const SCROLL_THRESHOLD = 100;
 
 interface HomeHeaderProps {
@@ -223,18 +223,16 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                             onLanguageChange={onLanguageChange}
                             compact={true}
                         />
-                        {/* ✅ NOUVEAU: Badge gamification compact - SÉPARÉ du titre Yukpo */}
+                        {/* ✅ CORRIGÉ: Badge gamification compact - Positionné à côté du drapeau, bien séparé du titre Yukpo */}
                         {user?.id ? (
-                            <View style={{ marginRight: 8 }}> {/* ✅ CORRIGÉ: Ajouter margin pour séparer du titre */}
-                                <GamificationBadge
-                                    userId={user.id}
-                                    compact={true}
-                                    onPress={() => {
-                                        hapticPress();
-                                        onShowLeaderboard?.();
-                                    }}
-                                />
-                            </View>
+                            <GamificationBadge
+                                userId={user.id}
+                                compact={true}
+                                onPress={() => {
+                                    hapticPress();
+                                    onShowLeaderboard?.();
+                                }}
+                            />
                         ) : null}
                         {/* ✅ NOUVEAU: Modals gamification - HORS du headerLeft pour éviter conflits */}
                         {user?.id ? (
@@ -329,8 +327,9 @@ const styles = StyleSheet.create({
         zIndex: 1000,
     },
     headerContent: {
-        paddingHorizontal: 16,
-        paddingVertical: 0,
+        paddingHorizontal: 12, // ✅ RÉDUIT: De 16 à 12px pour réduire l'espace
+        paddingTop: 4, // ✅ RÉDUIT: Padding top minimal
+        paddingBottom: 4, // ✅ RÉDUIT: Padding bottom minimal
         justifyContent: 'center', // ✅ Centrer verticalement
         alignItems: 'stretch',
         height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Utiliser la hauteur fixe du header
@@ -360,22 +359,22 @@ const styles = StyleSheet.create({
         alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
         justifyContent: 'flex-start',
         minWidth: 0,
-        maxWidth: '28%',
+        maxWidth: '32%', // ✅ AUGMENTÉ: De 28% à 32% pour accommoder le trophée
         flexShrink: 1,
-        gap: 4,
+        gap: 6, // ✅ AUGMENTÉ: De 4 à 6px pour mieux séparer les éléments
         height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Hauteur fixe égale au header
-        paddingRight: 4,
+        paddingRight: 8, // ✅ AUGMENTÉ: De 4 à 8px pour séparer du titre Yukpo
     },
     brandTitleContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center', // ✅ CORRIGÉ: Centrer verticalement
-        paddingHorizontal: 12,
+        paddingHorizontal: 8, // ✅ RÉDUIT: De 12 à 8px pour réduire l'espace
         minWidth: 100,
         flexShrink: 0,
         zIndex: 1,
         height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Hauteur fixe égale au header
-        marginHorizontal: 4,
+        marginHorizontal: 0, // ✅ RÉDUIT: De 4 à 0px pour réduire l'espace
     },
     brandTitleWrapper: {
         justifyContent: 'center',

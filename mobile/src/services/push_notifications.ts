@@ -2,6 +2,8 @@
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+// ✅ CORRIGÉ: Utiliser SafeStorage au lieu d'AsyncStorage directement
+import SafeStorage from '../utils/safeStorage';
 
 // Configuration des notifications
 Notifications.setNotificationHandler({
@@ -164,7 +166,7 @@ export class PushNotificationService {
      */
     async loadPreferences(): Promise<NotificationPreferences> {
         try {
-            const { AsyncStorage } = require('@react-native-async-storage/async-storage');
+            // ✅ CORRIGÉ: Utiliser SafeStorage directement (déjà importé)
             const saved = await SafeStorage.getItem('notification_preferences');
             if (saved) {
                 this.preferences = JSON.parse(saved);
@@ -182,7 +184,7 @@ export class PushNotificationService {
     async savePreferences(preferences: Partial<NotificationPreferences>): Promise<void> {
         try {
             this.preferences = { ...this.preferences, ...preferences };
-            const { AsyncStorage } = require('@react-native-async-storage/async-storage');
+            // ✅ CORRIGÉ: Utiliser SafeStorage directement (déjà importé)
             await SafeStorage.setItem('notification_preferences', JSON.stringify(this.preferences));
         } catch (error) {
             console.error('[PushNotificationService] Erreur sauvegarde préférences:', error);

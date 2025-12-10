@@ -36,10 +36,12 @@ export const CRASH_PREVENTION_CONFIG = {
     ENABLE_PERFORMANCE_MONITORING: true, // Monitoring des performances
 };
 
+// ✅ CORRIGÉ: Utiliser SafeStorage au lieu d'AsyncStorage directement
+import SafeStorage from '../utils/safeStorage';
+
 // Fonction pour vérifier si GPS est activé
 export const isGPSEnabled = async (): Promise<boolean> => {
     try {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
         const gpsEnabled = await SafeStorage.getItem('gpsEnabled');
         return gpsEnabled !== null ? JSON.parse(gpsEnabled) : GPS_CONFIG.AUTO_GPS_ENABLED;
     } catch (error) {

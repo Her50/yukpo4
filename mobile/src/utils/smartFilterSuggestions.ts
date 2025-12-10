@@ -4,6 +4,8 @@
  */
 
 import { CategoryFilter } from '../config/categoryConfig';
+// ✅ CORRIGÉ: Utiliser SafeStorage au lieu d'AsyncStorage directement
+import SafeStorage from './safeStorage';
 
 // Types
 export interface ProductPattern {
@@ -422,8 +424,7 @@ export const saveFilterToHistory = async (
     resultCount: number
 ): Promise<void> => {
     try {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        
+        // ✅ CORRIGÉ: Utiliser SafeStorage directement (déjà importé)
         // Récupérer l'historique existant
         const historyJson = await SafeStorage.getItem(FILTER_HISTORY_KEY);
         let history: FilterHistory[] = historyJson ? JSON.parse(historyJson) : [];
@@ -451,7 +452,7 @@ export const saveFilterToHistory = async (
  */
 export const getFilterHistory = async (category?: string): Promise<FilterHistory[]> => {
     try {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        // ✅ CORRIGÉ: Utiliser SafeStorage directement (déjà importé)
         const historyJson = await SafeStorage.getItem(FILTER_HISTORY_KEY);
         let history: FilterHistory[] = historyJson ? JSON.parse(historyJson) : [];
 

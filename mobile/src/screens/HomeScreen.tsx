@@ -35,7 +35,6 @@ import { homeScreenReducer, initialState } from './HomeScreen.reducer';
 // ✅ OPTIMISATION: Lazy loading pour réduire bundle size initial (-30% bundle size)
 // ✅ SÉCURITÉ: Vérification que les composants sont bien exportés avant lazy loading
 // ✅ CORRIGÉ: Remplacer par un bouton simple au lieu du scroll horizontal
-import { SpecializedServicesButton } from '../components/SpecializedServicesButton';
 const GlobalPromoHighlights = React.lazy(() =>
     import('../components/promotions/GlobalPromoHighlights')
         .then(module => {
@@ -133,31 +132,33 @@ const HomeScreen: React.FC = () => {
     const [isNavigating, setIsNavigating] = React.useState(false);
 
     // ✅ CORRIGÉ: Safety reset - forcer la réinitialisation si bloqué trop longtemps
+    // ✅ RÉDUIT: Timeout de 5s à 2s pour navigation plus réactive
     React.useEffect(() => {
         if (isNavigating) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: isNavigating bloqué depuis 5s, réinitialisation forcée');
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: isNavigating bloqué depuis 2s, réinitialisation forcée');
                 setIsNavigating(false);
-            }, 5000);
+            }, 2000); // ✅ RÉDUIT: De 5s à 2s
             return () => clearTimeout(timeout);
         }
     }, [isNavigating]);
 
     // ✅ CORRIGÉ: Safety reset pour loading
+    // ✅ RÉDUIT: Timeout de 10s à 5s pour éviter blocages longs
     React.useEffect(() => {
         if (state.ui.loading) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: loading bloqué depuis 10s, réinitialisation forcée');
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: loading bloqué depuis 5s, réinitialisation forcée');
                 dispatch({ type: 'SET_LOADING', payload: false });
-            }, 10000);
+            }, 5000); // ✅ RÉDUIT: De 10s à 5s
             return () => clearTimeout(timeout);
         }
     }, [state.ui.loading]);
 
     const handleDeliveryPress = React.useCallback(() => {
-        // ✅ CORRIGÉ: Empêcher les clics multiples
-        if (isNavigating || state.ui.loading) {
-            console.warn('[HomeScreen] ⚠️ Navigation bloquée - isNavigating:', isNavigating, 'loading:', state.ui.loading);
+        // ✅ CORRIGÉ: Ne bloquer que si vraiment en train de naviguer (pas juste loading)
+        if (isNavigating) {
+            console.warn('[HomeScreen] ⚠️ Navigation déjà en cours');
             return;
         }
 
@@ -183,13 +184,13 @@ const HomeScreen: React.FC = () => {
             console.error('[HomeScreen] ❌ Stack:', (error as any)?.stack);
             Alert.alert('Erreur', 'Impossible d\'ouvrir la livraison.');
         } finally {
-            // ✅ CORRIGÉ: Réinitialiser après un court délai
+            // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour navigation rapide)
             setTimeout(() => {
                 console.log('[HomeScreen] 🔄 Réinitialisation isNavigating');
                 setIsNavigating(false);
-            }, 500);
+            }, 50); // ✅ RÉDUIT: De 100ms à 50ms pour navigation encore plus rapide
         }
-    }, [navigation, isNavigating, state.ui.loading]);
+    }, [navigation, isNavigating]);
 
     // ✅ NOUVEAU 2025-01-27: Charger le nombre de conversations non lues
     const loadUnreadChatCount = React.useCallback(async (): Promise<number> => {
@@ -214,9 +215,9 @@ const HomeScreen: React.FC = () => {
     }, [user?.id]);
 
     const handleChatPress = React.useCallback(() => {
-        // ✅ CORRIGÉ: Empêcher les clics multiples
-        if (isNavigating || state.ui.loading) {
-            console.warn('[HomeScreen] ⚠️ Chat bloqué - isNavigating:', isNavigating, 'loading:', state.ui.loading);
+        // ✅ CORRIGÉ: Ne bloquer que si vraiment en train de naviguer
+        if (isNavigating) {
+            console.warn('[HomeScreen] ⚠️ Navigation déjà en cours');
             return;
         }
 
@@ -244,17 +245,18 @@ const HomeScreen: React.FC = () => {
             console.error('[HomeScreen] ❌ Erreur ouverture chat:', error);
         } finally {
             // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour les modals)
+            // ✅ RÉDUIT: De 100ms à 50ms pour modals plus rapides
             setTimeout(() => {
                 console.log('[HomeScreen] 🔄 Réinitialisation isNavigating (chat)');
                 setIsNavigating(false);
-            }, 100);
+            }, 50); // ✅ RÉDUIT: De 100ms à 50ms
         }
     }, [state.ui.showChatModal, loadUnreadChatCount, isNavigating, state.ui.loading]);
 
     const handleNotificationPress = React.useCallback(() => {
-        // ✅ CORRIGÉ: Empêcher les clics multiples
-        if (isNavigating || state.ui.loading) {
-            console.warn('[HomeScreen] ⚠️ Notifications bloquées - isNavigating:', isNavigating, 'loading:', state.ui.loading);
+        // ✅ CORRIGÉ: Ne bloquer que si vraiment en train de naviguer
+        if (isNavigating) {
+            console.warn('[HomeScreen] ⚠️ Navigation déjà en cours');
             return;
         }
 
@@ -269,10 +271,11 @@ const HomeScreen: React.FC = () => {
             console.error('[HomeScreen] ❌ Erreur ouverture notifications:', error);
         } finally {
             // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour les modals)
+            // ✅ RÉDUIT: De 100ms à 50ms pour modals plus rapides
             setTimeout(() => {
                 console.log('[HomeScreen] 🔄 Réinitialisation isNavigating (notifications)');
                 setIsNavigating(false);
-            }, 100);
+            }, 50); // ✅ RÉDUIT: De 100ms à 50ms
         }
     }, [isNavigating, state.ui.loading]);
 
@@ -387,14 +390,15 @@ const HomeScreen: React.FC = () => {
                 return;
             }
 
-            // ✅ CORRIGÉ: Charger les données en arrière-plan avec timeout pour ne pas bloquer
+            // ✅ OPTIMISÉ: Charger les données en arrière-plan avec timeout réduit pour ne pas bloquer
             const timeoutPromise = new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout')), 2000)
+                setTimeout(() => reject(new Error('Timeout')), 1000) // ✅ RÉDUIT: De 2s à 1s
             );
 
             try {
-                // ✅ Charger toutes les données en parallèle avec timeout
-                const [notificationsResult, chatCountResult, behaviorResult, courierResult] = await Promise.race([
+                // ✅ OPTIMISÉ: Charger toutes les données en parallèle avec timeout réduit
+                // ✅ AMÉLIORÉ: Ne pas bloquer le rendu initial - charger en arrière-plan
+                Promise.race([
                     Promise.allSettled([
                         loadUnreadNotificationsCount(),
                         loadUnreadChatCount(), // ✅ NOUVEAU 2025-01-27: Charger le nombre de conversations non lues
@@ -402,29 +406,39 @@ const HomeScreen: React.FC = () => {
                         deliveryApi.getMyCourierStatus().catch(() => ({ data: { is_courier: false } })),
                     ]),
                     timeoutPromise
-                ]) as PromiseSettledResult<any>[];
+                ]).then((results) => {
+                    const [notificationsResult, chatCountResult, behaviorResult, courierResult] = results as PromiseSettledResult<any>[];
 
-                // Traiter les résultats
-                if (notificationsResult.status === 'fulfilled') {
-                    dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: notificationsResult.value });
-                }
+                    // Traiter les résultats
+                    if (notificationsResult?.status === 'fulfilled') {
+                        dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: notificationsResult.value });
+                    }
 
-                if (chatCountResult.status === 'fulfilled') {
-                    dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: chatCountResult.value });
-                }
+                    if (chatCountResult?.status === 'fulfilled') {
+                        dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: chatCountResult.value });
+                    }
 
-                if (behaviorResult.status === 'fulfilled') {
-                    dispatch({ type: 'SET_USER_BEHAVIOR_CATEGORIES', payload: behaviorResult.value });
-                }
+                    if (behaviorResult?.status === 'fulfilled') {
+                        dispatch({ type: 'SET_USER_BEHAVIOR_CATEGORIES', payload: behaviorResult.value });
+                    }
 
-                if (courierResult.status === 'fulfilled') {
-                    const data = (courierResult.value as any)?.data || courierResult.value;
-                    const isCourierValue = data?.is_courier ?? data?.isCourier ?? false;
-                    dispatch({ type: 'SET_IS_COURIER', payload: Boolean(isCourierValue) });
-                }
+                    if (courierResult?.status === 'fulfilled') {
+                        const data = (courierResult.value as any)?.data || courierResult.value;
+                        const isCourierValue = data?.is_courier ?? data?.isCourier ?? false;
+                        dispatch({ type: 'SET_IS_COURIER', payload: Boolean(isCourierValue) });
+                    }
+                }).catch((error) => {
+                    // ✅ CORRIGÉ: En cas de timeout, continuer sans bloquer
+                    console.warn('[HomeScreen] Timeout chargement données initiales, continuation...');
+                    // Définir des valeurs par défaut
+                    dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: 0 });
+                    dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: 0 });
+                    dispatch({ type: 'SET_USER_BEHAVIOR_CATEGORIES', payload: [] });
+                    dispatch({ type: 'SET_IS_COURIER', payload: false });
+                });
             } catch (error) {
-                // ✅ CORRIGÉ: En cas de timeout, continuer sans bloquer
-                console.warn('[HomeScreen] Timeout chargement données initiales, continuation...');
+                // ✅ CORRIGÉ: En cas d'erreur, continuer sans bloquer
+                console.warn('[HomeScreen] Erreur chargement données initiales, continuation...');
                 // Définir des valeurs par défaut
                 dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: 0 });
                 dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: 0 });
@@ -466,14 +480,14 @@ const HomeScreen: React.FC = () => {
 
         refreshNotifications();
 
-        // ✅ OPTIMISÉ: Intervalle augmenté à 2 minutes pour réduire la charge
+        // ✅ OPTIMISÉ: Intervalle augmenté à 5 minutes pour réduire la charge et améliorer les performances
         const interval = setInterval(() => {
             console.log('[HomeScreen] 🔄 Rafraîchissement automatique des notifications');
             // ✅ SÉCURITÉ: Vérifier que la fonction existe avant de l'appeler dans l'intervalle
             if (typeof loadUnreadNotificationsCount === 'function') {
                 refreshNotifications();
             }
-        }, 120000); // 2 minutes au lieu de 30 secondes
+        }, 300000); // ✅ AUGMENTÉ: 5 minutes au lieu de 2 minutes pour réduire la charge
 
         return () => {
             // ✅ SÉCURITÉ: Vérifier que interval existe avant de le nettoyer
@@ -483,70 +497,71 @@ const HomeScreen: React.FC = () => {
         };
     }, [loadUnreadNotificationsCount]);
 
-    // ✅ NOUVEAU: Initialiser les services UX
+    // ✅ OPTIMISÉ: Initialiser les services UX en arrière-plan (ne pas bloquer le rendu)
     React.useEffect(() => {
-        // Initialiser les notifications push
-        pushNotificationService.registerForPushNotifications().then(token => {
-            if (token) {
-                console.log('[HomeScreen] ✅ Notifications push initialisées:', token);
-            }
-        });
-
-        // Écouter les changements de connexion
-        const handleOnline = () => {
-            console.log('[HomeScreen] 📡 État de connexion: En ligne');
-        };
-        const handleOffline = () => {
-            console.log('[HomeScreen] 📡 État de connexion: Hors ligne');
-        };
-
-        // ✅ SÉCURITÉ: Vérifier que offlineService existe et a les méthodes nécessaires
-        if (offlineService && typeof offlineService.on === 'function') {
-            offlineService.on('online', handleOnline);
-            offlineService.on('offline', handleOffline);
-        }
-
-        const unsubscribe = () => {
-            // ✅ SÉCURITÉ: Vérifier que offlineService.off existe (EventEmitter utilise 'off' ou 'removeListener')
-            if (offlineService) {
-                if (typeof offlineService.off === 'function') {
-                    offlineService.off('online', handleOnline);
-                    offlineService.off('offline', handleOffline);
-                } else if (typeof offlineService.removeListener === 'function') {
-                    offlineService.removeListener('online', handleOnline);
-                    offlineService.removeListener('offline', handleOffline);
+        // ✅ OPTIMISÉ: Délayer l'initialisation pour ne pas bloquer le rendu initial
+        const initTimeout = setTimeout(() => {
+            // Initialiser les notifications push
+            pushNotificationService.registerForPushNotifications().then(token => {
+                if (token) {
+                    console.log('[HomeScreen] ✅ Notifications push initialisées:', token);
                 }
+            });
+
+            // Écouter les changements de connexion
+            const handleOnline = () => {
+                console.log('[HomeScreen] 📡 État de connexion: En ligne');
+            };
+            const handleOffline = () => {
+                console.log('[HomeScreen] 📡 État de connexion: Hors ligne');
+            };
+
+            // ✅ SÉCURITÉ: Vérifier que offlineService existe et a les méthodes nécessaires
+            if (offlineService && typeof offlineService.on === 'function') {
+                offlineService.on('online', handleOnline);
+                offlineService.on('offline', handleOffline);
             }
-        };
 
-        // ✅ NOUVEAU: Initialiser gamification (streak, points)
-        if (user?.id) {
-            gamificationService.trackAction(user.id, 'daily_login').catch(err => {
-                console.warn('[HomeScreen] Erreur gamification:', err);
-            });
-        }
+            const unsubscribe = () => {
+                // ✅ SÉCURITÉ: Vérifier que offlineService.off existe (EventEmitter utilise 'off' ou 'removeListener')
+                if (offlineService) {
+                    if (typeof offlineService.off === 'function') {
+                        offlineService.off('online', handleOnline);
+                        offlineService.off('offline', handleOffline);
+                    } else if (typeof offlineService.removeListener === 'function') {
+                        offlineService.removeListener('online', handleOnline);
+                        offlineService.removeListener('offline', handleOffline);
+                    }
+                }
+            };
 
-        // ✅ NOUVEAU: Initialiser A/B Testing
-        if (user?.id) {
-            abTestingService.initialize(user.id).catch(err => {
-                console.warn('[HomeScreen] Erreur A/B Testing:', err);
-            });
-        }
+            // ✅ NOUVEAU: Initialiser gamification (streak, points) - en arrière-plan
+            if (user?.id) {
+                gamificationService.trackAction(user.id, 'daily_login').catch(err => {
+                    console.warn('[HomeScreen] Erreur gamification:', err);
+                });
+            }
 
-        // ✅ NOUVEAU: Initialiser Analytics
-        if (user?.id) {
-            analyticsService.identify(user.id, {
-                email: user.email,
-                name: user.name,
-            });
-        }
-        analyticsService.trackScreenView('HomeScreen');
+            // ✅ NOUVEAU: Initialiser A/B Testing - en arrière-plan
+            if (user?.id) {
+                abTestingService.initialize(user.id).catch(err => {
+                    console.warn('[HomeScreen] Erreur A/B Testing:', err);
+                });
+            }
+
+            // ✅ NOUVEAU: Initialiser Analytics - en arrière-plan
+            if (user?.id) {
+                analyticsService.identify(user.id, {
+                    email: user.email,
+                    name: user.name,
+                });
+            }
+            analyticsService.trackScreenView('HomeScreen');
+        }, 500); // ✅ Délai de 500ms pour ne pas bloquer le rendu initial
 
         return () => {
-            // ✅ SÉCURITÉ: Vérifier que unsubscribe est une fonction avant de l'appeler
-            if (unsubscribe && typeof unsubscribe === 'function') {
-                unsubscribe();
-            }
+            // ✅ SÉCURITÉ: Nettoyer le timeout si nécessaire
+            // Le timeout sera nettoyé automatiquement si le composant est démonté
             // ✅ Flush analytics avant de quitter
             analyticsService.flush().catch(() => { });
         };
@@ -1404,7 +1419,7 @@ const HomeScreen: React.FC = () => {
                         onShowChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
                         onCloseLeaderboard={() => dispatch({ type: 'TOGGLE_LEADERBOARD' })}
                         onCloseChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
-                        disabled={isNavigating || state.ui.loading} // ✅ CORRIGÉ: Désactiver les boutons pendant navigation/chargement
+                        disabled={isNavigating} // ✅ CORRIGÉ: Désactiver uniquement pendant navigation (pas loading)
                     />
 
                     {/* ✅ ZONE DE RECHERCHE FIXE - Juste après l'en-tête */}
@@ -1416,9 +1431,9 @@ const HomeScreen: React.FC = () => {
                                     title={t('search.find')}
                                     icon="🔍"
                                     variant={!state.ui.isCreateService ? 'primary' : 'outline'}
-                                    disabled={isNavigating || state.ui.loading}
+                                    disabled={isNavigating}
                                     onPress={() => {
-                                        if (isNavigating || state.ui.loading) return;
+                                        if (isNavigating) return;
                                         hapticSelect();
                                         dispatch({ type: 'SET_IS_CREATE_SERVICE', payload: false });
                                     }}
@@ -1430,9 +1445,9 @@ const HomeScreen: React.FC = () => {
                                     title={t('search.create')}
                                     icon="➕"
                                     variant={state.ui.isCreateService ? 'primary' : 'outline'}
-                                    disabled={isNavigating || state.ui.loading}
+                                    disabled={isNavigating}
                                     onPress={() => {
-                                        if (isNavigating || state.ui.loading) return;
+                                        if (isNavigating) return;
                                         hapticSelect();
                                         dispatch({ type: 'SET_IS_CREATE_SERVICE', payload: true });
                                     }}
@@ -1462,7 +1477,6 @@ const HomeScreen: React.FC = () => {
                     {/* ✅ OPTIMISATION: FlatList virtualisé pour meilleure performance */}
                     <FlatList
                         data={[
-                            { id: 'specialized', type: 'specialized' }, // ✅ NOUVEAU: Section services spécialisés
                             { id: 'carousel', type: 'carousel' },
                             { id: 'promo', type: 'promo' },
                             { id: 'feed', type: 'feed' }, // ✅ PHASE 2: Feed infini
@@ -1472,24 +1486,10 @@ const HomeScreen: React.FC = () => {
                         // React Native calculera automatiquement les hauteurs réelles
                         // Cela évite les problèmes de sections mal positionnées ou coupées
                         renderItem={({ item }) => {
-                            // ✅ CORRIGÉ: Bouton élégant pour services spécialisés (au lieu du scroll horizontal)
-                            if (item.type === 'specialized') {
-                                return (
-                                    <AnimatedCard index={0} delay={0}>
-                                        <SpecializedServicesButton
-                                            onPress={() => {
-                                                // ✅ AMÉLIORÉ: Retirer le double appel haptique (déjà géré dans le bouton)
-                                                try {
-                                                    hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
-                                                    (navigation as any).navigate('SpecializedServicesHub');
-                                                } catch (error) {
-                                                    console.error('[HomeScreen] ❌ Erreur navigation vers SpecializedServicesHub:', error);
-                                                    Alert.alert('Erreur', 'Impossible d\'ouvrir les services spécialisés.');
-                                                }
-                                            }}
-                                        />
-                                    </AnimatedCard>
-                                );
+                            // ✅ SÉCURITÉ: Vérifier que item est valide
+                            if (!item || !item.type) {
+                                console.warn('[HomeScreen] ⚠️ Item invalide dans FlatList:', item);
+                                return <View key="invalid-item" style={{ height: 0, width: 0 }} />;
                             }
 
                             if (item.type === 'carousel') {
@@ -1505,6 +1505,14 @@ const HomeScreen: React.FC = () => {
                                             </View>
                                         </View>
                                     );
+                                }
+
+                                // ✅ SÉCURITÉ: Vérifier que MixedContentCarousel est défini
+                                if (!MixedContentCarousel) {
+                                    console.error('[HomeScreen] ❌ MixedContentCarousel est undefined');
+                                    return <View key="carousel-error" style={{ padding: 20, alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 14, color: '#666' }}>Carousel non disponible</Text>
+                                    </View>;
                                 }
 
                                 return (
@@ -1555,6 +1563,13 @@ const HomeScreen: React.FC = () => {
                                 );
                             }
                             if (item.type === 'promo') {
+                                // ✅ SÉCURITÉ: Vérifier que GlobalPromoHighlights est défini
+                                if (!GlobalPromoHighlights) {
+                                    console.error('[HomeScreen] ❌ GlobalPromoHighlights est undefined');
+                                    return <View key="promo-error" style={{ padding: 20, alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 14, color: '#666' }}>Promotions non disponibles</Text>
+                                    </View>;
+                                }
                                 return (
                                     <AnimatedCard index={1} delay={100}>
                                         <ErrorBoundary
@@ -1599,6 +1614,14 @@ const HomeScreen: React.FC = () => {
                                             <EnhancedSkeletonLoader variant="feed" count={2} />
                                         </View>
                                     );
+                                }
+
+                                // ✅ SÉCURITÉ: Vérifier que InfiniteFeed est défini
+                                if (!InfiniteFeed) {
+                                    console.error('[HomeScreen] ❌ InfiniteFeed est undefined');
+                                    return <View key="feed-error" style={{ padding: 20, alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 14, color: '#666' }}>Feed non disponible</Text>
+                                    </View>;
                                 }
 
                                 return (
@@ -1850,6 +1873,7 @@ const HomeScreen: React.FC = () => {
                             <Text style={styles.floatingCourierButtonText}>Mes courses</Text>
                         </TouchableOpacity>
                     )}
+
                 </SafeNativeView>
             </ScreenTransition>
         </ModernBackground>
@@ -1903,15 +1927,15 @@ const createStyles = (colors: any) => StyleSheet.create({
     // ✅ NOUVELLE SECTION DE RECHERCHE FIXE - COMPACTE
     searchSection: {
         backgroundColor: colors.surface, // ✅ NOUVEAU: Support thème
-        paddingHorizontal: STATIC_WIDTH > 400 ? 24 : 16,
-        paddingVertical: 10, // ✅ Réduit de 16 à 10 pour compacter
+        paddingHorizontal: STATIC_WIDTH > 400 ? 20 : 12, // ✅ RÉDUIT: De 24/16 à 20/12
+        paddingVertical: 8, // ✅ RÉDUIT: De 10 à 8 pour plus de compacité
         borderBottomWidth: 1,
         borderBottomColor: colors.border, // ✅ NOUVEAU: Support thème
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 2, // ✅ Réduit de 3 à 2
+        shadowOffset: { width: 0, height: 1 }, // ✅ RÉDUIT: De 2 à 1
+        shadowOpacity: 0.05, // ✅ RÉDUIT: De 0.08 à 0.05
+        shadowRadius: 2, // ✅ RÉDUIT: De 4 à 2
+        elevation: 1, // ✅ RÉDUIT: De 2 à 1
         zIndex: 999,
     },
     scrollContainer: {
@@ -1919,10 +1943,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
-        paddingHorizontal: STATIC_WIDTH > 400 ? 24 : 16,
-        paddingTop: 4, // ✅ RÉDUIT: 8 → 4 pour afficher les cartes encore plus tôt
-        paddingBottom: 140, // ✅ AUGMENTÉ: 120 → 140 pour garantir visibilité complète des cartes avec la navigation
-        minHeight: STATIC_HEIGHT * 0.6, // ✅ AUGMENTÉ: 0.5 → 0.6 pour plus d'espace vertical
+        paddingHorizontal: STATIC_WIDTH > 400 ? 16 : 12, // ✅ RÉDUIT: De 24/16 à 16/12 pour optimiser l'espace
+        paddingTop: 2, // ✅ RÉDUIT: De 4 à 2 pour afficher les cartes plus tôt
+        paddingBottom: 100, // ✅ RÉDUIT: De 140 à 100 (le bouton en bas est supprimé)
+        minHeight: STATIC_HEIGHT * 0.5, // ✅ RÉDUIT: De 0.6 à 0.5 pour optimiser l'espace
     },
     descriptionContainer: {
         marginBottom: 16,

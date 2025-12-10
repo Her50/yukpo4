@@ -362,90 +362,15 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
 
         const safeContent = Array.isArray(content) ? content : [];
 
-        // ✅ CORRIGÉ: Simplifier les conditions - démarrer même avec 1 élément pour test
-        if (safeContent.length >= 1 && currentIndex === 0 && !isPaused) {
-            console.log('[MixedContentCarousel] ⏱️ [DIAGNOSTIC] Programmation scroll initial dans 1 seconde...', {
+        // ✅ CORRIGÉ: Démarrer le scroll automatique continu même si on n'est pas à l'index 0
+        // Le scroll automatique continu sera géré par le useEffect suivant qui appelle startAutoScroll
+        if (safeContent.length <= 1) {
+            console.log('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Contenu insuffisant pour scroll automatique:', {
                 contentLength: safeContent.length,
                 currentIndex,
                 isPaused,
-                scrollViewMounted
             });
-
-            // ✅ CORRIGÉ: Réduire le délai de 2s à 1s pour démarrage plus rapide
-            const initialTimer = setTimeout(() => {
-                const safeContent = Array.isArray(content) ? content : [];
-                console.log('[MixedContentCarousel] 🎬 [DIAGNOSTIC] Tentative scroll initial après 2s:', {
-                    hasScrollViewRef: !!scrollViewRef.current,
-                    scrollViewMounted,
-                    contentLength: safeContent.length,
-                    scrollViewReady: scrollViewRef.current ? typeof scrollViewRef.current.scrollTo === 'function' : false
-                });
-
-                // ✅ CORRIGÉ: Simplifier - ne pas dépendre strictement de scrollViewMounted
-                if (scrollViewRef.current && safeContent.length >= 1) {
-                    // ✅ CORRIGÉ: Vérifier que scrollTo est disponible
-                    if (typeof scrollViewRef.current.scrollTo !== 'function') {
-                        console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] scrollTo n\'est pas une fonction');
-                        return;
-                    }
-
-                    // ✅ CORRIGÉ: Calculer la position correctement (nextIndex * SNAP_INTERVAL)
-                    const nextIndex = 1;
-                    const scrollPosition = nextIndex * SNAP_INTERVAL;
-
-                    console.log('[MixedContentCarousel] 🎯 [DIAGNOSTIC] Exécution scroll automatique initial:', {
-                        nextIndex,
-                        scrollPosition,
-                        SNAP_INTERVAL,
-                        CARD_WIDTH,
-                        CARD_MARGIN
-                    });
-
-                    // ✅ CORRIGÉ: Utiliser requestAnimationFrame pour s'assurer que le layout est prêt
-                    requestAnimationFrame(() => {
-                        if (scrollViewRef.current) {
-                            try {
-                                scrollViewRef.current.scrollTo({
-                                    x: scrollPosition,
-                                    animated: true,
-                                });
-                                setCurrentIndex(nextIndex);
-                                console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Scroll initial exécuté avec succès vers index', nextIndex);
-                            } catch (error) {
-                                console.error('[MixedContentCarousel] ❌ [DIAGNOSTIC] Erreur lors du scroll initial:', error);
-                            }
-                        } else {
-                            console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView ref null dans requestAnimationFrame');
-                        }
-                    });
-                } else {
-                    console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView ref null ou contenu insuffisant lors du scroll initial:', {
-                        hasScrollViewRef: !!scrollViewRef.current,
-                        scrollViewMounted,
-                        contentLength: safeContent.length,
-                        reason: !scrollViewRef.current ? 'ScrollView ref null' :
-                            !scrollViewMounted ? 'ScrollView non monté' :
-                                safeContent.length <= 1 ? 'Contenu insuffisant' : 'Raison inconnue'
-                    });
-                }
-            }, 1000); // ✅ CORRIGÉ: Délai réduit de 2s à 1s
-
-            return () => {
-                // ✅ SÉCURITÉ: Vérifier que initialTimer existe avant de le nettoyer
-                if (initialTimer) {
-                    clearTimeout(initialTimer);
-                }
-            };
-        } else {
-            // ✅ DIAGNOSTIC: Log visible pour comprendre pourquoi le scroll ne démarre pas
-            console.log('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Scroll initial non démarré:', {
-                contentLength: safeContent.length,
-                currentIndex,
-                isPaused,
-                reason: safeContent.length < 1 ? 'Pas de contenu' :
-                    currentIndex !== 0 ? `Index actuel ${currentIndex} (besoin 0)` :
-                        isPaused ? 'En pause' : 'Raison inconnue'
-            });
+            return;
         }
     }, [content.length, isPaused, currentIndex, isAutoScrollDisabled, content, scrollViewMounted]);
 
@@ -909,11 +834,15 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
 
         autoScrollTimerRef.current = setTimeout(() => {
             // ✅ CORRIGÉ: Vérifier que le ScrollView est monté et que le contenu est chargé
-            if (!scrollViewRef.current || !scrollViewMounted) {
-                console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView ref null ou non monté, scroll annulé:', {
-                    hasScrollViewRef: !!scrollViewRef.current,
-                    scrollViewMounted
-                });
+            // ✅ AMÉLIORÉ: Ne pas bloquer si scrollViewMounted est false, vérifier directement scrollTo
+            if (!scrollViewRef.current) {
+                console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView ref null, scroll annulé');
+                return;
+            }
+
+            // ✅ AMÉLIORÉ: Vérifier directement si scrollTo est disponible
+            if (typeof scrollViewRef.current.scrollTo !== 'function') {
+                console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] scrollTo non disponible, scroll annulé');
                 return;
             }
 
