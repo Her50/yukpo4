@@ -1,5 +1,4 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Animated,
@@ -11,6 +10,7 @@ import {
     View
 } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
+import SafeStorage from '../utils/safeStorage';
 import { NativeInput } from './NativeDesign';
 import { SafeIcon } from './SafeIcon';
 

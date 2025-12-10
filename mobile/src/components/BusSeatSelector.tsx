@@ -1,6 +1,5 @@
 // @ts-nocheck
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useState } from 'react';
 import {
     Modal,
@@ -11,6 +10,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
 
 const PASSENGER_NAME_KEY = '@yukpomnang:passenger_name';

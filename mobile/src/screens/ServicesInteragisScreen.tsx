@@ -1,11 +1,11 @@
 // @ts-nocheck
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useState } from 'react';
 import ReactNative from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { servicesApi } from '../services/api';
 import { theme } from '../theme/theme';
+import SafeStorage from '../utils/safeStorage';
 
 const {
     Alert,

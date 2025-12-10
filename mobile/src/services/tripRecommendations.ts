@@ -3,7 +3,7 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
+import SafeStorage from '../utils/safeStorage';
 import { apiGet } from './api';
 
 interface TripRecommendation {

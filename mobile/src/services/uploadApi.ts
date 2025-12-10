@@ -2,8 +2,8 @@
 // Service d'upload préalable de fichiers (avant création de service)
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import { config } from '../config/environment';
+import SafeStorage from '../utils/safeStorage';
 
 export interface UploadedFile {
     url: string;

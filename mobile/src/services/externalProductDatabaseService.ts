@@ -12,8 +12,8 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import { EnrichedProduct } from '../data/enrichedProductDatabase';
+import SafeStorage from '../utils/safeStorage';
 
 export interface ExternalProductSource {
     id: string;

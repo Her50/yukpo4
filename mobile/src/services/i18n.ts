@@ -4,9 +4,9 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import * as Localization from 'expo-localization';
 import { I18n } from 'i18n-js';
+import SafeStorage from '../utils/safeStorage';
 
 const STORAGE_KEY = 'user_language';
 

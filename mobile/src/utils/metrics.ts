@@ -96,7 +96,7 @@ export const storeMetric = (key: string, value: number | string) => {
     try {
         // Utiliser AsyncStorage pour persister
         // // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
+        import SafeStorage from './safeStorage';
         // await SafeStorage.setItem(`metric_${key}`, JSON.stringify(value));
     } catch (error) {
         console.error('[Metrics] Erreur stockage:', error);
@@ -109,7 +109,7 @@ import SafeStorage from '../../utils/safeStorage';
 export const getStoredMetric = async (key: string): Promise<number | string | null> => {
     try {
         // // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
+        import SafeStorage from './safeStorage';
         // const value = await SafeStorage.getItem(`metric_${key}`);
         // return value ? JSON.parse(value) : null;
         return null;

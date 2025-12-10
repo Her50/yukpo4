@@ -9,7 +9,7 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
+import SafeStorage from '../utils/safeStorage';
 // ✅ INTÉGRÉ: TensorFlow Lite activé (import conditionnel)
 // Le service fonctionne en mode fallback si TensorFlow n'est pas disponible
 let tf: any = null;

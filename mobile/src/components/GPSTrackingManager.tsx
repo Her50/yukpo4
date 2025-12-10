@@ -1,9 +1,9 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiPatch } from '../services/api';
+import SafeStorage from '../utils/safeStorage';
 
 /**
  * Composant GPS Manager réécrit pour éviter les crashes

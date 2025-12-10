@@ -2,7 +2,7 @@
 // Utilise AsyncStorage pour sauvegarder les données en cache
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
+import SafeStorage from '../utils/safeStorage';
 
 const STORAGE_KEYS = {
     SERVICES_LIST: '@specialized_services:list',

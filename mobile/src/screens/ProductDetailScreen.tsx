@@ -1,6 +1,5 @@
 // @ts-nocheck
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -18,6 +17,7 @@ import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import SafeStorage from '../utils/safeStorage';
 
 const PENDING_DEEP_LINK_KEY = '@yukpomnang:pending_deep_link';
 

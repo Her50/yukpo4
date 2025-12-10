@@ -4,7 +4,7 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
+import SafeStorage from '../utils/safeStorage';
 
 const BEHAVIOR_DATA_KEY = 'language_behavior_data';
 const USAGE_STATS_KEY = 'language_usage_stats';

@@ -4,8 +4,8 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import NetInfo from '@react-native-community/netinfo';
+import SafeStorage from '../utils/safeStorage';
 import { apiPost } from './api';
 
 const CACHE_KEYS = {

@@ -1,6 +1,6 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import { API_BASE_URL } from '../config/api';
+import SafeStorage from '../utils/safeStorage';
 
 // Fonction pour générer un token JWT de développement
 function generateDevToken(): string {

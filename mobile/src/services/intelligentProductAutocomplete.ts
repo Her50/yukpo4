@@ -9,9 +9,9 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import { getFieldOptions } from '../data/productModalities';
 import { MODELES_PAR_MARQUE_AUTO } from '../utils/parseExistingModalities';
+import SafeStorage from '../utils/safeStorage';
 import { apiGet } from './api';
 import { modalityService } from './modalityService';
 

@@ -1,5 +1,4 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useState } from 'react';
 import {
     Animated,
@@ -16,6 +15,7 @@ import {
 import { CategoryFilter, getCategoryFilters, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { modalityService } from '../services/modalityService'; // ✅ NOUVEAU: Service de modalités dynamiques
 import { trackFilterSuggestion } from '../utils/analytics'; // ✅ OPTIMISATION 6
+import SafeStorage from '../utils/safeStorage';
 import { SmartFilterSuggestion } from '../utils/smartFilterSuggestions';
 import SafeIcon from './SafeIcon';
 

@@ -4,7 +4,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from 'react-native';
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
+import SafeStorage from '../utils/safeStorage';
 // import { motion, AnimatePresence } from 'framer-motion'; // Animation React Native
 // import DynamicField from "@/components/intelligence/DynamicFields";
 // import { Button } from "@/components/ui/buttons";
@@ -46,7 +46,7 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
         console.error('Erreur chargement tampon:', error);
       }
     };
-    
+
     loadTampon();
 
     // ✅ Ajout de contexte_demande fictif pour satisfaire le type ProfilIA

@@ -4,8 +4,8 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import { Platform } from 'react-native';
+import SafeStorage from '../utils/safeStorage';
 
 interface CacheEntry<T> {
     data: T;

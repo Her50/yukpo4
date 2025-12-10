@@ -1,5 +1,4 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useState } from 'react';
 import {
     FlatList,
@@ -10,6 +9,7 @@ import {
     View
 } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
+import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
 
 interface SmartVehicleModelInputProps {

@@ -4,8 +4,8 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import * as FileSystem from 'expo-file-system';
+import SafeStorage from '../utils/safeStorage';
 
 const CACHE_DIR = `${FileSystem.cacheDirectory}video_cache/`;
 const MAX_CACHE_SIZE = 1000 * 1024 * 1024; // 1 GB (augmenté de 500 MB)

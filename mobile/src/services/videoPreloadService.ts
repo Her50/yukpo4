@@ -4,9 +4,9 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import NetInfo from '@react-native-community/netinfo';
 import * as FileSystem from 'expo-file-system';
+import SafeStorage from '../utils/safeStorage';
 
 const CACHE_DIR = `${FileSystem.cacheDirectory}video_cache/`;
 const MAX_CACHE_SIZE = 500 * 1024 * 1024; // 500 MB

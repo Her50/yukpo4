@@ -1,5 +1,5 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
+import SafeStorage from './safeStorage';
 
 const PENDING_DEEP_LINK_KEY = '@yukpomnang:pending_deep_link';
 
@@ -32,14 +32,14 @@ export const savePendingDeepLink = async (deepLink: PendingDeepLink): Promise<vo
 export const handlePendingDeepLink = async (navigation: any): Promise<boolean> => {
     try {
         const pendingData = await SafeStorage.getItem(PENDING_DEEP_LINK_KEY);
-        
+
         if (!pendingData) {
             console.log('ℹ️ Aucun deep link en attente');
             return false;
         }
 
         const deepLink: PendingDeepLink = JSON.parse(pendingData);
-        
+
         // Vérifier que le deep link n'est pas trop ancien (max 1 heure)
         const ageMinutes = (Date.now() - deepLink.timestamp) / (1000 * 60);
         if (ageMinutes > 60) {
@@ -56,20 +56,20 @@ export const handlePendingDeepLink = async (navigation: any): Promise<boolean> =
         // Rediriger selon le type
         if (deepLink.type === 'product' && deepLink.productId && deepLink.serviceId) {
             console.log('📦 Redirection vers produit:', deepLink.productId);
-            
+
             navigation.navigate('ProductDetail', {
                 productId: deepLink.productId,
                 serviceId: deepLink.serviceId,
             });
-            
+
             return true;
         } else if (deepLink.type === 'service' && deepLink.serviceId) {
             console.log('🏢 Redirection vers service:', deepLink.serviceId);
-            
+
             navigation.navigate('ServiceDetailShared', {
                 id: deepLink.serviceId,
             });
-            
+
             return true;
         }
 

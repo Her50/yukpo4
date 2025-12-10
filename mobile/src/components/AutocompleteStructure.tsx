@@ -1,5 +1,4 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import React, { useEffect, useState } from 'react';
 import {
     FlatList,
@@ -10,6 +9,7 @@ import {
     View
 } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
+import SafeStorage from '../utils/safeStorage';
 import SafeIcon from './SafeIcon';
 
 interface AutocompleteStructureProps {
@@ -113,10 +113,10 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
             const lastUsedKey = LAST_USED_KEYS[type];
             const userKey = userId ? `${lastUsedKey}_${userId}` : lastUsedKey;
             const lastUsed = await SafeStorage.getItem(userKey);
-            
+
             if (lastUsed) {
                 setLastUsedValue(lastUsed);
-                
+
                 // Si le champ est vide et qu'on doit auto-charger, pré-remplir
                 if (autoLoadLastUsed && !value) {
                     onChangeText(lastUsed);
@@ -205,13 +205,13 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
                 if (aIsLastUsed && !bIsLastUsed) return -1;
                 if (!aIsLastUsed && bIsLastUsed) return 1;
             }
-            
+
             // Puis ceux qui commencent par le texte
             const aStarts = a.toLowerCase().startsWith(text.toLowerCase());
             const bStarts = b.toLowerCase().startsWith(text.toLowerCase());
             if (aStarts && !bStarts) return -1;
             if (!aStarts && bStarts) return 1;
-            
+
             // Enfin ordre alphabétique
             return a.localeCompare(b);
         });
@@ -333,10 +333,10 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
                                     style={[styles.suggestionItem, isLastUsed && styles.suggestionItemLastUsed]}
                                     onPress={() => selectSuggestion(item)}
                                 >
-                                    <SafeIcon 
-                                        name={isLastUsed ? "star" : "map-pin"} 
-                                        size={14} 
-                                        color={isLastUsed ? "#F59E0B" : "#3B82F6"} 
+                                    <SafeIcon
+                                        name={isLastUsed ? "star" : "map-pin"}
+                                        size={14}
+                                        color={isLastUsed ? "#F59E0B" : "#3B82F6"}
                                     />
                                     <Text style={[styles.suggestionText, isLastUsed && styles.suggestionTextLastUsed]}>
                                         {item}

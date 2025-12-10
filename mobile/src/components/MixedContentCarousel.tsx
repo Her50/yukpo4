@@ -4,7 +4,6 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -25,6 +24,7 @@ import { imagePrefetchService } from '../services/imagePrefetchService';
 import { mlRecommendationService } from '../services/mlRecommendationService';
 import { modernColors } from '../theme/modernTheme';
 import { hapticPress, hapticSelect } from '../utils/hapticFeedback';
+import SafeStorage from '../utils/safeStorage';
 import ChatModalMobile from './ChatModalMobile';
 import ProductCard from './ProductCard';
 import ProductCardSkeleton from './ProductCardSkeleton';

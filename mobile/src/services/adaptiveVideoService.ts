@@ -4,8 +4,8 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import NetInfo from '@react-native-community/netinfo';
+import SafeStorage from '../utils/safeStorage';
 
 export type VideoQuality = '360p' | '480p' | '720p' | '1080p' | 'auto';
 

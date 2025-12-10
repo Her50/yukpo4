@@ -1,7 +1,7 @@
 // ✅ NOUVEAU: Service pour récupérer la zone géographique de l'utilisateur
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import * as Location from 'expo-location';
+import SafeStorage from './safeStorage';
 
 // Mapping pays code ISO → emoji/drapeau
 const COUNTRY_CODE_MAP: Record<string, string> = {

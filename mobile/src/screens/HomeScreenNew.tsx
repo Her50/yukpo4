@@ -1,7 +1,6 @@
 // @ts-nocheck
 // HomeScreen moderne inspiré du frontend avec ChatInputMobile intégré
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
@@ -23,6 +22,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { genererSuggestionsService } from '../lib/yukpoaclient';
 import { apiGet, servicesApi } from '../services/api';
 import { modernStyles } from '../theme/modernTheme';
+import SafeStorage from '../utils/safeStorage';
 
 const HomeScreenNew: React.FC = () => {
     const { user } = useAuth();

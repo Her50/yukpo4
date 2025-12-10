@@ -1,6 +1,6 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import type { MusicMode } from '../types/audio';
+import SafeStorage from './safeStorage';
 
 export interface VideoDraft {
     serviceId: number;

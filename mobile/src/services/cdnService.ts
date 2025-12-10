@@ -4,8 +4,8 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import { ENVIRONMENT } from '../config/environment';
+import SafeStorage from '../utils/safeStorage';
 
 interface CDNConfig {
     primary: string; // URL CDN primaire

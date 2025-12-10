@@ -4,9 +4,9 @@
  */
 
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import SafeStorage from '../utils/safeStorage';
 import { analytics } from './analytics';
 
 // Configuration des notifications

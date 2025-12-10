@@ -1,10 +1,10 @@
 ﻿// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
+import SafeStorage from '../utils/safeStorage';
 
 const HeaderController: React.FC = () => {
   const { user, logout } = useAuth();

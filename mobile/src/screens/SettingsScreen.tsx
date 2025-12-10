@@ -1,7 +1,6 @@
 // @ts-nocheck
 // Migration vers des composants React Native natifs pour éviter les crashes
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import SafeStorage from '../../utils/safeStorage';
 import * as React from 'react';
 import { useState } from 'react';
 import ReactNative from 'react-native';
@@ -10,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { apiPatch } from '../services/api';
 import { theme } from '../theme/theme';
+import SafeStorage from '../utils/safeStorage';
 const { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } = ReactNative;
 
 interface UserSettings {
