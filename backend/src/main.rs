@@ -727,7 +727,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // ✅ OPTIMISÉ 2025-12-10: Utiliser un pool séparé pour les opérations longues si disponible
         let pool_for_refresh = if let Some(ref long_ops_pool) = pool_long_ops_for_refresh {
-            long_ops_pool.clone()
+            Arc::new(long_ops_pool.clone())
         } else {
             pool_clone_matviews.clone()
         };
