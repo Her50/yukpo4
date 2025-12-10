@@ -17,15 +17,17 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
     scrollY,
 }) => {
     // ✅ DEBUG: Logger les children pour identifier les problèmes (TOUJOURS activé pour capturer les erreurs)
-    React.useEffect(() => {
-        try {
-            const { componentDebugger } = require('../utils/componentDebugger');
-            componentDebugger.enable(); // ✅ CRITIQUE: Activer même en production pour capturer les erreurs
-            componentDebugger.logComponent('ModernBackground', { variant, scrollY: scrollY ? 'present' : 'null' }, children);
-        } catch (e) {
-            // Ignorer si le debugger n'est pas disponible
-        }
-    }, [children, variant, scrollY]);
+    // ✅ CORRIGÉ: Ne pas logger dans useEffect car cela peut causer des erreurs si les children contiennent des primitives
+    // Le logging sera fait dans la fonction de traitement des children si nécessaire
+    // React.useEffect(() => {
+    //     try {
+    //         const { componentDebugger } = require('../utils/componentDebugger');
+    //         componentDebugger.enable(); // ✅ CRITIQUE: Activer même en production pour capturer les erreurs
+    //         componentDebugger.logComponent('ModernBackground', { variant, scrollY: scrollY ? 'present' : 'null' }, children);
+    //     } catch (e) {
+    //         // Ignorer si le debugger n'est pas disponible
+    //     }
+    // }, [children, variant, scrollY]);
     const getGradientColors = () => {
         switch (variant) {
             case 'home':
@@ -214,36 +216,30 @@ const ModernBackground: React.FC<ModernBackgroundProps> = ({
                         }
 
                         // ✅ CRITIQUE: Si c'est un élément React valide, le retourner tel quel
+                        // ✅ CORRIGÉ: Ne PAS modifier les children des composants qui gèrent déjà leurs propres children
+                        // Ces composants (ScreenTransition, AnimatedCard, SafeNativeView, etc.) gèrent déjà leurs propres children
                         if (React.isValidElement(child)) {
-                            // ✅ NOUVEAU: Vérifier récursivement les children de l'élément pour détecter les strings
-                            try {
-                                const childProps = (child as any).props;
-                                if (childProps && childProps.children) {
-                                    // Vérifier si les children contiennent des strings non wrappées
-                                    const checkChildren = (childrenToCheck: any): boolean => {
-                                        if (childrenToCheck == null) return false;
-                                        if (typeof childrenToCheck === 'string' || typeof childrenToCheck === 'number' || typeof childrenToCheck === 'boolean') {
-                                            return true; // String détectée
-                                        }
-                                        if (Array.isArray(childrenToCheck)) {
-                                            return childrenToCheck.some(checkChildren);
-                                        }
-                                        if (React.isValidElement(childrenToCheck)) {
-                                            const props = (childrenToCheck as any).props;
-                                            if (props && props.children) {
-                                                return checkChildren(props.children);
-                                            }
-                                        }
-                                        return false;
-                                    };
+                            // ✅ NOUVEAU: Liste des composants qui gèrent déjà leurs propres children
+                            const componentName = (child as any).type?.displayName || (child as any).type?.name || 'Unknown';
+                            const componentsThatHandleChildren = [
+                                'ScreenTransition',
+                                'AnimatedCard',
+                                'SafeNativeView',
+                                'ModernBackground',
+                                'Animated.View',
+                                'View',
+                                'ScrollView',
+                                'FlatList'
+                            ];
 
-                                    if (checkChildren(childProps.children)) {
-                                        console.warn('[ModernBackground] ⚠️ String détectée dans les children d\'un élément React:', child.type);
-                                    }
-                                }
-                            } catch (e) {
-                                // Ignorer les erreurs de vérification
+                            // Si c'est un composant qui gère déjà ses children, le retourner tel quel
+                            // Ne pas essayer de modifier ses children car cela peut causer des erreurs
+                            if (componentsThatHandleChildren.some(name => componentName.includes(name))) {
+                                return child;
                             }
+
+                            // Pour les autres composants, on peut vérifier mais ne pas modifier
+                            // (laisser le composant gérer ses propres children ou laisser React gérer l'erreur)
                             return child;
                         }
 

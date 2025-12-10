@@ -211,8 +211,56 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
                     return <Text key={`${index}-${itemIndex}`}>{String(item)}</Text>;
                 });
             }
-            // Si c'est un élément React valide, le retourner tel quel
+            // Si c'est un élément React valide, vérifier récursivement ses children
             if (React.isValidElement(child)) {
+                // ✅ NOUVEAU: Vérifier récursivement les children de l'élément pour détecter et wrapper les strings
+                try {
+                    const childProps = (child as any).props;
+                    if (childProps && childProps.children) {
+                        // Fonction récursive pour wrapper les strings dans les children
+                        const wrapStringsInChildren = (childrenToCheck: any, keyPrefix: string = ''): any => {
+                            if (childrenToCheck == null) return null;
+
+                            // Si c'est une primitive, la wrapper dans Text
+                            if (typeof childrenToCheck === 'string' || typeof childrenToCheck === 'number' || typeof childrenToCheck === 'boolean') {
+                                console.warn('[ScreenTransition] ⚠️ String détectée et wrappée:', String(childrenToCheck).substring(0, 50));
+                                return <Text key={`${keyPrefix}-text`}>{String(childrenToCheck)}</Text>;
+                            }
+
+                            // Si c'est un tableau, traiter chaque élément
+                            if (Array.isArray(childrenToCheck)) {
+                                return childrenToCheck.map((item, idx) => wrapStringsInChildren(item, `${keyPrefix}-${idx}`));
+                            }
+
+                            // Si c'est un élément React valide, vérifier ses children
+                            if (React.isValidElement(childrenToCheck)) {
+                                const props = (childrenToCheck as any).props;
+                                if (props && props.children) {
+                                    const wrappedChildren = wrapStringsInChildren(props.children, keyPrefix);
+                                    // Cloner l'élément avec les children wrappés
+                                    return React.cloneElement(childrenToCheck as React.ReactElement, {
+                                        ...props,
+                                        children: wrappedChildren
+                                    });
+                                }
+                            }
+
+                            return childrenToCheck;
+                        };
+
+                        const wrappedChildren = wrapStringsInChildren(childProps.children, `child-${index}`);
+                        if (wrappedChildren !== childProps.children) {
+                            // Les children ont été modifiés, cloner l'élément avec les nouveaux children
+                            return React.cloneElement(child as React.ReactElement, {
+                                ...childProps,
+                                children: wrappedChildren
+                            });
+                        }
+                    }
+                } catch (e) {
+                    // Ignorer les erreurs de vérification
+                    console.warn('[ScreenTransition] Erreur vérification récursive:', e);
+                }
                 return child;
             }
             // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide

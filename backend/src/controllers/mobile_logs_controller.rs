@@ -84,8 +84,15 @@ pub async fn receive_mobile_logs(
             })
             .unwrap_or_default();
 
+        // ✅ AMÉLIORÉ : Inclure le timestamp client si disponible
+        let client_timestamp = if !log.timestamp.is_empty() {
+            format!(" | Time:{}", log.timestamp)
+        } else {
+            String::new()
+        };
+
         let log_prefix = format!(
-            "📱[MOBILE] [{}] {}{}{}",
+            "📱[MOBILE] [{}] {}{}{}{}",
             log.level.to_uppercase(),
             component,
             if !user_info.is_empty() {
@@ -97,7 +104,8 @@ pub async fn receive_mobile_logs(
                 format!(" | {}", device_info)
             } else {
                 String::new()
-            }
+            },
+            client_timestamp
         );
 
         match log.level.as_str() {
