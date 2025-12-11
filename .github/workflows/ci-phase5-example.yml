@@ -1,0 +1,210 @@
+# Exemple de workflow CI pour Phase 5 Yukpo
+# À copier dans le dépôt Her50/yukpo4 sous .github/workflows/ci-phase5.yml
+
+name: Phase 5 de Yukpo CI
+
+on:
+  push:
+    branches: [ main, develop, phase-5 ]
+  pull_request:
+    branches: [ main, develop, phase-5 ]
+  workflow_dispatch:
+
+env:
+  SQLX_OFFLINE: true
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  backend-windows:
+    name: Interface de sécurité / Backend de Yukpo Phase 5 (Rust)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            backend/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      
+      - name: Verify SQLx cache exists
+        working-directory: backend
+        run: |
+          if (Test-Path ".sqlx") {
+            Write-Host "✅ Cache .sqlx présent"
+            $count = (Get-ChildItem -Path ".sqlx" -Recurse -File).Count
+            Write-Host "Nombre de fichiers: $count"
+            if ($count -eq 0) {
+              Write-Host "❌ ERREUR: Cache .sqlx vide!"
+              exit 1
+            }
+          } else {
+            Write-Host "❌ ERREUR: Cache .sqlx manquant!"
+            Write-Host "Action: Commiter le répertoire backend/.sqlx/ dans le repo"
+            exit 1
+          }
+      
+      - name: Install PostgreSQL libraries (Windows)
+        run: |
+          # Installer via vcpkg ou utiliser les binaires précompilés
+          # Alternative: utiliser les binaires PostgreSQL officiels
+          Write-Host "Installation des dépendances PostgreSQL..."
+          # Note: Sur Windows, libpq est souvent inclus avec PostgreSQL
+          # Si nécessaire, installer via: choco install postgresql
+      
+      - name: Build backend (Release)
+        working-directory: backend
+        env:
+          SQLX_OFFLINE: true
+        run: |
+          cargo build --release --verbose
+      
+      - name: Run tests
+        working-directory: backend
+        env:
+          SQLX_OFFLINE: true
+        run: |
+          cargo test --release --lib -- --nocapture
+      
+      - name: Check formatting
+        working-directory: backend
+        run: |
+          cargo fmt --all -- --check
+      
+      - name: Run clippy
+        working-directory: backend
+        run: |
+          cargo clippy --release -- -D warnings
+
+  backend-ubuntu:
+    name: Interface de sécurité / Backend de la phase 5 de Yukpo (Rust)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            backend/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libssl-dev \
+            libpq-dev \
+            clang \
+            build-essential \
+            ca-certificates
+      
+      - name: Verify SQLx cache exists
+        working-directory: backend
+        run: |
+          if [ -d ".sqlx" ]; then
+            echo "✅ Cache .sqlx présent"
+            COUNT=$(find .sqlx -type f | wc -l)
+            echo "Nombre de fichiers: $COUNT"
+            if [ "$COUNT" -eq 0 ]; then
+              echo "❌ ERREUR: Cache .sqlx vide!"
+              exit 1
+            fi
+          else
+            echo "❌ ERREUR: Cache .sqlx manquant!"
+            echo "Action: Commiter le répertoire backend/.sqlx/ dans le repo"
+            exit 1
+          fi
+      
+      - name: Build backend (Release)
+        working-directory: backend
+        env:
+          SQLX_OFFLINE: true
+        run: |
+          cargo build --release --verbose
+      
+      - name: Run tests
+        working-directory: backend
+        env:
+          SQLX_OFFLINE: true
+        run: |
+          cargo test --release --lib -- --nocapture
+      
+      - name: Check formatting
+        working-directory: backend
+        run: |
+          cargo fmt --all -- --check
+      
+      - name: Run clippy
+        working-directory: backend
+        run: |
+          cargo clippy --release -- -D warnings
+      
+      - name: Upload build artifacts (optional)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-binary-ubuntu
+          path: backend/target/release/yukpomnang_backend
+          retention-days: 7
+
+  security-scan:
+    name: Scan de sécurité
+    runs-on: ubuntu-latest
+    needs: [backend-ubuntu]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Run cargo audit
+        working-directory: backend
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+      
+      - name: Run cargo deny (optional)
+        working-directory: backend
+        continue-on-error: true
+        run: |
+          cargo install cargo-deny --locked
+          cargo deny check
+

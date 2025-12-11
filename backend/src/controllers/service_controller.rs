@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;
 use axum::{
@@ -1628,11 +1629,11 @@ pub async fn get_my_services(
 
 /// ✅ NOUVEAU 2025-12-11: Récupérer tous les produits de l'utilisateur
 /// Route: GET /api/products/my-products
+#[axum::debug_handler]
 pub async fn get_my_products(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<Json<serde_json::Value>> {
-    use axum::http::StatusCode;
     use serde_json::json;
 
     let user_id = user.id;
