@@ -5,6 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+// ✅ RÉACTIVÉ: react-native-reanimated avec configuration correcte
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { modernColors } from '../theme/modernTheme';
@@ -316,38 +317,30 @@ const LoadingScreen = () => (
 );
 
 // Icône de tab simple
-// ✅ CORRIGÉ: TabIcon avec react-native-reanimated (pattern correct)
+// ✅ RÉACTIVÉ: TabIcon avec react-native-reanimated (configuration correcte)
 const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }> = React.memo(({ name, focused, badgeCount }) => {
-  // ✅ CORRIGÉ: useSharedValue initialisé une seule fois avec valeur fixe
+  // ✅ RÉACTIVÉ: Utiliser useSharedValue de reanimated
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0.6);
 
-  // ✅ CORRIGÉ: useEffect avec dépendances correctes (sans inclure les SharedValues)
+  // ✅ RÉACTIVÉ: useEffect avec reanimated
   useEffect(() => {
-    if (typeof withSpring === 'function' && typeof withTiming === 'function' && scale && opacity) {
-      try {
-        scale.value = withSpring(focused ? 1.15 : 1, { damping: 10, stiffness: 200 });
-        opacity.value = withTiming(focused ? 1 : 0.6, { duration: 200 });
-      } catch (error) {
-        console.warn('[TabIcon] Erreur animation:', error);
-      }
+    try {
+      scale.value = withSpring(focused ? 1.15 : 1, { damping: 10, stiffness: 200 });
+      opacity.value = withTiming(focused ? 1 : 0.6, { duration: 200 });
+    } catch (error) {
+      console.warn('[TabIcon] Erreur animation:', error);
     }
-    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
-    return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focused]); // ✅ IMPORTANT: Ne pas inclure scale et opacity (SharedValues sont stables)
 
-  // ✅ CORRIGÉ: useAnimatedStyle avec worklet (automatiquement géré par Babel)
-  // ✅ SÉCURITÉ: Vérifier que useAnimatedStyle est disponible
-  const animatedStyle = typeof useAnimatedStyle === 'function'
-    ? useAnimatedStyle(() => {
-      'worklet';
-      return {
-        transform: [{ scale: scale.value }],
-        opacity: opacity.value,
-      };
-    })
-    : { transform: [{ scale: 1 }], opacity: 1 }; // Fallback si useAnimatedStyle n'est pas disponible
+  // ✅ RÉACTIVÉ: useAnimatedStyle avec worklet
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    };
+  });
 
   const icons: { [key: string]: string } = {
     'home': '🏠',

@@ -55,9 +55,14 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
             if (typeof withTiming === 'function' && typeof withSpring === 'function') {
                 try {
                     // ✅ AMÉLIORÉ: Animations plus fluides avec easing optimisé
+                    // ✅ CRITIQUE: Vérifier que Easing existe et est une fonction avant utilisation
+                    const easingFunction = Easing && typeof Easing.bezier === 'function'
+                        ? Easing.bezier(0.25, 0.1, 0.25, 1)
+                        : undefined; // Utiliser easing par défaut si Easing.bezier n'est pas disponible
+
                     opacity.value = withTiming(1, {
                         duration,
-                        easing: Easing.bezier(0.25, 0.1, 0.25, 1), // ✅ Easing plus naturel (iOS style)
+                        ...(easingFunction ? { easing: easingFunction } : {}), // ✅ Ajouter easing seulement s'il est disponible
                     });
 
                     if (type === 'slide') {
@@ -79,9 +84,14 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
                             mass: 0.7,
                         });
                         // ✅ AMÉLIORÉ: Opacity synchronisée avec scale pour effet plus fluide
+                        // ✅ CRITIQUE: Vérifier que Easing existe et est une fonction avant utilisation
+                        const scaleEasingFunction = Easing && typeof Easing.bezier === 'function'
+                            ? Easing.bezier(0.25, 0.1, 0.25, 1)
+                            : undefined;
+
                         opacity.value = withTiming(1, {
                             duration: duration * 0.8,
-                            easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+                            ...(scaleEasingFunction ? { easing: scaleEasingFunction } : {}), // ✅ Ajouter easing seulement s'il est disponible
                         });
                     }
 

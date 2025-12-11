@@ -1,20 +1,38 @@
 ﻿import * as React from "react";
 import { useEffect } from 'react';
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
-import { useUserContext } from '../context/UserContext';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// Note: useUserContext doit être adapté pour React Native ou utiliser AuthContext
+// import { useUserContext } from '../context/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface TokensBalanceProps {
   showLabel?: boolean;
-  className?: string;
+  style?: any;
 }
 
-export const TokensBalance: React.FC<TokensBalanceProps> = ({ 
-  showLabel = true, 
-  className = "" 
+export const TokensBalance: React.FC<TokensBalanceProps> = ({
+  showLabel = true,
+  style
 }) => {
-  const { user, tokensBalance, refreshTokensBalance } = useUserContext();
+  // TODO: Adapter useUserContext ou utiliser AuthContext avec tokensBalance
+  const { user } = useAuth();
+  const [tokensBalance, setTokensBalance] = React.useState<number | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  // Placeholder pour refreshTokensBalance
+  const refreshTokensBalance = React.useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      // TODO: Implémenter l'appel API pour récupérer le solde
+      // const response = await apiGet('/user/tokens-balance');
+      // setTokensBalance(response.data.balance);
+    } catch (error) {
+      console.error('Erreur rafraîchissement solde:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     // Rafraîchir le solde périodiquement (toutes les 30 secondes)
@@ -27,6 +45,12 @@ export const TokensBalance: React.FC<TokensBalanceProps> = ({
     return () => clearInterval(interval);
   }, [user, refreshTokensBalance]);
 
+  useEffect(() => {
+    if (user) {
+      refreshTokensBalance();
+    }
+  }, [user, refreshTokensBalance]);
+
   if (!user) {
     return null;
   }
@@ -37,35 +61,78 @@ export const TokensBalance: React.FC<TokensBalanceProps> = ({
   };
 
   const getBalanceColor = (balance: number | null) => {
-    if (balance === null) return "text-gray-500";
-    if (balance <= 10) return "text-red-500";
-    if (balance <= 50) return "text-orange-500";
-    return "text-green-500";
+    if (balance === null) return styles.balanceGray;
+    if (balance <= 10) return styles.balanceRed;
+    if (balance <= 50) return styles.balanceOrange;
+    return styles.balanceGreen;
   };
 
   return (
-    <View style={`flex items-center space-x-2 ${className}`}>
+    <View style={[styles.container, style]}>
       {showLabel && (
-        <Text style="text-sm text-gray-600">Solde:</Text>
+        <Text style={styles.label}>Solde:</Text>
       )}
-      <View style="flex items-center space-x-1">
-        <Text style={`font-semibold ${getBalanceColor(tokensBalance)}`}>
+      <View style={styles.balanceContainer}>
+        <Text style={[styles.balanceText, getBalanceColor(tokensBalance)]}>
           {formatBalance(tokensBalance)}
         </Text>
-        <Text style="text-xs text-gray-500">XAF</Text>
+        <Text style={styles.currency}>XAF</Text>
       </View>
       <TouchableOpacity
         onPress={refreshTokensBalance}
-        style="text-xs text-blue-500 hover:text-blue-700 ml-1"
-        title="Actualiser le solde"
+        style={styles.refreshButton}
+        disabled={loading}
       >
-        🔄
+        <Text style={styles.refreshIcon}>🔄</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-export default TokensBalance; 
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  label: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  balanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  balanceText: {
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  balanceGray: {
+    color: '#6B7280',
+  },
+  balanceRed: {
+    color: '#EF4444',
+  },
+  balanceOrange: {
+    color: '#F97316',
+  },
+  balanceGreen: {
+    color: '#10B981',
+  },
+  currency: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  refreshButton: {
+    padding: 4,
+  },
+  refreshIcon: {
+    fontSize: 16,
+  },
+});
+
+export default TokensBalance;
 
 
 

@@ -185,12 +185,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Même si DATABASE_URL_LONG_OPS n'est pas défini, on crée un pool séparé avec la même URL
     // Cela évite que les REFRESH MATERIALIZED VIEW bloquent le pool principal
     let long_ops_url = env::var("DATABASE_URL_LONG_OPS").unwrap_or_else(|_| db_url.clone());
+    // ✅ CORRIGÉ RACINE 2025-12-11: Pool séparé pour opérations longues (REFRESH MATERIALIZED VIEW)
+    // Ces opérations prennent 3-13 secondes et ne doivent JAMAIS bloquer le pool principal
     let pg_pool_long_ops = match PgPoolOptions::new()
-        .max_connections(10) // ✅ AUGMENTÉ: Plus de connexions pour gérer plusieurs refreshes simultanés
-        .min_connections(2) // ✅ AUGMENTÉ: Maintenir au moins 2 connexions prêtes
-        .acquire_timeout(std::time::Duration::from_secs(120)) // ✅ AUGMENTÉ: Timeout plus long pour opérations longues
-        .idle_timeout(Some(std::time::Duration::from_secs(600))) // ✅ AUGMENTÉ: 10 minutes
-        .max_lifetime(Some(std::time::Duration::from_secs(3600))) // ✅ AUGMENTÉ: 1 heure
+        .max_connections(20) // ✅ AUGMENTÉ: 20 connexions pour gérer plusieurs refreshes simultanés (refresh_services_search_optimized: 13s, active_products_cache: 3-5s, etc.)
+        .min_connections(5) // ✅ AUGMENTÉ: Maintenir au moins 5 connexions prêtes pour éviter les latences
+        .acquire_timeout(std::time::Duration::from_secs(120)) // ✅ Timeout plus long pour opérations longues
+        .idle_timeout(Some(std::time::Duration::from_secs(600))) // ✅ 10 minutes
+        .max_lifetime(Some(std::time::Duration::from_secs(3600))) // ✅ 1 heure
         .test_before_acquire(false) // Pas besoin de tester avant acquisition pour opérations longues
         .after_connect(|conn, _meta| {
             // ✅ Configuration minimale pour opérations longues
@@ -705,26 +707,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
     });
 
-    // ✅ NOUVEAU 2025-12-02: Refresh automatique de la vue matérialisée de recherche
+    // ✅ CORRIGÉ RACINE 2025-12-11: Refresh automatique de la vue matérialisée de recherche
+    // Utilise le pool séparé pour éviter de bloquer le pool principal (refresh prend 8-13s)
     let pool_clone_search_cache = app_state.pg.clone();
+    let pool_long_ops_search_cache = pg_pool_long_ops.clone();
     let _ = tokio::spawn(async move {
-        tasks::search_cache_refresh::start_search_cache_refresh_task(pool_clone_search_cache).await;
+        tasks::search_cache_refresh::start_search_cache_refresh_task(
+            pool_long_ops_search_cache,
+            pool_clone_search_cache,
+        ).await;
     });
 
-    // ✅ OPTIMISÉ 2025-12-09: Refresh automatique de la vue matérialisée Black Friday (configurable, défaut: 60s)
+    // ✅ CORRIGÉ RACINE 2025-12-11: Refresh automatique de la vue matérialisée Black Friday
+    // Utilise le pool séparé pour éviter de bloquer le pool principal
+    // Intervalle augmenté à 5 minutes (était 60s) pour réduire la charge
     let pool_clone_blackfriday = Arc::new(app_state.pg.clone());
+    let pool_long_ops_blackfriday = pg_pool_long_ops.clone();
     let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
 
-        // ✅ OPTIMISÉ: Intervalle configurable via variable d'environnement (défaut: 60s au lieu de 30s)
+        // ✅ CORRIGÉ RACINE 2025-12-11: Intervalle augmenté à 5 minutes (était 60s)
+        // Configurable via variable d'environnement (défaut: 300s = 5 min)
         let refresh_interval_secs: u64 = std::env::var("GLOBAL_PROMO_CACHE_REFRESH_INTERVAL_SECS")
-            .unwrap_or_else(|_| "60".to_string())
+            .unwrap_or_else(|_| "300".to_string())
             .parse()
-            .unwrap_or(60);
+            .unwrap_or(300);
+
+        // ✅ CORRIGÉ RACINE: Utiliser le pool séparé pour opérations longues
+        let pool_for_refresh = if let Some(ref long_ops_pool) = pool_long_ops_blackfriday {
+            Arc::new(long_ops_pool.clone())
+        } else {
+            pool_clone_blackfriday.clone()
+        };
 
         let mut interval_blackfriday = interval(Duration::from_secs(refresh_interval_secs));
         log::info!(
-            "🔄 Refresh global_promo_catalog_cache configuré: intervalle = {}s",
+            "🔄 Refresh global_promo_catalog_cache configuré: intervalle = {}s (5 min) - Utilise pool séparé",
             refresh_interval_secs
         );
 
@@ -732,7 +750,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             interval_blackfriday.tick().await;
             log::debug!("🔄 Refresh de global_promo_catalog_cache...");
             // PostgreSQL ne supporte pas IF EXISTS avec REFRESH MATERIALIZED VIEW CONCURRENTLY
-            // Vérifier d'abord si la vue existe
+            // Vérifier d'abord si la vue existe (utilise pool principal pour cette requête rapide)
             let view_exists = sqlx::query_scalar::<_, bool>(
                 "SELECT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'global_promo_catalog_cache')"
             )
@@ -742,9 +760,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if view_exists {
                 let start_time = std::time::Instant::now();
+                // ✅ CORRIGÉ RACINE: Utiliser pool séparé pour REFRESH (opération longue)
                 if let Err(e) =
                     sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY global_promo_catalog_cache")
-                        .execute(&*pool_clone_blackfriday)
+                        .execute(&*pool_for_refresh)
                         .await
                 {
                     let error_str = e.to_string().to_lowercase();

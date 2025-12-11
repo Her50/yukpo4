@@ -1,33 +1,48 @@
 ﻿// @ts-check
 import * as React from "react";
-import { View } from 'react-native';
-// import banner from "@/assets/banner.png";
-// import { motion } from 'framer-motion'; // Animation React Native
+import { StyleSheet, Text, View } from 'react-native';
 
 const HeroSection: React.FC = () => {
   return (
-    <section style="relative w-full h-[400px] overflow-hidden">
-      {/* Image de fond */}
-      <img
-        src={banner}
-        alt="Bannière Yukpomnang"
-        style="absolute top-0 left-0 w-full h-full object-cover z-0"
-      />
-
+    <View style={styles.container}>
       {/* Couche foncée + Texte centré */}
-      <View style="absolute top-0 left-0 w-full h-full z-10 bg-black/40 flex items-center justify-center">
-        <motion.h1
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          style="text-white text-3xl md:text-5xl font-bold text-center px-4 max-w-3xl"
-        >
+      <View style={styles.overlay}>
+        <Text style={styles.title}>
           Chez Yukpomnang, chaque besoin est une opportunité
-        </motion.h1>
+        </Text>
       </View>
-    </section>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'relative',
+    width: '100%',
+    height: 400,
+    overflow: 'hidden',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    color: 'white',
+    fontSize: 32,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    paddingHorizontal: 16,
+    maxWidth: 768,
+  },
+});
 
 export default HeroSection;
 

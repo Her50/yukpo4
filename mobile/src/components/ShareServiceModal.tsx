@@ -1,7 +1,7 @@
-﻿import { useToast } from '@/components/ui/use-toast';
-import { ChatCircle, Copy, Facebook, Link, Mail, Share2, Twitter, X } from 'lucide-react-native';
+﻿import * as Clipboard from 'expo-clipboard';
+import { ChatCircle, Copy, Facebook, Link as LinkIcon, Mail, Share2, Twitter, X } from 'lucide-react-native';
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, Modal, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface ShareServiceModalProps {
   open: boolean;
@@ -15,19 +15,18 @@ const getServiceUrl = (serviceId: string) => `https://yukpomnang.com/service/${s
 
 const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, serviceId, titre }) => {
   const url = getServiceUrl(serviceId);
-  const { toast } = useToast();
 
-  const handleCopy = () => {
-    // En React Native, nous utiliserions @react-native-clipboard/clipboard
-    // Pour l'instant, on simule la copie
-    console.log('Copie URL:', url);
-    toast({
-      title: "✅ Lien copié !",
-      description: "Le lien a été copié dans votre presse-papiers"
-    });
+  const handleCopy = async () => {
+    try {
+      await Clipboard.setStringAsync(url);
+      Alert.alert("✅ Lien copié !", "Le lien a été copié dans votre presse-papiers");
+    } catch (error) {
+      console.error('Erreur copie:', error);
+      Alert.alert("Erreur", "Impossible de copier le lien");
+    }
   };
 
-  const handleShare = (platform: 'whatsapp' | 'facebook' | 'twitter' | 'email' | 'linkedin' | 'telegram') => {
+  const handleShare = async (platform: 'whatsapp' | 'facebook' | 'twitter' | 'email' | 'linkedin' | 'telegram') => {
     let shareUrl = '';
     const serviceTitle = titre || 'Service Yukpo';
     const serviceDescription = `Découvrez ce service exceptionnel sur Yukpo : ${serviceTitle}`;
@@ -35,172 +34,309 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
 
     switch (platform) {
       case 'whatsapp':
-        // WhatsApp avec numéro de téléphone optionnel
         shareUrl = `https://wa.me/?text=${encodeURIComponent(fullText)}`;
         break;
       case 'facebook':
-        // Facebook avec métadonnées
         shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(serviceDescription)}`;
         break;
       case 'twitter':
-        // Twitter avec hashtags
         const twitterText = `${serviceDescription}\n\n#Yukpo #Services #Cameroun\n\n${url}`;
         shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(twitterText)}`;
         break;
       case 'linkedin':
-        // LinkedIn avec métadonnées professionnelles
         shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
         break;
       case 'telegram':
-        // Telegram avec bot ou lien direct
         shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(serviceDescription)}`;
         break;
       case 'email':
-        // Email avec sujet et corps structuré
         const emailSubject = `Service Yukpo : ${serviceTitle}`;
         const emailBody = `Bonjour,\n\nJe vous partage ce service intéressant sur Yukpo :\n\n${serviceTitle}\n\n${url}\n\nCordialement`;
         shareUrl = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
         break;
     }
 
-    // En React Native, nous utilisons Linking pour ouvrir les URLs
-    // Cette fonction sera remplacée par Linking.openURL dans l'implémentation native
-    console.log('Ouverture URL:', shareUrl);
-    // TODO: Implémenter avec Linking.openURL(shareUrl)
+    try {
+      const supported = await Linking.canOpenURL(shareUrl);
+      if (supported) {
+        await Linking.openURL(shareUrl);
+      } else {
+        Alert.alert('Erreur', 'Impossible d\'ouvrir cette application');
+      }
+    } catch (error) {
+      console.error('Erreur ouverture URL:', error);
+      Alert.alert('Erreur', 'Impossible d\'ouvrir cette application');
+    }
   };
 
-  const handleNativeShare = () => {
-    // En React Native, nous utiliserions react-native-share
-    // Pour l'instant, on utilise le fallback vers la copie
-    console.log('Partage natif:', { title: titre, url });
-    handleCopy();
+  const handleNativeShare = async () => {
+    try {
+      const serviceTitle = titre || 'Service Yukpo';
+      const result = await Share.share({
+        message: `Découvrez ce service exceptionnel sur Yukpo : ${serviceTitle}\n\n${url}`,
+        title: serviceTitle,
+        url: url,
+      });
+    } catch (error) {
+      console.error('Erreur partage natif:', error);
+      // Fallback vers la copie
+      handleCopy();
+    }
   };
 
   if (!open) return null;
 
   return (
-    <View style="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <View style="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md mx-auto relative animate-in fade-in-0 zoom-in-95 duration-200">
-        {/* Header */}
-        <View style="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <Text style="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Share2 style="h-5 w-5 text-blue-600" />
-            Partager ce service
-          </Text>
-          <TouchableOpacity
-            style="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-            onPress={onClose}
-          >
-            <X style="h-5 w-5" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Content */}
-        <View style="p-6 space-y-6">
-          {/* URL Field */}
-          <View style="space-y-2">
-            <label style="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Lien du service
-            </label>
-            <View style="flex items-center gap-2">
-              <TextInput
-                type="text"
-                value={url}
-                readOnly
-                style="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onFocus={e => e.target.select()}
-              />
-              <TouchableOpacity
-                variant="outline"
-                size="sm"
-                onPress={handleCopy}
-                style="shrink-0"
-                title="Copier le lien"
-              >
-                <Copy style="h-4 w-4" />
-              </TouchableOpacity>
+    <Modal
+      visible={open}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <View style={styles.modal}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerTitleContainer}>
+              <Share2 size={20} color="#2563EB" />
+              <Text style={styles.headerTitle}>Partager ce service</Text>
             </View>
-          </View>
-
-          {/* Share Options */}
-          <View style="space-y-3">
-            <Text style="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Partager sur
-            </Text>
-
-            <View style="grid grid-cols-3 gap-2">
-              <TouchableOpacity
-                style="w-full bg-green-500 hover:bg-green-600 text-white transition-colors"
-                onPress={() => handleShare('whatsapp')}
-              >
-                <ChatCircle style="h-4 w-4 mr-2" />
-                WhatsApp
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                onPress={() => handleShare('facebook')}
-              >
-                <Facebook style="h-4 w-4 mr-2" />
-                Facebook
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style="w-full bg-sky-500 hover:bg-sky-600 text-white transition-colors"
-                onPress={() => handleShare('twitter')}
-              >
-                <Twitter style="h-4 w-4 mr-2" />
-                Twitter
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style="w-full bg-blue-700 hover:bg-blue-800 text-white transition-colors"
-                onPress={() => handleShare('linkedin')}
-              >
-                <svg style="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <Textath d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                </svg>
-                LinkedIn
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style="w-full bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-                onPress={() => handleShare('telegram')}
-              >
-                <svg style="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <Textath d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-                </svg>
-                Telegram
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style="w-full bg-gray-600 hover:bg-gray-700 text-white transition-colors"
-                onPress={() => handleShare('email')}
-              >
-                <Mail style="h-4 w-4 mr-2" />
-                Email
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Native Share */}
-          <View style="pt-2">
             <TouchableOpacity
-              style="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transition-all duration-200"
-              onPress={handleNativeShare}
+              style={styles.closeButton}
+              onPress={onClose}
             >
-              <Link style="h-4 w-4 mr-2" />
-              Partage natif
+              <X size={20} color="#9CA3AF" />
             </TouchableOpacity>
+          </View>
+
+          {/* Content */}
+          <View style={styles.content}>
+            {/* URL Field */}
+            <View style={styles.urlSection}>
+              <Text style={styles.label}>Lien du service</Text>
+              <View style={styles.urlContainer}>
+                <TextInput
+                  style={styles.urlInput}
+                  value={url}
+                  editable={false}
+                  selectTextOnFocus
+                />
+                <TouchableOpacity
+                  style={styles.copyButton}
+                  onPress={handleCopy}
+                >
+                  <Copy size={16} color="#2563EB" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Share Options */}
+            <View style={styles.shareSection}>
+              <Text style={styles.shareTitle}>Partager sur</Text>
+              <View style={styles.shareGrid}>
+                <TouchableOpacity
+                  style={[styles.shareButton, styles.whatsappButton]}
+                  onPress={() => handleShare('whatsapp')}
+                >
+                  <ChatCircle size={16} color="white" />
+                  <Text style={styles.shareButtonText}>WhatsApp</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.shareButton, styles.facebookButton]}
+                  onPress={() => handleShare('facebook')}
+                >
+                  <Facebook size={16} color="white" />
+                  <Text style={styles.shareButtonText}>Facebook</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.shareButton, styles.twitterButton]}
+                  onPress={() => handleShare('twitter')}
+                >
+                  <Twitter size={16} color="white" />
+                  <Text style={styles.shareButtonText}>Twitter</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.shareButton, styles.linkedinButton]}
+                  onPress={() => handleShare('linkedin')}
+                >
+                  <Text style={styles.shareButtonText}>LinkedIn</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.shareButton, styles.telegramButton]}
+                  onPress={() => handleShare('telegram')}
+                >
+                  <Text style={styles.shareButtonText}>Telegram</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.shareButton, styles.emailButton]}
+                  onPress={() => handleShare('email')}
+                >
+                  <Mail size={16} color="white" />
+                  <Text style={styles.shareButtonText}>Email</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Native Share */}
+            <View style={styles.nativeShareSection}>
+              <TouchableOpacity
+                style={styles.nativeShareButton}
+                onPress={handleNativeShare}
+              >
+                <LinkIcon size={16} color="white" />
+                <Text style={styles.nativeShareButtonText}>Partage natif</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
-    </View>
+    </Modal>
   );
 };
 
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modal: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 448,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  closeButton: {
+    padding: 4,
+    borderRadius: 999,
+  },
+  content: {
+    padding: 24,
+    gap: 24,
+  },
+  urlSection: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  urlContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  urlInput: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    fontSize: 14,
+    backgroundColor: '#F9FAFB',
+    color: '#1F2937',
+  },
+  copyButton: {
+    padding: 8,
+  },
+  shareSection: {
+    gap: 12,
+  },
+  shareTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  shareGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  shareButton: {
+    flex: 1,
+    minWidth: '30%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  whatsappButton: {
+    backgroundColor: '#25D366',
+  },
+  facebookButton: {
+    backgroundColor: '#1877F2',
+  },
+  twitterButton: {
+    backgroundColor: '#1DA1F2',
+  },
+  linkedinButton: {
+    backgroundColor: '#0A66C2',
+  },
+  telegramButton: {
+    backgroundColor: '#0088CC',
+  },
+  emailButton: {
+    backgroundColor: '#6B7280',
+  },
+  shareButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  nativeShareSection: {
+    paddingTop: 8,
+  },
+  nativeShareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#6366F1',
+  },
+  nativeShareButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});
+
 export default ShareServiceModal;
-
-
-
-

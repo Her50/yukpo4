@@ -1,9 +1,9 @@
+// ✅ MIGRÉ: Utilise react-native-reanimated pour de meilleures performances
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
-    Animated,
     BackHandler,
     Linking,
     RefreshControl,
@@ -13,6 +13,12 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
 
 import CourierSelectionModal from '../../components/delivery/CourierSelectionModal';
 import EnhancedTrackingMap from '../../components/delivery/EnhancedTrackingMap';
@@ -43,6 +49,27 @@ interface RouteParams {
     deliveryId: string;
 }
 
+// ✅ MIGRÉ: Composant helper pour les items animés
+const AnimatedItemCard: React.FC<{
+    children: React.ReactNode;
+    style?: any;
+    animationValue: { value: number };
+    index: number;
+}> = ({ children, style, animationValue, index }) => {
+    const animatedStyle = useAnimatedStyle(() => ({
+        opacity: animationValue.value,
+        transform: [{
+            translateX: (1 - animationValue.value) * 20 * (index + 1),
+        }],
+    }));
+
+    return (
+        <Animated.View style={[style, animatedStyle]}>
+            {children}
+        </Animated.View>
+    );
+};
+
 const DeliveryShoppingTrackingScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -55,53 +82,58 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
     const [rejectingItem, setRejectingItem] = useState<ShoppingBasketItem | null>(null);
     const { toast, showSuccess, showError, showWarning, hideToast } = useToast();
 
-    // Animations pour les transitions
-    const tabAnimations = React.useRef({
-        timeline: new Animated.Value(activeTab === 'timeline' ? 1 : 0),
-        basket: new Animated.Value(activeTab === 'basket' ? 1 : 0),
-        courier: new Animated.Value(activeTab === 'courier' ? 1 : 0),
-    }).current;
+    // ✅ MIGRÉ: Utilise useSharedValue au lieu de Animated.Value
+    const tabAnimations = {
+        timeline: useSharedValue(activeTab === 'timeline' ? 1 : 0),
+        basket: useSharedValue(activeTab === 'basket' ? 1 : 0),
+        courier: useSharedValue(activeTab === 'courier' ? 1 : 0),
+    };
 
     // Animation d'entrée de la page
-    const fadeAnim = React.useRef(new Animated.Value(0)).current;
-    const slideAnim = React.useRef(new Animated.Value(20)).current;
+    const fadeAnim = useSharedValue(0);
+    const slideAnim = useSharedValue(20);
 
-    // Animation d'entrée
+    // ✅ MIGRÉ: Animations d'entrée avec Reanimated
     useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 400,
-                useNativeDriver: true,
-            }),
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                tension: 50,
-                friction: 8,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, [fadeAnim, slideAnim]);
+        fadeAnim.value = withTiming(1, { duration: 400 });
+        slideAnim.value = withSpring(0, { tension: 50, friction: 8 });
+    }, []);
 
+    // ✅ MIGRÉ: Animations des onglets avec Reanimated
     useEffect(() => {
-        Animated.parallel([
-            Animated.timing(tabAnimations.timeline, {
-                toValue: activeTab === 'timeline' ? 1 : 0,
-                duration: 250,
-                useNativeDriver: true,
-            }),
-            Animated.timing(tabAnimations.basket, {
-                toValue: activeTab === 'basket' ? 1 : 0,
-                duration: 250,
-                useNativeDriver: true,
-            }),
-            Animated.timing(tabAnimations.courier, {
-                toValue: activeTab === 'courier' ? 1 : 0,
-                duration: 250,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, [activeTab, tabAnimations]);
+        tabAnimations.timeline.value = withTiming(activeTab === 'timeline' ? 1 : 0, { duration: 250 });
+        tabAnimations.basket.value = withTiming(activeTab === 'basket' ? 1 : 0, { duration: 250 });
+        tabAnimations.courier.value = withTiming(activeTab === 'courier' ? 1 : 0, { duration: 250 });
+    }, [activeTab]);
+
+    // ✅ MIGRÉ: Styles animés avec useAnimatedStyle
+    const containerAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            opacity: fadeAnim.value,
+            transform: [{ translateY: slideAnim.value }],
+        };
+    });
+
+    const timelineAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            opacity: tabAnimations.timeline.value,
+            transform: [{ translateY: (1 - tabAnimations.timeline.value) * 10 }],
+        };
+    });
+
+    const basketAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            opacity: tabAnimations.basket.value,
+            transform: [{ translateY: (1 - tabAnimations.basket.value) * 10 }],
+        };
+    });
+
+    const courierAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            opacity: tabAnimations.courier.value,
+            transform: [{ translateY: (1 - tabAnimations.courier.value) * 10 }],
+        };
+    });
 
     // ✅ Phase 9 - Amélioration 28 : Vérifier si l'utilisateur est le créateur
     const isCreator = Boolean(
@@ -348,13 +380,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                 onClose={hideToast}
             />
             <Animated.View
-                style={[
-                    styles.animatedContainer,
-                    {
-                        opacity: fadeAnim,
-                        transform: [{ translateY: slideAnim }],
-                    },
-                ]}
+                style={[styles.animatedContainer, containerAnimatedStyle]}
             >
                 <ScrollView
                     style={styles.scroll}
@@ -539,25 +565,14 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
                     {/* Tabs améliorés avec animations */}
                     <View style={styles.tabs}>
-                        {renderTabButton('timeline', 'Timeline', activeTab, setActiveTab, tabAnimations.timeline)}
-                        {renderTabButton('basket', 'Panier', activeTab, setActiveTab, tabAnimations.basket)}
-                        {renderTabButton('courier', 'Coursier', activeTab, setActiveTab, tabAnimations.courier)}
+                        {renderTabButton('timeline', 'Timeline', activeTab, setActiveTab)}
+                        {renderTabButton('basket', 'Panier', activeTab, setActiveTab)}
+                        {renderTabButton('courier', 'Coursier', activeTab, setActiveTab)}
                     </View>
 
                     {/* Contenu avec animations */}
                     <Animated.View
-                        style={[
-                            styles.tabContent,
-                            {
-                                opacity: tabAnimations.timeline,
-                                transform: [{
-                                    translateY: tabAnimations.timeline.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [10, 0],
-                                    }),
-                                }],
-                            },
-                        ]}
+                        style={[styles.tabContent, timelineAnimatedStyle]}
                         pointerEvents={activeTab === 'timeline' ? 'auto' : 'none'}
                     >
                         {activeTab === 'timeline' && (
@@ -597,18 +612,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                     </Animated.View>
 
                     <Animated.View
-                        style={[
-                            styles.tabContent,
-                            {
-                                opacity: tabAnimations.basket,
-                                transform: [{
-                                    translateY: tabAnimations.basket.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [10, 0],
-                                    }),
-                                }],
-                            },
-                        ]}
+                        style={[styles.tabContent, basketAnimatedStyle]}
                         pointerEvents={activeTab === 'basket' ? 'auto' : 'none'}
                     >
                         {activeTab === 'basket' && (
@@ -639,21 +643,11 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                                     delivery?.status === 'delivered');
 
                                             return (
-                                                <Animated.View
+                                                <AnimatedItemCard
                                                     key={item.id}
-                                                    style={[
-                                                        styles.itemCard,
-                                                        isRejected && styles.itemCardRejected,
-                                                        {
-                                                            opacity: tabAnimations.basket,
-                                                            transform: [{
-                                                                translateX: tabAnimations.basket.interpolate({
-                                                                    inputRange: [0, 1],
-                                                                    outputRange: [20 * (index + 1), 0],
-                                                                }),
-                                                            }],
-                                                        },
-                                                    ]}
+                                                    style={[styles.itemCard, isRejected && styles.itemCardRejected]}
+                                                    animationValue={tabAnimations.basket}
+                                                    index={index}
                                                 >
                                                     <View style={styles.itemContent}>
                                                         <View style={styles.itemHeader}>
@@ -714,7 +708,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                                             style={styles.rejectButton}
                                                         />
                                                     )}
-                                                </Animated.View>
+                                                </AnimatedItemCard>
                                             );
                                         })}
                                     </View>
@@ -724,18 +718,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                     </Animated.View>
 
                     <Animated.View
-                        style={[
-                            styles.tabContent,
-                            {
-                                opacity: tabAnimations.courier,
-                                transform: [{
-                                    translateY: tabAnimations.courier.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [10, 0],
-                                    }),
-                                }],
-                            },
-                        ]}
+                        style={[styles.tabContent, courierAnimatedStyle]}
                         pointerEvents={activeTab === 'courier' ? 'auto' : 'none'}
                     >
                         {activeTab === 'courier' && (
@@ -970,20 +953,14 @@ function getRejectionReasonLabel(reason: ParcelRejectionReason): string {
     return labels[reason] || reason;
 }
 
+// ✅ MIGRÉ: renderTabButton simplifié (les animations sont gérées par les styles animés)
 const renderTabButton = (
     tab: TrackingTab,
     label: string,
     activeTab: TrackingTab,
-    onChange: (tab: TrackingTab) => void,
-    animation?: Animated.Value
+    onChange: (tab: TrackingTab) => void
 ) => {
     const isActive = tab === activeTab;
-    const scale = animation
-        ? animation.interpolate({
-            inputRange: [0, 1],
-            outputRange: [1, 1.05],
-        })
-        : new Animated.Value(1);
 
     return (
         <HapticTouchable
@@ -993,13 +970,7 @@ const renderTabButton = (
             onPress={() => onChange(tab)}
             activeOpacity={0.7}
         >
-            {animation ? (
-                <Animated.View style={{ transform: [{ scale }] }}>
-                    <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{label}</Text>
-                </Animated.View>
-            ) : (
-                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{label}</Text>
-            )}
+            <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{label}</Text>
         </HapticTouchable>
     );
 };

@@ -1,9 +1,10 @@
 ﻿// src/components/LangSwitcher.tsx
 // @ts-check
+import { Picker } from '@react-native-picker/picker';
 import * as React from "react";
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { useTranslation } from "@/hooks/useTranslation";
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+// Note: useTranslation doit être adapté pour React Native ou remplacé
+// import { useTranslation } from "@/hooks/useTranslation";
 
 const languages = [
   { code: "fr", label: "🇫🇷 Français" },
@@ -14,36 +15,69 @@ const languages = [
 ];
 
 const LangSwitcher: React.FC = () => {
-  const { currentLanguage, isTranslating, changeLanguage } = useTranslation();
+  // TODO: Adapter useTranslation pour React Native ou utiliser LanguageContext
+  const [currentLanguage, setCurrentLanguage] = React.useState("fr");
+  const [isTranslating, setIsTranslating] = React.useState(false);
+
+  // Placeholder pour useTranslation
+  // const { currentLanguage, isTranslating, changeLanguage } = useTranslation();
 
   const handleLanguageChange = (languageCode: string) => {
-    changeLanguage(languageCode);
+    setCurrentLanguage(languageCode);
+    // changeLanguage(languageCode);
   };
 
   return (
-    <View style="flex items-center gap-2">
-      <select
-        value={currentLanguage}
-        onChange={(e) => handleLanguageChange(e.target.value)}
-        style="border text-sm rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-        aria-label="Sélecteur de langue"
-        disabled={isTranslating}
-      >
-        {languages.map(({ code, label }) => (
-          <option key={code} value={code}>
-            {label}
-          </option>
-        ))}
-      </select>
+    <View style={styles.container}>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={currentLanguage}
+          onValueChange={handleLanguageChange}
+          style={styles.picker}
+          enabled={!isTranslating}
+        >
+          {languages.map(({ code, label }) => (
+            <Picker.Item key={code} label={label} value={code} />
+          ))}
+        </Picker>
+      </View>
       {isTranslating && (
-        <View style="flex items-center gap-1 text-xs text-blue-600">
-          <View style="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></View>
-          <Text>Traduction...</Text>
+        <View style={styles.translatingContainer}>
+          <ActivityIndicator size="small" color="#2563EB" />
+          <Text style={styles.translatingText}>Traduction...</Text>
         </View>
       )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    backgroundColor: 'white',
+    minWidth: 150,
+  },
+  picker: {
+    height: 40,
+    fontSize: 14,
+  },
+  translatingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  translatingText: {
+    fontSize: 12,
+    color: '#2563EB',
+  },
+});
 
 export default LangSwitcher;
 

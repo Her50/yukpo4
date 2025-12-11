@@ -1,8 +1,7 @@
 ﻿// @ts-check
 import React from 'react';
-import { View } from 'react-native';
-import { Link, useLocation } from 'react-router-dom';
-import { ROUTES_CONFIG } from "@/routes/routes";
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 type Role = 'public' | 'user' | 'admin';
 
@@ -10,24 +9,28 @@ interface SidebarMenuProps {
   currentRole: Role;
 }
 
-const SidebarMenu: React.FC<SidebarMenuProps> = ({ currentRole }) => {
-  const location = useLocation();
+// Note: ROUTES_CONFIG doit être adapté pour React Native
+// Pour l'instant, on utilise un placeholder vide
+const ROUTES_CONFIG: any[] = [];
 
-  const groupedRoutes: Record<Role, typeof ROUTES_CONFIG> = {
+const SidebarMenu: React.FC<SidebarMenuProps> = ({ currentRole }) => {
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  const groupedRoutes: Record<Role, any[]> = {
     public: [],
     user: [],
     admin: [],
   };
 
-  for (const route of ROUTES_CONFIG) {
-    for (const role of route.roles) {
-      if (!groupedRoutes[role].some((r) => r.path === route.path)) {
-        groupedRoutes[role].push(route);
+  for (const routeItem of ROUTES_CONFIG) {
+    for (const role of routeItem.roles || []) {
+      if (!groupedRoutes[role].some((r) => r.path === routeItem.path)) {
+        groupedRoutes[role].push(routeItem);
       }
     }
   }
 
-  // ✅ Correction ici
   const sectionOrder: Role[] = ['admin', 'user', 'public'];
 
   const roleLabels: Record<Role, string> = {
@@ -36,42 +39,82 @@ const SidebarMenu: React.FC<SidebarMenuProps> = ({ currentRole }) => {
     public: '🌐 Public',
   };
 
+  const handleNavigate = (path: string) => {
+    (navigation as any).navigate(path);
+  };
+
   return (
-    <nav style="p-4 space-y-6 text-sm">
+    <View style={styles.container}>
       {sectionOrder.map((role) => {
         const items = groupedRoutes[role].filter(
-          (r) => r.roles.includes(currentRole) || currentRole === 'admin'
+          (r) => r.roles?.includes(currentRole) || currentRole === 'admin'
         );
 
         if (items.length === 0) return null;
 
         return (
-          <View key={role}>
-            <h4 style="uppercase text-gray-500 text-xs font-semibold mb-2">
+          <View key={role} style={styles.section}>
+            <Text style={styles.sectionTitle}>
               {roleLabels[role]}
-            </h4>
-            <ul style="space-y-1">
-              {items.map((route) => (
-                <li key={route.path}>
-                  <Link
-                    to={route.path}
-                    style={`block px-3 py-1.5 rounded hover:bg-orange-100 ${
-                      location.pathname === route.path
-                        ? 'bg-orange-200 text-orange-800 font-semibold'
-                        : 'text-gray-800'
-                    }`}
+            </Text>
+            <View style={styles.menuList}>
+              {items.map((routeItem) => {
+                const isActive = route.name === routeItem.path;
+                return (
+                  <TouchableOpacity
+                    key={routeItem.path}
+                    style={[styles.menuItem, isActive && styles.menuItemActive]}
+                    onPress={() => handleNavigate(routeItem.path)}
                   >
-                    {route.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+                    <Text style={[styles.menuItemText, isActive && styles.menuItemTextActive]}>
+                      {routeItem.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         );
       })}
-    </nav>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 16,
+    gap: 24,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    textTransform: 'uppercase',
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  menuList: {
+    gap: 4,
+  },
+  menuItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  menuItemActive: {
+    backgroundColor: '#FED7AA',
+  },
+  menuItemText: {
+    color: '#1F2937',
+    fontSize: 14,
+  },
+  menuItemTextActive: {
+    color: '#9A3412',
+    fontWeight: '600',
+  },
+});
 
 export default SidebarMenu;
 

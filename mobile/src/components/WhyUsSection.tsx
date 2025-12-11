@@ -1,9 +1,7 @@
-﻿import * as React from "react";
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { Link } from "@react-navigation/native";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
-import { useUser } from "@/hooks/useUser";
+﻿import { useNavigation } from "@react-navigation/native";
+import * as React from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAuth } from "../contexts/AuthContext";
 
 interface Feature {
   icon: string;
@@ -12,14 +10,15 @@ interface Feature {
   link: string;
 }
 
-const YukpoBrand = () => (
-  <Text style="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent font-bold">
+const YukpoBrand: React.FC = () => (
+  <Text style={styles.brandText}>
     Yukpo
   </Text>
 );
 
 const WhyUsSection: React.FC = () => {
   const { user } = useAuth();
+  const navigation = useNavigation();
 
   const features: Feature[] = [
     {
@@ -30,13 +29,13 @@ const WhyUsSection: React.FC = () => {
           <YukpoBrand /> vous connecte au bon service, au bon moment.
         </>
       ),
-      link: ROUTES.SERVICES,
+      link: "MesServices",
     },
     {
       icon: "⚡",
       title: "Réponse immédiate",
       desc: "Trouvez une solution sans attendre.",
-      link: user ? ROUTES.DASHBOARD_HOME : ROUTES.LOGIN,
+      link: user ? "Dashboard" : "Login",
     },
     {
       icon: "🎙️",
@@ -46,37 +45,96 @@ const WhyUsSection: React.FC = () => {
           Exprimez vos besoins, <YukpoBrand /> agit automatiquement.
         </>
       ),
-      link: ROUTES.VOICE_ASSISTANT,
+      link: "Home", // TODO: Créer écran VoiceAssistant si nécessaire
     },
     {
       icon: "🛠️",
       title: "Création de service 1-clic",
       desc: "Créez un service en quelques secondes.",
-      link: user ? ROUTES.SERVICE_CREATE : ROUTES.REGISTER,
+      link: user ? "FormulaireYukpoIntelligent" : "Register",
     },
   ];
 
+  const handlePress = (link: string) => {
+    (navigation as any).navigate(link);
+  };
+
   return (
-    <section style="py-16 bg-white text-center">
-      <Text style="text-3xl font-bold text-gray-800 mb-10">
+    <View style={styles.container}>
+      <Text style={styles.title}>
         Pourquoi choisir <YukpoBrand /> ?
       </Text>
 
-      <View style="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+      <View style={styles.featuresContainer}>
         {features.map(({ icon, title, desc, link }) => (
-          <Link to={link} key={title} style="group">
-            <View style="h-full flex flex-col justify-between bg-gray-50 p-6 rounded-xl shadow-md hover:shadow-xl transition-all">
-              <Text style="text-xl font-semibold mb-2">
-                {icon} {title}
-              </Text>
-              <Text style="text-gray-600">{desc}</Text>
-            </View>
-          </Link>
+          <TouchableOpacity
+            key={title}
+            style={styles.featureCard}
+            onPress={() => handlePress(link)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.featureTitle}>
+              {icon} {title}
+            </Text>
+            <Text style={styles.featureDesc}>{desc}</Text>
+          </TouchableOpacity>
         ))}
       </View>
-    </section>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    paddingVertical: 64,
+    backgroundColor: 'white',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  brandText: {
+    fontWeight: 'bold',
+    color: '#F59E0B',
+  },
+  featuresContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    maxWidth: 1152,
+    gap: 24,
+    paddingHorizontal: 16,
+  },
+  featureCard: {
+    flex: 1,
+    minWidth: 200,
+    maxWidth: 280,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    padding: 24,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  featureTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  featureDesc: {
+    color: '#4B5563',
+    fontSize: 14,
+  },
+});
 
 export default WhyUsSection;
 

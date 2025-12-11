@@ -4,7 +4,7 @@
  */
 
 import { CardStyleInterpolator, TransitionSpec } from '@react-navigation/stack';
-import { Easing } from 'react-native-reanimated';
+import { Easing } from 'react-native'; // ✅ CORRIGÉ: Utiliser Easing de react-native au lieu de reanimated
 
 // Configuration des transitions
 export const transitionConfig: {

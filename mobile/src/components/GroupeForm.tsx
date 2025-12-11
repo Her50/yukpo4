@@ -2,14 +2,9 @@
 
 import * as React from "react";
 import { useEffect, useState } from "react";
-import { Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import SafeStorage from '../utils/safeStorage';
-// import { motion, AnimatePresence } from 'framer-motion'; // Animation React Native
-// import DynamicField from "@/components/intelligence/DynamicFields";
-// import { Button } from "@/components/ui/buttons";
-// import { ComposantFrontend, dispatchChampsFormulaireIA } from "@/utils/form_constraint_dispatcher";
-// import { toast } from "react-toastify";
 
 interface ComposantFrontend {
   type: string;
@@ -134,53 +129,101 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
   };
 
   return (
-    <motion.div
-      style="flex flex-col gap-6 w-full max-w-3xl mx-auto p-4 sm:p-6 backdrop-blur rounded-2xl shadow-xl bg-white/80"
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <View style="text-center">
-        <Text style="text-xl sm:text-2xl font-semibold mb-1">
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>
           Étape {groupe.ordre_groupe + 1} — {groupe.groupe_actuel}
         </Text>
-        <Text style="text-sm text-gray-500">Remplissez les informations suivantes</Text>
+        <Text style={styles.subtitle}>Remplissez les informations suivantes</Text>
       </View>
 
-      <AnimatePresence>
+      <View style={styles.fieldsContainer}>
         {champs.map((champ) => (
-          <motion.div
-            key={champ.nomChamp}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            style="w-full"
-          >
-            <DynamicField
-              champ={champ}
-              valeurExistante={valeurs[champ.nomChamp]}
-              onChange={(val) => handleChange(champ.nomChamp, val)}
-            />
+          <View key={champ.nomChamp} style={styles.fieldContainer}>
+            {/* Note: DynamicField doit être un composant React Native */}
             {erreurs[champ.nomChamp] && (
-              <Text style="text-sm text-red-500 mt-1">{erreurs[champ.nomChamp]}</Text>
+              <Text style={styles.errorText}>{erreurs[champ.nomChamp]}</Text>
             )}
-          </motion.div>
+          </View>
         ))}
-      </AnimatePresence>
+      </View>
 
-      <View style="mt-6 flex justify-end">
+      <View style={styles.buttonContainer}>
         <TouchableOpacity
           onPress={handleSubmit}
-          style="w-full sm:w-auto px-8 py-2"
+          style={[styles.button, loading && styles.buttonDisabled]}
           disabled={loading}
         >
-          {loading ? "⏳ Vérification..." : groupe.terminé ? "Soumettre" : "Suivant"}
+          <Text style={styles.buttonText}>
+            {loading ? "⏳ Vérification..." : groupe.terminé ? "Soumettre" : "Suivant"}
+          </Text>
         </TouchableOpacity>
       </View>
-    </motion.div>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'column',
+    gap: 24,
+    width: '100%',
+    maxWidth: 768,
+    alignSelf: 'center',
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  header: {
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  fieldsContainer: {
+    width: '100%',
+  },
+  fieldContainer: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#EF4444',
+    marginTop: 4,
+  },
+  buttonContainer: {
+    marginTop: 24,
+    alignItems: 'flex-end',
+  },
+  button: {
+    width: '100%',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    backgroundColor: '#6366F1',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+});
 
 export default GroupeForm;
 

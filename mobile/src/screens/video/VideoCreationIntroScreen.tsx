@@ -1,7 +1,13 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+// ✅ MIGRÉ: Utilise react-native-reanimated pour de meilleures performances
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+} from 'react-native-reanimated';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import ProductVideoCreationModal from '../../components/ProductVideoCreationModal';
 import SafeIcon from '../../components/SafeIcon';
@@ -31,10 +37,11 @@ const VideoCreationIntroScreen: React.FC = () => {
     const route = useRoute();
     const params = (route.params || {}) as VideoCreationIntroParams;
     const { t } = useLanguageSafe();
-    const headerAnim = useRef(new Animated.Value(0)).current;
-    const heroAnim = useRef(new Animated.Value(0)).current;
-    const contentAnim = useRef(new Animated.Value(0)).current;
-    const actionsAnim = useRef(new Animated.Value(0)).current;
+    // ✅ MIGRÉ: Utilise useSharedValue au lieu de Animated.Value
+    const headerAnim = useSharedValue(0);
+    const heroAnim = useSharedValue(0);
+    const contentAnim = useSharedValue(0);
+    const actionsAnim = useSharedValue(0);
 
     const [userServices, setUserServices] = useState<any[]>([]);
     const [loadingServices, setLoadingServices] = useState(true);
@@ -47,35 +54,65 @@ const VideoCreationIntroScreen: React.FC = () => {
     const [showVideoCreationModal, setShowVideoCreationModal] = useState(false);
     const [productsForVideoCreation, setProductsForVideoCreation] = useState<ManagedProduct[]>([]);
 
-    // ✅ PHASE 3: Animations améliorées avec transitions plus fluides
+    // ✅ MIGRÉ: Animations avec Reanimated (60fps garanti, pas de conflit)
+    // Simule Animated.stagger avec des délais
     useEffect(() => {
-        Animated.stagger(100, [
-            Animated.spring(headerAnim, {
-                toValue: 1,
-                tension: 50,
-                friction: 8,
-                useNativeDriver: true,
-            }),
-            Animated.spring(heroAnim, {
-                toValue: 1,
-                tension: 50,
-                friction: 8,
-                useNativeDriver: true,
-            }),
-            Animated.spring(contentAnim, {
-                toValue: 1,
-                tension: 50,
-                friction: 8,
-                useNativeDriver: true,
-            }),
-            Animated.spring(actionsAnim, {
-                toValue: 1,
-                tension: 50,
-                friction: 8,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, [headerAnim, heroAnim, contentAnim, actionsAnim]);
+        headerAnim.value = withSpring(1, { tension: 50, friction: 8 });
+        setTimeout(() => {
+            heroAnim.value = withSpring(1, { tension: 50, friction: 8 });
+        }, 100);
+        setTimeout(() => {
+            contentAnim.value = withSpring(1, { tension: 50, friction: 8 });
+        }, 200);
+        setTimeout(() => {
+            actionsAnim.value = withSpring(1, { tension: 50, friction: 8 });
+        }, 300);
+    }, []);
+
+    // ✅ MIGRÉ: Styles animés avec useAnimatedStyle
+    const headerAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            opacity: headerAnim.value,
+            transform: [
+                {
+                    translateY: headerAnim.value * 18 - 18, // offset de 18
+                },
+            ],
+        };
+    });
+
+    const heroAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            opacity: heroAnim.value,
+            transform: [
+                {
+                    translateY: heroAnim.value * 20 - 20, // offset de 20
+                },
+            ],
+        };
+    });
+
+    const contentAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            opacity: contentAnim.value,
+            transform: [
+                {
+                    translateY: contentAnim.value * 14 - 14, // offset de 14
+                },
+            ],
+        };
+    });
+
+    const actionsAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            opacity: actionsAnim.value,
+            transform: [
+                {
+                    translateY: actionsAnim.value * 10 - 10, // offset de 10
+                },
+            ],
+        };
+    });
 
     // ✅ CORRIGÉ: Ne plus ouvrir automatiquement le tutoriel au montage
     // Le tutoriel ne s'ouvrira plus automatiquement au premier clic sur le bouton vidéo
@@ -200,17 +237,7 @@ const VideoCreationIntroScreen: React.FC = () => {
         loadServices();
     }, []);
 
-    const fadeUp = (anim: Animated.Value, offset = 16) => ({
-        opacity: anim,
-        transform: [
-            {
-                translateY: anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [offset, 0],
-                }),
-            },
-        ],
-    });
+    // ✅ MIGRÉ: fadeUp remplacé par useAnimatedStyle (voir styles animés ci-dessus)
 
     // ✅ NOUVEAU: Fonction helper pour convertir un produit en ManagedProduct
     // (Similaire à celle utilisée dans MesServicesScreen)
@@ -523,13 +550,13 @@ const VideoCreationIntroScreen: React.FC = () => {
                 showsVerticalScrollIndicator={true}
                 keyboardShouldPersistTaps="handled"
             >
-                <Animated.View style={[styles.header, fadeUp(headerAnim, 18)]}>
+                <Animated.View style={[styles.header, headerAnimatedStyle]}>
                     <SafeIcon name="sparkles" size={32} color={modernColors.primary} />
                     <Text style={styles.title}>{t('video.intro.title')}</Text>
                     <Text style={styles.subtitle}>{t('video.intro.subtitle')}</Text>
                 </Animated.View>
 
-                <Animated.View style={[fadeUp(heroAnim, 20)]}>
+                <Animated.View style={heroAnimatedStyle}>
                     <NativeCard style={styles.heroCard}>
                         {!imageError ? (
                             <Image
@@ -566,7 +593,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                         <Text style={styles.servicesInfoText}>Chargement de vos services...</Text>
                     </View>
                 ) : userServices.length > 0 && (
-                    <Animated.View style={[styles.servicesInfo, fadeUp(contentAnim, 14)]}>
+                    <Animated.View style={[styles.servicesInfo, contentAnimatedStyle]}>
                         <SafeIcon name="check-circle" size={20} color="#10B981" />
                         <Text style={styles.servicesInfoText}>
                             {userServices.length} service(s) disponible(s) - Prêt à créer une vidéo
@@ -574,7 +601,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                     </Animated.View>
                 )}
 
-                <Animated.View style={[styles.benefits, fadeUp(contentAnim, 14)]}>
+                <Animated.View style={[styles.benefits, contentAnimatedStyle]}>
                     <View style={styles.benefitItem}>
                         <Text style={styles.benefitIcon}>🎬</Text>
                         <Text style={styles.benefitText}>{t('video.intro.benefit.timeline')}</Text>
@@ -589,7 +616,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                     </View>
                 </Animated.View>
 
-                <Animated.View style={[styles.actions, fadeUp(actionsAnim, 10)]}>
+                <Animated.View style={[styles.actions, actionsAnimatedStyle]}>
                     <NativeButton
                         title={loadingServices ? 'Chargement...' : t('video.intro.createButton')}
                         size="large"

@@ -1,47 +1,76 @@
 ﻿// @ts-check
+import { useNavigation } from '@react-navigation/native';
 import * as React from "react";
-import { View } from 'react-native';
-import banner from "@/assets/banner.png";
-// import { motion } from 'framer-motion'; // Animation React Native
-import { Link } from "@react-navigation/native";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
-import { useUser } from "@/hooks/useUser";
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAuth } from "../contexts/AuthContext";
 
 const StarterHero: React.FC = () => {
   const { user } = useAuth();
+  const navigation = useNavigation();
+
+  const handlePress = () => {
+    if (user) {
+      (navigation as any).navigate('Services');
+    } else {
+      (navigation as any).navigate('Register');
+    }
+  };
 
   return (
-    <section style="relative w-full h-[400px] mt-24">
-      <img
-        src={banner}
-        alt="Yukpomnang bannière"
-        style="absolute inset-0 w-full h-full object-cover z-0"
-      />
+    <View style={styles.container}>
+      {/* Note: L'image banner nécessite un chemin valide ou peut être retirée */}
+      <View style={styles.overlay}>
+        <Text style={styles.title}>
+          L'assistant intelligent qui transforme vos besoins en solutions.
+        </Text>
 
-      <View style="absolute inset-0 z-10 bg-black/50 flex flex-col items-center justify-center text-center px-4">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          style="text-4xl md:text-5xl text-white font-bold max-w-3xl"
-        >
-          L’assistant intelligent qui transforme vos besoins en solutions.
-        </motion.h1>
-
-        <Link to={user ? ROUTES.SERVICES : ROUTES.REGISTER}>
-          <motion.button
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5 }}
-            style="mt-6 bg-white text-primary px-6 py-3 rounded-full font-medium hover:shadow-xl transition"
-          >
-            Explorer les services
-          </motion.button>
-        </Link>
+        <TouchableOpacity style={styles.button} onPress={handlePress}>
+          <Text style={styles.buttonText}>Explorer les services</Text>
+        </TouchableOpacity>
       </View>
-    </section>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'relative',
+    width: '100%',
+    height: 400,
+    marginTop: 96,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  title: {
+    fontSize: 24,
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    paddingHorizontal: 16,
+  },
+  button: {
+    marginTop: 24,
+    backgroundColor: 'white',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 999,
+  },
+  buttonText: {
+    color: '#6366F1',
+    fontWeight: '500',
+  },
+});
 
 export default StarterHero;
 

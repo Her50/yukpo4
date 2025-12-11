@@ -1,25 +1,37 @@
-// ✅ OPTIMISÉ 2025-12-10: Tâche de rafraîchissement automatique de la vue matérialisée
-// Exécutée toutes les 5 minutes (au lieu de 2) pour réduire la charge sur le pool de connexions
+// ✅ OPTIMISÉ 2025-12-11: Tâche de rafraîchissement automatique de la vue matérialisée
+// Exécutée toutes les 10-15 minutes pour réduire la charge sur le pool de connexions
+// ✅ CORRIGÉ RACINE: Utilise un pool séparé pour ne pas bloquer le pool principal
 
 use crate::core::types::AppResult;
 use crate::utils::log::log_info;
 use sqlx::PgPool;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
 
 /// Démarre la tâche de rafraîchissement automatique de la vue matérialisée
-pub async fn start_search_cache_refresh_task(pool: PgPool) {
+/// Utilise un pool séparé pour éviter de bloquer le pool principal avec des opérations longues (8-13s)
+pub async fn start_search_cache_refresh_task(pool_long_ops: Option<Arc<PgPool>>, fallback_pool: PgPool) {
     log_info("[SearchCacheRefresh] 🚀 Démarrage de la tâche de rafraîchissement automatique");
 
-    // ✅ OPTIMISÉ 2025-12-10: Intervalle augmenté à 5 minutes pour réduire la charge
-    // Configurable via variable d'environnement (défaut: 300s)
+    // ✅ CORRIGÉ RACINE 2025-12-11: Utiliser le pool séparé pour opérations longues
+    // refresh_services_search_optimized() prend 8-13 secondes, doit utiliser pool séparé
+    let pool: Arc<PgPool> = if let Some(long_ops_pool) = pool_long_ops {
+        long_ops_pool
+    } else {
+        Arc::new(fallback_pool)
+    };
+
+    // ✅ CORRIGÉ RACINE 2025-12-11: Intervalle augmenté à 10 minutes (était 5 min)
+    // refresh_services_search_optimized() prend 8-13s, donc on évite de l'exécuter trop souvent
+    // Configurable via variable d'environnement (défaut: 600s = 10 min)
     let refresh_interval_secs: u64 = std::env::var("SEARCH_CACHE_REFRESH_INTERVAL_SECS")
-        .unwrap_or_else(|_| "300".to_string())
+        .unwrap_or_else(|_| "600".to_string())
         .parse()
-        .unwrap_or(300);
+        .unwrap_or(600);
     let mut interval_timer = interval(Duration::from_secs(refresh_interval_secs));
     log::info!(
-        "[SearchCacheRefresh] 🔄 Intervalle de refresh configuré: {}s (5 min)",
+        "[SearchCacheRefresh] 🔄 Intervalle de refresh configuré: {}s (10 min) - Utilise pool séparé",
         refresh_interval_secs
     );
 
@@ -43,7 +55,8 @@ pub async fn start_search_cache_refresh_task(pool: PgPool) {
 }
 
 /// Rafraîchit la vue matérialisée services_search_optimized
-async fn refresh_materialized_view(pool: &PgPool) -> AppResult<()> {
+/// Utilise un pool séparé pour ne pas bloquer le pool principal
+async fn refresh_materialized_view(pool: &Arc<PgPool>) -> AppResult<()> {
     let start = std::time::Instant::now();
 
     // ✅ CORRIGÉ 2025-12-11: Timeout augmenté à 60s car refresh_services_search_optimized() peut prendre 12-14s
@@ -56,7 +69,7 @@ async fn refresh_materialized_view(pool: &PgPool) -> AppResult<()> {
 
     loop {
         // ✅ OPTIMISÉ: Ajouter un timeout sur la requête de refresh
-        let query_future = sqlx::query("SELECT refresh_services_search_optimized()").execute(pool);
+        let query_future = sqlx::query("SELECT refresh_services_search_optimized()").execute(&**pool);
 
         match tokio::time::timeout(Duration::from_secs(REFRESH_TIMEOUT_SECS), query_future).await {
             Ok(Ok(_)) => {

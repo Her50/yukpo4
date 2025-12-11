@@ -1,64 +1,145 @@
-﻿import * as React from "react";
-import { useState } from "react";
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
-import { Link, useLocation } from "@react-navigation/native";
+﻿import { useNavigation, useRoute } from "@react-navigation/native";
 import { Menu, X } from "lucide-react-native";
+import * as React from "react";
+import { useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type SidebarLink = {
   label: string;
-  path: string;
+  screen: string;
 };
 
 const links: SidebarLink[] = [
-  { label: "Dashboard", path: "/admin/dashboard" },
-  { label: "Utilisateurs", path: "/admin/users" },
-  { label: "Services", path: "/admin/services" },
-  { label: "Statistiques", path: "/admin/stats" },
-  { label: "Paramètres", path: "/admin/settings" },
+  { label: "Dashboard", screen: "Dashboard" },
+  { label: "Utilisateurs", screen: "Users" },
+  { label: "Services", screen: "MesServices" },
+  { label: "Statistiques", screen: "Stats" },
+  { label: "Paramètres", screen: "Settings" },
 ];
 
 const ResponsiveSidebar: React.FC = () => {
-  const location = useLocation();
+  const navigation = useNavigation();
+  const route = useRoute();
   const [open, setOpen] = useState(false);
 
-  const isActive = (path: string) => location.pathname.startsWith(path);
+  const isActive = (screen: string) => route.name === screen;
+
+  const handleNavigate = (screen: string) => {
+    (navigation as any).navigate(screen);
+    setOpen(false);
+  };
 
   return (
     <>
       <TouchableOpacity
-        style="md:hidden fixed top-4 left-4 z-50 bg-white p-2 rounded-full shadow-md"
+        style={styles.menuButton}
         onPress={() => setOpen(!open)}
-        aria-label="Ouvrir le menu admin"
+        accessibilityLabel="Ouvrir le menu admin"
       >
-        {open ? <X size={24} /> : <Menu size={24} />}
+        {open ? <X size={24} color="#1F2937" /> : <Menu size={24} color="#1F2937" />}
       </TouchableOpacity>
 
-      <aside
-        style={`fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-40 transform transition-transform duration-300
-          ${open ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:static`}
-      >
-        <View style="p-6 border-b text-center font-bold text-lg text-primary">
-          🎯 Admin Panel
+      {open && (
+        <View style={styles.overlay} onTouchEnd={() => setOpen(false)}>
+          <View style={styles.sidebar}>
+            <View style={styles.header}>
+              <Text style={styles.headerText}>🎯 Admin Panel</Text>
+            </View>
+            <View style={styles.nav}>
+              {links.map((link) => (
+                <TouchableOpacity
+                  key={link.screen}
+                  style={[
+                    styles.link,
+                    isActive(link.screen) && styles.linkActive
+                  ]}
+                  onPress={() => handleNavigate(link.screen)}
+                >
+                  <Text style={[
+                    styles.linkText,
+                    isActive(link.screen) && styles.linkTextActive
+                  ]}>
+                    {link.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </View>
-        <nav style="p-4 flex flex-col gap-2">
-          {links.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              style={`px-4 py-2 rounded hover:bg-gray-100 ${
-                isActive(link.path) ? "bg-gray-200 font-semibold" : ""
-              }`}
-              onPress={() => setOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
+      )}
     </>
   );
 };
+
+const styles = StyleSheet.create({
+  menuButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    zIndex: 50,
+    backgroundColor: 'white',
+    padding: 8,
+    borderRadius: 999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 40,
+  },
+  sidebar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: '100%',
+    width: 256,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  header: {
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  headerText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#6366F1',
+  },
+  nav: {
+    padding: 16,
+    gap: 8,
+  },
+  link: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  linkActive: {
+    backgroundColor: '#E5E7EB',
+  },
+  linkText: {
+    fontSize: 14,
+    color: '#1F2937',
+  },
+  linkTextActive: {
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+});
 
 export default ResponsiveSidebar;
 

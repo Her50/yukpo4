@@ -1,12 +1,8 @@
 ﻿import * as React from "react";
 import { useState } from 'react';
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
-import axios from 'axios';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { apiPost } from '../services/api';
 
 const TranslateBox = () => {
   const [text, setText] = useState('');
@@ -19,11 +15,16 @@ const TranslateBox = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post('/api/translate', {
+      const response = await apiPost('/api/translate', {
         text,
         target_lang: targetLang
       });
-      setTranslated(res.data.translated_text);
+      
+      if (response.success && response.data) {
+        setTranslated(response.data.translated_text);
+      } else {
+        setTranslated('Erreur de traduction');
+      }
     } catch (err) {
       console.error('Translation error', err);
       setTranslated('Erreur de traduction');
@@ -33,39 +34,111 @@ const TranslateBox = () => {
   };
 
   return (
-    <View style="max-w-xl mx-auto space-y-4">
-      <Textarea
+    <View style={styles.container}>
+      <TextInput
+        style={styles.textarea}
         placeholder="Texte à traduire"
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChangeText={setText}
+        multiline
+        numberOfLines={4}
       />
 
-      <View style="flex items-center gap-4">
-        <select
-          value={targetLang}
-          onChange={(e) => setTargetLang(e.target.value)}
-          style="border px-3 py-1 rounded"
-        >
-          <option value="en">🇬🇧 English</option>
-          <option value="fr">🇫🇷 Français</option>
-          <option value="pt">🇵🇹 Português</option>
-          <option value="ar">🇸🇦 العربية</option>
-          <option value="ff">🌍 Fulfulde</option>
-        </select>
+      <View style={styles.controls}>
+        <View style={styles.pickerContainer}>
+          <Text style={styles.pickerLabel}>Langue cible:</Text>
+          <Picker
+            selectedValue={targetLang}
+            onValueChange={setTargetLang}
+            style={styles.picker}
+          >
+            <Picker.Item label="🇬🇧 English" value="en" />
+            <Picker.Item label="🇫🇷 Français" value="fr" />
+            <Picker.Item label="🇵🇹 Português" value="pt" />
+            <Picker.Item label="🇸🇦 العربية" value="ar" />
+            <Picker.Item label="🌍 Fulfulde" value="ff" />
+          </Picker>
+        </View>
 
-        <TouchableOpacity onPress={handleTranslate} disabled={loading}>
-          {loading ? '🔄...' : 'Traduire'}
+        <TouchableOpacity 
+          style={[styles.button, loading && styles.buttonDisabled]} 
+          onPress={handleTranslate} 
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.buttonText}>Traduire</Text>
+          )}
         </TouchableOpacity>
       </View>
 
       {translated && (
-        <View style="bg-gray-100 p-4 rounded shadow text-gray-800 dark:bg-gray-800 dark:text-white">
-          {translated}
+        <View style={styles.resultContainer}>
+          <Text style={styles.resultText}>{translated}</Text>
         </View>
       )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    maxWidth: 640,
+    alignSelf: 'center',
+    gap: 16,
+    padding: 16,
+  },
+  textarea: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  controls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  pickerContainer: {
+    flex: 1,
+  },
+  pickerLabel: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  picker: {
+    height: 50,
+  },
+  button: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#6366F1',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 100,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  resultContainer: {
+    backgroundColor: '#F3F4F6',
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  resultText: {
+    color: '#1F2937',
+    fontSize: 14,
+  },
+});
 
 export default TranslateBox;
 

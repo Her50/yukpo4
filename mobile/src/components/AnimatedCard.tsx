@@ -6,6 +6,7 @@
 import React, { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
+    Easing,
     useAnimatedStyle,
     useSharedValue,
     withSpring,
@@ -46,9 +47,14 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = React.memo(
                 const timeoutId = setTimeout(() => {
                     try {
                         // ✅ AMÉLIORÉ: Animations plus fluides avec easing optimisé
+                        // ✅ CRITIQUE: Vérifier que Easing existe et est une fonction avant utilisation
+                        const easingFunction = Easing && typeof Easing.bezier === 'function'
+                            ? Easing.bezier(0.25, 0.1, 0.25, 1)
+                            : undefined; // Utiliser easing par défaut si Easing.bezier n'est pas disponible
+
                         opacity.value = withTiming(1, {
                             duration: 300,
-                            easing: require('react-native-reanimated').Easing.bezier(0.25, 0.1, 0.25, 1), // ✅ Easing naturel
+                            ...(easingFunction ? { easing: easingFunction } : {}), // ✅ Ajouter easing seulement s'il est disponible
                         });
                         translateY.value = withSpring(0, {
                             damping: 20, // ✅ AMÉLIORÉ: Damping augmenté

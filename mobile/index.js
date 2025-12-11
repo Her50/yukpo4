@@ -70,32 +70,33 @@ if (global.ErrorUtils) {
 
 // ✅ CRITIQUE: Intercepter les Promise rejections AsyncStorage AVANT qu'elles ne remontent
 // Cela évite les erreurs "Driver not found" et "No available storage method found" dans les logs
+// ✅ AMÉLIORÉ: Interception plus robuste avec plusieurs méthodes
 if (typeof global.Promise !== 'undefined') {
-    // Intercepter les rejections non gérées
-    const originalRejectionTracking = global.Promise._unhandledRejection;
-    global.Promise._unhandledRejection = function (error) {
-        // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
-        const errorMsg = error?.message || String(error);
-        const isAsyncStorageError =
-            errorMsg.includes('Driver not found') ||
-            errorMsg.includes('No available storage method found') ||
-            (errorMsg.includes('AsyncStorage') && (errorMsg.includes('not found') || errorMsg.includes('unavailable')));
+    // Méthode 1: Intercepter via _unhandledRejection si disponible
+    if (global.Promise._unhandledRejection) {
+        const originalRejectionTracking = global.Promise._unhandledRejection;
+        global.Promise._unhandledRejection = function (error) {
+            // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
+            const errorMsg = error?.message || String(error);
+            const isAsyncStorageError =
+                errorMsg.includes('Driver not found') ||
+                errorMsg.includes('No available storage method found') ||
+                (errorMsg.includes('AsyncStorage') && (errorMsg.includes('not found') || errorMsg.includes('unavailable')));
 
-        if (isAsyncStorageError) {
-            // ✅ Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
-            // Elles sont non-bloquantes et l'app continue de fonctionner
-            return; // Ne pas propager l'erreur
-        }
+            if (isAsyncStorageError) {
+                // ✅ Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+                // Elles sont non-bloquantes et l'app continue de fonctionner
+                return; // Ne pas propager l'erreur
+            }
 
-        // Pour les autres erreurs, logger normalement
-        console.error('🚨 [UNHANDLED PROMISE REJECTION]:', error);
+            // Pour les autres erreurs, logger normalement
+            if (originalRejectionTracking) {
+                originalRejectionTracking.call(this, error);
+            }
+        };
+    }
 
-        if (originalRejectionTracking) {
-            originalRejectionTracking.call(this, error);
-        }
-    };
-
-    // ✅ CRITIQUE: Intercepter aussi via addEventListener si disponible (React Native)
+    // Méthode 2: Intercepter via addEventListener si disponible (React Native)
     if (typeof global.addEventListener === 'function') {
         global.addEventListener('unhandledrejection', (event) => {
             const error = event.reason || event;
@@ -108,8 +109,28 @@ if (typeof global.Promise !== 'undefined') {
             if (isAsyncStorageError) {
                 // ✅ Empêcher la propagation de l'erreur AsyncStorage
                 event.preventDefault();
+                event.stopPropagation();
                 return;
             }
+        }, true); // ✅ Utiliser capture phase pour intercepter tôt
+    }
+
+    // Méthode 3: Intercepter via ErrorUtils si disponible (React Native)
+    if (global.ErrorUtils && typeof global.ErrorUtils.setUnhandledPromiseRejectionTracker === 'function') {
+        global.ErrorUtils.setUnhandledPromiseRejectionTracker((id, error) => {
+            const errorMsg = error?.message || String(error);
+            const isAsyncStorageError =
+                errorMsg.includes('Driver not found') ||
+                errorMsg.includes('No available storage method found') ||
+                (errorMsg.includes('AsyncStorage') && (errorMsg.includes('not found') || errorMsg.includes('unavailable')));
+
+            if (isAsyncStorageError) {
+                // ✅ Ne pas logger ces erreurs, elles sont gérées par SafeStorage
+                return;
+            }
+
+            // Pour les autres erreurs, logger normalement
+            console.error('🚨 [UNHANDLED PROMISE REJECTION]:', error);
         });
     }
 }

@@ -1,35 +1,83 @@
 ﻿// @ts-check
+import { useNavigation, useRoute } from "@react-navigation/native";
 import * as React from "react";
-import { Text } from 'react-native';
-import { Link, useLocation } from "@react-navigation/native";
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const links = [
-  { label: "🏠 Tableau de bord", path: "/client/dashboard" },
-  { label: "📄 Mes services", path: "/client/services" },
-  { label: "⚙️ Paramètres", path: "/client/settings" },
+  { label: "🏠 Tableau de bord", screen: "Dashboard" },
+  { label: "📄 Mes services", screen: "MesServices" },
+  { label: "⚙️ Paramètres", screen: "Settings" },
 ];
 
 const ClientSidebar: React.FC = () => {
-  const location = useLocation();
-  const isActive = (path: string) => location.pathname.startsWith(path);
+  const navigation = useNavigation();
+  const route = useRoute();
+  const isActive = (screen: string) => route.name === screen;
+
+  const handleNavigate = (screen: string) => {
+    (navigation as any).navigate(screen);
+  };
 
   return (
-    <aside style="w-64 h-full p-6 bg-white shadow-md hidden md:flex flex-col gap-4">
-      <Text style="text-lg font-bold text-primary">👤 Espace Client</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>👤 Espace Client</Text>
       {links.map((link) => (
-        <Link
-          key={link.path}
-          to={link.path}
-          style={`px-3 py-2 rounded hover:bg-gray-100 ${
-            isActive(link.path) ? "bg-gray-200 font-semibold" : ""
-          }`}
+        <TouchableOpacity
+          key={link.screen}
+          style={[
+            styles.link,
+            isActive(link.screen) && styles.linkActive
+          ]}
+          onPress={() => handleNavigate(link.screen)}
         >
-          {link.label}
-        </Link>
+          <Text style={[
+            styles.linkText,
+            isActive(link.screen) && styles.linkTextActive
+          ]}>
+            {link.label}
+          </Text>
+        </TouchableOpacity>
       ))}
-    </aside>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    width: 256,
+    height: '100%',
+    padding: 24,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+    gap: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#6366F1',
+    marginBottom: 8,
+  },
+  link: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  linkActive: {
+    backgroundColor: '#E5E7EB',
+  },
+  linkText: {
+    fontSize: 14,
+    color: '#1F2937',
+  },
+  linkTextActive: {
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+});
 
 export default ClientSidebar;
 

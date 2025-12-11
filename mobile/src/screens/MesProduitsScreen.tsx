@@ -1,10 +1,10 @@
 // @ts-nocheck
+// ✅ MIGRÉ: Utilise react-native-reanimated pour de meilleures performances
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Animated,
     DeviceEventEmitter,
     Modal,
     Platform,
@@ -16,6 +16,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import Animated, {
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    useSharedValue,
+} from 'react-native-reanimated';
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 import { NativeCard } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
@@ -251,17 +256,27 @@ const MesProduitsScreen: React.FC = () => {
     const [deliveryConfigProduct, setDeliveryConfigProduct] = useState<ManagedProduct | null>(null);
     const [showMediaGallery, setShowMediaGallery] = useState(false);
     const [selectedServiceForGallery, setSelectedServiceForGallery] = useState<any>(null);
-    const scrollY = useMemo(() => new Animated.Value(0), []);
+    // ✅ MIGRÉ: Utilise useSharedValue au lieu de Animated.Value
+    const scrollY = useSharedValue(0);
     const [headerHeight, setHeaderHeight] = useState(HEADER_HEIGHT);
 
-    const headerTranslate = useMemo(() => {
+    // ✅ MIGRÉ: Handler de scroll avec Reanimated
+    const scrollHandler = useAnimatedScrollHandler({
+        onScroll: (event) => {
+            scrollY.value = event.contentOffset.y;
+        },
+    });
+
+    // ✅ MIGRÉ: Style animé du header avec Reanimated
+    const headerAnimatedStyle = useAnimatedStyle(() => {
         const collapseDistance = Math.max(headerHeight - 48, 0);
-        return scrollY.interpolate({
-            inputRange: [0, collapseDistance],
-            outputRange: [0, -collapseDistance],
-            extrapolate: 'clamp',
-        });
-    }, [headerHeight, scrollY]);
+        const translateY = scrollY.value > collapseDistance
+            ? -collapseDistance
+            : -scrollY.value;
+        return {
+            transform: [{ translateY: Math.max(translateY, -collapseDistance) }],
+        };
+    });
 
     const handleHeaderLayout = useCallback(({ nativeEvent }: any) => {
         const { height } = nativeEvent.layout;
@@ -2171,7 +2186,7 @@ const MesProduitsScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            <Animated.View style={[styles.animatedHeader, { transform: [{ translateY: headerTranslate }] }]}
+            <Animated.View style={[styles.animatedHeader, headerAnimatedStyle]}
             >
                 <View onLayout={handleHeaderLayout}>
                     <View style={styles.headerContainer}>
@@ -2296,9 +2311,7 @@ const MesProduitsScreen: React.FC = () => {
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
-                onScroll={Animated.event([
-                    { nativeEvent: { contentOffset: { y: scrollY } } },
-                ], { useNativeDriver: true })}
+                onScroll={scrollHandler} {/* ✅ MIGRÉ: Utilise useAnimatedScrollHandler de Reanimated */}
                 scrollEventThrottle={16}
             >
                 {!Array.isArray(filteredProducts) || filteredProducts.length === 0 ? (

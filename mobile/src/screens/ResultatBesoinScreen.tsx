@@ -11,13 +11,13 @@
  * - ResultsMapView : Vue carte pour résultats géolocalisés
  */
 
+// ✅ MIGRÉ: Utilise react-native-reanimated pour de meilleures performances
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
-    Animated,
     ScrollView,
     Share,
     StyleSheet,
@@ -25,6 +25,12 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import Animated, {
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
+} from 'react-native-reanimated';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import FiltersBottomSheet from '../components/results/FiltersBottomSheet';
 import QuickSortBar from '../components/results/QuickSortBar';
@@ -258,12 +264,17 @@ const ResultatBesoinScreen: React.FC = () => {
     // Debouncing pour interactions
     const debouncedFavoriteRef = useRef<ReturnType<typeof debounce> | null>(null);
 
-    // Animations
-    const scrollY = useRef(new Animated.Value(0)).current;
-    const headerTranslate = scrollY.interpolate({
-        inputRange: [0, HEADER_HEIGHT],
-        outputRange: [0, -HEADER_HEIGHT],
-        extrapolate: 'clamp',
+    // ✅ MIGRÉ: Animations avec Reanimated
+    const scrollY = useSharedValue(0);
+
+    // ✅ MIGRÉ: Style animé du header avec Reanimated
+    const headerAnimatedStyle = useAnimatedStyle(() => {
+        const translateY = scrollY.value > HEADER_HEIGHT
+            ? -HEADER_HEIGHT
+            : -scrollY.value;
+        return {
+            transform: [{ translateY: Math.max(translateY, -HEADER_HEIGHT) }],
+        };
     });
 
     const itemAnimations = useRef<Map<number, Animated.Value>>(new Map()).current;
@@ -315,17 +326,15 @@ const ResultatBesoinScreen: React.FC = () => {
     // État vue carte
     const [showMapView, setShowMapView] = useState(false);
 
-    // Animer les items quand ils apparaissent
+    // ✅ MIGRÉ: Animer les items avec Reanimated
     useEffect(() => {
         if (filteredResults.length > 0) {
             filteredResults.forEach((_, index) => {
                 const animValue = getItemAnimation(index);
-                Animated.timing(animValue, {
-                    toValue: 1,
-                    duration: 300,
-                    delay: Math.min(index * 50, 500),
-                    useNativeDriver: true,
-                }).start();
+                const delay = Math.min(index * 50, 500);
+                setTimeout(() => {
+                    animValue.value = withTiming(1, { duration: 300 });
+                }, delay);
             });
         }
     }, [filteredResults.length, getItemAnimation]);
@@ -1111,7 +1120,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            <Animated.View style={[styles.collapsibleHeader, { transform: [{ translateY: headerTranslate }] }]}>
+            <Animated.View style={[styles.collapsibleHeader, headerAnimatedStyle]}>
                 <NavigatorToolbar
                     title="Recherche intelligente"
                     subtitle={filters.length > 0 ? `Filtres actifs (${filters.length})` : 'Résultats personnalisés'}
@@ -1177,18 +1186,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             itemAnimations={itemAnimations}
                             getItemAnimation={getItemAnimation}
                             ListHeaderComponent={listHeaderComponent}
-                            onScroll={Animated.event(
-                                [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                                {
-                                    useNativeDriver: true,
-                                    listener: (event: any) => {
-                                        const scrollYValue = event.nativeEvent.contentOffset.y;
-                                        if (scrollYValue > 0 && scrollYValue % 500 < 16) {
-                                            trackNavigation('view', {});
-                                        }
-                                    },
-                                }
-                            )}
+                            onScroll={scrollHandler} {/* ✅ MIGRÉ: Utilise useAnimatedScrollHandler de Reanimated */}
                         />
                     )}
                 </>

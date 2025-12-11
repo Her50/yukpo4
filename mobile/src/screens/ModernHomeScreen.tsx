@@ -1,9 +1,9 @@
 // @ts-nocheck
 // Écran d'accueil ultra-moderne avec animations et glassmorphism
+// ✅ MIGRÉ: Utilise react-native-reanimated pour de meilleures performances
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import {
-  Animated,
   Dimensions,
   ScrollView,
   StyleSheet,
@@ -11,6 +11,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import ModernCard from '../components/ModernCard';
 import { NativeGradient } from '../components/NativeDesign';
 import { SafeIcon } from '../components/SafeIcon';
@@ -21,31 +27,31 @@ const { width } = Dimensions.get('window');
 
 const ModernHomeScreen: React.FC = () => {
   const navigation = useNavigation();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  // ✅ MIGRÉ: Utilise useSharedValue au lieu de Animated.Value
+  const fadeAnim = useSharedValue(0);
+  const slideAnim = useSharedValue(50);
+  const scaleAnim = useSharedValue(0.9);
 
   useEffect(() => {
-    // Animation d'entrée fluide
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // ✅ MIGRÉ: Animations avec Reanimated (60fps garanti, pas de conflit)
+    fadeAnim.value = withTiming(1, { duration: 800 });
+    slideAnim.value = withTiming(0, { duration: 600 });
+    scaleAnim.value = withSpring(1, {
+      tension: 50,
+      friction: 8,
+    });
   }, []);
+
+  // ✅ MIGRÉ: Style animé avec useAnimatedStyle
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: fadeAnim.value,
+      transform: [
+        { translateY: slideAnim.value },
+        { scale: scaleAnim.value },
+      ],
+    };
+  });
 
   const QuickAction = ({ iconName, title, onPress, gradient }: any) => (
     <TouchableOpacity onPress={onPress} style={styles.quickActionContainer}>
@@ -82,16 +88,7 @@ const ModernHomeScreen: React.FC = () => {
     >
       <SafeNativeView style={styles.container}>
         <Animated.View
-          style={[
-            styles.content,
-            {
-              opacity: fadeAnim,
-              transform: [
-                { translateY: slideAnim },
-                { scale: scaleAnim },
-              ],
-            },
-          ]}
+          style={[styles.content, animatedStyle]}
         >
           {/* Header moderne */}
           <View style={styles.header}>

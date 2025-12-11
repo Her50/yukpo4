@@ -12,6 +12,7 @@ let initializationPromise: Promise<boolean> | null = null;
 /**
  * Initialise AsyncStorage de manière garantie
  * Cette fonction doit être appelée au démarrage de l'app AVANT toute utilisation d'AsyncStorage
+ * ✅ CORRIGÉ À LA SOURCE: Attendre que le bridge React Native soit complètement initialisé
  */
 export async function initializeAsyncStorage(): Promise<boolean> {
     // Si déjà initialisé, retourner immédiatement
@@ -27,54 +28,38 @@ export async function initializeAsyncStorage(): Promise<boolean> {
     // Créer la promesse d'initialisation
     initializationPromise = (async () => {
         try {
-            // ✅ CRITIQUE: Sur Android, attendre que le bridge React Native soit prêt
-            // ✅ AMÉLIORÉ: Attendre plus longtemps et vérifier plusieurs fois avec test réel
-            if (Platform.OS === 'android') {
-                // ✅ CRITIQUE: Attendre que le module natif soit chargé avec plusieurs vérifications
-                // Le module peut être "chargé" mais pas encore "prêt" (bridge non initialisé)
-                let moduleReady = false;
-                for (let attempt = 0; attempt < 15; attempt++) {
-                    // Vérifier que AsyncStorage existe et a les méthodes nécessaires
-                    if (AsyncStorage && typeof AsyncStorage.getItem === 'function' && typeof AsyncStorage.setItem === 'function') {
-                        // ✅ CRITIQUE: Tester une opération RÉELLE pour s'assurer que le module est vraiment prêt
-                        // Juste vérifier l'existence des méthodes ne suffit pas
-                        try {
-                            const testKey = `__init_check_${Date.now()}__`;
-                            await AsyncStorage.setItem(testKey, 'test');
-                            const readValue = await AsyncStorage.getItem(testKey);
-                            await AsyncStorage.removeItem(testKey);
-                            
-                            // Si on arrive ici sans erreur, le module est vraiment prêt
-                            if (readValue === 'test') {
-                                moduleReady = true;
-                                console.log(`[AsyncStorageInit] ✅ Module prêt après ${attempt + 1} tentatives`);
-                                break;
-                            }
-                        } catch (testError: any) {
-                            const errorMsg = testError?.message || String(testError);
-                            // Si c'est "Driver not found", le module n'est pas encore prêt
-                            if (errorMsg.includes('Driver not found') || errorMsg.includes('No available storage method found')) {
-                                // Module pas encore prêt, continuer à attendre
-                            } else {
-                                // Autre erreur, peut-être que le module est prêt mais il y a un autre problème
-                                // On continue quand même
-                                moduleReady = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // Attendre progressivement : 100ms, 200ms, 300ms, etc. (max 1.5s)
-                    const delay = Math.min(100 * (attempt + 1), 1500);
-                    await new Promise(resolve => setTimeout(resolve, delay));
+            // ✅ CORRIGÉ À LA SOURCE: Attendre que le bridge React Native soit prêt
+            // Le problème "Driver not found" vient du fait que le module natif n'est pas encore initialisé
+            // Avec Expo, on doit attendre que NativeModules soit disponible
+
+            // ✅ CRITIQUE: Vérifier que NativeModules est disponible (indique que le bridge est prêt)
+            const { NativeModules } = require('react-native');
+            let bridgeReady = false;
+
+            // Attendre jusqu'à 3 secondes que le bridge soit prêt
+            for (let attempt = 0; attempt < 30; attempt++) {
+                if (NativeModules && Object.keys(NativeModules).length > 0) {
+                    bridgeReady = true;
+                    break;
                 }
-                
-                if (!moduleReady) {
-                    console.warn('[AsyncStorageInit] ⚠️ Module AsyncStorage pas prêt après 15 tentatives');
-                }
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
 
-            // ✅ CRITIQUE: Tester AsyncStorage avec une opération réelle
+            if (!bridgeReady) {
+                console.warn('[AsyncStorageInit] ⚠️ Bridge React Native pas prêt après 3 secondes');
+            }
+
+            // ✅ CRITIQUE: Attendre un peu plus pour que les modules natifs soient complètement chargés
+            // Même si le bridge est prêt, les modules individuels peuvent avoir besoin de temps
+            await new Promise(resolve => setTimeout(resolve, Platform.OS === 'android' ? 300 : 100));
+
+            // ✅ CRITIQUE: Vérifier que AsyncStorage est bien chargé comme module natif
+            // Avec Expo, AsyncStorage devrait être automatiquement disponible, mais on vérifie quand même
+            if (!AsyncStorage || typeof AsyncStorage.getItem !== 'function') {
+                throw new Error('AsyncStorage module not found or not properly loaded');
+            }
+
+            // ✅ CORRIGÉ À LA SOURCE: Tester AsyncStorage avec une opération réelle
             // Cela force l'initialisation du module natif
             const testKey = '__async_storage_init_test__';
             const testValue = 'test_' + Date.now();
@@ -98,14 +83,16 @@ export async function initializeAsyncStorage(): Promise<boolean> {
                     throw new Error('Valeur lue ne correspond pas à la valeur écrite');
                 }
             } catch (testError: any) {
-                // Si le test échoue, réessayer avec délai progressif
+                // ✅ CORRIGÉ À LA SOURCE: Si le test échoue, réessayer avec délai progressif
+                // Le problème "Driver not found" vient du fait que le module natif n'est pas encore prêt
                 const errorMsg = testError?.message || String(testError);
 
                 if (errorMsg.includes('Driver not found') || errorMsg.includes('No available storage method found')) {
                     console.warn('[AsyncStorageInit] ⚠️ Erreur "Driver not found", réessai avec délai...');
 
-                    // Attendre plus longtemps pour Android
-                    const delay = Platform.OS === 'android' ? 500 : 200;
+                    // ✅ CRITIQUE: Attendre plus longtemps pour que le module natif soit complètement initialisé
+                    // Sur Android, le module peut avoir besoin de plus de temps
+                    const delay = Platform.OS === 'android' ? 800 : 300;
                     await new Promise(resolve => setTimeout(resolve, delay));
 
                     // Réessayer une fois
@@ -121,9 +108,12 @@ export async function initializeAsyncStorage(): Promise<boolean> {
                         }
                     } catch (retryError) {
                         console.error('[AsyncStorageInit] ❌ Erreur après retry:', retryError);
+                        // Ne pas throw ici, on va retourner false plus bas
                     }
                 }
 
+                // ✅ Si ce n'est pas une erreur "Driver not found", c'est une autre erreur
+                // On la propage pour que l'app sache qu'AsyncStorage n'est pas disponible
                 throw testError;
             }
         } catch (error: any) {
