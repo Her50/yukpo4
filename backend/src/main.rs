@@ -63,7 +63,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::info!(
             "🔧 Paramètre sslmode=require ajouté à DATABASE_URL (requis pour Render PostgreSQL)"
         );
-        separator = "&";
     }
 
     // ✅ CRITIQUE RACINE: Render ferme les connexions idle après ~5 minutes
@@ -710,7 +709,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CORRIGÉ RACINE 2025-12-11: Refresh automatique de la vue matérialisée de recherche
     // Utilise le pool séparé pour éviter de bloquer le pool principal (refresh prend 8-13s)
     let pool_clone_search_cache = app_state.pg.clone();
-    let pool_long_ops_search_cache = pg_pool_long_ops.map(|p| Arc::new(p));
+    let pool_long_ops_search_cache = pg_pool_long_ops.as_ref().map(|p| Arc::new(p.clone()));
     let _ = tokio::spawn(async move {
         tasks::search_cache_refresh::start_search_cache_refresh_task(
             pool_long_ops_search_cache,
