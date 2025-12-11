@@ -104,62 +104,71 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ NOUVEAU 2025-12-02: Créer le pool PostgreSQL master (écritures)
     // ✅ AMÉLIORÉ 2025-12-11: Configuration optimisée pour prévenir les erreurs TLS
-    // ✅ CORRIGÉ 2025-12-11: Réduction des timeouts pour mieux gérer les fermetures de connexion Render
-    let pg_pool = PgPoolOptions::new()
-        .max_connections(max_connections)
-        .min_connections(min_connections) // ✅ Maintenir un minimum de connexions
-        .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs.min(10))) // ✅ CORRIGÉ: Max 10s pour détecter rapidement les problèmes
-        .idle_timeout(Some(std::time::Duration::from_secs(120))) // ✅ CORRIGÉ RACINE: 2 min pour détecter tôt les connexions idle
-        .max_lifetime(Some(std::time::Duration::from_secs(180))) // ✅ CORRIGÉ RACINE: 3 min pour renouveler AVANT que Render ne ferme (Render ferme après ~5 min, mais parfois plus tôt à cause de TLS)
-        // ✅ CRITIQUE RACINE 2025-12-11: test_before_acquire OBLIGATOIRE pour détecter les connexions mortes
-        // Render ferme les connexions SANS envoyer TLS close_notify, donc on DOIT tester avant utilisation
-        // Sinon on essaie d'utiliser une connexion fermée → erreur → requête API échoue → HomeScreen bloqué
-        .test_before_acquire(true) // ✅ OBLIGATOIRE: Détecte les connexions fermées AVANT utilisation (évite erreurs API)
-        .after_connect(|conn, _meta| {
-            // ✅ CORRIGÉ RACINE 2025-12-11: Configuration tolérante aux erreurs
-            // Le VRAI problème: Si after_connect échoue, la connexion n'est PAS ajoutée au pool
-            // → Le pool se vide → timeouts d'acquisition → requêtes API échouent → HomeScreen bloqué
-            // Solution: Ne jamais faire échouer after_connect, même si la config partielle échoue
-            Box::pin(async move {
-                // ✅ CRITIQUE: Configuration tolérante - on essaie de configurer mais on n'échoue JAMAIS
-                // Même si la configuration échoue, la connexion est valide et sera ajoutée au pool
-                // Le test de connexion est fait par test_before_acquire AVANT utilisation, pas ici
-                
-                // ✅ Configuration 1: statement_timeout (optionnel - si échoue, on continue)
-                if let Err(e) = sqlx::query("SET statement_timeout = 0")
-                    .execute(&mut *conn)
-                    .await {
-                    let error_msg = e.to_string();
-                    // ✅ Seulement logger en debug - ne pas faire échouer after_connect
-                    if error_msg.contains("TLS") 
-                        || error_msg.contains("close_notify")
-                        || error_msg.contains("Connection reset")
-                        || error_msg.contains("peer closed") {
-                        log::debug!(
-                            "⚠️ Configuration statement_timeout échouée (connexion sera testée avant utilisation): {}",
-                            error_msg
-                        );
-                    }
-                    // ✅ CRITIQUE: On continue quand même - la connexion sera testée par test_before_acquire
+    // ✅ CORRIGÉ RACINE 2025-12-11: Configuration robuste pour gérer les crashes PostgreSQL et fermetures brutales
+    // ✅ CORRIGÉ RACINE 2025-12-11: Retry logic pour connexion initiale (gère les crashes PostgreSQL temporaires)
+    let pg_pool = {
+        let mut last_error = None;
+        let mut connected = false;
+        let mut pool_opt = None;
+        
+        // Retry jusqu'à 3 fois avec backoff exponentiel
+        for attempt in 1..=3 {
+            match PgPoolOptions::new()
+                .max_connections(max_connections)
+                .min_connections(min_connections)
+                .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
+                .idle_timeout(Some(std::time::Duration::from_secs(180)))
+                .max_lifetime(Some(std::time::Duration::from_secs(240)))
+                .test_before_acquire(true)
+                .after_connect(|conn, _meta| {
+                    Box::pin(async move {
+                        if let Err(e) = sqlx::query("SET statement_timeout = 0")
+                            .execute(&mut *conn)
+                            .await {
+                            let error_msg = e.to_string();
+                            if error_msg.contains("TLS") 
+                                || error_msg.contains("close_notify")
+                                || error_msg.contains("Connection reset")
+                                || error_msg.contains("peer closed") {
+                                log::debug!(
+                                    "⚠️ Configuration statement_timeout échouée (connexion sera testée avant utilisation): {}",
+                                    error_msg
+                                );
+                            }
+                        }
+                        let _ = sqlx::query("SET idle_in_transaction_session_timeout = '600s'")
+                            .execute(&mut *conn)
+                            .await;
+                        Ok(())
+                    })
+                })
+                .connect(&db_url)
+                .await
+            {
+                Ok(pool) => {
+                    log::info!("✅ Connexion PostgreSQL établie (tentative {}/3)", attempt);
+                    pool_opt = Some(pool);
+                    connected = true;
+                    break;
                 }
-                
-                // ✅ Configuration 2: idle_in_transaction_session_timeout (optionnel)
-                let _ = sqlx::query("SET idle_in_transaction_session_timeout = '600s'")
-                    .execute(&mut *conn)
-                    .await;
-                
-                // ✅ CRITIQUE: Toujours retourner Ok() pour que la connexion soit ajoutée au pool
-                // Le test de validité sera fait par test_before_acquire AVANT utilisation
-                Ok(())
-            })
-        })
-        // ✅ CORRIGÉ RACINE 2025-12-11: Utiliser connect() avec URL contenant sslmode=require
-        // max_lifetime=240s (4 min) renouvelle les connexions AVANT que Render ne les ferme (~5 min)
-        // idle_timeout=60s détecte rapidement les connexions mortes
-        .connect(&db_url)
-        .await
-        .map_err(|e| {
-            log::error!("❌ Impossible de se connecter à PostgreSQL: {}", e);
+                Err(e) => {
+                    last_error = Some(e);
+                    if attempt < 3 {
+                        let delay_secs = 2_u64.pow(attempt); // 2s, 4s, 8s
+                        log::warn!(
+                            "⚠️ Échec connexion PostgreSQL (tentative {}/3), retry dans {}s...",
+                            attempt,
+                            delay_secs
+                        );
+                        tokio::time::sleep(std::time::Duration::from_secs(delay_secs)).await;
+                    }
+                }
+            }
+        }
+        
+        if !connected {
+            let e = last_error.unwrap();
+            log::error!("❌ Impossible de se connecter à PostgreSQL après 3 tentatives: {}", e);
             log::error!(
                 "   URL utilisée: {}...",
                 db_url.chars().take(30).collect::<String>()
@@ -170,8 +179,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 min_connections,
                 acquire_timeout_secs
             );
-            e
-        })?;
+            return Err(Box::new(e) as Box<dyn std::error::Error>);
+        }
+        
+        pool_opt.unwrap()
+    };
 
     log::info!(
         "✅ Connexion PostgreSQL établie (pool: max={}, min={}, acquire_timeout={}s)",
@@ -190,18 +202,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .max_connections(20) // ✅ AUGMENTÉ: 20 connexions pour gérer plusieurs refreshes simultanés (refresh_services_search_optimized: 13s, active_products_cache: 3-5s, etc.)
         .min_connections(5) // ✅ AUGMENTÉ: Maintenir au moins 5 connexions prêtes pour éviter les latences
         .acquire_timeout(std::time::Duration::from_secs(120)) // ✅ Timeout plus long pour opérations longues
-        .idle_timeout(Some(std::time::Duration::from_secs(600))) // ✅ 10 minutes
-        .max_lifetime(Some(std::time::Duration::from_secs(3600))) // ✅ 1 heure
-        .test_before_acquire(false) // Pas besoin de tester avant acquisition pour opérations longues
+        .idle_timeout(Some(std::time::Duration::from_secs(300))) // ✅ CORRIGÉ: 5 min (réduit de 10 min) pour détecter tôt les connexions mortes
+        .max_lifetime(Some(std::time::Duration::from_secs(240))) // ✅ CORRIGÉ: 4 min (réduit de 1h) pour renouveler AVANT que Render ne ferme (~5 min)
+        .test_before_acquire(true) // ✅ CORRIGÉ: OBLIGATOIRE pour détecter les connexions mortes (crashes PostgreSQL)
         .after_connect(|conn, _meta| {
-            // ✅ Configuration minimale pour opérations longues
+            // ✅ CORRIGÉ RACINE 2025-12-11: Configuration tolérante aux erreurs (comme pool principal)
+            // Le VRAI problème: Si after_connect échoue, la connexion n'est PAS ajoutée au pool
+            // → Le pool se vide → timeouts d'acquisition → erreurs de connexion
+            // Solution: Ne jamais faire échouer after_connect, même si la config partielle échoue
             Box::pin(async move {
-                sqlx::query("SET statement_timeout = 0")
+                // ✅ CRITIQUE: Configuration tolérante - on essaie de configurer mais on n'échoue JAMAIS
+                // Même si la configuration échoue, la connexion est valide et sera ajoutée au pool
+                
+                // ✅ Configuration 1: statement_timeout (optionnel - si échoue, on continue)
+                if let Err(e) = sqlx::query("SET statement_timeout = 0")
                     .execute(&mut *conn)
-                    .await?;
-                sqlx::query("SET idle_in_transaction_session_timeout = '1800s'")
+                    .await {
+                    let error_msg = e.to_string();
+                    if error_msg.contains("TLS") 
+                        || error_msg.contains("close_notify")
+                        || error_msg.contains("Connection reset")
+                        || error_msg.contains("peer closed") {
+                        log::debug!(
+                            "⚠️ Configuration statement_timeout échouée pour pool long_ops (connexion sera testée avant utilisation): {}",
+                            error_msg
+                        );
+                    }
+                }
+                
+                // ✅ Configuration 2: idle_in_transaction_session_timeout (optionnel)
+                let _ = sqlx::query("SET idle_in_transaction_session_timeout = '1800s'")
                     .execute(&mut *conn)
-                    .await?;
+                    .await;
+                
+                // ✅ CRITIQUE: Toujours retourner Ok() pour que la connexion soit ajoutée au pool
                 Ok(())
             })
         })
