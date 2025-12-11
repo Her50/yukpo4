@@ -67,12 +67,13 @@ export function useDebounceHandler<T extends (...args: any[]) => any>(
 /**
  * Hook pour créer un handler avec un flag de verrouillage
  * Utile pour éviter les appels multiples pendant une opération en cours
+ * ✅ AMÉLIORÉ: Gestion d'erreur robuste et déverrouillage automatique
  */
 export function useLockedHandler<T extends (...args: any[]) => any>(
     handler: T,
-    options: { lockDuration?: number } = {}
+    options: { lockDuration?: number; onError?: (error: any) => void } = {}
 ): T {
-    const { lockDuration = 1000 } = options;
+    const { lockDuration = 100, onError } = options;
     const isLockedRef = useRef(false);
     const lockTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -83,24 +84,56 @@ export function useLockedHandler<T extends (...args: any[]) => any>(
                 return;
             }
 
-            // Verrouiller
+            // ✅ Verrouiller
             isLockedRef.current = true;
 
-            // Exécuter le handler
-            const result = handler(...args);
-
-            // Déverrouiller après le délai
+            // ✅ Nettoyer le timeout précédent
             if (lockTimeoutRef.current) {
                 clearTimeout(lockTimeoutRef.current);
             }
-            lockTimeoutRef.current = setTimeout(() => {
-                isLockedRef.current = false;
-                lockTimeoutRef.current = null;
-            }, lockDuration);
 
-            return result;
+            try {
+                // ✅ Exécuter le handler
+                const result = handler(...args);
+
+                // ✅ Si c'est une Promise, gérer les erreurs
+                if (result && typeof result.then === 'function') {
+                    result.catch((error: any) => {
+                        console.error('[useLockedHandler] Erreur dans handler async:', error);
+                        // ✅ Déverrouiller immédiatement en cas d'erreur
+                        isLockedRef.current = false;
+                        if (lockTimeoutRef.current) {
+                            clearTimeout(lockTimeoutRef.current);
+                            lockTimeoutRef.current = null;
+                        }
+                        if (onError) {
+                            onError(error);
+                        }
+                    });
+                }
+
+                // ✅ Déverrouiller après le délai (seulement si pas d'erreur)
+                lockTimeoutRef.current = setTimeout(() => {
+                    isLockedRef.current = false;
+                    lockTimeoutRef.current = null;
+                }, lockDuration);
+
+                return result;
+            } catch (error: any) {
+                // ✅ Déverrouiller immédiatement en cas d'erreur synchrone
+                console.error('[useLockedHandler] Erreur synchrone dans handler:', error);
+                isLockedRef.current = false;
+                if (lockTimeoutRef.current) {
+                    clearTimeout(lockTimeoutRef.current);
+                    lockTimeoutRef.current = null;
+                }
+                if (onError) {
+                    onError(error);
+                }
+                throw error;
+            }
         }) as T,
-        [handler, lockDuration]
+        [handler, lockDuration, onError]
     );
 
     return lockedHandler;

@@ -34,8 +34,8 @@ import { SwipeableCard } from './ux/SwipeableCard';
 
 const { width } = Dimensions.get('window');
 const SCREEN_PADDING = 16; // ✅ Marge au bord de l'écran (cohérent avec paddingHorizontal)
-const CARD_WIDTH = width * 0.85;
-const CARD_MARGIN = 12;
+const CARD_WIDTH = width * 0.88; // ✅ AUGMENTÉ 2025-12-11: De 0.85 à 0.88 pour cartes plus grandes et visuellement agréables
+const CARD_MARGIN = 16; // ✅ AUGMENTÉ 2025-12-11: De 12 à 16 pour meilleur espacement entre cartes
 const SNAP_INTERVAL = CARD_WIDTH + CARD_MARGIN; // ✅ Intervalle de snap constant
 
 type CarouselMode = 'recommended' | 'search';
@@ -1504,27 +1504,29 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     scrollView: {
         marginBottom: 8,
-        height: 320, // ✅ AUGMENTÉ: 240 → 320 pour donner plus d'espace vertical aux cartes
-        maxHeight: 320, // ✅ AUGMENTÉ: 240 → 320
+        height: 360, // ✅ AUGMENTÉ 2025-12-11: De 320 à 360 pour cartes plus grandes et visuellement agréables
+        maxHeight: 360, // ✅ AUGMENTÉ 2025-12-11: De 320 à 360
         overflow: 'hidden',
     },
     scrollContent: {
         paddingLeft: SCREEN_PADDING,
         alignItems: 'center',
-        paddingVertical: 0,
-        height: 320, // ✅ AUGMENTÉ: 240 → 320 pour correspondre à la nouvelle hauteur
+        paddingVertical: 8, // ✅ AJOUTÉ 2025-12-11: Padding vertical pour meilleur espacement
+        height: 360, // ✅ AUGMENTÉ 2025-12-11: De 320 à 360 pour correspondre à la nouvelle hauteur
     },
     card: {
         backgroundColor: colors.surface, // ✅ NOUVEAU: Support thème
-        borderRadius: 16,
+        borderRadius: 20, // ✅ AUGMENTÉ 2025-12-11: De 16 à 20 pour cartes plus arrondies et modernes
         overflow: 'hidden',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 5,
-        height: 320, // ✅ AUGMENTÉ: 240 → 320 pour donner plus d'espace aux cartes
-        maxHeight: 320, // ✅ AUGMENTÉ: 240 → 320
+        shadowOffset: { width: 0, height: 6 }, // ✅ AUGMENTÉ 2025-12-11: De 4 à 6 pour meilleure ombre
+        shadowOpacity: 0.15, // ✅ AUGMENTÉ 2025-12-11: De 0.1 à 0.15 pour meilleure profondeur
+        shadowRadius: 12, // ✅ AUGMENTÉ 2025-12-11: De 8 à 12 pour ombre plus douce
+        elevation: 8, // ✅ AUGMENTÉ 2025-12-11: De 5 à 8 pour Android
+        height: 360, // ✅ AUGMENTÉ 2025-12-11: De 320 à 360 pour donner plus d'espace aux cartes
+        maxHeight: 360, // ✅ AUGMENTÉ 2025-12-11: De 320 à 360
+        borderWidth: 1, // ✅ AJOUTÉ 2025-12-11: Bordure subtile pour meilleure définition
+        borderColor: colors.border || '#E5E7EB', // ✅ AJOUTÉ 2025-12-11: Couleur de bordure
     },
     badge: {
         position: 'absolute',

@@ -225,7 +225,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                         />
                         {/* ✅ CORRIGÉ 2025-12-11: Badge gamification compact - Positionné à côté du drapeau, bien séparé du titre Yukpo */}
                         {user?.id ? (
-                            <View style={{ marginRight: 12 }}> {/* ✅ AUGMENTÉ 2025-12-11: De 8 à 12px pour mieux séparer le trophée du texte Yukpo */}
+                            <View style={{ marginRight: 20 }}> {/* ✅ AUGMENTÉ 2025-12-11: De 12 à 20px pour bien détacher le trophée du texte Yukpo */}
                                 <GamificationBadge
                                     userId={user.id}
                                     compact={true}
@@ -361,17 +361,17 @@ const styles = StyleSheet.create({
         alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
         justifyContent: 'flex-start',
         minWidth: 0,
-        maxWidth: '28%', // ✅ RÉDUIT: De 32% à 28% pour éviter que le trophée ne chevauche le texte Yukpo
+        maxWidth: '26%', // ✅ RÉDUIT 2025-12-11: De 28% à 26% pour mieux séparer le trophée du texte Yukpo
         flexShrink: 1,
         gap: 4, // ✅ RÉDUIT: De 6 à 4px pour compacter les éléments
         height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Hauteur fixe égale au header
-        paddingRight: 24, // ✅ CORRIGÉ 2025-12-11: Augmenté de 16 à 24px pour bien séparer le trophée du texte Yukpo
+        paddingRight: 28, // ✅ AUGMENTÉ 2025-12-11: De 24 à 28px pour bien détacher le trophée du texte Yukpo
     },
     brandTitleContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center', // ✅ CORRIGÉ: Centrer verticalement
-        paddingHorizontal: 12, // ✅ AUGMENTÉ 2025-12-11: De 8 à 12px pour mieux séparer du trophée
+        paddingHorizontal: 16, // ✅ AUGMENTÉ 2025-12-11: De 12 à 16px pour mieux séparer du trophée
         minWidth: 100,
         flexShrink: 0,
         zIndex: 1,

@@ -31,6 +31,7 @@ interface ApiResponse<T = any> {
   success?: boolean;
   message?: string;
   error?: string;
+  status?: number; // ✅ NOUVEAU 2025-12-11: Status HTTP pour gestion spécifique des erreurs
 }
 
 export interface UploadedMediaItem {
@@ -320,10 +321,25 @@ export const apiCall = async <T>(
           data: data,
         });
       }
+
+      // ✅ NOUVEAU 2025-12-11: Gérer les erreurs d'authentification (401) pour éviter les requêtes en boucle
+      if (response.status === 401) {
+        console.warn(`[Mobile API] ⚠️ Token invalide ou expiré pour ${endpoint}, suppression du token`);
+        // Supprimer le token invalide pour éviter les requêtes en boucle
+        try {
+          await removeAuthToken();
+        } catch (error) {
+          console.error('[Mobile API] Erreur suppression token:', error);
+        }
+        // Ne pas faire de requête de rafraîchissement automatique ici pour éviter les boucles infinies
+        // L'utilisateur devra se reconnecter manuellement
+      }
+
       return {
         success: false,
         error: data?.message || data?.error || `Erreur ${response.status}`,
         data: data,
+        status: response.status, // ✅ NOUVEAU: Inclure le status pour gestion spécifique
       };
     }
 

@@ -1,0 +1,7 @@
+========================================
+RAPPORT D'ANALYSE DE LA BASE DE DONNÉES
+Date: 2025-12-11 07:28:51
+Base: yukpo_db
+Host: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
+========================================
+

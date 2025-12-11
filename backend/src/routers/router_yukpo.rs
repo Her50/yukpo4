@@ -40,7 +40,7 @@ use crate::{
         product_lifecycle_controller::{deactivate_product, reactivate_product}, // ✅ NOUVEAU 2025-11-01
         product_video_controller,
         service_controller::{
-            get_my_services, get_service_by_id, get_services_for_prestataire, modifier_service,
+            get_my_products, get_my_services, get_service_by_id, get_services_for_prestataire, modifier_service,
             supprimer_service, toggle_service_status,
         },
         social_connector_controller,
@@ -349,6 +349,11 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/products/{product_id}/toggle-status",
             patch(toggle_product_status).layer(axum::middleware::from_fn(jwt_auth)),
+        )
+        // ✅ NOUVEAU 2025-12-11: Endpoint pour récupérer tous les produits de l'utilisateur
+        .route(
+            "/api/products/my-products",
+            get(get_my_products).layer(axum::middleware::from_fn(jwt_auth)),
         )
         .route(
             "/api/media/{media_id}/track-view",

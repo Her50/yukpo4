@@ -893,8 +893,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   // ✅ CORRIGÉ 2025-12-11: Nettoyer rawPrestataire pour éviter d'afficher "false" (boolean) comme texte
   const cleanedRawPrestataire = rawPrestataire ? {
-    ...rawPrestataire,
-    // ✅ CRITIQUE: Supprimer les propriétés qui sont des boolean false pour éviter l'affichage de "false"
+    ...Object.keys(rawPrestataire).reduce((acc: any, key: string) => {
+      const value = rawPrestataire[key as keyof typeof rawPrestataire];
+      // ✅ CRITIQUE 2025-12-11: Filtrer toutes les valeurs booléennes false et les valeurs null/undefined
+      if (value === false || value === null || value === undefined) {
+        return acc; // Ne pas inclure les valeurs false/null/undefined
+      }
+      // ✅ CRITIQUE: Vérifier que les strings ne sont pas vides
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return acc; // Ne pas inclure les strings vides
+      }
+      acc[key] = value;
+      return acc;
+    }, {} as any),
+    // ✅ CRITIQUE: S'assurer que adresse est une string valide
     adresse: (rawPrestataire.adresse && typeof rawPrestataire.adresse === 'string' && rawPrestataire.adresse.trim().length > 0) ? rawPrestataire.adresse : undefined,
   } : {};
 

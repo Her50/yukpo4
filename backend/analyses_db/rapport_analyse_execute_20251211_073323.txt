@@ -1,0 +1,177 @@
+========================================
+RAPPORT D'ANALYSE AUTOMATIQUE
+Date: 2025-12-11 07:33:23
+Base: yukpo_db
+Host: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
+========================================
+
+
+========================================
+1. Version PostgreSQL
+========================================
+Requete: SELECT version();
+[OK] Resultat:
+PostgreSQL 16.10 (Debian 16.10-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+
+
+========================================
+1b. Utilisateur et base actuelle
+========================================
+Requete: SELECT current_user, current_database();
+[ERREUR] Code: 2
+psql: error: connection to server at "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com" (3.65.142.85), port 5432 failed: SSL connection has been closed unexpectedly
+
+
+========================================
+2. Connexions actives par utilisateur
+========================================
+Requete: SELECT usename, COUNT(*) as count FROM pg_stat_activity WHERE datname = 'yukpo_db' GROUP BY usename ORDER BY count DESC;
+[ERREUR] Code: 2
+psql: error: connection to server at "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com" (3.65.142.85), port 5432 failed: FATAL:  the database system is in recovery mode
+
+
+========================================
+3. Resume des migrations SQLx
+========================================
+Requete: SELECT COUNT(*) as total_migrations, SUM(CASE WHEN success THEN 1 ELSE 0 END) as success_count, SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) as failed_count FROM _sqlx_migrations;
+[OK] Resultat:
+116|116|0
+
+
+========================================
+4. Dernieres migrations
+========================================
+Requete: SELECT version, description, installed_on, success FROM _sqlx_migrations ORDER BY installed_on DESC LIMIT 10;
+[OK] Resultat:
+20250127000006|add payment methods matching|2025-11-19 03:47:05.352161+00|t 20250127000005|create delivery payment reservations|2025-11-19 03:47:04.584186+00|t 20250127000004|create public tracking tokens|2025-11-19 03:47:03.835326+00|t 20250127000003|create external delivery providers|2025-11-19 03:47:03.048333+00|t 20250127000002|create client delivery preferences|2025-11-19 03:47:02.252206+00|t 20250127000001|create product delivery config|2025-11-19 03:47:01.152208+00|t 20251116002|create service inventory overrides|2025-11-15 20:50:36.56006+00|t 20251116001|create studio preview events|2025-11-15 20:50:35.558704+00|t 20251115002|create global promo platform|2025-11-15 20:50:33.999725+00|t 20251115001|create delivery matching tables|2025-11-15 08:16:52.371532+00|t
+
+
+========================================
+5. Nombre de tables
+========================================
+Requete: SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
+[OK] Resultat:
+248
+
+
+========================================
+6. Extensions PostgreSQL
+========================================
+Requete: SELECT extname, extversion FROM pg_extension ORDER BY extname;
+[OK] Resultat:
+pg_trgm|1.6 pgcrypto|1.3 plpgsql|1.0 postgis|3.6.0 unaccent|1.1 uuid-ossp|1.1
+
+
+========================================
+7. Taille de la base de donnees
+========================================
+Requete: SELECT pg_size_pretty(pg_database_size('yukpo_db')) as database_size;
+[OK] Resultat:
+160 MB
+
+
+========================================
+8. Connexions actives (state=active)
+========================================
+Requete: SELECT COUNT(*) as active_connections FROM pg_stat_activity WHERE datname = 'yukpo_db' AND state = 'active';
+[OK] Resultat:
+1
+
+
+========================================
+9. Connexions inactives (state=idle)
+========================================
+Requete: SELECT COUNT(*) as idle_connections FROM pg_stat_activity WHERE datname = 'yukpo_db' AND state = 'idle';
+[OK] Resultat:
+11
+
+
+========================================
+10. Informations utilisateurs
+========================================
+Requete: SELECT usename, usecreatedb, usesuper FROM pg_user WHERE usename IN ('postgres', 'yukpo_db_user');
+[OK] Resultat:
+yukpo_db_user|t|f postgres|t|t
+
+
+========================================
+Table users - Nombre de lignes
+========================================
+Requete: SELECT COUNT(*) as row_count FROM users;
+[OK] Resultat:
+19
+
+
+========================================
+Table services - Nombre de lignes
+========================================
+Requete: SELECT COUNT(*) as row_count FROM services;
+[OK] Resultat:
+54
+
+
+========================================
+Table products - Nombre de lignes
+========================================
+Requete: SELECT COUNT(*) as row_count FROM products;
+[OK] Resultat:
+1
+
+
+========================================
+Table deliveries - Nombre de lignes
+========================================
+Requete: SELECT COUNT(*) as row_count FROM deliveries;
+[OK] Resultat:
+1
+
+
+========================================
+Table orders - Nombre de lignes
+========================================
+Requete: SELECT COUNT(*) as row_count FROM orders;
+[ERREUR] Code: 1
+ERROR:  relation "orders" does not exist LINE 1: SELECT COUNT(*) as row_count FROM orders;                                           ^
+
+
+========================================
+Table media - Nombre de lignes
+========================================
+Requete: SELECT COUNT(*) as row_count FROM media;
+[OK] Resultat:
+75
+
+
+========================================
+Table conversations - Nombre de lignes
+========================================
+Requete: SELECT COUNT(*) as row_count FROM conversations;
+[OK] Resultat:
+0
+
+
+========================================
+Table chat_messages - Nombre de lignes
+========================================
+Requete: SELECT COUNT(*) as row_count FROM chat_messages;
+[OK] Resultat:
+0
+
+
+========================================
+RESUME DE L'ANALYSE
+========================================
+Date: 2025-12-11 07:34:14
+Rapport complet: backend/analyses_db/rapport_analyse_execute_20251211_073323.txt
+
+Analyses executees:
+- Version PostgreSQL
+- Utilisateur et base de donnees
+- Connexions actives
+- Migrations SQLx
+- Tables et extensions
+- Taille de la base
+- Tables critiques
+
+Consultez le fichier de rapport pour les details.
+

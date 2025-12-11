@@ -1,3 +1,6 @@
+-- Script pour exécuter la migration 20251210_fix_u_client_name_error.sql
+-- Ce script exécute directement la migration corrigée
+
 -- Migration pour vérifier et corriger l'erreur "column u_client.name does not exist"
 -- Date: 2025-12-10
 -- Description: Vérifie toutes les vues et fonctions PostgreSQL qui référencent u_client.name
@@ -35,22 +38,13 @@ DECLARE
     func_definition TEXT;
 BEGIN
     FOR func_record IN 
-        SELECT 
-            n.nspname as schema_name, 
-            p.proname as function_name,
-            pg_get_functiondef(p.oid) as definition
+        SELECT n.nspname as schema_name, p.proname as function_name, pg_get_functiondef(p.oid) as definition
         FROM pg_proc p
         JOIN pg_namespace n ON p.pronamespace = n.oid
         WHERE pg_get_functiondef(p.oid) ILIKE '%u_client.name%'
            OR pg_get_functiondef(p.oid) ILIKE '%u_client%name%'
     LOOP
-        BEGIN
-            RAISE NOTICE 'Fonction trouvée avec u_client.name: %.%', func_record.schema_name, func_record.function_name;
-        EXCEPTION
-            WHEN OTHERS THEN
-                -- Ignorer les erreurs de formatage
-                NULL;
-        END;
+        RAISE NOTICE 'Fonction trouvée avec u_client.name: %.%', func_record.schema_name, func_record.function_name;
     END LOOP;
 END $$;
 

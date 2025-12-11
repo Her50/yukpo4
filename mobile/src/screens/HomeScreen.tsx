@@ -22,6 +22,7 @@ import { useLocationSafe } from '../contexts/LocationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLockedHandler } from '../hooks/useDebounceHandler';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation'; // ✅ NOUVEAU: Support orientation
+import { useSafeNavigation } from '../hooks/useSafeNavigation'; // ✅ NOUVEAU: Navigation sécurisée
 import { useScrollY } from '../hooks/useScrollY';
 import { apiGet, deliveryApi } from '../services/api';
 import { searchHistoryService } from '../services/searchHistoryService';
@@ -143,21 +144,8 @@ const HomeScreen: React.FC = () => {
     const [state, dispatch] = useReducer(homeScreenReducer, initialState);
     const { scrollY, onScroll } = useScrollY(); // ✅ OPTIMISATION: Pour header collapsible
 
-    // ✅ OPTIMISATION: Callbacks memoïsés pour éviter re-renders
-    // ✅ CORRIGÉ 2025-12-11: Réduire drastiquement le blocage pour éviter les interactions bloquées
-    const [isNavigating, setIsNavigating] = React.useState(false);
-
-    // ✅ CORRIGÉ 2025-12-11: Safety reset ultra-agressif - forcer la réinitialisation si bloqué trop longtemps
-    // ✅ RÉDUIT: Timeout de 500ms à 200ms pour navigation ultra-réactive
-    React.useEffect(() => {
-        if (isNavigating) {
-            const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: isNavigating bloqué depuis 200ms, réinitialisation forcée');
-                setIsNavigating(false);
-            }, 200); // ✅ RÉDUIT 2025-12-11: De 500ms à 200ms pour réactivité maximale
-            return () => clearTimeout(timeout);
-        }
-    }, [isNavigating]);
+    // ✅ NOUVEAU: Navigation sécurisée avec gestion d'erreur robuste
+    const { safeNavigate, forceUnlock } = useSafeNavigation();
 
     // ✅ CORRIGÉ: Safety reset pour loading
     // ✅ RÉDUIT: Timeout de 10s à 5s pour éviter blocages longs
@@ -217,7 +205,7 @@ const HomeScreen: React.FC = () => {
 
     // ✅ NOUVEAU: Reset au focus de l'écran pour éviter les overlays bloqués
     useFocusEffect(
-        useCallback(() => {
+        React.useCallback(() => {
             // Reset des overlays et modals au focus de l'écran
             // Cela évite qu'un overlay reste ouvert après une navigation
             const resetOverlays = () => {
@@ -237,49 +225,29 @@ const HomeScreen: React.FC = () => {
         }, [state.ui.showCreateServiceAlert])
     );
 
-    // ✅ OPTIMISATION: Handler avec verrouillage pour éviter les appels multiples
+    // ✅ CORRIGÉ 2025-01-27: Handler sans blocage - navigation immédiate avec useSafeNavigation
     const handleDeliveryPressInternal = React.useCallback(() => {
-        // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer - permettre les interactions même si navigation en cours
-        // ✅ CRITIQUE: Supprimer le blocage pour éviter les interactions bloquées
         console.log('[HomeScreen] 🚚 Début navigation vers Delivery');
-        console.log('[HomeScreen] 🔍 DIAGNOSTIC: État actuel:', {
-            loading: state.ui.loading,
-            isNavigating,
-            showCreateServiceAlert: state.ui.showCreateServiceAlert,
-            showGPSModal: state.ui.showGPSModal,
-            showChatModal: state.ui.showChatModal,
-            showNotificationModal: state.ui.showNotificationModal,
-        });
         hapticPress(); // ✅ PHASE 2: Haptic feedback
 
-        // ✅ CORRIGÉ 2025-12-11: Ne pas utiliser isNavigating pour bloquer, juste pour logging
-        setIsNavigating(true);
+        // ✅ Navigation sécurisée avec gestion d'erreur automatique
+        const success = safeNavigate('Delivery', undefined, {
+            errorMessage: 'Impossible d\'ouvrir la livraison. Veuillez réessayer.',
+        });
 
-        // ✅ CORRIGÉ: Navigation immédiate sans délai avec try-catch robuste
-        try {
-            console.log('[HomeScreen] 🚚 Tentative navigation...');
-            const parentNavigation = (navigation as any).getParent();
-            if (parentNavigation) {
-                console.log('[HomeScreen] 🚚 Utilisation parentNavigation');
-                parentNavigation.navigate('Delivery');
-            } else {
-                console.log('[HomeScreen] 🚚 Utilisation navigation directe');
-                (navigation as any).navigate('Delivery');
-            }
-            console.log('[HomeScreen] ✅ Navigation réussie');
+        if (success) {
             hapticSuccess(); // ✅ PHASE 2: Feedback succès
-        } catch (error) {
-            console.error('[HomeScreen] ❌ Erreur navigation vers Delivery:', error);
-            console.error('[HomeScreen] ❌ Stack:', (error as any)?.stack);
-            Alert.alert('Erreur', 'Impossible d\'ouvrir la livraison.');
-        } finally {
-            // ✅ CORRIGÉ 2025-12-11: Réinitialiser immédiatement sans délai
-            setIsNavigating(false);
         }
-    }, [navigation, state.ui.loading, state.ui.showCreateServiceAlert, state.ui.showGPSModal, state.ui.showChatModal, state.ui.showNotificationModal, isNavigating]);
+    }, [safeNavigate]);
 
-    // ✅ OPTIMISATION: Debounce le handler pour éviter les appels multiples
-    const handleDeliveryPress = useLockedHandler(handleDeliveryPressInternal, { lockDuration: 500 });
+    // ✅ CORRIGÉ 2025-01-27: Réduire drastiquement le lockDuration
+    const handleDeliveryPress = useLockedHandler(handleDeliveryPressInternal, {
+        lockDuration: 100,
+        onError: (error) => {
+            console.error('[HomeScreen] Erreur handleDeliveryPress:', error);
+            forceUnlock(); // ✅ Forcer le déverrouillage en cas d'erreur
+        }
+    });
 
     // ✅ NOUVEAU 2025-01-27: Charger le nombre de conversations non lues
     const loadUnreadChatCount = React.useCallback(async (): Promise<number> => {
@@ -330,8 +298,8 @@ const HomeScreen: React.FC = () => {
         // ✅ CORRIGÉ 2025-12-11: Ne plus utiliser isNavigating pour bloquer
     }, [state.ui.showChatModal, loadUnreadChatCount]);
 
-    // ✅ OPTIMISATION: Debounce le handler pour éviter les appels multiples
-    const handleChatPress = useLockedHandler(handleChatPressInternal, { lockDuration: 300 });
+    // ✅ CORRIGÉ 2025-01-27: Réduire drastiquement le lockDuration pour réactivité
+    const handleChatPress = useLockedHandler(handleChatPressInternal, { lockDuration: 100 });
 
     const handleNotificationPressInternal = React.useCallback(() => {
         // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer - permettre les interactions même si navigation en cours
@@ -347,8 +315,8 @@ const HomeScreen: React.FC = () => {
         // ✅ CORRIGÉ 2025-12-11: Ne plus utiliser isNavigating pour bloquer
     }, []);
 
-    // ✅ OPTIMISATION: Debounce le handler pour éviter les appels multiples
-    const handleNotificationPress = useLockedHandler(handleNotificationPressInternal, { lockDuration: 300 });
+    // ✅ CORRIGÉ 2025-01-27: Réduire drastiquement le lockDuration pour réactivité
+    const handleNotificationPress = useLockedHandler(handleNotificationPressInternal, { lockDuration: 100 });
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
@@ -359,6 +327,16 @@ const HomeScreen: React.FC = () => {
             role: user?.role
         });
     }, [user]);
+
+    // ✅ CORRIGÉ 2025-01-27: Stabiliser refreshUser avec useCallback pour éviter dépendances problématiques
+    const stableRefreshUser = React.useCallback(() => {
+        if (user?.id && refreshUser && typeof refreshUser === 'function') {
+            return refreshUser().catch(err => {
+                console.error('[HomeScreen] Erreur rafraîchissement solde:', err);
+            });
+        }
+        return Promise.resolve();
+    }, [user?.id, refreshUser]);
 
     // ✅ CORRECTION CRITIQUE: Stabiliser les dépendances pour éviter memory leak
     React.useEffect(() => {
@@ -371,11 +349,7 @@ const HomeScreen: React.FC = () => {
 
         const handleFocus = () => {
             console.log('[HomeScreen] 🔄 Écran focus - Rafraîchissement du solde...');
-            if (user?.id && refreshUser && typeof refreshUser === 'function') {
-                refreshUser().catch(err => {
-                    console.error('[HomeScreen] Erreur rafraîchissement solde:', err);
-                });
-            }
+            stableRefreshUser();
             // ✅ Forcer le bouton sur "Rechercher" à chaque retour sur HomeScreen
             dispatch({ type: 'SET_IS_CREATE_SERVICE', payload: false });
         };
@@ -388,30 +362,17 @@ const HomeScreen: React.FC = () => {
                 unsubscribe();
             }
         };
-    }, []); // ✅ CORRECTION: Deps vides pour éviter re-création du listener
+    }, [navigation, stableRefreshUser]); // ✅ CORRIGÉ: Inclure stableRefreshUser dans les dépendances
 
     // ✅ OPTIMISATION: Tous les états sont maintenant dans le reducer
 
     // ✅ CORRECTION: Fonction simplifiée pour ouvrir la création vidéo
     // Utilise la même navigation que le bouton à l'en-tête qui fonctionne correctement
     const handleOpenVideoCreation = React.useCallback(() => {
-        try {
-            console.log('[HomeScreen] 🎬 Ouverture création vidéo via navigate("Video")...');
-            // ✅ Utiliser la même navigation que le bouton à l'en-tête qui fonctionne
-            const parent = (navigation as any).getParent();
-            if (parent) {
-                parent.navigate('Video');
-            } else {
-                (navigation as any).navigate('Video');
-            }
-        } catch (error: any) {
-            console.error('[HomeScreen] ❌ Erreur navigation vers création vidéo:', {
-                error: error?.message || String(error),
-                stack: error?.stack
-            });
-            Alert.alert('Erreur', 'Impossible d\'ouvrir la création de vidéo.');
-        }
-    }, [navigation]);
+        console.log('[HomeScreen] 🎬 Ouverture création vidéo via navigate("Video")...');
+        // ✅ Utiliser safeNavigate pour navigation sécurisée
+        safeNavigate('Video');
+    }, [safeNavigate]);
 
     const loadUnreadNotificationsCount = React.useCallback(async (): Promise<number> => {
         if (!user?.id) {
@@ -444,7 +405,7 @@ const HomeScreen: React.FC = () => {
         }
     }, [user?.id]);
 
-    // ✅ OPTIMISATION: Chargement parallèle des données initiales (gain: -50% temps)
+    // ✅ CORRIGÉ 2025-01-27: Décaler le chargement initial pour ne pas bloquer le rendu
     React.useEffect(() => {
         // ✅ SÉCURITÉ: Vérifier que les fonctions existent avant de les utiliser
         if (typeof loadUnreadChatCount !== 'function' || typeof loadUnreadNotificationsCount !== 'function') {
@@ -518,16 +479,20 @@ const HomeScreen: React.FC = () => {
             }
         };
 
-        // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
-        loadInitialData().catch(error => {
-            console.error('[HomeScreen] Erreur chargement données initiales:', error);
-        });
+        // ✅ CRITIQUE: Décaler le chargement après le premier render pour ne pas bloquer
+        const initTimeout = setTimeout(() => {
+            loadInitialData().catch(error => {
+                console.error('[HomeScreen] Erreur chargement données initiales:', error);
+            });
+        }, 100); // 100ms après le montage
 
-        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
-        return undefined;
+        // ✅ CRITIQUE: Cleanup du timeout
+        return () => {
+            clearTimeout(initTimeout);
+        };
     }, [user?.id, loadUnreadChatCount, loadUnreadNotificationsCount]);
 
-    // ✅ OPTIMISATION: Rafraîchissement automatique des notifications
+    // ✅ OPTIMISATION: Rafraîchissement automatique des notifications avec backoff exponentiel
     React.useEffect(() => {
         // ✅ SÉCURITÉ: Vérifier que la fonction existe avant de l'utiliser
         if (typeof loadUnreadNotificationsCount !== 'function') {
@@ -537,33 +502,86 @@ const HomeScreen: React.FC = () => {
             };
         }
 
+        // ✅ NOUVEAU: Mécanisme de backoff exponentiel pour éviter les requêtes en boucle en cas d'erreur
+        let consecutiveErrors = 0;
+        let currentInterval = 300000; // 5 minutes par défaut
+        let intervalId: NodeJS.Timeout | null = null;
+        let isRefreshing = false; // ✅ NOUVEAU: Éviter les requêtes simultanées
+
         const refreshNotifications = async () => {
+            // ✅ NOUVEAU: Éviter les requêtes simultanées
+            if (isRefreshing) {
+                console.log('[HomeScreen] ⏸️ Rafraîchissement notifications déjà en cours, ignoré');
+                return;
+            }
+
+            // ✅ NOUVEAU: Arrêter les requêtes si trop d'erreurs consécutives (max 3 erreurs)
+            if (consecutiveErrors >= 3) {
+                console.warn('[HomeScreen] ⚠️ Trop d\'erreurs consécutives, arrêt du rafraîchissement automatique');
+                if (intervalId) {
+                    clearInterval(intervalId);
+                    intervalId = null;
+                }
+                return;
+            }
+
+            isRefreshing = true;
             try {
                 // ✅ SÉCURITÉ: Vérifier à nouveau que la fonction existe avant de l'appeler
                 if (typeof loadUnreadNotificationsCount === 'function') {
                     const count = await loadUnreadNotificationsCount();
                     dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: count });
+                    // ✅ NOUVEAU: Réinitialiser le compteur d'erreurs en cas de succès
+                    consecutiveErrors = 0;
+                    currentInterval = 300000; // Réinitialiser à 5 minutes
                 }
-            } catch (error) {
-                console.error('[HomeScreen] Erreur rafraîchissement notifications:', error);
+            } catch (error: any) {
+                consecutiveErrors++;
+
+                // ✅ NOUVEAU 2025-12-11: Arrêter immédiatement si erreur 401 (token invalide)
+                if (error?.status === 401 || error?.response?.status === 401 || (error?.message && error.message.includes('401'))) {
+                    console.warn('[HomeScreen] ⚠️ Token invalide (401), arrêt du rafraîchissement automatique');
+                    if (intervalId) {
+                        clearInterval(intervalId);
+                        intervalId = null;
+                    }
+                    isRefreshing = false;
+                    return; // Arrêter immédiatement, ne pas continuer avec backoff
+                }
+
+                console.error(`[HomeScreen] Erreur rafraîchissement notifications (${consecutiveErrors}/3):`, error);
+
+                // ✅ NOUVEAU: Backoff exponentiel - doubler l'intervalle à chaque erreur
+                if (consecutiveErrors < 3) {
+                    currentInterval = Math.min(currentInterval * 2, 1800000); // Max 30 minutes
+                    console.log(`[HomeScreen] ⚠️ Intervalle augmenté à ${currentInterval / 1000 / 60} minutes`);
+
+                    // ✅ NOUVEAU: Redémarrer l'intervalle avec le nouvel intervalle
+                    if (intervalId) {
+                        clearInterval(intervalId);
+                    }
+                    intervalId = setInterval(refreshNotifications, currentInterval);
+                }
+            } finally {
+                isRefreshing = false;
             }
         };
 
-        refreshNotifications();
+        // ✅ NOUVEAU: Premier rafraîchissement avec délai pour ne pas bloquer le rendu initial
+        const initialTimeout = setTimeout(() => {
+            refreshNotifications();
+        }, 2000); // 2 secondes après le montage
 
-        // ✅ OPTIMISÉ: Intervalle augmenté à 5 minutes pour réduire la charge et améliorer les performances
-        const interval = setInterval(() => {
-            console.log('[HomeScreen] 🔄 Rafraîchissement automatique des notifications');
-            // ✅ SÉCURITÉ: Vérifier que la fonction existe avant de l'appeler dans l'intervalle
-            if (typeof loadUnreadNotificationsCount === 'function') {
-                refreshNotifications();
-            }
-        }, 300000); // ✅ AUGMENTÉ: 5 minutes au lieu de 2 minutes pour réduire la charge
+        // ✅ OPTIMISÉ: Intervalle avec backoff exponentiel
+        intervalId = setInterval(refreshNotifications, currentInterval);
 
         return () => {
-            // ✅ SÉCURITÉ: Vérifier que interval existe avant de le nettoyer
-            if (interval) {
-                clearInterval(interval);
+            // ✅ SÉCURITÉ: Nettoyer tous les timers
+            if (initialTimeout) {
+                clearTimeout(initialTimeout);
+            }
+            if (intervalId) {
+                clearInterval(intervalId);
             }
         };
     }, [loadUnreadNotificationsCount]);
@@ -845,6 +863,7 @@ const HomeScreen: React.FC = () => {
 
     // Fonction de recherche directe (utilise yukpoclient comme frontend)
     const handleSearch = async (input: any) => {
+        // ✅ CORRIGÉ 2025-01-27: Toujours dispatcher SET_LOADING: false dans finally
         try {
             // Vérifier l'authentification
             if (!user) {
@@ -1041,21 +1060,17 @@ const HomeScreen: React.FC = () => {
                 // Si plus de 15 résultats, on pourra naviguer via "Voir tous"
             } else {
                 // Aucun résultat, naviguer vers ResultatBesoinScreen pour afficher le message
-                try {
-                    (navigation as any).navigate('ResultatBesoin', {
-                        results: safeResults,
-                        type: 'recherche_besoin',
-                        suggestion: result,
-                        imageSearch: result?.search_method === 'image_ai',
-                        imageAnalysis: result?.image_analysis || null,
-                        billing: result?.billing || null,
-                        searchQuery: searchQuery,
-                        hasError: false,
-                        error: null
-                    });
-                } catch (navError: any) {
-                    console.error('[HomeScreen] ❌ Erreur navigation:', navError);
-                }
+                safeNavigate('ResultatBesoin', {
+                    results: safeResults,
+                    type: 'recherche_besoin',
+                    suggestion: result,
+                    imageSearch: result?.search_method === 'image_ai',
+                    imageAnalysis: result?.image_analysis || null,
+                    billing: result?.billing || null,
+                    searchQuery: searchQuery,
+                    hasError: false,
+                    error: null
+                });
             }
 
             // ✅ ANCIEN CODE (remplacé par solution hybride) :
@@ -1107,12 +1122,14 @@ const HomeScreen: React.FC = () => {
             }
 
             // ✅ Naviguer vers ResultatBesoinScreen avec résultats vides et message d'erreur
-            (navigation as any).navigate('ResultatBesoin', {
+            safeNavigate('ResultatBesoin', {
                 results: [], // Résultats vides
                 type: 'recherche_besoin',
                 error: userFriendlyMessage, // ✅ NOUVEAU: Passer le message d'erreur
                 searchQuery: searchQuery,
                 hasError: true, // ✅ NOUVEAU: Flag pour indiquer qu'il y a eu une erreur
+            }, {
+                errorMessage: 'Impossible d\'ouvrir les résultats de recherche. Veuillez réessayer.',
             });
 
             console.log('[HomeScreen] Navigation vers ResultatBesoin avec erreur ✅');
@@ -1361,17 +1378,19 @@ const HomeScreen: React.FC = () => {
             if (hasExistingServiceWithProducts && firstServiceId) {
                 console.log('[HomeScreen] 🛍️ Navigation vers formulaire SIMPLE (AjouterProduitSimple)');
                 console.log('[HomeScreen] ✅ Raison: Service ID', firstServiceId, 'a déjà des produits');
-                (navigation as any).navigate('AjouterProduitSimple', {
+                safeNavigate('AjouterProduitSimple', {
                     serviceId: firstServiceId,
                     suggestionIA: result.data,
                     mediaData: mediaData,
                     gpsData: gpsData
+                }, {
+                    errorMessage: 'Impossible d\'ouvrir le formulaire de création. Veuillez réessayer.',
                 });
             } else {
                 // ✅ Pas de service avec produits → Formulaire COMPLET (création service + premier produit)
                 console.log('[HomeScreen] 📝 Navigation vers formulaire COMPLET (FormulaireYukpoIntelligent)');
                 console.log('[HomeScreen] ✅ Raison: Aucun service avec produits détecté → Création complète');
-                (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                safeNavigate('FormulaireYukpoIntelligent', {
                     suggestion: {
                         ...result.data,
                         intention: 'creation_service',
@@ -1381,6 +1400,8 @@ const HomeScreen: React.FC = () => {
                     mode: 'create',
                     mediaData: mediaData,
                     gpsData: gpsData
+                }, {
+                    errorMessage: 'Impossible d\'ouvrir le formulaire de création. Veuillez réessayer.',
                 });
             }
         } catch (error: any) {
@@ -1611,19 +1632,14 @@ const HomeScreen: React.FC = () => {
                                                 totalSearchResults={state.data.totalSearchResults}
                                                 onShowAllResults={() => {
                                                     // ✅ AMÉLIORÉ: Navigation sécurisée avec gestion d'erreur et haptic feedback
-                                                    try {
-                                                        hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
-                                                        navigation.navigate('ResultatBesoin' as never, {
-                                                            results: state.data.searchResults,
-                                                            type: 'recherche_besoin',
-                                                            searchQuery: state.data.searchQuery,
-                                                            hasError: false,
-                                                            error: null
-                                                        } as never);
-                                                    } catch (error) {
-                                                        console.error('[HomeScreen] ❌ Erreur navigation vers ResultatBesoin:', error);
-                                                        Alert.alert('Erreur', 'Impossible d\'ouvrir les résultats de recherche.');
-                                                    }
+                                                    hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
+                                                    safeNavigate('ResultatBesoin', {
+                                                        results: state.data.searchResults,
+                                                        type: 'recherche_besoin',
+                                                        searchQuery: state.data.searchQuery,
+                                                        hasError: false,
+                                                        error: null
+                                                    });
                                                 }}
                                                 onClearSearch={() => {
                                                     dispatch({ type: 'CLEAR_SEARCH' });
@@ -1730,26 +1746,17 @@ const HomeScreen: React.FC = () => {
                                                                 lng: state.metadata.selectedLocation.lng,
                                                             } : null}
                                                             onItemPress={(item) => {
-                                                                // ✅ AMÉLIORÉ: Navigation sécurisée avec gestion d'erreur et haptic feedback
-                                                                try {
-                                                                    hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
-                                                                    const productId = item.id || item.service_id;
-                                                                    if (!productId) {
-                                                                        console.warn('[HomeScreen] ⚠️ ProductId manquant pour l\'item:', item);
-                                                                        Alert.alert('Erreur', 'Identifiant du produit manquant.');
-                                                                        return;
-                                                                    }
-                                                                    navigation.navigate('ProductDetail' as never, {
-                                                                        productId: String(productId), // ✅ S'assurer que c'est une string
-                                                                    } as never);
-                                                                } catch (error: any) {
-                                                                    console.error('[HomeScreen] ❌ Erreur navigation vers ProductDetail:', {
-                                                                        error: error?.message || String(error),
-                                                                        stack: error?.stack,
-                                                                        item: item
-                                                                    });
-                                                                    Alert.alert('Erreur', 'Impossible d\'ouvrir les détails du produit. Veuillez réessayer.');
+                                                                // ✅ AMÉLIORÉ: Navigation sécurisée avec safeNavigate
+                                                                hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
+                                                                const productId = item.id || item.service_id;
+                                                                if (!productId) {
+                                                                    console.warn('[HomeScreen] ⚠️ ProductId manquant pour l\'item:', item);
+                                                                    Alert.alert('Erreur', 'Identifiant du produit manquant.');
+                                                                    return;
                                                                 }
+                                                                safeNavigate('ProductDetail', {
+                                                                    productId: String(productId), // ✅ S'assurer que c'est une string
+                                                                });
                                                             }}
                                                         />
                                                     ) : (
@@ -1879,11 +1886,17 @@ const HomeScreen: React.FC = () => {
                     />
 
                     {/* Alerte de confirmation pour création de service */}
-                    {state.ui.showCreateServiceAlert && (
-                        <View
-                            style={styles.confirmationModalOverlay}
-                            pointerEvents="box-none" // ✅ CRITIQUE: Permettre les interactions avec le contenu
-                        >
+                    <Modal
+                        animationType="fade"
+                        transparent={true}
+                        visible={state.ui.showCreateServiceAlert}
+                        onRequestClose={() => {
+                            console.log('[HomeScreen] 🔄 Fermeture modal par bouton retour Android');
+                            dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+                            dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+                        }}
+                    >
+                        <View style={styles.confirmationModalOverlay}>
                             {/* Overlay cliquable pour fermer */}
                             <TouchableOpacity
                                 style={StyleSheet.absoluteFill}
@@ -1894,10 +1907,18 @@ const HomeScreen: React.FC = () => {
                                     dispatch({ type: 'SET_PENDING_INPUT', payload: null });
                                 }}
                             />
-                            <View
-                                style={styles.confirmationModal}
-                                pointerEvents="box-none" // ✅ CRITIQUE: Permettre les interactions avec les boutons
-                            >
+                            <View style={styles.confirmationModal}>
+                                <TouchableOpacity
+                                    style={styles.confirmationCloseButton}
+                                    onPress={() => {
+                                        console.log('[HomeScreen] 🔄 Fermeture modal par bouton X');
+                                        dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+                                        dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+                                    }}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                >
+                                    <Text style={styles.confirmationCloseButtonText}>✕</Text>
+                                </TouchableOpacity>
                                 <View style={styles.confirmationHeader}>
                                     <Text style={styles.confirmationIcon}>🔐</Text>
                                     <Text style={styles.confirmationTitle}>Confirmation de création de service</Text>
@@ -1933,7 +1954,7 @@ const HomeScreen: React.FC = () => {
                                 </View>
                             </View>
                         </View>
-                    )}
+                    </Modal>
 
                     {/* ✅ NOUVEAU: Sélecteur de produit pour création vidéo */}
                     <ServiceProductSelector
@@ -1955,17 +1976,10 @@ const HomeScreen: React.FC = () => {
                         <TouchableOpacity
                             style={styles.floatingCourierButton}
                             onPress={() => {
-                                try {
-                                    const parentNavigation = (navigation as any).getParent();
-                                    if (parentNavigation) {
-                                        parentNavigation.navigate('CourierDashboard');
-                                    } else {
-                                        (navigation as any).navigate('CourierDashboard');
-                                    }
-                                } catch (error) {
-                                    console.error('[HomeScreen] ❌ Erreur navigation vers CourierDashboard:', error);
-                                    Alert.alert('Erreur', 'Impossible d\'ouvrir le tableau de bord coursier.');
-                                }
+                                hapticPress(); // ✅ Haptic feedback
+                                safeNavigate('CourierDashboard', undefined, {
+                                    errorMessage: 'Impossible d\'ouvrir le tableau de bord coursier. Veuillez réessayer.',
+                                });
                             }}
                             activeOpacity={0.8}
                         >
@@ -2546,15 +2560,10 @@ const createStyles = (colors: any) => StyleSheet.create({
 
     // Styles pour l'alerte de confirmation
     confirmationModalOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 1000,
     },
     confirmationModal: {
         backgroundColor: '#FFFFFF',

@@ -1690,32 +1690,35 @@ const createStyles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#10B981', // ✅ Vert moderne pour meilleur contraste
-        paddingVertical: 12, // ✅ AMÉLIORÉ: Augmenté de 8 à 12 pour meilleure visibilité
-        paddingHorizontal: 24, // ✅ AMÉLIORÉ: Augmenté de 20 à 24 pour meilleure visibilité
-        borderRadius: 10, // ✅ AMÉLIORÉ: Augmenté de 8 à 10 pour meilleure apparence
-        gap: 6, // ✅ AMÉLIORÉ: Augmenté de 4 à 6 pour meilleur espacement
-        borderWidth: 1,
-        borderColor: '#10B981',
+        paddingVertical: 14, // ✅ AUGMENTÉ 2025-12-11: De 12 à 14 pour meilleure visibilité
+        paddingHorizontal: 28, // ✅ AUGMENTÉ 2025-12-11: De 24 à 28 pour meilleure visibilité
+        borderRadius: 12, // ✅ AUGMENTÉ 2025-12-11: De 10 à 12 pour meilleure apparence
+        gap: 8, // ✅ AUGMENTÉ 2025-12-11: De 6 à 8 pour meilleur espacement
+        borderWidth: 2, // ✅ AUGMENTÉ 2025-12-11: De 1 à 2 pour meilleure visibilité
+        borderColor: '#059669', // ✅ AUGMENTÉ 2025-12-11: Bordure plus foncée pour contraste
         shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 3 }, // ✅ AMÉLIORÉ: Augmenté pour meilleure ombre
-        shadowOpacity: 0.4, // ✅ AMÉLIORÉ: Augmenté pour meilleure ombre
-        shadowRadius: 6, // ✅ AMÉLIORÉ: Augmenté pour meilleure ombre
-        elevation: 5, // ✅ AMÉLIORÉ: Augmenté pour Android
+        shadowOffset: { width: 0, height: 4 }, // ✅ AUGMENTÉ 2025-12-11: De 3 à 4 pour meilleure ombre
+        shadowOpacity: 0.5, // ✅ AUGMENTÉ 2025-12-11: De 0.4 à 0.5 pour meilleure ombre
+        shadowRadius: 8, // ✅ AUGMENTÉ 2025-12-11: De 6 à 8 pour meilleure ombre
+        elevation: 6, // ✅ AUGMENTÉ 2025-12-11: De 5 à 6 pour Android
         marginTop: 0,
         flex: 1,
-        minWidth: 120, // ✅ AMÉLIORÉ: Augmenté de 100 à 120 pour meilleure visibilité
+        minWidth: 140, // ✅ AUGMENTÉ 2025-12-11: De 120 à 140 pour meilleure visibilité
     },
     submitButtonDisabled: {
         backgroundColor: '#9CA3AF',
         elevation: 0,
     },
     submitButtonText: {
-        fontSize: 16, // ✅ CORRIGÉ 2025-12-11: Augmenté de 15 à 16 pour meilleure visibilité
-        fontWeight: '700',
+        fontSize: 17, // ✅ AUGMENTÉ 2025-12-11: De 16 à 17 pour meilleure visibilité
+        fontWeight: '800', // ✅ AUGMENTÉ 2025-12-11: De 700 à 800 pour meilleure visibilité
         color: '#FFFFFF', // ✅ AMÉLIORÉ: Couleur blanche explicite pour meilleur contraste
-        letterSpacing: 0.5, // ✅ CORRIGÉ 2025-12-11: Augmenté de 0.3 à 0.5 pour meilleure lisibilité
+        letterSpacing: 0.8, // ✅ AUGMENTÉ 2025-12-11: De 0.5 à 0.8 pour meilleure lisibilité
         textAlign: 'center', // ✅ AJOUTÉ 2025-12-11: Centrer le texte
         includeFontPadding: false, // ✅ AJOUTÉ 2025-12-11: Éviter le padding supplémentaire Android
+        textShadowColor: 'rgba(0, 0, 0, 0.3)', // ✅ AJOUTÉ 2025-12-11: Ombre de texte pour meilleure visibilité
+        textShadowOffset: { width: 0, height: 1 }, // ✅ AJOUTÉ 2025-12-11: Décalage ombre
+        textShadowRadius: 2, // ✅ AJOUTÉ 2025-12-11: Rayon ombre
     },
     sendButtonCompact: {
         backgroundColor: '#20B2AA', // Turquoise/cyan cohérent

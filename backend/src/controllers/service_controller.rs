@@ -1626,6 +1626,83 @@ pub async fn get_my_services(
     get_services_for_prestataire(State(state), Extension(user), Query(default_query)).await
 }
 
+/// ✅ NOUVEAU 2025-12-11: Récupérer tous les produits de l'utilisateur
+/// Route: GET /api/products/my-products
+pub async fn get_my_products(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<serde_json::Value>> {
+    use axum::http::StatusCode;
+    use serde_json::json;
+
+    let user_id = user.id;
+    info!("[get_my_products] Récupération produits pour user_id={}", user_id);
+
+    // Récupérer tous les services de l'utilisateur avec leurs produits
+    let rows = sqlx::query(
+        r#"
+        SELECT 
+            s.id as service_id,
+            COALESCE(
+                s.data->>'titre_service',
+                s.data->'titre_service'->>'valeur',
+                s.data->>'titre',
+                'Service sans titre'
+            ) as service_title,
+            s.data->'produits'->'valeur' as produits
+        FROM services s
+        WHERE s.user_id = $1
+          AND s.is_active = true
+        ORDER BY s.created_at DESC
+        "#
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_my_products] Erreur DB: {:?}", e);
+        AppError::Internal(format!("Erreur récupération produits: {}", e))
+    })?;
+
+    let mut all_products = Vec::new();
+
+    for row in rows {
+        let service_id: i32 = row.try_get("service_id").unwrap_or(0);
+        let service_title: String = row.try_get("service_title").unwrap_or_else(|_| "Service sans titre".to_string());
+        let produits: Option<serde_json::Value> = row.try_get("produits").ok();
+
+        if let Some(produits_value) = produits {
+            if let Some(produits_array) = produits_value.as_array() {
+                for (index, produit) in produits_array.iter().enumerate() {
+                    if let Some(produit_obj) = produit.as_object() {
+                        let is_active = produit_obj
+                            .get("is_active")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(true);
+                        
+                        // Inclure seulement les produits actifs
+                        if is_active {
+                            let mut produit_with_meta = produit_obj.clone();
+                            produit_with_meta.insert("service_id".to_string(), json!(service_id));
+                            produit_with_meta.insert("service_title".to_string(), json!(service_title));
+                            produit_with_meta.insert("product_index".to_string(), json!(index));
+                            all_products.push(serde_json::Value::Object(produit_with_meta));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    info!("[get_my_products] ✅ {} produits trouvés pour user_id={}", all_products.len(), user_id);
+
+    Ok(Json(json!({
+        "success": true,
+        "data": all_products,
+        "count": all_products.len()
+    })))
+}
+
 /// Récupère un service pour le partage public avec restrictions de sécurité
 pub async fn get_shared_service(
     State(state): State<Arc<AppState>>,
