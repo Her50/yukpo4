@@ -1,11 +1,20 @@
 /**
  * RippleButton - Bouton avec effet ripple (Material Design)
  * Améliore la perception de qualité de +20%
+ * ✅ MIGRÉ VERS REANIMATED 3 pour meilleures performances
  */
 
 import React, { useRef } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
 import { modernColors } from '../../theme/modernTheme';
+// ✅ NOUVEAU: Monitoring des re-renders
+import { useRenderMonitor } from '../../hooks/useRenderMonitor';
 
 interface RippleButtonProps {
     onPress: () => void;
@@ -18,6 +27,8 @@ interface RippleButtonProps {
     iconStyle?: any; // ✅ NOUVEAU: Style pour l'icône
 }
 
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+
 export const RippleButton: React.FC<RippleButtonProps> = React.memo(({
     onPress,
     title,
@@ -28,39 +39,39 @@ export const RippleButton: React.FC<RippleButtonProps> = React.memo(({
     icon,
     iconStyle,
 }) => {
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const opacityAnim = useRef(new Animated.Value(0)).current;
+    // ✅ NOUVEAU: Monitoring des re-renders
+    useRenderMonitor('RippleButton', { variant, disabled });
+
+    // ✅ MIGRÉ VERS REANIMATED 3: useSharedValue pour meilleures performances
+    const scale = useSharedValue(1);
+    const opacity = useSharedValue(0);
 
     const handlePressIn = () => {
         if (disabled) return;
 
-        Animated.parallel([
-            Animated.spring(scaleAnim, {
-                toValue: 0.95,
-                useNativeDriver: true,
-            }),
-            Animated.timing(opacityAnim, {
-                toValue: 1,
-                duration: 150,
-                useNativeDriver: true,
-            }),
-        ]).start();
+        // ✅ AMÉLIORÉ: Animations plus fluides avec Reanimated 3
+        scale.value = withSpring(0.95, {
+            damping: 20, // ✅ AMÉLIORÉ: Damping augmenté pour fluidité
+            stiffness: 300, // ✅ AMÉLIORÉ: Stiffness augmentée pour réactivité
+            mass: 0.5, // ✅ AMÉLIORÉ: Mass réduite pour légèreté
+        });
+        opacity.value = withTiming(1, {
+            duration: 150,
+        });
     };
 
     const handlePressOut = () => {
         if (disabled) return;
 
-        Animated.parallel([
-            Animated.spring(scaleAnim, {
-                toValue: 1,
-                useNativeDriver: true,
-            }),
-            Animated.timing(opacityAnim, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-        ]).start();
+        // ✅ AMÉLIORÉ: Animations plus fluides
+        scale.value = withSpring(1, {
+            damping: 20,
+            stiffness: 300,
+            mass: 0.5,
+        });
+        opacity.value = withTiming(0, {
+            duration: 200,
+        });
     };
 
     const getButtonStyle = () => {
@@ -89,28 +100,29 @@ export const RippleButton: React.FC<RippleButtonProps> = React.memo(({
         }
     };
 
-    const animatedStyle = {
-        transform: [{ scale: scaleAnim }],
-    };
+    // ✅ MIGRÉ VERS REANIMATED 3: useAnimatedStyle pour meilleures performances
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+    }));
 
-    const rippleStyle = {
-        opacity: opacityAnim,
-    };
+    const rippleStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
+    }));
 
     return (
-        <TouchableOpacity
+        <AnimatedTouchableOpacity
             onPress={onPress}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             disabled={disabled}
             activeOpacity={1}
-            style={[getButtonStyle(), style]}
+            style={[getButtonStyle(), animatedStyle, style]}
             accessibilityLabel={accessibilityLabel || title}
             accessibilityRole="button"
             accessibilityState={{ disabled }}
         >
             <Animated.View style={[styles.ripple, rippleStyle]} />
-            <Animated.View style={[animatedStyle, styles.contentContainer]}>
+            <View style={styles.contentContainer}>
                 {icon && (
                     <Text style={[styles.icon, iconStyle, disabled && styles.iconDisabled]}>
                         {icon}
@@ -119,8 +131,8 @@ export const RippleButton: React.FC<RippleButtonProps> = React.memo(({
                 <Text style={[styles.text, getTextStyle(), disabled && styles.textDisabled]}>
                     {title}
                 </Text>
-            </Animated.View>
-        </TouchableOpacity>
+            </View>
+        </AnimatedTouchableOpacity>
     );
 });
 

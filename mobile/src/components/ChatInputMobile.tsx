@@ -19,6 +19,8 @@ import {
 import { useLocationSafe } from '../contexts/LocationContext'; // ✅ SAFE: Pour GPS automatique (ne crash jamais)
 import { useTheme } from '../contexts/ThemeContext'; // ✅ NOUVEAU: Support thème
 import { useDebounce } from '../hooks/useDebounce'; // ✅ OPTIMISATION: Debounce hook
+// ✅ NOUVEAU: Monitoring des re-renders
+import { useRenderMonitor } from '../hooks/useRenderMonitor';
 import { apiPost } from '../services/api'; // ✅ NOUVEAU: Pour autocomplete
 import { uploadMultipleToCloud } from '../services/cloudUpload';
 import { modernColors } from '../theme/modernTheme';
@@ -51,6 +53,15 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
     isSearchMode = false, // ✅ NOUVEAU
     isCreateService = false // ✅ NOUVEAU
 }) => {
+    // ✅ NOUVEAU: Monitoring des re-renders
+    useRenderMonitor('ChatInputMobile', {
+        loading,
+        showSendButton,
+        showAutocomplete,
+        isSearchMode,
+        isCreateService,
+    });
+
     // ✅ SAFE: Utiliser la position GPS du contexte pour l'autocomplete (ne crash jamais)
     const { location } = useLocationSafe();
     const { colors } = useTheme(); // ✅ NOUVEAU: Support thème
@@ -1304,9 +1315,11 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                     >
                         <Text style={styles.sendIcon}>🚀</Text>
                         <Text
-                            style={styles.submitButtonText}
+                            style={[styles.submitButtonText, loading && styles.submitButtonTextLoading]}
                             numberOfLines={1}
                             ellipsizeMode="tail"
+                            // ✅ CRITIQUE RACINE: S'assurer que le texte est toujours visible
+                            allowFontScaling={true}
                         >
                             {loading ? 'Envoi...' : 'Envoyer'}
                         </Text>
@@ -1712,13 +1725,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     submitButtonText: {
         fontSize: 18, // ✅ AUGMENTÉ: De 17 à 18 pour meilleure visibilité
         fontWeight: '900', // ✅ AUGMENTÉ: De 800 à 900 pour meilleure visibilité
-        color: '#FFFFFF', // ✅ Couleur blanche explicite pour meilleur contraste
+        color: '#FFFFFF', // ✅ CRITIQUE RACINE: Couleur blanche explicite - DOIT être visible
         letterSpacing: 1, // ✅ AUGMENTÉ: De 0.8 à 1 pour meilleure lisibilité
         textAlign: 'center', // ✅ Centrer le texte
         includeFontPadding: false, // ✅ Éviter le padding supplémentaire Android
-        textShadowColor: 'rgba(0, 0, 0, 0.5)', // ✅ AUGMENTÉ: De 0.3 à 0.5 pour meilleure visibilité
+        textShadowColor: 'rgba(0, 0, 0, 0.8)', // ✅ CRITIQUE RACINE: Ombre très foncée pour contraste maximum
         textShadowOffset: { width: 0, height: 2 }, // ✅ AUGMENTÉ: De 1 à 2 pour meilleure visibilité
-        textShadowRadius: 3, // ✅ AUGMENTÉ: De 2 à 3 pour meilleure visibilité
+        textShadowRadius: 4, // ✅ CRITIQUE RACINE: Augmenté à 4 pour ombre plus visible
+        // ✅ CRITIQUE RACINE: S'assurer que le texte est toujours visible
+        opacity: 1, // ✅ Explicite: Opacité maximale
+        zIndex: 10, // ✅ CRITIQUE: Z-index élevé pour être au-dessus de tout
     },
     sendButtonCompact: {
         backgroundColor: '#20B2AA', // Turquoise/cyan cohérent
@@ -1730,7 +1746,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: '#9CA3AF',
-        opacity: 0.6, // ✅ CORRIGÉ 2025-12-11: Augmenté de 0.5 à 0.6 pour meilleure visibilité du texte
+        opacity: 0.8, // ✅ CRITIQUE RACINE: Augmenté à 0.8 pour que le texte reste visible même en état disabled
+    },
+    submitButtonTextLoading: {
+        // ✅ CRITIQUE RACINE: Style spécifique pour l'état loading - s'assurer que le texte est visible
+        color: '#FFFFFF', // ✅ Blanc explicite même en loading
+        opacity: 1, // ✅ Opacité maximale
     },
     // ✅ NOUVEAU: Styles pour autocomplete suggestions - OPTIMISÉ pour taille réduite
     suggestionsContainer: {

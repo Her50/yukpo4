@@ -4,7 +4,7 @@
  */
 
 import { useNavigation } from '@react-navigation/native';
-import { useCallback, useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Alert } from 'react-native';
 
 export interface SafeNavigationOptions {
@@ -30,6 +30,35 @@ export function useSafeNavigation() {
     const navigation = useNavigation();
     const isNavigatingRef = useRef(false);
     const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const safetyResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // ✅ CRITIQUE 2025-12-11: Safety reset pour débloquer la navigation si elle reste bloquée
+    // Vérifier toutes les secondes si la navigation est bloquée depuis plus de 2 secondes
+    React.useEffect(() => {
+        const checkAndUnlock = () => {
+            if (isNavigatingRef.current) {
+                // ✅ Si le flag est bloqué mais qu'il n'y a pas de timeout actif, c'est un blocage
+                // Le timeout normal devrait avoir déverrouillé après unlockDelay (500ms)
+                // Si on est ici et que le flag est toujours à true après 2s, c'est un blocage
+                if (!navigationTimeoutRef.current && !safetyResetTimeoutRef.current) {
+                    // ✅ Pas de timeout actif = blocage détecté
+                    console.warn('[useSafeNavigation] ⚠️ SAFETY RESET: Navigation bloquée détectée, déverrouillage forcé');
+                    isNavigatingRef.current = false;
+                }
+            }
+        };
+
+        // ✅ Vérifier toutes les secondes
+        const interval = setInterval(checkAndUnlock, 1000);
+
+        return () => {
+            clearInterval(interval);
+            if (safetyResetTimeoutRef.current) {
+                clearTimeout(safetyResetTimeoutRef.current);
+                safetyResetTimeoutRef.current = null;
+            }
+        };
+    }, []);
 
     const safeNavigate = useCallback(
         (routeName: string, params?: any, options?: SafeNavigationOptions) => {
@@ -39,10 +68,26 @@ export function useSafeNavigation() {
                 errorMessage,
             } = options || {};
 
-            // ✅ Vérifier si déjà en navigation
+            // ✅ CRITIQUE 2025-12-11: Si la navigation est bloquée, forcer le déverrouillage après 1 seconde
             if (isNavigatingRef.current) {
-                console.warn('[useSafeNavigation] Navigation déjà en cours, ignoré:', routeName);
-                return false;
+                // ✅ Vérifier si c'est un blocage réel ou juste une navigation rapide
+                // Si le timeout existe toujours, c'est qu'on est dans le délai normal (500ms)
+                if (navigationTimeoutRef.current) {
+                    console.warn('[useSafeNavigation] Navigation déjà en cours, ignoré:', routeName);
+                    // ✅ NOUVEAU: Au lieu de bloquer complètement, permettre la navigation après 1 seconde
+                    // Cela évite les blocages prolongés
+                    setTimeout(() => {
+                        if (isNavigatingRef.current && !navigationTimeoutRef.current) {
+                            console.warn('[useSafeNavigation] ⚠️ Navigation bloquée depuis 1s, déverrouillage forcé');
+                            isNavigatingRef.current = false;
+                        }
+                    }, 1000);
+                    return false;
+                } else {
+                    // ✅ Le timeout a expiré mais isNavigatingRef est toujours à true = blocage
+                    console.warn('[useSafeNavigation] ⚠️ Navigation bloquée détectée, déverrouillage forcé');
+                    isNavigatingRef.current = false;
+                }
             }
 
             // ✅ Vérifier que la navigation est disponible
@@ -80,7 +125,29 @@ export function useSafeNavigation() {
                 navigationTimeoutRef.current = setTimeout(() => {
                     isNavigatingRef.current = false;
                     navigationTimeoutRef.current = null;
+                    // ✅ Nettoyer aussi le safety reset
+                    if (safetyResetTimeoutRef.current) {
+                        clearTimeout(safetyResetTimeoutRef.current);
+                        safetyResetTimeoutRef.current = null;
+                    }
                 }, unlockDelay);
+
+                // ✅ CRITIQUE 2025-12-11: Safety reset absolu après 2 secondes maximum
+                // Même si le timeout normal ne se déclenche pas, on force le déverrouillage
+                if (safetyResetTimeoutRef.current) {
+                    clearTimeout(safetyResetTimeoutRef.current);
+                }
+                safetyResetTimeoutRef.current = setTimeout(() => {
+                    if (isNavigatingRef.current) {
+                        console.warn('[useSafeNavigation] ⚠️ SAFETY RESET ABSOLU: Navigation bloquée depuis 2s, déverrouillage forcé');
+                        isNavigatingRef.current = false;
+                        if (navigationTimeoutRef.current) {
+                            clearTimeout(navigationTimeoutRef.current);
+                            navigationTimeoutRef.current = null;
+                        }
+                    }
+                    safetyResetTimeoutRef.current = null;
+                }, 2000); // ✅ 2 secondes maximum avant déverrouillage forcé
 
                 return true;
             } catch (error: any) {
@@ -106,11 +173,15 @@ export function useSafeNavigation() {
 
     // ✅ Fonction pour forcer le déverrouillage (en cas d'urgence)
     const forceUnlock = useCallback(() => {
-        console.warn('[useSafeNavigation] Force unlock appelé');
+        console.warn('[useSafeNavigation] 🔓 Force unlock appelé - Déverrouillage immédiat de la navigation');
         isNavigatingRef.current = false;
         if (navigationTimeoutRef.current) {
             clearTimeout(navigationTimeoutRef.current);
             navigationTimeoutRef.current = null;
+        }
+        if (safetyResetTimeoutRef.current) {
+            clearTimeout(safetyResetTimeoutRef.current);
+            safetyResetTimeoutRef.current = null;
         }
     }, []);
 

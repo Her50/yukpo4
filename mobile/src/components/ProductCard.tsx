@@ -2631,7 +2631,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                     )}
                                   </View>
                                 )}
-                                {googleOpenNow !== null && (
+                                {/* ✅ CRITIQUE 2025-12-11: Vérifier que googleOpenNow est bien un boolean et non null avant d'afficher */}
+                                {googleOpenNow !== null && typeof googleOpenNow === 'boolean' && (
                                   <View
                                     style={[
                                       styles.googleMetaChip,

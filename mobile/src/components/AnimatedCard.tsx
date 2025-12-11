@@ -45,14 +45,20 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = React.memo(
             if (typeof withTiming === 'function' && typeof withSpring === 'function' && opacity && translateY && scale) {
                 const timeoutId = setTimeout(() => {
                     try {
-                        opacity.value = withTiming(1, { duration: 300 });
+                        // ✅ AMÉLIORÉ: Animations plus fluides avec easing optimisé
+                        opacity.value = withTiming(1, {
+                            duration: 300,
+                            easing: require('react-native-reanimated').Easing.bezier(0.25, 0.1, 0.25, 1), // ✅ Easing naturel
+                        });
                         translateY.value = withSpring(0, {
-                            damping: 15,
-                            stiffness: 100,
+                            damping: 20, // ✅ AMÉLIORÉ: Damping augmenté
+                            stiffness: 150, // ✅ AMÉLIORÉ: Stiffness augmentée
+                            mass: 0.8, // ✅ AMÉLIORÉ: Mass réduite
                         });
                         scale.value = withSpring(1, {
-                            damping: 15,
-                            stiffness: 100,
+                            damping: 18,
+                            stiffness: 200, // ✅ AMÉLIORÉ: Stiffness plus élevée pour scale
+                            mass: 0.7,
                         });
                     } catch (error) {
                         console.warn('[AnimatedCard] Erreur animation:', error);

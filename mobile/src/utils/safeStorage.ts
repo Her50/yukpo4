@@ -1,9 +1,11 @@
 /**
  * SafeStorage - Wrapper sécurisé pour AsyncStorage avec fallback
  * Corrige les erreurs "Driver not found" et "No available storage method found"
+ * ✅ CORRIGÉ 2025-12-11: Utilise l'initialisation garantie d'AsyncStorage
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ensureAsyncStorageReady } from './asyncStorageInit';
 
 let storageAvailable = true;
 let storageError: Error | null = null;
@@ -87,6 +89,15 @@ export const SafeStorage = {
      * Récupère un élément du storage avec retry automatique
      */
     async getItem(key: string, retryCount: number = 0): Promise<string | null> {
+        // ✅ CRITIQUE 2025-12-11: S'assurer qu'AsyncStorage est initialisé avant utilisation
+        if (retryCount === 0) {
+            const ready = await ensureAsyncStorageReady();
+            if (!ready) {
+                console.warn('[SafeStorage] ⚠️ AsyncStorage non initialisé, retour null pour:', key);
+                return null;
+            }
+        }
+
         // ✅ AMÉLIORÉ: Si storage non disponible, réessayer de tester avant de retourner null
         if (!storageAvailable && retryCount === 0) {
             const available = await testStorage();
@@ -115,6 +126,18 @@ export const SafeStorage = {
                 return this.getItem(key, retryCount + 1);
             }
 
+            // ✅ CRITIQUE 2025-12-11: Ne pas logger comme erreur critique si c'est une erreur AsyncStorage connue
+            const isKnownAsyncStorageError =
+                errorMsg.includes('Driver not found') ||
+                errorMsg.includes('No available storage method found') ||
+                errorMsg.includes('AsyncStorage') && (errorMsg.includes('not found') || errorMsg.includes('unavailable'));
+
+            if (isKnownAsyncStorageError) {
+                // ✅ Ces erreurs sont attendues et gérées, ne pas les logger comme erreurs critiques
+                console.warn('[SafeStorage] ⚠️ Erreur AsyncStorage connue (non-bloquante):', errorMsg);
+                return null; // Retourner null silencieusement
+            }
+
             console.error('[SafeStorage] ❌ Erreur getItem:', errorMsg);
             // Réessayer de tester le storage
             const available = await testStorage();
@@ -135,6 +158,15 @@ export const SafeStorage = {
      * Sauvegarde un élément dans le storage avec retry automatique
      */
     async setItem(key: string, value: string, retryCount: number = 0): Promise<boolean> {
+        // ✅ CRITIQUE 2025-12-11: S'assurer qu'AsyncStorage est initialisé avant utilisation
+        if (retryCount === 0) {
+            const ready = await ensureAsyncStorageReady();
+            if (!ready) {
+                console.warn('[SafeStorage] ⚠️ AsyncStorage non initialisé, impossible de sauvegarder:', key);
+                return false;
+            }
+        }
+
         // ✅ AMÉLIORÉ: Si storage non disponible, réessayer de tester avant de retourner false
         if (!storageAvailable && retryCount === 0) {
             const available = await testStorage();
@@ -162,6 +194,18 @@ export const SafeStorage = {
                 await new Promise(resolve => setTimeout(resolve, 300));
                 storageAvailable = false; // Forcer le retest
                 return this.setItem(key, value, retryCount + 1);
+            }
+
+            // ✅ CRITIQUE 2025-12-11: Ne pas logger comme erreur critique si c'est une erreur AsyncStorage connue
+            const isKnownAsyncStorageError =
+                errorMsg.includes('Driver not found') ||
+                errorMsg.includes('No available storage method found') ||
+                errorMsg.includes('AsyncStorage') && (errorMsg.includes('not found') || errorMsg.includes('unavailable'));
+
+            if (isKnownAsyncStorageError) {
+                // ✅ Ces erreurs sont attendues et gérées, ne pas les logger comme erreurs critiques
+                console.warn('[SafeStorage] ⚠️ Erreur AsyncStorage connue (non-bloquante):', errorMsg);
+                return false; // Retourner false silencieusement
             }
 
             console.error('[SafeStorage] ❌ Erreur setItem:', errorMsg);

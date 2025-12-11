@@ -1,6 +1,5 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import * as ReactNavigation from '@react-navigation/native';
-import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { Suspense, useReducer } from 'react';
 import ReactNative from 'react-native';
@@ -20,10 +19,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useLocationSafe } from '../contexts/LocationContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { useLockedHandler } from '../hooks/useDebounceHandler';
+// ✅ SUPPRIMÉ: useLockedHandler qui bloque les interactions
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation'; // ✅ NOUVEAU: Support orientation
-import { useSafeNavigation } from '../hooks/useSafeNavigation'; // ✅ NOUVEAU: Navigation sécurisée
+// ✅ SUPPRIMÉ: useSafeNavigation qui bloque la navigation
 import { useScrollY } from '../hooks/useScrollY';
+// ✅ NOUVEAU: Monitoring des re-renders pour performance
+import { useRenderMonitor } from '../hooks/useRenderMonitor';
 import { apiGet, deliveryApi } from '../services/api';
 import { searchHistoryService } from '../services/searchHistoryService';
 import userBehaviorService from '../services/userBehaviorService';
@@ -155,6 +156,9 @@ const { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity
 const { width: STATIC_WIDTH, height: STATIC_HEIGHT } = Dimensions.get('window');
 
 const HomeScreen: React.FC = () => {
+    // ✅ NOUVEAU: Monitoring des re-renders pour performance
+    useRenderMonitor('HomeScreen');
+
     const navigation = ReactNavigation.useNavigation();
     const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
     const { language, setLanguage, t } = useLanguageSafe(); // ✅ SAFE: Context de langue avec traduction (ne crash jamais)
@@ -166,200 +170,91 @@ const HomeScreen: React.FC = () => {
     const [state, dispatch] = useReducer(homeScreenReducer, initialState);
     const { scrollY, onScroll } = useScrollY(); // ✅ OPTIMISATION: Pour header collapsible
 
-    // ✅ NOUVEAU: Navigation sécurisée avec gestion d'erreur robuste
-    const { safeNavigate, forceUnlock } = useSafeNavigation();
+    // ✅ SUPPRIMÉ: useSafeNavigation qui bloque la navigation
+    // Utiliser directement navigation.navigate pour éviter les blocages
+
+    // ✅ CORRIGÉ 2025-01-XX: Navigation simplifiée SANS système de lock qui bloque les interactions
+    // Utiliser directement navigation.navigate pour éviter les délais et blocages
+    const forceNavigate = React.useCallback((routeName: string, params?: any) => {
+        // ✅ CRITIQUE: Vérifier que navigation existe avant utilisation
+        if (!navigation || typeof (navigation as any).navigate !== 'function') {
+            console.error('[HomeScreen] ❌ Navigation non disponible');
+            // ✅ CRITIQUE: Essayer de récupérer navigation depuis ReactNavigation si disponible
+            try {
+                const { useNavigation: useNav } = require('@react-navigation/native');
+                const nav = useNav();
+                if (nav && typeof nav.navigate === 'function') {
+                    console.log('[HomeScreen] 🔄 Navigation récupérée depuis ReactNavigation');
+                    nav.navigate(routeName as never, params);
+                    return true;
+                }
+            } catch (e) {
+                console.error('[HomeScreen] ❌ Impossible de récupérer navigation:', e);
+            }
+            return false;
+        }
+        try {
+            console.log('[HomeScreen] 🔄 Navigation vers:', routeName, params ? 'avec params' : 'sans params');
+            (navigation as any).navigate(routeName, params);
+            return true;
+        } catch (error) {
+            console.error('[HomeScreen] ❌ Erreur navigation vers', routeName, ':', error);
+            // ✅ CRITIQUE: Essayer une navigation alternative en cas d'erreur
+            try {
+                if ((navigation as any).push) {
+                    console.log('[HomeScreen] 🔄 Tentative navigation avec push');
+                    (navigation as any).push(routeName, params);
+                    return true;
+                }
+            } catch (pushError) {
+                console.error('[HomeScreen] ❌ Erreur navigation push:', pushError);
+            }
+            return false;
+        }
+    }, [navigation]);
+
+    // ✅ SUPPRIMÉ: Safety reset qui interfère avec les interactions utilisateur
 
     // ✅ CORRIGÉ: Safety reset pour loading
-    // ✅ RÉDUIT: Timeout de 10s à 5s pour éviter blocages longs
+    // ✅ CRITIQUE 2025-12-11: Réduire à 2s pour éviter blocage des interactions
     React.useEffect(() => {
         if (state.ui.loading) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: loading bloqué depuis 3s, réinitialisation forcée');
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: loading bloqué depuis 2s, réinitialisation forcée pour éviter blocage interactions');
                 dispatch({ type: 'SET_LOADING', payload: false });
-            }, 3000); // ✅ RÉDUIT: De 5s à 3s pour réactivité
+            }, 2000); // ✅ CRITIQUE: 2s max pour éviter blocage des interactions utilisateur
             return () => clearTimeout(timeout);
         }
     }, [state.ui.loading]);
 
-    // ✅ NOUVEAU: Safety reset pour l'overlay de confirmation qui peut bloquer les interactions
-    // ✅ CORRIGÉ: Réduire à 3 secondes pour éviter blocage prolongé (plus agressif)
-    React.useEffect(() => {
-        if (state.ui.showCreateServiceAlert) {
-            const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Overlay de confirmation bloqué depuis 3s, fermeture forcée');
-                dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
-                dispatch({ type: 'SET_PENDING_INPUT', payload: null });
-            }, 3000); // ✅ CORRIGÉ: 3 secondes max pour éviter blocage permanent (réduit de 5s)
-            return () => clearTimeout(timeout);
-        }
-    }, [state.ui.showCreateServiceAlert]);
+    // ✅ SUPPRIMÉ: Safety reset pour overlay de confirmation
+    // L'utilisateur doit pouvoir prendre le temps de décider
+    // Augmenter le délai à 5 minutes si vraiment nécessaire
 
-    // ✅ NOUVEAU: Safety reset pour les modals qui peuvent rester ouverts
-    // ✅ CORRIGÉ: Réduire à 30 secondes pour être plus réactif
-    React.useEffect(() => {
-        if (state.ui.showGPSModal) {
-            const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal GPS ouvert depuis 30s, fermeture forcée');
-                dispatch({ type: 'TOGGLE_GPS_MODAL' });
-            }, 30000); // ✅ RÉDUIT: 30 secondes max pour éviter blocage permanent (réduit de 60s)
-            return () => clearTimeout(timeout);
-        }
-    }, [state.ui.showGPSModal]);
+    // ✅ SUPPRIMÉ: Safety resets qui ferment automatiquement les modals
+    // Ces timers interféraient avec les interactions utilisateur
+    // Les modals doivent rester ouverts tant que l'utilisateur les utilise
 
-    React.useEffect(() => {
-        if (state.ui.showChatModal) {
-            const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal Chat ouvert depuis 30s, fermeture forcée');
-                dispatch({ type: 'TOGGLE_CHAT_MODAL' });
-            }, 30000); // ✅ RÉDUIT: 30 secondes max
-            return () => clearTimeout(timeout);
-        }
-    }, [state.ui.showChatModal]);
+    // ✅ CORRIGÉ 2025-01-XX: Ne plus fermer automatiquement les modals au focus
+    // Cela empêchait l'ouverture des modals par l'utilisateur
+    // Les modals doivent rester ouverts si l'utilisateur les a ouverts
 
-    React.useEffect(() => {
-        if (state.ui.showNotificationModal) {
-            const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal Notification ouvert depuis 30s, fermeture forcée');
-                dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
-            }, 30000); // ✅ RÉDUIT: 30 secondes max
-            return () => clearTimeout(timeout);
-        }
-    }, [state.ui.showNotificationModal]);
+    // ✅ SUPPRIMÉ: forceUnlockEverything qui interfère avec les interactions utilisateur
 
-    // ✅ NOUVEAU: Reset au focus de l'écran pour éviter les overlays bloqués
-    // ✅ AMÉLIORÉ: Fermer TOUS les modals au focus pour éviter blocage
-    useFocusEffect(
-        React.useCallback(() => {
-            // Reset des overlays et modals au focus de l'écran
-            // Cela évite qu'un overlay reste ouvert après une navigation
-            const resetOverlays = () => {
-                let hasReset = false;
-                if (state.ui.showCreateServiceAlert) {
-                    console.log('[HomeScreen] 🔄 Reset: Fermeture overlay de confirmation au focus');
-                    dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
-                    dispatch({ type: 'SET_PENDING_INPUT', payload: null });
-                    hasReset = true;
-                }
-                // ✅ AMÉLIORÉ: Fermer aussi les autres modals au focus pour éviter blocage
-                if (state.ui.showGPSModal) {
-                    console.log('[HomeScreen] 🔄 Reset: Fermeture modal GPS au focus');
-                    dispatch({ type: 'TOGGLE_GPS_MODAL' });
-                    hasReset = true;
-                }
-                if (state.ui.showChatModal) {
-                    console.log('[HomeScreen] 🔄 Reset: Fermeture modal Chat au focus');
-                    dispatch({ type: 'TOGGLE_CHAT_MODAL' });
-                    hasReset = true;
-                }
-                if (state.ui.showNotificationModal) {
-                    console.log('[HomeScreen] 🔄 Reset: Fermeture modal Notification au focus');
-                    dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
-                    hasReset = true;
-                }
-                if (hasReset) {
-                    console.log('[HomeScreen] ✅ Reset: Modals fermés au focus, interface débloquée');
-                }
-            };
+    // ✅ SUPPRIMÉ: Auto-déblocage qui interfère avec les interactions utilisateur
+    // Les modals ouverts ne sont pas un "blocage", c'est l'état normal de l'application
 
-            // Reset immédiat au focus
-            resetOverlays();
+    // ✅ SUPPRIMÉ: useEffect qui force la fermeture des modals au montage
+    // Cela créait des conflits avec les interactions utilisateur
+    // Les modals doivent rester dans leur état naturel
 
-            // Pas de cleanup nécessaire ici
-            return undefined;
-        }, [state.ui.showCreateServiceAlert, state.ui.showGPSModal, state.ui.showChatModal, state.ui.showNotificationModal])
-    );
-
-    // ✅ CRITIQUE 2025-12-11: Forcer la fermeture de TOUS les modals au montage pour éviter blocage
-    // ✅ AMÉLIORÉ: Utiliser un timeout immédiat (0ms) pour forcer la fermeture AVANT le premier rendu
-    React.useEffect(() => {
-        // ✅ FORCE CLOSE IMMÉDIAT: Fermer TOUS les modals AVANT le premier rendu
-        const forceCloseAllModals = () => {
-            let hasClosedModals = false;
-
-            // ✅ FORCE CLOSE: Fermer TOUS les modals au montage pour éviter blocage
-            if (state.ui.showCreateServiceAlert) {
-                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Modal de confirmation détecté au montage, fermeture forcée IMMÉDIATE');
-                dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
-                dispatch({ type: 'SET_PENDING_INPUT', payload: null });
-                hasClosedModals = true;
-            }
-            if (state.ui.showGPSModal) {
-                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Modal GPS détecté au montage, fermeture forcée IMMÉDIATE');
-                dispatch({ type: 'TOGGLE_GPS_MODAL' });
-                hasClosedModals = true;
-            }
-            if (state.ui.showChatModal) {
-                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Modal Chat détecté au montage, fermeture forcée IMMÉDIATE');
-                dispatch({ type: 'TOGGLE_CHAT_MODAL' });
-                hasClosedModals = true;
-            }
-            if (state.ui.showNotificationModal) {
-                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Modal Notification détecté au montage, fermeture forcée IMMÉDIATE');
-                dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
-                hasClosedModals = true;
-            }
-            if (state.ui.showProductSelector) {
-                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Product Selector détecté au montage, fermeture forcée IMMÉDIATE');
-                dispatch({ type: 'TOGGLE_PRODUCT_SELECTOR' });
-                hasClosedModals = true;
-            }
-            if (state.ui.showLeaderboard) {
-                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Leaderboard détecté au montage, fermeture forcée IMMÉDIATE');
-                dispatch({ type: 'TOGGLE_LEADERBOARD' });
-                hasClosedModals = true;
-            }
-            if (state.ui.showChallenges) {
-                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Challenges détecté au montage, fermeture forcée IMMÉDIATE');
-                dispatch({ type: 'TOGGLE_CHALLENGES' });
-                hasClosedModals = true;
-            }
-
-            if (hasClosedModals) {
-                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Des modals ont été fermés au montage. L\'interface devrait maintenant être utilisable.');
-            } else {
-                console.log('[HomeScreen] ✅ Aucun modal bloquant détecté au montage.');
-            }
-        };
-
-        // ✅ EXÉCUTER IMMÉDIATEMENT (sans timeout) pour forcer la fermeture AVANT le premier rendu
-        forceCloseAllModals();
-
-        // ✅ DIAGNOSTIC: Logger l'état initial de tous les modals APRÈS la fermeture forcée
-        const modalStates = {
-            showCreateServiceAlert: state.ui.showCreateServiceAlert,
-            showGPSModal: state.ui.showGPSModal,
-            showChatModal: state.ui.showChatModal,
-            showNotificationModal: state.ui.showNotificationModal,
-            showProductSelector: state.ui.showProductSelector,
-            showLeaderboard: state.ui.showLeaderboard,
-            showChallenges: state.ui.showChallenges,
-        };
-        console.log('[HomeScreen] 🔍 DIAGNOSTIC: État des modals au montage (après fermeture forcée):', modalStates);
-    }, []); // Seulement au montage
-
-    // ✅ CORRIGÉ 2025-01-27: Handler sans blocage - navigation immédiate avec useSafeNavigation
-    const handleDeliveryPressInternal = React.useCallback(() => {
-        console.log('[HomeScreen] 🚚 Début navigation vers Delivery');
-        hapticPress(); // ✅ PHASE 2: Haptic feedback
-
-        // ✅ Navigation sécurisée avec gestion d'erreur automatique
-        const success = safeNavigate('Delivery', undefined, {
-            errorMessage: 'Impossible d\'ouvrir la livraison. Veuillez réessayer.',
-        });
-
-        if (success) {
-            hapticSuccess(); // ✅ PHASE 2: Feedback succès
-        }
-    }, [safeNavigate]);
-
-    // ✅ CORRIGÉ 2025-01-27: Réduire drastiquement le lockDuration
-    const handleDeliveryPress = useLockedHandler(handleDeliveryPressInternal, {
-        lockDuration: 100,
-        onError: (error) => {
-            console.error('[HomeScreen] Erreur handleDeliveryPress:', error);
-            forceUnlock(); // ✅ Forcer le déverrouillage en cas d'erreur
-        }
-    });
+    // ✅ CORRIGÉ 2025-01-XX: Handler simplifié SANS système de lock qui bloque les interactions
+    const handleDeliveryPress = React.useCallback(() => {
+        console.log('[HomeScreen] 🚚 Navigation vers Delivery');
+        hapticPress();
+        forceNavigate('Delivery');
+        hapticSuccess();
+    }, [forceNavigate]);
 
     // ✅ NOUVEAU 2025-01-27: Charger le nombre de conversations non lues
     const loadUnreadChatCount = React.useCallback(async (): Promise<number> => {
@@ -369,6 +264,18 @@ const HomeScreen: React.FC = () => {
 
         try {
             const response = await apiGet('/api/chat/conversations');
+
+            // ✅ CRITIQUE 2025-12-11: Vérifier le status 401 AVANT de vérifier les données
+            // apiGet ne lance pas d'exception, il retourne un objet avec success: false et status: 401
+            if (response.status === 401 || (!response.success && response.status === 401)) {
+                console.warn('[HomeScreen] ⚠️ Token invalide/expiré (401) détecté dans loadUnreadChatCount');
+                // ✅ CRITIQUE: Lancer une erreur avec status 401 pour gestion cohérente
+                const error: any = new Error('Unauthorized: Token invalide ou expiré');
+                error.status = 401;
+                error.statusCode = 401;
+                throw error;
+            }
+
             if (response.success && response.data && Array.isArray(response.data)) {
                 // Calculer le total des messages non lus
                 const unreadTotal = response.data.reduce((total: number, chat: any) => {
@@ -377,25 +284,28 @@ const HomeScreen: React.FC = () => {
                 return unreadTotal;
             }
             return 0;
-        } catch (error) {
+        } catch (error: any) {
+            // ✅ CRITIQUE: Si c'est une erreur 401, la relancer pour gestion cohérente
+            if (error?.status === 401 || error?.statusCode === 401) {
+                throw error; // Relancer pour gestion cohérente
+            }
             console.error('[HomeScreen] Erreur chargement conversations non lues:', error);
             return 0;
         }
     }, [user?.id]);
 
-    const handleChatPressInternal = React.useCallback(() => {
-        // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer - permettre les interactions même si navigation en cours
-        console.log('[HomeScreen] 💬 Début ouverture chat');
-        hapticPress(); // ✅ PHASE 2: Haptic feedback
+    // ✅ CORRIGÉ 2025-01-XX: Handler simplifié SANS système de lock
+    const handleChatPress = React.useCallback(() => {
+        console.log('[HomeScreen] 💬 Ouverture chat');
+        hapticPress();
         const wasOpen = state.ui.showChatModal;
 
         try {
             dispatch({ type: 'TOGGLE_CHAT_MODAL' });
             console.log('[HomeScreen] ✅ Chat modal togglé');
 
-            // ✅ CORRIGÉ: Charger le compteur en arrière-plan SANS bloquer la navigation
+            // Charger le compteur en arrière-plan
             if (!wasOpen && loadUnreadChatCount) {
-                // ✅ CORRIGÉ: Ne pas attendre - charger en arrière-plan
                 loadUnreadChatCount()
                     .then((count) => {
                         dispatch({ type: 'SET_UNREAD_CHAT_COUNT', payload: count });
@@ -407,16 +317,12 @@ const HomeScreen: React.FC = () => {
         } catch (error) {
             console.error('[HomeScreen] ❌ Erreur ouverture chat:', error);
         }
-        // ✅ CORRIGÉ 2025-12-11: Ne plus utiliser isNavigating pour bloquer
     }, [state.ui.showChatModal, loadUnreadChatCount]);
 
-    // ✅ CORRIGÉ 2025-01-27: Réduire drastiquement le lockDuration pour réactivité
-    const handleChatPress = useLockedHandler(handleChatPressInternal, { lockDuration: 100 });
-
-    const handleNotificationPressInternal = React.useCallback(() => {
-        // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer - permettre les interactions même si navigation en cours
-        console.log('[HomeScreen] 🔔 Début ouverture notifications');
-        hapticPress(); // ✅ PHASE 2: Haptic feedback
+    // ✅ CORRIGÉ 2025-01-XX: Handler simplifié SANS système de lock
+    const handleNotificationPress = React.useCallback(() => {
+        console.log('[HomeScreen] 🔔 Ouverture notifications');
+        hapticPress();
 
         try {
             dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
@@ -424,11 +330,7 @@ const HomeScreen: React.FC = () => {
         } catch (error) {
             console.error('[HomeScreen] ❌ Erreur ouverture notifications:', error);
         }
-        // ✅ CORRIGÉ 2025-12-11: Ne plus utiliser isNavigating pour bloquer
     }, []);
-
-    // ✅ CORRIGÉ 2025-01-27: Réduire drastiquement le lockDuration pour réactivité
-    const handleNotificationPress = useLockedHandler(handleNotificationPressInternal, { lockDuration: 100 });
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
@@ -482,9 +384,9 @@ const HomeScreen: React.FC = () => {
     // Utilise la même navigation que le bouton à l'en-tête qui fonctionne correctement
     const handleOpenVideoCreation = React.useCallback(() => {
         console.log('[HomeScreen] 🎬 Ouverture création vidéo via navigate("Video")...');
-        // ✅ Utiliser safeNavigate pour navigation sécurisée
-        safeNavigate('Video');
-    }, [safeNavigate]);
+        // ✅ Utiliser forceNavigate pour garantir que la navigation fonctionne
+        forceNavigate('Video');
+    }, [forceNavigate]);
 
     const loadUnreadNotificationsCount = React.useCallback(async (): Promise<number> => {
         if (!user?.id) {
@@ -493,6 +395,18 @@ const HomeScreen: React.FC = () => {
 
         try {
             const response = await apiGet<{ count: number }>(`/api/notifications/user/${user.id}/unread-count`);
+
+            // ✅ CRITIQUE 2025-12-11: Vérifier le status 401 AVANT de vérifier les données
+            // apiGet ne lance pas d'exception, il retourne un objet avec success: false et status: 401
+            if (response.status === 401 || (!response.success && response.status === 401)) {
+                console.warn('[HomeScreen] ⚠️ Token invalide/expiré (401) détecté dans loadUnreadNotificationsCount');
+                // ✅ CRITIQUE: Lancer une erreur avec status 401 pour que le polling puisse la détecter
+                const error: any = new Error('Unauthorized: Token invalide ou expiré');
+                error.status = 401;
+                error.statusCode = 401;
+                throw error;
+            }
+
             if (response.data && typeof response.data.count === 'number') {
                 const count = response.data.count;
 
@@ -511,7 +425,11 @@ const HomeScreen: React.FC = () => {
                 return count;
             }
             return 0;
-        } catch (error) {
+        } catch (error: any) {
+            // ✅ CRITIQUE: Si c'est une erreur 401, la relancer pour que le polling puisse la détecter
+            if (error?.status === 401 || error?.statusCode === 401) {
+                throw error; // Relancer pour que le polling puisse la détecter
+            }
             console.error('[HomeScreen] Erreur chargement notifications non lues:', error);
             return 0;
         }
@@ -605,30 +523,44 @@ const HomeScreen: React.FC = () => {
     }, [user?.id, loadUnreadChatCount, loadUnreadNotificationsCount]);
 
     // ✅ OPTIMISATION: Rafraîchissement automatique des notifications avec backoff exponentiel
+    // ✅ CORRIGÉ 2025-12-11: Utiliser user?.id directement pour éviter recréations inutiles
+    // ✅ CRITIQUE 2025-12-11: Arrêter immédiatement en cas d'erreur 401 pour éviter blocage
     React.useEffect(() => {
+        // ✅ SÉCURITÉ: Ne pas démarrer le polling si pas d'utilisateur
+        if (!user?.id) {
+            console.log('[HomeScreen] ⏸️ Pas d\'utilisateur, polling notifications désactivé');
+            return;
+        }
+
         // ✅ SÉCURITÉ: Vérifier que la fonction existe avant de l'utiliser
         if (typeof loadUnreadNotificationsCount !== 'function') {
             console.warn('[HomeScreen] loadUnreadNotificationsCount non disponible');
-            return () => {
-                // ✅ Retourner une fonction vide si la fonction n'est pas disponible
-            };
+            return;
         }
 
         // ✅ NOUVEAU: Mécanisme de backoff exponentiel pour éviter les requêtes en boucle en cas d'erreur
         let consecutiveErrors = 0;
         let currentInterval = 300000; // 5 minutes par défaut
         let intervalId: NodeJS.Timeout | null = null;
+        let initialTimeout: NodeJS.Timeout | null = null;
         let isRefreshing = false; // ✅ NOUVEAU: Éviter les requêtes simultanées
+        let isCleanedUp = false; // ✅ NOUVEAU: Flag pour éviter les requêtes après cleanup
+        let abortController: AbortController | null = null; // ✅ NOUVEAU: Pour annuler les requêtes en cours
 
         const refreshNotifications = async () => {
+            // ✅ SÉCURITÉ: Ne pas exécuter si cleanup déjà fait
+            if (isCleanedUp) {
+                return;
+            }
+
             // ✅ NOUVEAU: Éviter les requêtes simultanées
             if (isRefreshing) {
                 console.log('[HomeScreen] ⏸️ Rafraîchissement notifications déjà en cours, ignoré');
                 return;
             }
 
-            // ✅ NOUVEAU: Arrêter les requêtes si trop d'erreurs consécutives (max 3 erreurs)
-            if (consecutiveErrors >= 3) {
+            // ✅ NOUVEAU: Arrêter les requêtes si trop d'erreurs consécutives (max 2 erreurs pour éviter blocage)
+            if (consecutiveErrors >= 2) {
                 console.warn('[HomeScreen] ⚠️ Trop d\'erreurs consécutives, arrêt du rafraîchissement automatique');
                 if (intervalId) {
                     clearInterval(intervalId);
@@ -638,33 +570,70 @@ const HomeScreen: React.FC = () => {
             }
 
             isRefreshing = true;
+
+            // ✅ CRITIQUE: Créer un AbortController pour pouvoir annuler la requête
+            abortController = new AbortController();
+
             try {
                 // ✅ SÉCURITÉ: Vérifier à nouveau que la fonction existe avant de l'appeler
-                if (typeof loadUnreadNotificationsCount === 'function') {
-                    const count = await loadUnreadNotificationsCount();
-                    dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: count });
-                    // ✅ NOUVEAU: Réinitialiser le compteur d'erreurs en cas de succès
-                    consecutiveErrors = 0;
-                    currentInterval = 300000; // Réinitialiser à 5 minutes
+                if (typeof loadUnreadNotificationsCount === 'function' && !isCleanedUp) {
+                    // ✅ CRITIQUE: Timeout court pour éviter blocage (5 secondes max)
+                    const timeoutPromise = new Promise<never>((_, reject) =>
+                        setTimeout(() => reject(new Error('Timeout')), 5000)
+                    );
+
+                    const count = await Promise.race([
+                        loadUnreadNotificationsCount(),
+                        timeoutPromise
+                    ]);
+
+                    if (!isCleanedUp && !abortController.signal.aborted) {
+                        dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: count });
+                        // ✅ NOUVEAU: Réinitialiser le compteur d'erreurs en cas de succès
+                        consecutiveErrors = 0;
+                        currentInterval = 300000; // Réinitialiser à 5 minutes
+                    }
                 }
             } catch (error: any) {
+                if (isCleanedUp || abortController?.signal.aborted) {
+                    return;
+                }
+
                 consecutiveErrors++;
 
-                // ✅ NOUVEAU 2025-12-11: Arrêter immédiatement si erreur 401 (token invalide)
-                if (error?.status === 401 || error?.response?.status === 401 || (error?.message && error.message.includes('401'))) {
-                    console.warn('[HomeScreen] ⚠️ Token invalide (401), arrêt du rafraîchissement automatique');
+                // ✅ CRITIQUE 2025-12-11: Détection améliorée des erreurs 401 (token invalide/expiré)
+                const isUnauthorized =
+                    error?.status === 401 ||
+                    error?.response?.status === 401 ||
+                    error?.statusCode === 401 ||
+                    error?.message === 'Timeout' || // ✅ NOUVEAU: Timeout aussi considéré comme erreur
+                    (error?.message && (error.message.includes('401') || error.message.includes('Unauthorized') || error.message.includes('invalid') || error.message.includes('expired') || error.message.includes('Timeout'))) ||
+                    (error?.response?.data && (error.response.data.includes('401') || error.response.data.includes('Unauthorized')));
+
+                if (isUnauthorized) {
+                    console.warn('[HomeScreen] ⚠️ Token invalide/expiré ou timeout (401), arrêt IMMÉDIAT du rafraîchissement automatique');
+                    // ✅ CRITIQUE: Arrêter TOUT immédiatement
                     if (intervalId) {
                         clearInterval(intervalId);
                         intervalId = null;
                     }
+                    if (initialTimeout) {
+                        clearTimeout(initialTimeout);
+                        initialTimeout = null;
+                    }
+                    if (abortController) {
+                        abortController.abort();
+                        abortController = null;
+                    }
                     isRefreshing = false;
+                    isCleanedUp = true; // ✅ CRITIQUE: Marquer comme nettoyé pour éviter nouvelles requêtes
                     return; // Arrêter immédiatement, ne pas continuer avec backoff
                 }
 
-                console.error(`[HomeScreen] Erreur rafraîchissement notifications (${consecutiveErrors}/3):`, error);
+                console.error(`[HomeScreen] Erreur rafraîchissement notifications (${consecutiveErrors}/2):`, error);
 
                 // ✅ NOUVEAU: Backoff exponentiel - doubler l'intervalle à chaque erreur
-                if (consecutiveErrors < 3) {
+                if (consecutiveErrors < 2 && !isCleanedUp) {
                     currentInterval = Math.min(currentInterval * 2, 1800000); // Max 30 minutes
                     console.log(`[HomeScreen] ⚠️ Intervalle augmenté à ${currentInterval / 1000 / 60} minutes`);
 
@@ -672,31 +641,51 @@ const HomeScreen: React.FC = () => {
                     if (intervalId) {
                         clearInterval(intervalId);
                     }
-                    intervalId = setInterval(refreshNotifications, currentInterval);
+                    if (!isCleanedUp) {
+                        intervalId = setInterval(refreshNotifications, currentInterval);
+                    }
                 }
             } finally {
                 isRefreshing = false;
+                abortController = null;
             }
         };
 
         // ✅ NOUVEAU: Premier rafraîchissement avec délai pour ne pas bloquer le rendu initial
-        const initialTimeout = setTimeout(() => {
-            refreshNotifications();
-        }, 2000); // 2 secondes après le montage
+        initialTimeout = setTimeout(() => {
+            if (!isCleanedUp) {
+                refreshNotifications();
+            }
+        }, 5000); // ✅ AUGMENTÉ: 5 secondes après le montage pour laisser l'UI se charger
 
         // ✅ OPTIMISÉ: Intervalle avec backoff exponentiel
-        intervalId = setInterval(refreshNotifications, currentInterval);
+        intervalId = setInterval(() => {
+            if (!isCleanedUp) {
+                refreshNotifications();
+            }
+        }, currentInterval);
 
         return () => {
+            // ✅ CRITIQUE 2025-12-11: Marquer comme nettoyé AVANT de clear les timers
+            isCleanedUp = true;
+
+            // ✅ CRITIQUE: Annuler toute requête en cours
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+            }
+
             // ✅ SÉCURITÉ: Nettoyer tous les timers
             if (initialTimeout) {
                 clearTimeout(initialTimeout);
+                initialTimeout = null;
             }
             if (intervalId) {
                 clearInterval(intervalId);
+                intervalId = null;
             }
         };
-    }, [loadUnreadNotificationsCount]);
+    }, [user?.id, loadUnreadNotificationsCount]); // ✅ CORRIGÉ: Ajouter user?.id pour éviter recréations
 
     // ✅ OPTIMISÉ: Initialiser les services UX en arrière-plan (ne pas bloquer le rendu)
     React.useEffect(() => {
@@ -973,8 +962,8 @@ const HomeScreen: React.FC = () => {
     }, []);
 
 
-    // Fonction de recherche directe (utilise yukpoclient comme frontend)
-    const handleSearch = async (input: any) => {
+    // ✅ CRITIQUE: Stabiliser handleSearch avec useCallback pour éviter re-création à chaque render
+    const handleSearch = React.useCallback(async (input: any) => {
         // ✅ CORRIGÉ 2025-01-27: Toujours dispatcher SET_LOADING: false dans finally
         try {
             // Vérifier l'authentification
@@ -1172,7 +1161,8 @@ const HomeScreen: React.FC = () => {
                 // Si plus de 15 résultats, on pourra naviguer via "Voir tous"
             } else {
                 // Aucun résultat, naviguer vers ResultatBesoinScreen pour afficher le message
-                safeNavigate('ResultatBesoin', {
+                // ✅ CRITIQUE 2025-12-11: Utiliser forceNavigate pour garantir que la navigation fonctionne
+                forceNavigate('ResultatBesoin', {
                     results: safeResults,
                     type: 'recherche_besoin',
                     suggestion: result,
@@ -1234,24 +1224,23 @@ const HomeScreen: React.FC = () => {
             }
 
             // ✅ Naviguer vers ResultatBesoinScreen avec résultats vides et message d'erreur
-            safeNavigate('ResultatBesoin', {
+            // ✅ CRITIQUE 2025-12-11: Utiliser forceNavigate pour garantir que la navigation fonctionne
+            forceNavigate('ResultatBesoin', {
                 results: [], // Résultats vides
                 type: 'recherche_besoin',
                 error: userFriendlyMessage, // ✅ NOUVEAU: Passer le message d'erreur
                 searchQuery: searchQuery,
                 hasError: true, // ✅ NOUVEAU: Flag pour indiquer qu'il y a eu une erreur
-            }, {
-                errorMessage: 'Impossible d\'ouvrir les résultats de recherche. Veuillez réessayer.',
             });
 
             console.log('[HomeScreen] Navigation vers ResultatBesoin avec erreur ✅');
         } finally {
             dispatch({ type: 'SET_LOADING', payload: false });
         }
-    };
+    }, [user, location, dispatch, forceNavigate]); // ✅ CRITIQUE: Dépendances pour useCallback
 
-    // Fonction de création de service (utilise yukpoclient comme frontend)
-    const handleCreateService = async (input: any) => {
+    // ✅ CRITIQUE: Stabiliser handleCreateService avec useCallback
+    const handleCreateService = React.useCallback(async (input: any) => {
         try {
             // Vérifier l'authentification
             if (!user) {
@@ -1490,19 +1479,19 @@ const HomeScreen: React.FC = () => {
             if (hasExistingServiceWithProducts && firstServiceId) {
                 console.log('[HomeScreen] 🛍️ Navigation vers formulaire SIMPLE (AjouterProduitSimple)');
                 console.log('[HomeScreen] ✅ Raison: Service ID', firstServiceId, 'a déjà des produits');
-                safeNavigate('AjouterProduitSimple', {
+                // ✅ CRITIQUE 2025-12-11: Utiliser forceNavigate pour garantir que la navigation fonctionne
+                forceNavigate('AjouterProduitSimple', {
                     serviceId: firstServiceId,
                     suggestionIA: result.data,
                     mediaData: mediaData,
                     gpsData: gpsData
-                }, {
-                    errorMessage: 'Impossible d\'ouvrir le formulaire de création. Veuillez réessayer.',
                 });
             } else {
                 // ✅ Pas de service avec produits → Formulaire COMPLET (création service + premier produit)
                 console.log('[HomeScreen] 📝 Navigation vers formulaire COMPLET (FormulaireYukpoIntelligent)');
                 console.log('[HomeScreen] ✅ Raison: Aucun service avec produits détecté → Création complète');
-                safeNavigate('FormulaireYukpoIntelligent', {
+                // ✅ CRITIQUE 2025-12-11: Utiliser forceNavigate pour garantir que la navigation fonctionne
+                forceNavigate('FormulaireYukpoIntelligent', {
                     suggestion: {
                         ...result.data,
                         intention: 'creation_service',
@@ -1512,8 +1501,6 @@ const HomeScreen: React.FC = () => {
                     mode: 'create',
                     mediaData: mediaData,
                     gpsData: gpsData
-                }, {
-                    errorMessage: 'Impossible d\'ouvrir le formulaire de création. Veuillez réessayer.',
                 });
             }
         } catch (error: any) {
@@ -1534,10 +1521,10 @@ const HomeScreen: React.FC = () => {
         } finally {
             dispatch({ type: 'SET_LOADING', payload: false });
         }
-    };
+    }, [user, location, dispatch, forceNavigate]); // ✅ CRITIQUE: Dépendances pour useCallback
 
-    // Gestion de la soumission (comme frontend - direct)
-    const handleSubmit = async (input: any) => {
+    // ✅ CRITIQUE: Stabiliser handleSubmit avec useCallback
+    const handleSubmit = React.useCallback(async (input: any) => {
         try {
             console.log('[HomeScreen] ===== SOUMISSION =====');
             console.log('[HomeScreen] Mode actuel:', state.ui.isCreateService ? 'CRÉATION' : 'RECHERCHE');
@@ -1573,54 +1560,151 @@ const HomeScreen: React.FC = () => {
             // Mais s'assurer que l'erreur est bien propagée
             throw error;
         }
-    };
+    }, [state.ui.isCreateService, handleSearch, dispatch]); // ✅ CRITIQUE: Dépendances pour useCallback
 
-    // Fonction pour confirmer la création de service
-    const confirmCreateService = async () => {
+    // ✅ CRITIQUE: Stabiliser confirmCreateService avec useCallback
+    const confirmCreateService = React.useCallback(async () => {
         if (state.data.pendingInput) {
             dispatch({ type: 'SET_LOADING', payload: true });
             dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
             await handleCreateService(state.data.pendingInput);
             dispatch({ type: 'SET_PENDING_INPUT', payload: null });
         }
-    };
+    }, [state.data.pendingInput, handleCreateService, dispatch]); // ✅ CRITIQUE: Dépendances pour useCallback
 
-    // Fonction pour annuler la création de service
-    const cancelCreateService = async () => {
+    // ✅ CRITIQUE: Stabiliser cancelCreateService avec useCallback
+    const cancelCreateService = React.useCallback(async () => {
         if (state.data.pendingInput) {
             dispatch({ type: 'SET_LOADING', payload: true });
             dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
             await handleSearch(state.data.pendingInput);
             dispatch({ type: 'SET_PENDING_INPUT', payload: null });
         }
-    };
+    }, [state.data.pendingInput, handleSearch, dispatch]); // ✅ CRITIQUE: Dépendances pour useCallback
+
+    // ✅ CRITIQUE: Stabiliser les handlers pour les boutons de mode
+    const handleSetSearchMode = React.useCallback(() => {
+        hapticSelect();
+        dispatch({ type: 'SET_IS_CREATE_SERVICE', payload: false });
+    }, [dispatch]);
+
+    const handleSetCreateMode = React.useCallback(() => {
+        hapticSelect();
+        dispatch({ type: 'SET_IS_CREATE_SERVICE', payload: true });
+    }, [dispatch]);
+
+    // ✅ CRITIQUE: Stabiliser les handlers pour MixedContentCarousel
+    const handleShowAllResults = React.useCallback(() => {
+        hapticSelect();
+        forceNavigate('ResultatBesoin', {
+            results: state.data.searchResults,
+            type: 'recherche_besoin',
+            searchQuery: state.data.searchQuery,
+            hasError: false,
+            error: null
+        });
+    }, [state.data.searchResults, state.data.searchQuery, forceNavigate]);
+
+    const handleClearSearch = React.useCallback(() => {
+        dispatch({ type: 'CLEAR_SEARCH' });
+    }, [dispatch]);
+
+    // ✅ CRITIQUE: Stabiliser le handler pour InfiniteFeed
+    const handleFeedItemPress = React.useCallback((item: any) => {
+        hapticSelect();
+        const productId = item.id || item.service_id;
+        if (!productId) {
+            console.warn('[HomeScreen] ⚠️ ProductId manquant pour l\'item:', item);
+            Alert.alert('Erreur', 'Identifiant du produit manquant.');
+            return;
+        }
+        forceNavigate('ProductDetail', {
+            productId: String(productId),
+        });
+    }, [forceNavigate]);
+
+    // ✅ CRITIQUE: Stabiliser les handlers pour ServiceProductSelector
+    const handleProductSelect = React.useCallback((product: any) => {
+        navigateToVideoWizard(navigation, product);
+        dispatch({ type: 'TOGGLE_PRODUCT_SELECTOR' });
+        dispatch({ type: 'SET_PRODUCTS_FOR_SELECTION', payload: [] });
+    }, [navigation, dispatch]);
+
+    const handleProductSelectorClose = React.useCallback(() => {
+        dispatch({ type: 'TOGGLE_PRODUCT_SELECTOR' });
+        dispatch({ type: 'SET_PRODUCTS_FOR_SELECTION', payload: [] });
+    }, [dispatch]);
+
+    // ✅ CRITIQUE: Stabiliser les handlers pour les modals
+    const handleCloseGPSModal = React.useCallback(() => {
+        dispatch({ type: 'TOGGLE_GPS_MODAL' });
+    }, [dispatch]);
+
+    const handleCloseConfirmationModal = React.useCallback(() => {
+        dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+        dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+    }, [dispatch]);
+
+    const handleCloseConfirmationModalByOverlay = React.useCallback(() => {
+        dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+        dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+    }, [dispatch]);
+
+    // ✅ CRITIQUE: Stabiliser les handlers pour les modals de notification et chat
+    const handleCloseNotificationModal = React.useCallback(() => {
+        dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
+    }, [dispatch]);
+
+    const handleCloseChatModal = React.useCallback(() => {
+        dispatch({ type: 'TOGGLE_CHAT_MODAL' });
+    }, [dispatch]);
+
+    const handleNotificationModalChange = React.useCallback(async () => {
+        const count = await loadUnreadNotificationsCount();
+        dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: count });
+    }, [loadUnreadNotificationsCount, dispatch]);
+
+    const handleOpenChatFromHistory = React.useCallback((chatId: string) => {
+        console.log('Ouvrir chat:', chatId);
+        dispatch({ type: 'TOGGLE_CHAT_MODAL' });
+    }, [dispatch]);
+
+    const handleCloseConfirmationModalByBackButton = React.useCallback(() => {
+        console.log('[HomeScreen] 🔄 Fermeture modal par bouton retour Android');
+        dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+        dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+    }, [dispatch]);
+
+    // ✅ CRITIQUE: Stabiliser le handler pour ModernGPSModal
+    const handleGPSSelect = React.useCallback((coordinatesString: string) => {
+        try {
+            // Parser le premier point pour la météo
+            const firstPoint = coordinatesString.split('|')[0].split(',');
+            if (firstPoint.length === 2) {
+                const lat = parseFloat(firstPoint[0]);
+                const lng = parseFloat(firstPoint[1]);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    dispatch({ type: 'SET_SELECTED_LOCATION', payload: { lat, lng } });
+                    console.log('[HomeScreen] ✅ Localisation GPS définie:', { lat, lng });
+                } else {
+                    console.error('[HomeScreen] ❌ Coordonnées GPS invalides');
+                    Alert.alert('Erreur', 'Coordonnées GPS invalides');
+                }
+            } else {
+                console.error('[HomeScreen] ❌ Format de coordonnées invalide');
+            }
+        } catch (error) {
+            console.error('[HomeScreen] ❌ Erreur parsing GPS:', error);
+            Alert.alert('Erreur', 'Impossible de lire les coordonnées GPS');
+        }
+        dispatch({ type: 'TOGGLE_GPS_MODAL' });
+    }, [dispatch]);
 
     // ✅ NOUVEAU: Créer les styles avec le thème actuel
     const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
 
-    // ✅ DIAGNOSTIC 2025-12-11: Logger l'état des modals périodiquement pour debug
-    React.useEffect(() => {
-        const diagnosticInterval = setInterval(() => {
-            const modalStates = {
-                showCreateServiceAlert: state.ui.showCreateServiceAlert,
-                showGPSModal: state.ui.showGPSModal,
-                showChatModal: state.ui.showChatModal,
-                showNotificationModal: state.ui.showNotificationModal,
-                showProductSelector: state.ui.showProductSelector,
-                showLeaderboard: state.ui.showLeaderboard,
-                showChallenges: state.ui.showChallenges,
-                loading: state.ui.loading,
-            };
-
-            // Logger seulement si un modal est ouvert (pour éviter spam)
-            const hasOpenModal = Object.values(modalStates).some(v => v === true);
-            if (hasOpenModal) {
-                console.log('[HomeScreen] 🔍 DIAGNOSTIC: État des modals:', modalStates);
-            }
-        }, 5000); // Toutes les 5 secondes
-
-        return () => clearInterval(diagnosticInterval);
-    }, [state.ui]);
+    // ✅ SUPPRIMÉ: Interval de diagnostic qui s'exécute toutes les 5 secondes
+    // Réduire les timers/intervals pour améliorer les performances
 
     return (
         <ModernBackground variant="home">
@@ -1632,10 +1716,8 @@ const HomeScreen: React.FC = () => {
                     {/* ✅ OPTIMISATION: Header collapsible avec animations */}
                     {/* ✅ DIAGNOSTIC: Tester les interactions sur le HomeHeader */}
                     <View
-                        onTouchStart={() => {
-                            console.log('[HomeScreen] 🔍 DIAGNOSTIC: Touch détecté sur le conteneur du HomeHeader');
-                        }}
                         pointerEvents="box-none"
+                    // ✅ CRITIQUE: pointerEvents="box-none" pour permettre les touches aux enfants
                     >
                         <HomeHeader
                             scrollY={scrollY}
@@ -1643,28 +1725,23 @@ const HomeScreen: React.FC = () => {
                             unreadNotificationsCount={state.metadata.unreadNotificationsCount}
                             unreadChatCount={state.metadata.unreadChatCount} // ✅ NOUVEAU 2025-01-27: Nombre de conversations non lues
                             selectedLocation={state.metadata.selectedLocation}
-                            onDeliveryPress={() => {
-                                console.log('[HomeScreen] 🔍 DIAGNOSTIC: onDeliveryPress appelé');
-                                handleDeliveryPress();
-                            }}
-                            onChatPress={() => {
-                                console.log('[HomeScreen] 🔍 DIAGNOSTIC: onChatPress appelé');
-                                handleChatPress();
-                            }}
-                            onNotificationPress={() => {
-                                console.log('[HomeScreen] 🔍 DIAGNOSTIC: onNotificationPress appelé');
-                                handleNotificationPress();
-                            }}
+                            onDeliveryPress={handleDeliveryPress}
+                            // ✅ CRITIQUE: Passer directement le handler stable (déjà dans useCallback)
+                            onChatPress={handleChatPress}
+                            // ✅ CRITIQUE: Passer directement le handler stable (déjà dans useCallback)
+                            onNotificationPress={handleNotificationPress}
+                            // ✅ CRITIQUE: Passer directement le handler stable (déjà dans useCallback)
                             onDebugNotifications={handleDebugNotifications}
                             navigation={navigation}
                             language={language}
                             onLanguageChange={setLanguage}
                             showLeaderboard={state.ui.showLeaderboard}
                             showChallenges={state.ui.showChallenges}
-                            onShowLeaderboard={() => dispatch({ type: 'TOGGLE_LEADERBOARD' })}
-                            onShowChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
-                            onCloseLeaderboard={() => dispatch({ type: 'TOGGLE_LEADERBOARD' })}
-                            onCloseChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
+                            onShowLeaderboard={React.useCallback(() => dispatch({ type: 'TOGGLE_LEADERBOARD' }), [dispatch])}
+                            onShowChallenges={React.useCallback(() => dispatch({ type: 'TOGGLE_CHALLENGES' }), [dispatch])}
+                            onCloseLeaderboard={React.useCallback(() => dispatch({ type: 'TOGGLE_LEADERBOARD' }), [dispatch])}
+                            onCloseChallenges={React.useCallback(() => dispatch({ type: 'TOGGLE_CHALLENGES' }), [dispatch])}
+                            // ✅ CRITIQUE: Stabiliser tous les handlers avec useCallback
                             disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus désactiver pour éviter les interactions bloquées
                         />
                     </View>
@@ -1678,11 +1755,9 @@ const HomeScreen: React.FC = () => {
                                     title={t('search.find')}
                                     icon="🔍"
                                     variant={!state.ui.isCreateService ? 'primary' : 'outline'}
-                                    disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus désactiver
-                                    onPress={() => {
-                                        hapticSelect();
-                                        dispatch({ type: 'SET_IS_CREATE_SERVICE', payload: false });
-                                    }}
+                                    disabled={false}
+                                    onPress={handleSetSearchMode}
+                                    // ✅ CRITIQUE: Utiliser le handler stabilisé
                                     accessibilityLabel={t('search.find')}
                                 />
                             </View>
@@ -1691,11 +1766,9 @@ const HomeScreen: React.FC = () => {
                                     title={t('search.create')}
                                     icon="➕"
                                     variant={state.ui.isCreateService ? 'primary' : 'outline'}
-                                    disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus désactiver
-                                    onPress={() => {
-                                        hapticSelect();
-                                        dispatch({ type: 'SET_IS_CREATE_SERVICE', payload: true });
-                                    }}
+                                    disabled={false}
+                                    onPress={handleSetCreateMode}
+                                    // ✅ CRITIQUE: Utiliser le handler stabilisé
                                     accessibilityLabel={t('search.create')}
                                 />
                             </View>
@@ -1708,10 +1781,11 @@ const HomeScreen: React.FC = () => {
                             placeholder={state.ui.isCreateService
                                 ? t('search.create')
                                 : t('search.placeholder')}
-                            onGPSPress={() => {
-                                hapticSelect(); // ✅ PHASE 2: Haptic feedback
+                            onGPSPress={React.useCallback(() => {
+                                hapticSelect();
                                 dispatch({ type: 'TOGGLE_GPS_MODAL' });
-                            }}
+                            }, [dispatch])}
+                            // ✅ CRITIQUE: Stabiliser le handler GPS avec useCallback
                             showSendButton={true}
                             showAutocomplete={!state.ui.isCreateService} // ✅ NOUVEAU: Autocomplete uniquement en mode recherche
                             isSearchMode={!state.ui.isCreateService} // ✅ NOUVEAU: Mode recherche
@@ -1720,6 +1794,7 @@ const HomeScreen: React.FC = () => {
                     </View>
 
                     {/* ✅ OPTIMISATION: FlatList virtualisé pour meilleure performance */}
+                    {/* ✅ CRITIQUE: pointerEvents="box-none" pour ne pas intercepter les touches des boutons fixes */}
                     <FlatList
                         data={[
                             { id: 'carousel', type: 'carousel' },
@@ -1783,20 +1858,10 @@ const HomeScreen: React.FC = () => {
                                                 searchResults={state.data.searchResults}
                                                 searchQuery={state.data.searchQuery}
                                                 totalSearchResults={state.data.totalSearchResults}
-                                                onShowAllResults={() => {
-                                                    // ✅ AMÉLIORÉ: Navigation sécurisée avec gestion d'erreur et haptic feedback
-                                                    hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
-                                                    safeNavigate('ResultatBesoin', {
-                                                        results: state.data.searchResults,
-                                                        type: 'recherche_besoin',
-                                                        searchQuery: state.data.searchQuery,
-                                                        hasError: false,
-                                                        error: null
-                                                    });
-                                                }}
-                                                onClearSearch={() => {
-                                                    dispatch({ type: 'CLEAR_SEARCH' });
-                                                }}
+                                                onShowAllResults={handleShowAllResults}
+                                                // ✅ CRITIQUE: Utiliser le handler stabilisé
+                                                onClearSearch={handleClearSearch}
+                                            // ✅ CRITIQUE: Utiliser le handler stabilisé
                                             />
                                         </View>
                                     </AnimatedCard>
@@ -1898,19 +1963,8 @@ const HomeScreen: React.FC = () => {
                                                                 lat: state.metadata.selectedLocation.lat,
                                                                 lng: state.metadata.selectedLocation.lng,
                                                             } : null}
-                                                            onItemPress={(item) => {
-                                                                // ✅ AMÉLIORÉ: Navigation sécurisée avec safeNavigate
-                                                                hapticSelect(); // ✅ Haptic feedback pour confirmer l'action
-                                                                const productId = item.id || item.service_id;
-                                                                if (!productId) {
-                                                                    console.warn('[HomeScreen] ⚠️ ProductId manquant pour l\'item:', item);
-                                                                    Alert.alert('Erreur', 'Identifiant du produit manquant.');
-                                                                    return;
-                                                                }
-                                                                safeNavigate('ProductDetail', {
-                                                                    productId: String(productId), // ✅ S'assurer que c'est une string
-                                                                });
-                                                            }}
+                                                            onItemPress={handleFeedItemPress}
+                                                        // ✅ CRITIQUE: Utiliser le handler stabilisé
                                                         />
                                                     ) : (
                                                         <View style={{ padding: 20, alignItems: 'center' }}>
@@ -1931,7 +1985,8 @@ const HomeScreen: React.FC = () => {
                         onScroll={onScroll}
                         scrollEventThrottle={16}
                         showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
+                        keyboardShouldPersistTaps="always"
+                        // ✅ CRITIQUE: "always" au lieu de "handled" pour ne pas bloquer les touches
                         refreshControl={
                             <RefreshControl
                                 refreshing={state.ui.refreshing}
@@ -1955,15 +2010,17 @@ const HomeScreen: React.FC = () => {
                         maxToRenderPerBatch={2}
                         windowSize={3}
                         initialNumToRender={2}
-                        nestedScrollEnabled={true}
+                        nestedScrollEnabled={false}
+                    // ✅ CRITIQUE: Désactiver nestedScrollEnabled pour éviter conflits de touches
                     />
 
 
                     {/* Modal GPS Moderne avec support des zones - AVEC ERROR BOUNDARY */}
+                    {/* ✅ CRITIQUE: Rendre conditionnellement pour éviter overlays invisibles */}
                     {state.ui.showGPSModal && (
                         <ErrorBoundary
                             fallback={
-                                <Modal visible={state.ui.showGPSModal} transparent={true}>
+                                <Modal visible={true} transparent={true}>
                                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.8)' }}>
                                         <View style={{ backgroundColor: '#FFF', padding: 24, borderRadius: 16, maxWidth: 300 }}>
                                             <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' }}>❌</Text>
@@ -1975,7 +2032,8 @@ const HomeScreen: React.FC = () => {
                                             </Text>
                                             <TouchableOpacity
                                                 style={{ backgroundColor: '#6366F1', padding: 12, borderRadius: 8, alignItems: 'center' }}
-                                                onPress={() => dispatch({ type: 'TOGGLE_GPS_MODAL' })}
+                                                onPress={handleCloseGPSModal}
+                                            // ✅ CRITIQUE: Utiliser le handler stabilisé
                                             >
                                                 <Text style={{ color: '#FFF', fontWeight: '600' }}>Fermer</Text>
                                             </TouchableOpacity>
@@ -1985,31 +2043,12 @@ const HomeScreen: React.FC = () => {
                             }
                         >
                             <ModernGPSModal
-                                visible={state.ui.showGPSModal}
-                                onClose={() => dispatch({ type: 'TOGGLE_GPS_MODAL' })}
-                                onSelect={(coordinatesString) => {
-                                    try {
-                                        // Parser le premier point pour la météo
-                                        const firstPoint = coordinatesString.split('|')[0].split(',');
-                                        if (firstPoint.length === 2) {
-                                            const lat = parseFloat(firstPoint[0]);
-                                            const lng = parseFloat(firstPoint[1]);
-                                            if (!isNaN(lat) && !isNaN(lng)) {
-                                                dispatch({ type: 'SET_SELECTED_LOCATION', payload: { lat, lng } });
-                                                console.log('[HomeScreen] ✅ Localisation GPS définie:', { lat, lng });
-                                            } else {
-                                                console.error('[HomeScreen] ❌ Coordonnées GPS invalides');
-                                                Alert.alert('Erreur', 'Coordonnées GPS invalides');
-                                            }
-                                        } else {
-                                            console.error('[HomeScreen] ❌ Format de coordonnées invalide');
-                                        }
-                                    } catch (error) {
-                                        console.error('[HomeScreen] ❌ Erreur parsing GPS:', error);
-                                        Alert.alert('Erreur', 'Impossible de lire les coordonnées GPS');
-                                    }
-                                    dispatch({ type: 'TOGGLE_GPS_MODAL' });
-                                }}
+                                visible={true}
+                                // ✅ CRITIQUE: visible={true} car déjà conditionné par {state.ui.showGPSModal &&}
+                                onClose={handleCloseGPSModal}
+                                // ✅ CRITIQUE: Utiliser le handler stabilisé
+                                onSelect={handleGPSSelect}
+                                // ✅ CRITIQUE: Utiliser le handler stabilisé
                                 currentLocation={state.metadata.selectedLocation}
                                 title="Sélectionner votre localisation"
                                 allowZoneSelection={true}
@@ -2019,24 +2058,30 @@ const HomeScreen: React.FC = () => {
 
 
                     {/* Modal Notifications */}
-                    <NotificationHistoryModal
-                        isOpen={state.ui.showNotificationModal}
-                        onClose={() => dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' })}
-                        onChange={async () => {
-                            const count = await loadUnreadNotificationsCount();
-                            dispatch({ type: 'SET_UNREAD_NOTIFICATIONS', payload: count });
-                        }}
-                    />
+                    {/* ✅ CRITIQUE: Rendre conditionnellement pour éviter overlays invisibles */}
+                    {state.ui.showNotificationModal && (
+                        <NotificationHistoryModal
+                            isOpen={true}
+                            // ✅ CRITIQUE: isOpen={true} car déjà conditionné par {state.ui.showNotificationModal &&}
+                            onClose={handleCloseNotificationModal}
+                            // ✅ CRITIQUE: Utiliser le handler stabilisé
+                            onChange={handleNotificationModalChange}
+                        // ✅ CRITIQUE: Utiliser le handler stabilisé
+                        />
+                    )}
 
                     {/* Modal Chat/Conversations */}
-                    <ChatHistoryModal
-                        isOpen={state.ui.showChatModal}
-                        onClose={() => dispatch({ type: 'TOGGLE_CHAT_MODAL' })}
-                        onOpenChat={(chatId: string) => {
-                            console.log('Ouvrir chat:', chatId);
-                            dispatch({ type: 'TOGGLE_CHAT_MODAL' });
-                        }}
-                    />
+                    {/* ✅ CRITIQUE: Rendre conditionnellement pour éviter overlays invisibles */}
+                    {state.ui.showChatModal && (
+                        <ChatHistoryModal
+                            isOpen={true}
+                            // ✅ CRITIQUE: isOpen={true} car déjà conditionné par {state.ui.showChatModal &&}
+                            onClose={handleCloseChatModal}
+                            // ✅ CRITIQUE: Utiliser le handler stabilisé
+                            onOpenChat={handleOpenChatFromHistory}
+                        // ✅ CRITIQUE: Utiliser le handler stabilisé
+                        />
+                    )}
 
                     {/* Alerte de confirmation pour création de service */}
                     {/* ✅ CRITIQUE: Vérifier que le modal n'est visible QUE si showCreateServiceAlert est true */}
@@ -2044,32 +2089,24 @@ const HomeScreen: React.FC = () => {
                         <Modal
                             animationType="fade"
                             transparent={true}
-                            visible={state.ui.showCreateServiceAlert}
-                            onRequestClose={() => {
-                                console.log('[HomeScreen] 🔄 Fermeture modal par bouton retour Android');
-                                dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
-                                dispatch({ type: 'SET_PENDING_INPUT', payload: null });
-                            }}
+                            visible={true}
+                            // ✅ CRITIQUE: visible={true} car déjà conditionné par {state.ui.showCreateServiceAlert &&}
+                            onRequestClose={handleCloseConfirmationModalByBackButton}
+                        // ✅ CRITIQUE: Utiliser le handler stabilisé
                         >
                             <View style={styles.confirmationModalOverlay} pointerEvents="box-none">
                                 {/* Overlay cliquable pour fermer */}
                                 <TouchableOpacity
                                     style={StyleSheet.absoluteFill}
                                     activeOpacity={1}
-                                    onPress={() => {
-                                        console.log('[HomeScreen] 🔄 Fermeture overlay par clic extérieur');
-                                        dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
-                                        dispatch({ type: 'SET_PENDING_INPUT', payload: null });
-                                    }}
+                                    onPress={handleCloseConfirmationModalByOverlay}
+                                // ✅ CRITIQUE: Utiliser le handler stabilisé
                                 />
                                 <View style={styles.confirmationModal} pointerEvents="auto">
                                     <TouchableOpacity
                                         style={styles.confirmationCloseButton}
-                                        onPress={() => {
-                                            console.log('[HomeScreen] 🔄 Fermeture modal par bouton X');
-                                            dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
-                                            dispatch({ type: 'SET_PENDING_INPUT', payload: null });
-                                        }}
+                                        onPress={handleCloseConfirmationModal}
+                                        // ✅ CRITIQUE: Utiliser le handler stabilisé
                                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                     >
                                         <Text style={styles.confirmationCloseButtonText}>✕</Text>
@@ -2084,22 +2121,18 @@ const HomeScreen: React.FC = () => {
                                     <View style={styles.confirmationButtons}>
                                         <TouchableOpacity
                                             style={[styles.confirmationButton, styles.confirmationButtonSecondary]}
-                                            onPress={() => {
-                                                console.log('[HomeScreen] 🔄 Annulation création service');
-                                                cancelCreateService();
-                                            }}
-                                            disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading
+                                            onPress={cancelCreateService}
+                                            // ✅ CRITIQUE: Utiliser directement le handler stabilisé
+                                            disabled={false}
                                             activeOpacity={0.7}
                                         >
                                             <Text style={styles.confirmationButtonTextSecondary}>Non, rechercher</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={[styles.confirmationButton, styles.confirmationButtonPrimary]}
-                                            onPress={() => {
-                                                console.log('[HomeScreen] 🔄 Confirmation création service');
-                                                confirmCreateService();
-                                            }}
-                                            disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading
+                                            onPress={confirmCreateService}
+                                            // ✅ CRITIQUE: Utiliser directement le handler stabilisé
+                                            disabled={false}
                                             activeOpacity={0.7}
                                         >
                                             <Text style={styles.confirmationButtonTextPrimary}>
@@ -2116,27 +2149,21 @@ const HomeScreen: React.FC = () => {
                     <ServiceProductSelector
                         visible={state.ui.showProductSelector}
                         products={state.data.productsForSelection}
-                        onSelect={(product) => {
-                            navigateToVideoWizard(navigation, product);
-                            dispatch({ type: 'TOGGLE_PRODUCT_SELECTOR' });
-                            dispatch({ type: 'SET_PRODUCTS_FOR_SELECTION', payload: [] });
-                        }}
-                        onClose={() => {
-                            dispatch({ type: 'TOGGLE_PRODUCT_SELECTOR' });
-                            dispatch({ type: 'SET_PRODUCTS_FOR_SELECTION', payload: [] });
-                        }}
+                        onSelect={handleProductSelect}
+                        // ✅ CRITIQUE: Utiliser le handler stabilisé
+                        onClose={handleProductSelectorClose}
+                    // ✅ CRITIQUE: Utiliser le handler stabilisé
                     />
 
                     {/* ✅ NOUVEAU : Bouton floating "Suivre mes courses" pour coursiers */}
                     {state.metadata.isCourier && (
                         <TouchableOpacity
                             style={styles.floatingCourierButton}
-                            onPress={() => {
-                                hapticPress(); // ✅ Haptic feedback
-                                safeNavigate('CourierDashboard', undefined, {
-                                    errorMessage: 'Impossible d\'ouvrir le tableau de bord coursier. Veuillez réessayer.',
-                                });
-                            }}
+                            onPress={React.useCallback(() => {
+                                hapticPress();
+                                forceNavigate('CourierDashboard');
+                            }, [forceNavigate])}
+                            // ✅ CRITIQUE: Stabiliser le handler avec useCallback
                             activeOpacity={0.8}
                         >
                             <Text style={styles.floatingCourierButtonIcon}>🚴</Text>
@@ -2896,7 +2923,10 @@ const createStyles = (colors: any) => StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 8,
-        zIndex: 1000,
+        zIndex: 500,
+        // ✅ CRITIQUE: zIndex réduit de 1000 à 500 pour ne pas bloquer les boutons du header (zIndex: 1000)
+        pointerEvents: 'auto',
+        // ✅ CRITIQUE: pointerEvents explicite pour garantir les interactions
     },
     floatingCourierButtonIcon: {
         fontSize: 20,

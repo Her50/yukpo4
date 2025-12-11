@@ -78,6 +78,21 @@ export default function App() {
 
   // ✅ CORRECTION CRASH: initObservability dans useEffect pour éviter blocage
   React.useEffect(() => {
+    // ✅ CRITIQUE 2025-12-11: Initialiser AsyncStorage en premier (résout "Driver not found" à la racine)
+    (async () => {
+      try {
+        const { initializeAsyncStorage } = require('./src/utils/asyncStorageInit');
+        const initialized = await initializeAsyncStorage();
+        if (initialized) {
+          console.log('[App] ✅ AsyncStorage initialisé avec succès');
+        } else {
+          console.warn('[App] ⚠️ AsyncStorage non disponible (l\'app continuera sans persistance locale)');
+        }
+      } catch (error) {
+        console.error('[App] ⚠️ Erreur initialisation AsyncStorage:', error);
+      }
+    })();
+
     try {
       if (typeof initObservability === 'function') {
         initObservability();

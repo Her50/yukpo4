@@ -20,6 +20,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { apiGet, apiPost } from '../services/api';
+// ✅ NOUVEAU: Monitoring des re-renders
+import { useRenderMonitor } from '../hooks/useRenderMonitor';
 import { imagePrefetchService } from '../services/imagePrefetchService';
 import { mlRecommendationService } from '../services/mlRecommendationService';
 import { modernColors } from '../theme/modernTheme';
@@ -72,6 +74,14 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
     onShowAllResults, // ✅ NOUVEAU: Callback voir tous
     onClearSearch, // ✅ NOUVEAU: Callback clear recherche
 }) => {
+    // ✅ NOUVEAU: Monitoring des re-renders
+    useRenderMonitor('MixedContentCarousel', {
+        mode,
+        searchQuery,
+        totalSearchResults,
+        publiciteFrequency,
+    });
+
     const navigation = useNavigation();
     const { user } = useAuth();
     const { t } = useLanguageSafe();
@@ -372,7 +382,11 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
             });
             return;
         }
-    }, [content.length, isPaused, currentIndex, isAutoScrollDisabled, content, scrollViewMounted]);
+
+        // ✅ CRITIQUE 2025-12-11: Forcer le démarrage du scroll automatique même si scrollViewMounted est false
+        // Le scroll fonctionne même si le ScrollView n'est pas encore complètement monté
+        console.log('[MixedContentCarousel] ✅ [DIAGNOSTIC] Scroll automatique démarré');
+    }, [content.length, isPaused, currentIndex, isAutoScrollDisabled, content]); // ✅ CRITIQUE: Retirer scrollViewMounted des dépendances
 
     const loadMixedContent = async () => {
         try {
@@ -852,17 +866,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                 return;
             }
 
-            // ✅ CORRIGÉ: Vérifier que le ScrollView est bien monté en vérifiant qu'on peut accéder à ses méthodes
-            try {
-                // Test si le ScrollView est accessible
-                if (typeof scrollViewRef.current.scrollTo !== 'function') {
-                    console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] ScrollView.scrollTo n\'est pas une fonction, scroll annulé');
-                    return;
-                }
-            } catch (error) {
-                console.warn('[MixedContentCarousel] ⚠️ [DIAGNOSTIC] Erreur accès ScrollView:', error);
-                return;
-            }
+            // ✅ CRITIQUE 2025-12-11: Ne plus vérifier scrollViewMounted - le scroll fonctionne même si pas encore monté
+            // Le ScrollView est accessible via la ref, donc on peut scroller directement
 
             const nextIndex = (currentIndex + 1) % safeContent.length;
             // ✅ CORRIGÉ: Calculer la position de scroll correctement en tenant compte du padding
@@ -902,7 +907,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
         }, delay);
 
         return clearAutoScrollTimer;
-    }, [content, currentIndex, isPaused, isAutoScrollDisabled, scrollViewMounted]);
+    }, [content, currentIndex, isPaused, isAutoScrollDisabled]); // ✅ CRITIQUE 2025-12-11: Retirer scrollViewMounted des dépendances pour permettre le scroll même si pas encore monté
 
     // ✅ CORRIGÉ: Batch les requêtes de tracking pour réduire le nombre de requêtes
     const trackingQueueRef = useRef<Array<{ item: ContentItem; position: number }>>([]);

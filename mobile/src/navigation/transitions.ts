@@ -13,21 +13,21 @@ export const transitionConfig: {
         cardStyleInterpolator: CardStyleInterpolator;
     };
 } = {
-    // Transition fade (par défaut)
+    // Transition fade (par défaut) - ✅ AMÉLIORÉ: Plus fluide
     fade: {
         transitionSpec: {
             open: {
                 animation: 'timing',
                 config: {
-                    duration: 300,
-                    easing: Easing.out(Easing.ease),
+                    duration: 280, // ✅ AMÉLIORÉ: Légèrement réduit pour plus de réactivité
+                    easing: Easing.bezier(0.25, 0.1, 0.25, 1), // ✅ AMÉLIORÉ: Easing naturel (iOS style)
                 },
             },
             close: {
                 animation: 'timing',
                 config: {
-                    duration: 250,
-                    easing: Easing.in(Easing.ease),
+                    duration: 220, // ✅ AMÉLIORÉ: Plus rapide pour fermeture
+                    easing: Easing.bezier(0.4, 0.0, 1, 1), // ✅ AMÉLIORÉ: Easing plus rapide
                 },
             },
         },
@@ -38,16 +38,16 @@ export const transitionConfig: {
         }),
     },
 
-    // Transition slide horizontal (iOS style)
+    // Transition slide horizontal (iOS style) - ✅ AMÉLIORÉ: Plus fluide et réactif
     slideHorizontal: {
         transitionSpec: {
             open: {
                 animation: 'spring',
                 config: {
-                    stiffness: 1000,
-                    damping: 500,
-                    mass: 3,
-                    overshootClamping: true,
+                    stiffness: 1200, // ✅ AMÉLIORÉ: Plus réactif
+                    damping: 600, // ✅ AMÉLIORÉ: Moins de rebond
+                    mass: 2.5, // ✅ AMÉLIORÉ: Plus léger
+                    overshootClamping: false, // ✅ AMÉLIORÉ: Permettre légèrement overshoot pour naturel
                     restDisplacementThreshold: 0.01,
                     restSpeedThreshold: 0.01,
                 },
@@ -55,10 +55,10 @@ export const transitionConfig: {
             close: {
                 animation: 'spring',
                 config: {
-                    stiffness: 1000,
-                    damping: 500,
-                    mass: 3,
-                    overshootClamping: true,
+                    stiffness: 1200,
+                    damping: 650, // ✅ AMÉLIORÉ: Damping plus élevé pour fermeture rapide
+                    mass: 2.5,
+                    overshootClamping: true, // ✅ AMÉLIORÉ: Pas d'overshoot à la fermeture
                     restDisplacementThreshold: 0.01,
                     restSpeedThreshold: 0.01,
                 },

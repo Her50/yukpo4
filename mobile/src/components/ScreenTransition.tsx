@@ -54,25 +54,34 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
         const timer = setTimeout(() => {
             if (typeof withTiming === 'function' && typeof withSpring === 'function') {
                 try {
+                    // ✅ AMÉLIORÉ: Animations plus fluides avec easing optimisé
                     opacity.value = withTiming(1, {
                         duration,
-                        easing: Easing.out(Easing.ease),
+                        easing: Easing.bezier(0.25, 0.1, 0.25, 1), // ✅ Easing plus naturel (iOS style)
                     });
 
                     if (type === 'slide') {
                         translateX.value = withSpring(0, {
-                            damping: 15,
-                            stiffness: 100,
+                            damping: 20, // ✅ AMÉLIORÉ: Damping augmenté pour plus de fluidité
+                            stiffness: 150, // ✅ AMÉLIORÉ: Stiffness augmentée pour réactivité
+                            mass: 0.8, // ✅ AMÉLIORÉ: Mass réduite pour légèreté
                         });
                     } else if (type === 'slideUp' || type === 'slideDown') {
                         translateY.value = withSpring(0, {
-                            damping: 15,
-                            stiffness: 100,
+                            damping: 20,
+                            stiffness: 150,
+                            mass: 0.8,
                         });
                     } else if (type === 'scale') {
                         scale.value = withSpring(1, {
-                            damping: 15,
-                            stiffness: 100,
+                            damping: 18,
+                            stiffness: 200, // ✅ AMÉLIORÉ: Stiffness plus élevée pour scale
+                            mass: 0.7,
+                        });
+                        // ✅ AMÉLIORÉ: Opacity synchronisée avec scale pour effet plus fluide
+                        opacity.value = withTiming(1, {
+                            duration: duration * 0.8,
+                            easing: Easing.bezier(0.25, 0.1, 0.25, 1),
                         });
                     }
 
@@ -125,7 +134,11 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = React.memo(({
     const safeChildren = React.useMemo(() => cleanChildren(children, 'ScreenTransition'), [children]);
 
     return (
-        <Animated.View style={[styles.container, animatedStyle, style]}>
+        <Animated.View
+            style={[styles.container, animatedStyle, style]}
+            pointerEvents="box-none"
+        // ✅ CRITIQUE: Permettre les interactions des enfants
+        >
             {safeChildren}
         </Animated.View>
     );

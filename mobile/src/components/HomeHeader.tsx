@@ -15,6 +15,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { modernColors } from '../theme/modernTheme';
 import { hapticPress } from '../utils/hapticFeedback';
+// ✅ NOUVEAU: Monitoring des re-renders
+import { useRenderMonitor } from '../hooks/useRenderMonitor';
 import { ChallengesModal } from './ChallengesModal'; // ✅ NOUVEAU: Challenges
 import { GamificationBadge } from './GamificationBadge'; // ✅ NOUVEAU: Gamification
 import LanguageSelector from './LanguageSelector';
@@ -71,6 +73,15 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
     onCloseChallenges,
     disabled = false, // ✅ CORRIGÉ: Désactiver les boutons pendant navigation/chargement
 }) => {
+    // ✅ NOUVEAU: Monitoring des re-renders
+    useRenderMonitor('HomeHeader', {
+        unreadNotificationsCount,
+        unreadChatCount,
+        disabled,
+        showLeaderboard,
+        showChallenges,
+    });
+
     // ✅ REANIMATED 3: useSharedValue pour meilleure performance
     const scrollYShared = useSharedValue(0);
     const badgeScaleChat = useSharedValue(1);
@@ -101,13 +112,21 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [scrollY]);
 
-    // ✅ Animation badges au changement de compteur
+    // ✅ AMÉLIORÉ: Animation badges au changement de compteur avec paramètres optimisés
     useEffect(() => {
         if (unreadChatCount > 0 && typeof withSpring === 'function' && badgeScaleChat) {
             try {
-                badgeScaleChat.value = withSpring(1.2, { damping: 8 }, () => {
+                badgeScaleChat.value = withSpring(1.2, {
+                    damping: 15, // ✅ AMÉLIORÉ: Damping augmenté pour plus de fluidité
+                    stiffness: 200, // ✅ AMÉLIORÉ: Stiffness augmentée pour réactivité
+                    mass: 0.5, // ✅ AMÉLIORÉ: Mass réduite pour légèreté
+                }, () => {
                     if (badgeScaleChat && typeof withSpring === 'function') {
-                        badgeScaleChat.value = withSpring(1, { damping: 8 });
+                        badgeScaleChat.value = withSpring(1, {
+                            damping: 15,
+                            stiffness: 200,
+                            mass: 0.5,
+                        });
                     }
                 });
             } catch (error) {
@@ -120,9 +139,17 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
     useEffect(() => {
         if (unreadNotificationsCount > 0 && typeof withSpring === 'function' && badgeScaleNotification) {
             try {
-                badgeScaleNotification.value = withSpring(1.2, { damping: 8 }, () => {
+                badgeScaleNotification.value = withSpring(1.2, {
+                    damping: 15, // ✅ AMÉLIORÉ: Damping augmenté
+                    stiffness: 200, // ✅ AMÉLIORÉ: Stiffness augmentée
+                    mass: 0.5, // ✅ AMÉLIORÉ: Mass réduite
+                }, () => {
                     if (badgeScaleNotification && typeof withSpring === 'function') {
-                        badgeScaleNotification.value = withSpring(1, { damping: 8 });
+                        badgeScaleNotification.value = withSpring(1, {
+                            damping: 15,
+                            stiffness: 200,
+                            mass: 0.5,
+                        });
                     }
                 });
             } catch (error) {
@@ -209,7 +236,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
         <Animated.View style={[styles.header, animatedHeaderStyle]}>
             <SafeNativeView style={styles.headerContent} edges={['top']}>
                 <View style={styles.headerRow}>
-                    {/* Colonne gauche: Avatar + Langue + Gamification */}
+                    {/* Colonne gauche: Avatar + Langue + Trophée */}
                     <View style={styles.headerLeft}>
                         <View style={styles.avatarContainer}>
                             <UserAvatarMenu
@@ -223,18 +250,16 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                             onLanguageChange={onLanguageChange}
                             compact={true}
                         />
-                        {/* ✅ CORRIGÉ: Badge gamification compact - Positionné à côté du drapeau, bien séparé du titre Yukpo */}
+                        {/* ✅ CORRIGÉ RACINE: Trophée directement à côté du drapeau, sans espacement supplémentaire */}
                         {user?.id ? (
-                            <View style={{ marginRight: 8 }}> {/* ✅ RÉDUIT: De 20 à 8px car paddingRight du headerLeft gère déjà l'espacement */}
-                                <GamificationBadge
-                                    userId={user.id}
-                                    compact={true}
-                                    onPress={() => {
-                                        hapticPress();
-                                        onShowLeaderboard?.();
-                                    }}
-                                />
-                            </View>
+                            <GamificationBadge
+                                userId={user.id}
+                                compact={true}
+                                onPress={() => {
+                                    hapticPress();
+                                    onShowLeaderboard?.();
+                                }}
+                            />
                         ) : null}
                         {/* ✅ NOUVEAU: Modals gamification - HORS du headerLeft pour éviter conflits */}
                         {user?.id ? (
@@ -361,11 +386,11 @@ const styles = StyleSheet.create({
         alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
         justifyContent: 'flex-start',
         minWidth: 0,
-        maxWidth: '24%', // ✅ RÉDUIT: De 26% à 24% pour mieux séparer le trophée du texte Yukpo
+        maxWidth: '28%', // ✅ AUGMENTÉ: De 24% à 28% pour accommoder avatar + drapeau + trophée
         flexShrink: 1,
-        gap: 4, // ✅ RÉDUIT: De 6 à 4px pour compacter les éléments
+        gap: 6, // ✅ AUGMENTÉ: De 4 à 6px pour espacement correct entre avatar, drapeau et trophée
         height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Hauteur fixe égale au header
-        paddingRight: 36, // ✅ AUGMENTÉ: De 28 à 36px pour bien isoler le trophée du texte Yukpo
+        paddingRight: 12, // ✅ RÉDUIT: De 36 à 12px - le trophée est maintenant juste à côté du drapeau, pas besoin de grand espacement
     },
     brandTitleContainer: {
         flex: 1,

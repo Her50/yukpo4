@@ -110,29 +110,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .max_connections(max_connections)
         .min_connections(min_connections) // ✅ Maintenir un minimum de connexions
         .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs.min(10))) // ✅ CORRIGÉ: Max 10s pour détecter rapidement les problèmes
-        .idle_timeout(Some(std::time::Duration::from_secs(60))) // ✅ CORRIGÉ RACINE: 1 min pour détecter très tôt les connexions mortes
-        .max_lifetime(Some(std::time::Duration::from_secs(240))) // ✅ CORRIGÉ RACINE: 4 min pour renouveler AVANT que Render ne ferme (Render ferme après ~5 min)
-        // ✅ NOUVEAU 2025-12-11: Réactiver test_before_acquire avec requête légère pour détecter les connexions mortes
-        .test_before_acquire(true) // ✅ Réactivé pour détecter les connexions fermées avant utilisation
+        .idle_timeout(Some(std::time::Duration::from_secs(120))) // ✅ CORRIGÉ RACINE: 2 min pour détecter tôt les connexions idle
+        .max_lifetime(Some(std::time::Duration::from_secs(180))) // ✅ CORRIGÉ RACINE: 3 min pour renouveler AVANT que Render ne ferme (Render ferme après ~5 min, mais parfois plus tôt à cause de TLS)
+        // ✅ CRITIQUE RACINE 2025-12-11: test_before_acquire OBLIGATOIRE pour détecter les connexions mortes
+        // Render ferme les connexions SANS envoyer TLS close_notify, donc on DOIT tester avant utilisation
+        // Sinon on essaie d'utiliser une connexion fermée → erreur → requête API échoue → HomeScreen bloqué
+        .test_before_acquire(true) // ✅ OBLIGATOIRE: Détecte les connexions fermées AVANT utilisation (évite erreurs API)
         .after_connect(|conn, _meta| {
-            // ✅ AMÉLIORÉ 2025-12-11: Configuration optimisée pour prévenir les fermetures inattendues
+            // ✅ CORRIGÉ RACINE 2025-12-11: Configuration tolérante aux erreurs
+            // Le VRAI problème: Si after_connect échoue, la connexion n'est PAS ajoutée au pool
+            // → Le pool se vide → timeouts d'acquisition → requêtes API échouent → HomeScreen bloqué
+            // Solution: Ne jamais faire échouer after_connect, même si la config partielle échoue
             Box::pin(async move {
-                // ✅ CRITIQUE: Désactiver statement_timeout pour permettre les opérations longues
-                sqlx::query("SET statement_timeout = 0")
-                    .execute(&mut *conn)
-                    .await?;
-                // ✅ CRITIQUE: Augmenter idle_in_transaction_session_timeout
-                sqlx::query("SET idle_in_transaction_session_timeout = '600s'")
-                    .execute(&mut *conn)
-                    .await?;
-                // ✅ CORRIGÉ RACINE: Heartbeat pour maintenir la connexion active
-                // Render ferme les connexions idle après ~5 min, donc on envoie un heartbeat
-                // pour maintenir la connexion active et éviter les fermetures inattendues
-                sqlx::query("SELECT 1").execute(&mut *conn).await?;
+                // ✅ CRITIQUE: Configuration tolérante - on essaie de configurer mais on n'échoue JAMAIS
+                // Même si la configuration échoue, la connexion est valide et sera ajoutée au pool
+                // Le test de connexion est fait par test_before_acquire AVANT utilisation, pas ici
                 
-                // ✅ CRITIQUE: Les keepalives TCP ne sont pas supportés par sqlx/tokio-postgres dans l'URL
-                // La vraie solution: max_lifetime=240s (4 min) renouvelle les connexions
-                // AVANT que Render ne les ferme (~5 min), évitant ainsi les erreurs "peer closed connection"
+                // ✅ Configuration 1: statement_timeout (optionnel - si échoue, on continue)
+                if let Err(e) = sqlx::query("SET statement_timeout = 0")
+                    .execute(&mut *conn)
+                    .await {
+                    let error_msg = e.to_string();
+                    // ✅ Seulement logger en debug - ne pas faire échouer after_connect
+                    if error_msg.contains("TLS") 
+                        || error_msg.contains("close_notify")
+                        || error_msg.contains("Connection reset")
+                        || error_msg.contains("peer closed") {
+                        log::debug!(
+                            "⚠️ Configuration statement_timeout échouée (connexion sera testée avant utilisation): {}",
+                            error_msg
+                        );
+                    }
+                    // ✅ CRITIQUE: On continue quand même - la connexion sera testée par test_before_acquire
+                }
+                
+                // ✅ Configuration 2: idle_in_transaction_session_timeout (optionnel)
+                let _ = sqlx::query("SET idle_in_transaction_session_timeout = '600s'")
+                    .execute(&mut *conn)
+                    .await;
+                
+                // ✅ CRITIQUE: Toujours retourner Ok() pour que la connexion soit ajoutée au pool
+                // Le test de validité sera fait par test_before_acquire AVANT utilisation
                 Ok(())
             })
         })

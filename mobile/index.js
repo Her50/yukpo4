@@ -7,23 +7,21 @@ import { registerRootComponent } from 'expo';
 import { Platform } from 'react-native';
 import 'react-native-gesture-handler';
 
-// ✅ CORRIGÉ 2025-12-11: Initialiser AsyncStorage de manière synchrone au démarrage
-// Cela évite les erreurs "Driver not found" en s'assurant que le module natif est prêt
-try {
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-    // Tester immédiatement que AsyncStorage est disponible
-    if (AsyncStorage && typeof AsyncStorage.getItem === 'function') {
-        console.log('[INDEX.JS] ✅ AsyncStorage initialisé au démarrage');
-        // Faire un test de connexion immédiat (non-bloquant)
-        AsyncStorage.getItem('__init_test__').catch(() => {
-            // Ignorer les erreurs de test initial, c'est normal
-        });
-    } else {
-        console.warn('[INDEX.JS] ⚠️ AsyncStorage non disponible au démarrage');
+// ✅ CORRIGÉ 2025-12-11: Initialiser AsyncStorage de manière garantie au démarrage
+// Cela résout le problème "Driver not found" à la racine
+(async () => {
+    try {
+        const { initializeAsyncStorage } = require('./src/utils/asyncStorageInit');
+        const initialized = await initializeAsyncStorage();
+        if (initialized) {
+            console.log('[INDEX.JS] ✅ AsyncStorage initialisé avec succès au démarrage');
+        } else {
+            console.warn('[INDEX.JS] ⚠️ AsyncStorage non disponible au démarrage (l\'app continuera sans persistance locale)');
+        }
+    } catch (asyncStorageError) {
+        console.error('[INDEX.JS] ⚠️ Erreur initialisation AsyncStorage (non-bloquant):', asyncStorageError);
     }
-} catch (asyncStorageError) {
-    console.error('[INDEX.JS] ⚠️ Erreur initialisation AsyncStorage (non-bloquant):', asyncStorageError);
-}
+})();
 
 // Capturer les erreurs globales JavaScript AVANT le chargement de l'app
 if (global.ErrorUtils) {
@@ -61,6 +59,7 @@ if (global.ErrorUtils) {
 }
 
 // Capturer les promesses rejetées non gérées
+// ✅ CORRIGÉ 2025-12-11: Avec l'initialisation garantie d'AsyncStorage, ces erreurs ne devraient plus se produire
 if (typeof global.Promise !== 'undefined') {
     const originalRejectionTracking = global.Promise._unhandledRejection;
     global.Promise._unhandledRejection = function (error) {
