@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::core::types::AppResult;
 use crate::services::smart_notification_service::SmartNotificationService;
 use crate::state::AppState;
+use crate::utils::db_retry::retry_query;
 
 /// ✅ NOUVEAU : Tâche périodique pour monitorer les timeouts de validation de commandes
 /// Vérifie toutes les minutes les commandes avec validation_deadline expirée (configurable via ORDER_TIMEOUT_MONITOR_INTERVAL_SECS)
@@ -48,31 +49,44 @@ async fn check_order_timeouts(state: Arc<AppState>) -> AppResult<()> {
         provider_user_id: i32,
     }
 
-    let expired_orders: Vec<ExpiredOrder> = sqlx::query(
-        r#"
-        SELECT 
-            id,
-            service_id,
-            product_index,
-            client_user_id,
-            provider_user_id
-        FROM product_orders
-        WHERE 
-            status = 'pending'
-            AND validation_deadline IS NOT NULL
-            AND validation_deadline <= $1
-        LIMIT 50
-        "#,
+    // ✅ CORRIGÉ 2025-12-11: Utiliser retry_query pour gérer les erreurs de connexion TLS
+    let pool_clone = pool.clone();
+    let expired_orders: Vec<ExpiredOrder> = retry_query(
+        pool,
+        || {
+            let pool = pool_clone.clone();
+            let now = now;
+            Box::pin(async move {
+                sqlx::query(
+                    r#"
+                    SELECT 
+                        id,
+                        service_id,
+                        product_index,
+                        client_user_id,
+                        provider_user_id
+                    FROM product_orders
+                    WHERE 
+                        status = 'pending'
+                        AND validation_deadline IS NOT NULL
+                        AND validation_deadline <= $1
+                    LIMIT 50
+                    "#,
+                )
+                .bind(now)
+                .map(|row: sqlx::postgres::PgRow| ExpiredOrder {
+                    id: row.get::<Uuid, _>("id"),
+                    service_id: row.get::<i32, _>("service_id"),
+                    product_index: row.get::<i32, _>("product_index"),
+                    client_user_id: row.get::<i32, _>("client_user_id"),
+                    provider_user_id: row.get::<i32, _>("provider_user_id"),
+                })
+                .fetch_all(&pool)
+                .await
+            })
+        },
+        3, // 3 tentatives avec backoff exponentiel
     )
-    .bind(now)
-    .map(|row: sqlx::postgres::PgRow| ExpiredOrder {
-        id: row.get::<Uuid, _>("id"),
-        service_id: row.get::<i32, _>("service_id"),
-        product_index: row.get::<i32, _>("product_index"),
-        client_user_id: row.get::<i32, _>("client_user_id"),
-        provider_user_id: row.get::<i32, _>("provider_user_id"),
-    })
-    .fetch_all(pool)
     .await?;
 
     if expired_orders.is_empty() {

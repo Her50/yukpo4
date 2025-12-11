@@ -2864,28 +2864,41 @@ impl DeliveryRepository {
         &self,
         limit: i64,
     ) -> AppResult<Vec<DeliveryMatchingQueueItem>> {
-        let rows: Vec<DeliveryMatchingQueueItemRow> = sqlx::query_as(
-            r#"
-            SELECT
-                id,
-                delivery_id,
-                zone_id,
-                status,
-                priority,
-                attempt_count,
-                payload,
-                next_attempt_at,
-                enqueued_at,
-                updated_at
-            FROM delivery_matching_queue
-            WHERE status IN ('queued', 'searching')
-              AND next_attempt_at <= NOW()
-            ORDER BY priority ASC, next_attempt_at ASC
-            LIMIT $1
-            "#,
+        // ✅ CORRIGÉ 2025-12-11: Utiliser retry_query pour gérer les erreurs de connexion TLS
+        let pool = self.pool.clone();
+        let rows: Vec<DeliveryMatchingQueueItemRow> = crate::utils::db_retry::retry_query(
+            &pool,
+            || {
+                let pool = pool.clone();
+                let limit = limit.max(1);
+                Box::pin(async move {
+                    sqlx::query_as(
+                        r#"
+                        SELECT
+                            id,
+                            delivery_id,
+                            zone_id,
+                            status,
+                            priority,
+                            attempt_count,
+                            payload,
+                            next_attempt_at,
+                            enqueued_at,
+                            updated_at
+                        FROM delivery_matching_queue
+                        WHERE status IN ('queued', 'searching')
+                          AND next_attempt_at <= NOW()
+                        ORDER BY priority ASC, next_attempt_at ASC
+                        LIMIT $1
+                        "#,
+                    )
+                    .bind(limit)
+                    .fetch_all(&pool)
+                    .await
+                })
+            },
+            3, // 3 tentatives avec backoff exponentiel
         )
-        .bind(limit.max(1))
-        .fetch_all(&self.pool)
         .await?;
 
         Ok(rows

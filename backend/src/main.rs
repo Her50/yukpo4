@@ -47,10 +47,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     yukpomnang_backend::init_logging();
 
-    let db_url = env::var("DATABASE_URL").map_err(|e| {
+    let mut db_url = env::var("DATABASE_URL").map_err(|e| {
         log::error!("❌ DATABASE_URL manquante ou invalide: {}", e);
         e
     })?;
+    
+    // ✅ NOUVEAU 2025-12-11: Ajouter les paramètres TCP keepalive à l'URL de connexion
+    // Ces paramètres aident à maintenir les connexions actives et prévenir les fermetures inattendues
+    if !db_url.contains("keepalives_idle") {
+        let separator = if db_url.contains('?') { "&" } else { "?" };
+        db_url.push_str(&format!(
+            "{}keepalives_idle=60&keepalives_interval=10&keepalives_count=6",
+            separator
+        ));
+        log::info!("🔧 Paramètres TCP keepalive ajoutés à DATABASE_URL pour prévenir les fermetures de connexion");
+    }
 
     let upload_storage_path =
         env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "/var/data/uploads".to_string());
@@ -85,15 +96,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(30);
 
     // ✅ NOUVEAU 2025-12-02: Créer le pool PostgreSQL master (écritures)
+    // ✅ AMÉLIORÉ 2025-12-11: Configuration optimisée pour prévenir les erreurs TLS
     let pg_pool = PgPoolOptions::new()
         .max_connections(max_connections)
         .min_connections(min_connections) // ✅ Maintenir un minimum de connexions
         .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
-        .idle_timeout(Some(std::time::Duration::from_secs(600))) // ✅ CORRIGÉ 2025-12-11: Augmenté à 600s (10 min) pour éviter les fermetures prématurées
-        .max_lifetime(Some(std::time::Duration::from_secs(3600))) // ✅ CORRIGÉ 2025-12-11: Augmenté à 3600s (1h) pour réduire les reconnexions
-        .test_before_acquire(false) // ✅ CORRIGÉ 2025-12-11: Désactivé car peut causer des problèmes avec les connexions en cours de fermeture
+        .idle_timeout(Some(std::time::Duration::from_secs(300))) // ✅ OPTIMISÉ: Réduit à 5 min pour détecter plus tôt les connexions mortes
+        .max_lifetime(Some(std::time::Duration::from_secs(1800))) // ✅ OPTIMISÉ: Réduit à 30 min pour forcer le renouvellement régulier
+        // ✅ NOUVEAU 2025-12-11: Réactiver test_before_acquire avec requête légère pour détecter les connexions mortes
+        .test_before_acquire(true) // ✅ Réactivé pour détecter les connexions fermées avant utilisation
         .after_connect(|conn, _meta| {
-            // ✅ CORRIGÉ 2025-12-11: Configuration minimale pour éviter les conflits
+            // ✅ AMÉLIORÉ 2025-12-11: Configuration optimisée pour prévenir les fermetures inattendues
             Box::pin(async move {
                 // ✅ CRITIQUE: Désactiver statement_timeout pour permettre les opérations longues
                 sqlx::query("SET statement_timeout = 0")
@@ -103,8 +116,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 sqlx::query("SET idle_in_transaction_session_timeout = '600s'")
                     .execute(&mut *conn)
                     .await?;
-                // ✅ CRITIQUE: Désactiver le timeout de connexion idle pour éviter les fermetures prématurées
-                // Note: Les paramètres TCP keepalive doivent être configurés au niveau système/PostgreSQL, pas au niveau session
+                // ✅ NOUVEAU: Test de connexion pour vérifier que la connexion est valide
+                // Ceci aide à détecter immédiatement les problèmes de connexion
+                sqlx::query("SELECT 1")
+                    .execute(&mut *conn)
+                    .await?;
+                // Note: Les paramètres TCP keepalive doivent être configurés via:
+                // 1. Variables d'environnement système (SO_KEEPALIVE)
+                // 2. Options de connexion PostgreSQL dans DATABASE_URL (?keepalives_idle=60)
+                // 3. Configuration PostgreSQL (postgresql.conf)
+                // Ils ne peuvent pas être configurés via SET dans une session
                 Ok(())
             })
         })

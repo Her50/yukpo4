@@ -8,6 +8,7 @@ use sqlx::FromRow;
 use crate::{
     core::types::{AppError, AppResult},
     state::AppState,
+    utils::db_retry::retry_query,
 };
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -48,24 +49,37 @@ pub async fn fetch_due_jobs(
     state: Arc<AppState>,
     limit: i64,
 ) -> AppResult<Vec<SocialPublicationJob>> {
-    let rows: Vec<SocialPublicationJob> = sqlx::query_as(
-        r#"SELECT id,
-                 media_id,
-                 platform,
-                 payload,
-                 status,
-                 attempt,
-                 last_error,
-                 scheduled_for,
-                 created_at,
-                 updated_at
-         FROM social_publication_jobs
-         WHERE status = 'queued' AND scheduled_for <= NOW()
-         ORDER BY scheduled_for ASC
-         LIMIT $1"#,
+    // ✅ CORRIGÉ 2025-12-11: Utiliser retry_query pour gérer les erreurs de connexion TLS
+    let pool = state.pg.clone();
+    let rows: Vec<SocialPublicationJob> = retry_query(
+        &pool,
+        || {
+            let pool = pool.clone();
+            let limit = limit;
+            Box::pin(async move {
+                sqlx::query_as(
+                    r#"SELECT id,
+                             media_id,
+                             platform,
+                             payload,
+                             status,
+                             attempt,
+                             last_error,
+                             scheduled_for,
+                             created_at,
+                             updated_at
+                     FROM social_publication_jobs
+                     WHERE status = 'queued' AND scheduled_for <= NOW()
+                     ORDER BY scheduled_for ASC
+                     LIMIT $1"#,
+                )
+                .bind(limit)
+                .fetch_all(&pool)
+                .await
+            })
+        },
+        3, // 3 tentatives avec backoff exponentiel
     )
-    .bind(limit)
-    .fetch_all(&state.pg)
     .await
     .map_err(|err| AppError::from(err))?;
 
