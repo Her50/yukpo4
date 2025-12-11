@@ -1,5 +1,6 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import * as ReactNavigation from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { Suspense, useReducer } from 'react';
 import ReactNative from 'react-native';
@@ -19,6 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useLocationSafe } from '../contexts/LocationContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLockedHandler } from '../hooks/useDebounceHandler';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation'; // ✅ NOUVEAU: Support orientation
 import { useScrollY } from '../hooks/useScrollY';
 import { apiGet, deliveryApi } from '../services/api';
@@ -26,6 +28,7 @@ import { searchHistoryService } from '../services/searchHistoryService';
 import userBehaviorService from '../services/userBehaviorService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 import { modernColors } from '../theme/modernTheme';
+import { API_TIMEOUTS, apiCallWithTimeout } from '../utils/apiTimeout';
 import { cleanupGhostNotifications, debugNotifications, printNotificationReport } from '../utils/debugNotifications';
 import { hapticPress, hapticSelect, hapticSuccess } from '../utils/hapticFeedback'; // ✅ PHASE 2: Haptic feedback
 import { normalizeServiceProducts } from '../utils/productNormalizer';
@@ -35,15 +38,16 @@ import { homeScreenReducer, initialState } from './HomeScreen.reducer';
 // ✅ OPTIMISATION: Lazy loading pour réduire bundle size initial (-30% bundle size)
 // ✅ SÉCURITÉ: Vérification que les composants sont bien exportés avant lazy loading
 // ✅ CORRIGÉ: Remplacer par un bouton simple au lieu du scroll horizontal
+// ✅ CORRIGÉ 2025-12-11: S'assurer que le composant lazy est toujours défini
 const GlobalPromoHighlights = React.lazy(() =>
     import('../components/promotions/GlobalPromoHighlights')
         .then(module => {
             // ✅ SÉCURITÉ: Gérer les deux types d'export (named et default)
-            // GlobalPromoHighlights n'a que default export, pas de named export
+            // GlobalPromoHighlights n'a que default export
             const GlobalPromoComponent = module.default;
-            if (!GlobalPromoComponent) {
-                console.error('[HomeScreen] ❌ GlobalPromoHighlights non trouvé dans le module', module);
-                // ✅ CRITIQUE: Retourner un composant de fallback au lieu de throw pour éviter de bloquer l'app
+            if (!GlobalPromoComponent || typeof GlobalPromoComponent !== 'function') {
+                console.error('[HomeScreen] ❌ GlobalPromoHighlights invalide dans le module', module);
+                // ✅ CRITIQUE: Retourner un composant de fallback valide
                 const FallbackComponent: React.FC = () => (
                     <View style={{ padding: 20, alignItems: 'center' }}>
                         <Text style={{ fontSize: 14, color: '#666' }}>
@@ -51,13 +55,18 @@ const GlobalPromoHighlights = React.lazy(() =>
                         </Text>
                     </View>
                 );
+                FallbackComponent.displayName = 'GlobalPromoHighlightsFallback';
                 return { default: FallbackComponent };
+            }
+            // ✅ CRITIQUE: Vérifier que le composant est bien une fonction React
+            if (typeof GlobalPromoComponent !== 'function') {
+                throw new Error('GlobalPromoHighlights is not a valid React component');
             }
             return { default: GlobalPromoComponent };
         })
         .catch((error) => {
             console.error('[HomeScreen] ❌ Erreur chargement GlobalPromoHighlights:', error);
-            // ✅ CRITIQUE: Retourner un composant de fallback au lieu de throw pour éviter de bloquer l'app
+            // ✅ CRITIQUE: Retourner un composant de fallback valide
             const FallbackComponent: React.FC = () => (
                 <View style={{ padding: 20, alignItems: 'center' }}>
                     <Text style={{ fontSize: 14, color: '#666' }}>
@@ -65,17 +74,19 @@ const GlobalPromoHighlights = React.lazy(() =>
                     </Text>
                 </View>
             );
+            FallbackComponent.displayName = 'GlobalPromoHighlightsErrorFallback';
             return { default: FallbackComponent };
         })
 );
+// ✅ CORRIGÉ 2025-12-11: S'assurer que le composant lazy est toujours défini
 const InfiniteFeed = React.lazy(() =>
     import('../components/InfiniteFeed')
         .then(module => {
             // ✅ CORRIGÉ: Gérer les deux types d'export (named et default)
             const InfiniteFeedComponent = module.InfiniteFeed || module.default;
-            if (!InfiniteFeedComponent) {
-                console.error('[HomeScreen] ❌ InfiniteFeed non trouvé dans le module', module);
-                // ✅ CRITIQUE: Retourner un composant de fallback au lieu de throw pour éviter de bloquer l'app
+            if (!InfiniteFeedComponent || typeof InfiniteFeedComponent !== 'function') {
+                console.error('[HomeScreen] ❌ InfiniteFeed invalide dans le module', module);
+                // ✅ CRITIQUE: Retourner un composant de fallback valide
                 const FallbackComponent: React.FC<any> = () => (
                     <View style={{ padding: 20, alignItems: 'center' }}>
                         <Text style={{ fontSize: 14, color: '#666' }}>
@@ -83,7 +94,12 @@ const InfiniteFeed = React.lazy(() =>
                         </Text>
                     </View>
                 );
+                FallbackComponent.displayName = 'InfiniteFeedFallback';
                 return { default: FallbackComponent };
+            }
+            // ✅ CRITIQUE: Vérifier que le composant est bien une fonction React
+            if (typeof InfiniteFeedComponent !== 'function') {
+                throw new Error('InfiniteFeed is not a valid React component');
             }
             return { default: InfiniteFeedComponent };
         })
@@ -128,17 +144,17 @@ const HomeScreen: React.FC = () => {
     const { scrollY, onScroll } = useScrollY(); // ✅ OPTIMISATION: Pour header collapsible
 
     // ✅ OPTIMISATION: Callbacks memoïsés pour éviter re-renders
-    // ✅ CORRIGÉ: Ajout d'un état pour éviter les clics multiples
+    // ✅ CORRIGÉ 2025-12-11: Réduire drastiquement le blocage pour éviter les interactions bloquées
     const [isNavigating, setIsNavigating] = React.useState(false);
 
-    // ✅ CORRIGÉ: Safety reset - forcer la réinitialisation si bloqué trop longtemps
-    // ✅ RÉDUIT: Timeout de 2s à 500ms pour navigation plus réactive
+    // ✅ CORRIGÉ 2025-12-11: Safety reset ultra-agressif - forcer la réinitialisation si bloqué trop longtemps
+    // ✅ RÉDUIT: Timeout de 500ms à 200ms pour navigation ultra-réactive
     React.useEffect(() => {
         if (isNavigating) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: isNavigating bloqué depuis 500ms, réinitialisation forcée');
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: isNavigating bloqué depuis 200ms, réinitialisation forcée');
                 setIsNavigating(false);
-            }, 500); // ✅ RÉDUIT: De 2s à 500ms pour réactivité maximale
+            }, 200); // ✅ RÉDUIT 2025-12-11: De 500ms à 200ms pour réactivité maximale
             return () => clearTimeout(timeout);
         }
     }, [isNavigating]);
@@ -155,15 +171,88 @@ const HomeScreen: React.FC = () => {
         }
     }, [state.ui.loading]);
 
-    const handleDeliveryPress = React.useCallback(() => {
-        // ✅ CORRIGÉ: Ne bloquer que si vraiment en train de naviguer (pas juste loading)
-        if (isNavigating) {
-            console.warn('[HomeScreen] ⚠️ Navigation déjà en cours');
-            return;
+    // ✅ NOUVEAU: Safety reset pour l'overlay de confirmation qui peut bloquer les interactions
+    // ✅ CORRIGÉ: Réduire à 5 secondes pour éviter blocage prolongé
+    React.useEffect(() => {
+        if (state.ui.showCreateServiceAlert) {
+            const timeout = setTimeout(() => {
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Overlay de confirmation bloqué depuis 5s, fermeture forcée');
+                dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+                dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+            }, 5000); // ✅ CORRIGÉ: 5 secondes max pour éviter blocage permanent (réduit de 30s)
+            return () => clearTimeout(timeout);
         }
+    }, [state.ui.showCreateServiceAlert]);
 
+    // ✅ NOUVEAU: Safety reset pour les modals qui peuvent rester ouverts
+    React.useEffect(() => {
+        if (state.ui.showGPSModal) {
+            const timeout = setTimeout(() => {
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal GPS ouvert depuis 60s, fermeture forcée');
+                dispatch({ type: 'TOGGLE_GPS_MODAL' });
+            }, 60000); // 60 secondes max pour éviter blocage permanent
+            return () => clearTimeout(timeout);
+        }
+    }, [state.ui.showGPSModal]);
+
+    React.useEffect(() => {
+        if (state.ui.showChatModal) {
+            const timeout = setTimeout(() => {
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal Chat ouvert depuis 60s, fermeture forcée');
+                dispatch({ type: 'TOGGLE_CHAT_MODAL' });
+            }, 60000);
+            return () => clearTimeout(timeout);
+        }
+    }, [state.ui.showChatModal]);
+
+    React.useEffect(() => {
+        if (state.ui.showNotificationModal) {
+            const timeout = setTimeout(() => {
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal Notification ouvert depuis 60s, fermeture forcée');
+                dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
+            }, 60000);
+            return () => clearTimeout(timeout);
+        }
+    }, [state.ui.showNotificationModal]);
+
+    // ✅ NOUVEAU: Reset au focus de l'écran pour éviter les overlays bloqués
+    useFocusEffect(
+        useCallback(() => {
+            // Reset des overlays et modals au focus de l'écran
+            // Cela évite qu'un overlay reste ouvert après une navigation
+            const resetOverlays = () => {
+                if (state.ui.showCreateServiceAlert) {
+                    console.log('[HomeScreen] 🔄 Reset: Fermeture overlay de confirmation au focus');
+                    dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+                    dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+                }
+                // Ne pas fermer les modals automatiquement car l'utilisateur pourrait vouloir les garder ouverts
+            };
+
+            // Reset immédiat au focus
+            resetOverlays();
+
+            // Pas de cleanup nécessaire ici
+            return undefined;
+        }, [state.ui.showCreateServiceAlert])
+    );
+
+    // ✅ OPTIMISATION: Handler avec verrouillage pour éviter les appels multiples
+    const handleDeliveryPressInternal = React.useCallback(() => {
+        // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer - permettre les interactions même si navigation en cours
+        // ✅ CRITIQUE: Supprimer le blocage pour éviter les interactions bloquées
         console.log('[HomeScreen] 🚚 Début navigation vers Delivery');
+        console.log('[HomeScreen] 🔍 DIAGNOSTIC: État actuel:', {
+            loading: state.ui.loading,
+            isNavigating,
+            showCreateServiceAlert: state.ui.showCreateServiceAlert,
+            showGPSModal: state.ui.showGPSModal,
+            showChatModal: state.ui.showChatModal,
+            showNotificationModal: state.ui.showNotificationModal,
+        });
         hapticPress(); // ✅ PHASE 2: Haptic feedback
+
+        // ✅ CORRIGÉ 2025-12-11: Ne pas utiliser isNavigating pour bloquer, juste pour logging
         setIsNavigating(true);
 
         // ✅ CORRIGÉ: Navigation immédiate sans délai avec try-catch robuste
@@ -184,13 +273,13 @@ const HomeScreen: React.FC = () => {
             console.error('[HomeScreen] ❌ Stack:', (error as any)?.stack);
             Alert.alert('Erreur', 'Impossible d\'ouvrir la livraison.');
         } finally {
-            // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour navigation rapide)
-            setTimeout(() => {
-                console.log('[HomeScreen] 🔄 Réinitialisation isNavigating');
-                setIsNavigating(false);
-            }, 50); // ✅ RÉDUIT: De 100ms à 50ms pour navigation encore plus rapide
+            // ✅ CORRIGÉ 2025-12-11: Réinitialiser immédiatement sans délai
+            setIsNavigating(false);
         }
-    }, [navigation, isNavigating]);
+    }, [navigation, state.ui.loading, state.ui.showCreateServiceAlert, state.ui.showGPSModal, state.ui.showChatModal, state.ui.showNotificationModal, isNavigating]);
+
+    // ✅ OPTIMISATION: Debounce le handler pour éviter les appels multiples
+    const handleDeliveryPress = useLockedHandler(handleDeliveryPressInternal, { lockDuration: 500 });
 
     // ✅ NOUVEAU 2025-01-27: Charger le nombre de conversations non lues
     const loadUnreadChatCount = React.useCallback(async (): Promise<number> => {
@@ -214,16 +303,10 @@ const HomeScreen: React.FC = () => {
         }
     }, [user?.id]);
 
-    const handleChatPress = React.useCallback(() => {
-        // ✅ CORRIGÉ: Ne bloquer que si vraiment en train de naviguer
-        if (isNavigating) {
-            console.warn('[HomeScreen] ⚠️ Navigation déjà en cours');
-            return;
-        }
-
+    const handleChatPressInternal = React.useCallback(() => {
+        // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer - permettre les interactions même si navigation en cours
         console.log('[HomeScreen] 💬 Début ouverture chat');
         hapticPress(); // ✅ PHASE 2: Haptic feedback
-        setIsNavigating(true);
         const wasOpen = state.ui.showChatModal;
 
         try {
@@ -243,41 +326,29 @@ const HomeScreen: React.FC = () => {
             }
         } catch (error) {
             console.error('[HomeScreen] ❌ Erreur ouverture chat:', error);
-        } finally {
-            // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour les modals)
-            // ✅ RÉDUIT: De 100ms à 50ms pour modals plus rapides
-            setTimeout(() => {
-                console.log('[HomeScreen] 🔄 Réinitialisation isNavigating (chat)');
-                setIsNavigating(false);
-            }, 50); // ✅ RÉDUIT: De 100ms à 50ms
         }
-    }, [state.ui.showChatModal, loadUnreadChatCount, isNavigating, state.ui.loading]);
+        // ✅ CORRIGÉ 2025-12-11: Ne plus utiliser isNavigating pour bloquer
+    }, [state.ui.showChatModal, loadUnreadChatCount]);
 
-    const handleNotificationPress = React.useCallback(() => {
-        // ✅ CORRIGÉ: Ne bloquer que si vraiment en train de naviguer
-        if (isNavigating) {
-            console.warn('[HomeScreen] ⚠️ Navigation déjà en cours');
-            return;
-        }
+    // ✅ OPTIMISATION: Debounce le handler pour éviter les appels multiples
+    const handleChatPress = useLockedHandler(handleChatPressInternal, { lockDuration: 300 });
 
+    const handleNotificationPressInternal = React.useCallback(() => {
+        // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer - permettre les interactions même si navigation en cours
         console.log('[HomeScreen] 🔔 Début ouverture notifications');
         hapticPress(); // ✅ PHASE 2: Haptic feedback
-        setIsNavigating(true);
 
         try {
             dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
             console.log('[HomeScreen] ✅ Notification modal togglé');
         } catch (error) {
             console.error('[HomeScreen] ❌ Erreur ouverture notifications:', error);
-        } finally {
-            // ✅ CORRIGÉ: Réinitialiser immédiatement (pas de délai pour les modals)
-            // ✅ RÉDUIT: De 100ms à 50ms pour modals plus rapides
-            setTimeout(() => {
-                console.log('[HomeScreen] 🔄 Réinitialisation isNavigating (notifications)');
-                setIsNavigating(false);
-            }, 50); // ✅ RÉDUIT: De 100ms à 50ms
         }
-    }, [isNavigating, state.ui.loading]);
+        // ✅ CORRIGÉ 2025-12-11: Ne plus utiliser isNavigating pour bloquer
+    }, []);
+
+    // ✅ OPTIMISATION: Debounce le handler pour éviter les appels multiples
+    const handleNotificationPress = useLockedHandler(handleNotificationPressInternal, { lockDuration: 300 });
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
@@ -663,8 +734,12 @@ const HomeScreen: React.FC = () => {
         return undefined; // ✅ CRITIQUE: Retourner explicitement undefined
     }, [state.metadata.contentLoaded, state.metadata.hasUserScrolled]); // Se déclenche une seule fois au mount du composant
 
-    // ✅ CORRECTION: Détection GPS sécurisée avec timeout
+    // ✅ CORRECTION: Détection GPS sécurisée avec timeout et cleanup approprié
     React.useEffect(() => {
+        let permissionTimeoutId: NodeJS.Timeout | null = null;
+        let locationTimeoutId: NodeJS.Timeout | null = null;
+        let isMounted = true; // ✅ CRITIQUE: Flag pour éviter les mises à jour après démontage
+
         const checkGPSAndActivate = async () => {
             try {
                 // ✅ CORRECTION: Vérifier la configuration de prévention des crashes
@@ -677,26 +752,44 @@ const HomeScreen: React.FC = () => {
                 const gpsEnabled = await SafeStorage.getItem('gpsEnabled');
                 const isGPSEnabled = gpsEnabled !== null ? JSON.parse(gpsEnabled) : true; // Par défaut activé
 
+                if (!isMounted) return; // ✅ CRITIQUE: Vérifier si le composant est toujours monté
+
                 if (isGPSEnabled) {
-                    // ✅ CORRECTION: Timeout pour éviter les blocages
+                    // ✅ CORRECTION: Timeout pour éviter les blocages avec cleanup
                     const permissionPromise = Location.requestForegroundPermissionsAsync();
-                    const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('GPS permission timeout')), 10000)
-                    );
+                    permissionTimeoutId = setTimeout(() => {
+                        if (isMounted) {
+                            console.warn('[HomeScreen] GPS permission timeout');
+                        }
+                    }, 10000);
+
+                    const timeoutPromise = new Promise<never>((_, reject) => {
+                        permissionTimeoutId = setTimeout(() => reject(new Error('GPS permission timeout')), 10000);
+                    });
 
                     const { status } = await Promise.race([permissionPromise, timeoutPromise]) as any;
 
+                    if (!isMounted) return; // ✅ CRITIQUE: Vérifier à nouveau après l'await
+
                     if (status === 'granted') {
-                        // ✅ CORRECTION: Timeout pour la localisation
+                        // ✅ CORRECTION: Timeout pour la localisation avec cleanup
                         const locationPromise = Location.getCurrentPositionAsync({
                             accuracy: Location.Accuracy.Balanced, // Moins précis mais plus rapide
                         });
 
-                        const locationTimeoutPromise = new Promise((_, reject) =>
-                            setTimeout(() => reject(new Error('GPS location timeout')), 15000)
-                        );
+                        locationTimeoutId = setTimeout(() => {
+                            if (isMounted) {
+                                console.warn('[HomeScreen] GPS location timeout');
+                            }
+                        }, 15000);
+
+                        const locationTimeoutPromise = new Promise<never>((_, reject) => {
+                            locationTimeoutId = setTimeout(() => reject(new Error('GPS location timeout')), 15000);
+                        });
 
                         const location = await Promise.race([locationPromise, locationTimeoutPromise]) as any;
+
+                        if (!isMounted) return; // ✅ CRITIQUE: Vérifier à nouveau après l'await
 
                         const coords = {
                             lat: location.coords.latitude,
@@ -710,22 +803,43 @@ const HomeScreen: React.FC = () => {
                 } else {
                     console.log('[HomeScreen] GPS désactivé dans les paramètres');
                 }
-            } catch (error) {
+            } catch (error: any) {
+                if (!isMounted) return; // ✅ CRITIQUE: Ne pas logger si le composant est démonté
                 console.error('[HomeScreen] Erreur lors de la vérification GPS:', error);
                 // ✅ CORRECTION: Ne pas bloquer l'app si GPS échoue
-                if (error.message === 'GPS permission timeout' || error.message === 'GPS location timeout') {
+                if (error?.message === 'GPS permission timeout' || error?.message === 'GPS location timeout') {
                     console.warn('[HomeScreen] GPS timeout - continuer sans localisation');
+                }
+            } finally {
+                // ✅ CRITIQUE: Nettoyer les timeouts
+                if (permissionTimeoutId) {
+                    clearTimeout(permissionTimeoutId);
+                    permissionTimeoutId = null;
+                }
+                if (locationTimeoutId) {
+                    clearTimeout(locationTimeoutId);
+                    locationTimeoutId = null;
                 }
             }
         };
 
         // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
         checkGPSAndActivate().catch(error => {
-            console.error('[HomeScreen] Erreur checkGPSAndActivate:', error);
+            if (isMounted) {
+                console.error('[HomeScreen] Erreur checkGPSAndActivate:', error);
+            }
         });
 
-        // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
-        return undefined;
+        // ✅ CRITIQUE: Cleanup pour annuler les timeouts et marquer comme démonté
+        return () => {
+            isMounted = false;
+            if (permissionTimeoutId) {
+                clearTimeout(permissionTimeoutId);
+            }
+            if (locationTimeoutId) {
+                clearTimeout(locationTimeoutId);
+            }
+        };
     }, []);
 
 
@@ -769,8 +883,14 @@ const HomeScreen: React.FC = () => {
                 });
             }
 
-            // Utiliser yukpoclient (comme le frontend)
-            const result = await rechercherServices(input);
+            // ✅ OPTIMISATION: Utiliser yukpoclient avec timeout pour éviter les blocages
+            const result = await apiCallWithTimeout(
+                () => rechercherServices(input),
+                {
+                    timeout: API_TIMEOUTS.SEARCH,
+                    errorMessage: 'La recherche a pris trop de temps',
+                }
+            );
 
             console.log('[HomeScreen] Résultat API brut:', result);
             console.log('[HomeScreen] Type de result:', typeof result);
@@ -1014,9 +1134,15 @@ const HomeScreen: React.FC = () => {
             console.log('[HomeScreen] Création service avec:', input);
             console.log('[HomeScreen] Utilisateur authentifié:', user.email);
 
-            // CORRECTION: Appeler l'API pour générer les suggestions (comme le frontend)
+            // ✅ OPTIMISATION: Appeler l'API pour générer les suggestions avec timeout
             console.log('[HomeScreen] → Appel genererSuggestionsService API');
-            const result = await genererSuggestionsService(input);
+            const result = await apiCallWithTimeout(
+                () => genererSuggestionsService(input),
+                {
+                    timeout: API_TIMEOUTS.CREATE_SERVICE,
+                    errorMessage: 'La génération de suggestions a pris trop de temps',
+                }
+            );
 
             console.log('[HomeScreen] Suggestions générées par l\'IA:', result);
 
@@ -1106,169 +1232,116 @@ const HomeScreen: React.FC = () => {
                 }
             };
 
-            // Variables pour le résumé final
-            let prestataireServicesResponse: any = null;
-            let lastServiceResponse: any = null;
-            let servicesResponse: any = null;
-
+            // ✅ OPTIMISATION: Paralléliser tous les appels API pour réduire le temps de réponse
             try {
-                // ✅ CORRECTION: Essayer d'abord /api/prestataire/services (utilisé ailleurs dans le code)
-                prestataireServicesResponse = await apiGet('/api/prestataire/services');
-                console.log('[HomeScreen] Réponse /api/prestataire/services:', {
-                    success: prestataireServicesResponse.success,
-                    hasData: !!prestataireServicesResponse.data,
-                    isArray: Array.isArray(prestataireServicesResponse.data),
-                    length: Array.isArray(prestataireServicesResponse.data) ? prestataireServicesResponse.data.length : 0
-                });
+                console.log('[HomeScreen] 🚀 Démarrage vérification services en parallèle...');
+                const startTime = Date.now();
 
-                // ✅ CORRECTION: Gérer le cas où la réponse est un objet avec pagination
-                let servicesArray: any[] = [];
-                if (prestataireServicesResponse.success && prestataireServicesResponse.data) {
-                    if (Array.isArray(prestataireServicesResponse.data)) {
-                        servicesArray = prestataireServicesResponse.data;
-                    } else if (prestataireServicesResponse.data.data && Array.isArray(prestataireServicesResponse.data.data)) {
-                        // Format avec pagination: {data: [...], pagination: {...}}
-                        servicesArray = prestataireServicesResponse.data.data;
-                        console.log('[HomeScreen] ✅ Format avec pagination détecté, services extraits:', servicesArray.length);
-                    } else if (prestataireServicesResponse.data.services && Array.isArray(prestataireServicesResponse.data.services)) {
-                        servicesArray = prestataireServicesResponse.data.services;
-                        console.log('[HomeScreen] ✅ Format avec clé services détecté, services extraits:', servicesArray.length);
-                    } else {
-                        console.warn('[HomeScreen] ⚠️ Format de réponse inattendu:', {
-                            type: typeof prestataireServicesResponse.data,
-                            isArray: Array.isArray(prestataireServicesResponse.data),
-                            keys: typeof prestataireServicesResponse.data === 'object' ? Object.keys(prestataireServicesResponse.data) : []
-                        });
-                    }
-                }
+                // ✅ OPTIMISATION: Exécuter tous les appels API en parallèle avec timeout
+                const [prestataireResult, lastServiceResult, myServicesResult, myProductsResult] = await Promise.allSettled([
+                    apiCallWithTimeout(() => apiGet('/api/prestataire/services'), { timeout: API_TIMEOUTS.DEFAULT, errorMessage: 'Timeout vérification prestataire services' }),
+                    apiCallWithTimeout(() => apiGet('/api/services/last'), { timeout: API_TIMEOUTS.DEFAULT, errorMessage: 'Timeout vérification dernier service' }),
+                    apiCallWithTimeout(() => apiGet('/api/services/my-services'), { timeout: API_TIMEOUTS.DEFAULT, errorMessage: 'Timeout vérification mes services' }),
+                    apiCallWithTimeout(() => apiGet('/api/products/my-products'), { timeout: API_TIMEOUTS.DEFAULT, errorMessage: 'Timeout vérification mes produits' }).catch(() => ({ success: false, data: null })), // Ignorer les erreurs pour ce fallback
+                ]);
 
-                if (servicesArray.length > 0) {
-                    // ✅ CORRECTION: Chercher le PREMIER service qui a des produits (pas juste un service)
-                    for (const service of servicesArray) {
-                        const serviceId = service.id || service.service_id || null;
-                        if (serviceId && serviceHasProducts(service)) {
-                            hasExistingServiceWithProducts = true;
-                            firstServiceId = serviceId;
-                            console.log('[HomeScreen] ✅ Service avec produits trouvé via /api/prestataire/services (ID: ' + firstServiceId + ')');
-                            console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
-                            break; // Arrêter dès qu'on trouve un service avec produits
+                const elapsedTime = Date.now() - startTime;
+                console.log(`[HomeScreen] ✅ Vérification services terminée en ${elapsedTime}ms (parallélisé)`);
+
+                // Traiter les résultats dans l'ordre de priorité
+                // 1. /api/prestataire/services (priorité 1)
+                if (prestataireResult.status === 'fulfilled' && prestataireResult.value.success) {
+                    const prestataireServicesResponse = prestataireResult.value as any;
+                    console.log('[HomeScreen] Réponse /api/prestataire/services:', {
+                        success: prestataireServicesResponse.success,
+                        hasData: !!prestataireServicesResponse.data,
+                        isArray: Array.isArray(prestataireServicesResponse.data),
+                        length: Array.isArray(prestataireServicesResponse.data) ? prestataireServicesResponse.data.length : 0
+                    });
+
+                    let servicesArray: any[] = [];
+                    if (prestataireServicesResponse.data) {
+                        if (Array.isArray(prestataireServicesResponse.data)) {
+                            servicesArray = prestataireServicesResponse.data;
+                        } else if (prestataireServicesResponse.data?.data && Array.isArray(prestataireServicesResponse.data.data)) {
+                            servicesArray = prestataireServicesResponse.data.data;
+                            console.log('[HomeScreen] ✅ Format avec pagination détecté, services extraits:', servicesArray.length);
+                        } else if (prestataireServicesResponse.data?.services && Array.isArray(prestataireServicesResponse.data.services)) {
+                            servicesArray = prestataireServicesResponse.data.services;
+                            console.log('[HomeScreen] ✅ Format avec clé services détecté, services extraits:', servicesArray.length);
                         }
                     }
 
-                    if (!hasExistingServiceWithProducts) {
-                        console.log('[HomeScreen] ℹ️ Services trouvés mais aucun n\'a de produits');
-                    }
-                } else if (prestataireServicesResponse.success) {
-                    console.log('[HomeScreen] ⚠️ Réponse réussie mais aucun service extrait, format:', {
-                        hasData: !!prestataireServicesResponse.data,
-                        isArray: Array.isArray(prestataireServicesResponse.data),
-                        dataType: typeof prestataireServicesResponse.data,
-                        dataKeys: prestataireServicesResponse.data && typeof prestataireServicesResponse.data === 'object'
-                            ? Object.keys(prestataireServicesResponse.data)
-                            : []
-                    });
-                }
-
-                // ✅ FALLBACK 1: Si /api/prestataire/services ne fonctionne pas, essayer /api/services/last
-                if (!hasExistingServiceWithProducts) {
-                    console.log('[HomeScreen] Tentative avec /api/services/last comme fallback...');
-                    lastServiceResponse = await apiGet('/api/services/last');
-                    console.log('[HomeScreen] Réponse /api/services/last:', {
-                        success: lastServiceResponse.success,
-                        hasData: !!lastServiceResponse.data,
-                        dataType: typeof lastServiceResponse.data,
-                        dataKeys: lastServiceResponse.data ? Object.keys(lastServiceResponse.data) : []
-                    });
-
-                    if (lastServiceResponse.data) {
-                        const serviceData = (lastServiceResponse.data as any)?.data || lastServiceResponse.data;
-                        if (serviceData && (serviceData.id || serviceData.service_id)) {
-                            const serviceId = serviceData.id || serviceData.service_id;
-                            // ✅ CORRECTION: Vérifier que ce service a des produits
-                            if (serviceHasProducts(serviceData)) {
+                    if (servicesArray.length > 0) {
+                        for (const service of servicesArray) {
+                            const serviceId = service.id || service.service_id || null;
+                            if (serviceId && serviceHasProducts(service)) {
                                 hasExistingServiceWithProducts = true;
                                 firstServiceId = serviceId;
-                                console.log('[HomeScreen] ✅ Service avec produits trouvé via /api/services/last (ID: ' + firstServiceId + ')');
-                                console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
-                            } else {
-                                console.log('[HomeScreen] ℹ️ Service trouvé via /api/services/last mais aucun produit détecté');
+                                console.log('[HomeScreen] ✅ Service avec produits trouvé via /api/prestataire/services (ID: ' + firstServiceId + ')');
+                                break;
                             }
                         }
                     }
                 }
 
-                // ✅ FALLBACK 2: Si /api/services/last ne fonctionne pas, essayer /api/services/my-services
-                if (!hasExistingServiceWithProducts) {
-                    console.log('[HomeScreen] Tentative avec /api/services/my-services comme fallback...');
-                    servicesResponse = await apiGet('/api/services/my-services');
-                    console.log('[HomeScreen] Réponse /api/services/my-services:', {
-                        success: servicesResponse.success,
-                        hasData: !!servicesResponse.data,
-                        isArray: Array.isArray(servicesResponse.data),
-                        length: Array.isArray(servicesResponse.data) ? servicesResponse.data.length : 0
-                    });
+                // 2. /api/services/last (fallback 1)
+                if (!hasExistingServiceWithProducts && lastServiceResult.status === 'fulfilled' && lastServiceResult.value.success) {
+                    const lastServiceResponse = lastServiceResult.value as any;
+                    if (lastServiceResponse.data) {
+                        const serviceData = (lastServiceResponse.data as any)?.data || lastServiceResponse.data;
+                        if (serviceData && (serviceData.id || serviceData.service_id)) {
+                            const serviceId = serviceData.id || serviceData.service_id;
+                            if (serviceHasProducts(serviceData)) {
+                                hasExistingServiceWithProducts = true;
+                                firstServiceId = serviceId;
+                                console.log('[HomeScreen] ✅ Service avec produits trouvé via /api/services/last (ID: ' + firstServiceId + ')');
+                            }
+                        }
+                    }
+                }
 
-                    if (servicesResponse.success && Array.isArray(servicesResponse.data) && servicesResponse.data.length > 0) {
-                        // ✅ CORRECTION: Chercher le PREMIER service qui a des produits (pas juste un service)
+                // 3. /api/services/my-services (fallback 2)
+                if (!hasExistingServiceWithProducts && myServicesResult.status === 'fulfilled' && myServicesResult.value.success) {
+                    const servicesResponse = myServicesResult.value as any;
+                    if (Array.isArray(servicesResponse.data) && servicesResponse.data.length > 0) {
                         for (const service of servicesResponse.data) {
                             const serviceId = service.id || service.service_id || null;
                             if (serviceId && serviceHasProducts(service)) {
                                 hasExistingServiceWithProducts = true;
                                 firstServiceId = serviceId;
                                 console.log('[HomeScreen] ✅ Service avec produits trouvé via /api/services/my-services (ID: ' + firstServiceId + ')');
-                                console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
-                                break; // Arrêter dès qu'on trouve un service avec produits
+                                break;
                             }
-                        }
-
-                        if (!hasExistingServiceWithProducts) {
-                            console.log('[HomeScreen] ℹ️ Services trouvés via /api/services/my-services mais aucun n\'a de produits');
                         }
                     }
                 }
 
-                // ✅ FALLBACK 3: Si toutes les vérifications échouent, essayer /api/products/my-products
-                if (!hasExistingServiceWithProducts) {
-                    console.log('[HomeScreen] Tentative avec /api/products/my-products comme dernier fallback...');
-                    try {
-                        const productsResponse = await apiGet('/api/products/my-products');
-                        console.log('[HomeScreen] Réponse /api/products/my-products:', {
-                            success: productsResponse.success,
-                            hasData: !!productsResponse.data,
-                            isArray: Array.isArray(productsResponse.data),
-                            length: Array.isArray(productsResponse.data) ? productsResponse.data.length : 0
-                        });
-
-                        if (productsResponse.success && Array.isArray(productsResponse.data) && productsResponse.data.length > 0) {
-                            // Si l'utilisateur a des produits, trouver le service associé au premier produit
-                            const firstProduct = productsResponse.data[0];
-                            const serviceId = firstProduct.service_id || firstProduct.serviceId || firstProduct.service?.id;
-                            if (serviceId) {
-                                hasExistingServiceWithProducts = true;
-                                firstServiceId = serviceId;
-                                console.log('[HomeScreen] ✅ Service avec produits trouvé via /api/products/my-products (ID: ' + firstServiceId + ')');
-                                console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
-                            } else {
-                                console.warn('[HomeScreen] ⚠️ Produits trouvés mais service_id manquant dans le premier produit');
-                            }
+                // 4. /api/products/my-products (fallback 3)
+                if (!hasExistingServiceWithProducts && myProductsResult.status === 'fulfilled' && myProductsResult.value.success) {
+                    const productsResponse = myProductsResult.value as any;
+                    if (Array.isArray(productsResponse.data) && productsResponse.data.length > 0) {
+                        const firstProduct = productsResponse.data[0];
+                        const serviceId = firstProduct.service_id || firstProduct.serviceId || firstProduct.service?.id;
+                        if (serviceId) {
+                            hasExistingServiceWithProducts = true;
+                            firstServiceId = serviceId;
+                            console.log('[HomeScreen] ✅ Service avec produits trouvé via /api/products/my-products (ID: ' + firstServiceId + ')');
                         }
-                    } catch (productsError) {
-                        console.warn('[HomeScreen] ⚠️ Erreur vérification produits:', productsError);
                     }
                 }
 
                 if (!hasExistingServiceWithProducts) {
                     console.log('[HomeScreen] ℹ️ Aucun service avec produits détecté → Formulaire COMPLET');
+                    const prestataireData = prestataireResult.status === 'fulfilled' ? (prestataireResult.value as any)?.data : null;
+                    const lastServiceData = lastServiceResult.status === 'fulfilled' ? (lastServiceResult.value as any)?.data : null;
+                    const myServicesData = myServicesResult.status === 'fulfilled' ? (myServicesResult.value as any)?.data : null;
                     console.log('[HomeScreen] 📊 Résumé vérification:', {
                         hasExistingServiceWithProducts,
                         firstServiceId,
-                        prestataireServicesCount: prestataireServicesResponse && Array.isArray(prestataireServicesResponse.data)
-                            ? prestataireServicesResponse.data.length
-                            : 0,
-                        lastServiceId: lastServiceResponse?.data?.id || lastServiceResponse?.data?.data?.id || null,
-                        myServicesCount: servicesResponse && Array.isArray(servicesResponse.data)
-                            ? servicesResponse.data.length
-                            : 0
+                        prestataireServicesCount: Array.isArray(prestataireData) ? prestataireData.length : 0,
+                        lastServiceId: lastServiceData?.id || lastServiceData?.data?.id || null,
+                        myServicesCount: Array.isArray(myServicesData) ? myServicesData.length : 0
                     });
                 }
             } catch (error: any) {
@@ -1419,7 +1492,7 @@ const HomeScreen: React.FC = () => {
                         onShowChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
                         onCloseLeaderboard={() => dispatch({ type: 'TOGGLE_LEADERBOARD' })}
                         onCloseChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
-                        disabled={isNavigating} // ✅ CORRIGÉ: Désactiver uniquement pendant navigation (pas loading)
+                        disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus désactiver pour éviter les interactions bloquées
                     />
 
                     {/* ✅ ZONE DE RECHERCHE FIXE - Juste après l'en-tête */}
@@ -1431,9 +1504,8 @@ const HomeScreen: React.FC = () => {
                                     title={t('search.find')}
                                     icon="🔍"
                                     variant={!state.ui.isCreateService ? 'primary' : 'outline'}
-                                    disabled={isNavigating}
+                                    disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus désactiver
                                     onPress={() => {
-                                        if (isNavigating) return;
                                         hapticSelect();
                                         dispatch({ type: 'SET_IS_CREATE_SERVICE', payload: false });
                                     }}
@@ -1445,9 +1517,8 @@ const HomeScreen: React.FC = () => {
                                     title={t('search.create')}
                                     icon="➕"
                                     variant={state.ui.isCreateService ? 'primary' : 'outline'}
-                                    disabled={isNavigating}
+                                    disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus désactiver
                                     onPress={() => {
-                                        if (isNavigating) return;
                                         hapticSelect();
                                         dispatch({ type: 'SET_IS_CREATE_SERVICE', payload: true });
                                     }}
@@ -1459,7 +1530,7 @@ const HomeScreen: React.FC = () => {
                         {/* ChatInput optimisé - COMPACT */}
                         <ChatInputMobile
                             onSubmit={handleSubmit}
-                            loading={state.ui.loading}
+                            loading={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer ChatInputMobile avec loading
                             placeholder={state.ui.isCreateService
                                 ? t('search.create')
                                 : t('search.placeholder')}
@@ -1563,13 +1634,8 @@ const HomeScreen: React.FC = () => {
                                 );
                             }
                             if (item.type === 'promo') {
-                                // ✅ SÉCURITÉ: Vérifier que GlobalPromoHighlights est défini
-                                if (!GlobalPromoHighlights) {
-                                    console.error('[HomeScreen] ❌ GlobalPromoHighlights est undefined');
-                                    return <View key="promo-error" style={{ padding: 20, alignItems: 'center' }}>
-                                        <Text style={{ fontSize: 14, color: '#666' }}>Promotions non disponibles</Text>
-                                    </View>;
-                                }
+                                // ✅ CORRIGÉ 2025-12-11: Utiliser directement le composant lazy dans Suspense
+                                // React.lazy gère déjà le chargement et les erreurs sont gérées par ErrorBoundary
                                 return (
                                     <AnimatedCard index={1} delay={100}>
                                         <ErrorBoundary
@@ -1595,14 +1661,8 @@ const HomeScreen: React.FC = () => {
                                                     </View>
                                                 }
                                             >
-                                                {/* ✅ CORRIGÉ: Vérifier que GlobalPromoHighlights est bien chargé avant de l'utiliser */}
-                                                {GlobalPromoHighlights ? (
-                                                    <GlobalPromoHighlights />
-                                                ) : (
-                                                    <View style={{ padding: 20, alignItems: 'center' }}>
-                                                        <Text style={{ fontSize: 14, color: '#666' }}>Promotions non disponibles</Text>
-                                                    </View>
-                                                )}
+                                                {/* ✅ CORRIGÉ 2025-12-11: Utiliser directement le composant lazy, React.lazy gère déjà le chargement */}
+                                                <GlobalPromoHighlights />
                                             </Suspense>
                                         </ErrorBoundary>
                                     </AnimatedCard>
@@ -1820,8 +1880,24 @@ const HomeScreen: React.FC = () => {
 
                     {/* Alerte de confirmation pour création de service */}
                     {state.ui.showCreateServiceAlert && (
-                        <View style={styles.confirmationModalOverlay}>
-                            <View style={styles.confirmationModal}>
+                        <View
+                            style={styles.confirmationModalOverlay}
+                            pointerEvents="box-none" // ✅ CRITIQUE: Permettre les interactions avec le contenu
+                        >
+                            {/* Overlay cliquable pour fermer */}
+                            <TouchableOpacity
+                                style={StyleSheet.absoluteFill}
+                                activeOpacity={1}
+                                onPress={() => {
+                                    console.log('[HomeScreen] 🔄 Fermeture overlay par clic extérieur');
+                                    dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+                                    dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+                                }}
+                            />
+                            <View
+                                style={styles.confirmationModal}
+                                pointerEvents="box-none" // ✅ CRITIQUE: Permettre les interactions avec les boutons
+                            >
                                 <View style={styles.confirmationHeader}>
                                     <Text style={styles.confirmationIcon}>🔐</Text>
                                     <Text style={styles.confirmationTitle}>Confirmation de création de service</Text>
@@ -1832,15 +1908,23 @@ const HomeScreen: React.FC = () => {
                                 <View style={styles.confirmationButtons}>
                                     <TouchableOpacity
                                         style={[styles.confirmationButton, styles.confirmationButtonSecondary]}
-                                        onPress={cancelCreateService}
-                                        disabled={state.ui.loading}
+                                        onPress={() => {
+                                            console.log('[HomeScreen] 🔄 Annulation création service');
+                                            cancelCreateService();
+                                        }}
+                                        disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading
+                                        activeOpacity={0.7}
                                     >
                                         <Text style={styles.confirmationButtonTextSecondary}>Non, rechercher</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.confirmationButton, styles.confirmationButtonPrimary]}
-                                        onPress={confirmCreateService}
-                                        disabled={state.ui.loading}
+                                        onPress={() => {
+                                            console.log('[HomeScreen] 🔄 Confirmation création service');
+                                            confirmCreateService();
+                                        }}
+                                        disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading
+                                        activeOpacity={0.7}
                                     >
                                         <Text style={styles.confirmationButtonTextPrimary}>
                                             {state.ui.loading ? 'Ouverture…' : 'Oui, créer un service'}
@@ -2483,6 +2567,24 @@ const createStyles = (colors: any) => StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 8,
         elevation: 8,
+        position: 'relative', // ✅ NOUVEAU: Pour positionner le bouton de fermeture
+    },
+    confirmationCloseButton: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1001,
+    },
+    confirmationCloseButtonText: {
+        fontSize: 20,
+        color: '#666',
+        fontWeight: 'bold',
     },
     confirmationHeader: {
         alignItems: 'center',

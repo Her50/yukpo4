@@ -35,14 +35,53 @@ pub fn start_pipeline_health_worker(state: Arc<AppState>) {
             ticker.tick().await;
 
             // ✅ CORRECTION: Marquer les stale jobs comme failed avant de calculer le health
-            if let Err(err) = crate::services::pipeline_health_service::mark_stale_jobs_as_failed(
-                worker_state.clone(),
-            )
-            .await
-            {
-                log::error!(
-                    "[PipelineWorker] Impossible de marquer les stale jobs comme failed: {err:?}"
-                );
+            // ✅ OPTIMISÉ 2025-12-11: Retry avec backoff pour gérer les erreurs de connexion DB
+            let mut retry_count = 0;
+            const MAX_RETRIES: u32 = 3;
+            
+            loop {
+                match crate::services::pipeline_health_service::mark_stale_jobs_as_failed(
+                    worker_state.clone(),
+                )
+                .await
+                {
+                    Ok(_) => break, // Succès, sortir de la boucle
+                    Err(err) => {
+                        let error_str = err.to_string();
+                        let error_lower = error_str.to_lowercase();
+                        
+                        // ✅ Détecter les erreurs de connexion DB attendues (non critiques)
+                        let is_connection_error = error_lower.contains("peer closed connection")
+                            || error_lower.contains("connection reset by peer")
+                            || error_lower.contains("broken pipe")
+                            || error_lower.contains("tls close_notify")
+                            || error_lower.contains("error communicating with database");
+                        
+                        if retry_count < MAX_RETRIES && is_connection_error {
+                            retry_count += 1;
+                            let backoff_ms = 1000u64 * retry_count as u64; // Backoff exponentiel: 1s, 2s, 3s
+                            log::debug!(
+                                "[PipelineWorker] ⚠️ Erreur connexion DB (retry {}/{}): {} - Attente {}ms",
+                                retry_count, MAX_RETRIES, error_str, backoff_ms
+                            );
+                            tokio::time::sleep(std::time::Duration::from_millis(backoff_ms)).await;
+                            continue;
+                        } else if is_connection_error {
+                            // Après max retries, logger en debug (erreur attendue)
+                            log::debug!(
+                                "[PipelineWorker] ⚠️ Erreur connexion DB après {} retries (ignorée): {}",
+                                MAX_RETRIES, error_str
+                            );
+                            break; // Sortir de la boucle, erreur attendue (reconnexion automatique)
+                        } else {
+                            // Erreur non liée à la connexion → erreur réelle
+                            log::error!(
+                                "[PipelineWorker] Impossible de marquer les stale jobs comme failed: {err:?}"
+                            );
+                            break;
+                        }
+                    }
+                }
             }
 
             match compute_pipeline_health(worker_state.clone()).await {

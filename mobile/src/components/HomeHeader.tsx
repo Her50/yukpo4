@@ -223,16 +223,18 @@ export const HomeHeader: React.FC<HomeHeaderProps> = React.memo(({
                             onLanguageChange={onLanguageChange}
                             compact={true}
                         />
-                        {/* ✅ CORRIGÉ: Badge gamification compact - Positionné à côté du drapeau, bien séparé du titre Yukpo */}
+                        {/* ✅ CORRIGÉ 2025-12-11: Badge gamification compact - Positionné à côté du drapeau, bien séparé du titre Yukpo */}
                         {user?.id ? (
-                            <GamificationBadge
-                                userId={user.id}
-                                compact={true}
-                                onPress={() => {
-                                    hapticPress();
-                                    onShowLeaderboard?.();
-                                }}
-                            />
+                            <View style={{ marginRight: 12 }}> {/* ✅ AUGMENTÉ 2025-12-11: De 8 à 12px pour mieux séparer le trophée du texte Yukpo */}
+                                <GamificationBadge
+                                    userId={user.id}
+                                    compact={true}
+                                    onPress={() => {
+                                        hapticPress();
+                                        onShowLeaderboard?.();
+                                    }}
+                                />
+                            </View>
                         ) : null}
                         {/* ✅ NOUVEAU: Modals gamification - HORS du headerLeft pour éviter conflits */}
                         {user?.id ? (
@@ -359,17 +361,17 @@ const styles = StyleSheet.create({
         alignItems: 'center', // ✅ CORRIGÉ: Centrer verticalement
         justifyContent: 'flex-start',
         minWidth: 0,
-        maxWidth: '32%', // ✅ AUGMENTÉ: De 28% à 32% pour accommoder le trophée
+        maxWidth: '28%', // ✅ RÉDUIT: De 32% à 28% pour éviter que le trophée ne chevauche le texte Yukpo
         flexShrink: 1,
-        gap: 6, // ✅ AUGMENTÉ: De 4 à 6px pour mieux séparer les éléments
+        gap: 4, // ✅ RÉDUIT: De 6 à 4px pour compacter les éléments
         height: HEADER_MAX_HEIGHT, // ✅ CORRIGÉ: Hauteur fixe égale au header
-        paddingRight: 16, // ✅ CORRIGÉ: Augmenté de 8 à 16px pour bien séparer le trophée du texte Yukpo
+        paddingRight: 24, // ✅ CORRIGÉ 2025-12-11: Augmenté de 16 à 24px pour bien séparer le trophée du texte Yukpo
     },
     brandTitleContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center', // ✅ CORRIGÉ: Centrer verticalement
-        paddingHorizontal: 8, // ✅ RÉDUIT: De 12 à 8px pour réduire l'espace
+        paddingHorizontal: 12, // ✅ AUGMENTÉ 2025-12-11: De 8 à 12px pour mieux séparer du trophée
         minWidth: 100,
         flexShrink: 0,
         zIndex: 1,

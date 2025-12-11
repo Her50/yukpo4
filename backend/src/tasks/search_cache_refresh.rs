@@ -46,9 +46,9 @@ pub async fn start_search_cache_refresh_task(pool: PgPool) {
 async fn refresh_materialized_view(pool: &PgPool) -> AppResult<()> {
     let start = std::time::Instant::now();
 
-    // ✅ OPTIMISÉ 2025-12-10: Timeout augmenté à 30s car refresh_services_search_optimized() peut prendre 6-7s
-    // Si un pool séparé est utilisé pour les opérations longues, ce timeout peut être plus élevé
-    const REFRESH_TIMEOUT_SECS: u64 = 30;
+    // ✅ CORRIGÉ 2025-12-11: Timeout augmenté à 60s car refresh_services_search_optimized() peut prendre 12-14s
+    // Les logs montrent que les refreshes prennent jusqu'à 14 secondes
+    const REFRESH_TIMEOUT_SECS: u64 = 60;
     
     // ✅ OPTIMISATION: Retry avec backoff exponentiel pour les erreurs de connexion
     let mut retry_count = 0;

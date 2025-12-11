@@ -1103,7 +1103,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         <TouchableOpacity
                             style={[styles.actionButton, audioUri && styles.actionButtonActive]}
                             onPress={toggleRecording}
-                            disabled={loading}
+                            disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading
                             accessibilityLabel="Enregistrer un message audio"
                             accessibilityRole="button"
                             accessibilityHint="Appuyez pour commencer l'enregistrement audio"
@@ -1297,13 +1297,17 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                     <TouchableOpacity
                         style={[styles.submitButtonBottom, loading && styles.sendButtonDisabled]}
                         onPress={() => handleSubmit()}
-                        disabled={loading || (!text.trim() && images.length === 0 && videos.length === 0 && audioUri === null && documents.length === 0 && excelFiles.length === 0)}
+                        disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading - permettre toujours l'envoi
                         accessibilityLabel={loading ? "Envoi en cours" : (isCreateService ? "Créer un service" : "Rechercher")}
                         accessibilityRole="button"
                         accessibilityState={{ disabled: loading || (!text.trim() && images.length === 0 && videos.length === 0 && audioUri === null && documents.length === 0 && excelFiles.length === 0) }}
                     >
                         <Text style={styles.sendIcon}>🚀</Text>
-                        <Text style={[styles.submitButtonText, { color: '#FFFFFF' }]}>
+                        <Text
+                            style={[styles.submitButtonText, { color: '#FFFFFF' }]}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                        >
                             {loading ? 'Envoi...' : 'Envoyer'}
                         </Text>
                     </TouchableOpacity>
@@ -1706,10 +1710,12 @@ const createStyles = (colors: any) => StyleSheet.create({
         elevation: 0,
     },
     submitButtonText: {
-        fontSize: 15, // ✅ AMÉLIORÉ: Augmenté de 11 à 15 pour meilleure visibilité
+        fontSize: 16, // ✅ CORRIGÉ 2025-12-11: Augmenté de 15 à 16 pour meilleure visibilité
         fontWeight: '700',
         color: '#FFFFFF', // ✅ AMÉLIORÉ: Couleur blanche explicite pour meilleur contraste
-        letterSpacing: 0.3, // ✅ NOUVEAU: Espacement des lettres pour meilleure lisibilité
+        letterSpacing: 0.5, // ✅ CORRIGÉ 2025-12-11: Augmenté de 0.3 à 0.5 pour meilleure lisibilité
+        textAlign: 'center', // ✅ AJOUTÉ 2025-12-11: Centrer le texte
+        includeFontPadding: false, // ✅ AJOUTÉ 2025-12-11: Éviter le padding supplémentaire Android
     },
     sendButtonCompact: {
         backgroundColor: '#20B2AA', // Turquoise/cyan cohérent
@@ -1721,7 +1727,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: '#9CA3AF',
-        opacity: 0.5,
+        opacity: 0.6, // ✅ CORRIGÉ 2025-12-11: Augmenté de 0.5 à 0.6 pour meilleure visibilité du texte
     },
     // ✅ NOUVEAU: Styles pour autocomplete suggestions - OPTIMISÉ pour taille réduite
     suggestionsContainer: {

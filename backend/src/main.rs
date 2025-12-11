@@ -89,20 +89,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .max_connections(max_connections)
         .min_connections(min_connections) // ✅ Maintenir un minimum de connexions
         .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
-        .idle_timeout(Some(std::time::Duration::from_secs(90))) // ✅ OPTIMISÉ 2025-12-10: Réduit à 90s (1.5 min) pour éviter les connexions mortes et crashes PostgreSQL
-        .max_lifetime(Some(std::time::Duration::from_secs(1800))) // ✅ OPTIMISÉ 2025-12-10: Augmenté à 1800s (30 min) pour réduire les reconnexions fréquentes
-        .test_before_acquire(true) // ✅ Tester la connexion avant utilisation
+        .idle_timeout(Some(std::time::Duration::from_secs(600))) // ✅ CORRIGÉ 2025-12-11: Augmenté à 600s (10 min) pour éviter les fermetures prématurées
+        .max_lifetime(Some(std::time::Duration::from_secs(3600))) // ✅ CORRIGÉ 2025-12-11: Augmenté à 3600s (1h) pour réduire les reconnexions
+        .test_before_acquire(false) // ✅ CORRIGÉ 2025-12-11: Désactivé car peut causer des problèmes avec les connexions en cours de fermeture
         .after_connect(|conn, _meta| {
-            // ✅ NOUVEAU 2025-12-10: Configurer la connexion pour éviter les timeouts et crashes
+            // ✅ CORRIGÉ 2025-12-11: Configuration minimale pour éviter les conflits
             Box::pin(async move {
-                // Définir un statement_timeout pour éviter les requêtes qui bloquent trop longtemps
-                sqlx::query("SET statement_timeout = '30s'")
+                // ✅ CRITIQUE: Désactiver statement_timeout pour permettre les opérations longues
+                sqlx::query("SET statement_timeout = 0")
                     .execute(&mut *conn)
                     .await?;
-                // Définir idle_in_transaction_session_timeout pour éviter les transactions qui restent ouvertes
-                sqlx::query("SET idle_in_transaction_session_timeout = '60s'")
+                // ✅ CRITIQUE: Augmenter idle_in_transaction_session_timeout
+                sqlx::query("SET idle_in_transaction_session_timeout = '600s'")
                     .execute(&mut *conn)
                     .await?;
+                // ✅ CRITIQUE: Désactiver le timeout de connexion idle pour éviter les fermetures prématurées
+                // Note: Les paramètres TCP keepalive doivent être configurés au niveau système/PostgreSQL, pas au niveau session
                 Ok(())
             })
         })
@@ -138,31 +140,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         acquire_timeout_secs
     );
 
-    // ✅ NOUVEAU 2025-12-10: Créer un pool séparé pour les opérations longues (refresh materialized views)
-    // Ce pool est dédié aux opérations qui peuvent prendre plusieurs secondes et ne doit pas bloquer le pool principal
-    let pg_pool_long_ops = if let Ok(long_ops_url) = env::var("DATABASE_URL_LONG_OPS") {
-        // Pool dédié pour opérations longues (refresh materialized views, etc.)
-        match PgPoolOptions::new()
-            .max_connections(5) // Pool réduit pour opérations longues
-            .min_connections(1)
-            .acquire_timeout(std::time::Duration::from_secs(60)) // Timeout plus long pour opérations longues
-            .idle_timeout(Some(std::time::Duration::from_secs(300))) // 5 minutes
-            .max_lifetime(Some(std::time::Duration::from_secs(1800))) // 30 minutes
-            .test_before_acquire(false) // Pas besoin de tester avant acquisition pour opérations longues
-            .connect(&long_ops_url)
-            .await
-        {
-            Ok(pool) => {
-                log::info!("✅ Pool PostgreSQL longues opérations créé");
-                Some(pool)
-            }
-            Err(e) => {
-                log::warn!("⚠️ Impossible de créer le pool longues opérations: {}, utilisation du pool principal", e);
-                None
-            }
+    // ✅ CORRIGÉ 2025-12-11: Créer TOUJOURS un pool séparé pour les opérations longues
+    // Même si DATABASE_URL_LONG_OPS n'est pas défini, on crée un pool séparé avec la même URL
+    // Cela évite que les REFRESH MATERIALIZED VIEW bloquent le pool principal
+    let long_ops_url = env::var("DATABASE_URL_LONG_OPS").unwrap_or_else(|_| db_url.clone());
+    let pg_pool_long_ops = match PgPoolOptions::new()
+        .max_connections(10) // ✅ AUGMENTÉ: Plus de connexions pour gérer plusieurs refreshes simultanés
+        .min_connections(2) // ✅ AUGMENTÉ: Maintenir au moins 2 connexions prêtes
+        .acquire_timeout(std::time::Duration::from_secs(120)) // ✅ AUGMENTÉ: Timeout plus long pour opérations longues
+        .idle_timeout(Some(std::time::Duration::from_secs(600))) // ✅ AUGMENTÉ: 10 minutes
+        .max_lifetime(Some(std::time::Duration::from_secs(3600))) // ✅ AUGMENTÉ: 1 heure
+        .test_before_acquire(false) // Pas besoin de tester avant acquisition pour opérations longues
+        .after_connect(|conn, _meta| {
+            // ✅ Configuration minimale pour opérations longues
+            Box::pin(async move {
+                sqlx::query("SET statement_timeout = 0")
+                    .execute(&mut *conn)
+                    .await?;
+                sqlx::query("SET idle_in_transaction_session_timeout = '1800s'")
+                    .execute(&mut *conn)
+                    .await?;
+                Ok(())
+            })
+        })
+        .connect(&long_ops_url)
+        .await
+    {
+        Ok(pool) => {
+            log::info!("✅ Pool PostgreSQL longues opérations créé (max=10, min=2)");
+            Some(pool)
         }
-    } else {
-        None
+        Err(e) => {
+            log::warn!("⚠️ Impossible de créer le pool longues opérations: {}, utilisation du pool principal", e);
+            None
+        }
     };
 
     // ✅ NOUVEAU 2025-12-02: Créer le pool PostgreSQL read replica (lectures) si configuré

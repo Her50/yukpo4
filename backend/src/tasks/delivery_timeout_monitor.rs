@@ -45,11 +45,50 @@ pub async fn start_delivery_timeout_monitor(state: Arc<AppState>) {
     loop {
         interval_timer.tick().await;
 
-        if let Err(e) = check_delivery_timeouts(state.clone()).await {
-            error!(
-                "❌ Erreur lors de la vérification des timeouts de livraison: {}",
-                e
-            );
+        // ✅ OPTIMISÉ 2025-12-11: Retry avec backoff pour gérer les erreurs de connexion DB
+        let mut retry_count = 0;
+        const MAX_RETRIES: u32 = 3;
+        
+        loop {
+            match check_delivery_timeouts(state.clone()).await {
+                Ok(_) => break, // Succès, sortir de la boucle
+                Err(e) => {
+                    let error_str = e.to_string();
+                    let error_lower = error_str.to_lowercase();
+                    
+                    // ✅ Détecter les erreurs de connexion DB attendues (non critiques)
+                    let is_connection_error = error_lower.contains("peer closed connection")
+                        || error_lower.contains("connection reset by peer")
+                        || error_lower.contains("broken pipe")
+                        || error_lower.contains("tls close_notify")
+                        || error_lower.contains("error communicating with database");
+                    
+                    if retry_count < MAX_RETRIES && is_connection_error {
+                        retry_count += 1;
+                        let backoff_ms = 1000u64 * retry_count as u64; // Backoff exponentiel: 1s, 2s, 3s
+                        log::debug!(
+                            "[DeliveryTimeoutMonitor] ⚠️ Erreur connexion DB (retry {}/{}): {} - Attente {}ms",
+                            retry_count, MAX_RETRIES, error_str, backoff_ms
+                        );
+                        tokio::time::sleep(TokioDuration::from_millis(backoff_ms)).await;
+                        continue;
+                    } else if is_connection_error {
+                        // Après max retries, logger en debug (erreur attendue)
+                        log::debug!(
+                            "[DeliveryTimeoutMonitor] ⚠️ Erreur connexion DB après {} retries (ignorée): {}",
+                            MAX_RETRIES, error_str
+                        );
+                        break; // Sortir de la boucle, erreur attendue (reconnexion automatique)
+                    } else {
+                        // Erreur non liée à la connexion → erreur réelle
+                        error!(
+                            "❌ Erreur lors de la vérification des timeouts de livraison: {}",
+                            e
+                        );
+                        break;
+                    }
+                }
+            }
         }
     }
 }

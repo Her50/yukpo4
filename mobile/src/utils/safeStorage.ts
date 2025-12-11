@@ -48,25 +48,32 @@ const testStorage = async (retryCount: number = 0): Promise<boolean> => {
     }
 };
 
-// ✅ AMÉLIORÉ: Tester avec délai initial pour éviter les erreurs au démarrage
+// ✅ CORRIGÉ 2025-12-11: Initialiser AsyncStorage de manière plus agressive au démarrage
 // ✅ CRITIQUE: Tester immédiatement ET avec délai pour couvrir tous les cas
-testStorage().catch(() => {
-    // Premier test immédiat (peut échouer, c'est normal)
+// ✅ NOUVEAU: Attendre que le module soit prêt avant de tester
+const initializeAsyncStorage = async () => {
+    // Attendre un peu pour que le module natif soit complètement chargé
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Tester plusieurs fois avec délais progressifs
+    const testDelays = [0, 200, 500, 1000, 2000];
+    for (const delay of testDelays) {
+        if (delay > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        const result = await testStorage().catch(() => false);
+        if (result) {
+            console.log(`[SafeStorage] ✅ AsyncStorage initialisé après ${delay}ms`);
+            return;
+        }
+    }
+    console.warn('[SafeStorage] ⚠️ AsyncStorage non disponible après tous les tests');
+};
+
+// Démarrer l'initialisation (non-bloquant)
+initializeAsyncStorage().catch(() => {
+    // Ignorer les erreurs d'initialisation
 });
-
-// Test avec délai pour les cas où AsyncStorage n'est pas prêt immédiatement
-setTimeout(() => {
-    testStorage().catch(() => {
-        // Ignorer les erreurs de test initial
-    });
-}, 300); // Attendre 300ms avant le deuxième test
-
-// Test final après 1 seconde pour les cas très lents
-setTimeout(() => {
-    testStorage().catch(() => {
-        // Ignorer les erreurs de test final
-    });
-}, 1000);
 
 export const SafeStorage = {
     /**

@@ -891,8 +891,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
     service?.user_id ||
     service?.data?.user_id;
 
-  const prestataire = {
+  // ✅ CORRIGÉ 2025-12-11: Nettoyer rawPrestataire pour éviter d'afficher "false" (boolean) comme texte
+  const cleanedRawPrestataire = rawPrestataire ? {
     ...rawPrestataire,
+    // ✅ CRITIQUE: Supprimer les propriétés qui sont des boolean false pour éviter l'affichage de "false"
+    adresse: (rawPrestataire.adresse && typeof rawPrestataire.adresse === 'string' && rawPrestataire.adresse.trim().length > 0) ? rawPrestataire.adresse : undefined,
+  } : {};
+
+  const prestataire = {
+    ...cleanedRawPrestataire,
     nom: prestataireName,
     nom_complet: prestataireName,
     avatar_url: prestataireAvatar,
@@ -2391,7 +2398,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
                           )}
 
                           {/* ✅ AMÉLIORÉ 2025-11-29: Localisation hiérarchique détaillée - Toujours afficher si disponible */}
-                          {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete || prestataire?.adresse) && (
+                          {/* ✅ CORRIGÉ 2025-12-11: Vérifier que prestataire.adresse est une string, pas un boolean */}
+                          {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete || (prestataire?.adresse && typeof prestataire.adresse === 'string' && prestataire.adresse.trim().length > 0)) && (
                             <View style={styles.locationSection}>
                               <View style={styles.locationRow}>
                                 <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
@@ -2402,7 +2410,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                     product.adresse ||
                                     product.ville ||
                                     product.region ||
-                                    (prestataire?.adresse && typeof prestataire.adresse === 'string' ? prestataire.adresse : null) || // ✅ CORRIGÉ: Vérifier que prestataire.adresse est une string
+                                    (prestataire?.adresse && typeof prestataire.adresse === 'string' && prestataire.adresse.trim().length > 0 ? prestataire.adresse : null) || // ✅ CORRIGÉ 2025-12-11: Vérifier que prestataire.adresse est une string non vide
                                     service?.adresse_complete ||
                                     service?.adresse ||
                                     'Localisation disponible'}
@@ -2993,7 +3001,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                     product.adresse ||
                                     product.ville ||
                                     product.region ||
-                                    (prestataire?.adresse && typeof prestataire.adresse === 'string' ? prestataire.adresse : null) ||
+                                    (prestataire?.adresse && typeof prestataire.adresse === 'string' && prestataire.adresse.trim().length > 0 ? prestataire.adresse : null) || // ✅ CORRIGÉ 2025-12-11: Vérifier que prestataire.adresse est une string non vide
                                     service?.adresse_complete ||
                                     service?.adresse ||
                                     'Localisation disponible'}

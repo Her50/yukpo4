@@ -7,6 +7,24 @@ import { registerRootComponent } from 'expo';
 import { Platform } from 'react-native';
 import 'react-native-gesture-handler';
 
+// ✅ CORRIGÉ 2025-12-11: Initialiser AsyncStorage de manière synchrone au démarrage
+// Cela évite les erreurs "Driver not found" en s'assurant que le module natif est prêt
+try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    // Tester immédiatement que AsyncStorage est disponible
+    if (AsyncStorage && typeof AsyncStorage.getItem === 'function') {
+        console.log('[INDEX.JS] ✅ AsyncStorage initialisé au démarrage');
+        // Faire un test de connexion immédiat (non-bloquant)
+        AsyncStorage.getItem('__init_test__').catch(() => {
+            // Ignorer les erreurs de test initial, c'est normal
+        });
+    } else {
+        console.warn('[INDEX.JS] ⚠️ AsyncStorage non disponible au démarrage');
+    }
+} catch (asyncStorageError) {
+    console.error('[INDEX.JS] ⚠️ Erreur initialisation AsyncStorage (non-bloquant):', asyncStorageError);
+}
+
 // Capturer les erreurs globales JavaScript AVANT le chargement de l'app
 if (global.ErrorUtils) {
     const originalHandler = global.ErrorUtils.getGlobalHandler();

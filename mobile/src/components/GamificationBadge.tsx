@@ -172,14 +172,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4, // ✅ RÉDUIT: De 6 à 4px pour plus de compacité
-        backgroundColor: modernColors.primary,
+        paddingHorizontal: 6, // ✅ RÉDUIT 2025-12-11: De 8 à 6px pour compacter
+        paddingVertical: 3, // ✅ RÉDUIT 2025-12-11: De 4 à 3px pour compacter
+        backgroundColor: 'rgba(255, 215, 0, 0.15)', // ✅ CORRIGÉ 2025-12-11: Utiliser la même couleur que dans l'autre style
         borderRadius: 14, // ✅ RÉDUIT: De 16 à 14px pour plus de compacité
-        gap: 4, // ✅ RÉDUIT: De 6 à 4px pour plus de compacité
+        gap: 3, // ✅ RÉDUIT 2025-12-11: De 4 à 3px pour compacter
         minWidth: 0,
-        maxWidth: 70, // ✅ RÉDUIT: De 80 à 70px pour éviter la confusion avec Yukpo
-        height: 32, // ✅ RÉDUIT: De 36 à 32px pour s'aligner avec le header compact
+        maxWidth: 60, // ✅ RÉDUIT 2025-12-11: De 70 à 60px pour éviter la confusion avec Yukpo
+        height: 28, // ✅ CORRIGÉ 2025-12-11: Hauteur fixe réduite pour éviter le chevauchement avec Yukpo
+        borderWidth: 1, // ✅ AJOUTÉ 2025-12-11: Bordure pour correspondre à l'autre style
+        borderColor: 'rgba(255, 215, 0, 0.3)', // ✅ AJOUTÉ 2025-12-11: Couleur de bordure
         alignSelf: 'center',
     },
     compactIcon: {
