@@ -5,6 +5,7 @@
  */
 use crate::core::types::AppResult;
 use crate::services::dynamic_preparation_time_service::DynamicPreparationTimeService;
+use crate::utils::db_retry::retry_service_operation;
 use chrono::{Timelike, Utc};
 use log::{error, info};
 use sqlx::{PgPool, Row};
@@ -36,8 +37,20 @@ pub async fn start_category_stats_recalculation_task(pool: Arc<PgPool>) {
 
         info!("🔄 [StatsRecalculation] Recalcul des statistiques de préparation par catégorie...");
 
-        let service = DynamicPreparationTimeService::new((*pool).clone());
-        match service.recalculate_all_category_stats().await {
+        let pool_clone = pool.clone();
+        // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour gérer les erreurs de connexion DB
+        match retry_service_operation(
+            || {
+                let pool = pool_clone.clone();
+                Box::pin(async move {
+                    let service = DynamicPreparationTimeService::new((*pool).clone());
+                    service.recalculate_all_category_stats().await
+                })
+            },
+            3, // 3 tentatives avec backoff exponentiel
+        )
+        .await
+        {
             Ok(count) => {
                 info!(
                     "✅ [StatsRecalculation] {} catégorie(s) mise(s) à jour",
@@ -46,7 +59,7 @@ pub async fn start_category_stats_recalculation_task(pool: Arc<PgPool>) {
             }
             Err(e) => {
                 error!(
-                    "❌ [StatsRecalculation] Erreur lors du recalcul des stats de catégories: {:?}",
+                    "❌ [StatsRecalculation] Erreur après retries lors du recalcul des stats de catégories: {:?}",
                     e
                 );
             }

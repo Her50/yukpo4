@@ -24,12 +24,12 @@ use crate::services::inventory_service::InventoryService;
 use crate::services::media_storage_service::MediaStorageService;
 use crate::services::prompt_optimizer_pro::PromptOptimizerPro;
 use crate::services::semantic_cache_pro::SemanticCachePro;
+use crate::services::spotify_integration_service::SpotifyIntegrationService;
 use crate::services::story_template_service::StoryTemplateService;
 use crate::services::studio_service::StudioService;
 use crate::services::video_job_service::VideoGenerationJobService;
 use crate::services::video_renderer::VideoRenderDispatcher;
 use crate::services::voice_profile_service::VoiceProfileService;
-use crate::services::spotify_integration_service::SpotifyIntegrationService;
 use crate::services::youtube_audio_service::YouTubeAudioService;
 
 /// ?? ?tat partag? global de l'application
@@ -210,7 +210,8 @@ impl AppState {
                 Err(e) => {
                     let error_str = e.to_string().to_lowercase();
                     // Détecter spécifiquement les erreurs TLS pour un message plus clair
-                    if error_str.contains("tls") || error_str.contains("the feature is not enabled") {
+                    if error_str.contains("tls") || error_str.contains("the feature is not enabled")
+                    {
                         log::debug!("ℹ️ Redis TLS non disponible - Utilisation connexions directes sans TLS");
                     } else {
                         log::warn!("⚠️ Impossible de créer le pool Redis: {}. Utilisation connexions directes.", e);
@@ -326,7 +327,10 @@ impl AppState {
                 env::var("SPOTIFY_CLIENT_SECRET"),
             ) {
                 log::info!("✅ Service Spotify initialisé");
-                Some(Arc::new(SpotifyIntegrationService::new(client_id, client_secret)))
+                Some(Arc::new(SpotifyIntegrationService::new(
+                    client_id,
+                    client_secret,
+                )))
             } else {
                 log::info!("ℹ️ Service Spotify non configuré (SPOTIFY_CLIENT_ID et SPOTIFY_CLIENT_SECRET requis)");
                 None

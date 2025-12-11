@@ -1304,7 +1304,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                     >
                         <Text style={styles.sendIcon}>🚀</Text>
                         <Text
-                            style={[styles.submitButtonText, { color: '#FFFFFF' }]}
+                            style={styles.submitButtonText}
                             numberOfLines={1}
                             ellipsizeMode="tail"
                         >
@@ -1689,36 +1689,36 @@ const createStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#10B981', // ✅ Vert moderne pour meilleur contraste
-        paddingVertical: 14, // ✅ AUGMENTÉ 2025-12-11: De 12 à 14 pour meilleure visibilité
-        paddingHorizontal: 28, // ✅ AUGMENTÉ 2025-12-11: De 24 à 28 pour meilleure visibilité
-        borderRadius: 12, // ✅ AUGMENTÉ 2025-12-11: De 10 à 12 pour meilleure apparence
-        gap: 8, // ✅ AUGMENTÉ 2025-12-11: De 6 à 8 pour meilleur espacement
-        borderWidth: 2, // ✅ AUGMENTÉ 2025-12-11: De 1 à 2 pour meilleure visibilité
-        borderColor: '#059669', // ✅ AUGMENTÉ 2025-12-11: Bordure plus foncée pour contraste
-        shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 4 }, // ✅ AUGMENTÉ 2025-12-11: De 3 à 4 pour meilleure ombre
-        shadowOpacity: 0.5, // ✅ AUGMENTÉ 2025-12-11: De 0.4 à 0.5 pour meilleure ombre
-        shadowRadius: 8, // ✅ AUGMENTÉ 2025-12-11: De 6 à 8 pour meilleure ombre
-        elevation: 6, // ✅ AUGMENTÉ 2025-12-11: De 5 à 6 pour Android
+        backgroundColor: '#059669', // ✅ AUGMENTÉ: Vert plus foncé (#059669 au lieu de #10B981) pour meilleur contraste avec texte blanc
+        paddingVertical: 14, // ✅ AUGMENTÉ: De 12 à 14 pour meilleure visibilité
+        paddingHorizontal: 28, // ✅ AUGMENTÉ: De 24 à 28 pour meilleure visibilité
+        borderRadius: 12, // ✅ AUGMENTÉ: De 10 à 12 pour meilleure apparence
+        gap: 8, // ✅ AUGMENTÉ: De 6 à 8 pour meilleur espacement
+        borderWidth: 2, // ✅ AUGMENTÉ: De 1 à 2 pour meilleure visibilité
+        borderColor: '#047857', // ✅ AUGMENTÉ: Bordure encore plus foncée (#047857) pour meilleur contraste
+        shadowColor: '#059669',
+        shadowOffset: { width: 0, height: 4 }, // ✅ AUGMENTÉ: De 3 à 4 pour meilleure ombre
+        shadowOpacity: 0.5, // ✅ AUGMENTÉ: De 0.4 à 0.5 pour meilleure ombre
+        shadowRadius: 8, // ✅ AUGMENTÉ: De 6 à 8 pour meilleure ombre
+        elevation: 6, // ✅ AUGMENTÉ: De 5 à 6 pour Android
         marginTop: 0,
         flex: 1,
-        minWidth: 140, // ✅ AUGMENTÉ 2025-12-11: De 120 à 140 pour meilleure visibilité
+        minWidth: 140, // ✅ AUGMENTÉ: De 120 à 140 pour meilleure visibilité
     },
     submitButtonDisabled: {
         backgroundColor: '#9CA3AF',
         elevation: 0,
     },
     submitButtonText: {
-        fontSize: 17, // ✅ AUGMENTÉ 2025-12-11: De 16 à 17 pour meilleure visibilité
-        fontWeight: '800', // ✅ AUGMENTÉ 2025-12-11: De 700 à 800 pour meilleure visibilité
-        color: '#FFFFFF', // ✅ AMÉLIORÉ: Couleur blanche explicite pour meilleur contraste
-        letterSpacing: 0.8, // ✅ AUGMENTÉ 2025-12-11: De 0.5 à 0.8 pour meilleure lisibilité
-        textAlign: 'center', // ✅ AJOUTÉ 2025-12-11: Centrer le texte
-        includeFontPadding: false, // ✅ AJOUTÉ 2025-12-11: Éviter le padding supplémentaire Android
-        textShadowColor: 'rgba(0, 0, 0, 0.3)', // ✅ AJOUTÉ 2025-12-11: Ombre de texte pour meilleure visibilité
-        textShadowOffset: { width: 0, height: 1 }, // ✅ AJOUTÉ 2025-12-11: Décalage ombre
-        textShadowRadius: 2, // ✅ AJOUTÉ 2025-12-11: Rayon ombre
+        fontSize: 18, // ✅ AUGMENTÉ: De 17 à 18 pour meilleure visibilité
+        fontWeight: '900', // ✅ AUGMENTÉ: De 800 à 900 pour meilleure visibilité
+        color: '#FFFFFF', // ✅ Couleur blanche explicite pour meilleur contraste
+        letterSpacing: 1, // ✅ AUGMENTÉ: De 0.8 à 1 pour meilleure lisibilité
+        textAlign: 'center', // ✅ Centrer le texte
+        includeFontPadding: false, // ✅ Éviter le padding supplémentaire Android
+        textShadowColor: 'rgba(0, 0, 0, 0.5)', // ✅ AUGMENTÉ: De 0.3 à 0.5 pour meilleure visibilité
+        textShadowOffset: { width: 0, height: 2 }, // ✅ AUGMENTÉ: De 1 à 2 pour meilleure visibilité
+        textShadowRadius: 3, // ✅ AUGMENTÉ: De 2 à 3 pour meilleure visibilité
     },
     sendButtonCompact: {
         backgroundColor: '#20B2AA', // Turquoise/cyan cohérent

@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{RwLock, Semaphore};
 use tokio::time::interval;
- // ✅ Phase 7.5: Pour générer des IDs uniques
+// ✅ Phase 7.5: Pour générer des IDs uniques
 
 /// Service centralisé de scalabilité pour gérer des millions d'interactions
 /// ✅ Phase 7.5: Support scaling horizontal avec Redis pour coordination entre instances

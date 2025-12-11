@@ -9893,9 +9893,11 @@ pub async fn ensure_search_services_gps_final(pool: &PgPool) -> Result<(), sqlx:
     // ⚠️ IMPORTANT: Utiliser search_radius_km (pas radius_km) pour correspondre aux migrations SQL
     // ⚠️ CRITIQUE: Supprimer toutes les versions existantes pour éviter l'erreur de renommage de paramètre
     // Séparer les DROP FUNCTION en requêtes individuelles car SQLx ne peut pas exécuter plusieurs commandes dans un prepared statement
-    let _ = sqlx::query("DROP FUNCTION IF EXISTS search_services_gps_final(text, text, integer, integer)")
-        .execute(pool)
-        .await;
+    let _ = sqlx::query(
+        "DROP FUNCTION IF EXISTS search_services_gps_final(text, text, integer, integer)",
+    )
+    .execute(pool)
+    .await;
     let _ = sqlx::query("DROP FUNCTION IF EXISTS search_services_gps_final(text, text, integer)")
         .execute(pool)
         .await;
@@ -10433,21 +10435,26 @@ pub async fn ensure_scheduling_search_functions(pool: &PgPool) -> Result<(), sql
 fn normalize_sql_command(cmd: &str) -> String {
     let trimmed = cmd.trim();
     let upper = trimmed.to_uppercase();
-    
+
     // Normaliser CREATE INDEX - ajouter IF NOT EXISTS si manquant
-    if upper.contains("CREATE INDEX") && !upper.contains("IF NOT EXISTS") && !upper.contains("UNIQUE INDEX") {
+    if upper.contains("CREATE INDEX")
+        && !upper.contains("IF NOT EXISTS")
+        && !upper.contains("UNIQUE INDEX")
+    {
         // Pattern: CREATE INDEX index_name ON table_name(...)
         // -> CREATE INDEX IF NOT EXISTS index_name ON table_name(...)
         if let Some(idx_pos) = upper.find("CREATE INDEX") {
             let before = &trimmed[..idx_pos];
             let after_idx = &trimmed[idx_pos + "CREATE INDEX".len()..];
             // Vérifier qu'on n'a pas déjà UNIQUE INDEX ou IF NOT EXISTS
-            if !after_idx.trim_start().starts_with("UNIQUE") && !after_idx.trim_start().starts_with("IF NOT EXISTS") {
+            if !after_idx.trim_start().starts_with("UNIQUE")
+                && !after_idx.trim_start().starts_with("IF NOT EXISTS")
+            {
                 return format!("{}CREATE INDEX IF NOT EXISTS{}", before, after_idx);
             }
         }
     }
-    
+
     // Normaliser CREATE UNIQUE INDEX - ajouter IF NOT EXISTS si manquant
     if upper.contains("CREATE UNIQUE INDEX") && !upper.contains("IF NOT EXISTS") {
         if let Some(idx_pos) = upper.find("CREATE UNIQUE INDEX") {
@@ -10458,25 +10465,31 @@ fn normalize_sql_command(cmd: &str) -> String {
             }
         }
     }
-    
+
     // Normaliser CREATE TABLE - ajouter IF NOT EXISTS si manquant
-    if upper.contains("CREATE TABLE") && !upper.contains("IF NOT EXISTS") && !upper.contains("CREATE TABLE AS") {
+    if upper.contains("CREATE TABLE")
+        && !upper.contains("IF NOT EXISTS")
+        && !upper.contains("CREATE TABLE AS")
+    {
         if let Some(tbl_pos) = upper.find("CREATE TABLE") {
             let before = &trimmed[..tbl_pos];
             let after_tbl = &trimmed[tbl_pos + "CREATE TABLE".len()..];
             // Ne pas modifier si c'est CREATE TABLE AS SELECT
-            if !after_tbl.trim_start().starts_with("AS") && !after_tbl.trim_start().starts_with("IF NOT EXISTS") {
+            if !after_tbl.trim_start().starts_with("AS")
+                && !after_tbl.trim_start().starts_with("IF NOT EXISTS")
+            {
                 return format!("{}CREATE TABLE IF NOT EXISTS{}", before, after_tbl);
             }
         }
     }
-    
+
     // Normaliser CREATE TRIGGER - wrapper dans DO $$ block avec vérification
     // ✅ CORRECTION RACINE: Ne pas wrapper si déjà dans un DO $$ block ou si DROP TRIGGER IF EXISTS est présent
-    if upper.contains("CREATE TRIGGER") 
-        && !upper.contains("DO $$") 
+    if upper.contains("CREATE TRIGGER")
+        && !upper.contains("DO $$")
         && !upper.contains("IF NOT EXISTS")
-        && !upper.contains("DROP TRIGGER IF EXISTS") // Si DROP est déjà présent, laisser tel quel
+        && !upper.contains("DROP TRIGGER IF EXISTS")
+    // Si DROP est déjà présent, laisser tel quel
     {
         // Extraire le nom du trigger
         // Pattern: CREATE TRIGGER trigger_name ON table_name ...
@@ -10489,7 +10502,7 @@ fn normalize_sql_command(cmd: &str) -> String {
                 let trigger_name_candidate = parts[2];
                 // Nettoyer le nom (enlever ; si présent)
                 let trigger_name = trigger_name_candidate.trim_end_matches(';');
-                
+
                 // Wrapper dans DO $$ avec vérification d'existence
                 return format!(
                     r#"DO $$
@@ -10507,7 +10520,7 @@ fn normalize_sql_command(cmd: &str) -> String {
             }
         }
     }
-    
+
     trimmed.to_string()
 }
 
@@ -10571,7 +10584,7 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                 let dollar_pos = trimmed.find(&dollar_tag);
                 if let Some(pos) = dollar_pos {
                     let after_dollar: &str = trimmed[pos + dollar_tag.len()..].trim();
-                    
+
                     // Cas 1: $$ LANGUAGE plpgsql; (LANGUAGE après $$) - FIN DE FONCTION
                     // C'est le cas le plus important : END; suivi de $$ LANGUAGE plpgsql;
                     if after_dollar.starts_with("LANGUAGE") {
@@ -10586,7 +10599,9 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                         // Sinon, on continue à accumuler jusqu'au prochain ;
                     }
                     // Cas 2: END $$; (bloc DO) - FIN DE BLOC DO
-                    else if trimmed.contains("END") && trimmed.ends_with(&format!("{};", dollar_tag)) {
+                    else if trimmed.contains("END")
+                        && trimmed.ends_with(&format!("{};", dollar_tag))
+                    {
                         commands.push(current.trim().to_string());
                         current.clear();
                         in_dollar_block = false;
@@ -10594,7 +10609,9 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                         continue;
                     }
                     // Cas 3: $$; simple (fin de bloc - pour CREATE FUNCTION ... AS $$ ... $$;)
-                    else if (after_dollar.is_empty() || after_dollar == ";") && trimmed.ends_with(';') {
+                    else if (after_dollar.is_empty() || after_dollar == ";")
+                        && trimmed.ends_with(';')
+                    {
                         commands.push(current.trim().to_string());
                         current.clear();
                         in_dollar_block = false;
@@ -10605,7 +10622,10 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
             }
             // ✅ CORRECTION: Si on trouve END; dans un bloc CREATE FUNCTION, vérifier si la ligne suivante contient $$ LANGUAGE
             // Ne pas terminer le bloc sur END; seul si c'est une fonction (doit être suivi de $$ LANGUAGE)
-            else if trimmed == "END;" && current.contains("CREATE") && current.contains("FUNCTION") {
+            else if trimmed == "END;"
+                && current.contains("CREATE")
+                && current.contains("FUNCTION")
+            {
                 // On continue à accumuler car la ligne suivante devrait contenir $$ LANGUAGE
                 // Ne pas terminer ici - la détection se fera sur la prochaine itération
                 // Note: Ne pas faire continue ici car on a déjà ajouté la ligne à current
@@ -10629,11 +10649,15 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
             if trimmed.ends_with(';') {
                 let cmd = current.trim();
                 // Vérifier que la commande n'est pas vide et contient au moins un mot-clé SQL valide
-                if !cmd.is_empty() 
+                if !cmd.is_empty()
                     && !cmd.starts_with("--")
-                    && !cmd.trim_matches(|c: char| c.is_whitespace() || c == ';' || c == '(' || c == ')').is_empty()
-                    && (cmd.to_uppercase().contains("CREATE") 
-                        || cmd.to_uppercase().contains("ALTER") 
+                    && !cmd
+                        .trim_matches(|c: char| {
+                            c.is_whitespace() || c == ';' || c == '(' || c == ')'
+                        })
+                        .is_empty()
+                    && (cmd.to_uppercase().contains("CREATE")
+                        || cmd.to_uppercase().contains("ALTER")
                         || cmd.to_uppercase().contains("DROP")
                         || cmd.to_uppercase().contains("INSERT")
                         || cmd.to_uppercase().contains("UPDATE")
@@ -10646,7 +10670,8 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                         || cmd.to_uppercase().contains("ANALYZE")
                         || cmd.to_uppercase().contains("VACUUM")
                         || cmd.to_uppercase().contains("EXECUTE")
-                        || cmd.to_uppercase().contains("DO")) {
+                        || cmd.to_uppercase().contains("DO"))
+                {
                     commands.push(cmd.to_string());
                 }
                 current.clear();
@@ -10658,11 +10683,13 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
     if !current.trim().is_empty() {
         let cmd = current.trim();
         // Vérifier que la commande n'est pas vide et contient au moins un mot-clé SQL valide
-        if !cmd.is_empty() 
+        if !cmd.is_empty()
             && !cmd.starts_with("--")
-            && !cmd.trim_matches(|c: char| c.is_whitespace() || c == ';' || c == '(' || c == ')').is_empty()
-            && (cmd.to_uppercase().contains("CREATE") 
-                || cmd.to_uppercase().contains("ALTER") 
+            && !cmd
+                .trim_matches(|c: char| c.is_whitespace() || c == ';' || c == '(' || c == ')')
+                .is_empty()
+            && (cmd.to_uppercase().contains("CREATE")
+                || cmd.to_uppercase().contains("ALTER")
                 || cmd.to_uppercase().contains("DROP")
                 || cmd.to_uppercase().contains("INSERT")
                 || cmd.to_uppercase().contains("UPDATE")
@@ -10675,7 +10702,8 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                 || cmd.to_uppercase().contains("ANALYZE")
                 || cmd.to_uppercase().contains("VACUUM")
                 || cmd.to_uppercase().contains("EXECUTE")
-                || cmd.to_uppercase().contains("DO")) {
+                || cmd.to_uppercase().contains("DO"))
+        {
             commands.push(cmd.to_string());
         }
     }
@@ -10684,17 +10712,20 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
     for cmd in commands {
         let trimmed_cmd = cmd.trim();
         // Ignorer les commandes vides, les commentaires, et les commandes qui ne sont que des parenthèses
-        if trimmed_cmd.is_empty() 
+        if trimmed_cmd.is_empty()
             || trimmed_cmd.starts_with("--")
             || trimmed_cmd == ")"
             || trimmed_cmd == "();"
-            || trimmed_cmd.trim_matches(|c: char| c.is_whitespace() || c == ';' || c == '(' || c == ')').is_empty() {
+            || trimmed_cmd
+                .trim_matches(|c: char| c.is_whitespace() || c == ';' || c == '(' || c == ')')
+                .is_empty()
+        {
             continue;
         }
-        
+
         // ✅ CORRECTION RACINE: Normaliser la commande SQL avant exécution
         let normalized_cmd = normalize_sql_command(trimmed_cmd);
-        
+
         // Ignorer les erreurs pour les commandes qui peuvent échouer si l'objet existe déjà
         if normalized_cmd.to_uppercase().contains("DROP INDEX")
             && !normalized_cmd.to_uppercase().contains("IF EXISTS")
@@ -10715,19 +10746,21 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
         } else {
             // ✅ CORRECTION 2025-12-09: Ignorer ANALYZE dans les migrations (trop lent, exécuté séparément)
             if normalized_cmd.to_uppercase().trim().starts_with("ANALYZE") {
-                debug!("ℹ️ ANALYZE ignoré dans migration (exécuté séparément pour éviter warnings)");
+                debug!(
+                    "ℹ️ ANALYZE ignoré dans migration (exécuté séparément pour éviter warnings)"
+                );
                 continue;
             }
-            
+
             // Exécuter la commande normalisée
             if let Err(e) = sqlx::query(&normalized_cmd).execute(pool).await {
                 // Pour les autres erreurs, on les log mais on continue
                 // Sauf pour les erreurs critiques qui doivent être propagées
                 let error_str = e.to_string();
                 let error_lower = error_str.to_lowercase();
-                
+
                 // ✅ CORRIGÉ: Ignorer silencieusement les erreurs attendues courantes
-                let is_expected_error = 
+                let is_expected_error =
                     // Colonnes/tables/index/triggers déjà existants
                     error_lower.contains("already exists") ||
                     error_lower.contains("does not exist") && (
@@ -10765,37 +10798,43 @@ async fn execute_multiple_sql_commands(pool: &PgPool, sql: &str) -> Result<(), s
                     error_lower.contains("connection reset by peer") ||
                     error_lower.contains("broken pipe") ||
                     error_lower.contains("terminating connection because of crash");
-                
+
                 if is_expected_error {
                     // Logger seulement au niveau debug pour réduire le bruit
                     debug!("ℹ️ Erreur SQL attendue ignorée: {}", error_str);
                     continue;
                 }
-                
+
                 // Ignorer les erreurs de partitionnement sur tables existantes
-                if error_lower.contains("partition") && 
-                   (error_lower.contains("cannot change") || 
-                    error_lower.contains("already exists") ||
-                    error_lower.contains("must be empty")) {
-                    debug!("ℹ️ Erreur de partitionnement ignorée (table existante): {}", error_str);
+                if error_lower.contains("partition")
+                    && (error_lower.contains("cannot change")
+                        || error_lower.contains("already exists")
+                        || error_lower.contains("must be empty"))
+                {
+                    debug!(
+                        "ℹ️ Erreur de partitionnement ignorée (table existante): {}",
+                        error_str
+                    );
                     continue;
                 }
-                
+
                 // Ignorer les erreurs de syntaxe si c'est juste une parenthèse fermante isolée ou commande invalide
                 if error_lower.contains("syntax error") && error_lower.contains("near \")\"") {
                     debug!("ℹ️ Commande SQL invalide ignorée (parenthèse isolée)");
                     continue;
                 }
-                
+
                 // Ignorer les erreurs de syntaxe pour les commandes qui semblent être des fragments
                 if error_lower.contains("syntax error") {
                     // Vérifier si c'est un fragment invalide (juste des parenthèses, point-virgule, etc.)
-                    let cmd_clean = trimmed_cmd.trim_matches(|c: char| c.is_whitespace() || c == ';' || c == '(' || c == ')');
+                    let cmd_clean = trimmed_cmd.trim_matches(|c: char| {
+                        c.is_whitespace() || c == ';' || c == '(' || c == ')'
+                    });
                     if cmd_clean.is_empty() || cmd_clean.len() < 5 {
                         debug!("ℹ️ Fragment SQL invalide ignoré");
                         continue;
                     }
-                    
+
                     // Si c'est une vraie erreur de syntaxe sur une commande valide, on la propage
                     error!("❌ Erreur de syntaxe SQL: {}", e);
                     error!("❌ Commande problématique: {}", trimmed_cmd);
@@ -11766,19 +11805,22 @@ pub async fn ensure_scalability_indexes(pool: &PgPool) -> Result<(), sqlx::Error
     execute_multiple_sql_commands(pool, migration_sql).await?;
 
     // ✅ CORRECTION 2025-12-09: Appliquer la correction des index uniques
-    let fix_migration_sql = include_str!("../../migrations/20251209_fix_materialized_views_unique_indexes.sql");
+    let fix_migration_sql =
+        include_str!("../../migrations/20251209_fix_materialized_views_unique_indexes.sql");
     if let Err(e) = execute_multiple_sql_commands(pool, fix_migration_sql).await {
         warn!("⚠️ Erreur lors de l'application de la correction des index uniques (peut être ignorée si déjà appliquée): {}", e);
     }
 
     // ✅ CORRECTION 2025-12-09: Appliquer l'optimisation des requêtes lentes
-    let optimize_slow_queries_sql = include_str!("../../migrations/20251209_optimize_slow_queries_indexes.sql");
+    let optimize_slow_queries_sql =
+        include_str!("../../migrations/20251209_optimize_slow_queries_indexes.sql");
     if let Err(e) = execute_multiple_sql_commands(pool, optimize_slow_queries_sql).await {
         warn!("⚠️ Erreur lors de l'optimisation des requêtes lentes (peut être ignorée si déjà appliquée): {}", e);
     }
 
     // ✅ CORRECTION 2025-12-10: Vérifier et corriger l'erreur u_client.name dans les vues/fonctions
-    let fix_u_client_name_sql = include_str!("../../migrations/20251210_fix_u_client_name_error.sql");
+    let fix_u_client_name_sql =
+        include_str!("../../migrations/20251210_fix_u_client_name_error.sql");
     if let Err(e) = execute_multiple_sql_commands(pool, fix_u_client_name_sql).await {
         warn!("⚠️ Erreur lors de la vérification u_client.name (peut être ignorée si déjà appliquée): {}", e);
     }

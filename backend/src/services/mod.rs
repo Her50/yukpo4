@@ -20,10 +20,10 @@ pub mod autocomplete_history_service;
 pub mod autocomplete_search_service; // ✅ NOUVEAU 2025-11-04: Recherche par vecteur autocomplete
 pub mod background_combination_generator;
 pub mod besoin_service;
-pub mod book_exchange_ai_service; // ✅ NOUVEAU: Service IA bourse du livre
 pub mod blood_bank_ai_service; // ✅ 2025-01-27: Service IA banques de sang (prédictions, optimisation)
 pub mod blood_compatibility_service; // ✅ NOUVEAU: Service compatibilité groupes sanguins
 pub mod blood_stock_monitor; // ✅ NOUVEAU: Service monitoring automatique stocks banque de sang
+pub mod book_exchange_ai_service; // ✅ NOUVEAU: Service IA bourse du livre
 pub mod broll_service;
 pub mod cache_service; // ✅ Phase 10 - Service de cache générique centralisé
 pub mod captions_service; // ✅ NOUVEAU: Service de génération automatique de sous-titres
@@ -97,10 +97,12 @@ pub mod instructions;
 pub mod intelligent_image_analysis_service;
 pub mod intelligent_service_manager;
 pub mod intelligent_translation_service;
-pub mod kyc_service; // ✅ NOUVEAU: Service KYC pour vérification identité
 pub mod interaction_service;
+pub mod interior_design_ai_service; // ✅ Service IA décoration (suggestions, visualisation 3D)
 pub mod inventory_service;
+pub mod kyc_service; // ✅ NOUVEAU: Service KYC pour vérification identité
 pub mod lab_ai_service; // ✅ 2025-01-27: Service IA laboratoires (interprétation, anomalies)
+pub mod land_analysis_ai_service; // ✅ Service IA terrains (analyse viabilité, estimation prix)
 pub mod live_ai_service;
 pub mod live_audience_service;
 pub mod live_flash_sale_service;
@@ -114,6 +116,7 @@ pub mod media_storage_service;
 pub mod menu_planning_ai_service; // ✅ 2025-01-27: Service IA planification menus
 pub mod mobile_money_service; // ✅ Phase 10 - Service Mobile Money (MTN/Orange Money)
 pub mod mongo_history_service;
+pub mod moving_ai_service; // ✅ Service IA déménagement (calcul volume, estimation coût, optimisation)
 pub mod multimodal_enricher;
 pub mod multimodal_optimizer;
 pub mod multimodal_processor;
@@ -131,10 +134,6 @@ pub mod payment_matching_service; // ✅ Phase 5 - Matching intelligent modes de
 pub mod payment_service;
 pub mod pharmacy_ai_service; // ✅ 2025-01-27: Service IA pharmacies (interactions, conseils)
 pub mod pharmacy_product_service; // ✅ NOUVEAU: Service produits de pharmacie
-pub mod real_estate_ai_service; // ✅ Service IA immobilier (estimation prix, recommandations, simulation prêt)
-pub mod interior_design_ai_service; // ✅ Service IA décoration (suggestions, visualisation 3D)
-pub mod moving_ai_service; // ✅ Service IA déménagement (calcul volume, estimation coût, optimisation)
-pub mod land_analysis_ai_service; // ✅ Service IA terrains (analyse viabilité, estimation prix)
 pub mod phone_validation_service;
 pub mod pipeline_health_service;
 pub mod plugin_service; // ✅ NOUVEAU Phase 2: Service de gestion des plugins
@@ -162,6 +161,7 @@ pub mod publicite_search_service;
 pub mod publicite_versioning_service;
 pub mod push_notification_service; // ✅ Service de push notifications Expo
 pub mod query_monitor; // ✅ NOUVEAU 2025-11-28: Monitoring avancé des requêtes SQL
+pub mod real_estate_ai_service; // ✅ Service IA immobilier (estimation prix, recommandations, simulation prêt)
 pub mod rechercher_besoin;
 pub mod remotion_renderer_service;
 pub mod scalability_service; // ✅ NOUVEAU 2025-12-XX: Service centralisé de scalabilité pour millions d'interactions

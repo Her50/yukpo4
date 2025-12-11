@@ -129,21 +129,28 @@ impl KYCService {
         }
 
         // ✅ NOUVEAU: Initialiser le service IA si disponible
-        let app_ia = if std::env::var("OPENAI_API_KEY").is_ok() 
-            || std::env::var("ANTHROPIC_API_KEY").is_ok() 
-            || std::env::var("GEMINI_API_KEY").is_ok() {
+        let app_ia = if std::env::var("OPENAI_API_KEY").is_ok()
+            || std::env::var("ANTHROPIC_API_KEY").is_ok()
+            || std::env::var("GEMINI_API_KEY").is_ok()
+        {
             // Créer RedisClient et IAStats pour AppIA
-            let redis_url = std::env::var("REDIS_URL")
-                .unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
+            let redis_url =
+                std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
             if let Ok(redis_client) = redis::Client::open(redis_url.as_str()) {
                 // RedisClient dans app_ia est un alias pour redis::Client
                 let redis_client: redis::Client = redis_client;
                 let ia_stats = Arc::new(tokio::sync::Mutex::new(
-                    crate::controllers::ia_status_controller::IAStats::default()
+                    crate::controllers::ia_status_controller::IAStats::default(),
                 ));
-                Some(Arc::new(AppIA::new(redis_client, ia_stats, (*pool).clone())))
+                Some(Arc::new(AppIA::new(
+                    redis_client,
+                    ia_stats,
+                    (*pool).clone(),
+                )))
             } else {
-                warn!("[KYCService] Impossible de créer RedisClient, analyse automatique désactivée");
+                warn!(
+                    "[KYCService] Impossible de créer RedisClient, analyse automatique désactivée"
+                );
                 None
             }
         } else {
@@ -170,10 +177,7 @@ impl KYCService {
     }
 
     /// Soumettre un document pour vérification
-    pub async fn submit_document(
-        &self,
-        submission: DocumentSubmission,
-    ) -> AppResult<i32> {
+    pub async fn submit_document(&self, submission: DocumentSubmission) -> AppResult<i32> {
         info!(
             "[KYCService] Soumission document user_id={}, type={}, provider={:?}",
             submission.user_id, submission.document_type, self.provider
@@ -196,21 +200,39 @@ impl KYCService {
 
         // Analyse IA automatique si disponible
         if let Some(ref app_ia) = self.app_ia {
-            match self.analyze_document_with_ai(&submission.document_url, &submission.document_type, app_ia).await {
+            match self
+                .analyze_document_with_ai(
+                    &submission.document_url,
+                    &submission.document_type,
+                    app_ia,
+                )
+                .await
+            {
                 Ok(ai_analysis) => {
-                    info!("[KYCService] ✅ Analyse IA réussie pour document type={}", submission.document_type);
+                    info!(
+                        "[KYCService] ✅ Analyse IA réussie pour document type={}",
+                        submission.document_type
+                    );
                     extracted_data["ai_analysis"] = json!(ai_analysis);
-                    
+
                     // Extraire automatiquement le numéro de document si non fourni
                     if submission.document_number.is_none() {
-                        if let Some(auto_number) = ai_analysis.get("document_number").and_then(|v| v.as_str()) {
-                            info!("[KYCService] 📄 Numéro de document extrait automatiquement: {}", auto_number);
+                        if let Some(auto_number) =
+                            ai_analysis.get("document_number").and_then(|v| v.as_str())
+                        {
+                            info!(
+                                "[KYCService] 📄 Numéro de document extrait automatiquement: {}",
+                                auto_number
+                            );
                             extracted_data["auto_extracted_number"] = json!(auto_number);
                         }
                     }
                 }
                 Err(e) => {
-                    warn!("[KYCService] ⚠️ Analyse IA échouée (continuera sans): {}", e);
+                    warn!(
+                        "[KYCService] ⚠️ Analyse IA échouée (continuera sans): {}",
+                        e
+                    );
                     extracted_data["ai_analysis_error"] = json!(e.to_string());
                 }
             }
@@ -317,7 +339,7 @@ impl KYCService {
                 metadata = COALESCE(metadata, '{}'::jsonb) || $5::jsonb,
                 updated_at = NOW()
             WHERE id = $6
-            "#
+            "#,
         )
         .bind(status_str)
         .bind(result.verified_at)
@@ -338,20 +360,17 @@ impl KYCService {
 
         // Si document approuvé, mettre à jour flag is_verified dans users
         if matches!(result.status, DocumentStatus::Approved) {
-            let user_id: Option<i32> = sqlx::query_scalar(
-                "SELECT user_id FROM user_documents WHERE id = $1"
-            )
-            .bind(document_id)
-            .fetch_optional(&*self.pool)
-            .await?;
+            let user_id: Option<i32> =
+                sqlx::query_scalar("SELECT user_id FROM user_documents WHERE id = $1")
+                    .bind(document_id)
+                    .fetch_optional(&*self.pool)
+                    .await?;
 
             if let Some(uid) = user_id {
-                let _ = sqlx::query(
-                    "UPDATE users SET is_verified = true WHERE id = $1"
-                )
-                .bind(uid)
-                .execute(&*self.pool)
-                .await;
+                let _ = sqlx::query("UPDATE users SET is_verified = true WHERE id = $1")
+                    .bind(uid)
+                    .execute(&*self.pool)
+                    .await;
             }
         }
 
@@ -379,7 +398,7 @@ impl KYCService {
             FROM user_documents
             WHERE user_id = $1
             ORDER BY created_at DESC
-            "#
+            "#,
         )
         .bind(user_id)
         .fetch_all(&*self.pool)
@@ -420,12 +439,17 @@ impl KYCService {
         let api_key = match &self.onfido_api_key {
             Some(key) => key,
             None => {
-                warn!("[KYCService] ⚠️ Clé API Onfido non configurée, vérification manuelle requise");
+                warn!(
+                    "[KYCService] ⚠️ Clé API Onfido non configurée, vérification manuelle requise"
+                );
                 return Ok(()); // Pas d'erreur, juste fallback manuel
             }
         };
 
-        info!("[KYCService] Vérification Onfido pour document ID={}", document_id);
+        info!(
+            "[KYCService] Vérification Onfido pour document ID={}",
+            document_id
+        );
 
         // Étape 1: Créer un applicant (utilisateur)
         let applicant_payload = json!({
@@ -447,13 +471,10 @@ impl KYCService {
                 AppError::Internal(format!("Erreur API Onfido: {}", e))
             })?;
 
-        let applicant_data: serde_json::Value = applicant_response
-            .json()
-            .await
-            .map_err(|e| {
-                error!("[KYCService] Erreur parsing réponse Onfido: {}", e);
-                AppError::Internal("Erreur parsing réponse Onfido".to_string())
-            })?;
+        let applicant_data: serde_json::Value = applicant_response.json().await.map_err(|e| {
+            error!("[KYCService] Erreur parsing réponse Onfido: {}", e);
+            AppError::Internal("Erreur parsing réponse Onfido".to_string())
+        })?;
 
         let applicant_id = applicant_data["id"]
             .as_str()
@@ -506,13 +527,10 @@ impl KYCService {
                 AppError::Internal(format!("Erreur upload Onfido: {}", e))
             })?;
 
-        let document_data: serde_json::Value = document_response
-            .json()
-            .await
-            .map_err(|e| {
-                error!("[KYCService] Erreur parsing document Onfido: {}", e);
-                AppError::Internal("Erreur parsing document".to_string())
-            })?;
+        let document_data: serde_json::Value = document_response.json().await.map_err(|e| {
+            error!("[KYCService] Erreur parsing document Onfido: {}", e);
+            AppError::Internal("Erreur parsing document".to_string())
+        })?;
 
         let onfido_document_id = document_data["id"]
             .as_str()
@@ -537,13 +555,10 @@ impl KYCService {
                 AppError::Internal(format!("Erreur check Onfido: {}", e))
             })?;
 
-        let check_data: serde_json::Value = check_response
-            .json()
-            .await
-            .map_err(|e| {
-                error!("[KYCService] Erreur parsing check Onfido: {}", e);
-                AppError::Internal("Erreur parsing check".to_string())
-            })?;
+        let check_data: serde_json::Value = check_response.json().await.map_err(|e| {
+            error!("[KYCService] Erreur parsing check Onfido: {}", e);
+            AppError::Internal("Erreur parsing check".to_string())
+        })?;
 
         let check_id = check_data["id"]
             .as_str()
@@ -555,7 +570,7 @@ impl KYCService {
             UPDATE user_documents
             SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb
             WHERE id = $2
-            "#
+            "#,
         )
         .bind(json!({
             "onfido_applicant_id": applicant_id,
@@ -590,7 +605,9 @@ impl KYCService {
         let api_key = match &self.jumio_api_key {
             Some(key) => key,
             None => {
-                warn!("[KYCService] ⚠️ Clé API Jumio non configurée, vérification manuelle requise");
+                warn!(
+                    "[KYCService] ⚠️ Clé API Jumio non configurée, vérification manuelle requise"
+                );
                 return Ok(()); // Pas d'erreur, juste fallback manuel
             }
         };
@@ -603,7 +620,10 @@ impl KYCService {
             }
         };
 
-        info!("[KYCService] Vérification Jumio pour document ID={}", document_id);
+        info!(
+            "[KYCService] Vérification Jumio pour document ID={}",
+            document_id
+        );
 
         // Jumio utilise une authentification basique (API Key + Secret)
         let auth = BASE64_STANDARD.encode(format!("{}:{}", api_key, api_secret));
@@ -613,9 +633,9 @@ impl KYCService {
             "customerInternalReference": format!("user_{}", submission.user_id),
             "userReference": submission.user_id.to_string(),
             "workflowId": 100, // Workflow par défaut (à configurer selon besoins)
-            "callbackUrl": format!("{}/api/kyc/webhook/jumio", 
+            "callbackUrl": format!("{}/api/kyc/webhook/jumio",
                 std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.yukpomnang.com".to_string())),
-            "redirectUrl": format!("{}/kyc/redirect", 
+            "redirectUrl": format!("{}/kyc/redirect",
                 std::env::var("FRONTEND_URL").unwrap_or_else(|_| "https://yukpomnang.com".to_string())),
         });
 
@@ -633,10 +653,8 @@ impl KYCService {
                 AppError::Internal(format!("Erreur API Jumio: {}", e))
             })?;
 
-        let transaction_data: serde_json::Value = transaction_response
-            .json()
-            .await
-            .map_err(|e| {
+        let transaction_data: serde_json::Value =
+            transaction_response.json().await.map_err(|e| {
                 error!("[KYCService] Erreur parsing transaction Jumio: {}", e);
                 AppError::Internal("Erreur parsing transaction".to_string())
             })?;
@@ -651,7 +669,7 @@ impl KYCService {
             UPDATE user_documents
             SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb
             WHERE id = $2
-            "#
+            "#,
         )
         .bind(json!({
             "jumio_transaction_reference": transaction_reference,
@@ -698,7 +716,10 @@ impl KYCService {
             }
         };
 
-        info!("[KYCService] Vérification Sumsub pour document ID={}", document_id);
+        info!(
+            "[KYCService] Vérification Sumsub pour document ID={}",
+            document_id
+        );
 
         // Sumsub utilise Basic Auth (app_token:secret_key)
         let auth = BASE64_STANDARD.encode(format!("{}:{}", app_token, secret_key));
@@ -725,13 +746,10 @@ impl KYCService {
                 AppError::Internal(format!("Erreur API Sumsub: {}", e))
             })?;
 
-        let applicant_data: serde_json::Value = applicant_response
-            .json()
-            .await
-            .map_err(|e| {
-                error!("[KYCService] Erreur parsing applicant Sumsub: {}", e);
-                AppError::Internal("Erreur parsing applicant".to_string())
-            })?;
+        let applicant_data: serde_json::Value = applicant_response.json().await.map_err(|e| {
+            error!("[KYCService] Erreur parsing applicant Sumsub: {}", e);
+            AppError::Internal("Erreur parsing applicant".to_string())
+        })?;
 
         let applicant_id = applicant_data["id"]
             .as_str()
@@ -744,7 +762,10 @@ impl KYCService {
         });
 
         let token_response = client
-            .post(format!("https://api.sumsub.com/resources/accessTokens?userId=user_{}", submission.user_id))
+            .post(format!(
+                "https://api.sumsub.com/resources/accessTokens?userId=user_{}",
+                submission.user_id
+            ))
             .header("Authorization", format!("Basic {}", auth))
             .header("X-App-Token", app_token)
             .json(&token_payload)
@@ -755,13 +776,10 @@ impl KYCService {
                 AppError::Internal(format!("Erreur token Sumsub: {}", e))
             })?;
 
-        let token_data: serde_json::Value = token_response
-            .json()
-            .await
-            .map_err(|e| {
-                error!("[KYCService] Erreur parsing token Sumsub: {}", e);
-                AppError::Internal("Erreur parsing token".to_string())
-            })?;
+        let token_data: serde_json::Value = token_response.json().await.map_err(|e| {
+            error!("[KYCService] Erreur parsing token Sumsub: {}", e);
+            AppError::Internal("Erreur parsing token".to_string())
+        })?;
 
         let access_token = token_data["token"]
             .as_str()
@@ -773,7 +791,7 @@ impl KYCService {
             UPDATE user_documents
             SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb
             WHERE id = $2
-            "#
+            "#,
         )
         .bind(json!({
             "sumsub_applicant_id": applicant_id,
@@ -789,7 +807,10 @@ impl KYCService {
             AppError::Internal("Erreur mise à jour metadata".to_string())
         })?;
 
-        info!("[KYCService] ✅ Applicant Sumsub créé: applicant_id={}", applicant_id);
+        info!(
+            "[KYCService] ✅ Applicant Sumsub créé: applicant_id={}",
+            applicant_id
+        );
         // Note: L'utilisateur utilisera le SDK Sumsub mobile avec access_token, puis webhook recevra le résultat
         Ok(())
     }
@@ -816,7 +837,10 @@ impl KYCService {
             }
         };
 
-        info!("[KYCService] Vérification Veriff pour document ID={}", document_id);
+        info!(
+            "[KYCService] Vérification Veriff pour document ID={}",
+            document_id
+        );
 
         // Veriff utilise Basic Auth (api_key:api_secret)
         let auth = BASE64_STANDARD.encode(format!("{}:{}", api_key, api_secret));
@@ -824,7 +848,7 @@ impl KYCService {
         // Créer une session Veriff
         let session_payload = json!({
             "verification": {
-                "callback": format!("{}/api/kyc/webhook/veriff", 
+                "callback": format!("{}/api/kyc/webhook/veriff",
                     std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.yukpomnang.com".to_string())),
                 "person": {
                     "firstName": "User",
@@ -856,13 +880,10 @@ impl KYCService {
                 AppError::Internal(format!("Erreur API Veriff: {}", e))
             })?;
 
-        let session_data: serde_json::Value = session_response
-            .json()
-            .await
-            .map_err(|e| {
-                error!("[KYCService] Erreur parsing session Veriff: {}", e);
-                AppError::Internal("Erreur parsing session".to_string())
-            })?;
+        let session_data: serde_json::Value = session_response.json().await.map_err(|e| {
+            error!("[KYCService] Erreur parsing session Veriff: {}", e);
+            AppError::Internal("Erreur parsing session".to_string())
+        })?;
 
         let session_id = session_data["verification"]["id"]
             .as_str()
@@ -878,7 +899,7 @@ impl KYCService {
             UPDATE user_documents
             SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb
             WHERE id = $2
-            "#
+            "#,
         )
         .bind(json!({
             "veriff_session_id": session_id,
@@ -894,7 +915,10 @@ impl KYCService {
             AppError::Internal("Erreur mise à jour metadata".to_string())
         })?;
 
-        info!("[KYCService] ✅ Session Veriff créée: session_id={}", session_id);
+        info!(
+            "[KYCService] ✅ Session Veriff créée: session_id={}",
+            session_id
+        );
         // Note: L'utilisateur sera redirigé vers session_url, puis webhook recevra le résultat
         Ok(())
     }
@@ -913,7 +937,10 @@ impl KYCService {
             }
         };
 
-        info!("[KYCService] Vérification Persona pour document ID={}", document_id);
+        info!(
+            "[KYCService] Vérification Persona pour document ID={}",
+            document_id
+        );
 
         // Persona utilise Bearer token
         let client = reqwest::Client::new();
@@ -942,13 +969,10 @@ impl KYCService {
                 AppError::Internal(format!("Erreur API Persona: {}", e))
             })?;
 
-        let inquiry_data: serde_json::Value = inquiry_response
-            .json()
-            .await
-            .map_err(|e| {
-                error!("[KYCService] Erreur parsing inquiry Persona: {}", e);
-                AppError::Internal("Erreur parsing inquiry".to_string())
-            })?;
+        let inquiry_data: serde_json::Value = inquiry_response.json().await.map_err(|e| {
+            error!("[KYCService] Erreur parsing inquiry Persona: {}", e);
+            AppError::Internal("Erreur parsing inquiry".to_string())
+        })?;
 
         let inquiry_id = inquiry_data["data"]["id"]
             .as_str()
@@ -960,7 +984,7 @@ impl KYCService {
             UPDATE user_documents
             SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb
             WHERE id = $2
-            "#
+            "#,
         )
         .bind(json!({
             "persona_inquiry_id": inquiry_id,
@@ -975,7 +999,10 @@ impl KYCService {
             AppError::Internal("Erreur mise à jour metadata".to_string())
         })?;
 
-        info!("[KYCService] ✅ Inquiry Persona créée: inquiry_id={}", inquiry_id);
+        info!(
+            "[KYCService] ✅ Inquiry Persona créée: inquiry_id={}",
+            inquiry_id
+        );
         // Note: L'utilisateur complétera l'inquiry via SDK Persona, puis webhook recevra le résultat
         Ok(())
     }
@@ -988,22 +1015,26 @@ impl KYCService {
         document_type: &str,
         app_ia: &Arc<AppIA>,
     ) -> AppResult<serde_json::Value> {
-        info!("[KYCService] 🔍 Début analyse IA pour document type={}", document_type);
+        info!(
+            "[KYCService] 🔍 Début analyse IA pour document type={}",
+            document_type
+        );
 
         // Construire le prompt spécialisé selon le type de document
         let prompt = self.build_kyc_analysis_prompt(document_type);
 
         // Préparer l'image (supporter URL ou base64)
-        let image_input = if document_url.starts_with("http://") || document_url.starts_with("https://") {
-            // URL directe - l'IA peut la traiter directement
-            vec![document_url.to_string()]
-        } else if document_url.starts_with("data:image") {
-            // Data URI - extraire le base64
-            vec![document_url.to_string()]
-        } else {
-            // Base64 pur - ajouter le préfixe
-            vec![format!("data:image/jpeg;base64,{}", document_url)]
-        };
+        let image_input =
+            if document_url.starts_with("http://") || document_url.starts_with("https://") {
+                // URL directe - l'IA peut la traiter directement
+                vec![document_url.to_string()]
+            } else if document_url.starts_with("data:image") {
+                // Data URI - extraire le base64
+                vec![document_url.to_string()]
+            } else {
+                // Base64 pur - ajouter le préfixe
+                vec![format!("data:image/jpeg;base64,{}", document_url)]
+            };
 
         // Appel IA multimodal (analyse image + OCR)
         let (model_name, response_text, tokens_used) = app_ia
@@ -1014,11 +1045,14 @@ impl KYCService {
                 AppError::Internal(format!("Erreur analyse IA: {}", e))
             })?;
 
-        info!("[KYCService] ✅ Analyse IA terminée (modèle={}, tokens={})", model_name, tokens_used);
+        info!(
+            "[KYCService] ✅ Analyse IA terminée (modèle={}, tokens={})",
+            model_name, tokens_used
+        );
 
         // Parser la réponse JSON
-        let analysis_result: serde_json::Value = serde_json::from_str(&response_text)
-            .map_err(|e| {
+        let analysis_result: serde_json::Value =
+            serde_json::from_str(&response_text).map_err(|e| {
                 error!("[KYCService] Erreur parsing JSON IA: {}", e);
                 AppError::Internal(format!("Réponse IA invalide: {}", e))
             })?;
@@ -1038,7 +1072,8 @@ impl KYCService {
     /// ✅ Construire le prompt spécialisé pour analyse KYC selon le type de document
     fn build_kyc_analysis_prompt(&self, document_type: &str) -> String {
         let type_instructions = match document_type {
-            "permis" => r#"
+            "permis" => {
+                r#"
 TYPE: Permis de conduire
 EXTRAIRE OBLIGATOIREMENT:
 - Numéro de permis (format: lettres + chiffres)
@@ -1055,9 +1090,11 @@ VÉRIFICATIONS:
 - Document authentique (filigranes, hologrammes, sécurité)
 - Cohérence des dates (expiration > délivrance)
 - Lisibilité du texte
-- Qualité de la photo"#,
+- Qualité de la photo"#
+            }
 
-            "cni" => r#"
+            "cni" => {
+                r#"
 TYPE: Carte Nationale d'Identité
 EXTRAIRE OBLIGATOIREMENT:
 - Numéro de CNI
@@ -1078,9 +1115,11 @@ VÉRIFICATIONS:
 - Document authentique (sécurités visibles)
 - Cohérence des dates
 - Photo correspond au document
-- Texte lisible"#,
+- Texte lisible"#
+            }
 
-            "assurance" => r#"
+            "assurance" => {
+                r#"
 TYPE: Assurance véhicule
 EXTRAIRE OBLIGATOIREMENT:
 - Numéro de police d'assurance
@@ -1096,9 +1135,11 @@ VÉRIFICATIONS:
 - Document valide (non expiré)
 - Cohérence des dates
 - Informations complètes
-- Authenticité (logo, cachets)"#,
+- Authenticité (logo, cachets)"#
+            }
 
-            "passeport" => r#"
+            "passeport" => {
+                r#"
 TYPE: Passeport
 EXTRAIRE OBLIGATOIREMENT:
 - Numéro de passeport
@@ -1118,9 +1159,11 @@ VÉRIFICATIONS:
 - Document authentique (sécurités, filigranes)
 - Cohérence des dates
 - Photo de qualité
-- Pages de données lisibles"#,
+- Pages de données lisibles"#
+            }
 
-            "carte_grise" => r#"
+            "carte_grise" => {
+                r#"
 TYPE: Carte Grise (Certificat d'immatriculation)
 EXTRAIRE OBLIGATOIREMENT:
 - Numéro d'immatriculation
@@ -1138,16 +1181,19 @@ VÉRIFICATIONS:
 - Document authentique
 - Cohérence des informations
 - Lisibilité complète
-- Cachets officiels présents"#,
+- Cachets officiels présents"#
+            }
 
-            _ => r#"
+            _ => {
+                r#"
 TYPE: Document d'identité général
 EXTRAIRE:
 - Tous les textes visibles
 - Numéros d'identification
 - Dates importantes
 - Informations personnelles
-- Sécurités visibles"#,
+- Sécurités visibles"#
+            }
         };
 
         format!(
@@ -1207,4 +1253,3 @@ IMPORTANT:
         )
     }
 }
-

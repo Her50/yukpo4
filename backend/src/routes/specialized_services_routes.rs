@@ -209,11 +209,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/immobilier/biens/{id}/upload-virtual-tour",
             post(specialized_services_controller::upload_virtual_tour),
         );
-        // TODO: Implémenter activate_pending_recurring_instances
-        // .route(
-        //     "/api/covoiturages/recurring/activate",
-        //     post(specialized_services_controller::activate_pending_recurring_instances),
-        // );
+    // TODO: Implémenter activate_pending_recurring_instances
+    // .route(
+    //     "/api/covoiturages/recurring/activate",
+    //     post(specialized_services_controller::activate_pending_recurring_instances),
+    // );
 
     // Routes protégées (avec JWT)
     let protected_routes = Router::new()

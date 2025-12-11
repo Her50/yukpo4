@@ -49,21 +49,16 @@ async fn refresh_materialized_view(pool: &PgPool) -> AppResult<()> {
     // ✅ CORRIGÉ 2025-12-11: Timeout augmenté à 60s car refresh_services_search_optimized() peut prendre 12-14s
     // Les logs montrent que les refreshes prennent jusqu'à 14 secondes
     const REFRESH_TIMEOUT_SECS: u64 = 60;
-    
+
     // ✅ OPTIMISATION: Retry avec backoff exponentiel pour les erreurs de connexion
     let mut retry_count = 0;
     const MAX_RETRIES: u32 = 3;
-    
+
     loop {
         // ✅ OPTIMISÉ: Ajouter un timeout sur la requête de refresh
-        let query_future = sqlx::query("SELECT refresh_services_search_optimized()")
-            .execute(pool);
-        
-        match tokio::time::timeout(
-            Duration::from_secs(REFRESH_TIMEOUT_SECS),
-            query_future
-        ).await
-        {
+        let query_future = sqlx::query("SELECT refresh_services_search_optimized()").execute(pool);
+
+        match tokio::time::timeout(Duration::from_secs(REFRESH_TIMEOUT_SECS), query_future).await {
             Ok(Ok(_)) => {
                 let duration = start.elapsed();
                 if retry_count > 0 {
@@ -82,13 +77,13 @@ async fn refresh_materialized_view(pool: &PgPool) -> AppResult<()> {
             Ok(Err(e)) => {
                 let error_str = e.to_string();
                 let error_lower = error_str.to_lowercase();
-                
+
                 // ✅ Détecter les erreurs de connexion DB attendues (non critiques)
                 let is_connection_error = error_lower.contains("peer closed connection")
                     || error_lower.contains("connection reset by peer")
                     || error_lower.contains("broken pipe")
                     || error_lower.contains("tls close_notify");
-                
+
                 if retry_count < MAX_RETRIES && is_connection_error {
                     retry_count += 1;
                     let backoff_ms = 1000u64 * retry_count as u64; // Backoff exponentiel: 1s, 2s, 3s

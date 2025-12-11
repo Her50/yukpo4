@@ -19,11 +19,8 @@ use std::sync::Mutex;
 #[allow(unexpected_cfgs)]
 #[cfg(feature = "onnx")]
 use ort::{
-    session::Session,
-    value::Value,
-    environment::Environment,
-    session::ExecutionProvider,
-    session::builder::GraphOptimizationLevel,
+    environment::Environment, session::builder::GraphOptimizationLevel, session::ExecutionProvider,
+    session::Session, value::Value,
 };
 
 /// Configuration pour modèles ML
@@ -539,33 +536,33 @@ impl DeliveryMLModelsService {
             );
 
             for (model_type, filename) in &[
-            (ModelType::ETAPrediction, "ETAPrediction.onnx"),
-            (ModelType::DemandForecasting, "DemandForecasting.onnx"),
-            (ModelType::RouteOptimization, "RouteOptimization.onnx"),
-            (ModelType::FraudDetection, "FraudDetection.onnx"),
-        ] {
-            let model_path = self.model_dir.join(filename);
-            if model_path.exists() {
-                match Session::builder(&env)?
-                    .with_optimization_level(GraphOptimizationLevel::All)?
-                    .with_intra_threads(4)?
-                    .commit_from_file(&model_path)
-                {
-                    Ok(session) => {
-                        log::info!("[ML Models] ✅ Modèle ONNX chargé: {:?}", model_path);
-                        self.onnx_sessions
-                            .insert(model_type.clone(), Arc::new(session));
-                    }
-                    Err(e) => {
-                        log::warn!(
-                            "[ML Models] ⚠️ Erreur chargement ONNX {:?}: {}",
-                            model_path,
-                            e
-                        );
+                (ModelType::ETAPrediction, "ETAPrediction.onnx"),
+                (ModelType::DemandForecasting, "DemandForecasting.onnx"),
+                (ModelType::RouteOptimization, "RouteOptimization.onnx"),
+                (ModelType::FraudDetection, "FraudDetection.onnx"),
+            ] {
+                let model_path = self.model_dir.join(filename);
+                if model_path.exists() {
+                    match Session::builder(&env)?
+                        .with_optimization_level(GraphOptimizationLevel::All)?
+                        .with_intra_threads(4)?
+                        .commit_from_file(&model_path)
+                    {
+                        Ok(session) => {
+                            log::info!("[ML Models] ✅ Modèle ONNX chargé: {:?}", model_path);
+                            self.onnx_sessions
+                                .insert(model_type.clone(), Arc::new(session));
+                        }
+                        Err(e) => {
+                            log::warn!(
+                                "[ML Models] ⚠️ Erreur chargement ONNX {:?}: {}",
+                                model_path,
+                                e
+                            );
+                        }
                     }
                 }
             }
-        }
         }
 
         Ok(())
@@ -607,7 +604,6 @@ impl DeliveryMLModelsService {
 
         Ok(prediction.max(5.0)) // Minimum 5 minutes
     }
-
 
     /// Entraîne un modèle avec de nouvelles données (pour compatibilité)
     pub async fn train_model(

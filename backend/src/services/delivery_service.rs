@@ -23,10 +23,7 @@ use crate::{
 };
 use bigdecimal::{BigDecimal, ToPrimitive as BigDecimalToPrimitive};
 use chrono::{DateTime, Duration, Utc};
-use rust_decimal::{
-    prelude::FromPrimitive,
-    Decimal,
-};
+use rust_decimal::{prelude::FromPrimitive, Decimal};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
@@ -3197,9 +3194,15 @@ impl DeliveryService {
                 DeliveryWsEvent::Location {
                     latitude: input.latitude,
                     longitude: input.longitude,
-                    speed_kmh: input.speed_kmh.and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
-                    bearing: input.bearing.and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
-                    accuracy_meters: input.accuracy_meters.and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
+                    speed_kmh: input
+                        .speed_kmh
+                        .and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
+                    bearing: input
+                        .bearing
+                        .and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
+                    accuracy_meters: input
+                        .accuracy_meters
+                        .and_then(|d| BigDecimalToPrimitive::to_f64(&d)),
                 },
             )
             .await;

@@ -15,8 +15,8 @@ use std::sync::Arc;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LandViabilityAnalysis {
     pub is_viable: bool,
-    pub viability_score: f64, // 0.0 à 1.0
-    pub strengths: Vec<String>, // Points forts
+    pub viability_score: f64,    // 0.0 à 1.0
+    pub strengths: Vec<String>,  // Points forts
     pub weaknesses: Vec<String>, // Points faibles
     pub recommendations: String,
     pub risks: Vec<String>, // Risques identifiés
@@ -47,9 +47,9 @@ pub struct LandUsageRecommendation {
 /// Analyse de potentiel investissement
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InvestmentPotentialAnalysis {
-    pub investment_score: f64, // 0.0 à 1.0
+    pub investment_score: f64,    // 0.0 à 1.0
     pub potential_return: String, // "Élevé", "Moyen", "Faible"
-    pub time_horizon: String, // "Court terme", "Moyen terme", "Long terme"
+    pub time_horizon: String,     // "Court terme", "Moyen terme", "Long terme"
     pub risks: Vec<String>,
     pub opportunities: Vec<String>,
     pub recommendations: String,
@@ -123,14 +123,7 @@ RÉPONSE ATTENDUE (JSON strict) :
     "risks": ["Risque 1", "Risque 2"]
 }}
 "#,
-            superficie_m2,
-            zonage,
-            acces_route,
-            acces_str,
-            viabilise,
-            quartier,
-            ville,
-            services_str
+            superficie_m2, zonage, acces_route, acces_str, viabilise, quartier, ville, services_str
         );
 
         let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
@@ -211,13 +204,7 @@ RÉPONSE ATTENDUE (JSON strict) :
     "factors": ["Facteur 1", "Facteur 2", "Facteur 3"]
 }}
 "#,
-            superficie_m2,
-            type_terrain,
-            zonage,
-            quartier,
-            ville,
-            acces_route,
-            viabilise
+            superficie_m2, type_terrain, zonage, quartier, ville, acces_route, viabilise
         );
 
         let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
@@ -404,4 +391,3 @@ RÉPONSE ATTENDUE (JSON strict) :
         Ok(analysis)
     }
 }
-

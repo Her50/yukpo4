@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use log::{info, warn};
-use rust_decimal::{Decimal, prelude::ToPrimitive};
+use rust_decimal::{prelude::ToPrimitive, Decimal};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
@@ -102,7 +102,7 @@ impl VideoQueueService {
             )
             VALUES ($1, $2, $3, $4, 'queued', '[]'::jsonb, $5)
             ON CONFLICT (job_id) DO NOTHING
-            "#
+            "#,
         )
         .bind(item.job_id)
         .bind(item.user_id)
@@ -153,25 +153,28 @@ impl VideoQueueService {
                 created_at ASC
             LIMIT $1
             FOR UPDATE SKIP LOCKED
-            "#
+            "#,
         )
         .bind(self.config.batch_size as i64)
         .fetch_all(&self.pool)
         .await?;
 
-        let jobs: Vec<VideoJobQueueItem> = jobs_rows.into_iter().map(|row| {
-            VideoJobQueueItem {
-                job_id: row.get::<Uuid, _>("job_id"),
-                user_id: row.get::<i32, _>("user_id"),
-                service_id: row.get::<Option<i32>, _>("service_id"),
-                product_index: row.get::<Option<i32>, _>("product_index"),
-                priority: JobPriority::Normal, // Default to Normal
-                payload: row.get::<serde_json::Value, _>("payload"),
-                created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
-                retry_count: row.get::<i32, _>("retry_count") as u32,
-                max_retries: row.get::<i32, _>("max_retries") as u32,
-            }
-        }).collect();
+        let jobs: Vec<VideoJobQueueItem> = jobs_rows
+            .into_iter()
+            .map(|row| {
+                VideoJobQueueItem {
+                    job_id: row.get::<Uuid, _>("job_id"),
+                    user_id: row.get::<i32, _>("user_id"),
+                    service_id: row.get::<Option<i32>, _>("service_id"),
+                    product_index: row.get::<Option<i32>, _>("product_index"),
+                    priority: JobPriority::Normal, // Default to Normal
+                    payload: row.get::<serde_json::Value, _>("payload"),
+                    created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+                    retry_count: row.get::<i32, _>("retry_count") as u32,
+                    max_retries: row.get::<i32, _>("max_retries") as u32,
+                }
+            })
+            .collect();
 
         // ✅ Marquer comme "processing"
         if !jobs.is_empty() {
@@ -181,7 +184,7 @@ impl VideoQueueService {
                 UPDATE video_generation_jobs
                 SET status = 'processing', updated_at = NOW()
                 WHERE job_id = ANY($1)
-                "#
+                "#,
             )
             .bind(&job_ids[..])
             .execute(&self.pool)
@@ -207,7 +210,7 @@ impl VideoQueueService {
                 result_payload = $3,
                 updated_at = NOW()
             WHERE job_id = $1
-            "#
+            "#,
         )
         .bind(job_id)
         .bind(result_media_id)
@@ -240,7 +243,7 @@ impl VideoQueueService {
                 AND (
                     SELECT COUNT(*) FROM jsonb_array_elements(progress_steps)
                 ) < 3
-                "#
+                "#,
             )
             .bind(job_id)
             .bind(&error_message)
@@ -255,7 +258,7 @@ impl VideoQueueService {
                     error_message = $2,
                     updated_at = NOW()
                 WHERE job_id = $1
-                "#
+                "#,
             )
             .bind(job_id)
             .bind(&error_message)
@@ -263,7 +266,10 @@ impl VideoQueueService {
             .await?;
         }
 
-        warn!("[VideoQueue] Job {} failed: {}", job_id_for_log, error_message);
+        warn!(
+            "[VideoQueue] Job {} failed: {}",
+            job_id_for_log, error_message
+        );
         Ok(())
     }
 

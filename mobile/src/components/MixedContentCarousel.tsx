@@ -1398,6 +1398,9 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = React.memo(({
                                     }}
                                     // ✅ NOUVEAU: Passer les callbacks pour tracker les médias
                                     onAllMediaViewed={() => handleAllMediaViewed(index)}
+                                    // ✅ NOUVEAU 2025-12-11: Lazy load - charger les données seulement si la carte est visible
+                                    // Dans un carousel horizontal, on considère visible la carte actuelle et les 2 adjacentes
+                                    isVisible={Math.abs(index - currentIndex) <= 1}
                                 />
                             </TouchableOpacity>
                         </SwipeableCard>

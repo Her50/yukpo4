@@ -124,7 +124,7 @@ impl CovoiturageInsuranceService {
             WHERE reservation_id = $1 AND status = 'active'
             ORDER BY created_at DESC
             LIMIT 1
-            "#
+            "#,
         )
         .bind(reservation_id)
         .fetch_optional(&self.pool)

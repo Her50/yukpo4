@@ -4005,7 +4005,10 @@ pub async fn creer_service(
     };
     // Utilisation directe de gps_lat et gps_lon dans la boucle, plus besoin de gps_lat_fallback/gps_lon_fallback
     // Génération et insertion des embeddings pour chaque champ du service
-    let mut embedding_tasks: Vec<(String, tokio::task::JoinHandle<Result<serde_json::Value, reqwest::Error>>)> = Vec::new();
+    let mut embedding_tasks: Vec<(
+        String,
+        tokio::task::JoinHandle<Result<serde_json::Value, reqwest::Error>>,
+    )> = Vec::new();
 
     // Préparation des données d'embedding en parallèle
     let map = if let Some(obj) = data_obj.as_object() {

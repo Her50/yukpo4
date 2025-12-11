@@ -159,19 +159,19 @@ impl TaxiAnalyticsService {
             .unwrap_or_default();
 
         // Tendance revenus
-        let revenue_trend = self
-            .get_revenue_trend()
-            .await
-            .unwrap_or(RevenueTrend {
-                today: 0.0,
-                yesterday: 0.0,
-                last_7_days: 0.0,
-                last_30_days: total_revenue_f64,
-                trend_percentage: 0.0,
-            });
+        let revenue_trend = self.get_revenue_trend().await.unwrap_or(RevenueTrend {
+            today: 0.0,
+            yesterday: 0.0,
+            last_7_days: 0.0,
+            last_30_days: total_revenue_f64,
+            trend_percentage: 0.0,
+        });
 
         // Top zones
-        let top_zones = self.get_top_zones(start, end, Some(10)).await.unwrap_or_default();
+        let top_zones = self
+            .get_top_zones(start, end, Some(10))
+            .await
+            .unwrap_or_default();
 
         Ok(AnalyticsOverview {
             total_trips,

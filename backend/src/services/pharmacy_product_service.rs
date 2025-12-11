@@ -309,9 +309,7 @@ impl PharmacyProductService {
             placeholders
         );
 
-        let mut query = sqlx::query(&sql)
-            .bind(user_lat)
-            .bind(user_lng);
+        let mut query = sqlx::query(&sql).bind(user_lat).bind(user_lng);
 
         for id in &product_ids {
             query = query.bind(id);
@@ -342,7 +340,8 @@ impl PharmacyProductService {
                 updated_at: row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at"),
             };
             let pharmacy_nom: Option<String> = row.get::<Option<String>, _>("pharmacy_nom");
-            let _gps: Option<serde_json::Value> = row.get::<Option<serde_json::Value>, _>("pharmacy_gps");
+            let _gps: Option<serde_json::Value> =
+                row.get::<Option<serde_json::Value>, _>("pharmacy_gps");
             let distance: Option<f64> = row.get::<Option<f64>, _>("distance_km");
             let quantity = items
                 .iter()

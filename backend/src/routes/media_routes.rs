@@ -12,9 +12,8 @@ use crate::controllers::{
         generate_video_timeline,
     },
     media_controller::{
-        delete_media, get_effect, get_effects_by_category,
-        get_template, get_templates_by_industry, list_effects, list_templates, serve_example_video,
-        upload_media,
+        delete_media, get_effect, get_effects_by_category, get_template, get_templates_by_industry,
+        list_effects, list_templates, serve_example_video, upload_media,
     },
 };
 use crate::middlewares::jwt::jwt_auth;

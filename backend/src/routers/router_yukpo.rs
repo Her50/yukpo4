@@ -40,8 +40,8 @@ use crate::{
         product_lifecycle_controller::{deactivate_product, reactivate_product}, // ✅ NOUVEAU 2025-11-01
         product_video_controller,
         service_controller::{
-            get_my_products, get_my_services, get_service_by_id, get_services_for_prestataire, modifier_service,
-            supprimer_service, toggle_service_status,
+            get_my_products, get_my_services, get_service_by_id, get_services_for_prestataire,
+            modifier_service, supprimer_service, toggle_service_status,
         },
         social_connector_controller,
         studio_controller,
@@ -2177,16 +2177,17 @@ async fn handle_paginated_search(
     let duration = start_time.elapsed();
 
     // Enregistrer les métriques
-    state.search_metrics
-            .record_search(
-                &query_clone,
-                specialized_type_clone.as_deref(),
-                category_filter_clone.as_deref(),
-                duration,
-                Duration::from_millis(0), // DB time non mesuré pour l'instant
-                false,                    // Cache hit sera déterminé par le service
-            )
-            .await;
+    state
+        .search_metrics
+        .record_search(
+            &query_clone,
+            specialized_type_clone.as_deref(),
+            category_filter_clone.as_deref(),
+            duration,
+            Duration::from_millis(0), // DB time non mesuré pour l'instant
+            false,                    // Cache hit sera déterminé par le service
+        )
+        .await;
 
     log_info(&format!(
         "[PAGINATED_SEARCH] ✅ Recherche paginée terminée en {:?}: {} résultats (has_more: {})",

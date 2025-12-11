@@ -2,11 +2,7 @@
 //! Protection contre la surcharge et les attaques DDoS
 
 use axum::middleware::Next;
-use axum::{
-    extract::Request,
-    http::StatusCode,
-    response::Response,
-};
+use axum::{extract::Request, http::StatusCode, response::Response};
 use std::{
     collections::HashMap,
     sync::{

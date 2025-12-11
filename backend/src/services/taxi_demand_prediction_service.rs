@@ -358,7 +358,7 @@ Retourne UNIQUEMENT un JSON avec:
                     .collect()
             })
             .unwrap_or_default();
-        
+
         // Si peak_hours est vide, calculer avec identify_peak_hours
         let peak_hours = if peak_hours.is_empty() {
             self.identify_peak_hours(features).await.unwrap_or_default()
@@ -427,14 +427,17 @@ Retourne UNIQUEMENT un JSON avec:
             + weekend_adjustment)
             .max(0.0);
 
-        let peak_hours = self.identify_peak_hours(features).await.unwrap_or_else(|_| {
-            // Heures de pic par défaut
-            if features.is_weekend {
-                vec![10, 11, 12, 18, 19, 20]
-            } else {
-                vec![7, 8, 9, 17, 18, 19]
-            }
-        });
+        let peak_hours = self
+            .identify_peak_hours(features)
+            .await
+            .unwrap_or_else(|_| {
+                // Heures de pic par défaut
+                if features.is_weekend {
+                    vec![10, 11, 12, 18, 19, 20]
+                } else {
+                    vec![7, 8, 9, 17, 18, 19]
+                }
+            });
 
         Ok(DemandPrediction {
             zone: zone.clone(),
@@ -518,7 +521,8 @@ Retourne UNIQUEMENT un JSON avec:
         let mut count = 0;
 
         for row in historical {
-            let hour_bucket: Option<NaiveDateTime> = row.get::<Option<NaiveDateTime>, _>("hour_bucket");
+            let hour_bucket: Option<NaiveDateTime> =
+                row.get::<Option<NaiveDateTime>, _>("hour_bucket");
             let demand_count: f64 = row.get::<f64, _>("demand_count");
 
             if let Some(hour) = hour_bucket {

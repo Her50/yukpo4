@@ -115,6 +115,7 @@ interface ProductCardProps {
   onPress?: () => void;
   onChatPress?: () => void; // ✅ NOUVEAU: Handler chat personnalisé
   onAllMediaViewed?: () => void; // ✅ NOUVEAU: Callback quand tous les médias ont été vus
+  isVisible?: boolean; // ✅ NOUVEAU: Lazy load des données seulement si la carte est visible
 }
 
 // ✅ NOUVEAU : Constantes pour réactions
@@ -503,6 +504,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onPress,
   onChatPress,
   onAllMediaViewed,
+  isVisible = true,
 }) => {
   // ✅ NOUVEAU: Utiliser le thème (clair/sombre)
   const { colors } = useTheme();
@@ -611,6 +613,73 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [commentStats, setCommentStats] = useState<{ total_comments: number; rating_count: number; average_rating: number } | null>(null);
   const [loadingComments, setLoadingComments] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
+
+  // ✅ NOUVEAU 2025-12-11: Guards de visibilité & lifecycle
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // ✅ NOUVEAU 2025-12-11: Cache mémoire pour éviter les requêtes répétées
+  const reactionsCacheRef = useRef<Map<string, { data: any; timestamp: number }>>(new Map());
+  const commentStatsCacheRef = useRef<Map<string, { data: any; timestamp: number }>>(new Map());
+  // ✅ CONFIGURABLE: Durée de cache (5 minutes par défaut, ajuster selon besoins)
+  // Plus long = moins de requêtes mais données potentiellement obsolètes
+  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+  // ✅ NOUVEAU 2025-12-11: Queue avec limite de concurrence pour éviter les rafales
+  // ✅ CONFIGURABLE: Ajuster selon les besoins (3 = équilibré, 5 = plus rapide mais plus de charge)
+  const MAX_CONCURRENT_REQUESTS = 3;
+  const reactionPendingQueue = useRef<Array<() => void>>([]);
+  const activeReactionRequests = useRef(0);
+  const commentPendingQueue = useRef<Array<() => void>>([]);
+  const activeCommentRequests = useRef(0);
+
+  const enqueueReaction = useCallback((task: () => Promise<void>) => {
+    return new Promise<void>((resolve) => {
+      const run = () => {
+        activeReactionRequests.current += 1;
+        task().finally(() => {
+          activeReactionRequests.current -= 1;
+          const next = reactionPendingQueue.current.shift();
+          if (next) {
+            next();
+          }
+          resolve();
+        });
+      };
+
+      if (activeReactionRequests.current < MAX_CONCURRENT_REQUESTS) {
+        run();
+      } else {
+        reactionPendingQueue.current.push(run);
+      }
+    });
+  }, []);
+
+  const enqueueComment = useCallback((task: () => Promise<void>) => {
+    return new Promise<void>((resolve) => {
+      const run = () => {
+        activeCommentRequests.current += 1;
+        task().finally(() => {
+          activeCommentRequests.current -= 1;
+          const next = commentPendingQueue.current.shift();
+          if (next) {
+            next();
+          }
+          resolve();
+        });
+      };
+
+      if (activeCommentRequests.current < MAX_CONCURRENT_REQUESTS) {
+        run();
+      } else {
+        commentPendingQueue.current.push(run);
+      }
+    });
+  }, []);
   // ✅ NOUVEAU : État pour menu contextuel (long-press)
   const [showContextMenu, setShowContextMenu] = useState(false);
   // ✅ NOUVEAU : État pour mode compact/étendu
@@ -1581,22 +1650,41 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
-  // ✅ AMÉLIORÉ: Charger réactions avec retry automatique
+  // ✅ AMÉLIORÉ: Charger réactions avec retry automatique + cache + queue + lazy visibility
   const loadReactions = useCallback(async (retryCount = 0) => {
+    if (!isVisible) return;
     if (!serviceId || !resolvedProductId) return;
+
+    const cacheKey = `${serviceId}-${resolvedProductId}`;
+    const cached = reactionsCacheRef.current.get(cacheKey);
+    const now = Date.now();
+
+    // ✅ Cache court pour éviter les rafales
+    if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+      const reactionsMap: Record<string, { count: number; hasReacted: boolean }> = {};
+      const reactionsArray = Array.isArray(cached.data) ? cached.data : [];
+      reactionsArray.forEach((r: any) => {
+        if (r && r.reaction_type) {
+          reactionsMap[r.reaction_type] = {
+            count: typeof r.count === 'number' ? r.count : 0,
+            hasReacted: typeof r.has_reacted === 'boolean' ? r.has_reacted : false
+          };
+        }
+      });
+      setReactions(reactionsMap);
+      return;
+    }
 
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 1000; // 1 seconde
 
-    try {
-      setLoadingReactions(true);
-      const response = await apiGet(`/api/products/${serviceId}/${resolvedProductId}/reactions`);
-      // ✅ CORRIGÉ: Vérifier que response.data existe et est un tableau avant d'appeler forEach
-      if (response.success && response.data) {
-        const reactionsMap: Record<string, { count: number; hasReacted: boolean }> = {};
-        // ✅ CORRIGÉ: Vérifier que data est un tableau avant d'appeler forEach
-        const reactionsArray = Array.isArray(response.data) ? response.data : [];
-        if (reactionsArray && typeof reactionsArray.forEach === 'function') {
+    await enqueueReaction(async () => {
+      try {
+        setLoadingReactions(true);
+        const response = await apiGet(`/api/products/${serviceId}/${resolvedProductId}/reactions`);
+        if (response.success && response.data) {
+          const reactionsMap: Record<string, { count: number; hasReacted: boolean }> = {};
+          const reactionsArray = Array.isArray(response.data) ? response.data : [];
           reactionsArray.forEach((r: any) => {
             if (r && r.reaction_type) {
               reactionsMap[r.reaction_type] = {
@@ -1605,94 +1693,114 @@ const ProductCard: React.FC<ProductCardProps> = ({
               };
             }
           });
-          setReactions(reactionsMap);
+          reactionsCacheRef.current.set(cacheKey, { data: reactionsArray, timestamp: Date.now() });
+          if (isMountedRef.current) {
+            setReactions(reactionsMap);
+          }
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[ProductCard] Erreur chargement réactions:', {
+          message: errorMessage,
+          serviceId,
+          resolvedProductId,
+          retryCount,
+          error: error
+        });
+
+        if (retryCount < MAX_RETRIES) {
+          const delay = RETRY_DELAY * Math.pow(2, retryCount); // Exponential backoff
+          setTimeout(() => {
+            loadReactions(retryCount + 1);
+          }, delay);
         } else {
-          console.warn('[ProductCard] Réponse réactions invalide (pas un tableau):', response.data);
+          console.error('[ProductCard] Échec chargement réactions après', MAX_RETRIES, 'tentatives');
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setLoadingReactions(false);
         }
       }
-    } catch (error) {
-      // ✅ AMÉLIORÉ: Retry automatique avec exponential backoff
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('[ProductCard] Erreur chargement réactions:', {
-        message: errorMessage,
-        serviceId,
-        resolvedProductId,
-        retryCount,
-        error: error
-      });
-
-      if (retryCount < MAX_RETRIES) {
-        const delay = RETRY_DELAY * Math.pow(2, retryCount); // Exponential backoff
-        setTimeout(() => {
-          loadReactions(retryCount + 1);
-        }, delay);
-      } else {
-        // Échec après tous les retries
-        console.error('[ProductCard] Échec chargement réactions après', MAX_RETRIES, 'tentatives');
-      }
-    } finally {
-      setLoadingReactions(false);
-    }
-  }, [resolvedProductId, serviceId]);
+    });
+  }, [CACHE_TTL_MS, enqueueReaction, isVisible, resolvedProductId, serviceId]);
 
   useEffect(() => {
-    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    if (!isVisible) return undefined;
     loadReactions().catch(error => {
       console.error('[ProductCard] Erreur loadReactions:', error);
     });
-    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
     return undefined;
-  }, [loadReactions]);
+  }, [isVisible, loadReactions]);
 
-  // ✅ AMÉLIORÉ: Charger les stats des commentaires avec retry automatique
+  // ✅ AMÉLIORÉ: Charger les stats des commentaires avec retry + cache + queue + lazy visibility
   const loadCommentStats = useCallback(async (retryCount = 0) => {
+    if (!isVisible) return;
     if (!commentServiceId || commentServiceId <= 0) return;
+
+    const cacheKey = `${commentServiceId}`;
+    const cached = commentStatsCacheRef.current.get(cacheKey);
+    const now = Date.now();
+
+    if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+      const payload: any = cached.data;
+      setCommentStats({
+        total_comments: payload.stats?.total_comments ?? payload.comments?.length ?? 0,
+        rating_count: payload.stats?.rating_count ?? 0,
+        average_rating: payload.stats?.average_rating ?? 0,
+      });
+      return;
+    }
 
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 1000;
 
-    try {
-      setLoadingComments(true);
-      const response = await commentsApi.getProductComments(commentServiceId);
-      if (response.success && response.data) {
-        const payload: any = response.data;
-        setCommentStats({
-          total_comments: payload.stats?.total_comments ?? payload.comments?.length ?? 0,
-          rating_count: payload.stats?.rating_count ?? 0,
-          average_rating: payload.stats?.average_rating ?? 0,
+    await enqueueComment(async () => {
+      try {
+        setLoadingComments(true);
+        const response = await commentsApi.getProductComments(commentServiceId);
+        if (response.success && response.data) {
+          const payload: any = response.data;
+          commentStatsCacheRef.current.set(cacheKey, { data: payload, timestamp: Date.now() });
+          if (isMountedRef.current) {
+            setCommentStats({
+              total_comments: payload.stats?.total_comments ?? payload.comments?.length ?? 0,
+              rating_count: payload.stats?.rating_count ?? 0,
+              average_rating: payload.stats?.average_rating ?? 0,
+            });
+          }
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[ProductCard] Erreur chargement stats commentaires:', {
+          message: errorMessage,
+          commentServiceId,
+          retryCount,
+          error: error
         });
-      }
-    } catch (error) {
-      // ✅ AMÉLIORÉ: Retry automatique avec exponential backoff
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('[ProductCard] Erreur chargement stats commentaires:', {
-        message: errorMessage,
-        commentServiceId,
-        retryCount,
-        error: error
-      });
 
-      if (retryCount < MAX_RETRIES) {
-        const delay = RETRY_DELAY * Math.pow(2, retryCount);
-        setTimeout(() => {
-          loadCommentStats(retryCount + 1);
-        }, delay);
-      } else {
-        console.error('[ProductCard] Échec chargement stats commentaires après', MAX_RETRIES, 'tentatives');
+        if (retryCount < MAX_RETRIES) {
+          const delay = RETRY_DELAY * Math.pow(2, retryCount);
+          setTimeout(() => {
+            loadCommentStats(retryCount + 1);
+          }, delay);
+        } else {
+          console.error('[ProductCard] Échec chargement stats commentaires après', MAX_RETRIES, 'tentatives');
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setLoadingComments(false);
+        }
       }
-    } finally {
-      setLoadingComments(false);
-    }
-  }, [commentServiceId]);
+    });
+  }, [CACHE_TTL_MS, commentServiceId, enqueueComment, isVisible]);
 
   useEffect(() => {
-    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    if (!isVisible) return undefined;
     loadCommentStats().catch(error => {
       console.error('[ProductCard] Erreur loadCommentStats:', error);
     });
-    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
     return undefined;
-  }, [loadCommentStats]);
+  }, [isVisible, loadCommentStats]);
 
   // ✅ GÉANT-LEVEL: Handler pour réagir avec optimistic update (Instagram style)
   const handleReaction = async (reactionType: string) => {

@@ -33,7 +33,7 @@ pub struct ImprovedMatching {
 pub struct CVAnalysis {
     pub candidat_id: i32,
     pub score_completude: f64, // 0-100
-    pub score_qualite: f64, // 0-100
+    pub score_qualite: f64,    // 0-100
     pub score_pertinence: f64, // 0-100
     pub competences_extracted: Vec<String>,
     pub experience_years_extracted: i32,
@@ -89,24 +89,29 @@ impl EmploiAIService {
         variables.insert("offre_id".to_string(), offre_id.to_string());
         variables.insert("candidat_id".to_string(), candidat_id.to_string());
         variables.insert("titre_poste".to_string(), titre_poste.to_string());
-        variables.insert("competences_requises".to_string(), competences_req_str.clone());
-        variables.insert("competences_candidat".to_string(), competences_cand_str.clone());
+        variables.insert(
+            "competences_requises".to_string(),
+            competences_req_str.clone(),
+        );
+        variables.insert(
+            "competences_candidat".to_string(),
+            competences_cand_str.clone(),
+        );
         variables.insert("experience_requise".to_string(), exp_req_str.clone());
-        variables.insert("experience_candidat".to_string(), experience_candidat.to_string());
+        variables.insert(
+            "experience_candidat".to_string(),
+            experience_candidat.to_string(),
+        );
 
-        let prompt = load_prompt_section_with_vars(
-            "emploi",
-            "Matching Intelligent",
-            &variables,
-        )
-        .await
-        .unwrap_or_else(|e| {
-            log::warn!(
-                "[EmploiAIService] Erreur chargement prompt, utilisation fallback: {}",
-                e
-            );
-            format!(
-                r#"
+        let prompt = load_prompt_section_with_vars("emploi", "Matching Intelligent", &variables)
+            .await
+            .unwrap_or_else(|e| {
+                log::warn!(
+                    "[EmploiAIService] Erreur chargement prompt, utilisation fallback: {}",
+                    e
+                );
+                format!(
+                    r#"
 Tu es l'expert en recrutement intelligent de Yukpomnang.
 
 CONTEXTE :
@@ -138,17 +143,17 @@ RÉPONSE ATTENDUE (JSON strict) :
     "improvement_suggestions": ["Suggestion 1", "Suggestion 2"]
 }}
 "#,
-                offre_id,
-                candidat_id,
-                titre_poste,
-                competences_req_str,
-                competences_cand_str,
-                exp_req_str,
-                experience_candidat,
-                offre_id,
-                candidat_id
-            )
-        });
+                    offre_id,
+                    candidat_id,
+                    titre_poste,
+                    competences_req_str,
+                    competences_cand_str,
+                    exp_req_str,
+                    experience_candidat,
+                    offre_id,
+                    candidat_id
+                )
+            });
 
         let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
         log::info!(
@@ -217,19 +222,15 @@ RÉPONSE ATTENDUE (JSON strict) :
         variables.insert("cv_url".to_string(), cv_url_str.to_string());
         variables.insert("cv_content".to_string(), cv_text_short.clone());
 
-        let prompt = load_prompt_section_with_vars(
-            "emploi",
-            "Analyse CV",
-            &variables,
-        )
-        .await
-        .unwrap_or_else(|e| {
-            log::warn!(
-                "[EmploiAIService] Erreur chargement prompt, utilisation fallback: {}",
-                e
-            );
-            format!(
-                r#"
+        let prompt = load_prompt_section_with_vars("emploi", "Analyse CV", &variables)
+            .await
+            .unwrap_or_else(|e| {
+                log::warn!(
+                    "[EmploiAIService] Erreur chargement prompt, utilisation fallback: {}",
+                    e
+                );
+                format!(
+                    r#"
 Tu es l'expert en analyse de CV pour Yukpomnang.
 
 CONTEXTE :
@@ -258,12 +259,9 @@ RÉPONSE ATTENDUE (JSON strict) :
     "competences_manquantes": ["Compétence 3"]
 }}
 "#,
-                candidat_id,
-                cv_url_str,
-                cv_text_short,
-                candidat_id
-            )
-        });
+                    candidat_id, cv_url_str, cv_text_short, candidat_id
+                )
+            });
 
         let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
         log::info!(
@@ -315,23 +313,22 @@ RÉPONSE ATTENDUE (JSON strict) :
         variables.insert("titre_poste".to_string(), titre_poste.to_string());
         variables.insert("secteur".to_string(), secteur.to_string());
         variables.insert("ville".to_string(), ville.to_string());
-        variables.insert("experience_annees".to_string(), experience_annees.to_string());
+        variables.insert(
+            "experience_annees".to_string(),
+            experience_annees.to_string(),
+        );
         variables.insert("niveau_etude".to_string(), niveau_etude.to_string());
         variables.insert("competences".to_string(), competences_str.clone());
 
-        let prompt = load_prompt_section_with_vars(
-            "emploi",
-            "Prédiction Salaire",
-            &variables,
-        )
-        .await
-        .unwrap_or_else(|e| {
-            log::warn!(
-                "[EmploiAIService] Erreur chargement prompt, utilisation fallback: {}",
-                e
-            );
-            format!(
-                r#"
+        let prompt = load_prompt_section_with_vars("emploi", "Prédiction Salaire", &variables)
+            .await
+            .unwrap_or_else(|e| {
+                log::warn!(
+                    "[EmploiAIService] Erreur chargement prompt, utilisation fallback: {}",
+                    e
+                );
+                format!(
+                    r#"
 Tu es l'expert en prédiction salariale pour le marché camerounais/africain.
 
 CONTEXTE :
@@ -367,17 +364,17 @@ RÉPONSE ATTENDUE (JSON strict) :
     "comparaison_marche": "Description comparaison marché"
 }}
 "#,
-                titre_poste,
-                secteur,
-                ville,
-                experience_annees,
-                niveau_etude,
-                competences_str,
-                titre_poste,
-                secteur,
-                ville
-            )
-        });
+                    titre_poste,
+                    secteur,
+                    ville,
+                    experience_annees,
+                    niveau_etude,
+                    competences_str,
+                    titre_poste,
+                    secteur,
+                    ville
+                )
+            });
 
         let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
         log::info!(
@@ -418,4 +415,3 @@ RÉPONSE ATTENDUE (JSON strict) :
         Ok(prediction)
     }
 }
-

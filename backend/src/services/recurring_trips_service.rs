@@ -88,7 +88,7 @@ impl RecurringTripsService {
             AND s.is_active = TRUE
             AND c.is_active = TRUE
             AND (c.recurrence_end_date IS NULL OR c.recurrence_end_date >= $1)
-            "#
+            "#,
         )
         .bind(start_date)
         .fetch_all(&self.pool)
@@ -105,7 +105,8 @@ impl RecurringTripsService {
                 service_id: row.get::<i32, _>("service_id"),
                 user_id: row.get::<i32, _>("user_id"),
                 recurrence_type: row.get::<Option<String>, _>("recurrence_type"),
-                recurrence_days: row.get::<Option<Vec<i32>>, _>("recurrence_days")
+                recurrence_days: row
+                    .get::<Option<Vec<i32>>, _>("recurrence_days")
                     .map(|v| v.into_iter().map(|x| x as i16).collect()),
                 recurrence_end_date: row.get::<Option<chrono::NaiveDate>, _>("recurrence_end_date"),
                 start_date: row.get::<chrono::NaiveDate, _>("start_date"),
@@ -307,7 +308,7 @@ impl RecurringTripsService {
             FROM recurring_trip_instances
             WHERE parent_trip_id = $1
             ORDER BY instance_date ASC
-            "#
+            "#,
         )
         .bind(parent_trip_id)
         .fetch_all(&self.pool)

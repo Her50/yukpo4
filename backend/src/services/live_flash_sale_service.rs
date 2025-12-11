@@ -396,15 +396,18 @@ impl LiveFlashSaleService {
         if let Err(err) = Self::process_timers_inner(state.clone()).await {
             let error_str = format!("{:?}", err);
             let error_lower = error_str.to_lowercase();
-            
+
             // ✅ OPTIMISATION: Logger en debug pour les erreurs de connexion DB attendues
             let is_connection_error = error_lower.contains("peer closed connection")
                 || error_lower.contains("connection reset by peer")
                 || error_lower.contains("broken pipe")
                 || error_lower.contains("tls close_notify");
-            
+
             if is_connection_error {
-                log::debug!("process_timers live flash sales: erreur connexion DB attendue (ignorée): {:?}", err);
+                log::debug!(
+                    "process_timers live flash sales: erreur connexion DB attendue (ignorée): {:?}",
+                    err
+                );
             } else {
                 log::error!("process_timers live flash sales failed: {:?}", err);
             }
@@ -951,7 +954,8 @@ impl LiveFlashSaleService {
                 commentary_mode: row.get::<String, _>("commentary_mode"),
                 commentary_interval_seconds: row.get::<i32, _>("commentary_interval_seconds"),
                 ai_voice_profile: row.get::<Option<String>, _>("ai_voice_profile"),
-                last_commentary_sent_at: row.get::<Option<DateTime<Utc>>, _>("last_commentary_sent_at"),
+                last_commentary_sent_at: row
+                    .get::<Option<DateTime<Utc>>, _>("last_commentary_sent_at"),
                 metadata: row.get::<Value, _>("metadata"),
                 linked_service: linked_map.get(&row.get::<i32, _>("service_id")).cloned(),
                 recent_commentaries: commentary_map

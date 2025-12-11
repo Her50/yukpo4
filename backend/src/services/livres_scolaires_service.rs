@@ -208,9 +208,10 @@ impl LivresScolairesService {
         let results: Vec<LivreScolaireWithDistance> = rows
             .into_iter()
             .map(|row| {
-                let images_urls_json: Option<sqlx::types::Json<Vec<String>>> = row.get::<Option<sqlx::types::Json<Vec<String>>>, _>("images_urls");
+                let images_urls_json: Option<sqlx::types::Json<Vec<String>>> =
+                    row.get::<Option<sqlx::types::Json<Vec<String>>>, _>("images_urls");
                 let images_urls = images_urls_json.map(|j| j.0).unwrap_or_default();
-                
+
                 LivreScolaireWithDistance {
                     livre: LivreScolaire {
                         id: row.get::<i32, _>("id"),

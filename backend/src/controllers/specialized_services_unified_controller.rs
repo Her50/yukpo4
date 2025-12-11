@@ -3,9 +3,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
-use crate::services::conflict_resolution::{
-    ConflictResolution, ConflictResolutionService,
-};
+use crate::services::conflict_resolution::{ConflictResolution, ConflictResolutionService};
 use crate::services::specialized_services_cache::SpecializedServicesCache;
 use crate::services::specialized_services_metrics;
 use crate::state::AppState;
@@ -1866,7 +1864,7 @@ pub async fn sync_services(
                                                 "server_updated_at": conflict.server_updated_at,
                                                 "local_updated_at": conflict.local_updated_at,
                                             })
-                                                .to_string(),
+                                            .to_string(),
                                         ),
                                     });
                                     continue;

@@ -66,7 +66,7 @@ impl SpecializedPaymentService {
 
         // Cloner payment_method avant de déplacer payment_request
         let payment_method_str = format!("{:?}", payment_request.payment_method);
-        
+
         let payment_response = self
             .payment_service
             .process_payment(payment_request)

@@ -35,7 +35,7 @@ pub enum EasingType {
 /// Keyframe pour animation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Keyframe {
-    pub time: f64, // Temps en secondes
+    pub time: f64,    // Temps en secondes
     pub value: Value, // Valeur (peut être nombre, array, etc.)
     pub easing: Option<EasingType>,
     pub interpolation: Option<String>, // "linear" | "bezier" | "hold"
@@ -61,12 +61,12 @@ pub struct TimelineClip {
     pub id: String,
     pub r#type: TrackType,
     pub start_time: f64, // Temps de début dans la timeline
-    pub duration: f64, // Durée du clip
-    pub source: String, // URL ou chemin du média
+    pub duration: f64,   // Durée du clip
+    pub source: String,  // URL ou chemin du média
     pub properties: AnimatableProperty,
     pub trim_start: Option<f64>, // Trim de début
-    pub trim_end: Option<f64>, // Trim de fin
-    pub volume: Option<f64>, // Volume (0.0 - 1.0)
+    pub trim_end: Option<f64>,   // Trim de fin
+    pub volume: Option<f64>,     // Volume (0.0 - 1.0)
     pub muted: Option<bool>,
     pub locked: Option<bool>,
     pub visible: Option<bool>,
@@ -83,7 +83,7 @@ pub struct TimelineTrack {
     pub muted: Option<bool>,
     pub visible: Option<bool>,
     pub height: Option<u32>, // Hauteur de la piste en pixels
-    pub order: u32, // Ordre d'affichage
+    pub order: u32,          // Ordre d'affichage
 }
 
 /// Timeline multi-pistes complète
@@ -142,4 +142,3 @@ pub struct AdvancedTimelineResponse {
     pub timeline: AdvancedTimelineRow,
     pub message: Option<String>,
 }
-

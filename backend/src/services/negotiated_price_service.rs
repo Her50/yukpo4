@@ -202,7 +202,8 @@ impl NegotiatedPriceService {
         let merchant_id: i32 = offer_row.get::<i32, _>("merchant_user_id");
         let _client_user_id: i32 = offer_row.get::<i32, _>("client_user_id");
         let status: String = offer_row.get::<String, _>("status");
-        let expires_at: Option<chrono::DateTime<Utc>> = offer_row.get::<Option<chrono::DateTime<Utc>>, _>("expires_at");
+        let expires_at: Option<chrono::DateTime<Utc>> =
+            offer_row.get::<Option<chrono::DateTime<Utc>>, _>("expires_at");
 
         // Vérifier que l'utilisateur est le prestataire (seul le prestataire peut accepter)
         if user_id != merchant_id {

@@ -239,7 +239,9 @@ IMPORTANT:
 
     /// Obtient les credentials d'un provider depuis les variables d'environnement
     /// Récupère les credentials (endpoint et API key) pour un provider donné
-    pub fn get_provider_credentials(provider: &GenerativeProvider) -> Result<(String, String), String> {
+    pub fn get_provider_credentials(
+        provider: &GenerativeProvider,
+    ) -> Result<(String, String), String> {
         match provider {
             GenerativeProvider::Runway => {
                 let endpoint = std::env::var("RUNWAY_API_URL")

@@ -39,7 +39,7 @@ pub struct PropertyRecommendation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarketAnalysis {
     pub average_price_per_m2: f64,
-    pub price_trend: String, // "rising", "stable", "falling"
+    pub price_trend: String,  // "rising", "stable", "falling"
     pub demand_level: String, // "high", "medium", "low"
     pub best_areas: Vec<String>,
     pub investment_opportunities: Vec<String>,
@@ -459,4 +459,3 @@ RÉPONSE ATTENDUE (JSON strict) :
         Ok(anomalies)
     }
 }
-

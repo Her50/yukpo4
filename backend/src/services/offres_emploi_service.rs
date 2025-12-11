@@ -1,7 +1,6 @@
 use crate::core::types::{AppError, AppResult};
 use crate::models::offres_emploi_model::{
-    CreateOffreEmploiRequest, OffreEmploi,
-    SearchOffresRequest,
+    CreateOffreEmploiRequest, OffreEmploi, SearchOffresRequest,
 };
 use crate::utils::redis_helper;
 use bigdecimal::BigDecimal;
@@ -53,9 +52,11 @@ impl OffresEmploiService {
             .map(|s| BigDecimal::from_str(&s.to_string()).unwrap_or_default());
 
         // Préparer langues_requises comme JSONB
-        let langues_requises_json = request.langues_requises.as_ref()
+        let langues_requises_json = request
+            .langues_requises
+            .as_ref()
             .map(|v| serde_json::to_value(v).unwrap_or(Value::Null));
-        
+
         let offre_row = sqlx::query(
             r#"
             INSERT INTO offres_emploi (
@@ -137,7 +138,8 @@ impl OffresEmploiService {
             domaine: offre_row.get::<Option<String>, _>("domaine"),
             tags: offre_row.get::<Option<Vec<String>>, _>("tags"),
             date_publication: offre_row.get::<chrono::DateTime<chrono::Utc>, _>("date_publication"),
-            date_limite_candidature: offre_row.get::<Option<NaiveDate>, _>("date_limite_candidature"),
+            date_limite_candidature: offre_row
+                .get::<Option<NaiveDate>, _>("date_limite_candidature"),
             date_debut_poste: offre_row.get::<Option<NaiveDate>, _>("date_debut_poste"),
             statut: offre_row.get::<String, _>("statut"),
             nombre_candidatures: offre_row.get::<i32, _>("nombre_candidatures"),

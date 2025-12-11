@@ -11,7 +11,10 @@ use std::time::{Duration, Instant};
 use log::{error, info, warn};
 use tokio::sync::RwLock;
 
-use crate::{core::types::AppResult, services::delivery_service::DeliveryService, state::AppState};
+use crate::{
+    core::types::AppResult, services::delivery_service::DeliveryService, state::AppState,
+    utils::db_retry::retry_service_operation,
+};
 
 /// Paramétrage simple pour le worker.
 #[derive(Debug, Clone)]
@@ -92,10 +95,16 @@ impl DeliveryMatchingWorker {
             }
         }
 
-        match self
-            .service
-            .process_matching_backlog(self.config.batch_size)
-            .await
+        // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour gérer les erreurs de connexion DB
+        match retry_service_operation(
+            || {
+                let service = self.service.clone();
+                let batch_size = self.config.batch_size;
+                Box::pin(async move { service.process_matching_backlog(batch_size).await })
+            },
+            3, // 3 tentatives avec backoff exponentiel
+        )
+        .await
         {
             Ok(processed) => {
                 // Logger seulement si des livraisons ont été traitées
@@ -119,10 +128,7 @@ impl DeliveryMatchingWorker {
                 Ok(())
             }
             Err(err) => {
-                error!(
-                    "[DeliveryMatchingWorker] Erreur pendant le traitement: {}",
-                    err
-                );
+                error!("[DeliveryMatchingWorker] Erreur après retries: {}", err);
                 Err(err)
             }
         }
@@ -159,7 +165,17 @@ impl DeliveryMatchingWorker {
             let batch_size = self.config.batch_size;
 
             handles.push(tokio::spawn(async move {
-                match service.process_matching_backlog(batch_size).await {
+                // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour gérer les erreurs de connexion DB
+                match retry_service_operation(
+                    || {
+                        let service = service.clone();
+                        let batch_size = batch_size;
+                        Box::pin(async move { service.process_matching_backlog(batch_size).await })
+                    },
+                    3, // 3 tentatives avec backoff exponentiel
+                )
+                .await
+                {
                     Ok(processed) => {
                         if processed > 0 {
                             log::info!(
@@ -171,7 +187,11 @@ impl DeliveryMatchingWorker {
                         Ok(processed)
                     }
                     Err(err) => {
-                        log::error!("[DeliveryMatchingWorker] Worker {}: Erreur: {}", i, err);
+                        log::error!(
+                            "[DeliveryMatchingWorker] Worker {}: Erreur après retries: {}",
+                            i,
+                            err
+                        );
                         Err(err)
                     }
                 }

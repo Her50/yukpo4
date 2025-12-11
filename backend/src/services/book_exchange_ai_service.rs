@@ -29,9 +29,9 @@ pub struct BookMatching {
     pub livre_offert_id: i32,
     pub livre_souhaite_id: i32,
     pub participant_id: i32,
-    pub score_matching: f64, // 0-100
+    pub score_matching: f64,      // 0-100
     pub score_compatibilite: f64, // 0-100
-    pub score_proximite: f64, // 0-100
+    pub score_proximite: f64,     // 0-100
     pub reasoning: String,
     pub points_forts: Vec<String>,
     pub points_faibles: Vec<String>,
@@ -80,19 +80,16 @@ impl BookExchangeAIService {
         variables.insert("niveau".to_string(), niveau_str.to_string());
         variables.insert("ville".to_string(), ville_str.to_string());
 
-        let prompt = load_prompt_section_with_vars(
-            "bourse_livre",
-            "Recommandations de Livres",
-            &variables,
-        )
-        .await
-        .unwrap_or_else(|e| {
-            log::warn!(
+        let prompt =
+            load_prompt_section_with_vars("bourse_livre", "Recommandations de Livres", &variables)
+                .await
+                .unwrap_or_else(|e| {
+                    log::warn!(
                 "[BookExchangeAIService] Erreur chargement prompt, utilisation fallback: {}",
                 e
             );
-            format!(
-                r#"
+                    format!(
+                        r#"
 Tu es l'assistant intelligent de la Bourse du Livre de Yukpomnang.
 
 CONTEXTE :
@@ -122,9 +119,9 @@ RÉPONSE ATTENDUE (JSON strict) :
     "matieres_suggestees": ["Mathématiques", "Physique"]
 }}
 "#,
-                classe_actuelle, classe_souhaitee, matiere, niveau_str, ville_str
-            )
-        });
+                        classe_actuelle, classe_souhaitee, matiere, niveau_str, ville_str
+                    )
+                });
 
         let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
         log::info!(
@@ -178,25 +175,25 @@ RÉPONSE ATTENDUE (JSON strict) :
         // Charger le prompt depuis le fichier markdown
         let mut variables = HashMap::new();
         variables.insert("livre_offert_id".to_string(), livre_offert_id.to_string());
-        variables.insert("livre_souhaite_id".to_string(), livre_souhaite_id.to_string());
+        variables.insert(
+            "livre_souhaite_id".to_string(),
+            livre_souhaite_id.to_string(),
+        );
         variables.insert("participant_id".to_string(), participant_id.to_string());
         variables.insert("distance_km".to_string(), distance_str.clone());
         variables.insert("etat_livre_offert".to_string(), etat_offert.to_string());
         variables.insert("etat_livre_souhaite".to_string(), etat_souhaite.to_string());
 
-        let prompt = load_prompt_section_with_vars(
-            "bourse_livre",
-            "Matching Intelligent",
-            &variables,
-        )
-        .await
-        .unwrap_or_else(|e| {
-            log::warn!(
+        let prompt =
+            load_prompt_section_with_vars("bourse_livre", "Matching Intelligent", &variables)
+                .await
+                .unwrap_or_else(|e| {
+                    log::warn!(
                 "[BookExchangeAIService] Erreur chargement prompt, utilisation fallback: {}",
                 e
             );
-            format!(
-                r#"
+                    format!(
+                        r#"
 Tu es l'assistant intelligent de matching pour la Bourse du Livre de Yukpomnang.
 
 CONTEXTE :
@@ -231,17 +228,17 @@ RÉPONSE ATTENDUE (JSON strict) :
     "points_faibles": ["Point faible 1"]
 }}
 "#,
-                livre_offert_id,
-                livre_souhaite_id,
-                participant_id,
-                distance_str,
-                etat_offert,
-                etat_souhaite,
-                livre_offert_id,
-                livre_souhaite_id,
-                participant_id
-            )
-        });
+                        livre_offert_id,
+                        livre_souhaite_id,
+                        participant_id,
+                        distance_str,
+                        etat_offert,
+                        etat_souhaite,
+                        livre_offert_id,
+                        livre_souhaite_id,
+                        participant_id
+                    )
+                });
 
         let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
         log::info!(
@@ -312,19 +309,15 @@ RÉPONSE ATTENDUE (JSON strict) :
         variables.insert("ville".to_string(), ville_str.to_string());
         variables.insert("prix_marche".to_string(), prix_marche_str.clone());
 
-        let prompt = load_prompt_section_with_vars(
-            "bourse_livre",
-            "Suggestions Prix",
-            &variables,
-        )
-        .await
-        .unwrap_or_else(|e| {
-            log::warn!(
-                "[BookExchangeAIService] Erreur chargement prompt, utilisation fallback: {}",
-                e
-            );
-            format!(
-                r#"
+        let prompt = load_prompt_section_with_vars("bourse_livre", "Suggestions Prix", &variables)
+            .await
+            .unwrap_or_else(|e| {
+                log::warn!(
+                    "[BookExchangeAIService] Erreur chargement prompt, utilisation fallback: {}",
+                    e
+                );
+                format!(
+                    r#"
 Tu es l'expert en prix de livres scolaires pour Yukpomnang.
 
 CONTEXTE :
@@ -363,18 +356,18 @@ RÉPONSE ATTENDUE (JSON strict) :
 }}
 "#,
                     livre_id,
-                titre,
-                auteur_str,
-                editeur_str,
-                isbn_str,
-                classe,
-                matiere,
-                etat_livre,
-                ville_str,
-                prix_marche_str,
-                livre_id
-            )
-        });
+                    titre,
+                    auteur_str,
+                    editeur_str,
+                    isbn_str,
+                    classe,
+                    matiere,
+                    etat_livre,
+                    ville_str,
+                    prix_marche_str,
+                    livre_id
+                )
+            });
 
         let (model_name, response, tokens) = self.app_ia.predict(&prompt).await?;
         log::info!(
@@ -416,4 +409,3 @@ RÉPONSE ATTENDUE (JSON strict) :
         Ok(suggestion)
     }
 }
-

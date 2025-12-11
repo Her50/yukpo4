@@ -84,7 +84,7 @@ impl GlobalMetricsService {
 
         // Sauvegarder average_time_ms avant de drop function_metrics
         let current_avg = function_metrics.average_time_ms;
-        
+
         function_metrics.total += 1;
         function_metrics.successful += 1;
 
@@ -93,12 +93,12 @@ impl GlobalMetricsService {
         } else {
             function_metrics.cache_misses += 1;
         }
-        
+
         // Les locks sont automatiquement libérés à la fin du scope
-        
+
         // Calculer cache_hit_rate
         let cache_hit_rate = self.calculate_cache_hit_rate().await;
-        
+
         // Réemprunter metrics pour mettre à jour cache_hit_rate
         {
             let mut metrics = self.metrics.write().await;
@@ -132,7 +132,7 @@ impl GlobalMetricsService {
             0.0
         };
         // Le lock est automatiquement libéré à la fin du scope
-        
+
         let mut metrics = self.metrics.write().await;
         metrics.average_response_time_ms = avg_response_time;
 

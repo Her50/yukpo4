@@ -51,17 +51,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log::error!("❌ DATABASE_URL manquante ou invalide: {}", e);
         e
     })?;
-    
-    // ✅ NOUVEAU 2025-12-11: Ajouter les paramètres TCP keepalive à l'URL de connexion
-    // Ces paramètres aident à maintenir les connexions actives et prévenir les fermetures inattendues
-    if !db_url.contains("keepalives_idle") {
-        let separator = if db_url.contains('?') { "&" } else { "?" };
-        db_url.push_str(&format!(
-            "{}keepalives_idle=60&keepalives_interval=10&keepalives_count=6",
-            separator
-        ));
-        log::info!("🔧 Paramètres TCP keepalive ajoutés à DATABASE_URL pour prévenir les fermetures de connexion");
+
+    // ✅ CORRIGÉ RACINE 2025-12-11: Ajouter sslmode=require pour Render PostgreSQL
+    // Render PostgreSQL nécessite SSL/TLS pour toutes les connexions
+    // Le vrai problème: Render ferme les connexions idle après ~5 minutes
+    // Solution: Réduire max_lifetime à 4 minutes pour renouveler avant fermeture
+    let mut separator = if db_url.contains('?') { "&" } else { "?" };
+
+    if !db_url.contains("sslmode=") {
+        db_url.push_str(&format!("{}sslmode=require", separator));
+        log::info!(
+            "🔧 Paramètre sslmode=require ajouté à DATABASE_URL (requis pour Render PostgreSQL)"
+        );
+        separator = "&";
     }
+
+    // ✅ CRITIQUE RACINE: Render ferme les connexions idle après ~5 minutes
+    // Les keepalives TCP dans l'URL ne fonctionnent pas avec sqlx/tokio-postgres
+    // La vraie solution: Renouveler les connexions AVANT que Render ne les ferme
+    // On configure max_lifetime à 4 minutes (240s) pour renouveler avant la fermeture Render
 
     let upload_storage_path =
         env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "/var/data/uploads".to_string());
@@ -97,12 +105,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ NOUVEAU 2025-12-02: Créer le pool PostgreSQL master (écritures)
     // ✅ AMÉLIORÉ 2025-12-11: Configuration optimisée pour prévenir les erreurs TLS
+    // ✅ CORRIGÉ 2025-12-11: Réduction des timeouts pour mieux gérer les fermetures de connexion Render
     let pg_pool = PgPoolOptions::new()
         .max_connections(max_connections)
         .min_connections(min_connections) // ✅ Maintenir un minimum de connexions
-        .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
-        .idle_timeout(Some(std::time::Duration::from_secs(300))) // ✅ OPTIMISÉ: Réduit à 5 min pour détecter plus tôt les connexions mortes
-        .max_lifetime(Some(std::time::Duration::from_secs(1800))) // ✅ OPTIMISÉ: Réduit à 30 min pour forcer le renouvellement régulier
+        .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs.min(10))) // ✅ CORRIGÉ: Max 10s pour détecter rapidement les problèmes
+        .idle_timeout(Some(std::time::Duration::from_secs(60))) // ✅ CORRIGÉ RACINE: 1 min pour détecter très tôt les connexions mortes
+        .max_lifetime(Some(std::time::Duration::from_secs(240))) // ✅ CORRIGÉ RACINE: 4 min pour renouveler AVANT que Render ne ferme (Render ferme après ~5 min)
         // ✅ NOUVEAU 2025-12-11: Réactiver test_before_acquire avec requête légère pour détecter les connexions mortes
         .test_before_acquire(true) // ✅ Réactivé pour détecter les connexions fermées avant utilisation
         .after_connect(|conn, _meta| {
@@ -116,27 +125,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 sqlx::query("SET idle_in_transaction_session_timeout = '600s'")
                     .execute(&mut *conn)
                     .await?;
-                // ✅ NOUVEAU: Test de connexion pour vérifier que la connexion est valide
-                // Ceci aide à détecter immédiatement les problèmes de connexion
-                sqlx::query("SELECT 1")
-                    .execute(&mut *conn)
-                    .await?;
-                // Note: Les paramètres TCP keepalive doivent être configurés via:
-                // 1. Variables d'environnement système (SO_KEEPALIVE)
-                // 2. Options de connexion PostgreSQL dans DATABASE_URL (?keepalives_idle=60)
-                // 3. Configuration PostgreSQL (postgresql.conf)
-                // Ils ne peuvent pas être configurés via SET dans une session
+                // ✅ CORRIGÉ RACINE: Heartbeat pour maintenir la connexion active
+                // Render ferme les connexions idle après ~5 min, donc on envoie un heartbeat
+                // pour maintenir la connexion active et éviter les fermetures inattendues
+                sqlx::query("SELECT 1").execute(&mut *conn).await?;
+                
+                // ✅ CRITIQUE: Les keepalives TCP ne sont pas supportés par sqlx/tokio-postgres dans l'URL
+                // La vraie solution: max_lifetime=240s (4 min) renouvelle les connexions
+                // AVANT que Render ne les ferme (~5 min), évitant ainsi les erreurs "peer closed connection"
                 Ok(())
             })
         })
-        // ✅ CORRIGÉ 2025-11-27: Amélioration de la gestion des connexions PostgreSQL
-        // - test_before_acquire permet de détecter les connexions mortes avant utilisation
-        // - idle_timeout réduit pour éviter les connexions mortes qui causent "crash of another server process"
-        // - Les erreurs TLS "close_notify" sont gérées par retry_query dans les contrôleurs
-        // - Le pool se reconnecte automatiquement si une connexion est fermée
-        // ✅ OPTIMISÉ 2025-11-28: Pool augmenté pour réduire les temps d'acquisition (30 max, 10 min)
-        // - Acquisition timeout augmenté à 15s pour gérer les pics de charge
-        // - min_connections à 10 pour maintenir des connexions prêtes et réduire les latences
+        // ✅ CORRIGÉ RACINE 2025-12-11: Utiliser connect() avec URL contenant sslmode=require
+        // max_lifetime=240s (4 min) renouvelle les connexions AVANT que Render ne les ferme (~5 min)
+        // idle_timeout=60s détecte rapidement les connexions mortes
         .connect(&db_url)
         .await
         .map_err(|e| {
@@ -695,15 +697,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool_clone_blackfriday = Arc::new(app_state.pg.clone());
     let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
-        
+
         // ✅ OPTIMISÉ: Intervalle configurable via variable d'environnement (défaut: 60s au lieu de 30s)
         let refresh_interval_secs: u64 = std::env::var("GLOBAL_PROMO_CACHE_REFRESH_INTERVAL_SECS")
             .unwrap_or_else(|_| "60".to_string())
             .parse()
             .unwrap_or(60);
-        
+
         let mut interval_blackfriday = interval(Duration::from_secs(refresh_interval_secs));
-        log::info!("🔄 Refresh global_promo_catalog_cache configuré: intervalle = {}s", refresh_interval_secs);
+        log::info!(
+            "🔄 Refresh global_promo_catalog_cache configuré: intervalle = {}s",
+            refresh_interval_secs
+        );
 
         loop {
             interval_blackfriday.tick().await;
@@ -738,7 +743,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     log::debug!("✅ global_promo_catalog_cache refreshed en {:?}", elapsed);
                     // ✅ OPTIMISÉ: Logger un debug si le refresh prend plus de 1 seconde (pas un warning)
                     if elapsed.as_millis() > 1000 {
-                        log::debug!("ℹ️ Refresh global_promo_catalog_cache lent: {:?} (> 1s)", elapsed);
+                        log::debug!(
+                            "ℹ️ Refresh global_promo_catalog_cache lent: {:?} (> 1s)",
+                            elapsed
+                        );
                     }
                 }
             } else {

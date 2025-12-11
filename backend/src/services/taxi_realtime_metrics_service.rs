@@ -231,7 +231,11 @@ pub async fn handle_realtime_metrics_websocket(
             match metrics_rx.recv().await {
                 Ok(metrics) => {
                     let json = json!(metrics);
-                    if sender.send(Message::Text(json.to_string().into())).await.is_err() {
+                    if sender
+                        .send(Message::Text(json.to_string().into()))
+                        .await
+                        .is_err()
+                    {
                         break;
                     }
                 }

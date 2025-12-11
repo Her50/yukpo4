@@ -38,7 +38,7 @@ pub fn start_pipeline_health_worker(state: Arc<AppState>) {
             // ✅ OPTIMISÉ 2025-12-11: Retry avec backoff pour gérer les erreurs de connexion DB
             let mut retry_count = 0;
             const MAX_RETRIES: u32 = 3;
-            
+
             loop {
                 match crate::services::pipeline_health_service::mark_stale_jobs_as_failed(
                     worker_state.clone(),
@@ -49,14 +49,14 @@ pub fn start_pipeline_health_worker(state: Arc<AppState>) {
                     Err(err) => {
                         let error_str = err.to_string();
                         let error_lower = error_str.to_lowercase();
-                        
+
                         // ✅ Détecter les erreurs de connexion DB attendues (non critiques)
                         let is_connection_error = error_lower.contains("peer closed connection")
                             || error_lower.contains("connection reset by peer")
                             || error_lower.contains("broken pipe")
                             || error_lower.contains("tls close_notify")
                             || error_lower.contains("error communicating with database");
-                        
+
                         if retry_count < MAX_RETRIES && is_connection_error {
                             retry_count += 1;
                             let backoff_ms = 1000u64 * retry_count as u64; // Backoff exponentiel: 1s, 2s, 3s
@@ -97,13 +97,13 @@ pub fn start_pipeline_health_worker(state: Arc<AppState>) {
                 Err(err) => {
                     let error_str = format!("{:?}", err);
                     let error_lower = error_str.to_lowercase();
-                    
+
                     // ✅ OPTIMISATION: Logger en debug pour les erreurs de connexion DB attendues
                     let is_connection_error = error_lower.contains("peer closed connection")
                         || error_lower.contains("connection reset by peer")
                         || error_lower.contains("broken pipe")
                         || error_lower.contains("tls close_notify");
-                    
+
                     if is_connection_error {
                         log::debug!(
                             "[PipelineWorker] Erreur connexion DB attendue (ignorée): {err:?}"

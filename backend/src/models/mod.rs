@@ -4,9 +4,9 @@ pub mod ar_preview_model;
 pub mod book_exchange; // ✅ NOUVEAU 2025-01-27: Bourse du livre avancée (échanges, recommandations IA, prix, analytics)
 pub mod collaboration_model; // ✅ NOUVEAU Phase 2.4: Modèle pour collaboration en temps réel
 pub mod delivery_model;
-pub mod effect_model; // ✅ NOUVEAU: Modèle pour effets vidéo
 pub mod echange;
 pub mod echange_model;
+pub mod effect_model; // ✅ NOUVEAU: Modèle pour effets vidéo
 pub mod emploi_ai; // ✅ NOUVEAU 2025-01-27: Offres d'emploi IA (matching amélioré, analyse CV, prédictions, formations)
 pub mod export_model; // ✅ NOUVEAU Phase 2.3: Modèle pour jobs d'export vidéo
 pub mod generative_video_model; // ✅ NOUVEAU Phase 3.1: Modèle pour génération vidéo IA complète

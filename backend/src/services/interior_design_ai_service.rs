@@ -360,4 +360,3 @@ RÉPONSE ATTENDUE (JSON strict) :
         Ok(optimization)
     }
 }
-

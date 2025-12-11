@@ -47,6 +47,8 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
     const [hasMore, setHasMore] = useState(true);
     const [page, setPage] = useState(1);
     const [error, setError] = useState<string | null>(null);
+    // ✅ NOUVEAU 2025-12-11: Tracker les items visibles pour lazy loading
+    const [visibleItems, setVisibleItems] = useState<Set<number>>(new Set());
 
     // ✅ CORRIGÉ: Cache pour éviter les requêtes redondantes
     const itemsCacheRef = useRef<{ data: any[]; timestamp: number } | null>(null);
@@ -218,6 +220,22 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
         }
     }, [onItemPress, navigation]);
 
+    // ✅ NOUVEAU 2025-12-11: Tracker les items visibles avec onViewableItemsChanged
+    const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: any[] }) => {
+        const newVisibleIndices = new Set<number>();
+        viewableItems.forEach((viewableItem: any) => {
+            if (viewableItem.index != null) {
+                newVisibleIndices.add(viewableItem.index);
+            }
+        });
+        setVisibleItems(newVisibleIndices);
+    }, []);
+
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 50, // Considérer visible si 50% de l'item est visible
+        minimumViewTime: 100, // Minimum 100ms pour être considéré visible
+    }).current;
+
     const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
         // ✅ Adapter le format pour ProductCard qui attend product et service
         const product = item.product || item;
@@ -229,10 +247,12 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
                     product={product}
                     service={service}
                     onPress={() => handleItemPress(item)}
+                    // ✅ NOUVEAU 2025-12-11: Lazy load - charger les données seulement si l'item est visible
+                    isVisible={visibleItems.has(index)}
                 />
             </AnimatedCard>
         );
-    }, [handleItemPress]);
+    }, [handleItemPress, visibleItems]);
 
     const renderFooter = useCallback(() => {
         if (!loadingMore) return null;
@@ -298,6 +318,9 @@ export const InfiniteFeed: React.FC<InfiniteFeedProps> = React.memo(({
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.5}
             ListFooterComponent={renderFooter}
+            // ✅ NOUVEAU 2025-12-11: Tracker les items visibles pour lazy loading
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
             ListEmptyComponent={renderEmpty}
             getItemLayout={getItemLayout}
             removeClippedSubviews={true}

@@ -18,7 +18,7 @@ pub struct AdaptiveRateLimit {
 struct RateLimitConfig {
     requests_per_minute: u32,
     requests_per_hour: u32,
-    burst_allowance: u32,    // Requêtes supplémentaires autorisées
+    burst_allowance: u32, // Requêtes supplémentaires autorisées
     #[allow(dead_code)]
     premium_multiplier: f32, // Multiplicateur pour utilisateurs premium
 }

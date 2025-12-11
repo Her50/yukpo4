@@ -35,9 +35,7 @@ struct TripInfo {
 
 impl CovoiturageProactiveNotifications {
     pub fn new(pool: PgPool) -> Self {
-        Self {
-            pool,
-        }
+        Self { pool }
     }
 
     /// Envoie rappel 24h avant départ
@@ -62,7 +60,7 @@ impl CovoiturageProactiveNotifications {
             INNER JOIN services s ON s.id = r.service_id
             INNER JOIN covoiturages c ON c.service_id = s.id
             WHERE r.id = $1 AND r.reservation_type = 'covoiturage'
-            "#
+            "#,
         )
         .bind(reservation_id)
         .fetch_optional(&self.pool)
@@ -142,7 +140,7 @@ impl CovoiturageProactiveNotifications {
             INNER JOIN services s ON s.id = r.service_id
             INNER JOIN covoiturages c ON c.service_id = s.id
             WHERE r.id = $1 AND r.reservation_type = 'covoiturage'
-            "#
+            "#,
         )
         .bind(reservation_id)
         .fetch_optional(&self.pool)
@@ -292,7 +290,7 @@ impl CovoiturageProactiveNotifications {
             INNER JOIN services s ON s.id = r.service_id
             INNER JOIN covoiturages c ON c.service_id = s.id
             WHERE r.id = $1 AND r.reservation_type = 'covoiturage'
-            "#
+            "#,
         )
         .bind(reservation_id)
         .fetch_optional(&self.pool)
@@ -317,7 +315,11 @@ impl CovoiturageProactiveNotifications {
                 "%Y-%m-%d %H:%M",
             )
             .ok()
-            .and_then(|dt: chrono::NaiveDateTime| -> Option<chrono::DateTime<chrono::Utc>> { Some(chrono::DateTime::from_naive_utc_and_offset(dt, chrono::Utc)) });
+            .and_then(
+                |dt: chrono::NaiveDateTime| -> Option<chrono::DateTime<chrono::Utc>> {
+                    Some(chrono::DateTime::from_naive_utc_and_offset(dt, chrono::Utc))
+                },
+            );
 
             if let Some(departure) = departure_datetime {
                 let _reminder_24h = departure - chrono::Duration::hours(24);

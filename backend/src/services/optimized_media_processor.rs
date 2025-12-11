@@ -166,8 +166,6 @@ impl OptimizedMediaProcessor {
         _media_index: usize,
         item: MediaItem,
     ) -> AppResult<Option<ProcessedMedia>> {
-        
-
         if item.data.is_empty() {
             return Ok(None);
         }

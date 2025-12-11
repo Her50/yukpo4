@@ -1,6 +1,7 @@
 //! Utilitaires pour retry des requêtes PostgreSQL avec backoff exponentiel
 //! Gère les erreurs de connexion fermée et les erreurs TLS
 
+use crate::core::types::AppResult;
 use sqlx::PgPool;
 use std::future::Future;
 use std::pin::Pin;
@@ -81,4 +82,67 @@ where
 
     // Si on arrive ici, toutes les tentatives ont échoué
     Err(last_error.unwrap_or_else(|| sqlx::Error::PoolClosed))
+}
+
+/// Retry une opération avec AppResult pour gérer les erreurs de connexion DB
+/// Gère les erreurs de connexion fermée et les erreurs TLS dans les services
+pub async fn retry_service_operation<T, F>(operation: F, max_retries: u32) -> AppResult<T>
+where
+    T: Send + 'static,
+    F: Fn() -> Pin<Box<dyn Future<Output = AppResult<T>> + Send + 'static>>,
+{
+    let mut last_error = None;
+
+    for attempt in 1..=max_retries {
+        let future = operation();
+        match future.await {
+            Ok(result) => return Ok(result),
+            Err(e) => {
+                let error_str = e.to_string();
+
+                // Vérifier si c'est une erreur de connexion qui peut être retry
+                let is_retryable = error_str.contains("peer closed connection")
+                    || error_str.contains("TLS close_notify")
+                    || error_str.contains("terminating connection")
+                    || error_str.contains("crash of another server process")
+                    || error_str.contains("error communicating with database")
+                    || error_str.contains("connection closed")
+                    || error_str.contains("broken pipe")
+                    || error_str.contains("connection reset")
+                    || error_str.contains("Database(");
+
+                if is_retryable && attempt < max_retries {
+                    // Backoff exponentiel (200ms, 400ms, 800ms, 1600ms, 2000ms max)
+                    let backoff_ms = 200 * (1u64 << (attempt - 1)).min(2000);
+
+                    log::debug!(
+                        "[Service Retry] Tentative {}/{} échouée (erreur récupérable): {}. Retry dans {}ms",
+                        attempt,
+                        max_retries,
+                        error_str,
+                        backoff_ms
+                    );
+                    sleep(Duration::from_millis(backoff_ms)).await;
+                    last_error = Some(e);
+                } else {
+                    // Erreur non récupérable ou dernière tentative
+                    if attempt >= max_retries {
+                        log::error!(
+                            "[Service Retry] ❌ Toutes les {} tentatives ont échoué. Dernière erreur: {}",
+                            max_retries,
+                            error_str
+                        );
+                    }
+                    return Err(e);
+                }
+            }
+        }
+    }
+
+    // Si on arrive ici, toutes les tentatives ont échoué
+    Err(last_error.unwrap_or_else(|| {
+        crate::core::types::AppError::Internal(
+            "Toutes les tentatives de retry ont échoué".to_string(),
+        )
+    }))
 }

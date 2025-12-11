@@ -226,7 +226,7 @@ impl PluginService {
                 plugin_id
             )));
         };
-        
+
         // Vérifier les dépendances
         for dep in &dependencies {
             if !plugins.contains_key(dep) {

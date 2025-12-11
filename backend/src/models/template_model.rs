@@ -1,9 +1,9 @@
 // ✅ NOUVEAU: Modèle pour les templates vidéo par industrie
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::FromRow;
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct VideoTemplate {
@@ -12,12 +12,12 @@ pub struct VideoTemplate {
     pub industry: String, // "ecommerce", "services", "creators", "business", "social_media"
     pub subcategory: Option<String>, // e.g., "mode", "restauration", "vlog"
     pub description: String,
-    pub timeline: Value, // JSON représentant la VideoTimeline pré-configurée
-    pub effects: Value, // JSON array des effets à appliquer
+    pub timeline: Value,    // JSON représentant la VideoTimeline pré-configurée
+    pub effects: Value,     // JSON array des effets à appliquer
     pub transitions: Value, // JSON array des transitions
-    pub style: Value, // JSON avec style (couleurs, typographie, etc.)
-    pub duration: f64, // secondes
-    pub format: String, // "16:9", "9:16", "1:1", "4:5"
+    pub style: Value,       // JSON avec style (couleurs, typographie, etc.)
+    pub duration: f64,      // secondes
+    pub format: String,     // "16:9", "9:16", "1:1", "4:5"
     pub tags: Vec<String>,
     pub thumbnail_url: Option<String>,
     pub preview_url: Option<String>,
@@ -47,5 +47,3 @@ pub struct TemplateMetadata {
     pub duration: f64,
     pub format: String,
 }
-
-

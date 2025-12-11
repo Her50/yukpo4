@@ -36,7 +36,7 @@ pub struct MovingCostEstimate {
 /// Plan de déménagement optimisé
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MovingPlan {
-    pub steps: Vec<String>, // Étapes du déménagement
+    pub steps: Vec<String>,          // Étapes du déménagement
     pub timeline: serde_json::Value, // Timeline détaillée
     pub equipment_needed: Vec<String>,
     pub team_size: i32,
@@ -376,4 +376,3 @@ RÉPONSE ATTENDUE (JSON strict) :
         Ok(prediction)
     }
 }
-

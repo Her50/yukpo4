@@ -102,7 +102,7 @@ impl QRCodeService {
                 id, reservation_id, qr_code, status, expires_at
             FROM reservation_qr_codes
             WHERE qr_code = $1
-            "#
+            "#,
         )
         .bind(qr_code)
         .fetch_optional(&self.pool)
@@ -212,7 +212,7 @@ impl QRCodeService {
             WHERE reservation_id = $1
             ORDER BY created_at DESC
             LIMIT 1
-            "#
+            "#,
         )
         .bind(reservation_id)
         .fetch_optional(&self.pool)
@@ -226,7 +226,9 @@ impl QRCodeService {
             id: row.get::<i32, _>("id"),
             reservation_id: row.get::<i32, _>("reservation_id"),
             qr_code: row.get::<String, _>("qr_code"),
-            qr_code_url: row.get::<Option<String>, _>("qr_code_url").unwrap_or_else(|| "".to_string()),
+            qr_code_url: row
+                .get::<Option<String>, _>("qr_code_url")
+                .unwrap_or_else(|| "".to_string()),
             status: row.get::<String, _>("status"),
             expires_at: row.get::<chrono::DateTime<chrono::Utc>, _>("expires_at"),
         });

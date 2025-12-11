@@ -105,7 +105,8 @@ impl DeliveryStateSharing {
         let key = format!("delivery:state:{}", delivery_id);
         let mut conn = self.redis_client.get_multiplexed_async_connection().await?;
 
-        conn.set_ex::<_, _, ()>(&key, state, ttl_seconds as u64).await?;
+        conn.set_ex::<_, _, ()>(&key, state, ttl_seconds as u64)
+            .await?;
         Ok(())
     }
 

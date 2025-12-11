@@ -166,8 +166,7 @@ Escalade nécessaire si:
 
 Sinon réponds "no".
 "#,
-        user_message,
-        history_text
+        user_message, history_text
     );
 
     match app_ia.predict(&escalation_prompt).await {

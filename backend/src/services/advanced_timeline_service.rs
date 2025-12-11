@@ -1,9 +1,7 @@
 // ✅ NOUVEAU Phase 2: Service pour gérer les timelines multi-pistes avancées
 
 use crate::core::types::{AppError, AppResult};
-use crate::models::advanced_timeline_model::{
-    AdvancedTimelineRequest, AdvancedTimelineRow,
-};
+use crate::models::advanced_timeline_model::{AdvancedTimelineRequest, AdvancedTimelineRow};
 use log::{info, warn};
 use serde_json::json;
 use sqlx::PgPool;

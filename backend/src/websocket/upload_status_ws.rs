@@ -76,7 +76,10 @@ async fn handle_upload_status_websocket(
                 Message::Text(text) => {
                     if let Ok(ping) = serde_json::from_str::<serde_json::Value>(&text) {
                         if ping.get("type").and_then(|v| v.as_str()) == Some("ping") {
-                            log::debug!("[UploadStatusWS] Ping reçu pour upload_id={}", upload_id_for_recv);
+                            log::debug!(
+                                "[UploadStatusWS] Ping reçu pour upload_id={}",
+                                upload_id_for_recv
+                            );
                         }
                     }
                 }

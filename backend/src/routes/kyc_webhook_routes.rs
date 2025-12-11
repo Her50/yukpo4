@@ -5,6 +5,5 @@ use std::sync::Arc;
 
 pub fn kyc_webhook_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
-        // TODO: Implémenter les routes webhook KYC
+    // TODO: Implémenter les routes webhook KYC
 }
-

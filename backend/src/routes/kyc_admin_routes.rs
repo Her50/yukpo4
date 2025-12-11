@@ -25,5 +25,3 @@ pub fn kyc_admin_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)
 }
-
-

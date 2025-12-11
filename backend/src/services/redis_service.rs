@@ -36,7 +36,10 @@ impl RedisService {
             // Note: En production, considérer l'utilisation d'un pool de connexions
             // Note: redis::cluster n'a pas de get_connection_manager
             // Pour le cluster, désactiver temporairement en attendant support
-            return Err(AppError::Internal("Mode cluster Redis non supporté actuellement. Utiliser mode standalone.".to_string()));
+            return Err(AppError::Internal(
+                "Mode cluster Redis non supporté actuellement. Utiliser mode standalone."
+                    .to_string(),
+            ));
         } else {
             // ✅ Mode standalone
             let client = redis::Client::open(config.url.as_str())?;
@@ -93,9 +96,7 @@ impl RedisService {
             RedisConnection::Multiplexed(conn) => {
                 redis::cmd("GET").arg(key).query_async(conn).await
             }
-            RedisConnection::Standard(conn) => {
-                redis::cmd("GET").arg(key).query_async(conn).await
-            }
+            RedisConnection::Standard(conn) => redis::cmd("GET").arg(key).query_async(conn).await,
         };
 
         match result {
@@ -140,20 +141,16 @@ impl RedisService {
     {
         let mut conn = self.connection_manager.lock().await;
         let count: u64 = match &mut *conn {
-            RedisConnection::Multiplexed(conn) => {
-                redis::cmd("INCR")
-                    .arg(key.clone())
-                    .query_async(conn)
-                    .await
-                    .map_err(|e| AppError::Internal(format!("Redis INCR error: {}", e)))?
-            }
-            RedisConnection::Standard(conn) => {
-                redis::cmd("INCR")
-                    .arg(key.clone())
-                    .query_async(conn)
-                    .await
-                    .map_err(|e| AppError::Internal(format!("Redis INCR error: {}", e)))?
-            }
+            RedisConnection::Multiplexed(conn) => redis::cmd("INCR")
+                .arg(key.clone())
+                .query_async(conn)
+                .await
+                .map_err(|e| AppError::Internal(format!("Redis INCR error: {}", e)))?,
+            RedisConnection::Standard(conn) => redis::cmd("INCR")
+                .arg(key.clone())
+                .query_async(conn)
+                .await
+                .map_err(|e| AppError::Internal(format!("Redis INCR error: {}", e)))?,
         };
 
         // ✅ Set expiration si première incrémentation
@@ -297,12 +294,8 @@ impl RedisService {
     pub async fn ping(&self) -> AppResult<bool> {
         let mut conn = self.connection_manager.lock().await;
         let result: RedisResult<String> = match &mut *conn {
-            RedisConnection::Multiplexed(conn) => {
-                redis::cmd("PING").query_async(conn).await
-            }
-            RedisConnection::Standard(conn) => {
-                redis::cmd("PING").query_async(conn).await
-            }
+            RedisConnection::Multiplexed(conn) => redis::cmd("PING").query_async(conn).await,
+            RedisConnection::Standard(conn) => redis::cmd("PING").query_async(conn).await,
         };
 
         match result {

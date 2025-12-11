@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;
+use crate::utils::db_retry::retry_query;
 
 #[derive(Debug, Deserialize)]
 pub struct ReactionPayload {
@@ -46,53 +47,115 @@ pub async fn toggle_product_reaction(
         return Err(StatusCode::BAD_REQUEST);
     }
 
+    // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour gérer les erreurs de connexion DB
+    let pool = state.pg.clone();
+    let user_id = user.id;
+    let product_id_clone = product_id.clone();
+    let reaction_type_clone = payload.reaction_type.clone();
+
     // Vérifier si l'utilisateur a déjà cette réaction
-    let existing = sqlx::query(
-        r#"
-        SELECT id FROM product_reactions 
-        WHERE user_id = $1 AND service_id = $2 
-          AND product_id = $3 AND reaction_type = $4
-        "#,
+    let existing = retry_query(
+        &pool,
+        || {
+            let pool = pool.clone();
+            let user_id = user_id;
+            let service_id = service_id;
+            let product_id = product_id_clone.clone();
+            let reaction_type = reaction_type_clone.clone();
+            Box::pin(async move {
+                sqlx::query(
+                    r#"
+                    SELECT id FROM product_reactions 
+                    WHERE user_id = $1 AND service_id = $2 
+                      AND product_id = $3 AND reaction_type = $4
+                    "#,
+                )
+                .bind(user_id)
+                .bind(service_id)
+                .bind(&product_id)
+                .bind(&reaction_type)
+                .fetch_optional(&pool)
+                .await
+            })
+        },
+        3, // 3 tentatives avec backoff exponentiel
     )
-    .bind(user.id)
-    .bind(service_id)
-    .bind(&product_id)
-    .bind(&payload.reaction_type)
-    .fetch_optional(&state.pg)
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(|e| {
+        log::error!(
+            "[ProductReactions] Erreur après retries lors de la vérification de réaction: {}",
+            e
+        );
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     if let Some(reaction) = existing {
         // Retirer la réaction
         let reaction_id: i32 = reaction
             .try_get("id")
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        sqlx::query(r#"DELETE FROM product_reactions WHERE id = $1"#)
-            .bind(reaction_id)
-            .execute(&state.pg)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour DELETE
+        retry_query(
+            &pool,
+            || {
+                let pool = pool.clone();
+                let reaction_id = reaction_id;
+                Box::pin(async move {
+                    sqlx::query(r#"DELETE FROM product_reactions WHERE id = $1"#)
+                        .bind(reaction_id)
+                        .execute(&pool)
+                        .await
+                })
+            },
+            3,
+        )
+        .await
+        .map_err(|e| {
+            log::error!(
+                "[ProductReactions] Erreur après retries lors de la suppression de réaction: {}",
+                e
+            );
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
         Ok(Json(json!({
             "success": true,
             "action": "removed"
         })))
     } else {
-        // Ajouter la réaction
-        sqlx::query(
-            r#"
-            INSERT INTO product_reactions (user_id, service_id, product_id, reaction_type)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (user_id, service_id, product_id, reaction_type) DO NOTHING
-            "#,
+        // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour INSERT
+        retry_query(
+            &pool,
+            || {
+                let pool = pool.clone();
+                let user_id = user_id;
+                let service_id = service_id;
+                let product_id = product_id_clone.clone();
+                let reaction_type = reaction_type_clone.clone();
+                Box::pin(async move {
+                    sqlx::query(
+                        r#"
+                        INSERT INTO product_reactions (user_id, service_id, product_id, reaction_type)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (user_id, service_id, product_id, reaction_type) DO NOTHING
+                        "#,
+                    )
+                    .bind(user_id)
+                    .bind(service_id)
+                    .bind(&product_id)
+                    .bind(&reaction_type)
+                    .execute(&pool)
+                    .await
+                })
+            },
+            3,
         )
-        .bind(user.id)
-        .bind(service_id)
-        .bind(&product_id)
-        .bind(&payload.reaction_type)
-        .execute(&state.pg)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| {
+            log::error!("[ProductReactions] Erreur après retries lors de l'ajout de réaction: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
         Ok(Json(json!({
             "success": true,
@@ -128,19 +191,36 @@ pub async fn get_product_reactions(
         normalized_product_id
     );
 
+    // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour gérer les erreurs de connexion DB
+    let pool = state.pg.clone();
+    let service_id_clone = service_id;
+    let normalized_product_id_clone = normalized_product_id.clone();
+
     // ✅ CORRIGÉ: Gérer l'erreur si la fonction PostgreSQL n'existe pas
-    let reactions_result = sqlx::query(
-        r#"
-        SELECT 
-            reaction_type,
-            count,
-            users_sample
-        FROM get_product_reactions_count($1, $2)
-        "#,
+    let reactions_result = retry_query(
+        &pool,
+        || {
+            let pool = pool.clone();
+            let service_id = service_id_clone;
+            let normalized_product_id = normalized_product_id_clone.clone();
+            Box::pin(async move {
+                sqlx::query(
+                    r#"
+                    SELECT 
+                        reaction_type,
+                        count,
+                        users_sample
+                    FROM get_product_reactions_count($1, $2)
+                    "#,
+                )
+                .bind(service_id)
+                .bind(&normalized_product_id)
+                .fetch_all(&pool)
+                .await
+            })
+        },
+        3,
     )
-    .bind(service_id)
-    .bind(&normalized_product_id)
-    .fetch_all(&state.pg)
     .await;
 
     let reactions = match reactions_result {
@@ -155,25 +235,43 @@ pub async fn get_product_reactions(
             // Si c'est une erreur de fonction manquante, on peut essayer une requête alternative
             if e.to_string().contains("does not exist") || e.to_string().contains("function") {
                 log::warn!("[ProductReactions] Fonction PostgreSQL absente, utilisation requête alternative");
-                // Requête alternative sans fonction
-                match sqlx::query(
-                    r#"
-                    SELECT 
-                        reaction_type,
-                        COUNT(*)::BIGINT as count,
-                        ARRAY[]::TEXT[] as users_sample
-                    FROM product_reactions
-                    WHERE service_id = $1 AND product_id = $2
-                    GROUP BY reaction_type
-                    "#,
+                // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour la requête alternative
+                match retry_query(
+                    &pool,
+                    || {
+                        let pool = pool.clone();
+                        let service_id = service_id_clone;
+                        let normalized_product_id = normalized_product_id_clone.clone();
+                        Box::pin(async move {
+                            sqlx::query(
+                                r#"
+                                SELECT 
+                                    reaction_type,
+                                    COUNT(*)::BIGINT as count,
+                                    ARRAY[]::TEXT[] as users_sample
+                                FROM product_reactions
+                                WHERE service_id = $1 AND product_id = $2
+                                GROUP BY reaction_type
+                                "#,
+                            )
+                            .bind(service_id)
+                            .bind(&normalized_product_id)
+                            .fetch_all(&pool)
+                            .await
+                        })
+                    },
+                    3,
                 )
-                .bind(service_id)
-                .bind(&normalized_product_id)
-                .fetch_all(&state.pg)
                 .await
                 {
                     Ok(alt_r) => alt_r,
-                    Err(_) => Vec::new(),
+                    Err(e) => {
+                        log::error!(
+                            "[ProductReactions] Erreur après retries sur requête alternative: {}",
+                            e
+                        );
+                        Vec::new()
+                    }
                 }
             } else {
                 Vec::new()
@@ -181,20 +279,34 @@ pub async fn get_product_reactions(
         }
     };
 
-    // Vérifier si l'utilisateur actuel a réagi
-    let user_reactions = sqlx::query(
-        r#"
-        SELECT reaction_type 
-        FROM product_reactions
-        WHERE user_id = $1 AND service_id = $2 AND product_id = $3
-        "#,
+    // ✅ CORRIGÉ 2025-12-11: Ajouter retry pour vérifier les réactions de l'utilisateur
+    let user_id_clone = user.id;
+    let user_reactions = retry_query(
+        &pool,
+        || {
+            let pool = pool.clone();
+            let user_id = user_id_clone;
+            let service_id = service_id_clone;
+            let normalized_product_id = normalized_product_id_clone.clone();
+            Box::pin(async move {
+                sqlx::query(
+                    r#"
+                    SELECT reaction_type 
+                    FROM product_reactions
+                    WHERE user_id = $1 AND service_id = $2 AND product_id = $3
+                    "#,
+                )
+                .bind(user_id)
+                .bind(service_id)
+                .bind(&normalized_product_id)
+                .fetch_all(&pool)
+                .await
+            })
+        },
+        3,
     )
-    .bind(user.id)
-    .bind(service_id)
-    .bind(&normalized_product_id)
-    .fetch_all(&state.pg)
     .await
-    .unwrap_or_default(); // ✅ CORRIGÉ: Ne pas retourner d'erreur si la table n'existe pas
+    .unwrap_or_default(); // ✅ CORRIGÉ: Ne pas retourner d'erreur si la table n'existe pas ou après retries
 
     let user_reaction_types: Vec<String> = user_reactions
         .iter()

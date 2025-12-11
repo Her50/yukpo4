@@ -46,6 +46,21 @@ const GlobalPromoHighlights = React.lazy(() =>
             // ✅ SÉCURITÉ: Gérer les deux types d'export (named et default)
             // GlobalPromoHighlights n'a que default export
             const GlobalPromoComponent = module.default;
+
+            // ✅ CRITIQUE 2025-12-11: Vérifier si c'est un objet avec displayName (pas une fonction)
+            if (GlobalPromoComponent && typeof GlobalPromoComponent === 'object' && 'displayName' in (GlobalPromoComponent as object)) {
+                console.warn('[HomeScreen] ⚠️ GlobalPromoHighlights est un objet, pas une fonction. Utilisation du fallback.');
+                const FallbackComponent: React.FC = () => (
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, color: '#666' }}>
+                            Promotions non disponibles
+                        </Text>
+                    </View>
+                );
+                FallbackComponent.displayName = 'GlobalPromoHighlightsFallback';
+                return { default: FallbackComponent };
+            }
+
             if (!GlobalPromoComponent || typeof GlobalPromoComponent !== 'function') {
                 console.error('[HomeScreen] ❌ GlobalPromoHighlights invalide dans le module', module);
                 // ✅ CRITIQUE: Retourner un composant de fallback valide
@@ -58,10 +73,6 @@ const GlobalPromoHighlights = React.lazy(() =>
                 );
                 FallbackComponent.displayName = 'GlobalPromoHighlightsFallback';
                 return { default: FallbackComponent };
-            }
-            // ✅ CRITIQUE: Vérifier que le composant est bien une fonction React
-            if (typeof GlobalPromoComponent !== 'function') {
-                throw new Error('GlobalPromoHighlights is not a valid React component');
             }
             return { default: GlobalPromoComponent };
         })
@@ -85,6 +96,21 @@ const InfiniteFeed = React.lazy(() =>
         .then(module => {
             // ✅ CORRIGÉ: Gérer les deux types d'export (named et default)
             const InfiniteFeedComponent = module.InfiniteFeed || module.default;
+
+            // ✅ CRITIQUE 2025-12-11: Vérifier si c'est un objet avec displayName (pas une fonction)
+            if (InfiniteFeedComponent && typeof InfiniteFeedComponent === 'object' && 'displayName' in (InfiniteFeedComponent as object)) {
+                console.warn('[HomeScreen] ⚠️ InfiniteFeed est un objet, pas une fonction. Utilisation du fallback.');
+                const FallbackComponent: React.FC<any> = () => (
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, color: '#666' }}>
+                            Feed non disponible
+                        </Text>
+                    </View>
+                );
+                FallbackComponent.displayName = 'InfiniteFeedFallback';
+                return { default: FallbackComponent };
+            }
+
             if (!InfiniteFeedComponent || typeof InfiniteFeedComponent !== 'function') {
                 console.error('[HomeScreen] ❌ InfiniteFeed invalide dans le module', module);
                 // ✅ CRITIQUE: Retourner un composant de fallback valide
@@ -97,10 +123,6 @@ const InfiniteFeed = React.lazy(() =>
                 );
                 FallbackComponent.displayName = 'InfiniteFeedFallback';
                 return { default: FallbackComponent };
-            }
-            // ✅ CRITIQUE: Vérifier que le composant est bien une fonction React
-            if (typeof InfiniteFeedComponent !== 'function') {
-                throw new Error('InfiniteFeed is not a valid React component');
             }
             return { default: InfiniteFeedComponent };
         })
@@ -160,25 +182,26 @@ const HomeScreen: React.FC = () => {
     }, [state.ui.loading]);
 
     // ✅ NOUVEAU: Safety reset pour l'overlay de confirmation qui peut bloquer les interactions
-    // ✅ CORRIGÉ: Réduire à 5 secondes pour éviter blocage prolongé
+    // ✅ CORRIGÉ: Réduire à 3 secondes pour éviter blocage prolongé (plus agressif)
     React.useEffect(() => {
         if (state.ui.showCreateServiceAlert) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Overlay de confirmation bloqué depuis 5s, fermeture forcée');
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Overlay de confirmation bloqué depuis 3s, fermeture forcée');
                 dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
                 dispatch({ type: 'SET_PENDING_INPUT', payload: null });
-            }, 5000); // ✅ CORRIGÉ: 5 secondes max pour éviter blocage permanent (réduit de 30s)
+            }, 3000); // ✅ CORRIGÉ: 3 secondes max pour éviter blocage permanent (réduit de 5s)
             return () => clearTimeout(timeout);
         }
     }, [state.ui.showCreateServiceAlert]);
 
     // ✅ NOUVEAU: Safety reset pour les modals qui peuvent rester ouverts
+    // ✅ CORRIGÉ: Réduire à 30 secondes pour être plus réactif
     React.useEffect(() => {
         if (state.ui.showGPSModal) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal GPS ouvert depuis 60s, fermeture forcée');
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal GPS ouvert depuis 30s, fermeture forcée');
                 dispatch({ type: 'TOGGLE_GPS_MODAL' });
-            }, 60000); // 60 secondes max pour éviter blocage permanent
+            }, 30000); // ✅ RÉDUIT: 30 secondes max pour éviter blocage permanent (réduit de 60s)
             return () => clearTimeout(timeout);
         }
     }, [state.ui.showGPSModal]);
@@ -186,9 +209,9 @@ const HomeScreen: React.FC = () => {
     React.useEffect(() => {
         if (state.ui.showChatModal) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal Chat ouvert depuis 60s, fermeture forcée');
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal Chat ouvert depuis 30s, fermeture forcée');
                 dispatch({ type: 'TOGGLE_CHAT_MODAL' });
-            }, 60000);
+            }, 30000); // ✅ RÉDUIT: 30 secondes max
             return () => clearTimeout(timeout);
         }
     }, [state.ui.showChatModal]);
@@ -196,25 +219,46 @@ const HomeScreen: React.FC = () => {
     React.useEffect(() => {
         if (state.ui.showNotificationModal) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal Notification ouvert depuis 60s, fermeture forcée');
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: Modal Notification ouvert depuis 30s, fermeture forcée');
                 dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
-            }, 60000);
+            }, 30000); // ✅ RÉDUIT: 30 secondes max
             return () => clearTimeout(timeout);
         }
     }, [state.ui.showNotificationModal]);
 
     // ✅ NOUVEAU: Reset au focus de l'écran pour éviter les overlays bloqués
+    // ✅ AMÉLIORÉ: Fermer TOUS les modals au focus pour éviter blocage
     useFocusEffect(
         React.useCallback(() => {
             // Reset des overlays et modals au focus de l'écran
             // Cela évite qu'un overlay reste ouvert après une navigation
             const resetOverlays = () => {
+                let hasReset = false;
                 if (state.ui.showCreateServiceAlert) {
                     console.log('[HomeScreen] 🔄 Reset: Fermeture overlay de confirmation au focus');
                     dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
                     dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+                    hasReset = true;
                 }
-                // Ne pas fermer les modals automatiquement car l'utilisateur pourrait vouloir les garder ouverts
+                // ✅ AMÉLIORÉ: Fermer aussi les autres modals au focus pour éviter blocage
+                if (state.ui.showGPSModal) {
+                    console.log('[HomeScreen] 🔄 Reset: Fermeture modal GPS au focus');
+                    dispatch({ type: 'TOGGLE_GPS_MODAL' });
+                    hasReset = true;
+                }
+                if (state.ui.showChatModal) {
+                    console.log('[HomeScreen] 🔄 Reset: Fermeture modal Chat au focus');
+                    dispatch({ type: 'TOGGLE_CHAT_MODAL' });
+                    hasReset = true;
+                }
+                if (state.ui.showNotificationModal) {
+                    console.log('[HomeScreen] 🔄 Reset: Fermeture modal Notification au focus');
+                    dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
+                    hasReset = true;
+                }
+                if (hasReset) {
+                    console.log('[HomeScreen] ✅ Reset: Modals fermés au focus, interface débloquée');
+                }
             };
 
             // Reset immédiat au focus
@@ -222,8 +266,76 @@ const HomeScreen: React.FC = () => {
 
             // Pas de cleanup nécessaire ici
             return undefined;
-        }, [state.ui.showCreateServiceAlert])
+        }, [state.ui.showCreateServiceAlert, state.ui.showGPSModal, state.ui.showChatModal, state.ui.showNotificationModal])
     );
+
+    // ✅ CRITIQUE 2025-12-11: Forcer la fermeture de TOUS les modals au montage pour éviter blocage
+    // ✅ AMÉLIORÉ: Utiliser un timeout immédiat (0ms) pour forcer la fermeture AVANT le premier rendu
+    React.useEffect(() => {
+        // ✅ FORCE CLOSE IMMÉDIAT: Fermer TOUS les modals AVANT le premier rendu
+        const forceCloseAllModals = () => {
+            let hasClosedModals = false;
+
+            // ✅ FORCE CLOSE: Fermer TOUS les modals au montage pour éviter blocage
+            if (state.ui.showCreateServiceAlert) {
+                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Modal de confirmation détecté au montage, fermeture forcée IMMÉDIATE');
+                dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+                dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+                hasClosedModals = true;
+            }
+            if (state.ui.showGPSModal) {
+                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Modal GPS détecté au montage, fermeture forcée IMMÉDIATE');
+                dispatch({ type: 'TOGGLE_GPS_MODAL' });
+                hasClosedModals = true;
+            }
+            if (state.ui.showChatModal) {
+                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Modal Chat détecté au montage, fermeture forcée IMMÉDIATE');
+                dispatch({ type: 'TOGGLE_CHAT_MODAL' });
+                hasClosedModals = true;
+            }
+            if (state.ui.showNotificationModal) {
+                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Modal Notification détecté au montage, fermeture forcée IMMÉDIATE');
+                dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
+                hasClosedModals = true;
+            }
+            if (state.ui.showProductSelector) {
+                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Product Selector détecté au montage, fermeture forcée IMMÉDIATE');
+                dispatch({ type: 'TOGGLE_PRODUCT_SELECTOR' });
+                hasClosedModals = true;
+            }
+            if (state.ui.showLeaderboard) {
+                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Leaderboard détecté au montage, fermeture forcée IMMÉDIATE');
+                dispatch({ type: 'TOGGLE_LEADERBOARD' });
+                hasClosedModals = true;
+            }
+            if (state.ui.showChallenges) {
+                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Challenges détecté au montage, fermeture forcée IMMÉDIATE');
+                dispatch({ type: 'TOGGLE_CHALLENGES' });
+                hasClosedModals = true;
+            }
+
+            if (hasClosedModals) {
+                console.warn('[HomeScreen] ⚠️ FORCE CLOSE: Des modals ont été fermés au montage. L\'interface devrait maintenant être utilisable.');
+            } else {
+                console.log('[HomeScreen] ✅ Aucun modal bloquant détecté au montage.');
+            }
+        };
+
+        // ✅ EXÉCUTER IMMÉDIATEMENT (sans timeout) pour forcer la fermeture AVANT le premier rendu
+        forceCloseAllModals();
+
+        // ✅ DIAGNOSTIC: Logger l'état initial de tous les modals APRÈS la fermeture forcée
+        const modalStates = {
+            showCreateServiceAlert: state.ui.showCreateServiceAlert,
+            showGPSModal: state.ui.showGPSModal,
+            showChatModal: state.ui.showChatModal,
+            showNotificationModal: state.ui.showNotificationModal,
+            showProductSelector: state.ui.showProductSelector,
+            showLeaderboard: state.ui.showLeaderboard,
+            showChallenges: state.ui.showChallenges,
+        };
+        console.log('[HomeScreen] 🔍 DIAGNOSTIC: État des modals au montage (après fermeture forcée):', modalStates);
+    }, []); // Seulement au montage
 
     // ✅ CORRIGÉ 2025-01-27: Handler sans blocage - navigation immédiate avec useSafeNavigation
     const handleDeliveryPressInternal = React.useCallback(() => {
@@ -1486,6 +1598,30 @@ const HomeScreen: React.FC = () => {
     // ✅ NOUVEAU: Créer les styles avec le thème actuel
     const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
 
+    // ✅ DIAGNOSTIC 2025-12-11: Logger l'état des modals périodiquement pour debug
+    React.useEffect(() => {
+        const diagnosticInterval = setInterval(() => {
+            const modalStates = {
+                showCreateServiceAlert: state.ui.showCreateServiceAlert,
+                showGPSModal: state.ui.showGPSModal,
+                showChatModal: state.ui.showChatModal,
+                showNotificationModal: state.ui.showNotificationModal,
+                showProductSelector: state.ui.showProductSelector,
+                showLeaderboard: state.ui.showLeaderboard,
+                showChallenges: state.ui.showChallenges,
+                loading: state.ui.loading,
+            };
+
+            // Logger seulement si un modal est ouvert (pour éviter spam)
+            const hasOpenModal = Object.values(modalStates).some(v => v === true);
+            if (hasOpenModal) {
+                console.log('[HomeScreen] 🔍 DIAGNOSTIC: État des modals:', modalStates);
+            }
+        }, 5000); // Toutes les 5 secondes
+
+        return () => clearInterval(diagnosticInterval);
+    }, [state.ui]);
+
     return (
         <ModernBackground variant="home">
             <ScreenTransition type="fade" duration={300}>
@@ -1494,27 +1630,44 @@ const HomeScreen: React.FC = () => {
                     <OfflineIndicator />
 
                     {/* ✅ OPTIMISATION: Header collapsible avec animations */}
-                    <HomeHeader
-                        scrollY={scrollY}
-                        user={user}
-                        unreadNotificationsCount={state.metadata.unreadNotificationsCount}
-                        unreadChatCount={state.metadata.unreadChatCount} // ✅ NOUVEAU 2025-01-27: Nombre de conversations non lues
-                        selectedLocation={state.metadata.selectedLocation}
-                        onDeliveryPress={handleDeliveryPress}
-                        onChatPress={handleChatPress}
-                        onNotificationPress={handleNotificationPress}
-                        onDebugNotifications={handleDebugNotifications}
-                        navigation={navigation}
-                        language={language}
-                        onLanguageChange={setLanguage}
-                        showLeaderboard={state.ui.showLeaderboard}
-                        showChallenges={state.ui.showChallenges}
-                        onShowLeaderboard={() => dispatch({ type: 'TOGGLE_LEADERBOARD' })}
-                        onShowChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
-                        onCloseLeaderboard={() => dispatch({ type: 'TOGGLE_LEADERBOARD' })}
-                        onCloseChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
-                        disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus désactiver pour éviter les interactions bloquées
-                    />
+                    {/* ✅ DIAGNOSTIC: Tester les interactions sur le HomeHeader */}
+                    <View
+                        onTouchStart={() => {
+                            console.log('[HomeScreen] 🔍 DIAGNOSTIC: Touch détecté sur le conteneur du HomeHeader');
+                        }}
+                        pointerEvents="box-none"
+                    >
+                        <HomeHeader
+                            scrollY={scrollY}
+                            user={user}
+                            unreadNotificationsCount={state.metadata.unreadNotificationsCount}
+                            unreadChatCount={state.metadata.unreadChatCount} // ✅ NOUVEAU 2025-01-27: Nombre de conversations non lues
+                            selectedLocation={state.metadata.selectedLocation}
+                            onDeliveryPress={() => {
+                                console.log('[HomeScreen] 🔍 DIAGNOSTIC: onDeliveryPress appelé');
+                                handleDeliveryPress();
+                            }}
+                            onChatPress={() => {
+                                console.log('[HomeScreen] 🔍 DIAGNOSTIC: onChatPress appelé');
+                                handleChatPress();
+                            }}
+                            onNotificationPress={() => {
+                                console.log('[HomeScreen] 🔍 DIAGNOSTIC: onNotificationPress appelé');
+                                handleNotificationPress();
+                            }}
+                            onDebugNotifications={handleDebugNotifications}
+                            navigation={navigation}
+                            language={language}
+                            onLanguageChange={setLanguage}
+                            showLeaderboard={state.ui.showLeaderboard}
+                            showChallenges={state.ui.showChallenges}
+                            onShowLeaderboard={() => dispatch({ type: 'TOGGLE_LEADERBOARD' })}
+                            onShowChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
+                            onCloseLeaderboard={() => dispatch({ type: 'TOGGLE_LEADERBOARD' })}
+                            onCloseChallenges={() => dispatch({ type: 'TOGGLE_CHALLENGES' })}
+                            disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus désactiver pour éviter les interactions bloquées
+                        />
+                    </View>
 
                     {/* ✅ ZONE DE RECHERCHE FIXE - Juste après l'en-tête */}
                     <View style={dynamicStyles.searchSection}>
@@ -1886,75 +2039,78 @@ const HomeScreen: React.FC = () => {
                     />
 
                     {/* Alerte de confirmation pour création de service */}
-                    <Modal
-                        animationType="fade"
-                        transparent={true}
-                        visible={state.ui.showCreateServiceAlert}
-                        onRequestClose={() => {
-                            console.log('[HomeScreen] 🔄 Fermeture modal par bouton retour Android');
-                            dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
-                            dispatch({ type: 'SET_PENDING_INPUT', payload: null });
-                        }}
-                    >
-                        <View style={styles.confirmationModalOverlay}>
-                            {/* Overlay cliquable pour fermer */}
-                            <TouchableOpacity
-                                style={StyleSheet.absoluteFill}
-                                activeOpacity={1}
-                                onPress={() => {
-                                    console.log('[HomeScreen] 🔄 Fermeture overlay par clic extérieur');
-                                    dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
-                                    dispatch({ type: 'SET_PENDING_INPUT', payload: null });
-                                }}
-                            />
-                            <View style={styles.confirmationModal}>
+                    {/* ✅ CRITIQUE: Vérifier que le modal n'est visible QUE si showCreateServiceAlert est true */}
+                    {state.ui.showCreateServiceAlert && (
+                        <Modal
+                            animationType="fade"
+                            transparent={true}
+                            visible={state.ui.showCreateServiceAlert}
+                            onRequestClose={() => {
+                                console.log('[HomeScreen] 🔄 Fermeture modal par bouton retour Android');
+                                dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+                                dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+                            }}
+                        >
+                            <View style={styles.confirmationModalOverlay} pointerEvents="box-none">
+                                {/* Overlay cliquable pour fermer */}
                                 <TouchableOpacity
-                                    style={styles.confirmationCloseButton}
+                                    style={StyleSheet.absoluteFill}
+                                    activeOpacity={1}
                                     onPress={() => {
-                                        console.log('[HomeScreen] 🔄 Fermeture modal par bouton X');
+                                        console.log('[HomeScreen] 🔄 Fermeture overlay par clic extérieur');
                                         dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
                                         dispatch({ type: 'SET_PENDING_INPUT', payload: null });
                                     }}
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                >
-                                    <Text style={styles.confirmationCloseButtonText}>✕</Text>
-                                </TouchableOpacity>
-                                <View style={styles.confirmationHeader}>
-                                    <Text style={styles.confirmationIcon}>🔐</Text>
-                                    <Text style={styles.confirmationTitle}>Confirmation de création de service</Text>
-                                </View>
-                                <Text style={styles.confirmationMessage}>
-                                    Êtes-vous sûr de vouloir créer un service/prestation sur la plateforme ?
-                                </Text>
-                                <View style={styles.confirmationButtons}>
+                                />
+                                <View style={styles.confirmationModal} pointerEvents="auto">
                                     <TouchableOpacity
-                                        style={[styles.confirmationButton, styles.confirmationButtonSecondary]}
+                                        style={styles.confirmationCloseButton}
                                         onPress={() => {
-                                            console.log('[HomeScreen] 🔄 Annulation création service');
-                                            cancelCreateService();
+                                            console.log('[HomeScreen] 🔄 Fermeture modal par bouton X');
+                                            dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+                                            dispatch({ type: 'SET_PENDING_INPUT', payload: null });
                                         }}
-                                        disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading
-                                        activeOpacity={0.7}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                     >
-                                        <Text style={styles.confirmationButtonTextSecondary}>Non, rechercher</Text>
+                                        <Text style={styles.confirmationCloseButtonText}>✕</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.confirmationButton, styles.confirmationButtonPrimary]}
-                                        onPress={() => {
-                                            console.log('[HomeScreen] 🔄 Confirmation création service');
-                                            confirmCreateService();
-                                        }}
-                                        disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={styles.confirmationButtonTextPrimary}>
-                                            {state.ui.loading ? 'Ouverture…' : 'Oui, créer un service'}
-                                        </Text>
-                                    </TouchableOpacity>
+                                    <View style={styles.confirmationHeader}>
+                                        <Text style={styles.confirmationIcon}>🔐</Text>
+                                        <Text style={styles.confirmationTitle}>Confirmation de création de service</Text>
+                                    </View>
+                                    <Text style={styles.confirmationMessage}>
+                                        Êtes-vous sûr de vouloir créer un service/prestation sur la plateforme ?
+                                    </Text>
+                                    <View style={styles.confirmationButtons}>
+                                        <TouchableOpacity
+                                            style={[styles.confirmationButton, styles.confirmationButtonSecondary]}
+                                            onPress={() => {
+                                                console.log('[HomeScreen] 🔄 Annulation création service');
+                                                cancelCreateService();
+                                            }}
+                                            disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={styles.confirmationButtonTextSecondary}>Non, rechercher</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.confirmationButton, styles.confirmationButtonPrimary]}
+                                            onPress={() => {
+                                                console.log('[HomeScreen] 🔄 Confirmation création service');
+                                                confirmCreateService();
+                                            }}
+                                            disabled={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer avec loading
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={styles.confirmationButtonTextPrimary}>
+                                                {state.ui.loading ? 'Ouverture…' : 'Oui, créer un service'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
                             </View>
-                        </View>
-                    </Modal>
+                        </Modal>
+                    )}
 
                     {/* ✅ NOUVEAU: Sélecteur de produit pour création vidéo */}
                     <ServiceProductSelector

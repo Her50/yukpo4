@@ -19,7 +19,7 @@ use std::sync::Arc;
 pub struct StudentProfileAnalysis {
     pub profile_id: i32,
     pub score_academique: f64, // 0-100
-    pub score_interets: f64, // 0-100
+    pub score_interets: f64,   // 0-100
     pub points_forts: Vec<String>,
     pub points_faibles: Vec<String>,
     pub filieres_suggestees: Vec<String>,
@@ -203,12 +203,18 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         // Charger le prompt depuis le fichier markdown
         let mut variables = HashMap::new();
-        variables.insert("student_profile_id".to_string(), student_profile_id.to_string());
+        variables.insert(
+            "student_profile_id".to_string(),
+            student_profile_id.to_string(),
+        );
         variables.insert("etablissement_id".to_string(), etablissement_id.to_string());
         variables.insert("filiere".to_string(), filiere.to_string());
         variables.insert("specialite".to_string(), specialite_str.to_string());
         variables.insert("budget_max".to_string(), budget_str.to_string());
-        variables.insert("preference_localisation".to_string(), localisation_str.to_string());
+        variables.insert(
+            "preference_localisation".to_string(),
+            localisation_str.to_string(),
+        );
 
         let prompt = load_prompt_section_with_vars(
             "orientation_scolaire",
@@ -318,9 +324,18 @@ RÉPONSE ATTENDUE (JSON strict) :
 
         // Charger le prompt depuis le fichier markdown
         let mut variables = HashMap::new();
-        variables.insert("student_profile_id".to_string(), student_profile_id.to_string());
-        variables.insert("etablissement_1_id".to_string(), etablissement_1_id.to_string());
-        variables.insert("etablissement_2_id".to_string(), etablissement_2_id.to_string());
+        variables.insert(
+            "student_profile_id".to_string(),
+            student_profile_id.to_string(),
+        );
+        variables.insert(
+            "etablissement_1_id".to_string(),
+            etablissement_1_id.to_string(),
+        );
+        variables.insert(
+            "etablissement_2_id".to_string(),
+            etablissement_2_id.to_string(),
+        );
         variables.insert("filiere_1".to_string(), filiere_1.to_string());
         variables.insert("filiere_2".to_string(), filiere_2.to_string());
         variables.insert("specialite_1".to_string(), specialite_1_str.to_string());
@@ -413,4 +428,3 @@ RÉPONSE ATTENDUE (JSON strict) :
         Ok(comparison)
     }
 }
-

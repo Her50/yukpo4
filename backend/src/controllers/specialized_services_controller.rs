@@ -1431,7 +1431,10 @@ pub async fn get_property_details(
 fn parse_gps(gps_str: &str) -> Option<(f64, f64)> {
     let parts: Vec<&str> = gps_str.split(',').collect();
     if parts.len() == 2 {
-        if let (Ok(lat), Ok(lng)) = (parts[0].trim().parse::<f64>(), parts[1].trim().parse::<f64>()) {
+        if let (Ok(lat), Ok(lng)) = (
+            parts[0].trim().parse::<f64>(),
+            parts[1].trim().parse::<f64>(),
+        ) {
             return Some((lat, lng));
         }
     }
@@ -1464,27 +1467,31 @@ pub async fn book_property_visit(
     Path(property_id): Path<i32>,
     Json(request): Json<BookVisitRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[book_property_visit] Réservation visite property_id={}, user_id={}", property_id, user_id);
+    info!(
+        "[book_property_visit] Réservation visite property_id={}, user_id={}",
+        property_id, user_id
+    );
 
     // Vérifier que le bien existe
-    let property_exists: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM real_estate_properties WHERE id = $1"
-    )
-    .bind(property_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[book_property_visit] Erreur vérification: {}", e);
-        AppError::Internal("Erreur vérification bien".to_string())
-    })?;
+    let property_exists: Option<i32> =
+        sqlx::query_scalar("SELECT id FROM real_estate_properties WHERE id = $1")
+            .bind(property_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[book_property_visit] Erreur vérification: {}", e);
+                AppError::Internal("Erreur vérification bien".to_string())
+            })?;
 
     if property_exists.is_none() {
         return Err(AppError::NotFound("Bien immobilier non trouvé".to_string()));
     }
 
     // Parser date et heure
-    let date_visite = chrono::NaiveDate::parse_from_str(&request.date_visite, "%Y-%m-%d")
-        .map_err(|_| AppError::BadRequest("Format date invalide (YYYY-MM-DD requis)".to_string()))?;
+    let date_visite =
+        chrono::NaiveDate::parse_from_str(&request.date_visite, "%Y-%m-%d").map_err(|_| {
+            AppError::BadRequest("Format date invalide (YYYY-MM-DD requis)".to_string())
+        })?;
     let _heure_visite = chrono::NaiveTime::parse_from_str(&request.heure_visite, "%H:%M")
         .map_err(|_| AppError::BadRequest("Format heure invalide (HH:MM requis)".to_string()))?;
 
@@ -1493,7 +1500,7 @@ pub async fn book_property_visit(
         INSERT INTO property_visits (property_id, user_id, type_visite, date_visite, status)
         VALUES ($1, $2, $3, $4::date, 'pending')
         RETURNING id
-        "#
+        "#,
     )
     .bind(property_id)
     .bind(user_id)
@@ -1530,7 +1537,10 @@ pub async fn simulate_property_loan(
     Path(property_id): Path<i32>,
     Json(request): Json<SimulateLoanRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[simulate_property_loan] Simulation prêt property_id={}, user_id={}", property_id, user_id);
+    info!(
+        "[simulate_property_loan] Simulation prêt property_id={}, user_id={}",
+        property_id, user_id
+    );
 
     let app_ia = state.ia.clone();
     let real_estate_service = RealEstateAIService::new(app_ia);
@@ -1576,7 +1586,7 @@ pub async fn get_my_visits(
         INNER JOIN real_estate_properties p ON p.id = v.property_id
         WHERE v.user_id = $1
         ORDER BY v.date_visite DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(&state.pg)
@@ -1625,7 +1635,10 @@ pub async fn get_ai_recommendations(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<AIRecommendationRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_ai_recommendations] Recommandations IA user_id={}", user_id);
+    info!(
+        "[get_ai_recommendations] Recommandations IA user_id={}",
+        user_id
+    );
 
     let app_ia = state.ia.clone();
     let real_estate_service = RealEstateAIService::new(app_ia);
@@ -1654,7 +1667,7 @@ pub async fn get_ai_recommendations(
             FROM real_estate_properties p
             INNER JOIN services s ON s.id = p.service_id
             WHERE p.id = ANY($1::int[]) AND s.is_active = true
-            "#
+            "#,
         )
         .bind(&recommendation.property_ids)
         .fetch_all(&state.pg)
@@ -1706,7 +1719,10 @@ pub async fn estimate_property_price(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<PriceEstimateRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[estimate_property_price] Estimation prix user_id={}", user_id);
+    info!(
+        "[estimate_property_price] Estimation prix user_id={}",
+        user_id
+    );
 
     let app_ia = state.ia.clone();
     let real_estate_service = RealEstateAIService::new(app_ia);
@@ -1743,11 +1759,14 @@ pub async fn upload_property_media(
     Path(property_id): Path<i32>,
     mut multipart: Multipart,
 ) -> AppResult<impl IntoResponse> {
-    info!("[upload_property_media] Upload média property_id={}, user_id={}", property_id, user_id);
+    info!(
+        "[upload_property_media] Upload média property_id={}, user_id={}",
+        property_id, user_id
+    );
 
     // Vérifier que l'utilisateur est propriétaire du bien
     let property_owner = sqlx::query_scalar::<_, Option<i32>>(
-        "SELECT user_id FROM real_estate_properties WHERE id = $1"
+        "SELECT user_id FROM real_estate_properties WHERE id = $1",
     )
     .bind(property_id)
     .fetch_one(&state.pg)
@@ -1758,7 +1777,9 @@ pub async fn upload_property_media(
     })?;
 
     if property_owner != Some(user_id) {
-        return Err(AppError::Unauthorized("Vous n'êtes pas propriétaire de ce bien".to_string()));
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas propriétaire de ce bien".to_string(),
+        ));
     }
 
     let mut uploaded_urls = Vec::new();
@@ -1774,9 +1795,13 @@ pub async fn upload_property_media(
         })?;
 
         // Déterminer le type de média
-        let media_type = if filename.to_lowercase().ends_with(".mp4") || filename.to_lowercase().ends_with(".mov") {
+        let media_type = if filename.to_lowercase().ends_with(".mp4")
+            || filename.to_lowercase().ends_with(".mov")
+        {
             "video"
-        } else if filename.to_lowercase().ends_with(".mp3") || filename.to_lowercase().ends_with(".wav") {
+        } else if filename.to_lowercase().ends_with(".mp3")
+            || filename.to_lowercase().ends_with(".wav")
+        {
             "audio"
         } else {
             "image"
@@ -1793,7 +1818,8 @@ pub async fn upload_property_media(
         let storage_key = format!("immobilier/{}/{}.{}", property_id, Uuid::new_v4(), ext);
 
         // ✅ Uploader avec MediaStorage (Yukpo leader)
-        let stored = state.media_storage
+        let stored = state
+            .media_storage
             .store_bytes(&bytes, &storage_key, Some(content_type))
             .await
             .map_err(|e| {
@@ -1822,7 +1848,7 @@ pub async fn upload_property_media(
 
     // Mettre à jour la liste des photos dans real_estate_properties
     let current_photos: Vec<String> = sqlx::query_scalar::<_, Option<Vec<String>>>(
-        "SELECT photos FROM real_estate_properties WHERE id = $1"
+        "SELECT photos FROM real_estate_properties WHERE id = $1",
     )
     .bind(property_id)
     .fetch_one(&state.pg)
@@ -1836,17 +1862,15 @@ pub async fn upload_property_media(
     let mut updated_photos = current_photos;
     updated_photos.extend(uploaded_urls.clone());
 
-    sqlx::query(
-        "UPDATE real_estate_properties SET photos = $1 WHERE id = $2"
-    )
-    .bind(&updated_photos)
-    .bind(property_id)
-    .execute(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[upload_property_media] Erreur mise à jour: {}", e);
-        AppError::Internal("Erreur mise à jour photos".to_string())
-    })?;
+    sqlx::query("UPDATE real_estate_properties SET photos = $1 WHERE id = $2")
+        .bind(&updated_photos)
+        .bind(property_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[upload_property_media] Erreur mise à jour: {}", e);
+            AppError::Internal("Erreur mise à jour photos".to_string())
+        })?;
 
     Ok((
         StatusCode::CREATED,
@@ -1863,7 +1887,10 @@ pub async fn get_property_analytics(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Query(query): Query<serde_json::Value>,
 ) -> AppResult<impl IntoResponse> {
-    let property_id = query.get("property_id").and_then(|v| v.as_i64()).map(|v| v as i32);
+    let property_id = query
+        .get("property_id")
+        .and_then(|v| v.as_i64())
+        .map(|v| v as i32);
 
     if property_id.is_none() {
         return Err(AppError::BadRequest("property_id requis".to_string()));
@@ -1873,7 +1900,7 @@ pub async fn get_property_analytics(
 
     // Vérifier propriétaire
     let property_owner = sqlx::query_scalar::<_, Option<i32>>(
-        "SELECT user_id FROM real_estate_properties WHERE id = $1"
+        "SELECT user_id FROM real_estate_properties WHERE id = $1",
     )
     .bind(property_id)
     .fetch_one(&state.pg)
@@ -1884,7 +1911,9 @@ pub async fn get_property_analytics(
     })?;
 
     if property_owner != Some(user_id) {
-        return Err(AppError::Unauthorized("Vous n'êtes pas propriétaire".to_string()));
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas propriétaire".to_string(),
+        ));
     }
 
     let analytics = sqlx::query(
@@ -1928,19 +1957,21 @@ pub async fn add_to_favorites(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(property_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[add_to_favorites] Ajout favori property_id={}, user_id={}", property_id, user_id);
+    info!(
+        "[add_to_favorites] Ajout favori property_id={}, user_id={}",
+        property_id, user_id
+    );
 
     // Vérifier que le bien existe
-    let property_exists: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM real_estate_properties WHERE id = $1"
-    )
-    .bind(property_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[add_to_favorites] Erreur vérification: {}", e);
-        AppError::Internal("Erreur vérification".to_string())
-    })?;
+    let property_exists: Option<i32> =
+        sqlx::query_scalar("SELECT id FROM real_estate_properties WHERE id = $1")
+            .bind(property_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[add_to_favorites] Erreur vérification: {}", e);
+                AppError::Internal("Erreur vérification".to_string())
+            })?;
 
     if property_exists.is_none() {
         return Err(AppError::NotFound("Bien non trouvé".to_string()));
@@ -1948,7 +1979,7 @@ pub async fn add_to_favorites(
 
     // Vérifier si déjà en favoris
     let existing: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM property_favorites WHERE property_id = $1 AND user_id = $2"
+        "SELECT id FROM property_favorites WHERE property_id = $1 AND user_id = $2",
     )
     .bind(property_id)
     .bind(user_id)
@@ -1969,17 +2000,15 @@ pub async fn add_to_favorites(
         ));
     }
 
-    sqlx::query(
-        "INSERT INTO property_favorites (property_id, user_id) VALUES ($1, $2)"
-    )
-    .bind(property_id)
-    .bind(user_id)
-    .execute(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[add_to_favorites] Erreur insertion: {}", e);
-        AppError::Internal("Erreur ajout favori".to_string())
-    })?;
+    sqlx::query("INSERT INTO property_favorites (property_id, user_id) VALUES ($1, $2)")
+        .bind(property_id)
+        .bind(user_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[add_to_favorites] Erreur insertion: {}", e);
+            AppError::Internal("Erreur ajout favori".to_string())
+        })?;
 
     Ok((
         StatusCode::CREATED,
@@ -1996,19 +2025,20 @@ pub async fn remove_from_favorites(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(property_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[remove_from_favorites] Retrait favori property_id={}, user_id={}", property_id, user_id);
+    info!(
+        "[remove_from_favorites] Retrait favori property_id={}, user_id={}",
+        property_id, user_id
+    );
 
-    sqlx::query(
-        "DELETE FROM property_favorites WHERE property_id = $1 AND user_id = $2"
-    )
-    .bind(property_id)
-    .bind(user_id)
-    .execute(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[remove_from_favorites] Erreur: {}", e);
-        AppError::Internal("Erreur suppression favori".to_string())
-    })?;
+    sqlx::query("DELETE FROM property_favorites WHERE property_id = $1 AND user_id = $2")
+        .bind(property_id)
+        .bind(user_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[remove_from_favorites] Erreur: {}", e);
+            AppError::Internal("Erreur suppression favori".to_string())
+        })?;
 
     Ok((
         StatusCode::OK,
@@ -2034,7 +2064,7 @@ pub async fn get_my_favorites(
         INNER JOIN services s ON s.id = p.service_id
         WHERE f.user_id = $1 AND s.is_active = true
         ORDER BY f.created_at DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(&state.pg)
@@ -2080,10 +2110,16 @@ pub async fn compare_properties(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<ComparePropertiesRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[compare_properties] Comparaison user_id={}, {} biens", user_id, request.property_ids.len());
+    info!(
+        "[compare_properties] Comparaison user_id={}, {} biens",
+        user_id,
+        request.property_ids.len()
+    );
 
     if request.property_ids.is_empty() || request.property_ids.len() > 5 {
-        return Err(AppError::BadRequest("Entre 1 et 5 biens requis pour comparaison".to_string()));
+        return Err(AppError::BadRequest(
+            "Entre 1 et 5 biens requis pour comparaison".to_string(),
+        ));
     }
 
     // Récupérer les biens
@@ -2093,7 +2129,7 @@ pub async fn compare_properties(
         FROM real_estate_properties p
         INNER JOIN services s ON s.id = p.service_id
         WHERE p.id = ANY($1::int[]) AND s.is_active = true
-        "#
+        "#,
     )
     .bind(&request.property_ids)
     .fetch_all(&state.pg)
@@ -2128,7 +2164,7 @@ pub async fn compare_properties(
             r#"
             INSERT INTO property_comparisons (user_id, property_ids, comparison_name)
             VALUES ($1, $2, $3)
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(&request.property_ids)
@@ -2207,7 +2243,7 @@ pub async fn get_my_price_alerts(
         LEFT JOIN real_estate_properties p ON p.id = a.property_id
         WHERE a.user_id = $1
         ORDER BY a.created_at DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(&state.pg)
@@ -2253,7 +2289,10 @@ pub async fn track_property_view(
     Path(property_id): Path<i32>,
     Json(request): Json<TrackViewRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[track_property_view] Tracking vue property_id={}, user_id={}", property_id, user_id);
+    info!(
+        "[track_property_view] Tracking vue property_id={}, user_id={}",
+        property_id, user_id
+    );
 
     sqlx::query(
         r#"
@@ -2291,18 +2330,24 @@ pub async fn share_property(
     Path(property_id): Path<i32>,
     Json(request): Json<SharePropertyRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[share_property] Partage property_id={}, user_id={}", property_id, user_id);
+    info!(
+        "[share_property] Partage property_id={}, user_id={}",
+        property_id, user_id
+    );
 
     // Générer un lien de partage unique
     let share_token = Uuid::new_v4().to_string();
-    let share_url = format!("https://yukpomnang.com/immobilier/{}?share={}", property_id, share_token);
+    let share_url = format!(
+        "https://yukpomnang.com/immobilier/{}?share={}",
+        property_id, share_token
+    );
 
     // Enregistrer le partage
     sqlx::query(
         r#"
         INSERT INTO property_shares (property_id, user_id, share_method, share_token, recipient)
         VALUES ($1, $2, $3, $4, $5)
-        "#
+        "#,
     )
     .bind(property_id)
     .bind(user_id)
@@ -2329,11 +2374,14 @@ pub async fn upload_virtual_tour(
     Path(property_id): Path<i32>,
     mut multipart: Multipart,
 ) -> AppResult<impl IntoResponse> {
-    info!("[upload_virtual_tour] Upload visite virtuelle property_id={}, user_id={}", property_id, user_id);
+    info!(
+        "[upload_virtual_tour] Upload visite virtuelle property_id={}, user_id={}",
+        property_id, user_id
+    );
 
     // Vérifier propriétaire
     let property_owner = sqlx::query_scalar::<_, Option<i32>>(
-        "SELECT user_id FROM real_estate_properties WHERE id = $1"
+        "SELECT user_id FROM real_estate_properties WHERE id = $1",
     )
     .bind(property_id)
     .fetch_one(&state.pg)
@@ -2344,7 +2392,9 @@ pub async fn upload_virtual_tour(
     })?;
 
     if property_owner != Some(user_id) {
-        return Err(AppError::Unauthorized("Vous n'êtes pas propriétaire".to_string()));
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas propriétaire".to_string(),
+        ));
     }
 
     let mut tour_url = None;
@@ -2363,12 +2413,19 @@ pub async fn upload_virtual_tour(
         // Déterminer type
         if filename.to_lowercase().contains("360") || filename.to_lowercase().ends_with(".mp4") {
             tour_type = "360_video".to_string();
-        } else if filename.to_lowercase().ends_with(".glb") || filename.to_lowercase().ends_with(".gltf") {
+        } else if filename.to_lowercase().ends_with(".glb")
+            || filename.to_lowercase().ends_with(".gltf")
+        {
             tour_type = "3d_model".to_string();
         }
 
         let ext = filename.split('.').last().unwrap_or("mp4");
-        let storage_key = format!("immobilier/{}/virtual_tour_{}.{}", property_id, Uuid::new_v4(), ext);
+        let storage_key = format!(
+            "immobilier/{}/virtual_tour_{}.{}",
+            property_id,
+            Uuid::new_v4(),
+            ext
+        );
 
         let content_type = if tour_type == "3d_model" {
             "model/gltf-binary"
@@ -2377,7 +2434,8 @@ pub async fn upload_virtual_tour(
         };
 
         // ✅ Utiliser MediaStorage (Yukpo leader)
-        let stored = state.media_storage
+        let stored = state
+            .media_storage
             .store_bytes(&bytes, &storage_key, Some(content_type))
             .await
             .map_err(|e| {
@@ -2392,7 +2450,7 @@ pub async fn upload_virtual_tour(
             r#"
             INSERT INTO property_virtual_tours (property_id, tour_type, media_url, is_primary)
             VALUES ($1, $2, $3, true)
-            "#
+            "#,
         )
         .bind(property_id)
         .bind(&tour_type)
@@ -2450,7 +2508,7 @@ pub async fn search_lands(
         FROM land_properties l
         INNER JOIN services s ON s.id = l.service_id
         WHERE s.is_active = true
-        "#
+        "#,
     );
 
     if let Some(ville) = &query.ville {
@@ -2475,15 +2533,15 @@ pub async fn search_lands(
         sql.push_str(&format!(" AND l.superficie_m2 <= {}", superficie_max));
     }
 
-    sql.push_str(&format!(" ORDER BY l.created_at DESC LIMIT {} OFFSET {}", limit, offset));
+    sql.push_str(&format!(
+        " ORDER BY l.created_at DESC LIMIT {} OFFSET {}",
+        limit, offset
+    ));
 
-    let lands = sqlx::query(&sql)
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[search_lands] Erreur: {}", e);
-            AppError::Internal("Erreur recherche terrains".to_string())
-        })?;
+    let lands = sqlx::query(&sql).fetch_all(&state.pg).await.map_err(|e| {
+        error!("[search_lands] Erreur: {}", e);
+        AppError::Internal("Erreur recherche terrains".to_string())
+    })?;
 
     let mut lands_json = Vec::new();
     for row in lands {
@@ -2569,7 +2627,7 @@ pub async fn analyze_land(
 
     let app_ia = state.ia.clone();
     let land_service = LandAnalysisAIService::new(app_ia);
-    
+
     let analysis = land_service
         .analyze_viability(
             request.superficie_m2,
@@ -2628,7 +2686,7 @@ pub async fn search_decorators(
         FROM interior_design_projects d
         INNER JOIN services s ON s.id = d.service_id
         WHERE s.is_active = true
-        "#
+        "#,
     );
 
     if let Some(ville) = &query.ville {
@@ -2689,7 +2747,10 @@ pub async fn get_decoration_suggestions(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<DecorationSuggestionsRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_decoration_suggestions] Suggestions décoration user_id={}", user_id);
+    info!(
+        "[get_decoration_suggestions] Suggestions décoration user_id={}",
+        user_id
+    );
 
     let app_ia = state.ia.clone();
     let design_service = InteriorDesignAIService::new(app_ia);
@@ -2741,23 +2802,21 @@ pub async fn create_moving_quote(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<MovingQuoteRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[create_moving_quote] Devis déménagement user_id={}", user_id);
+    info!(
+        "[create_moving_quote] Devis déménagement user_id={}",
+        user_id
+    );
 
     // Utiliser le service IA déménagement pour calculer volume et coût
     let app_ia = state.ia.clone();
     let moving_service = MovingAIService::new(app_ia.clone());
-    
+
     // Calculer le volume si non fourni
     let volume_m3 = if let Some(vol) = request.volume_m3 {
         vol
     } else {
         let volume_estimate = moving_service
-            .calculate_volume(
-                request.nb_pieces.unwrap_or(3),
-                "Appartement",
-                None,
-                None,
-            )
+            .calculate_volume(request.nb_pieces.unwrap_or(3), "Appartement", None, None)
             .await
             .map_err(|e| {
                 error!("[create_moving_quote] Erreur calcul volume: {}", e);
@@ -2767,11 +2826,12 @@ pub async fn create_moving_quote(
     };
 
     // Calculer distance si GPS fourni
-    let distance_km = if let (Some(gps_depart), Some(gps_arrivee)) = (&request.gps_depart, &request.gps_arrivee) {
-        if let (Some((lat1, lng1)), Some((lat2, lng2))) = (
-            parse_gps(gps_depart),
-            parse_gps(gps_arrivee),
-        ) {
+    let distance_km = if let (Some(gps_depart), Some(gps_arrivee)) =
+        (&request.gps_depart, &request.gps_arrivee)
+    {
+        if let (Some((lat1, lng1)), Some((lat2, lng2))) =
+            (parse_gps(gps_depart), parse_gps(gps_arrivee))
+        {
             calculate_distance_km((lat1, lng1), (lat2, lng2))
         } else {
             0.0
@@ -2781,13 +2841,22 @@ pub async fn create_moving_quote(
     };
 
     // Estimer le coût avec IA
-    let services_additionnels_value = request.services_additionnels
-        .map(|v| serde_json::Value::Array(v.into_iter().map(|s| serde_json::Value::String(s)).collect()));
+    let services_additionnels_value = request.services_additionnels.map(|v| {
+        serde_json::Value::Array(
+            v.into_iter()
+                .map(|s| serde_json::Value::String(s))
+                .collect(),
+        )
+    });
     let cost_estimate = moving_service
         .estimate_cost(
             &request.adresse_depart,
             &request.adresse_arrivee,
-            if distance_km > 0.0 { Some(distance_km) } else { None },
+            if distance_km > 0.0 {
+                Some(distance_km)
+            } else {
+                None
+            },
             volume_m3,
             request.nb_pieces.unwrap_or(3),
             services_additionnels_value,
@@ -2799,17 +2868,25 @@ pub async fn create_moving_quote(
         })?;
 
     // Utiliser le service livraison IA pour ETA (intégration déménagement-livraison)
-    let estimated_eta = if let (Some(gps_depart), Some(gps_arrivee)) = (&request.gps_depart, &request.gps_arrivee) {
-        if let (Some((lat1, lng1)), Some((lat2, lng2))) = (
-            parse_gps(gps_depart),
-            parse_gps(gps_arrivee),
-        ) {
+    let estimated_eta = if let (Some(gps_depart), Some(gps_arrivee)) =
+        (&request.gps_depart, &request.gps_arrivee)
+    {
+        if let (Some((lat1, lng1)), Some((lat2, lng2))) =
+            (parse_gps(gps_depart), parse_gps(gps_arrivee))
+        {
             use crate::services::delivery_ai_eta_service::Location;
-            let mut eta_service = DeliveryAIETAService::new(Arc::new(state.pg.clone())).with_ia(app_ia);
+            let mut eta_service =
+                DeliveryAIETAService::new(Arc::new(state.pg.clone())).with_ia(app_ia);
             eta_service
                 .predict_eta_with_ai(
-                    &Location { lat: lat1, lng: lng1 },
-                    &Location { lat: lat2, lng: lng2 },
+                    &Location {
+                        lat: lat1,
+                        lng: lng1,
+                    },
+                    &Location {
+                        lat: lat2,
+                        lng: lng2,
+                    },
                     distance_km,
                     "moving",
                     None,
@@ -2880,19 +2957,21 @@ pub async fn book_moving(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<BookMovingRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[book_moving] Réservation déménagement quote_id={}, user_id={}", request.quote_id, user_id);
+    info!(
+        "[book_moving] Réservation déménagement quote_id={}, user_id={}",
+        request.quote_id, user_id
+    );
 
     // Vérifier que le devis appartient à l'utilisateur
-    let quote_owner = sqlx::query_scalar::<_, Option<i32>>(
-        "SELECT user_id FROM moving_quotes WHERE id = $1"
-    )
-    .bind(request.quote_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[book_moving] Erreur vérification: {}", e);
-        AppError::Internal("Erreur vérification".to_string())
-    })?;
+    let quote_owner =
+        sqlx::query_scalar::<_, Option<i32>>("SELECT user_id FROM moving_quotes WHERE id = $1")
+            .bind(request.quote_id)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| {
+                error!("[book_moving] Erreur vérification: {}", e);
+                AppError::Internal("Erreur vérification".to_string())
+            })?;
 
     if quote_owner != Some(user_id) {
         return Err(AppError::Unauthorized("Devis non trouvé".to_string()));
@@ -2903,7 +2982,7 @@ pub async fn book_moving(
         INSERT INTO moving_bookings (quote_id, user_id, date_demenagement, heure_depart, status)
         VALUES ($1, $2, $3::date, $4, 'confirmed')
         RETURNING id
-        "#
+        "#,
     )
     .bind(request.quote_id)
     .bind(user_id)
@@ -2931,7 +3010,10 @@ pub async fn get_moving_tracking(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(booking_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_moving_tracking] Suivi déménagement booking_id={}, user_id={}", booking_id, user_id);
+    info!(
+        "[get_moving_tracking] Suivi déménagement booking_id={}, user_id={}",
+        booking_id, user_id
+    );
 
     let tracking = sqlx::query(
         r#"
@@ -2944,7 +3026,7 @@ pub async fn get_moving_tracking(
         FROM moving_bookings b
         INNER JOIN moving_quotes q ON q.id = b.quote_id
         WHERE b.id = $1 AND b.user_id = $2
-        "#
+        "#,
     )
     .bind(booking_id)
     .bind(user_id)
@@ -3000,12 +3082,14 @@ pub async fn search_taxis(
     Query(params): Query<SearchTaxisQuery>,
 ) -> AppResult<impl IntoResponse> {
     info!("[search_taxis] Recherche taxis: {:?}", params);
-    
+
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = (params.page.unwrap_or(1) - 1) * limit;
-    
-    let mut query = QueryBuilder::new("SELECT s.*, t.* FROM services s INNER JOIN taxis t ON t.service_id = s.id WHERE 1=1");
-    
+
+    let mut query = QueryBuilder::new(
+        "SELECT s.*, t.* FROM services s INNER JOIN taxis t ON t.service_id = s.id WHERE 1=1",
+    );
+
     if let Some(ref ville) = params.ville {
         query.push(" AND s.ville = ");
         query.push_bind(ville);
@@ -3014,21 +3098,18 @@ pub async fn search_taxis(
         query.push(" AND s.quartier = ");
         query.push_bind(quartier);
     }
-    
+
     query.push(" ORDER BY s.created_at DESC LIMIT ");
     query.push_bind(limit);
     query.push(" OFFSET ");
     query.push_bind(offset);
-    
+
     use sqlx::Row;
-    let taxis = query.build()
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[search_taxis] Erreur: {}", e);
-            AppError::Internal("Erreur recherche taxis".to_string())
-        })?;
-    
+    let taxis = query.build().fetch_all(&state.pg).await.map_err(|e| {
+        error!("[search_taxis] Erreur: {}", e);
+        AppError::Internal("Erreur recherche taxis".to_string())
+    })?;
+
     let mut taxis_json = Vec::new();
     for row in taxis {
         taxis_json.push(json!({
@@ -3038,12 +3119,15 @@ pub async fn search_taxis(
             "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
         }));
     }
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": taxis_json,
-        "total": taxis_json.len()
-    }))))
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": taxis_json,
+            "total": taxis_json.len()
+        })),
+    ))
 }
 
 /// Détails d'un taxi
@@ -3052,26 +3136,31 @@ pub async fn get_taxi_details(
     Path(taxi_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_taxi_details] taxi_id={}", taxi_id);
-    
-    let taxi = sqlx::query("SELECT s.*, t.* FROM services s INNER JOIN taxis t ON t.service_id = s.id WHERE s.id = $1")
-        .bind(taxi_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[get_taxi_details] Erreur: {}", e);
-            AppError::Internal("Erreur récupération taxi".to_string())
-        })?;
-    
+
+    let taxi = sqlx::query(
+        "SELECT s.*, t.* FROM services s INNER JOIN taxis t ON t.service_id = s.id WHERE s.id = $1",
+    )
+    .bind(taxi_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_taxi_details] Erreur: {}", e);
+        AppError::Internal("Erreur récupération taxi".to_string())
+    })?;
+
     if let Some(row) = taxi {
         let taxi_json = json!({
             "id": row.try_get::<i32, _>("id").ok(),
             "nom": row.try_get::<Option<String>, _>("nom").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
         });
-        Ok((StatusCode::OK, Json(json!({
-            "success": true,
-            "data": taxi_json
-        }))))
+        Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "data": taxi_json
+            })),
+        ))
     } else {
         Err(AppError::NotFound("Taxi non trouvé".to_string()))
     }
@@ -3092,12 +3181,12 @@ pub async fn search_covoiturages(
     Query(params): Query<SearchCovoituragesQuery>,
 ) -> AppResult<impl IntoResponse> {
     info!("[search_covoiturages] Recherche: {:?}", params);
-    
+
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = (params.page.unwrap_or(1) - 1) * limit;
-    
+
     let mut query = QueryBuilder::new("SELECT s.*, c.* FROM services s INNER JOIN covoiturages c ON c.service_id = s.id WHERE 1=1");
-    
+
     if let Some(ref depart) = params.depart {
         query.push(" AND c.depart ILIKE ");
         query.push_bind(format!("%{}%", depart));
@@ -3106,21 +3195,18 @@ pub async fn search_covoiturages(
         query.push(" AND c.destination ILIKE ");
         query.push_bind(format!("%{}%", destination));
     }
-    
+
     query.push(" ORDER BY c.date_depart DESC LIMIT ");
     query.push_bind(limit);
     query.push(" OFFSET ");
     query.push_bind(offset);
-    
+
     use sqlx::Row;
-    let covoiturages = query.build()
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[search_covoiturages] Erreur: {}", e);
-            AppError::Internal("Erreur recherche covoiturages".to_string())
-        })?;
-    
+    let covoiturages = query.build().fetch_all(&state.pg).await.map_err(|e| {
+        error!("[search_covoiturages] Erreur: {}", e);
+        AppError::Internal("Erreur recherche covoiturages".to_string())
+    })?;
+
     let mut covoiturages_json = Vec::new();
     for row in covoiturages {
         covoiturages_json.push(json!({
@@ -3129,12 +3215,15 @@ pub async fn search_covoiturages(
             "destination": row.try_get::<Option<String>, _>("destination").ok().flatten(),
         }));
     }
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": covoiturages_json,
-        "total": covoiturages_json.len()
-    }))))
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": covoiturages_json,
+            "total": covoiturages_json.len()
+        })),
+    ))
 }
 
 /// Recherche de covoiturages à proximité
@@ -3152,14 +3241,20 @@ pub async fn search_covoiturages_nearby(
     State(_state): State<Arc<AppState>>,
     Query(params): Query<SearchCovoituragesNearbyQuery>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[search_covoiturages_nearby] lat={}, lng={}", params.lat, params.lng);
-    
+    info!(
+        "[search_covoiturages_nearby] lat={}, lng={}",
+        params.lat, params.lng
+    );
+
     // Pour l'instant, retourner une liste vide (implémentation basique)
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": [],
-        "total": 0
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": [],
+            "total": 0
+        })),
+    ))
 }
 
 /// Détails d'un covoiturage
@@ -3167,8 +3262,11 @@ pub async fn get_covoiturage_details(
     State(state): State<Arc<AppState>>,
     Path(covoiturage_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_covoiturage_details] covoiturage_id={}", covoiturage_id);
-    
+    info!(
+        "[get_covoiturage_details] covoiturage_id={}",
+        covoiturage_id
+    );
+
     let covoiturage = sqlx::query("SELECT s.*, c.* FROM services s INNER JOIN covoiturages c ON c.service_id = s.id WHERE s.id = $1")
         .bind(covoiturage_id)
         .fetch_optional(&state.pg)
@@ -3177,17 +3275,20 @@ pub async fn get_covoiturage_details(
             error!("[get_covoiturage_details] Erreur: {}", e);
             AppError::Internal("Erreur récupération covoiturage".to_string())
         })?;
-    
+
     if let Some(row) = covoiturage {
         let covoiturage_json = json!({
             "id": row.try_get::<i32, _>("id").ok(),
             "depart": row.try_get::<Option<String>, _>("depart").ok().flatten(),
             "destination": row.try_get::<Option<String>, _>("destination").ok().flatten(),
         });
-        Ok((StatusCode::OK, Json(json!({
-            "success": true,
-            "data": covoiturage_json
-        }))))
+        Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "data": covoiturage_json
+            })),
+        ))
     } else {
         Err(AppError::NotFound("Covoiturage non trouvé".to_string()))
     }
@@ -3198,13 +3299,19 @@ pub async fn get_covoiturage_reviews(
     State(_state): State<Arc<AppState>>,
     Path(covoiturage_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_covoiturage_reviews] covoiturage_id={}", covoiturage_id);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": [],
-        "total": 0
-    }))))
+    info!(
+        "[get_covoiturage_reviews] covoiturage_id={}",
+        covoiturage_id
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": [],
+            "total": 0
+        })),
+    ))
 }
 
 /// Recherche d'hôpitaux (publique)
@@ -3222,30 +3329,29 @@ pub async fn search_hospitals(
     Query(params): Query<SearchHospitalsQuery>,
 ) -> AppResult<impl IntoResponse> {
     info!("[search_hospitals] Recherche: {:?}", params);
-    
+
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = (params.page.unwrap_or(1) - 1) * limit;
-    
-    let mut query = QueryBuilder::new("SELECT s.*, h.* FROM services s INNER JOIN hopitaux h ON h.service_id = s.id WHERE 1=1");
-    
+
+    let mut query = QueryBuilder::new(
+        "SELECT s.*, h.* FROM services s INNER JOIN hopitaux h ON h.service_id = s.id WHERE 1=1",
+    );
+
     if let Some(ref ville) = params.ville {
         query.push(" AND s.ville = ");
         query.push_bind(ville);
     }
-    
+
     query.push(" ORDER BY s.created_at DESC LIMIT ");
     query.push_bind(limit);
     query.push(" OFFSET ");
     query.push_bind(offset);
-    
-    let hospitals = query.build()
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[search_hospitals] Erreur: {}", e);
-            AppError::Internal("Erreur recherche hôpitaux".to_string())
-        })?;
-    
+
+    let hospitals = query.build().fetch_all(&state.pg).await.map_err(|e| {
+        error!("[search_hospitals] Erreur: {}", e);
+        AppError::Internal("Erreur recherche hôpitaux".to_string())
+    })?;
+
     let mut hospitals_json = Vec::new();
     for row in hospitals {
         hospitals_json.push(json!({
@@ -3254,12 +3360,15 @@ pub async fn search_hospitals(
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
         }));
     }
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": hospitals_json,
-        "total": hospitals_json.len()
-    }))))
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": hospitals_json,
+            "total": hospitals_json.len()
+        })),
+    ))
 }
 
 /// Détails d'un hôpital
@@ -3268,7 +3377,7 @@ pub async fn get_hospital_details(
     Path(hospital_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_hospital_details] hospital_id={}", hospital_id);
-    
+
     let hospital = sqlx::query("SELECT s.*, h.* FROM services s INNER JOIN hopitaux h ON h.service_id = s.id WHERE s.id = $1")
         .bind(hospital_id)
         .fetch_optional(&state.pg)
@@ -3277,17 +3386,20 @@ pub async fn get_hospital_details(
             error!("[get_hospital_details] Erreur: {}", e);
             AppError::Internal("Erreur récupération hôpital".to_string())
         })?;
-    
+
     if let Some(row) = hospital {
         let hospital_json = json!({
             "id": row.try_get::<i32, _>("id").ok(),
             "nom": row.try_get::<Option<String>, _>("nom").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
         });
-        Ok((StatusCode::OK, Json(json!({
-            "success": true,
-            "data": hospital_json
-        }))))
+        Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "data": hospital_json
+            })),
+        ))
     } else {
         Err(AppError::NotFound("Hôpital non trouvé".to_string()))
     }
@@ -3299,30 +3411,27 @@ pub async fn search_laboratories(
     Query(params): Query<SearchHospitalsQuery>, // Réutilise la même structure
 ) -> AppResult<impl IntoResponse> {
     info!("[search_laboratories] Recherche: {:?}", params);
-    
+
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = (params.page.unwrap_or(1) - 1) * limit;
-    
+
     let mut query = QueryBuilder::new("SELECT s.*, l.* FROM services s INNER JOIN laboratoires l ON l.service_id = s.id WHERE 1=1");
-    
+
     if let Some(ref ville) = params.ville {
         query.push(" AND s.ville = ");
         query.push_bind(ville);
     }
-    
+
     query.push(" ORDER BY s.created_at DESC LIMIT ");
     query.push_bind(limit);
     query.push(" OFFSET ");
     query.push_bind(offset);
-    
-    let labs = query.build()
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[search_laboratories] Erreur: {}", e);
-            AppError::Internal("Erreur recherche laboratoires".to_string())
-        })?;
-    
+
+    let labs = query.build().fetch_all(&state.pg).await.map_err(|e| {
+        error!("[search_laboratories] Erreur: {}", e);
+        AppError::Internal("Erreur recherche laboratoires".to_string())
+    })?;
+
     let mut labs_json = Vec::new();
     for row in labs {
         labs_json.push(json!({
@@ -3331,12 +3440,15 @@ pub async fn search_laboratories(
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
         }));
     }
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": labs_json,
-        "total": labs_json.len()
-    }))))
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": labs_json,
+            "total": labs_json.len()
+        })),
+    ))
 }
 
 /// Détails d'un laboratoire
@@ -3345,7 +3457,7 @@ pub async fn get_laboratory_details(
     Path(lab_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_laboratory_details] lab_id={}", lab_id);
-    
+
     let lab = sqlx::query("SELECT s.*, l.* FROM services s INNER JOIN laboratoires l ON l.service_id = s.id WHERE s.id = $1")
         .bind(lab_id)
         .fetch_optional(&state.pg)
@@ -3354,17 +3466,20 @@ pub async fn get_laboratory_details(
             error!("[get_laboratory_details] Erreur: {}", e);
             AppError::Internal("Erreur récupération laboratoire".to_string())
         })?;
-    
+
     if let Some(row) = lab {
         let lab_json = json!({
             "id": row.try_get::<i32, _>("id").ok(),
             "nom": row.try_get::<Option<String>, _>("nom").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
         });
-        Ok((StatusCode::OK, Json(json!({
-            "success": true,
-            "data": lab_json
-        }))))
+        Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "data": lab_json
+            })),
+        ))
     } else {
         Err(AppError::NotFound("Laboratoire non trouvé".to_string()))
     }
@@ -3376,30 +3491,27 @@ pub async fn search_travel_agencies(
     Query(params): Query<SearchHospitalsQuery>, // Réutilise la même structure
 ) -> AppResult<impl IntoResponse> {
     info!("[search_travel_agencies] Recherche: {:?}", params);
-    
+
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = (params.page.unwrap_or(1) - 1) * limit;
-    
+
     let mut query = QueryBuilder::new("SELECT s.*, a.* FROM services s INNER JOIN agences_voyage a ON a.service_id = s.id WHERE 1=1");
-    
+
     if let Some(ref ville) = params.ville {
         query.push(" AND s.ville = ");
         query.push_bind(ville);
     }
-    
+
     query.push(" ORDER BY s.created_at DESC LIMIT ");
     query.push_bind(limit);
     query.push(" OFFSET ");
     query.push_bind(offset);
-    
-    let agencies = query.build()
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|e| {
-            error!("[search_travel_agencies] Erreur: {}", e);
-            AppError::Internal("Erreur recherche agences".to_string())
-        })?;
-    
+
+    let agencies = query.build().fetch_all(&state.pg).await.map_err(|e| {
+        error!("[search_travel_agencies] Erreur: {}", e);
+        AppError::Internal("Erreur recherche agences".to_string())
+    })?;
+
     let mut agencies_json = Vec::new();
     for row in agencies {
         agencies_json.push(json!({
@@ -3408,12 +3520,15 @@ pub async fn search_travel_agencies(
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
         }));
     }
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": agencies_json,
-        "total": agencies_json.len()
-    }))))
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": agencies_json,
+            "total": agencies_json.len()
+        })),
+    ))
 }
 
 /// Détails d'une agence de voyage
@@ -3422,7 +3537,7 @@ pub async fn get_travel_agency_details(
     Path(agency_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_travel_agency_details] agency_id={}", agency_id);
-    
+
     let agency = sqlx::query("SELECT s.*, a.* FROM services s INNER JOIN agences_voyage a ON a.service_id = s.id WHERE s.id = $1")
         .bind(agency_id)
         .fetch_optional(&state.pg)
@@ -3431,19 +3546,24 @@ pub async fn get_travel_agency_details(
             error!("[get_travel_agency_details] Erreur: {}", e);
             AppError::Internal("Erreur récupération agence".to_string())
         })?;
-    
+
     if let Some(row) = agency {
         let agency_json = json!({
             "id": row.try_get::<i32, _>("id").ok(),
             "nom": row.try_get::<Option<String>, _>("nom").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
         });
-        Ok((StatusCode::OK, Json(json!({
-            "success": true,
-            "data": agency_json
-        }))))
+        Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "data": agency_json
+            })),
+        ))
     } else {
-        Err(AppError::NotFound("Agence de voyage non trouvée".to_string()))
+        Err(AppError::NotFound(
+            "Agence de voyage non trouvée".to_string(),
+        ))
     }
 }
 
@@ -3464,12 +3584,18 @@ pub async fn manage_hospital_slots(
     Path(hospital_id): Path<i32>,
     Json(_request): Json<ManageHospitalSlotsRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[manage_hospital_slots] hospital_id={}, user_id={}", hospital_id, user_id);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "message": "Créneaux gérés avec succès"
-    }))))
+    info!(
+        "[manage_hospital_slots] hospital_id={}, user_id={}",
+        hospital_id, user_id
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": "Créneaux gérés avec succès"
+        })),
+    ))
 }
 
 // ============================================================================
@@ -3488,13 +3614,19 @@ pub async fn check_medication_availability(
     Path(pharmacy_id): Path<i32>,
     Json(request): Json<CheckMedicationAvailabilityRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[check_medication_availability] pharmacy_id={}, medication={}", pharmacy_id, request.medication_name);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "available": true,
-        "quantity": 10
-    }))))
+    info!(
+        "[check_medication_availability] pharmacy_id={}, medication={}",
+        pharmacy_id, request.medication_name
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "available": true,
+            "quantity": 10
+        })),
+    ))
 }
 
 /// Réserver un médicament
@@ -3510,12 +3642,18 @@ pub async fn reserve_medication(
     Path(pharmacy_id): Path<i32>,
     Json(request): Json<ReserveMedicationRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[reserve_medication] pharmacy_id={}, user_id={}, medication={}", pharmacy_id, user_id, request.medication_name);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "reservation_id": 1
-    }))))
+    info!(
+        "[reserve_medication] pharmacy_id={}, user_id={}, medication={}",
+        pharmacy_id, user_id, request.medication_name
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "reservation_id": 1
+        })),
+    ))
 }
 
 /// Créer une commande de pharmacie
@@ -3531,12 +3669,18 @@ pub async fn create_pharmacy_order(
     Path(pharmacy_id): Path<i32>,
     Json(_request): Json<CreatePharmacyOrderRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[create_pharmacy_order] pharmacy_id={}, user_id={}", pharmacy_id, user_id);
-    
-    Ok((StatusCode::CREATED, Json(json!({
-        "success": true,
-        "order_id": 1
-    }))))
+    info!(
+        "[create_pharmacy_order] pharmacy_id={}, user_id={}",
+        pharmacy_id, user_id
+    );
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "order_id": 1
+        })),
+    ))
 }
 
 /// Vérifier les interactions médicamenteuses
@@ -3549,13 +3693,19 @@ pub async fn check_medication_interactions(
     State(_state): State<Arc<AppState>>,
     Json(request): Json<CheckMedicationInteractionsRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[check_medication_interactions] medications={:?}", request.medications);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "interactions": [],
-        "warnings": []
-    }))))
+    info!(
+        "[check_medication_interactions] medications={:?}",
+        request.medications
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "interactions": [],
+            "warnings": []
+        })),
+    ))
 }
 
 /// Suggérer le dosage d'un médicament
@@ -3571,13 +3721,19 @@ pub async fn suggest_medication_dosage(
     State(_state): State<Arc<AppState>>,
     Json(request): Json<SuggestMedicationDosageRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[suggest_medication_dosage] medication={}", request.medication_name);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "dosage": "1 comprimé, 2 fois par jour",
-        "duration": "7 jours"
-    }))))
+    info!(
+        "[suggest_medication_dosage] medication={}",
+        request.medication_name
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "dosage": "1 comprimé, 2 fois par jour",
+            "duration": "7 jours"
+        })),
+    ))
 }
 
 /// Obtenir mes commandes de pharmacie
@@ -3586,12 +3742,15 @@ pub async fn get_my_pharmacy_orders(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_my_pharmacy_orders] user_id={}", user_id);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": [],
-        "total": 0
-    }))))
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": [],
+            "total": 0
+        })),
+    ))
 }
 
 /// Analytics d'une pharmacie
@@ -3600,15 +3759,21 @@ pub async fn get_pharmacy_analytics(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(pharmacy_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_pharmacy_analytics] pharmacy_id={}, user_id={}", pharmacy_id, user_id);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "analytics": {
-            "total_orders": 0,
-            "revenue": 0.0
-        }
-    }))))
+    info!(
+        "[get_pharmacy_analytics] pharmacy_id={}, user_id={}",
+        pharmacy_id, user_id
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "analytics": {
+                "total_orders": 0,
+                "revenue": 0.0
+            }
+        })),
+    ))
 }
 
 // ============================================================================
@@ -3621,12 +3786,15 @@ pub async fn get_laboratory_examination_types(
     Path(lab_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_laboratory_examination_types] lab_id={}", lab_id);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": [],
-        "total": 0
-    }))))
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": [],
+            "total": 0
+        })),
+    ))
 }
 
 /// Réserver un examen de laboratoire
@@ -3643,12 +3811,18 @@ pub async fn book_laboratory_examination(
     Path(lab_id): Path<i32>,
     Json(request): Json<BookLaboratoryExaminationRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[book_laboratory_examination] lab_id={}, user_id={}, type={}", lab_id, user_id, request.examination_type);
-    
-    Ok((StatusCode::CREATED, Json(json!({
-        "success": true,
-        "booking_id": 1
-    }))))
+    info!(
+        "[book_laboratory_examination] lab_id={}, user_id={}, type={}",
+        lab_id, user_id, request.examination_type
+    );
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "booking_id": 1
+        })),
+    ))
 }
 
 /// Obtenir les résultats d'un examen
@@ -3657,12 +3831,18 @@ pub async fn get_examination_results(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(examination_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_examination_results] examination_id={}, user_id={}", examination_id, user_id);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "results": null
-    }))))
+    info!(
+        "[get_examination_results] examination_id={}, user_id={}",
+        examination_id, user_id
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "results": null
+        })),
+    ))
 }
 
 /// Analyser les résultats d'un examen avec IA
@@ -3671,15 +3851,21 @@ pub async fn analyze_examination_results(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(examination_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[analyze_examination_results] examination_id={}, user_id={}", examination_id, user_id);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "analysis": {
-            "summary": "Résultats normaux",
-            "recommendations": []
-        }
-    }))))
+    info!(
+        "[analyze_examination_results] examination_id={}, user_id={}",
+        examination_id, user_id
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "analysis": {
+                "summary": "Résultats normaux",
+                "recommendations": []
+            }
+        })),
+    ))
 }
 
 /// Obtenir mes examens de laboratoire
@@ -3688,12 +3874,15 @@ pub async fn get_my_laboratory_examinations(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     info!("[get_my_laboratory_examinations] user_id={}", user_id);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "data": [],
-        "total": 0
-    }))))
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": [],
+            "total": 0
+        })),
+    ))
 }
 
 /// Analytics d'un laboratoire
@@ -3702,13 +3891,19 @@ pub async fn get_laboratory_analytics(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(lab_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_laboratory_analytics] lab_id={}, user_id={}", lab_id, user_id);
-    
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "analytics": {
-            "total_examinations": 0,
-            "revenue": 0.0
-        }
-    }))))
+    info!(
+        "[get_laboratory_analytics] lab_id={}, user_id={}",
+        lab_id, user_id
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "analytics": {
+                "total_examinations": 0,
+                "revenue": 0.0
+            }
+        })),
+    ))
 }

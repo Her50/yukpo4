@@ -5,5 +5,5 @@ use std::sync::Arc;
 
 pub fn extended_audio_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
-        // TODO: Implémenter les routes bibliothèque audio étendue
+    // TODO: Implémenter les routes bibliothèque audio étendue
 }

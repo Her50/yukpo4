@@ -1,9 +1,9 @@
 // ✅ NOUVEAU: Modèle pour les effets vidéo stockés en base de données
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::FromRow;
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Effect {
@@ -38,5 +38,3 @@ pub struct EffectMetadata {
     pub preview_url: Option<String>,
     pub thumbnail_url: Option<String>,
 }
-
-

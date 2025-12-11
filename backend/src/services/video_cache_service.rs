@@ -87,7 +87,7 @@ impl VideoCacheService {
                 VALUES ($1, $2, NOW() + INTERVAL '1 second' * $3)
                 ON CONFLICT (session_id) DO UPDATE
                 SET cached_data = $2, expires_at = NOW() + INTERVAL '1 second' * $3
-                "#
+                "#,
             )
             .bind(session.id)
             .bind(serde_json::to_value(&session)?)
@@ -114,7 +114,7 @@ impl VideoCacheService {
             SELECT cached_data
             FROM studio_session_cache
             WHERE session_id = $1 AND expires_at > NOW()
-            "#
+            "#,
         )
         .bind(session_id)
         .fetch_optional(&self.pool)

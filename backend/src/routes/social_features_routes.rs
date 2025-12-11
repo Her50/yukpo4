@@ -2,11 +2,7 @@
  * Routes pour fonctionnalités sociales avancées
  * Duet, Remix, Stitch, Réactions
  */
-use axum::{
-    middleware,
-    routing::post,
-    Router,
-};
+use axum::{middleware, routing::post, Router};
 use std::sync::Arc;
 
 use crate::controllers::social_features_controller::{

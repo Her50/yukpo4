@@ -76,11 +76,13 @@ pub async fn generate_quick_preview(
         // Appliquer les effets de la scène
         for effect in &scene.effects {
             match effect.as_str() {
-                "zoom" => scene_filters
-                    .push("zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75".to_string()),
+                "zoom" => scene_filters.push(
+                    "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75".to_string(),
+                ),
                 "fade" => scene_filters.push("fade=t=in:st=0:d=0.5".to_string()),
-                "glow" => scene_filters
-                    .push("curves=all='0/0 0.5/0.58 1/1',eq=brightness=0.15:saturation=0.2".to_string()),
+                "glow" => scene_filters.push(
+                    "curves=all='0/0 0.5/0.58 1/1',eq=brightness=0.15:saturation=0.2".to_string(),
+                ),
                 _ => {} // Ignorer les effets non supportés
             }
         }

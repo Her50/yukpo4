@@ -1,7 +1,8 @@
 // ✅ NOUVEAU Phase 2.3: Service de gestion des jobs d'export vidéo
 
 use crate::models::export_model::{
-    ExportJob, ExportProgress, ExportQuality, ExportResolution, ExportSettings, ExportStage, StartExportRequest,
+    ExportJob, ExportProgress, ExportQuality, ExportResolution, ExportSettings, ExportStage,
+    StartExportRequest,
 };
 use log::{error, info, warn};
 use sqlx::PgPool;

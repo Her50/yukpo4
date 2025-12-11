@@ -85,7 +85,7 @@ impl AdvancedAnalyticsService {
             FROM content_engagement
             WHERE content_id = $1
             AND created_at > NOW() - INTERVAL '30 days'
-            "#
+            "#,
         )
         .bind(video_id)
         .fetch_one(pool)
@@ -103,7 +103,7 @@ impl AdvancedAnalyticsService {
             FROM content_engagement
             WHERE content_id = $1
             AND created_at > NOW() - INTERVAL '30 days'
-            "#
+            "#,
         )
         .bind(video_id)
         .fetch_one(pool)
@@ -113,8 +113,10 @@ impl AdvancedAnalyticsService {
         let likes: i64 = engagement_row.get::<Option<i64>, _>("likes").unwrap_or(0);
         let saves: i64 = engagement_row.get::<Option<i64>, _>("saves").unwrap_or(0);
         let shares: i64 = engagement_row.get::<Option<i64>, _>("shares").unwrap_or(0);
-        let total_views_eng: i64 = engagement_row.get::<Option<i64>, _>("total_views").unwrap_or(1);
-        
+        let total_views_eng: i64 = engagement_row
+            .get::<Option<i64>, _>("total_views")
+            .unwrap_or(1);
+
         let total_engagements = (likes + saves + shares) as f64;
         let total_views = total_views_eng as f64;
         let engagement_rate = (total_engagements / total_views) * 100.0;
@@ -130,10 +132,20 @@ impl AdvancedAnalyticsService {
 
         Ok(VideoAnalytics {
             video_id: video_id.to_string(),
-            total_views: base_stats_row.get::<Option<i64>, _>("total_views").unwrap_or(0),
-            unique_viewers: base_stats_row.get::<Option<i64>, _>("unique_viewers").unwrap_or(0),
-            avg_watch_duration: base_stats_row.get::<Option<f64>, _>("avg_watch_duration").unwrap_or(0.0) / 1000.0, // en secondes
-            completion_rate: base_stats_row.get::<Option<f64>, _>("avg_completion_rate").unwrap_or(0.0) * 100.0,
+            total_views: base_stats_row
+                .get::<Option<i64>, _>("total_views")
+                .unwrap_or(0),
+            unique_viewers: base_stats_row
+                .get::<Option<i64>, _>("unique_viewers")
+                .unwrap_or(0),
+            avg_watch_duration: base_stats_row
+                .get::<Option<f64>, _>("avg_watch_duration")
+                .unwrap_or(0.0)
+                / 1000.0, // en secondes
+            completion_rate: base_stats_row
+                .get::<Option<f64>, _>("avg_completion_rate")
+                .unwrap_or(0.0)
+                * 100.0,
             engagement_rate,
             drop_off_points,
             heatmap_data,
@@ -208,7 +220,9 @@ impl AdvancedAnalyticsService {
         let mut heatmap = Vec::new();
 
         for row in data_rows {
-            let timestamp = row.get::<Option<f64>, _>("timestamp_seconds").unwrap_or(0.0);
+            let timestamp = row
+                .get::<Option<f64>, _>("timestamp_seconds")
+                .unwrap_or(0.0);
 
             // Likes
             let likes: i64 = row.get::<Option<i64>, _>("likes").unwrap_or(0);
@@ -345,11 +359,11 @@ impl AdvancedAnalyticsService {
             winner: None,
             confidence: 0.0,
         });
-        
+
         /* TODO: Décommenter quand table ab_tests sera créée
         let data = sqlx::query!(
             r#"
-            SELECT 
+            SELECT
                 variant,
                 COUNT(*) as participants,
                 COUNT(CASE WHEN converted = TRUE THEN 1 END) as conversions
@@ -459,7 +473,7 @@ impl AdvancedAnalyticsService {
             FROM user_cohorts
             GROUP BY cohort_date
             ORDER BY cohort_date
-            "#
+            "#,
         )
         .bind(start_date)
         .bind(end_date)
@@ -470,7 +484,9 @@ impl AdvancedAnalyticsService {
         let mut cohorts = Vec::new();
 
         for row in data_rows {
-            let cohort_date = row.get::<Option<String>, _>("cohort_date").unwrap_or_default();
+            let cohort_date = row
+                .get::<Option<String>, _>("cohort_date")
+                .unwrap_or_default();
             let cohort_size = row.get::<Option<i64>, _>("cohort_size").unwrap_or(0);
 
             // Analyser rétention par jour

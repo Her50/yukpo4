@@ -223,7 +223,7 @@ pub async fn check_redis_health_with_error(client: &RedisClient) -> (bool, Optio
     let (is_available, error_msg) = match get_redis_connection(client, 3, 1000).await {
         Ok(mut conn) => {
             // Tester avec une opération PING (plus fiable que GET)
-            
+
             match redis::cmd("PING").query_async::<String>(&mut conn).await {
                 Ok(_) => (true, None),
                 Err(e) => {
@@ -249,7 +249,10 @@ pub async fn check_redis_health_with_error(client: &RedisClient) -> (bool, Optio
         if is_available {
             log::info!("✅ [Redis] Health check réussi - Redis disponible");
         } else {
-            let error_detail = error_msg.as_ref().map(|e| format!(" - {}", e)).unwrap_or_default();
+            let error_detail = error_msg
+                .as_ref()
+                .map(|e| format!(" - {}", e))
+                .unwrap_or_default();
             log::warn!(
                 "⚠️ [Redis] Health check échoué - Redis non disponible{} (fallback gracieux activé)",
                 error_detail

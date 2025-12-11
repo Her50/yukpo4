@@ -82,17 +82,18 @@ impl FlashSaleQueueWorker {
 
         // Lire un batch de messages depuis le stream
         // Note: Utiliser redis::cmd avec MultiplexedConnection
-        let messages_result: Result<Vec<redis::streams::StreamReadReply>, _> = redis::cmd("XREADGROUP")
-            .arg("GROUP")
-            .arg(&self.consumer_group)
-            .arg(&self.consumer_name)
-            .arg("COUNT")
-            .arg(BATCH_SIZE)
-            .arg("STREAMS")
-            .arg(&self.stream_name)
-            .arg(">")
-            .query_async(&mut conn)
-            .await;
+        let messages_result: Result<Vec<redis::streams::StreamReadReply>, _> =
+            redis::cmd("XREADGROUP")
+                .arg("GROUP")
+                .arg(&self.consumer_group)
+                .arg(&self.consumer_name)
+                .arg("COUNT")
+                .arg(BATCH_SIZE)
+                .arg("STREAMS")
+                .arg(&self.stream_name)
+                .arg(">")
+                .query_async(&mut conn)
+                .await;
 
         let messages = match messages_result {
             Ok(msgs) => msgs,
@@ -280,7 +281,8 @@ impl FlashSaleQueueWorker {
             })?;
 
         use redis::AsyncCommands;
-        let _: usize = conn.xack(&self.stream_name, &self.consumer_group, &[message_id])
+        let _: usize = conn
+            .xack(&self.stream_name, &self.consumer_group, &[message_id])
             .await
             .map_err(|e| {
                 crate::core::types::AppError::Internal(format!("Redis XACK failed: {}", e))

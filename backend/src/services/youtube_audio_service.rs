@@ -47,7 +47,7 @@ pub struct YouTubeAudioService {
     #[allow(dead_code)]
     api_key: Option<String>,
     cache: Arc<Mutex<HashMap<String, (Vec<AudioMetadata>, u64)>>>, // Cache avec timestamp
-    cache_ttl: u64,                                    // TTL en secondes
+    cache_ttl: u64,                                                // TTL en secondes
 }
 
 impl YouTubeAudioService {
@@ -108,7 +108,10 @@ impl YouTubeAudioService {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        self.cache.lock().await.insert(cache_key, (paginated.clone(), now));
+        self.cache
+            .lock()
+            .await
+            .insert(cache_key, (paginated.clone(), now));
 
         Ok((paginated, total))
     }

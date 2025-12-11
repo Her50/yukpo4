@@ -1637,7 +1637,10 @@ pub async fn get_my_products(
     use serde_json::json;
 
     let user_id = user.id;
-    info!("[get_my_products] Récupération produits pour user_id={}", user_id);
+    info!(
+        "[get_my_products] Récupération produits pour user_id={}",
+        user_id
+    );
 
     // Récupérer tous les services de l'utilisateur avec leurs produits
     let rows = sqlx::query(
@@ -1655,7 +1658,7 @@ pub async fn get_my_products(
         WHERE s.user_id = $1
           AND s.is_active = true
         ORDER BY s.created_at DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(&state.pg)
@@ -1669,7 +1672,9 @@ pub async fn get_my_products(
 
     for row in rows {
         let service_id: i32 = row.try_get("service_id").unwrap_or(0);
-        let service_title: String = row.try_get("service_title").unwrap_or_else(|_| "Service sans titre".to_string());
+        let service_title: String = row
+            .try_get("service_title")
+            .unwrap_or_else(|_| "Service sans titre".to_string());
         let produits: Option<serde_json::Value> = row.try_get("produits").ok();
 
         if let Some(produits_value) = produits {
@@ -1680,12 +1685,13 @@ pub async fn get_my_products(
                             .get("is_active")
                             .and_then(|v| v.as_bool())
                             .unwrap_or(true);
-                        
+
                         // Inclure seulement les produits actifs
                         if is_active {
                             let mut produit_with_meta = produit_obj.clone();
                             produit_with_meta.insert("service_id".to_string(), json!(service_id));
-                            produit_with_meta.insert("service_title".to_string(), json!(service_title));
+                            produit_with_meta
+                                .insert("service_title".to_string(), json!(service_title));
                             produit_with_meta.insert("product_index".to_string(), json!(index));
                             all_products.push(serde_json::Value::Object(produit_with_meta));
                         }
@@ -1695,7 +1701,11 @@ pub async fn get_my_products(
         }
     }
 
-    info!("[get_my_products] ✅ {} produits trouvés pour user_id={}", all_products.len(), user_id);
+    info!(
+        "[get_my_products] ✅ {} produits trouvés pour user_id={}",
+        all_products.len(),
+        user_id
+    );
 
     Ok(Json(json!({
         "success": true,

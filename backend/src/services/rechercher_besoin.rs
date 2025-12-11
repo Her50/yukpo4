@@ -1372,7 +1372,8 @@ async fn search_services_direct_fallback(
         let _user_id: i32 = row.get::<i32, _>("user_id");
         let data: Value = row.get::<Value, _>("data");
         let _is_active: bool = row.get::<bool, _>("is_active");
-        let created_at: chrono::DateTime<chrono::Utc> = row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+        let created_at: chrono::DateTime<chrono::Utc> =
+            row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
 
         // Calculer un score basé sur tous les mots-clés
         let mut score = 0.0;

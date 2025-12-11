@@ -1,8 +1,5 @@
 // ✅ Métriques Prometheus pour le calcul des coûts de livraison
-use prometheus::{
-    register_counter, register_histogram, Counter, Histogram, HistogramOpts,
-    Opts,
-};
+use prometheus::{register_counter, register_histogram, Counter, Histogram, HistogramOpts, Opts};
 use std::sync::Arc;
 
 /// Métriques pour le système de calcul des coûts

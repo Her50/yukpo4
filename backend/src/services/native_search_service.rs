@@ -2409,7 +2409,6 @@ LIMIT 100
         Ok(search_results)
     }
 
-
     /// ✅ NOUVEAU 2025-11-30: Enrichir la requête avec les variations (profession ↔ activité)
     /// Exemple: "plombier" → "plombier | plomberie"
     /// Permet au full-text search de matcher les variations

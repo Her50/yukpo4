@@ -339,7 +339,8 @@ impl AnalyticsService {
             .map_err(|e| AppError::Internal(format!("Erreur récupération service: {}", e)))?;
 
             let product_name = if let Some(service_row) = service_data {
-                let service_data_json: serde_json::Value = service_row.get::<serde_json::Value, _>("data");
+                let service_data_json: serde_json::Value =
+                    service_row.get::<serde_json::Value, _>("data");
                 if let Some(product_index) = product_index {
                     service_data_json
                         .get("produits")
