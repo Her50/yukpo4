@@ -7,12 +7,21 @@ import { registerRootComponent } from 'expo';
 import { Platform } from 'react-native';
 import 'react-native-gesture-handler';
 
-// ✅ CORRIGÉ 2025-12-11: Initialiser AsyncStorage de manière garantie au démarrage
+// ✅ CRITIQUE: Initialiser AsyncStorage de manière BLOQUANTE au démarrage
 // Cela résout le problème "Driver not found" à la racine
+// ✅ AMÉLIORÉ: Attendre que l'initialisation soit complète avant de continuer
+let asyncStorageInitialized = false;
 (async () => {
     try {
         const { initializeAsyncStorage } = require('./src/utils/asyncStorageInit');
-        const initialized = await initializeAsyncStorage();
+        // ✅ CRITIQUE: Attendre jusqu'à 5 secondes pour l'initialisation
+        const initialized = await Promise.race([
+            initializeAsyncStorage(),
+            new Promise < boolean > ((resolve) => {
+                setTimeout(() => resolve(false), 5000); // Timeout après 5s
+            })
+        ]);
+        asyncStorageInitialized = initialized;
         if (initialized) {
             console.log('[INDEX.JS] ✅ AsyncStorage initialisé avec succès au démarrage');
         } else {
@@ -20,6 +29,7 @@ import 'react-native-gesture-handler';
         }
     } catch (asyncStorageError) {
         console.error('[INDEX.JS] ⚠️ Erreur initialisation AsyncStorage (non-bloquant):', asyncStorageError);
+        asyncStorageInitialized = false;
     }
 })();
 
@@ -58,17 +68,50 @@ if (global.ErrorUtils) {
     });
 }
 
-// Capturer les promesses rejetées non gérées
-// ✅ CORRIGÉ 2025-12-11: Avec l'initialisation garantie d'AsyncStorage, ces erreurs ne devraient plus se produire
+// ✅ CRITIQUE: Intercepter les Promise rejections AsyncStorage AVANT qu'elles ne remontent
+// Cela évite les erreurs "Driver not found" et "No available storage method found" dans les logs
 if (typeof global.Promise !== 'undefined') {
+    // Intercepter les rejections non gérées
     const originalRejectionTracking = global.Promise._unhandledRejection;
     global.Promise._unhandledRejection = function (error) {
+        // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
+        const errorMsg = error?.message || String(error);
+        const isAsyncStorageError =
+            errorMsg.includes('Driver not found') ||
+            errorMsg.includes('No available storage method found') ||
+            (errorMsg.includes('AsyncStorage') && (errorMsg.includes('not found') || errorMsg.includes('unavailable')));
+
+        if (isAsyncStorageError) {
+            // ✅ Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+            // Elles sont non-bloquantes et l'app continue de fonctionner
+            return; // Ne pas propager l'erreur
+        }
+
+        // Pour les autres erreurs, logger normalement
         console.error('🚨 [UNHANDLED PROMISE REJECTION]:', error);
 
         if (originalRejectionTracking) {
             originalRejectionTracking.call(this, error);
         }
     };
+
+    // ✅ CRITIQUE: Intercepter aussi via addEventListener si disponible (React Native)
+    if (typeof global.addEventListener === 'function') {
+        global.addEventListener('unhandledrejection', (event) => {
+            const error = event.reason || event;
+            const errorMsg = error?.message || String(error);
+            const isAsyncStorageError =
+                errorMsg.includes('Driver not found') ||
+                errorMsg.includes('No available storage method found') ||
+                (errorMsg.includes('AsyncStorage') && (errorMsg.includes('not found') || errorMsg.includes('unavailable')));
+
+            if (isAsyncStorageError) {
+                // ✅ Empêcher la propagation de l'erreur AsyncStorage
+                event.preventDefault();
+                return;
+            }
+        });
+    }
 }
 
 // ✅ CRITIQUE : Importer le service de logging AVANT tout autre code

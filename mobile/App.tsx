@@ -38,6 +38,7 @@ import { initObservability } from './src/observability';
 const { NavigationContainer } = require('@react-navigation/native');
 
 // ✅ Composants essentiels
+import { AsyncStorageGate } from './src/components/AsyncStorageGate';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import GPSTrackingManager from './src/components/GPSTrackingManager';
 import RemoteLoggingInitializer from './src/components/RemoteLoggingInitializer';
@@ -77,21 +78,9 @@ export default function App() {
   }
 
   // ✅ CORRECTION CRASH: initObservability dans useEffect pour éviter blocage
+  // ✅ NOTE: L'initialisation d'AsyncStorage est maintenant gérée par AsyncStorageGate
+  // qui bloque le rendu jusqu'à ce qu'AsyncStorage soit prêt
   React.useEffect(() => {
-    // ✅ CRITIQUE 2025-12-11: Initialiser AsyncStorage en premier (résout "Driver not found" à la racine)
-    (async () => {
-      try {
-        const { initializeAsyncStorage } = require('./src/utils/asyncStorageInit');
-        const initialized = await initializeAsyncStorage();
-        if (initialized) {
-          console.log('[App] ✅ AsyncStorage initialisé avec succès');
-        } else {
-          console.warn('[App] ⚠️ AsyncStorage non disponible (l\'app continuera sans persistance locale)');
-        }
-      } catch (error) {
-        console.error('[App] ⚠️ Erreur initialisation AsyncStorage:', error);
-      }
-    })();
 
     try {
       if (typeof initObservability === 'function') {
@@ -149,44 +138,48 @@ export default function App() {
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <ThemeProvider>
-            <PaperProvider theme={theme}>
-              <ToasterProvider>
-                <LanguageProvider>
-                  <LocationProvider>
-                    <AuthProvider>
-                      <RemoteLoggingInitializer />
-                      <WebSocketProvider>
-                        <FeatureFlagProvider>
-                          <DeliveryProvider>
-                            <ShoppingProvider>
-                              <StatusBar style="auto" />
-                              <GPSTrackingManager />
-                              <NavigationContainer
-                                linking={linking}
-                                fallback={null}
-                                onReady={() => {
-                                  console.log('[NavigationContainer] ✅ Navigation prête avec Deep Linking');
-                                }}
-                                onStateChange={() => {
-                                  console.log('[NavigationContainer] 📍 Navigation changée');
-                                }}
-                                onUnhandledAction={(action: any) => {
-                                  console.warn('[NavigationContainer] ⚠️ Action non gérée:', action);
-                                }}
-                              >
-                                <AppNavigator />
-                              </NavigationContainer>
-                            </ShoppingProvider>
-                          </DeliveryProvider>
-                        </FeatureFlagProvider>
-                      </WebSocketProvider>
-                    </AuthProvider>
-                  </LocationProvider>
-                </LanguageProvider>
-              </ToasterProvider>
-            </PaperProvider>
-          </ThemeProvider>
+          {/* ✅ CRITIQUE: AsyncStorageGate bloque le rendu jusqu'à ce qu'AsyncStorage soit prêt */}
+          {/* Cela garantit qu'aucun provider n'appelle SafeStorage avant l'initialisation */}
+          <AsyncStorageGate>
+            <ThemeProvider>
+              <PaperProvider theme={theme}>
+                <ToasterProvider>
+                  <LanguageProvider>
+                    <LocationProvider>
+                      <AuthProvider>
+                        <RemoteLoggingInitializer />
+                        <WebSocketProvider>
+                          <FeatureFlagProvider>
+                            <DeliveryProvider>
+                              <ShoppingProvider>
+                                <StatusBar style="auto" />
+                                <GPSTrackingManager />
+                                <NavigationContainer
+                                  linking={linking}
+                                  fallback={null}
+                                  onReady={() => {
+                                    console.log('[NavigationContainer] ✅ Navigation prête avec Deep Linking');
+                                  }}
+                                  onStateChange={() => {
+                                    console.log('[NavigationContainer] 📍 Navigation changée');
+                                  }}
+                                  onUnhandledAction={(action: any) => {
+                                    console.warn('[NavigationContainer] ⚠️ Action non gérée:', action);
+                                  }}
+                                >
+                                  <AppNavigator />
+                                </NavigationContainer>
+                              </ShoppingProvider>
+                            </DeliveryProvider>
+                          </FeatureFlagProvider>
+                        </WebSocketProvider>
+                      </AuthProvider>
+                    </LocationProvider>
+                  </LanguageProvider>
+                </ToasterProvider>
+              </PaperProvider>
+            </ThemeProvider>
+          </AsyncStorageGate>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>

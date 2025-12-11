@@ -4,8 +4,8 @@
  * ✅ MIGRÉ VERS REANIMATED 3 pour meilleures performances
  */
 
-import React, { useRef } from 'react';
-import { StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,

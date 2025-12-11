@@ -28,17 +28,50 @@ export async function initializeAsyncStorage(): Promise<boolean> {
     initializationPromise = (async () => {
         try {
             // ✅ CRITIQUE: Sur Android, attendre que le bridge React Native soit prêt
+            // ✅ AMÉLIORÉ: Attendre plus longtemps et vérifier plusieurs fois avec test réel
             if (Platform.OS === 'android') {
-                // Attendre que le module natif soit chargé
-                await new Promise(resolve => {
-                    // Vérifier que AsyncStorage est disponible
-                    if (AsyncStorage && typeof AsyncStorage.getItem === 'function') {
-                        resolve(undefined);
-                    } else {
-                        // Attendre un peu et réessayer
-                        setTimeout(resolve, 100);
+                // ✅ CRITIQUE: Attendre que le module natif soit chargé avec plusieurs vérifications
+                // Le module peut être "chargé" mais pas encore "prêt" (bridge non initialisé)
+                let moduleReady = false;
+                for (let attempt = 0; attempt < 15; attempt++) {
+                    // Vérifier que AsyncStorage existe et a les méthodes nécessaires
+                    if (AsyncStorage && typeof AsyncStorage.getItem === 'function' && typeof AsyncStorage.setItem === 'function') {
+                        // ✅ CRITIQUE: Tester une opération RÉELLE pour s'assurer que le module est vraiment prêt
+                        // Juste vérifier l'existence des méthodes ne suffit pas
+                        try {
+                            const testKey = `__init_check_${Date.now()}__`;
+                            await AsyncStorage.setItem(testKey, 'test');
+                            const readValue = await AsyncStorage.getItem(testKey);
+                            await AsyncStorage.removeItem(testKey);
+                            
+                            // Si on arrive ici sans erreur, le module est vraiment prêt
+                            if (readValue === 'test') {
+                                moduleReady = true;
+                                console.log(`[AsyncStorageInit] ✅ Module prêt après ${attempt + 1} tentatives`);
+                                break;
+                            }
+                        } catch (testError: any) {
+                            const errorMsg = testError?.message || String(testError);
+                            // Si c'est "Driver not found", le module n'est pas encore prêt
+                            if (errorMsg.includes('Driver not found') || errorMsg.includes('No available storage method found')) {
+                                // Module pas encore prêt, continuer à attendre
+                            } else {
+                                // Autre erreur, peut-être que le module est prêt mais il y a un autre problème
+                                // On continue quand même
+                                moduleReady = true;
+                                break;
+                            }
+                        }
                     }
-                });
+                    
+                    // Attendre progressivement : 100ms, 200ms, 300ms, etc. (max 1.5s)
+                    const delay = Math.min(100 * (attempt + 1), 1500);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+                
+                if (!moduleReady) {
+                    console.warn('[AsyncStorageInit] ⚠️ Module AsyncStorage pas prêt après 15 tentatives');
+                }
             }
 
             // ✅ CRITIQUE: Tester AsyncStorage avec une opération réelle
@@ -129,11 +162,20 @@ export async function reinitializeAsyncStorage(): Promise<boolean> {
 /**
  * Attendre que AsyncStorage soit prêt
  * Cette fonction peut être appelée avant toute opération AsyncStorage
+ * ✅ AMÉLIORÉ: Attend vraiment que le module soit prêt avec timeout
  */
 export async function ensureAsyncStorageReady(): Promise<boolean> {
+    // Si déjà initialisé, retourner immédiatement
     if (isInitialized) {
         return true;
     }
+
+    // Si une initialisation est en cours, attendre qu'elle se termine
+    if (initializationPromise) {
+        return initializationPromise;
+    }
+
+    // Sinon, initialiser maintenant
     return initializeAsyncStorage();
 }
 

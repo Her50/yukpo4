@@ -2,7 +2,18 @@
 import * as ReactNavigation from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { Suspense, useReducer } from 'react';
-import ReactNative from 'react-native';
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Modal,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import { AnimatedCard } from '../components/AnimatedCard'; // ✅ NOUVEAU: Animations d'entrée automatiques
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
@@ -150,7 +161,7 @@ import { offlineService } from '../services/offlineService';
 import pushNotificationService from '../services/pushNotificationService';
 // ✅ ShareServiceModal existe déjà dans ../components/ShareServiceModal.tsx
 
-const { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform, RefreshControl, FlatList, ActivityIndicator } = ReactNative;
+// ✅ CORRIGÉ: Tous les composants sont importés directement depuis react-native
 
 // ✅ Dimensions statiques pour les styles (seront remplacées dynamiquement par useDeviceOrientation)
 const { width: STATIC_WIDTH, height: STATIC_HEIGHT } = Dimensions.get('window');
