@@ -283,40 +283,42 @@ export const AdvancedTimelineEditor: React.FC<AdvancedTimelineEditorProps> = ({
             </View>
 
             {/* Éditeurs modaux */}
-            {editingKeyframe && (
-                <KeyframeEditor
-                    visible={!!editingKeyframe}
-                    keyframes={
-                        timeline.tracks
-                            .flatMap((t) => t.clips)
-                            .find((c) => c.id === editingKeyframe.clipId)
-                            ?.properties[editingKeyframe.property as keyof typeof timeline.tracks[0].clips[0].properties] || []
-                    }
-            propertyName={editingKeyframe.property}
-            onClose={() => setEditingKeyframe(null)}
-            onSave={(keyframes) => {
-                const updated = {
-                    ...timeline,
-                    tracks: timeline.tracks.map((track) => ({
-                        ...track,
-                        clips: track.clips.map((clip) =>
-                            clip.id === editingKeyframe.clipId
-                                ? {
-                                    ...clip,
-                                    properties: {
-                                        ...clip.properties,
-                                        [editingKeyframe.property]: keyframes,
-                                    },
-                                }
-                                : clip
-                        ),
-                    })),
-                };
-                handleTimelineChange(updated);
-                setEditingKeyframe(null);
-            }}
-                />
-            )}
+            {editingKeyframe && (() => {
+                const clip = timeline.tracks
+                    .flatMap((t) => t.clips)
+                    .find((c) => c.id === editingKeyframe.clipId);
+                const keyframes = clip?.properties[editingKeyframe.property as keyof typeof clip.properties] || [];
+                
+                return (
+                    <KeyframeEditor
+                        visible={!!editingKeyframe}
+                        keyframes={Array.isArray(keyframes) ? keyframes : []}
+                        propertyName={editingKeyframe.property}
+                        onClose={() => setEditingKeyframe(null)}
+                        onSave={(savedKeyframes) => {
+                            const updated = {
+                                ...timeline,
+                                tracks: timeline.tracks.map((track) => ({
+                                    ...track,
+                                    clips: track.clips.map((c) =>
+                                        c.id === editingKeyframe.clipId
+                                            ? {
+                                                ...c,
+                                                properties: {
+                                                    ...c.properties,
+                                                    [editingKeyframe.property]: savedKeyframes,
+                                                },
+                                            }
+                                            : c
+                                    ),
+                                })),
+                            };
+                            handleTimelineChange(updated);
+                            setEditingKeyframe(null);
+                        }}
+                    />
+                );
+            })()}
         </View>
     );
 };
