@@ -2311,7 +2311,8 @@ const MesProduitsScreen: React.FC = () => {
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
-                onScroll={scrollHandler} {/* ✅ MIGRÉ: Utilise useAnimatedScrollHandler de Reanimated */}
+                {/* ✅ MIGRÉ: Utilise useAnimatedScrollHandler de Reanimated */}
+                onScroll={scrollHandler}
                 scrollEventThrottle={16}
             >
                 {!Array.isArray(filteredProducts) || filteredProducts.length === 0 ? (

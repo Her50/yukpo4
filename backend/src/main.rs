@@ -835,15 +835,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         } else {
                             log::warn!("⚠️ Erreur refresh global_promo_catalog_cache: {}", e);
                         }
-                } else {
-                    let elapsed = start_time.elapsed();
-                    log::debug!("✅ global_promo_catalog_cache refreshed en {:?}", elapsed);
-                    // ✅ OPTIMISÉ: Logger un debug si le refresh prend plus de 1 seconde (pas un warning)
-                    if elapsed.as_millis() > 1000 {
-                        log::debug!(
-                            "ℹ️ Refresh global_promo_catalog_cache lent: {:?} (> 1s)",
-                            elapsed
-                        );
+                    } else {
+                        let elapsed = start_time.elapsed();
+                        log::debug!("✅ global_promo_catalog_cache refreshed en {:?}", elapsed);
+                        // ✅ OPTIMISÉ: Logger un debug si le refresh prend plus de 1 seconde (pas un warning)
+                        if elapsed.as_millis() > 1000 {
+                            log::debug!(
+                                "ℹ️ Refresh global_promo_catalog_cache lent: {:?} (> 1s)",
+                                elapsed
+                            );
+                        }
                     }
                 }
             } else {
