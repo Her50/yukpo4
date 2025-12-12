@@ -2306,7 +2306,6 @@ const MesProduitsScreen: React.FC = () => {
                 </View>
             </Animated.View>
 
-            {/* ✅ MIGRÉ: Utilise useAnimatedScrollHandler de Reanimated */}
             <Animated.ScrollView
                 contentContainerStyle={[styles.scrollContent, { paddingTop: headerHeight + 16 }]}
                 refreshControl={
