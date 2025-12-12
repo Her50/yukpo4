@@ -12,6 +12,7 @@ interface SafeNativeViewProps {
     edges?: ('top' | 'bottom' | 'left' | 'right')[];
     backgroundColor?: string;
     testID?: string;
+    pointerEvents?: 'auto' | 'none' | 'box-none' | 'box-only';
 }
 
 export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
@@ -20,6 +21,7 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
     edges = ['top', 'bottom', 'left', 'right'],
     backgroundColor = '#FFFFFF',
     testID,
+    pointerEvents,
 }) => {
     // ✅ DEBUG: Logger les children pour identifier les problèmes (TOUJOURS activé pour capturer les erreurs)
     React.useEffect(() => {
@@ -69,7 +71,7 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
     const safeChildren = React.useMemo(() => cleanChildren(children, 'SafeNativeView'), [children]);
 
     return (
-        <View style={containerStyle} testID={testID}>
+        <View style={containerStyle} testID={testID} pointerEvents={pointerEvents}>
             {safeChildren}
         </View>
     );
