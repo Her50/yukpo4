@@ -46,7 +46,10 @@ export async function initializeAsyncStorage(): Promise<boolean> {
             }
 
             if (!bridgeReady) {
-                console.warn('[AsyncStorageInit] ⚠️ Bridge React Native pas prêt après 5 secondes');
+                // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                if (__DEV__) {
+                    console.log('[AsyncStorageInit] ⏱️ Bridge React Native pas prêt après 5 secondes (non-bloquant)');
+                }
             }
 
             // ✅ CRITIQUE: Attendre un peu plus pour que les modules natifs soient complètement chargés
@@ -89,7 +92,10 @@ export async function initializeAsyncStorage(): Promise<boolean> {
                 const errorMsg = testError?.message || String(testError);
 
                 if (errorMsg.includes('Driver not found') || errorMsg.includes('No available storage method found')) {
-                    console.warn('[AsyncStorageInit] ⚠️ Erreur "Driver not found", réessai avec délai progressif...');
+                    // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                    if (__DEV__) {
+                        console.log('[AsyncStorageInit] ⏱️ Erreur "Driver not found", réessai avec délai progressif...');
+                    }
 
                     // ✅ CRITIQUE: Réessayer plusieurs fois avec délai progressif
                     // Sur Android, le module peut avoir besoin de plus de temps
@@ -99,7 +105,10 @@ export async function initializeAsyncStorage(): Promise<boolean> {
                             ? Math.min(500 * (retry + 1), 2000)  // 500ms, 1000ms, 1500ms, 2000ms, 2000ms
                             : Math.min(300 * (retry + 1), 1000);  // 300ms, 600ms, 900ms
                         
-                        console.warn(`[AsyncStorageInit] ⚠️ Tentative ${retry + 1}/${maxRetries}, attente ${delay}ms...`);
+                        // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                        if (__DEV__) {
+                            console.log(`[AsyncStorageInit] ⏱️ Tentative ${retry + 1}/${maxRetries}, attente ${delay}ms...`);
+                        }
                         await new Promise(resolve => setTimeout(resolve, delay));
 
                         // Réessayer
@@ -118,7 +127,10 @@ export async function initializeAsyncStorage(): Promise<boolean> {
                             if (retry === maxRetries - 1) {
                                 console.error('[AsyncStorageInit] ❌ Erreur après tous les retries:', retryErrorMsg);
                             } else {
-                                console.warn(`[AsyncStorageInit] ⚠️ Erreur tentative ${retry + 1}:`, retryErrorMsg);
+                                // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                                if (__DEV__) {
+                                    console.log(`[AsyncStorageInit] ⏱️ Erreur tentative ${retry + 1} (non-bloquant):`, retryErrorMsg);
+                                }
                             }
                         }
                     }

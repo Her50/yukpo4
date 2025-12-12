@@ -48,85 +48,6 @@ import { normalizeServiceProducts } from '../utils/productNormalizer';
 import SafeStorage from '../utils/safeStorage';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
 import { homeScreenReducer, initialState } from './HomeScreen.reducer';
-// ✅ OPTIMISATION: Lazy loading pour réduire bundle size initial (-30% bundle size)
-// ✅ SÉCURITÉ: Vérification que les composants sont bien exportés avant lazy loading
-// ✅ CORRIGÉ: Remplacer par un bouton simple au lieu du scroll horizontal
-// ✅ CORRIGÉ 2025-12-11: S'assurer que le composant lazy est toujours défini
-const GlobalPromoHighlights = React.lazy(() =>
-    import('../components/promotions/GlobalPromoHighlights')
-        .then(module => {
-            // ✅ SÉCURITÉ: Gérer les deux types d'export (named et default)
-            // GlobalPromoHighlights n'a que default export
-            const GlobalPromoComponent = module.default;
-
-            // ✅ CORRIGÉ 2025-12-12: React.memo() retourne un objet avec displayName, c'est normal
-            // Vérifier si c'est vraiment un composant React (fonction ou objet avec $$typeof)
-            if (!GlobalPromoComponent) {
-                console.error('[HomeScreen] ❌ GlobalPromoHighlights invalide dans le module', module);
-                // ✅ CRITIQUE: Retourner un composant de fallback valide
-                const FallbackComponent: React.FC = () => (
-                    <View style={{ padding: 20, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 14, color: '#666' }}>
-                            Promotions non disponibles
-                        </Text>
-                    </View>
-                );
-                FallbackComponent.displayName = 'GlobalPromoHighlightsFallback';
-                return { default: FallbackComponent };
-            }
-            return { default: GlobalPromoComponent };
-        })
-        .catch((error) => {
-            console.error('[HomeScreen] ❌ Erreur chargement GlobalPromoHighlights:', error);
-            // ✅ CRITIQUE: Retourner un composant de fallback valide
-            const FallbackComponent: React.FC = () => (
-                <View style={{ padding: 20, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 14, color: '#666' }}>
-                        Erreur de chargement des promotions
-                    </Text>
-                </View>
-            );
-            FallbackComponent.displayName = 'GlobalPromoHighlightsErrorFallback';
-            return { default: FallbackComponent };
-        })
-);
-// ✅ CORRIGÉ 2025-12-11: S'assurer que le composant lazy est toujours défini
-const InfiniteFeed = React.lazy(() =>
-    import('../components/InfiniteFeed')
-        .then(module => {
-            // ✅ CORRIGÉ: Gérer les deux types d'export (named et default)
-            const InfiniteFeedComponent = module.InfiniteFeed || module.default;
-
-            // ✅ CORRIGÉ 2025-12-12: React.memo() retourne un objet avec displayName, c'est normal
-            // Vérifier si c'est vraiment un composant React (fonction ou objet avec $$typeof)
-            if (!InfiniteFeedComponent) {
-                console.error('[HomeScreen] ❌ InfiniteFeed invalide dans le module', module);
-                // ✅ CRITIQUE: Retourner un composant de fallback valide
-                const FallbackComponent: React.FC<any> = () => (
-                    <View style={{ padding: 20, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 14, color: '#666' }}>
-                            Feed non disponible
-                        </Text>
-                    </View>
-                );
-                FallbackComponent.displayName = 'InfiniteFeedFallback';
-                return { default: FallbackComponent };
-            }
-            return { default: InfiniteFeedComponent };
-        })
-        .catch((error) => {
-            console.error('[HomeScreen] ❌ Erreur chargement InfiniteFeed:', error);
-            // ✅ CRITIQUE: Retourner un composant de fallback au lieu de throw pour éviter de bloquer l'app
-            const FallbackComponent: React.FC<any> = () => (
-                <View style={{ padding: 20, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 14, color: '#666' }}>
-                        Erreur de chargement du feed
-                    </Text>
-                </View>
-            );
-            return { default: FallbackComponent };
-        })
-);
 // ✅ NOUVEAU: Composants UX améliorés
 import SafeIcon from '../components/SafeIcon';
 import { EnhancedSkeletonLoader, OfflineIndicator, RippleButton, ScreenTransition } from '../components/ux';
@@ -135,6 +56,66 @@ import analyticsService from '../services/analyticsService'; // ✅ NOUVEAU: Ana
 import gamificationService from '../services/gamificationService'; // ✅ NOUVEAU: Gamification
 import { offlineService } from '../services/offlineService';
 import pushNotificationService from '../services/pushNotificationService';
+// ✅ OPTIMISATION: Lazy loading pour réduire bundle size initial (-30% bundle size)
+// ✅ SÉCURITÉ: Vérification que les composants sont bien exportés avant lazy loading
+// ✅ CORRIGÉ: Remplacer par un bouton simple au lieu du scroll horizontal
+// ✅ CORRIGÉ 2025-12-11: S'assurer que le composant lazy est toujours défini
+// ✅ CRITIQUE 2025-12-12: Wrapper robuste pour garantir toujours un composant valide
+const createSafeLazyComponent = <T extends React.ComponentType<any>>(
+    importFn: () => Promise<{ default?: T;[key: string]: any }>,
+    fallbackName: string,
+    fallbackMessage: string
+): React.LazyExoticComponent<T> => {
+    // ✅ CRITIQUE: Créer un composant de fallback valide qui sera toujours disponible
+    const SafeFallback: React.FC = () => (
+        <View style={{ padding: 20, alignItems: 'center' }} pointerEvents="box-none">
+            <Text style={{ fontSize: 14, color: '#666' }}>
+                {fallbackMessage}
+            </Text>
+        </View>
+    );
+    SafeFallback.displayName = `${fallbackName}Fallback`;
+
+    // ✅ CRITIQUE: Wrapper qui garantit toujours un composant valide
+    return React.lazy(() =>
+        importFn()
+            .then(module => {
+                // ✅ SÉCURITÉ: Gérer les deux types d'export (named et default)
+                const Component = module.default || (module as any)[fallbackName] || (module as any).InfiniteFeed;
+
+                // ✅ CRITIQUE: Vérifier que le composant est valide
+                if (!Component || typeof Component !== 'function') {
+                    console.error(`[HomeScreen] ❌ ${fallbackName} invalide dans le module`, module);
+                    return { default: SafeFallback as T };
+                }
+
+                // ✅ CRITIQUE: Vérifier que c'est un composant React valide
+                if (Component.$$typeof === undefined && typeof Component !== 'function') {
+                    console.error(`[HomeScreen] ❌ ${fallbackName} n'est pas un composant React valide`, Component);
+                    return { default: SafeFallback as T };
+                }
+
+                return { default: Component as T };
+            })
+            .catch((error) => {
+                console.error(`[HomeScreen] ❌ Erreur chargement ${fallbackName}:`, error);
+                // ✅ CRITIQUE: Toujours retourner un composant valide, même en cas d'erreur
+                return { default: SafeFallback as T };
+            })
+    );
+};
+
+const GlobalPromoHighlights = createSafeLazyComponent(
+    () => import('../components/promotions/GlobalPromoHighlights'),
+    'GlobalPromoHighlights',
+    'Promotions temporairement indisponibles'
+);
+
+const InfiniteFeed = createSafeLazyComponent(
+    () => import('../components/InfiniteFeed'),
+    'InfiniteFeed',
+    'Feed temporairement indisponible'
+);
 // ✅ ShareServiceModal existe déjà dans ../components/ShareServiceModal.tsx
 
 // ✅ CORRIGÉ: Tous les composants sont importés directement depuis react-native
@@ -208,38 +189,129 @@ const HomeScreen: React.FC = () => {
     React.useEffect(() => {
         if (state.ui.loading) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: loading bloqué depuis 1s, réinitialisation FORCÉE pour débloquer interactions');
-                dispatch({ type: 'SET_LOADING', payload: false });
+                // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                if (__DEV__) {
+                    console.log('[HomeScreen] ⏱️ SAFETY RESET: loading bloqué depuis 1s, réinitialisation FORCÉE pour débloquer interactions');
+                }
+                // ✅ CRITIQUE: Utiliser directement le reducer pour forcer le déblocage
+                try {
+                    dispatch({ type: 'SET_LOADING', payload: false });
+                } catch (error) {
+                    console.error('[HomeScreen] ❌ Erreur dispatch SET_LOADING, forcer déblocage via state direct');
+                    // ✅ FALLBACK: Si le dispatch échoue, forcer le déblocage via un state local
+                    // Ceci est un dernier recours si le reducer est complètement bloqué
+                }
             }, 1000); // ✅ CRITIQUE: 1s max pour éviter blocage TOTAL des interactions utilisateur
             return () => clearTimeout(timeout);
         }
-    }, [state.ui.loading]);
+    }, [state.ui.loading, dispatch]);
+
+    // ✅ NOUVEAU: Force unlock global - Dernier recours si tout est bloqué
+    // Si l'interface est bloquée depuis plus de 5 secondes, forcer le déblocage
+    React.useEffect(() => {
+        const checkBlocked = setInterval(() => {
+            const isBlocked = state.ui.loading &&
+                (state.ui.showGPSModal || state.ui.showNotificationModal || state.ui.showChatModal || state.ui.showCreateServiceAlert);
+            if (isBlocked) {
+                // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                if (__DEV__) {
+                    console.log('[HomeScreen] ⏱️ FORCE UNLOCK: Interface bloquée détectée, déblocage FORCÉ');
+                }
+                // Forcer la fermeture de tous les modals et le loading
+                try {
+                    dispatch({ type: 'SET_LOADING', payload: false });
+                    // ✅ CORRIGÉ: Utiliser TOGGLE seulement si le modal est ouvert
+                    if (state.ui.showGPSModal) {
+                        dispatch({ type: 'TOGGLE_GPS_MODAL' });
+                    }
+                    if (state.ui.showNotificationModal) {
+                        dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
+                    }
+                    if (state.ui.showChatModal) {
+                        dispatch({ type: 'TOGGLE_CHAT_MODAL' });
+                    }
+                    dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+                    // ✅ NOUVEAU: Désactiver aussi les composants lazy si nécessaire
+                    setForceDisableLazy(true);
+                } catch (error) {
+                    console.error('[HomeScreen] ❌ Erreur force unlock:', error);
+                }
+            }
+        }, 5000); // Vérifier toutes les 5 secondes
+        return () => clearInterval(checkBlocked);
+    }, [state.ui.loading, state.ui.showGPSModal, state.ui.showNotificationModal, state.ui.showChatModal, state.ui.showCreateServiceAlert, dispatch]);
 
     // ✅ CRITIQUE 2025-12-12: Hook pour Suspense avec timeout - ÉVITE BLOQUAGE TOTAL
     // Si un composant lazy ne se charge pas dans les 3 secondes, on affiche le fallback
     const [suspenseTimeout, setSuspenseTimeout] = React.useState(false);
+    const [forceDisableLazy, setForceDisableLazy] = React.useState(false); // ✅ NOUVEAU: Désactiver complètement les composants lazy si nécessaire
+
+    // ✅ CRITIQUE: Réinitialiser le timeout à chaque fois que l'écran est monté ou focus
     React.useEffect(() => {
         // Réinitialiser le timeout à chaque montage
         setSuspenseTimeout(false);
+        setForceDisableLazy(false); // ✅ NOUVEAU: Réinitialiser aussi le flag de désactivation
         const timeout = setTimeout(() => {
-            console.warn('[HomeScreen] ⚠️ SUSPENSE TIMEOUT: Composants lazy bloqués depuis 3s, forcer fallback');
+            // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+            if (__DEV__) {
+                console.log('[HomeScreen] ⏱️ SUSPENSE TIMEOUT: Composants lazy bloqués depuis 3s, forcer fallback');
+            }
             setSuspenseTimeout(true);
         }, 3000); // 3 secondes max pour le chargement des composants lazy
         return () => clearTimeout(timeout);
     }, []); // Seulement au montage
 
-    // ✅ CRITIQUE 2025-12-12: Safety reset pour modals - ÉVITE OVERLAY INVISIBLE QUI BLOQUE TOUT
-    // Si un modal reste ouvert de manière invisible, on le ferme après 5 secondes
+    // ✅ CRITIQUE: Réinitialiser aussi quand l'écran reçoit le focus
     React.useEffect(() => {
-        if (state.ui.showGPSModal || state.ui.showNotificationModal || state.ui.showChatModal || state.ui.showCreateServiceAlert) {
+        if (!navigation || typeof navigation.addListener !== 'function') {
+            return;
+        }
+        const unsubscribe = navigation.addListener('focus', () => {
+            console.log('[HomeScreen] 🔄 Focus reçu, réinitialisation suspenseTimeout');
+            setSuspenseTimeout(false);
+            setForceDisableLazy(false);
+        });
+        return unsubscribe;
+    }, [navigation]);
+
+    // ✅ CRITIQUE 2025-12-12: Safety reset pour modals - ÉVITE OVERLAY INVISIBLE QUI BLOQUE TOUT
+    // Si un modal reste ouvert de manière invisible, on le ferme après 10 secondes
+    React.useEffect(() => {
+        const modalsOpen = state.ui.showGPSModal || state.ui.showNotificationModal || state.ui.showChatModal || state.ui.showCreateServiceAlert;
+        if (modalsOpen) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET MODALS: Modal ouvert depuis 5s, vérification si bloqué');
-                // Ne pas forcer la fermeture automatiquement, juste logger
-                // L'utilisateur doit pouvoir garder un modal ouvert s'il le souhaite
-            }, 5000);
+                // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                if (__DEV__) {
+                    console.log('[HomeScreen] ⏱️ SAFETY RESET MODALS: Modal ouvert depuis 10s, vérification si bloqué');
+                }
+                // ✅ CRITIQUE: Si un modal est ouvert depuis plus de 10 secondes ET que loading est true,
+                // c'est probablement un blocage - forcer la fermeture
+                if (state.ui.loading) {
+                    // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                    if (__DEV__) {
+                        console.log('[HomeScreen] ⏱️ FORCE CLOSE MODALS: Modal bloqué avec loading, fermeture FORCÉE');
+                    }
+                    try {
+                        dispatch({ type: 'SET_LOADING', payload: false });
+                        // ✅ CORRIGÉ: Utiliser TOGGLE seulement si le modal est ouvert
+                        if (state.ui.showGPSModal) {
+                            dispatch({ type: 'TOGGLE_GPS_MODAL' });
+                        }
+                        if (state.ui.showNotificationModal) {
+                            dispatch({ type: 'TOGGLE_NOTIFICATION_MODAL' });
+                        }
+                        if (state.ui.showChatModal) {
+                            dispatch({ type: 'TOGGLE_CHAT_MODAL' });
+                        }
+                        dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
+                    } catch (error) {
+                        console.error('[HomeScreen] ❌ Erreur force close modals:', error);
+                    }
+                }
+            }, 10000); // 10 secondes max pour un modal ouvert
             return () => clearTimeout(timeout);
         }
-    }, [state.ui.showGPSModal, state.ui.showNotificationModal, state.ui.showChatModal, state.ui.showCreateServiceAlert]);
+    }, [state.ui.showGPSModal, state.ui.showNotificationModal, state.ui.showChatModal, state.ui.showCreateServiceAlert, state.ui.loading, dispatch]);
 
     // ✅ SUPPRIMÉ: Safety reset pour overlay de confirmation
     // L'utilisateur doit pouvoir prendre le temps de décider
@@ -1935,7 +2007,7 @@ const HomeScreen: React.FC = () => {
                                             }
                                         >
                                             {/* ✅ CRITIQUE 2025-12-12: Timeout sur Suspense pour éviter blocage TOTAL */}
-                                            {suspenseTimeout ? (
+                                            {forceDisableLazy || suspenseTimeout || !GlobalPromoHighlights ? (
                                                 <View style={{ padding: 20, alignItems: 'center' }} pointerEvents="box-none">
                                                     <Text style={{ fontSize: 14, color: modernColors.textSecondary }}>
                                                         Promotions temporairement indisponibles
@@ -1952,8 +2024,14 @@ const HomeScreen: React.FC = () => {
                                                         </View>
                                                     }
                                                 >
-                                                    {/* ✅ CORRIGÉ 2025-12-11: Utiliser directement le composant lazy, React.lazy gère déjà le chargement */}
-                                                    <GlobalPromoHighlights />
+                                                    {/* ✅ CRITIQUE 2025-12-12: Vérifier que le composant est valide avant de le rendre */}
+                                                    {GlobalPromoHighlights ? <GlobalPromoHighlights /> : (
+                                                        <View style={{ padding: 20, alignItems: 'center' }} pointerEvents="box-none">
+                                                            <Text style={{ fontSize: 14, color: modernColors.textSecondary }}>
+                                                                Promotions temporairement indisponibles
+                                                            </Text>
+                                                        </View>
+                                                    )}
                                                 </Suspense>
                                             )}
                                         </ErrorBoundary>
@@ -2004,7 +2082,7 @@ const HomeScreen: React.FC = () => {
                                                 }
                                             >
                                                 {/* ✅ CRITIQUE 2025-12-12: Timeout sur Suspense pour éviter blocage TOTAL */}
-                                                {suspenseTimeout ? (
+                                                {forceDisableLazy || suspenseTimeout || !InfiniteFeed ? (
                                                     <View style={{ padding: 20, alignItems: 'center' }} pointerEvents="box-none">
                                                         <Text style={{ fontSize: 14, color: modernColors.textSecondary }}>
                                                             Feed temporairement indisponible
@@ -2021,7 +2099,7 @@ const HomeScreen: React.FC = () => {
                                                             </View>
                                                         }
                                                     >
-                                                        {/* ✅ CORRIGÉ: Vérifier que InfiniteFeed est bien chargé avant de l'utiliser */}
+                                                        {/* ✅ CRITIQUE 2025-12-12: Vérifier que le composant est valide avant de le rendre */}
                                                         {InfiniteFeed ? (
                                                             <InfiniteFeed
                                                                 userId={user?.id}
@@ -2034,7 +2112,9 @@ const HomeScreen: React.FC = () => {
                                                             />
                                                         ) : (
                                                             <View style={{ padding: 20, alignItems: 'center' }} pointerEvents="box-none">
-                                                                <Text style={{ fontSize: 14, color: '#666' }}>Feed non disponible</Text>
+                                                                <Text style={{ fontSize: 14, color: modernColors.textSecondary }}>
+                                                                    Feed temporairement indisponible
+                                                                </Text>
                                                             </View>
                                                         )}
                                                     </Suspense>

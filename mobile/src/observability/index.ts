@@ -88,8 +88,11 @@ const recordMetric = (name: string, value: number, unit: MetricUnit, tags?: Reco
                 data: { unit, ...tags },
             });
         } catch (error) {
-            // ✅ CRITIQUE: Ne pas bloquer si Sentry n'est pas disponible
-            console.warn('[observability] ⚠️ Erreur enregistrement métrique:', error);
+            // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+            // Sentry n'est pas critique pour le fonctionnement de l'app
+            if (__DEV__) {
+                console.log('[observability] ⏱️ Sentry non disponible pour métriques (non-bloquant)');
+            }
         }
     }
 };
@@ -125,7 +128,10 @@ const startFpsMonitor = () => {
                         'warning',
                     );
                 } catch (error) {
-                    console.warn('[observability] ⚠️ Erreur capture message FPS:', error);
+                    // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                    if (__DEV__) {
+                        console.log('[observability] ⏱️ Sentry non disponible pour FPS (non-bloquant)');
+                    }
                 }
             }
             lowFpsCounter = 0;
@@ -196,13 +202,22 @@ export const initObservability = () => {
                         Sentry.Native.setTag('eas.projectId', extra.eas.projectId);
                     }
                 } catch (nativeError) {
-                    console.warn('[observability] ⚠️ Sentry Native Client non disponible:', nativeError);
+                    // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                    if (__DEV__) {
+                        console.log('[observability] ⏱️ Sentry Native Client non disponible (non-bloquant)');
+                    }
                 }
             } else {
-                console.warn('[observability] ⚠️ Sentry Native Client non disponible, utilisation limitée');
+                // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                if (__DEV__) {
+                    console.log('[observability] ⏱️ Sentry Native Client non disponible, utilisation limitée (non-bloquant)');
+                }
             }
         } else {
-            console.warn('[observability] ⚠️ Sentry non disponible, observability désactivée');
+            // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+            if (__DEV__) {
+                console.log('[observability] ⏱️ Sentry non disponible, observability désactivée (non-bloquant)');
+            }
         }
 
         startFpsMonitor();
@@ -233,7 +248,10 @@ export const recordWebSocketStatusChange = (status: 'online' | 'offline', metada
                 data: metadata,
             });
         } catch (error) {
-            console.warn('[observability] ⚠️ Erreur enregistrement breadcrumb WebSocket:', error);
+            // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+            if (__DEV__) {
+                console.log('[observability] ⏱️ Sentry non disponible pour WebSocket (non-bloquant)');
+            }
         }
     }
 };
@@ -252,7 +270,10 @@ export const recordWebSocketReconnect = (attempt: number, delayMs: number) => {
                     attempt >= 5 ? 'error' : 'warning',
                 );
             } catch (error) {
-                console.warn('[observability] ⚠️ Erreur capture message WebSocket:', error);
+                // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+                if (__DEV__) {
+                    console.log('[observability] ⏱️ Sentry non disponible pour WebSocket reconnect (non-bloquant)');
+                }
             }
         }
     }
@@ -264,7 +285,10 @@ export const recordWebSocketError = (error: unknown) => {
         try {
             Sentry.Native.captureException(error);
         } catch (sentryError) {
-            console.warn('[observability] ⚠️ Erreur capture exception WebSocket:', sentryError);
+            // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+            if (__DEV__) {
+                console.log('[observability] ⏱️ Sentry non disponible pour WebSocket error (non-bloquant)');
+            }
         }
     }
 };
@@ -279,7 +303,10 @@ export const captureHandledError = (error: unknown, context?: Record<string, unk
         try {
             Sentry.Native.captureException(error, { extra: context });
         } catch (sentryError) {
-            console.warn('[observability] ⚠️ Erreur capture exception:', sentryError);
+            // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+            if (__DEV__) {
+                console.log('[observability] ⏱️ Sentry non disponible pour exception (non-bloquant)');
+            }
         }
     }
 };
@@ -326,7 +353,10 @@ export const recordPreviewMetrics = (payload: PreviewMetricPayload) => {
                 },
             });
         } catch (error) {
-            console.warn('[observability] ⚠️ Erreur enregistrement breadcrumb preview:', error);
+            // ✅ REDUIT: Ne logger que si vraiment nécessaire (en dev uniquement)
+            if (__DEV__) {
+                console.log('[observability] ⏱️ Sentry non disponible pour preview (non-bloquant)');
+            }
         }
     }
 };
