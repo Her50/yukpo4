@@ -7,11 +7,17 @@ use crate::utils::log::log_info;
 use sqlx::PgPool;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 use tokio::time::interval;
 
 /// Démarre la tâche de rafraîchissement automatique de la vue matérialisée
 /// Utilise un pool séparé pour éviter de bloquer le pool principal avec des opérations longues (8-13s)
-pub async fn start_search_cache_refresh_task(pool_long_ops: Option<Arc<PgPool>>, fallback_pool: PgPool) {
+/// ✅ CORRIGÉ RACINE 2025-12-11: Ajoute mutex global pour sérialiser les refreshes
+pub async fn start_search_cache_refresh_task(
+    pool_long_ops: Option<Arc<PgPool>>,
+    fallback_pool: PgPool,
+    refresh_lock: Arc<Mutex<()>>,
+) {
     log_info("[SearchCacheRefresh] 🚀 Démarrage de la tâche de rafraîchissement automatique");
 
     // ✅ CORRIGÉ RACINE 2025-12-11: Utiliser le pool séparé pour opérations longues
@@ -39,6 +45,8 @@ pub async fn start_search_cache_refresh_task(pool_long_ops: Option<Arc<PgPool>>,
         loop {
             interval_timer.tick().await;
 
+            // ✅ CRITIQUE: Acquérir le mutex global AVANT le refresh pour sérialiser
+            let _lock = refresh_lock.lock().await;
             match refresh_materialized_view(&pool).await {
                 Ok(_) => {
                     log_info("[SearchCacheRefresh] ✅ Vue matérialisée rafraîchie avec succès");

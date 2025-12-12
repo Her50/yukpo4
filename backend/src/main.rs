@@ -56,9 +56,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Render PostgreSQL nécessite SSL/TLS pour toutes les connexions
     // Le vrai problème: Render ferme les connexions idle après ~5 minutes
     // Solution: Réduire max_lifetime à 4 minutes pour renouveler avant fermeture
-    let mut separator = if db_url.contains('?') { "&" } else { "?" };
-
     if !db_url.contains("sslmode=") {
+        let separator = if db_url.contains('?') { "&" } else { "?" };
         db_url.push_str(&format!("{}sslmode=require", separator));
         log::info!(
             "🔧 Paramètre sslmode=require ajouté à DATABASE_URL (requis pour Render PostgreSQL)"
@@ -83,19 +82,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     log::info!("🔌 Connexion à la base de données PostgreSQL...");
 
-    // ✅ Phase 1 - Optimisation Pool DB pour millions de livraisons simultanées
-    // ✅ OPTIMISÉ 2025-01-27: Pool augmenté pour scalabilité critique
-    // Pour gérer des millions de livraisons: 200-500 connexions par instance
-    // et déployer 4-8 instances avec load balancer
+    // ✅ CORRIGÉ RACINE 2025-12-11: Pool réduit pour éviter surcharge PostgreSQL
+    // Le problème: 300 connexions max surcharge Render PostgreSQL et cause des crashes
+    // Render PostgreSQL a une limite de ~50-100 connexions selon le plan
+    // Solution: Réduire à 50 max pour éviter les crashes "terminating connection because of crash"
     let max_connections: u32 = env::var("DB_POOL_SIZE")
-        .unwrap_or_else(|_| "300".to_string()) // ✅ OPTIMISÉ 2025-12-10: Augmenté à 300 pour réduire les timeouts d'acquisition
+        .unwrap_or_else(|_| "50".to_string()) // ✅ CORRIGÉ RACINE: Réduit de 300 à 50 pour éviter surcharge PostgreSQL
         .parse()
-        .unwrap_or(300);
+        .unwrap_or(50);
 
     let min_connections: u32 = env::var("DB_POOL_MIN_SIZE")
-        .unwrap_or_else(|_| "20".to_string()) // ✅ Phase 1: Augmenté à 20 (était 10)
+        .unwrap_or_else(|_| "5".to_string()) // ✅ CORRIGÉ RACINE: Réduit de 20 à 5 pour éviter surcharge au démarrage
         .parse()
-        .unwrap_or(20);
+        .unwrap_or(5);
 
     let acquire_timeout_secs: u64 = env::var("DB_ACQUIRE_TIMEOUT_SECS")
         .unwrap_or_else(|_| "30".to_string()) // ✅ Phase 1: Augmenté à 30s (était 15s)
@@ -197,10 +196,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Cela évite que les REFRESH MATERIALIZED VIEW bloquent le pool principal
     let long_ops_url = env::var("DATABASE_URL_LONG_OPS").unwrap_or_else(|_| db_url.clone());
     // ✅ CORRIGÉ RACINE 2025-12-11: Pool séparé pour opérations longues (REFRESH MATERIALIZED VIEW)
-    // Ces opérations prennent 3-13 secondes et ne doivent JAMAIS bloquer le pool principal
+    // ✅ CORRIGÉ RACINE: Réduit à 5 max pour éviter surcharge PostgreSQL (les refreshes doivent être sérialisés)
+    // Le problème: Plusieurs REFRESH MATERIALIZED VIEW simultanés surchargent PostgreSQL et causent des crashes
+    // Solution: Limiter à 5 connexions max et utiliser un mutex global pour sérialiser les refreshes
     let pg_pool_long_ops = match PgPoolOptions::new()
-        .max_connections(20) // ✅ AUGMENTÉ: 20 connexions pour gérer plusieurs refreshes simultanés (refresh_services_search_optimized: 13s, active_products_cache: 3-5s, etc.)
-        .min_connections(5) // ✅ AUGMENTÉ: Maintenir au moins 5 connexions prêtes pour éviter les latences
+        .max_connections(5) // ✅ CORRIGÉ RACINE: Réduit de 20 à 5 pour éviter surcharge (refreshes doivent être sérialisés)
+        .min_connections(2) // ✅ CORRIGÉ RACINE: Réduit de 5 à 2 pour éviter surcharge au démarrage
         .acquire_timeout(std::time::Duration::from_secs(120)) // ✅ Timeout plus long pour opérations longues
         .idle_timeout(Some(std::time::Duration::from_secs(300))) // ✅ CORRIGÉ: 5 min (réduit de 10 min) pour détecter tôt les connexions mortes
         .max_lifetime(Some(std::time::Duration::from_secs(240))) // ✅ CORRIGÉ: 4 min (réduit de 1h) pour renouveler AVANT que Render ne ferme (~5 min)
@@ -740,14 +741,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
     });
 
+    // ✅ CORRIGÉ RACINE 2025-12-11: Mutex GLOBAL pour sérialiser TOUS les REFRESH MATERIALIZED VIEW
+    // Le problème: Plusieurs REFRESH simultanés surchargent PostgreSQL et causent des crashes
+    // Solution: Un seul mutex global pour sérialiser tous les refreshes (un à la fois)
+    let refresh_lock_global = Arc::new(Mutex::new(()));
+
     // ✅ CORRIGÉ RACINE 2025-12-11: Refresh automatique de la vue matérialisée de recherche
     // Utilise le pool séparé pour éviter de bloquer le pool principal (refresh prend 8-13s)
     let pool_clone_search_cache = app_state.pg.clone();
     let pool_long_ops_search_cache = pg_pool_long_ops.as_ref().map(|p| Arc::new(p.clone()));
+    let refresh_lock_search = refresh_lock_global.clone();
     let _ = tokio::spawn(async move {
         tasks::search_cache_refresh::start_search_cache_refresh_task(
             pool_long_ops_search_cache,
             pool_clone_search_cache,
+            refresh_lock_search, // ✅ Passer le mutex global pour sérialiser
         ).await;
     });
 
@@ -756,6 +764,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Intervalle augmenté à 5 minutes (était 60s) pour réduire la charge
     let pool_clone_blackfriday = Arc::new(app_state.pg.clone());
     let pool_long_ops_blackfriday = pg_pool_long_ops.clone();
+    let refresh_lock_blackfriday = refresh_lock_global.clone(); // ✅ Utiliser le mutex global
     let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
 
@@ -781,6 +790,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         loop {
             interval_blackfriday.tick().await;
+            // ✅ CRITIQUE: Acquérir le mutex global AVANT le refresh pour sérialiser
+            let _lock = refresh_lock_blackfriday.lock().await;
             log::debug!("🔄 Refresh de global_promo_catalog_cache...");
             // PostgreSQL ne supporte pas IF EXISTS avec REFRESH MATERIALIZED VIEW CONCURRENTLY
             // Vérifier d'abord si la vue existe (utilise pool principal pour cette requête rapide)
@@ -792,22 +803,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap_or(false);
 
             if view_exists {
-                let start_time = std::time::Instant::now();
-                // ✅ CORRIGÉ RACINE: Utiliser pool séparé pour REFRESH (opération longue)
-                if let Err(e) =
-                    sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY global_promo_catalog_cache")
-                        .execute(&*pool_for_refresh)
-                        .await
-                {
-                    let error_str = e.to_string().to_lowercase();
-                    // ✅ CORRECTION: Ignorer silencieusement les erreurs attendues
-                    if error_str.contains("cannot refresh materialized view concurrently") {
-                        log::debug!("ℹ️ global_promo_catalog_cache déjà en cours de refresh");
-                    } else if error_str.contains("does not have a unique index") {
-                        log::warn!("⚠️ global_promo_catalog_cache nécessite un index unique pour REFRESH CONCURRENTLY");
-                    } else {
-                        log::warn!("⚠️ Erreur refresh global_promo_catalog_cache: {}", e);
-                    }
+                // ✅ CRITIQUE RACINE 2025-12-11: Vérifier que l'index unique existe AVANT d'exécuter REFRESH CONCURRENTLY
+                // Le problème: REFRESH CONCURRENTLY sans index unique peut causer des crashes PostgreSQL
+                let has_unique_index = sqlx::query_scalar::<_, bool>(
+                    "SELECT EXISTS (
+                        SELECT 1 FROM pg_indexes 
+                        WHERE tablename = 'global_promo_catalog_cache' 
+                        AND indexname = 'idx_global_promo_catalog_cache_entry_id'
+                    )"
+                )
+                .fetch_one(&*pool_clone_blackfriday)
+                .await
+                .unwrap_or(false);
+
+                if !has_unique_index {
+                    log::warn!("⚠️ global_promo_catalog_cache n'a pas d'index unique - REFRESH CONCURRENTLY ignoré (peut causer crash PostgreSQL)");
+                } else {
+                    let start_time = std::time::Instant::now();
+                    // ✅ CORRIGÉ RACINE: Utiliser pool séparé pour REFRESH (opération longue)
+                    if let Err(e) =
+                        sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY global_promo_catalog_cache")
+                            .execute(&*pool_for_refresh)
+                            .await
+                    {
+                        let error_str = e.to_string().to_lowercase();
+                        // ✅ CORRECTION: Ignorer silencieusement les erreurs attendues
+                        if error_str.contains("cannot refresh materialized view concurrently") {
+                            log::debug!("ℹ️ global_promo_catalog_cache déjà en cours de refresh");
+                        } else if error_str.contains("does not have a unique index") {
+                            log::warn!("⚠️ global_promo_catalog_cache nécessite un index unique pour REFRESH CONCURRENTLY");
+                        } else {
+                            log::warn!("⚠️ Erreur refresh global_promo_catalog_cache: {}", e);
+                        }
                 } else {
                     let elapsed = start_time.elapsed();
                     log::debug!("✅ global_promo_catalog_cache refreshed en {:?}", elapsed);
@@ -825,13 +852,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // ✅ CORRECTION RACINE: Refresh automatique des vues matérialisées avec mutex pour éviter refresh concurrents
+    // ✅ CORRECTION RACINE: Refresh automatique des vues matérialisées avec mutex GLOBAL pour éviter refresh concurrents
+    // ✅ CRITIQUE: Utiliser le mutex global créé plus haut pour sérialiser TOUS les refreshes
     let pool_clone_matviews = Arc::new(app_state.pg.clone());
-    // Mutex pour éviter les refresh concurrents de la même vue
-    // ✅ OPTIMISÉ 2025-12-10: Passer le pool longues opérations à la tâche de refresh
     let pool_long_ops_for_refresh = pg_pool_long_ops.clone();
-    let refresh_lock_services = Arc::new(Mutex::new(()));
-    let refresh_lock_products = Arc::new(Mutex::new(()));
+    let refresh_lock_services = refresh_lock_global.clone(); // Réutiliser le mutex global
+    let refresh_lock_products = refresh_lock_global.clone(); // Réutiliser le mutex global
     let _ = tokio::spawn(async move {
         use tokio::time::{interval, Duration};
 
@@ -860,29 +886,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .unwrap_or(false);
 
                     if view_exists {
-                        // ✅ OPTIMISÉ 2025-12-10: Utiliser pool séparé pour opérations longues
-                        if let Err(e) = sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_cache")
-                            .execute(&*pool_for_refresh)
-                            .await
-                        {
-                            let error_str = e.to_string().to_lowercase();
-                            // ✅ CORRECTION: Ignorer silencieusement les erreurs attendues
-                            if error_str.contains("cannot refresh materialized view concurrently") {
-                                log::debug!("ℹ️ services_search_cache déjà en cours de refresh");
-                            } else if error_str.contains("does not have a unique index") {
-                                log::warn!("⚠️ services_search_cache nécessite un index unique pour REFRESH CONCURRENTLY");
-                            } else if error_str.contains("peer closed connection")
-                                || error_str.contains("connection reset by peer")
-                                || error_str.contains("broken pipe")
-                                || error_str.contains("tls close_notify")
-                            {
-                                // ✅ OPTIMISATION: Logger en debug pour les erreurs de connexion DB attendues
-                                log::debug!("⚠️ Erreur connexion DB (ignorée) refresh services_search_cache: {}", e);
-                            } else {
-                                log::warn!("⚠️ Erreur refresh services_search_cache: {}", e);
-                            }
+                        // ✅ CRITIQUE RACINE 2025-12-11: Vérifier que l'index unique existe AVANT d'exécuter REFRESH CONCURRENTLY
+                        // Le problème: REFRESH CONCURRENTLY sans index unique peut causer des crashes PostgreSQL
+                        let has_unique_index = sqlx::query_scalar::<_, bool>(
+                            "SELECT EXISTS (
+                                SELECT 1 FROM pg_indexes 
+                                WHERE tablename = 'services_search_cache' 
+                                AND indexname = 'idx_services_search_cache_id_unique'
+                            )"
+                        )
+                        .fetch_one(&*pool_clone_matviews)
+                        .await
+                        .unwrap_or(false);
+
+                        if !has_unique_index {
+                            log::warn!("⚠️ services_search_cache n'a pas d'index unique - REFRESH CONCURRENTLY ignoré (peut causer crash PostgreSQL)");
                         } else {
-                            log::debug!("✅ services_search_cache refreshed");
+                            // ✅ OPTIMISÉ 2025-12-10: Utiliser pool séparé pour opérations longues
+                            if let Err(e) = sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY services_search_cache")
+                                .execute(&*pool_for_refresh)
+                                .await
+                            {
+                                let error_str = e.to_string().to_lowercase();
+                                // ✅ CORRECTION: Ignorer silencieusement les erreurs attendues
+                                if error_str.contains("cannot refresh materialized view concurrently") {
+                                    log::debug!("ℹ️ services_search_cache déjà en cours de refresh");
+                                } else if error_str.contains("does not have a unique index") {
+                                    log::warn!("⚠️ services_search_cache nécessite un index unique pour REFRESH CONCURRENTLY");
+                                } else if error_str.contains("peer closed connection")
+                                    || error_str.contains("connection reset by peer")
+                                    || error_str.contains("broken pipe")
+                                    || error_str.contains("tls close_notify")
+                                {
+                                    // ✅ OPTIMISATION: Logger en debug pour les erreurs de connexion DB attendues
+                                    log::debug!("⚠️ Erreur connexion DB (ignorée) refresh services_search_cache: {}", e);
+                                } else {
+                                    log::warn!("⚠️ Erreur refresh services_search_cache: {}", e);
+                                }
+                            } else {
+                                log::debug!("✅ services_search_cache refreshed");
+                            }
                         }
                     } else {
                         log::debug!("⚠️ Vue services_search_cache n'existe pas encore");
@@ -901,29 +944,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .unwrap_or(false);
 
                     if view_exists {
-                        // ✅ OPTIMISÉ 2025-12-10: Utiliser pool séparé pour opérations longues
-                        if let Err(e) = sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY active_products_cache")
-                            .execute(&*pool_for_refresh)
-                            .await
-                        {
-                            let error_str = e.to_string().to_lowercase();
-                            // ✅ CORRECTION: Ignorer silencieusement les erreurs attendues
-                            if error_str.contains("cannot refresh materialized view concurrently") {
-                                log::debug!("ℹ️ active_products_cache déjà en cours de refresh");
-                            } else if error_str.contains("does not have a unique index") {
-                                log::warn!("⚠️ active_products_cache nécessite un index unique pour REFRESH CONCURRENTLY");
-                            } else if error_str.contains("peer closed connection")
-                                || error_str.contains("connection reset by peer")
-                                || error_str.contains("broken pipe")
-                                || error_str.contains("tls close_notify")
-                            {
-                                // ✅ OPTIMISATION: Logger en debug pour les erreurs de connexion DB attendues
-                                log::debug!("⚠️ Erreur connexion DB (ignorée) refresh active_products_cache: {}", e);
-                            } else {
-                                log::warn!("⚠️ Erreur refresh active_products_cache: {}", e);
-                            }
+                        // ✅ CRITIQUE RACINE 2025-12-11: Vérifier que l'index unique existe AVANT d'exécuter REFRESH CONCURRENTLY
+                        // Le problème: REFRESH CONCURRENTLY sans index unique peut causer des crashes PostgreSQL
+                        let has_unique_index = sqlx::query_scalar::<_, bool>(
+                            "SELECT EXISTS (
+                                SELECT 1 FROM pg_indexes 
+                                WHERE tablename = 'active_products_cache' 
+                                AND indexname = 'idx_active_products_cache_id_unique'
+                            )"
+                        )
+                        .fetch_one(&*pool_clone_matviews)
+                        .await
+                        .unwrap_or(false);
+
+                        if !has_unique_index {
+                            log::warn!("⚠️ active_products_cache n'a pas d'index unique - REFRESH CONCURRENTLY ignoré (peut causer crash PostgreSQL)");
                         } else {
-                            log::debug!("✅ active_products_cache refreshed");
+                            // ✅ OPTIMISÉ 2025-12-10: Utiliser pool séparé pour opérations longues
+                            if let Err(e) = sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY active_products_cache")
+                                .execute(&*pool_for_refresh)
+                                .await
+                            {
+                                let error_str = e.to_string().to_lowercase();
+                                // ✅ CORRECTION: Ignorer silencieusement les erreurs attendues
+                                if error_str.contains("cannot refresh materialized view concurrently") {
+                                    log::debug!("ℹ️ active_products_cache déjà en cours de refresh");
+                                } else if error_str.contains("does not have a unique index") {
+                                    log::warn!("⚠️ active_products_cache nécessite un index unique pour REFRESH CONCURRENTLY");
+                                } else if error_str.contains("peer closed connection")
+                                    || error_str.contains("connection reset by peer")
+                                    || error_str.contains("broken pipe")
+                                    || error_str.contains("tls close_notify")
+                                {
+                                    // ✅ OPTIMISATION: Logger en debug pour les erreurs de connexion DB attendues
+                                    log::debug!("⚠️ Erreur connexion DB (ignorée) refresh active_products_cache: {}", e);
+                                } else {
+                                    log::warn!("⚠️ Erreur refresh active_products_cache: {}", e);
+                                }
+                            } else {
+                                log::debug!("✅ active_products_cache refreshed");
+                            }
                         }
                     } else {
                         log::debug!("⚠️ Vue active_products_cache n'existe pas encore");
