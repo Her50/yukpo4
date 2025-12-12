@@ -2306,12 +2306,12 @@ const MesProduitsScreen: React.FC = () => {
                 </View>
             </Animated.View>
 
+            {/* ✅ MIGRÉ: Utilise useAnimatedScrollHandler de Reanimated */}
             <Animated.ScrollView
                 contentContainerStyle={[styles.scrollContent, { paddingTop: headerHeight + 16 }]}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
-                {/* ✅ MIGRÉ: Utilise useAnimatedScrollHandler de Reanimated */}
                 onScroll={scrollHandler}
                 scrollEventThrottle={16}
             >
