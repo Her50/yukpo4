@@ -36,8 +36,8 @@ export async function initializeAsyncStorage(): Promise<boolean> {
             const { NativeModules } = require('react-native');
             let bridgeReady = false;
 
-            // Attendre jusqu'à 3 secondes que le bridge soit prêt
-            for (let attempt = 0; attempt < 30; attempt++) {
+            // ✅ CRITIQUE: Attendre jusqu'à 5 secondes que le bridge soit prêt (augmenté de 3s)
+            for (let attempt = 0; attempt < 50; attempt++) {
                 if (NativeModules && Object.keys(NativeModules).length > 0) {
                     bridgeReady = true;
                     break;
@@ -46,12 +46,13 @@ export async function initializeAsyncStorage(): Promise<boolean> {
             }
 
             if (!bridgeReady) {
-                console.warn('[AsyncStorageInit] ⚠️ Bridge React Native pas prêt après 3 secondes');
+                console.warn('[AsyncStorageInit] ⚠️ Bridge React Native pas prêt après 5 secondes');
             }
 
             // ✅ CRITIQUE: Attendre un peu plus pour que les modules natifs soient complètement chargés
             // Même si le bridge est prêt, les modules individuels peuvent avoir besoin de temps
-            await new Promise(resolve => setTimeout(resolve, Platform.OS === 'android' ? 300 : 100));
+            // ✅ AUGMENTÉ: Délai plus long pour Android qui a souvent besoin de plus de temps
+            await new Promise(resolve => setTimeout(resolve, Platform.OS === 'android' ? 500 : 200));
 
             // ✅ CRITIQUE: Vérifier que AsyncStorage est bien chargé comme module natif
             // Avec Expo, AsyncStorage devrait être automatiquement disponible, mais on vérifie quand même
@@ -88,27 +89,38 @@ export async function initializeAsyncStorage(): Promise<boolean> {
                 const errorMsg = testError?.message || String(testError);
 
                 if (errorMsg.includes('Driver not found') || errorMsg.includes('No available storage method found')) {
-                    console.warn('[AsyncStorageInit] ⚠️ Erreur "Driver not found", réessai avec délai...');
+                    console.warn('[AsyncStorageInit] ⚠️ Erreur "Driver not found", réessai avec délai progressif...');
 
-                    // ✅ CRITIQUE: Attendre plus longtemps pour que le module natif soit complètement initialisé
+                    // ✅ CRITIQUE: Réessayer plusieurs fois avec délai progressif
                     // Sur Android, le module peut avoir besoin de plus de temps
-                    const delay = Platform.OS === 'android' ? 800 : 300;
-                    await new Promise(resolve => setTimeout(resolve, delay));
+                    const maxRetries = Platform.OS === 'android' ? 5 : 3;
+                    for (let retry = 0; retry < maxRetries; retry++) {
+                        const delay = Platform.OS === 'android' 
+                            ? Math.min(500 * (retry + 1), 2000)  // 500ms, 1000ms, 1500ms, 2000ms, 2000ms
+                            : Math.min(300 * (retry + 1), 1000);  // 300ms, 600ms, 900ms
+                        
+                        console.warn(`[AsyncStorageInit] ⚠️ Tentative ${retry + 1}/${maxRetries}, attente ${delay}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
 
-                    // Réessayer une fois
-                    try {
-                        await AsyncStorage.setItem(testKey, testValue);
-                        const readValue = await AsyncStorage.getItem(testKey);
-                        await AsyncStorage.removeItem(testKey);
+                        // Réessayer
+                        try {
+                            await AsyncStorage.setItem(testKey, testValue);
+                            const readValue = await AsyncStorage.getItem(testKey);
+                            await AsyncStorage.removeItem(testKey);
 
-                        if (readValue === testValue) {
-                            isInitialized = true;
-                            console.log('[AsyncStorageInit] ✅ AsyncStorage initialisé après retry');
-                            return true;
+                            if (readValue === testValue) {
+                                isInitialized = true;
+                                console.log(`[AsyncStorageInit] ✅ AsyncStorage initialisé après ${retry + 1} tentatives`);
+                                return true;
+                            }
+                        } catch (retryError: any) {
+                            const retryErrorMsg = retryError?.message || String(retryError);
+                            if (retry === maxRetries - 1) {
+                                console.error('[AsyncStorageInit] ❌ Erreur après tous les retries:', retryErrorMsg);
+                            } else {
+                                console.warn(`[AsyncStorageInit] ⚠️ Erreur tentative ${retry + 1}:`, retryErrorMsg);
+                            }
                         }
-                    } catch (retryError) {
-                        console.error('[AsyncStorageInit] ❌ Erreur après retry:', retryError);
-                        // Ne pas throw ici, on va retourner false plus bas
                     }
                 }
 

@@ -18,12 +18,31 @@ export const AsyncStorageGate: React.FC<AsyncStorageGateProps> = ({ children }) 
 
     useEffect(() => {
         let isMounted = true;
+        let timeoutId: NodeJS.Timeout | null = null;
 
         const initialize = async () => {
             try {
+                // ✅ CRITIQUE: Ajouter un timeout pour éviter le blocage indéfini
+                // Si AsyncStorage ne s'initialise pas en 10 secondes, on continue quand même
+                const timeoutPromise = new Promise<boolean>((resolve) => {
+                    timeoutId = setTimeout(() => {
+                        console.warn('[AsyncStorageGate] ⚠️ Timeout initialisation AsyncStorage (10s), continuation sans AsyncStorage');
+                        resolve(false);
+                    }, 10000); // 10 secondes max
+                });
+
                 // ✅ CRITIQUE: Attendre que AsyncStorage soit vraiment prêt
                 // Cette fonction attend jusqu'à ce que le module natif soit initialisé
-                const ready = await ensureAsyncStorageReady();
+                const readyPromise = ensureAsyncStorageReady();
+                
+                // Race entre l'initialisation et le timeout
+                const ready = await Promise.race([readyPromise, timeoutPromise]);
+                
+                // Annuler le timeout si l'initialisation a réussi
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
                 
                 if (isMounted) {
                     if (ready) {
@@ -44,6 +63,11 @@ export const AsyncStorageGate: React.FC<AsyncStorageGateProps> = ({ children }) 
                     setIsReady(true);
                     setHasError(true);
                 }
+            } finally {
+                // Nettoyer le timeout si toujours actif
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
             }
         };
 
@@ -51,15 +75,24 @@ export const AsyncStorageGate: React.FC<AsyncStorageGateProps> = ({ children }) 
 
         return () => {
             isMounted = false;
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
         };
     }, []);
 
     // ✅ CRITIQUE: Ne pas rendre les providers tant qu'AsyncStorage n'est pas prêt
+    // MAIS avec timeout pour éviter le blocage indéfini
     if (!isReady) {
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color="#6366F1" />
                 <Text style={styles.text}>Initialisation...</Text>
+                {hasError && (
+                    <Text style={[styles.text, { color: '#EF4444', marginTop: 8 }]}>
+                        Mode sans persistance locale
+                    </Text>
+                )}
             </View>
         );
     }

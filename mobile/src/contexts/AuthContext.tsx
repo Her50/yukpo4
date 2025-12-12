@@ -59,30 +59,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Vérifier l'authentification au démarrage avec gestion d'erreur
   useEffect(() => {
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const initializeAuth = async () => {
       try {
+        // ✅ CRITIQUE: Ajouter un timeout de sécurité pour éviter le blocage indéfini
+        // Si checkAuthStatus prend plus de 8 secondes, on force loading à false
+        timeoutId = setTimeout(() => {
+          if (isMounted) {
+            console.warn('[AuthContext] ⚠️ Timeout initialisation auth (8s), continuation sans auth');
+            setLoading(false);
+          }
+        }, 8000); // 8 secondes max
+
         await checkAuthStatus();
       } catch (error) {
         console.error('[AuthContext] Erreur lors de l\'initialisation:', error);
         // En cas d'erreur, continuer sans authentification
-        setUser(null);
-        setLoading(false);
+        if (isMounted) {
+          setUser(null);
+          setLoading(false);
+        }
+      } finally {
+        // Nettoyer le timeout si toujours actif
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
       }
     };
 
     // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
     initializeAuth().catch(error => {
       console.error('[AuthContext] Erreur initializeAuth:', error);
+      if (isMounted) {
+        setUser(null);
+        setLoading(false);
+      }
     });
 
-    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
-    return undefined;
+    // ✅ CRITIQUE: Cleanup pour éviter les mises à jour après démontage
+    return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, []);
 
   const checkAuthStatus = async () => {
     try {
       setLoading(true);
-      const token = await SafeStorage.getItem('auth_token');
+      
+      // ✅ CRITIQUE: Ajouter un timeout pour éviter le blocage indéfini
+      const timeoutPromise = new Promise<null>((resolve) => {
+        setTimeout(() => {
+          console.warn('[AuthContext] ⚠️ Timeout vérification auth (5s), continuation sans token');
+          resolve(null);
+        }, 5000); // 5 secondes max
+      });
+
+      const tokenPromise = SafeStorage.getItem('auth_token');
+      const token = await Promise.race([tokenPromise, timeoutPromise]);
 
       if (token) {
         const decoded = jwtDecode<DecodedToken>(token);

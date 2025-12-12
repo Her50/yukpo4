@@ -6858,6 +6858,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto covoiturage tables: {}", e),
     }
 
+    // ✅ NOUVEAU 2025-12-11 : Vue matérialisée et fonction pour les statistiques utilisateur
+    match ensure_user_stats_objects(pool).await {
+        Ok(_) => info!("✅ Migration auto: user_stats objects OK"),
+        Err(e) => error!("❌ Erreur migration auto user_stats objects: {}", e),
+    }
+
     // ✅ NOUVEAU : Table delivery_engine_pricing pour calcul coût par type d'engin
     match ensure_delivery_engine_pricing_table(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_engine_pricing OK"),
@@ -12386,5 +12392,21 @@ pub async fn ensure_covoiturage_tables(pool: &PgPool) -> Result<(), sqlx::Error>
         .execute(pool).await?;
 
     info!("✅ Tables covoiturage créées");
+    Ok(())
+}
+
+/// ✅ 2025-12-11 : Vue matérialisée et fonction pour les statistiques utilisateur
+/// Migration: 20251211_fix_user_stats_errors.sql
+/// Corrige les erreurs: mv_user_stats does not exist, get_user_stats does not exist
+pub async fn ensure_user_stats_objects(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création de mv_user_stats et get_user_stats...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251211_fix_user_stats_errors.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Vue matérialisée et fonction user_stats créées");
     Ok(())
 }

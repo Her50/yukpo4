@@ -116,6 +116,13 @@ class RemoteLoggingService {
                 typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
             ).join(' ');
             const error = args.find(arg => arg instanceof Error);
+            
+            // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
+            if (this.isAsyncStorageError(error || message)) {
+                // Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+                return;
+            }
+
             this.addToQueue({
                 level: 'error',
                 message,
@@ -167,6 +174,18 @@ class RemoteLoggingService {
     }
 
     /**
+     * Vérifie si une erreur est une erreur AsyncStorage connue (non-bloquante)
+     */
+    private isAsyncStorageError(error: any): boolean {
+        const errorMsg = error?.message || String(error || '');
+        return (
+            errorMsg.includes('Driver not found') ||
+            errorMsg.includes('No available storage method found') ||
+            (errorMsg.includes('AsyncStorage') && (errorMsg.includes('not found') || errorMsg.includes('unavailable')))
+        );
+    }
+
+    /**
      * Intercepter les erreurs React Native spécifiques (ErrorBoundary, Promise rejections, etc.)
      */
     private interceptReactNativeErrors() {
@@ -175,6 +194,15 @@ class RemoteLoggingService {
             if (typeof global !== 'undefined' && (global as any).ErrorUtils) {
                 const originalHandler = (global as any).ErrorUtils.getGlobalHandler();
                 (global as any).ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+                    // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
+                    if (this.isAsyncStorageError(error)) {
+                        // Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+                        if (originalHandler) {
+                            originalHandler(error, isFatal);
+                        }
+                        return;
+                    }
+
                     this.addToQueue({
                         level: 'error',
                         message: `❌ Erreur ${isFatal ? 'FATALE' : 'non fatale'}: ${error.message}`,
@@ -199,6 +227,12 @@ class RemoteLoggingService {
             if (typeof global !== 'undefined' && global.Promise) {
                 const originalReject = Promise.reject;
                 Promise.reject = (reason: any) => {
+                    // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
+                    if (this.isAsyncStorageError(reason)) {
+                        // Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+                        return originalReject(reason);
+                    }
+
                     this.addToQueue({
                         level: 'error',
                         message: `❌ Promise rejection: ${reason?.message || String(reason)}`,
@@ -366,6 +400,12 @@ class RemoteLoggingService {
      * Logger une erreur (méthode manuelle)
      */
     error(message: string, component?: string, error?: any, stack?: string) {
+        // ✅ CRITIQUE: Filtrer les erreurs AsyncStorage connues (non-bloquantes)
+        if (this.isAsyncStorageError(error || message)) {
+            // Ces erreurs sont gérées par SafeStorage, ne pas les logger comme erreurs critiques
+            return;
+        }
+
         this.addToQueue({
             level: 'error',
             message,

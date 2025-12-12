@@ -353,8 +353,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // 🔄 Exécuter les migrations automatiques au démarrage
-    yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).await;
+    // 🔄 Exécuter les migrations automatiques au démarrage (optionnel)
+    // ✅ CORRIGÉ RACINE 2025-12-12: Désactiver auto_migrations par défaut en production
+    // Le problème: Les blocs DO $$ lourds dans auto_migrations causent des crashes PostgreSQL
+    // Solution: Les rendre optionnelles via variable d'environnement (désactivées par défaut)
+    let enable_auto_migrations = env::var("ENABLE_AUTO_MIGRATIONS")
+        .unwrap_or_else(|_| "false".to_string())
+        .parse::<bool>()
+        .unwrap_or(false);
+    
+    if enable_auto_migrations {
+        log::info!("🔄 Exécution des migrations automatiques (ENABLE_AUTO_MIGRATIONS=true)...");
+        yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).await;
+    } else {
+        log::info!("⏭️ Migrations automatiques désactivées (ENABLE_AUTO_MIGRATIONS=false ou non défini) - Pour activer: ENABLE_AUTO_MIGRATIONS=true");
+    }
 
     // ✅ NOUVEAU 2025-11-27: Démarrer le monitoring de santé du pool
     yukpomnang_backend::utils::db_monitor::start_db_health_monitor(pg_pool.clone()).await;

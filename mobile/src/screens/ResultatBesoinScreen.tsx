@@ -1170,24 +1170,27 @@ const ResultatBesoinScreen: React.FC = () => {
                             />
                         </View>
                     ) : (
-                        <ResultsList
-                            products={paginatedResults}
-                            loading={loadingResults}
-                            loadingMore={loadingMore}
-                            refreshing={refreshing}
-                            hasMoreResults={hasMoreResults}
-                            onRefresh={onRefresh}
-                            onLoadMore={handleLoadMore}
-                            onProductPress={handleProductPress}
-                            onProductLike={handleProductLike}
-                            onProductFavorite={handleProductFavorite}
-                            onProductShare={handleProductShare}
-                            user={user}
-                            itemAnimations={itemAnimations}
-                            getItemAnimation={getItemAnimation}
-                            ListHeaderComponent={listHeaderComponent}
-                            onScroll={scrollHandler} {/* ✅ MIGRÉ: Utilise useAnimatedScrollHandler de Reanimated */}
-                        />
+                        <>
+                            {/* ✅ MIGRÉ: Utilise useAnimatedScrollHandler de Reanimated */}
+                            <ResultsList
+                                products={paginatedResults}
+                                loading={loadingResults}
+                                loadingMore={loadingMore}
+                                refreshing={refreshing}
+                                hasMoreResults={hasMoreResults}
+                                onRefresh={onRefresh}
+                                onLoadMore={handleLoadMore}
+                                onProductPress={handleProductPress}
+                                onProductLike={handleProductLike}
+                                onProductFavorite={handleProductFavorite}
+                                onProductShare={handleProductShare}
+                                user={user}
+                                itemAnimations={itemAnimations}
+                                getItemAnimation={getItemAnimation}
+                                ListHeaderComponent={listHeaderComponent}
+                                onScroll={scrollHandler}
+                            />
+                        </>
                     )}
                 </>
             )}
