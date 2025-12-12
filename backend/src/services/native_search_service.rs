@@ -502,8 +502,9 @@ impl NativeSearchService {
                 fulltext_results.iter().map(|r| r.service_id).collect();
             for result in fallback_results {
                 if !existing_ids.contains(&result.service_id) {
+                    let service_id = result.service_id;
                     fulltext_results.push(result);
-                    existing_ids.insert(result.service_id);
+                    existing_ids.insert(service_id);
                 }
             }
         }
@@ -1881,10 +1882,10 @@ LIMIT 100
         &self,
         query: &str,
         category_filter: Option<&str>,
-        location_filter: Option<&str>,
+        _location_filter: Option<&str>,
         gps_zone: Option<&str>,
         search_radius_km: Option<i32>,
-        specialized_type: Option<&str>,
+        _specialized_type: Option<&str>,
     ) -> AppResult<Vec<SearchResult>> {
         let start_time = std::time::Instant::now();
         log_info(&format!(
@@ -1909,7 +1910,7 @@ LIMIT 100
         }
 
         // Construction de la requête SQL optimisée
-        let sql = if let Some((lat, lng)) = gps_zone.and_then(|gps_str| {
+        let sql = if let Some((_lat, _lng)) = gps_zone.and_then(|gps_str| {
             let coords: Vec<&str> = gps_str.split(',').collect();
             if coords.len() == 2 {
                 if let (Ok(lat), Ok(lng)) = (
@@ -2034,8 +2035,7 @@ LIMIT 100
                     )
                 ORDER BY s.id, fulltext_score DESC, distance_km ASC NULLS LAST
                 LIMIT 100
-                "#,
-                radius as f64
+                "#
             )
         } else {
             // Recherche sans GPS
