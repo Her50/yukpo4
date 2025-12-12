@@ -349,7 +349,8 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
     'create': '➕',
     'videos': '📹',
     'videosfeed': '📹',
-    'services': '🛍️',
+    'services': '📦', // ✅ MODIFIÉ: Icône package pour Mes Services
+    'mesproduits': '📦', // ✅ NOUVEAU: Alias pour Mes Services
     'dashboard': '📊',
     'history': '📋',
     'profile': '👤',
@@ -681,7 +682,28 @@ const MainStack = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreenWithSafeArea} options={{ tabBarLabel: 'Accueil' }} />
-      {/* ✅ NOUVEAU: Onglet Services Spécialisés juste après Accueil */}
+      {/* ✅ MODIFIÉ: Onglet "Mes Services" toujours visible - entre Accueil et Vidéo */}
+      {hasSpecializedServices ? (
+        <Tab.Screen
+          name="GestionServicesSpecialises"
+          component={GestionServicesSpecialisesScreenWithSafeArea}
+          options={{
+            tabBarLabel: 'Mes Services',
+            title: 'Gestion Services Spécialisés',
+          }}
+        />
+      ) : (
+        <Tab.Screen
+          name="Services"
+          component={MesProduitsScreenWithSafeArea}
+          options={{
+            tabBarLabel: 'Mes Services',
+            title: 'Mes Services',
+          }}
+        />
+      )}
+      {/* ✅ SUPPRIMÉ: Onglet vidéo (disponible dans Mes Services) */}
+      {/* ✅ NOUVEAU: Onglet Services Spécialisés */}
       <Tab.Screen
         name="SpecializedServicesHub"
         component={SpecializedServicesHubScreenWithSafeArea}
@@ -700,38 +722,6 @@ const MainStack = () => {
           tabBarLabel: 'Vidéos',
         }}
       />
-      {/* ✅ MODIFIÉ: Onglet création vidéo conditionnel - uniquement si l'utilisateur a des services/produits */}
-      {hasServicesOrProducts && (
-        <Tab.Screen
-          name="Video"
-          component={VideoCreationIntroScreenWithSafeArea}
-          options={{
-            tabBarLabel: 'Créer',
-          }}
-        />
-      )}
-      {/* ✅ MODIFIÉ: Onglet "Mes Services" conditionnel - uniquement si l'utilisateur a des services/produits */}
-      {hasServicesOrProducts && (
-        hasSpecializedServices ? (
-          <Tab.Screen
-            name="GestionServicesSpecialises"
-            component={GestionServicesSpecialisesScreenWithSafeArea}
-            options={{
-              tabBarLabel: 'Mes Services',
-              title: 'Gestion Services Spécialisés',
-            }}
-          />
-        ) : (
-          <Tab.Screen
-            name="Services"
-            component={MesProduitsScreenWithSafeArea}
-            options={{
-              tabBarLabel: 'Mes Services',
-              title: 'Mes Services',
-            }}
-          />
-        )
-      )}
       {/* ✅ SUPPRIMÉ: Onglet Historique (déjà accessible dans Mon Compte) */}
       {/* ✅ NOUVEAU : Ajouter onglet "Suivre mes courses" pour les coursiers */}
       {isCourier && (

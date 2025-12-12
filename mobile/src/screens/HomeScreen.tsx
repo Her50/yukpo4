@@ -20,20 +20,25 @@ import {
 } from 'react-native';
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
+import { GamificationBadge } from '../components/GamificationBadge';
+import LanguageSelector from '../components/LanguageSelector';
+import { LeaderboardModal } from '../components/LeaderboardModal';
 import ModernGPSModal from '../components/ModernGPSModal';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import { SafeNativeView } from '../components/SafeNativeView';
+import UserAvatarMenu from '../components/UserAvatarMenu';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 import { modernColors } from '../theme/modernTheme';
 import { hapticPress } from '../utils/hapticFeedback';
-import { navigateToVideoWizard } from '../utils/videoNavigation';
 
 const HomeScreen: React.FC = () => {
     // Navigation et contextes
     const navigation = ReactNavigation.useNavigation();
     const { user } = useAuth();
+    const { language, setLanguage } = useLanguageSafe();
 
     // États simples
     const [isCreateService, setIsCreateService] = useState(false);
@@ -42,11 +47,7 @@ const HomeScreen: React.FC = () => {
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
-
-    // ✅ NOUVEAU: États pour la section "Mes services"
-    const [userServices, setUserServices] = useState<any[]>([]);
-    const [loadingServices, setLoadingServices] = useState(false);
-    const [hasServices, setHasServices] = useState(false);
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
 
     // Navigation simplifiée
     const navigate = useCallback((routeName: string, params?: any) => {
@@ -75,7 +76,50 @@ const HomeScreen: React.FC = () => {
             console.log('[HomeScreen] Recherche avec:', input);
 
             const result = await rechercherServices(input);
-            const results = result?.data || result?.resultats?.resultats || result?.resultats || [];
+            console.log('[HomeScreen] Résultat brut de l\'API:', JSON.stringify(result, null, 2));
+
+            // ✅ CORRIGÉ: Le backend retourne {status, resultats: {resultats: [...], nombre_matchings: ...}, ...}
+            // Structure: result.resultats.resultats (array) OU result.resultats peut être directement un array
+            let results: any[] = [];
+
+            if (result) {
+                // Cas 1: result.resultats est un objet avec un champ resultats (array)
+                if (result.resultats && typeof result.resultats === 'object' && !Array.isArray(result.resultats)) {
+                    const resultatsObj = result.resultats;
+                    if (Array.isArray(resultatsObj.resultats)) {
+                        results = resultatsObj.resultats;
+                    } else if (Array.isArray(resultatsObj)) {
+                        // Cas rare: result.resultats est directement un array
+                        results = resultatsObj;
+                    }
+                }
+                // Cas 2: result.resultats est directement un array
+                else if (Array.isArray(result.resultats)) {
+                    results = result.resultats;
+                }
+                // Cas 3: result.data.resultats (fallback pour compatibilité)
+                else if (result.data) {
+                    if (Array.isArray(result.data.resultats)) {
+                        results = result.data.resultats;
+                    } else if (result.data.resultats?.resultats && Array.isArray(result.data.resultats.resultats)) {
+                        results = result.data.resultats.resultats;
+                    } else if (Array.isArray(result.data)) {
+                        results = result.data;
+                    }
+                }
+            }
+
+            console.log('[HomeScreen] Résultats extraits:', results.length, 'résultats');
+
+            // Vérifier si c'est un timeout ou une erreur
+            if (result?.timeout || (result?.status === 'partial' && (!results || results.length === 0))) {
+                Alert.alert(
+                    'Recherche interrompue',
+                    result?.message || 'La recherche a pris trop de temps. Veuillez réessayer.'
+                );
+                setLoading(false);
+                return;
+            }
 
             if (Array.isArray(results) && results.length > 0) {
                 navigate('ResultatBesoin', {
@@ -92,7 +136,8 @@ const HomeScreen: React.FC = () => {
         } catch (error: any) {
             console.error('[HomeScreen] Erreur recherche:', error);
             setLoading(false);
-            Alert.alert('Erreur', 'Une erreur est survenue lors de la recherche');
+            const errorMessage = error?.message || 'Une erreur est survenue lors de la recherche';
+            Alert.alert('Erreur', errorMessage);
         }
     }, [user, navigate]);
 
@@ -253,113 +298,6 @@ const HomeScreen: React.FC = () => {
         setShowGPSModal(false);
     }, []);
 
-    // ✅ NOUVEAU: Charger les services de l'utilisateur
-    const loadUserServices = useCallback(async () => {
-        if (!user) {
-            setHasServices(false);
-            setUserServices([]);
-            return;
-        }
-
-        try {
-            setLoadingServices(true);
-            console.log('[HomeScreen] 🔍 Chargement des services utilisateur...');
-
-            const response = await apiGet('/api/prestataire/services');
-
-            if (response?.success && response?.data) {
-                const responseData = response.data as any;
-                const servicesData = Array.isArray(responseData)
-                    ? responseData
-                    : (responseData?.data || responseData?.services || []);
-
-                // Filtrer les services actifs avec produits
-                const activeServicesWithProducts = servicesData.filter((service: any) => {
-                    const isActive = service.is_active !== false && service.actif !== false;
-                    const hasProducts = !!(
-                        service.data?.produits ||
-                        service.produits ||
-                        service.data?.listeproduit
-                    );
-                    return isActive && hasProducts;
-                });
-
-                console.log('[HomeScreen] ✅ Services chargés:', {
-                    total: servicesData.length,
-                    actifsAvecProduits: activeServicesWithProducts.length
-                });
-
-                if (activeServicesWithProducts.length > 0) {
-                    setUserServices(activeServicesWithProducts);
-                    setHasServices(true);
-                } else {
-                    setUserServices([]);
-                    setHasServices(false);
-                }
-            } else {
-                setUserServices([]);
-                setHasServices(false);
-            }
-        } catch (error) {
-            console.warn('[HomeScreen] ⚠️ Erreur chargement services:', error);
-            setUserServices([]);
-            setHasServices(false);
-        } finally {
-            setLoadingServices(false);
-        }
-    }, [user]);
-
-    // ✅ NOUVEAU: Charger les services au montage et quand l'utilisateur change
-    React.useEffect(() => {
-        loadUserServices();
-    }, [loadUserServices]);
-
-    // ✅ NOUVEAU: Handler pour le bouton d'ajout de vidéo
-    const handleAddVideo = useCallback(() => {
-        if (!hasServices || userServices.length === 0) {
-            Alert.alert(
-                'Aucun service',
-                'Vous devez avoir au moins un service avec des produits pour créer une vidéo.',
-                [
-                    { text: 'Annuler', style: 'cancel' },
-                    {
-                        text: 'Créer un service',
-                        onPress: () => {
-                            setIsCreateService(true);
-                        }
-                    }
-                ]
-            );
-            return;
-        }
-
-        // Si un seul service, naviguer directement
-        if (userServices.length === 1) {
-            const service = userServices[0];
-            const serviceId = service.id || service.service_id;
-
-            // Extraire le premier produit
-            const produits = service.data?.produits || service.produits || [];
-            const produitsArray = Array.isArray(produits) ? produits :
-                (produits.valeur ? (Array.isArray(produits.valeur) ? produits.valeur : []) : []);
-
-            if (produitsArray.length > 0) {
-                const firstProduct = produitsArray[0];
-                const productIndex = firstProduct.product_index || firstProduct.index || 0;
-
-                navigateToVideoWizard(navigation, {
-                    serviceId: typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
-                    productIndex: productIndex,
-                    productName: firstProduct.nom || firstProduct.nom_produit || 'Produit'
-                });
-            } else {
-                Alert.alert('Aucun produit', 'Ce service n\'a pas encore de produits.');
-            }
-        } else {
-            // Plusieurs services → Naviguer vers VideoCreationIntro pour choisir
-            navigate('VideoCreationIntro', {});
-        }
-    }, [hasServices, userServices, navigation]);
 
     return (
         <SafeNativeView style={styles.container}>
@@ -368,27 +306,68 @@ const HomeScreen: React.FC = () => {
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
             >
-                {/* Header simple */}
+                {/* Header avec avatar, langue, trophée et branding Yukpo */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>Yukpomnang</Text>
-                    <View style={styles.headerButtons}>
+                    {/* Colonne gauche: Avatar + Langue + Trophée */}
+                    <View style={styles.headerLeft}>
+                        <View style={styles.avatarContainer}>
+                            <UserAvatarMenu
+                                onNavigate={(route) => (navigation as any).navigate(route)}
+                                balance={user?.credits || 0}
+                                weatherLocation={selectedLocation}
+                            />
+                        </View>
+                        <LanguageSelector
+                            selectedLanguage={language}
+                            onLanguageChange={setLanguage}
+                            compact={true}
+                        />
+                        {user?.id && (
+                            <>
+                                <GamificationBadge
+                                    userId={user.id}
+                                    compact={true}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setShowLeaderboard(true);
+                                    }}
+                                />
+                                <LeaderboardModal
+                                    visible={showLeaderboard}
+                                    onClose={() => setShowLeaderboard(false)}
+                                    userId={user.id}
+                                />
+                            </>
+                        )}
+                    </View>
+
+                    {/* Titre centré avec branding Yukpo */}
+                    <View style={styles.headerCenter}>
+                        <Text style={styles.brandTitle}>
+                            <Text style={styles.brandYuk}>Yuk</Text>
+                            <Text style={styles.brandPo}>po</Text>
+                        </Text>
+                    </View>
+
+                    {/* Colonne droite: Chat + Notifications */}
+                    <View style={styles.headerRight}>
                         <TouchableOpacity
                             style={[styles.headerButton, { marginRight: 12 }]}
-                            onPress={() => {
-                                hapticPress();
-                                setShowNotificationModal(true);
-                            }}
-                        >
-                            <Text style={styles.headerButtonIcon}>🔔</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.headerButton}
                             onPress={() => {
                                 hapticPress();
                                 setShowChatModal(true);
                             }}
                         >
                             <Text style={styles.headerButtonIcon}>💬</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.headerButton}
+                            onPress={() => {
+                                hapticPress();
+                                setShowNotificationModal(true);
+                            }}
+                        >
+                            <Text style={styles.headerButtonIcon}>🔔</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -457,65 +436,6 @@ const HomeScreen: React.FC = () => {
                             : 'Recherchez des services en remplissant le formulaire ci-dessus'}
                     </Text>
                 </View>
-
-                {/* ✅ NOUVEAU: Section "Mes services" en bas (affichée seulement si l'utilisateur a des services) */}
-                {hasServices && userServices.length > 0 && (
-                    <View style={styles.servicesSection}>
-                        <View style={styles.servicesHeader}>
-                            <Text style={styles.servicesTitle}>Mes services</Text>
-                            <TouchableOpacity
-                                style={styles.addVideoButton}
-                                onPress={() => {
-                                    hapticPress();
-                                    handleAddVideo();
-                                }}
-                            >
-                                <Text style={styles.addVideoButtonText}>➕ Vidéo</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {loadingServices ? (
-                            <View style={styles.servicesLoading}>
-                                <Text style={styles.servicesLoadingText}>Chargement...</Text>
-                            </View>
-                        ) : (
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                style={styles.servicesList}
-                                contentContainerStyle={styles.servicesListContent}
-                            >
-                                {userServices.slice(0, 5).map((service: any, index: number) => {
-                                    const serviceId = service.id || service.service_id;
-                                    const titre = service.data?.titre_service?.valeur ||
-                                        service.data?.titre?.valeur ||
-                                        service.titre ||
-                                        `Service #${serviceId}`;
-
-                                    return (
-                                        <TouchableOpacity
-                                            key={serviceId || index}
-                                            style={styles.serviceCard}
-                                            onPress={() => {
-                                                hapticPress();
-                                                navigate('MesServices', {});
-                                            }}
-                                        >
-                                            <Text style={styles.serviceCardTitle} numberOfLines={1}>
-                                                {titre}
-                                            </Text>
-                                            <Text style={styles.serviceCardSubtitle}>
-                                                {service.data?.produits?.valeur?.length ||
-                                                    service.produits?.length ||
-                                                    0} produit(s)
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </ScrollView>
-                        )}
-                    </View>
-                )}
             </ScrollView>
 
             {/* Modal GPS */}
@@ -573,11 +493,46 @@ const styles = StyleSheet.create({
         paddingTop: 16,
         paddingBottom: 12,
         backgroundColor: '#FFFFFF',
+        minHeight: 60,
     },
-    title: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: modernColors.primary,
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        gap: 8,
+        flex: 1,
+        minWidth: 0,
+    },
+    avatarContainer: {
+        width: 36,
+        height: 36,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerCenter: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+    },
+    brandTitle: {
+        fontSize: 22,
+        fontWeight: '900',
+        letterSpacing: -0.3,
+    },
+    brandYuk: {
+        color: '#EAB308', // Jaune (branding Yuk)
+    },
+    brandPo: {
+        color: '#DC2626', // Rouge (branding po)
+    },
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: 8,
+        flex: 1,
+        minWidth: 0,
     },
     headerButtons: {
         flexDirection: 'row',
@@ -634,69 +589,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#6B7280',
         textAlign: 'center',
-    },
-    // ✅ NOUVEAU: Styles pour la section "Mes services"
-    servicesSection: {
-        marginTop: 20,
-        paddingHorizontal: 16,
-        paddingBottom: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-    },
-    servicesHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    servicesTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: modernColors.primary,
-    },
-    addVideoButton: {
-        backgroundColor: modernColors.primary,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    addVideoButtonText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    servicesLoading: {
-        paddingVertical: 20,
-        alignItems: 'center',
-    },
-    servicesLoadingText: {
-        fontSize: 14,
-        color: '#9CA3AF',
-    },
-    servicesList: {
-        maxHeight: 100,
-    },
-    servicesListContent: {
-        paddingRight: 16,
-    },
-    serviceCard: {
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        padding: 12,
-        marginRight: 12,
-        minWidth: 140,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    serviceCardTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 4,
-    },
-    serviceCardSubtitle: {
-        fontSize: 12,
-        color: '#6B7280',
     },
 });
 

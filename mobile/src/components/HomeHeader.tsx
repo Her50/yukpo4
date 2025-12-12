@@ -461,6 +461,10 @@ const styles = StyleSheet.create({
         // ✅ CORRIGÉ: Style pour icônes désactivées
         opacity: 0.5,
     },
+    headerButtonVideo: {
+        // ✅ NOUVEAU: Style spécial pour le bouton vidéo (fond coloré)
+        backgroundColor: modernColors.primary,
+    },
     notificationBadgeCompact: {
         position: 'absolute',
         top: 2,

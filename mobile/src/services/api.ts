@@ -185,13 +185,16 @@ export const apiCall = async <T>(
     // - Traitement backend : 20-50s
     // 60s pour création-service (appel IA OpenAI peut prendre 15-30s)
     // ✅ CORRECTION: 90s pour création produit (upload médias peut prendre du temps)
+    // ✅ CORRIGÉ: 60s pour timeline-variants (génération IA peut prendre 30-50s)
     const timeoutDuration = endpoint.includes('/services/create')
       ? 180000
       : endpoint.includes('/ia/creation-service')
         ? 60000
-        : endpoint.includes('/services/') && endpoint.includes('/products')
-          ? 90000  // ✅ 90s pour création/modification produit (upload médias)
-          : 15000;
+        : endpoint.includes('/ia/video/timeline-variants')
+          ? 60000  // ✅ 60s pour timeline-variants (génération de variantes peut prendre du temps)
+          : endpoint.includes('/services/') && endpoint.includes('/products')
+            ? 90000  // ✅ 90s pour création/modification produit (upload médias)
+            : 15000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {

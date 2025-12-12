@@ -31,7 +31,8 @@ where
             Err(e) => {
                 let error_str = e.to_string();
 
-                // Vérifier si c'est une erreur de connexion qui peut être retry
+                // ✅ CORRIGÉ: Vérifier si c'est une erreur de connexion qui peut être retry
+                // Inclut les erreurs TLS spécifiques qui sont récupérables
                 let is_retryable = error_str.contains("peer closed connection")
                     || error_str.contains("TLS close_notify")
                     || error_str.contains("terminating connection")
@@ -39,16 +40,25 @@ where
                     || error_str.contains("error communicating with database")
                     || error_str.contains("connection closed")
                     || error_str.contains("broken pipe")
-                    || error_str.contains("connection reset");
+                    || error_str.contains("connection reset")
+                    || error_str.contains("unexpected_eof")  // ✅ NOUVEAU: Erreur TLS spécifique
+                    || error_str.contains("Unexpected EOF")  // ✅ NOUVEAU: Variante de l'erreur TLS
+                    || error_str.contains("closed without sending TLS close_notify");  // ✅ NOUVEAU: Erreur TLS complète
 
                 if is_retryable && attempt < max_retries {
                     // ✅ NOUVEAU 2025-11-27: Backoff plus long pour les crashes PostgreSQL
                     let is_crash_error = error_str.contains("crash of another server process")
                         || error_str.contains("terminating connection because of crash");
 
+                    // ✅ CORRIGÉ: Backoff adaptatif selon le type d'erreur
+                    let is_tls_error = error_str.contains("TLS") || error_str.contains("close_notify") || error_str.contains("unexpected_eof");
                     let backoff_ms = if is_crash_error {
                         // Backoff plus long pour les crashes (500ms, 1000ms, 2000ms, 4000ms, 5000ms max)
                         500 * (1u64 << (attempt - 1)).min(5000)
+                    } else if is_tls_error {
+                        // Backoff moyen pour erreurs TLS (300ms, 600ms, 1200ms, 2400ms, 3000ms max)
+                        // Les erreurs TLS peuvent nécessiter un peu plus de temps
+                        300 * (1u64 << (attempt - 1)).min(3000)
                     } else {
                         // Backoff normal pour autres erreurs (200ms, 400ms, 800ms, 1600ms, 2000ms max)
                         200 * (1u64 << (attempt - 1)).min(2000)

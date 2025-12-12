@@ -198,6 +198,7 @@ pub async fn get_my_videos(
         user.id
     );
 
+    // ✅ CORRIGÉ: Syntaxe SQL - WITH ORDINALITY doit être dans le FROM, pas dans un SELECT
     let videos: Vec<UserVideoRow> = sqlx::query_as::<_, UserVideoRow>(
         r#"
         SELECT 
@@ -211,19 +212,16 @@ pub async fn get_my_videos(
             s.data->>'titre' as service_title,
             (
                 SELECT (array_agg(elem->>'nom'))[1]
-                FROM (
-                    SELECT 
-                        jsonb_array_elements(
-                            CASE 
-                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                                    THEN s.data->'produits'
-                                WHEN jsonb_typeof(s.data->'produits') = 'object' 
-                                    AND jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                                    THEN s.data->'produits'->'valeur'
-                                ELSE '[]'::jsonb
-                            END
-                        ) WITH ORDINALITY AS t(elem, idx)
-                ) AS products_array
+                FROM jsonb_array_elements(
+                    CASE 
+                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                            THEN s.data->'produits'
+                        WHEN jsonb_typeof(s.data->'produits') = 'object' 
+                            AND jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                            THEN s.data->'produits'->'valeur'
+                        ELSE '[]'::jsonb
+                    END
+                ) WITH ORDINALITY AS t(elem, idx)
                 WHERE idx - 1 = m.product_index
             ) as product_name
         FROM media m

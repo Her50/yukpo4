@@ -193,14 +193,15 @@ async fn save_combinations_batch(
         },
     );
 
+    // ✅ CORRIGÉ: Gérer les conflits sur unique_full_vector (au lieu de unique_product_vector qui n'existe peut-être pas)
+    // Utiliser ON CONFLICT (full_vector) pour gérer les doublons de full_vector
     query_builder.push(
-        " ON CONFLICT ON CONSTRAINT unique_product_vector DO UPDATE SET \
+        " ON CONFLICT (full_vector) DO UPDATE SET \
             session_id = EXCLUDED.session_id, \
             location_vector = EXCLUDED.location_vector, \
-            full_vector = EXCLUDED.full_vector, \
             product_labels = EXCLUDED.product_labels, \
             location_labels = EXCLUDED.location_labels, \
-            usage_count = autocomplete_combinations.usage_count + 1, \
+            usage_count = autocomplete_combinations.usage_count + EXCLUDED.usage_count, \
             updated_at = EXCLUDED.updated_at, \
             ai_confidence = GREATEST(autocomplete_combinations.ai_confidence, EXCLUDED.ai_confidence), \
             is_ai_preferred = autocomplete_combinations.is_ai_preferred OR EXCLUDED.is_ai_preferred"

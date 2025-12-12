@@ -3420,7 +3420,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
     };
 
-    // ✅ NOUVEAU 2025-11-30: Fonction séparée pour la génération effective de la vidéo
+    // ✅ CORRIGÉ 2025-12-12: Fonction séparée pour la génération effective de la vidéo avec polling du job
     const proceedWithVideoGeneration = async (payload: VideoGenerationPayload) => {
         if (!selectedProduct) {
             return;
@@ -3429,6 +3429,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         setIsSubmitting(true);
 
         try {
+            // ✅ ÉTAPE 1: Lancer la génération (retourne job_id)
             const response = await mediaApi.generateProductVideo(
                 selectedProduct.serviceId,
                 selectedProduct.product_index,
@@ -3439,8 +3440,96 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 throw new Error(response.error || 'Génération impossible');
             }
 
-            const result = response.data as GeneratedVideoResponse;
+            // ✅ ÉTAPE 2: Récupérer le job_id de la réponse
+            const jobData = response.data as { job_id?: string; status?: string };
+            const jobId = jobData.job_id || (response.data as any)?.job_id;
+
+            if (!jobId) {
+                // Fallback: Si pas de job_id, peut-être que c'est une réponse synchrone (ancienne version)
+                if ((response.data as any)?.video_url || (response.data as any)?.media_id) {
+                    const result = response.data as GeneratedVideoResponse;
+                    await onSuccess(result);
+                    return;
+                }
+                throw new Error('Aucun job_id reçu du serveur');
+            }
+
+            console.log('[ProductVideoCreationModal] ✅ Job lancé avec job_id:', jobId);
+
+            // ✅ ÉTAPE 3: Poller le statut du job jusqu'à ce qu'il soit terminé
+            const pollJobStatus = async (): Promise<GeneratedVideoResponse> => {
+                const maxAttempts = 120; // 2 minutes max (1 seconde par tentative)
+                let attempts = 0;
+
+                while (attempts < maxAttempts) {
+                    try {
+                        const statusResponse = await mediaApi.getVideoJobStatus(jobId);
+                        
+                        if (!statusResponse.success || !statusResponse.data) {
+                            throw new Error(statusResponse.error || 'Impossible de récupérer le statut');
+                        }
+
+                        const jobStatus = statusResponse.data;
+                        console.log('[ProductVideoCreationModal] Job status:', jobStatus.status, `(${attempts}/${maxAttempts})`);
+
+                        if (jobStatus.status === 'completed') {
+                            // ✅ Job terminé avec succès
+                            if (jobStatus.result_payload) {
+                                const result = jobStatus.result_payload as GeneratedVideoResponse;
+                                return result;
+                            } else if (jobStatus.result_media_id) {
+                                // Fallback: Construire la réponse à partir du media_id
+                                return {
+                                    success: true,
+                                    media_id: jobStatus.result_media_id,
+                                    service_id: selectedProduct.serviceId,
+                                    product_index: selectedProduct.product_index,
+                                    video_url: '', // Sera rempli plus tard
+                                    path: '',
+                                    duration_seconds: 0,
+                                    used_media_ids: [],
+                                    script_outline: [],
+                                    voiceover_generated: false,
+                                    additional_outputs: [],
+                                    quality_score: 0,
+                                    job_id: jobId,
+                                } as GeneratedVideoResponse;
+                            } else {
+                                throw new Error('Job terminé mais aucun résultat disponible');
+                            }
+                        } else if (jobStatus.status === 'failed') {
+                            // ✅ Job échoué
+                            const errorMsg = jobStatus.error_message || 'La génération de la vidéo a échoué';
+                            throw new Error(errorMsg);
+                        } else if (jobStatus.status === 'running' || jobStatus.status === 'pending') {
+                            // ✅ Job encore en cours, continuer le polling
+                            attempts++;
+                            await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre 1 seconde
+                            continue;
+                        } else {
+                            // Statut inconnu
+                            attempts++;
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            continue;
+                        }
+                    } catch (error: any) {
+                        // Erreur de polling, mais continuer jusqu'à maxAttempts
+                        console.warn('[ProductVideoCreationModal] Erreur polling job:', error);
+                        attempts++;
+                        if (attempts >= maxAttempts) {
+                            throw new Error('Timeout: La génération prend trop de temps. Vérifiez vos vidéos dans quelques instants.');
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 2000)); // Attendre 2 secondes avant retry
+                    }
+                }
+
+                throw new Error('Timeout: La génération prend trop de temps. Vérifiez vos vidéos dans quelques instants.');
+            };
+
+            // Lancer le polling
+            const result = await pollJobStatus();
             await onSuccess(result);
+
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur génération vidéo:', error);
 
@@ -3455,15 +3544,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         '• Ajoutez des images dans la médiathèque du service\n' +
                         '• Ajoutez des images au produit\n' +
                         '• La génération automatique d\'images IA sera activée lors de la prochaine tentative';
+                } else if (msg.includes('timeout') || msg.includes('trop de temps')) {
+                    errorMessage = error.message; // Message déjà bien formulé
                 } else if (msg.includes('400') || msg.includes('bad request')) {
                     errorMessage = 'Demande invalide.\n\n' +
                         'Vérifiez que tous les champs sont correctement remplis et réessayez.';
                 } else if (msg.includes('500') || msg.includes('internal')) {
                     errorMessage = 'Erreur serveur temporaire.\n\n' +
                         'Veuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.';
-                } else if (msg.includes('timeout') || msg.includes('timed out')) {
-                    errorMessage = 'La génération prend plus de temps que prévu.\n\n' +
-                        'La vidéo est peut-être en cours de création. Vérifiez vos vidéos dans quelques instants.';
                 } else {
                     errorMessage = error.message;
                 }

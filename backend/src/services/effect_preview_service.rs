@@ -54,8 +54,24 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
         },
     );
 
+    // ✅ CORRIGÉ: Ajouter "blur" et ses alias français
     m.insert(
         "blur",
+        EffectDefinition {
+            ffmpeg_filter: "boxblur=2:1".to_string(),
+            description: "Flou doux pour effet artistique".to_string(),
+        },
+    );
+    // Alias français pour "blur"
+    m.insert(
+        "flou artistique",
+        EffectDefinition {
+            ffmpeg_filter: "boxblur=2:1".to_string(),
+            description: "Flou doux pour effet artistique".to_string(),
+        },
+    );
+    m.insert(
+        "flou",
         EffectDefinition {
             ffmpeg_filter: "boxblur=2:1".to_string(),
             description: "Flou doux pour effet artistique".to_string(),
@@ -108,6 +124,23 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
         EffectDefinition {
             ffmpeg_filter: "colorbalance=rs=-0.2:gs=0:bs=0.2".to_string(),
             description: "Tons froids pour ambiance moderne".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet vignette (manquant)
+    m.insert(
+        "vignette",
+        EffectDefinition {
+            ffmpeg_filter: "vignette=angle=PI/4:x0=w/2:y0=h/2".to_string(),
+            description: "Vignette douce pour concentrer l'attention".to_string(),
+        },
+    );
+    // Alias français pour "vignette"
+    m.insert(
+        "vignette douce",
+        EffectDefinition {
+            ffmpeg_filter: "vignette=angle=PI/4:x0=w/2:y0=h/2".to_string(),
+            description: "Vignette douce pour concentrer l'attention".to_string(),
         },
     );
 

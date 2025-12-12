@@ -36,13 +36,27 @@ const ProfileScreen: React.FC = () => {
     try {
       setLoading(true);
 
+      // ✅ CORRIGÉ: Vérifier que les fonctions API existent avant de les appeler
+      if (!userApi || typeof userApi.getUserProfile !== 'function') {
+        console.error('[ProfileScreen] userApi.getUserProfile non disponible');
+        Alert.alert('Erreur', 'Service de profil non disponible');
+        return;
+      }
+
+      if (!servicesApi || typeof servicesApi.getUserServices !== 'function') {
+        console.error('[ProfileScreen] servicesApi.getUserServices non disponible');
+        Alert.alert('Erreur', 'Service de services non disponible');
+        return;
+      }
+
       // Charger les données du profil utilisateur
       const [profileResponse, servicesResponse] = await Promise.all([
         userApi.getUserProfile(),
         servicesApi.getUserServices()
       ]);
 
-      if (profileResponse.success && profileResponse.data) {
+      // ✅ CORRIGÉ: Vérifier que les réponses sont valides
+      if (profileResponse && profileResponse.success && profileResponse.data) {
         const profileData = profileResponse.data as any;
         setAccountInfo({
           memberSince: profileData.created_at ? new Date(profileData.created_at).toLocaleDateString('fr-FR', {
@@ -55,13 +69,13 @@ const ProfileScreen: React.FC = () => {
         });
       }
 
-      if (servicesResponse.success && servicesResponse.data) {
-        const services = servicesResponse.data as any[];
+      if (servicesResponse && servicesResponse.success && servicesResponse.data) {
+        const services = Array.isArray(servicesResponse.data) ? servicesResponse.data : [];
         const totalServices = services.length;
-        const activeServices = services.filter(s => s.is_active).length;
-        const totalInteractions = services.reduce((sum, s) => sum + (s.interactions || 0), 0);
+        const activeServices = services.filter((s: any) => s && s.is_active).length;
+        const totalInteractions = services.reduce((sum: number, s: any) => sum + (s?.interactions || 0), 0);
         const averageRating = services.length > 0
-          ? (services.reduce((sum, s) => sum + (s.rating || 0), 0) / services.length).toFixed(1)
+          ? (services.reduce((sum: number, s: any) => sum + (s?.rating || 0), 0) / services.length).toFixed(1)
           : '0';
 
         setStats([
@@ -70,9 +84,10 @@ const ProfileScreen: React.FC = () => {
           { label: 'Évaluations', value: averageRating },
         ]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur chargement profil:', error);
-      Alert.alert('Erreur', 'Impossible de charger les données du profil');
+      const errorMessage = error?.message || 'Une erreur inattendue s\'est produite';
+      Alert.alert('Erreur', `Impossible de charger les données du profil: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
