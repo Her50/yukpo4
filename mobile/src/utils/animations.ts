@@ -2,6 +2,7 @@
  * Utilitaires d'animations fluides
  */
 
+import { useEffect, useRef } from 'react';
 import { Animated, Easing } from 'react-native';
 
 /**
@@ -174,4 +175,45 @@ export const shake = (value: Animated.Value, intensity: number = 10) => {
             useNativeDriver: true,
         }),
     ]);
+};
+
+/**
+ * Hook pour animation d'entrée d'écran (fade in + slide up)
+ * ✅ CORRIGÉ: Gestion robuste des erreurs et dépendances
+ */
+export const useScreenEnter = (duration: number = 300) => {
+    const opacity = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(20)).current;
+
+    useEffect(() => {
+        try {
+            Animated.parallel([
+                Animated.timing(opacity, {
+                    toValue: 1,
+                    duration,
+                    easing: Easing.out(Easing.ease),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(translateY, {
+                    toValue: 0,
+                    duration,
+                    easing: Easing.out(Easing.ease),
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        } catch (error) {
+            console.warn('[useScreenEnter] Erreur animation:', error);
+            // En cas d'erreur, définir directement les valeurs finales
+            opacity.setValue(1);
+            translateY.setValue(0);
+        }
+    }, [opacity, translateY, duration]);
+
+    // ✅ CORRIGÉ: Toujours retourner un objet avec style, même en cas d'erreur
+    return {
+        style: {
+            opacity,
+            transform: [{ translateY }],
+        },
+    };
 };

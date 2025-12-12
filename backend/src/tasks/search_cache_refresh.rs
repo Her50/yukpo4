@@ -28,16 +28,17 @@ pub async fn start_search_cache_refresh_task(
         Arc::new(fallback_pool)
     };
 
-    // ✅ CORRIGÉ RACINE 2025-12-11: Intervalle augmenté à 10 minutes (était 5 min)
-    // refresh_services_search_optimized() prend 8-13s, donc on évite de l'exécuter trop souvent
-    // Configurable via variable d'environnement (défaut: 600s = 10 min)
+    // ✅ OPTIMISÉ 2025-12-12: Intervalle augmenté à 15 minutes (était 10 min)
+    // refresh_services_search_optimized() prend 5-7s selon les logs, donc on évite de l'exécuter trop souvent
+    // Les vues matérialisées sont déjà assez à jour avec un refresh toutes les 15 minutes
+    // Configurable via variable d'environnement (défaut: 900s = 15 min)
     let refresh_interval_secs: u64 = std::env::var("SEARCH_CACHE_REFRESH_INTERVAL_SECS")
-        .unwrap_or_else(|_| "600".to_string())
+        .unwrap_or_else(|_| "900".to_string())
         .parse()
-        .unwrap_or(600);
+        .unwrap_or(900);
     let mut interval_timer = interval(Duration::from_secs(refresh_interval_secs));
     log::info!(
-        "[SearchCacheRefresh] 🔄 Intervalle de refresh configuré: {}s (10 min) - Utilise pool séparé",
+        "[SearchCacheRefresh] 🔄 Intervalle de refresh configuré: {}s (15 min) - Utilise pool séparé",
         refresh_interval_secs
     );
 

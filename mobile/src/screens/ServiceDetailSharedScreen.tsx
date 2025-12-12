@@ -34,15 +34,24 @@ const ServiceDetailSharedScreen: React.FC = () => {
   const serviceId = (route.params as any)?.serviceId;
 
   useEffect(() => {
-    if (serviceId) {
+    // ✅ CORRIGÉ: Vérifier que serviceId existe et n'est pas undefined
+    if (serviceId && serviceId !== 'undefined' && serviceId !== 'null') {
       loadServiceDetails();
     } else {
-      setError('ID de service manquant');
+      console.error('[ServiceDetailShared] ❌ serviceId manquant ou invalide:', serviceId);
+      setError('ID de service manquant ou invalide');
       setLoading(false);
     }
   }, [serviceId]);
 
   const loadServiceDetails = async () => {
+    // ✅ CORRIGÉ: Double vérification que serviceId existe
+    if (!serviceId || serviceId === 'undefined' || serviceId === 'null') {
+      setError('ID de service manquant ou invalide');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -54,6 +63,12 @@ const ServiceDetailSharedScreen: React.FC = () => {
       }
 
       const data = await response.json();
+      
+      // ✅ CORRIGÉ: Vérifier que les données sont valides
+      if (!data || !data.id) {
+        throw new Error('Service non trouvé (données invalides)');
+      }
+      
       setService(data);
       setError(null);
     } catch (err: any) {

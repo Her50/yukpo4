@@ -2582,6 +2582,13 @@ CREATE TABLE IF NOT EXISTS delivery_matching_queue (
 
 CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_status ON delivery_matching_queue(status, next_attempt_at);
 CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_zone ON delivery_matching_queue(zone_id);
+-- ✅ 2025-12-12: Index optimisé pour requête fréquente (status, next_attempt_at, priority)
+CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_optimized
+ON delivery_matching_queue (status, next_attempt_at, priority)
+WHERE status IN ('queued', 'searching');
+CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_priority_next_attempt
+ON delivery_matching_queue (priority, next_attempt_at)
+WHERE status IN ('queued', 'searching');
 
 CREATE TABLE IF NOT EXISTS delivery_matching_events (
     id BIGSERIAL PRIMARY KEY,

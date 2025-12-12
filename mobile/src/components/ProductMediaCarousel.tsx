@@ -121,11 +121,22 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             const videoRef = videoRefs.current.get(index);
             if (videoRef) {
                 try {
-                    // ✅ CORRIGÉ: S'assurer que la vidéo est chargée avant de jouer
-                    await videoRef.setStatusAsync({ shouldPlay: true, isMuted: false });
-                    await videoRef.playAsync();
-                    setPlayingVideoIndex(index);
-                    console.log('[ProductMediaCarousel] ✅ Vidéo démarrée avec succès, index:', index);
+                    // ✅ CORRIGÉ: Vérifier le statut de la vidéo avant de jouer
+                    const status = await videoRef.getStatusAsync();
+                    if (status.isLoaded) {
+                        // La vidéo est chargée, on peut jouer
+                        await videoRef.setStatusAsync({ shouldPlay: true, isMuted: false });
+                        await videoRef.playAsync();
+                        setPlayingVideoIndex(index);
+                        console.log('[ProductMediaCarousel] ✅ Vidéo démarrée avec succès, index:', index);
+                    } else {
+                        // La vidéo n'est pas encore chargée, attendre qu'elle se charge
+                        console.log('[ProductMediaCarousel] ⏳ Vidéo pas encore chargée, attente...');
+                        // Marquer comme devant jouer, le onPlaybackStatusUpdate démarrera la lecture
+                        setPlayingVideoIndex(index);
+                        // Essayer de charger la vidéo
+                        await videoRef.loadAsync({ uri: allMedia[index].uri }, { shouldPlay: true, isMuted: false });
+                    }
                 } catch (error) {
                     console.error('[ProductMediaCarousel] ❌ Erreur lecture vidéo:', error);
                     // ✅ FALLBACK: Essayer de recharger la vidéo
@@ -134,6 +145,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                         setPlayingVideoIndex(index);
                     } catch (retryError) {
                         console.error('[ProductMediaCarousel] ❌ Erreur retry lecture vidéo:', retryError);
+                        setPlayingVideoIndex(null);
                     }
                 }
             } else {
@@ -279,9 +291,17 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                                                 // ✅ CORRIGÉ: Enregistrer la ref pour chaque vidéo
                                                 if (ref) {
                                                     videoRefs.current.set(index, ref);
-                                                    // ✅ NOUVEAU: Si la vidéo doit jouer, démarrer immédiatement
+                                                    // ✅ NOUVEAU: Si la vidéo doit jouer, vérifier qu'elle est chargée avant de démarrer
                                                     if (playingVideoIndex === index) {
-                                                        ref.playAsync().catch(() => undefined);
+                                                        // Vérifier le statut avant de jouer
+                                                        ref.getStatusAsync().then((status) => {
+                                                            if (status.isLoaded) {
+                                                                ref.playAsync().catch(() => undefined);
+                                                            } else {
+                                                                // Charger puis jouer
+                                                                ref.loadAsync({ uri: media.uri }, { shouldPlay: true, isMuted: false }).catch(() => undefined);
+                                                            }
+                                                        }).catch(() => undefined);
                                                     }
                                                 } else {
                                                     videoRefs.current.delete(index);

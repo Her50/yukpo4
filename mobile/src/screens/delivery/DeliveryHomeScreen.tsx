@@ -31,11 +31,28 @@ const DeliveryHomeScreen: React.FC = () => {
     const [navigating, setNavigating] = useState(false);
 
     // ✅ NOUVEAU: Animation d'entrée d'écran
-    const screenEnterStyle = useScreenEnter();
+    // ✅ CORRIGÉ: Vérifier que useScreenEnter existe avant de l'appeler
+    let screenEnterStyle: ReturnType<typeof useScreenEnter> | null = null;
+    try {
+        if (typeof useScreenEnter === 'function') {
+            screenEnterStyle = useScreenEnter();
+        } else {
+            console.warn('[DeliveryHomeScreen] ⚠️ useScreenEnter n\'est pas disponible');
+        }
+    } catch (error) {
+        console.error('[DeliveryHomeScreen] ❌ Erreur useScreenEnter:', error);
+    }
+    // ✅ CORRIGÉ: S'assurer que screenEnterStyle a toujours une propriété style
+    const safeScreenEnterStyle = screenEnterStyle?.style || {};
 
     useFocusEffect(
         useCallback(() => {
-            refreshActiveDeliveries();
+            // ✅ CORRIGÉ: Vérifier que refreshActiveDeliveries existe avant de l'appeler
+            if (typeof refreshActiveDeliveries === 'function') {
+                refreshActiveDeliveries();
+            } else {
+                console.warn('[DeliveryHomeScreen] ⚠️ refreshActiveDeliveries n\'est pas disponible');
+            }
             // ✅ CORRIGÉ : Réinitialiser l'état navigating quand l'écran devient actif
             setNavigating(false);
         }, [refreshActiveDeliveries])
@@ -44,15 +61,21 @@ const DeliveryHomeScreen: React.FC = () => {
     // ✅ CORRIGÉ: Gestion du bouton retour Android
     useEffect(() => {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-            // Permettre de revenir en arrière normalement
-            if (navigation.canGoBack()) {
-                navigation.goBack();
-                return true;
+            // ✅ CORRIGÉ: Vérifier que navigation et canGoBack existent
+            if (navigation && typeof navigation.canGoBack === 'function' && navigation.canGoBack()) {
+                if (typeof navigation.goBack === 'function') {
+                    navigation.goBack();
+                    return true;
+                }
             }
             return false;
         });
 
-        return () => backHandler.remove();
+        return () => {
+            if (backHandler && typeof backHandler.remove === 'function') {
+                backHandler.remove();
+            }
+        };
     }, [navigation]);
 
     const activeDeliveries = useMemo(() => {
@@ -65,14 +88,33 @@ const DeliveryHomeScreen: React.FC = () => {
     }, [deliveries]);
 
     const handleRefresh = useCallback(async () => {
+        // ✅ CORRIGÉ: Vérifier que refreshActiveDeliveries existe avant de l'appeler
+        if (typeof refreshActiveDeliveries !== 'function') {
+            console.warn('[DeliveryHomeScreen] ⚠️ refreshActiveDeliveries n\'est pas disponible');
+            setRefreshing(false);
+            return;
+        }
+
         setRefreshing(true);
-        await refreshActiveDeliveries();
-        setRefreshing(false);
+        try {
+            await refreshActiveDeliveries();
+        } catch (error) {
+            console.error('[DeliveryHomeScreen] ❌ Erreur refresh:', error);
+        } finally {
+            setRefreshing(false);
+        }
     }, [refreshActiveDeliveries]);
 
     // ✅ OPTIMISÉ: Navigation immédiate sans délai artificiel
     const handleStartShopping = useCallback(() => {
         if (navigating) return;
+
+        // ✅ CORRIGÉ: Vérifier que navigation existe et a la méthode navigate
+        if (!navigation || typeof navigation.navigate !== 'function') {
+            console.error('[DeliveryHomeScreen] ❌ navigation.navigate n\'est pas disponible');
+            Alert.alert('Erreur', 'Navigation indisponible. Veuillez réessayer.');
+            return;
+        }
 
         console.log('[DeliveryHomeScreen] 🛒 Navigation vers DeliveryShoppingFlow');
         setNavigating(true);
@@ -97,6 +139,13 @@ const DeliveryHomeScreen: React.FC = () => {
     const handleStartParcel = useCallback(() => {
         if (navigating) return;
 
+        // ✅ CORRIGÉ: Vérifier que navigation existe et a la méthode navigate
+        if (!navigation || typeof navigation.navigate !== 'function') {
+            console.error('[DeliveryHomeScreen] ❌ navigation.navigate n\'est pas disponible');
+            Alert.alert('Erreur', 'Navigation indisponible. Veuillez réessayer.');
+            return;
+        }
+
         console.log('[DeliveryHomeScreen] 📦 Navigation vers DeliveryParcelFlowNew');
         setNavigating(true);
 
@@ -119,6 +168,20 @@ const DeliveryHomeScreen: React.FC = () => {
 
     const handleOpenDelivery = useCallback((deliveryId: string) => {
         if (navigating) return;
+
+        // ✅ CORRIGÉ: Vérifier que navigation existe et a la méthode navigate
+        if (!navigation || typeof navigation.navigate !== 'function') {
+            console.error('[DeliveryHomeScreen] ❌ navigation.navigate n\'est pas disponible');
+            Alert.alert('Erreur', 'Navigation indisponible. Veuillez réessayer.');
+            return;
+        }
+
+        // ✅ CORRIGÉ: Vérifier que setActiveDeliveryId existe
+        if (typeof setActiveDeliveryId !== 'function') {
+            console.error('[DeliveryHomeScreen] ❌ setActiveDeliveryId n\'est pas disponible');
+            Alert.alert('Erreur', 'Fonction indisponible. Veuillez réessayer.');
+            return;
+        }
 
         console.log('[DeliveryHomeScreen] 📍 Ouverture livraison:', deliveryId);
         setNavigating(true);
@@ -143,7 +206,7 @@ const DeliveryHomeScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container} backgroundColor={modernColors.background}>
-            <Animated.View style={[styles.animatedContainer, screenEnterStyle.style as any]}>
+            <Animated.View style={[styles.animatedContainer, safeScreenEnterStyle as any]}>
                 <ScrollView
                     contentContainerStyle={styles.scroll}
                     showsVerticalScrollIndicator={false}
@@ -170,7 +233,11 @@ const DeliveryHomeScreen: React.FC = () => {
                                 variant='outline'
                                 onPress={() => {
                                     console.log('[DeliveryHomeScreen] 🔄 Tentative de reconnexion...');
-                                    retryPendingMutations();
+                                    if (typeof retryPendingMutations === 'function') {
+                                        retryPendingMutations();
+                                    } else {
+                                        console.warn('[DeliveryHomeScreen] ⚠️ retryPendingMutations n\'est pas disponible');
+                                    }
                                 }}
                                 size='small'
                                 disabled={!isNetworkOnline}
@@ -189,7 +256,11 @@ const DeliveryHomeScreen: React.FC = () => {
                                 variant='ghost'
                                 onPress={() => {
                                     console.log('[DeliveryHomeScreen] 🔄 Forçage synchronisation...');
-                                    retryPendingMutations();
+                                    if (typeof retryPendingMutations === 'function') {
+                                        retryPendingMutations();
+                                    } else {
+                                        console.warn('[DeliveryHomeScreen] ⚠️ retryPendingMutations n\'est pas disponible');
+                                    }
                                 }}
                                 size='small'
                                 disabled={!isNetworkOnline}

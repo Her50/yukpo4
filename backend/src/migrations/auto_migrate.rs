@@ -6864,6 +6864,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto user_stats objects: {}", e),
     }
 
+    // ✅ NOUVEAU 2025-12-12 : Optimisation index delivery_matching_queue
+    match ensure_delivery_matching_queue_index(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery_matching_queue index OK"),
+        Err(e) => error!("❌ Erreur migration auto delivery_matching_queue index: {}", e),
+    }
+
     // ✅ NOUVEAU : Table delivery_engine_pricing pour calcul coût par type d'engin
     match ensure_delivery_engine_pricing_table(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_engine_pricing OK"),
@@ -12408,5 +12414,21 @@ pub async fn ensure_user_stats_objects(pool: &PgPool) -> Result<(), sqlx::Error>
     execute_multiple_sql_commands(pool, migration_sql).await?;
 
     info!("✅ Vue matérialisée et fonction user_stats créées");
+    Ok(())
+}
+
+/// ✅ 2025-12-12 : Optimisation index delivery_matching_queue
+/// Migration: 20251212_optimize_delivery_matching_queue_index.sql
+/// Optimise la requête lente (1-1.4s) sur delivery_matching_queue
+pub async fn ensure_delivery_matching_queue_index(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création index optimisé delivery_matching_queue...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251212_optimize_delivery_matching_queue_index.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Index delivery_matching_queue optimisé créé");
     Ok(())
 }

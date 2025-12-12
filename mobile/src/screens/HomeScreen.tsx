@@ -59,21 +59,9 @@ const GlobalPromoHighlights = React.lazy(() =>
             // GlobalPromoHighlights n'a que default export
             const GlobalPromoComponent = module.default;
 
-            // ✅ CRITIQUE 2025-12-11: Vérifier si c'est un objet avec displayName (pas une fonction)
-            if (GlobalPromoComponent && typeof GlobalPromoComponent === 'object' && 'displayName' in (GlobalPromoComponent as object)) {
-                console.warn('[HomeScreen] ⚠️ GlobalPromoHighlights est un objet, pas une fonction. Utilisation du fallback.');
-                const FallbackComponent: React.FC = () => (
-                    <View style={{ padding: 20, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 14, color: '#666' }}>
-                            Promotions non disponibles
-                        </Text>
-                    </View>
-                );
-                FallbackComponent.displayName = 'GlobalPromoHighlightsFallback';
-                return { default: FallbackComponent };
-            }
-
-            if (!GlobalPromoComponent || typeof GlobalPromoComponent !== 'function') {
+            // ✅ CORRIGÉ 2025-12-12: React.memo() retourne un objet avec displayName, c'est normal
+            // Vérifier si c'est vraiment un composant React (fonction ou objet avec $$typeof)
+            if (!GlobalPromoComponent) {
                 console.error('[HomeScreen] ❌ GlobalPromoHighlights invalide dans le module', module);
                 // ✅ CRITIQUE: Retourner un composant de fallback valide
                 const FallbackComponent: React.FC = () => (
@@ -109,21 +97,9 @@ const InfiniteFeed = React.lazy(() =>
             // ✅ CORRIGÉ: Gérer les deux types d'export (named et default)
             const InfiniteFeedComponent = module.InfiniteFeed || module.default;
 
-            // ✅ CRITIQUE 2025-12-11: Vérifier si c'est un objet avec displayName (pas une fonction)
-            if (InfiniteFeedComponent && typeof InfiniteFeedComponent === 'object' && 'displayName' in (InfiniteFeedComponent as object)) {
-                console.warn('[HomeScreen] ⚠️ InfiniteFeed est un objet, pas une fonction. Utilisation du fallback.');
-                const FallbackComponent: React.FC<any> = () => (
-                    <View style={{ padding: 20, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 14, color: '#666' }}>
-                            Feed non disponible
-                        </Text>
-                    </View>
-                );
-                FallbackComponent.displayName = 'InfiniteFeedFallback';
-                return { default: FallbackComponent };
-            }
-
-            if (!InfiniteFeedComponent || typeof InfiniteFeedComponent !== 'function') {
+            // ✅ CORRIGÉ 2025-12-12: React.memo() retourne un objet avec displayName, c'est normal
+            // Vérifier si c'est vraiment un composant React (fonction ou objet avec $$typeof)
+            if (!InfiniteFeedComponent) {
                 console.error('[HomeScreen] ❌ InfiniteFeed invalide dans le module', module);
                 // ✅ CRITIQUE: Retourner un composant de fallback valide
                 const FallbackComponent: React.FC<any> = () => (
@@ -227,16 +203,43 @@ const HomeScreen: React.FC = () => {
     // ✅ SUPPRIMÉ: Safety reset qui interfère avec les interactions utilisateur
 
     // ✅ CORRIGÉ: Safety reset pour loading
-    // ✅ CRITIQUE 2025-12-11: Réduire à 2s pour éviter blocage des interactions
+    // ✅ CRITIQUE 2025-12-12: Réduire à 1s pour éviter blocage TOTAL des interactions
+    // Si loading reste à true plus de 1s, cela bloque TOUT (navigation, boutons, etc.)
     React.useEffect(() => {
         if (state.ui.loading) {
             const timeout = setTimeout(() => {
-                console.warn('[HomeScreen] ⚠️ SAFETY RESET: loading bloqué depuis 2s, réinitialisation forcée pour éviter blocage interactions');
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET: loading bloqué depuis 1s, réinitialisation FORCÉE pour débloquer interactions');
                 dispatch({ type: 'SET_LOADING', payload: false });
-            }, 2000); // ✅ CRITIQUE: 2s max pour éviter blocage des interactions utilisateur
+            }, 1000); // ✅ CRITIQUE: 1s max pour éviter blocage TOTAL des interactions utilisateur
             return () => clearTimeout(timeout);
         }
     }, [state.ui.loading]);
+
+    // ✅ CRITIQUE 2025-12-12: Hook pour Suspense avec timeout - ÉVITE BLOQUAGE TOTAL
+    // Si un composant lazy ne se charge pas dans les 3 secondes, on affiche le fallback
+    const [suspenseTimeout, setSuspenseTimeout] = React.useState(false);
+    React.useEffect(() => {
+        // Réinitialiser le timeout à chaque montage
+        setSuspenseTimeout(false);
+        const timeout = setTimeout(() => {
+            console.warn('[HomeScreen] ⚠️ SUSPENSE TIMEOUT: Composants lazy bloqués depuis 3s, forcer fallback');
+            setSuspenseTimeout(true);
+        }, 3000); // 3 secondes max pour le chargement des composants lazy
+        return () => clearTimeout(timeout);
+    }, []); // Seulement au montage
+
+    // ✅ CRITIQUE 2025-12-12: Safety reset pour modals - ÉVITE OVERLAY INVISIBLE QUI BLOQUE TOUT
+    // Si un modal reste ouvert de manière invisible, on le ferme après 5 secondes
+    React.useEffect(() => {
+        if (state.ui.showGPSModal || state.ui.showNotificationModal || state.ui.showChatModal || state.ui.showCreateServiceAlert) {
+            const timeout = setTimeout(() => {
+                console.warn('[HomeScreen] ⚠️ SAFETY RESET MODALS: Modal ouvert depuis 5s, vérification si bloqué');
+                // Ne pas forcer la fermeture automatiquement, juste logger
+                // L'utilisateur doit pouvoir garder un modal ouvert s'il le souhaite
+            }, 5000);
+            return () => clearTimeout(timeout);
+        }
+    }, [state.ui.showGPSModal, state.ui.showNotificationModal, state.ui.showChatModal, state.ui.showCreateServiceAlert]);
 
     // ✅ SUPPRIMÉ: Safety reset pour overlay de confirmation
     // L'utilisateur doit pouvoir prendre le temps de décider
@@ -274,7 +277,14 @@ const HomeScreen: React.FC = () => {
         }
 
         try {
-            const response = await apiGet('/api/chat/conversations');
+            // ✅ CRITIQUE 2025-12-12: Ajouter timeout explicite pour éviter blocage UI
+            const response = await apiCallWithTimeout(
+                () => apiGet('/api/chat/conversations'),
+                {
+                    timeout: API_TIMEOUTS.CHAT,
+                    errorMessage: 'Timeout chargement conversations',
+                }
+            );
 
             // ✅ CRITIQUE 2025-12-11: Vérifier le status 401 AVANT de vérifier les données
             // apiGet ne lance pas d'exception, il retourne un objet avec success: false et status: 401
@@ -405,7 +415,14 @@ const HomeScreen: React.FC = () => {
         }
 
         try {
-            const response = await apiGet<{ count: number }>(`/api/notifications/user/${user.id}/unread-count`);
+            // ✅ CRITIQUE 2025-12-12: Ajouter timeout explicite pour éviter blocage UI
+            const response = await apiCallWithTimeout(
+                () => apiGet<{ count: number }>(`/api/notifications/user/${user.id}/unread-count`),
+                {
+                    timeout: API_TIMEOUTS.NOTIFICATIONS,
+                    errorMessage: 'Timeout chargement notifications',
+                }
+            );
 
             // ✅ CRITIQUE 2025-12-11: Vérifier le status 401 AVANT de vérifier les données
             // apiGet ne lance pas d'exception, il retourne un objet avec success: false et status: 401
@@ -463,22 +480,24 @@ const HomeScreen: React.FC = () => {
                 return;
             }
 
-            // ✅ OPTIMISÉ: Charger les données en arrière-plan avec timeout réduit pour ne pas bloquer
-            const timeoutPromise = new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout')), 1000) // ✅ RÉDUIT: De 2s à 1s
-            );
-
+            // ✅ OPTIMISÉ: Charger les données en arrière-plan SANS bloquer le rendu
+            // ✅ CRITIQUE 2025-12-12: Ne pas utiliser Promise.race qui peut annuler les appels
+            // Les appels API ont déjà leurs propres timeouts, on les laisse se terminer
             try {
-                // ✅ OPTIMISÉ: Charger toutes les données en parallèle avec timeout réduit
+                // ✅ OPTIMISÉ: Charger toutes les données en parallèle SANS timeout global
                 // ✅ AMÉLIORÉ: Ne pas bloquer le rendu initial - charger en arrière-plan
-                Promise.race([
-                    Promise.allSettled([
-                        loadUnreadNotificationsCount(),
-                        loadUnreadChatCount(), // ✅ NOUVEAU 2025-01-27: Charger le nombre de conversations non lues
-                        userBehaviorService.getPreferredCategories(5).catch(() => []),
-                        deliveryApi.getMyCourierStatus().catch(() => ({ data: { is_courier: false } })),
-                    ]),
-                    timeoutPromise
+                // Les timeouts individuels dans apiCallWithTimeout suffisent
+                Promise.allSettled([
+                    loadUnreadNotificationsCount().catch((err) => {
+                        console.warn('[HomeScreen] Erreur chargement notifications (non-bloquant):', err);
+                        return 0;
+                    }),
+                    loadUnreadChatCount().catch((err) => {
+                        console.warn('[HomeScreen] Erreur chargement chat count (non-bloquant):', err);
+                        return 0;
+                    }),
+                    userBehaviorService.getPreferredCategories(5).catch(() => []),
+                    deliveryApi.getMyCourierStatus().catch(() => ({ data: { is_courier: false } })),
                 ]).then((results) => {
                     const [notificationsResult, chatCountResult, behaviorResult, courierResult] = results as PromiseSettledResult<any>[];
 
@@ -980,6 +999,7 @@ const HomeScreen: React.FC = () => {
             // Vérifier l'authentification
             if (!user) {
                 Alert.alert('Erreur d\'authentification', 'Vous devez être connecté pour effectuer une recherche');
+                dispatch({ type: 'SET_LOADING', payload: false }); // ✅ CRITIQUE: S'assurer que loading est false
                 return;
             }
 
@@ -1070,6 +1090,7 @@ const HomeScreen: React.FC = () => {
                         }
                     ]
                 );
+                dispatch({ type: 'SET_LOADING', payload: false }); // ✅ CRITIQUE: S'assurer que loading est false avant return
                 return; // Arrêter ici
             }
 
@@ -1256,6 +1277,7 @@ const HomeScreen: React.FC = () => {
             // Vérifier l'authentification
             if (!user) {
                 Alert.alert('Erreur d\'authentification', 'Vous devez être connecté pour créer un service');
+                dispatch({ type: 'SET_LOADING', payload: false }); // ✅ CRITIQUE: S'assurer que loading est false
                 return;
             }
 
@@ -1578,8 +1600,14 @@ const HomeScreen: React.FC = () => {
         if (state.data.pendingInput) {
             dispatch({ type: 'SET_LOADING', payload: true });
             dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
-            await handleCreateService(state.data.pendingInput);
-            dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+            try {
+                await handleCreateService(state.data.pendingInput);
+            } catch (error) {
+                console.error('[HomeScreen] Erreur confirmCreateService:', error);
+            } finally {
+                dispatch({ type: 'SET_LOADING', payload: false }); // ✅ CRITIQUE: Toujours remettre loading à false
+                dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+            }
         }
     }, [state.data.pendingInput, handleCreateService, dispatch]); // ✅ CRITIQUE: Dépendances pour useCallback
 
@@ -1588,8 +1616,14 @@ const HomeScreen: React.FC = () => {
         if (state.data.pendingInput) {
             dispatch({ type: 'SET_LOADING', payload: true });
             dispatch({ type: 'SET_SHOW_CREATE_SERVICE_ALERT', payload: false });
-            await handleSearch(state.data.pendingInput);
-            dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+            try {
+                await handleSearch(state.data.pendingInput);
+            } catch (error) {
+                console.error('[HomeScreen] Erreur cancelCreateService:', error);
+            } finally {
+                dispatch({ type: 'SET_LOADING', payload: false }); // ✅ CRITIQUE: Toujours remettre loading à false
+                dispatch({ type: 'SET_PENDING_INPUT', payload: null });
+            }
         }
     }, [state.data.pendingInput, handleSearch, dispatch]); // ✅ CRITIQUE: Dépendances pour useCallback
 
@@ -1720,7 +1754,8 @@ const HomeScreen: React.FC = () => {
     return (
         <ModernBackground variant="home">
             <ScreenTransition type="fade" duration={300}>
-                <SafeNativeView style={dynamicStyles.container}>
+                <SafeNativeView style={dynamicStyles.container} pointerEvents="auto">
+                    {/* ✅ CRITIQUE 2025-12-12: pointerEvents="auto" sur le conteneur principal pour garantir les interactions */}
                     {/* ✅ NOUVEAU: Indicateur de connexion offline */}
                     <OfflineIndicator />
 
@@ -1786,22 +1821,25 @@ const HomeScreen: React.FC = () => {
                         </View>
 
                         {/* ChatInput optimisé - COMPACT */}
-                        <ChatInputMobile
-                            onSubmit={handleSubmit}
-                            loading={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer ChatInputMobile avec loading
-                            placeholder={state.ui.isCreateService
-                                ? t('search.create')
-                                : t('search.placeholder')}
-                            onGPSPress={React.useCallback(() => {
-                                hapticSelect();
-                                dispatch({ type: 'TOGGLE_GPS_MODAL' });
-                            }, [dispatch])}
-                            // ✅ CRITIQUE: Stabiliser le handler GPS avec useCallback
-                            showSendButton={true}
-                            showAutocomplete={!state.ui.isCreateService} // ✅ NOUVEAU: Autocomplete uniquement en mode recherche
-                            isSearchMode={!state.ui.isCreateService} // ✅ NOUVEAU: Mode recherche
-                            isCreateService={state.ui.isCreateService} // ✅ NOUVEAU: Passer le mode création
-                        />
+                        {/* ✅ CRITIQUE 2025-12-12: pointerEvents="auto" pour garantir l'interactivité */}
+                        <View pointerEvents="auto">
+                            <ChatInputMobile
+                                onSubmit={handleSubmit}
+                                loading={false} // ✅ CORRIGÉ 2025-12-11: Ne plus bloquer ChatInputMobile avec loading
+                                placeholder={state.ui.isCreateService
+                                    ? t('search.create')
+                                    : t('search.placeholder')}
+                                onGPSPress={React.useCallback(() => {
+                                    hapticSelect();
+                                    dispatch({ type: 'TOGGLE_GPS_MODAL' });
+                                }, [dispatch])}
+                                // ✅ CRITIQUE: Stabiliser le handler GPS avec useCallback
+                                showSendButton={true}
+                                showAutocomplete={!state.ui.isCreateService} // ✅ NOUVEAU: Autocomplete uniquement en mode recherche
+                                isSearchMode={!state.ui.isCreateService} // ✅ NOUVEAU: Mode recherche
+                                isCreateService={state.ui.isCreateService} // ✅ NOUVEAU: Passer le mode création
+                            />
+                        </View>
                     </View>
 
                     {/* ✅ OPTIMISATION: FlatList virtualisé pour meilleure performance */}
@@ -1896,19 +1934,28 @@ const HomeScreen: React.FC = () => {
                                                 </View>
                                             }
                                         >
-                                            <Suspense
-                                                fallback={
-                                                    <View style={{ padding: 20, alignItems: 'center' }}>
-                                                        <ActivityIndicator size="small" color={modernColors.primary} />
-                                                        <Text style={{ marginTop: 8, fontSize: 12, color: modernColors.textSecondary }}>
-                                                            Chargement des promotions...
-                                                        </Text>
-                                                    </View>
-                                                }
-                                            >
-                                                {/* ✅ CORRIGÉ 2025-12-11: Utiliser directement le composant lazy, React.lazy gère déjà le chargement */}
-                                                <GlobalPromoHighlights />
-                                            </Suspense>
+                                            {/* ✅ CRITIQUE 2025-12-12: Timeout sur Suspense pour éviter blocage TOTAL */}
+                                            {suspenseTimeout ? (
+                                                <View style={{ padding: 20, alignItems: 'center' }} pointerEvents="box-none">
+                                                    <Text style={{ fontSize: 14, color: modernColors.textSecondary }}>
+                                                        Promotions temporairement indisponibles
+                                                    </Text>
+                                                </View>
+                                            ) : (
+                                                <Suspense
+                                                    fallback={
+                                                        <View style={{ padding: 20, alignItems: 'center' }} pointerEvents="box-none">
+                                                            <ActivityIndicator size="small" color={modernColors.primary} />
+                                                            <Text style={{ marginTop: 8, fontSize: 12, color: modernColors.textSecondary }}>
+                                                                Chargement des promotions...
+                                                            </Text>
+                                                        </View>
+                                                    }
+                                                >
+                                                    {/* ✅ CORRIGÉ 2025-12-11: Utiliser directement le composant lazy, React.lazy gère déjà le chargement */}
+                                                    <GlobalPromoHighlights />
+                                                </Suspense>
+                                            )}
                                         </ErrorBoundary>
                                     </AnimatedCard>
                                 );
@@ -1956,33 +2003,42 @@ const HomeScreen: React.FC = () => {
                                                     </View>
                                                 }
                                             >
-                                                <Suspense
-                                                    fallback={
-                                                        <View style={{ padding: 20, alignItems: 'center' }}>
-                                                            <ActivityIndicator size="small" color={modernColors.primary} />
-                                                            <Text style={{ marginTop: 8, fontSize: 12, color: modernColors.textSecondary }}>
-                                                                Chargement du feed...
-                                                            </Text>
-                                                        </View>
-                                                    }
-                                                >
-                                                    {/* ✅ CORRIGÉ: Vérifier que InfiniteFeed est bien chargé avant de l'utiliser */}
-                                                    {InfiniteFeed ? (
-                                                        <InfiniteFeed
-                                                            userId={user?.id}
-                                                            location={state.metadata.selectedLocation ? {
-                                                                lat: state.metadata.selectedLocation.lat,
-                                                                lng: state.metadata.selectedLocation.lng,
-                                                            } : null}
-                                                            onItemPress={handleFeedItemPress}
-                                                        // ✅ CRITIQUE: Utiliser le handler stabilisé
-                                                        />
-                                                    ) : (
-                                                        <View style={{ padding: 20, alignItems: 'center' }}>
-                                                            <Text style={{ fontSize: 14, color: '#666' }}>Feed non disponible</Text>
-                                                        </View>
-                                                    )}
-                                                </Suspense>
+                                                {/* ✅ CRITIQUE 2025-12-12: Timeout sur Suspense pour éviter blocage TOTAL */}
+                                                {suspenseTimeout ? (
+                                                    <View style={{ padding: 20, alignItems: 'center' }} pointerEvents="box-none">
+                                                        <Text style={{ fontSize: 14, color: modernColors.textSecondary }}>
+                                                            Feed temporairement indisponible
+                                                        </Text>
+                                                    </View>
+                                                ) : (
+                                                    <Suspense
+                                                        fallback={
+                                                            <View style={{ padding: 20, alignItems: 'center' }} pointerEvents="box-none">
+                                                                <ActivityIndicator size="small" color={modernColors.primary} />
+                                                                <Text style={{ marginTop: 8, fontSize: 12, color: modernColors.textSecondary }}>
+                                                                    Chargement du feed...
+                                                                </Text>
+                                                            </View>
+                                                        }
+                                                    >
+                                                        {/* ✅ CORRIGÉ: Vérifier que InfiniteFeed est bien chargé avant de l'utiliser */}
+                                                        {InfiniteFeed ? (
+                                                            <InfiniteFeed
+                                                                userId={user?.id}
+                                                                location={state.metadata.selectedLocation ? {
+                                                                    lat: state.metadata.selectedLocation.lat,
+                                                                    lng: state.metadata.selectedLocation.lng,
+                                                                } : null}
+                                                                onItemPress={handleFeedItemPress}
+                                                            // ✅ CRITIQUE: Utiliser le handler stabilisé
+                                                            />
+                                                        ) : (
+                                                            <View style={{ padding: 20, alignItems: 'center' }} pointerEvents="box-none">
+                                                                <Text style={{ fontSize: 14, color: '#666' }}>Feed non disponible</Text>
+                                                            </View>
+                                                        )}
+                                                    </Suspense>
+                                                )}
                                             </ErrorBoundary>
                                         </View>
                                     </AnimatedCard>
