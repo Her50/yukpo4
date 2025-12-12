@@ -23,14 +23,15 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
     testID,
     pointerEvents,
 }) => {
-    // ✅ DEBUG: Logger les children pour identifier les problèmes (TOUJOURS activé pour capturer les erreurs)
+    // ✅ DEBUG: Logger les children pour identifier les problèmes (uniquement en développement)
     React.useEffect(() => {
-        try {
-            const { componentDebugger } = require('../utils/componentDebugger');
-            componentDebugger.enable(); // ✅ CRITIQUE: Activer même en production pour capturer les erreurs
-            componentDebugger.logComponent('SafeNativeView', { edges, backgroundColor, testID }, children);
-        } catch (e) {
-            // Ignorer si le debugger n'est pas disponible
+        if (__DEV__) {
+            try {
+                const { componentDebugger } = require('../utils/componentDebugger');
+                componentDebugger.logComponent('SafeNativeView', { edges, backgroundColor, testID }, children);
+            } catch (e) {
+                // Ignorer si le debugger n'est pas disponible
+            }
         }
     }, [children, edges, backgroundColor, testID]);
     const getStatusBarHeight = () => {

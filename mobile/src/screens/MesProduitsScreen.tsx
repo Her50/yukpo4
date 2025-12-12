@@ -1114,6 +1114,18 @@ const MesProduitsScreen: React.FC = () => {
                 documents_count: finalDocuments.length
             });
 
+            // ✅ CORRIGÉ: Charger les données du service pour suggestionIA (nécessaire pour les combinaisons autocomplete)
+            let serviceDataForSuggestion: any = null;
+            try {
+                const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
+                if (serviceResponse?.success && serviceResponse?.data) {
+                    serviceDataForSuggestion = serviceResponse.data.data || serviceResponse.data;
+                    console.log('[MesProduitsScreen] ✅ Données service chargées pour suggestionIA');
+                }
+            } catch (error) {
+                console.warn('[MesProduitsScreen] ⚠️ Impossible de charger les données du service pour suggestionIA:', error);
+            }
+
             navigation.navigate('AjouterProduitSimple' as never, {
                 mode: 'edit',
                 serviceId: product.serviceId,
@@ -1121,6 +1133,9 @@ const MesProduitsScreen: React.FC = () => {
                 productIndex: product.product_index ?? 0,
                 prefill,
                 mediaData,
+                suggestionIA: serviceDataForSuggestion ? {
+                    data: serviceDataForSuggestion
+                } : undefined,
             } as never);
         } catch (error) {
             console.error('[MesProduitsScreen] ❌ Erreur lors de l\'édition du produit:', error);
@@ -1266,11 +1281,26 @@ const MesProduitsScreen: React.FC = () => {
                 documents_count: finalDocuments.length
             });
 
+            // ✅ CORRIGÉ: Charger les données du service pour suggestionIA (nécessaire pour les combinaisons autocomplete)
+            let serviceDataForSuggestion: any = null;
+            try {
+                const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
+                if (serviceResponse?.success && serviceResponse?.data) {
+                    serviceDataForSuggestion = serviceResponse.data.data || serviceResponse.data;
+                    console.log('[MesProduitsScreen] ✅ Données service chargées pour suggestionIA (duplication)');
+                }
+            } catch (error) {
+                console.warn('[MesProduitsScreen] ⚠️ Impossible de charger les données du service pour suggestionIA:', error);
+            }
+
             navigation.navigate('AjouterProduitSimple' as never, {
                 mode: 'duplicate',
                 serviceId: product.serviceId,
                 prefill,
                 mediaData,
+                suggestionIA: serviceDataForSuggestion ? {
+                    data: serviceDataForSuggestion
+                } : undefined,
             } as never);
         } catch (error) {
             console.error('[MesProduitsScreen] ❌ Erreur lors de la duplication du produit:', error);

@@ -85,11 +85,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CORRIGÉ RACINE 2025-12-11: Pool réduit pour éviter surcharge PostgreSQL
     // Le problème: 300 connexions max surcharge Render PostgreSQL et cause des crashes
     // Render PostgreSQL a une limite de ~50-100 connexions selon le plan
-    // Solution: Réduire à 50 max pour éviter les crashes "terminating connection because of crash"
+    // Solution: Réduire à 30 max pour éviter les crashes "terminating connection because of crash"
+    // ✅ CORRIGÉ 2025-12-12: Réduit de 50 à 30 pour améliorer stabilité
     let max_connections: u32 = env::var("DB_POOL_SIZE")
-        .unwrap_or_else(|_| "50".to_string()) // ✅ CORRIGÉ RACINE: Réduit de 300 à 50 pour éviter surcharge PostgreSQL
+        .unwrap_or_else(|_| "30".to_string()) // ✅ CORRIGÉ 2025-12-12: Réduit de 50 à 30 pour améliorer stabilité
         .parse()
-        .unwrap_or(50);
+        .unwrap_or(30);
 
     let min_connections: u32 = env::var("DB_POOL_MIN_SIZE")
         .unwrap_or_else(|_| "5".to_string()) // ✅ CORRIGÉ RACINE: Réduit de 20 à 5 pour éviter surcharge au démarrage
@@ -116,8 +117,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .max_connections(max_connections)
                 .min_connections(min_connections)
                 .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
-                .idle_timeout(Some(std::time::Duration::from_secs(180)))
-                .max_lifetime(Some(std::time::Duration::from_secs(240)))
+                .idle_timeout(Some(std::time::Duration::from_secs(180))) // ✅ CORRIGÉ 2025-12-12: 3 min pour détecter tôt les connexions mortes
+                .max_lifetime(Some(std::time::Duration::from_secs(240))) // ✅ CORRIGÉ: 4 min pour renouveler AVANT que Render ne ferme (~5 min)
                 .test_before_acquire(true)
                 .after_connect(|conn, _meta| {
                     Box::pin(async move {

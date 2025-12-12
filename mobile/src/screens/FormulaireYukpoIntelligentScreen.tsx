@@ -125,13 +125,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // Cas 1: Mode add_product (ajout de produit)
     if ((mode === 'add_product' || routeAddProductFlag) && serviceId) {
       console.log('[FormulaireYukpoIntelligentScreen] 🔄 Redirection vers AjouterProduitSimpleScreen (mode add_product détecté)');
+      // ✅ CORRIGÉ: S'assurer que tous les paramètres nécessaires sont passés
       (navigation as any).replace('AjouterProduitSimple', {
         serviceId: serviceId,
         suggestionIA: {
-          data: suggestion || {}
+          data: suggestion?.data || suggestion || {},
+          session_id: suggestion?.session_id,
         },
-        mediaData: mediaData,
-        gpsData: gpsData,
+        mediaData: mediaData || {},
+        gpsData: gpsData || {},
         mode: duplicateProduct ? 'duplicate' : 'create',
         prefill: duplicateProduct || editProductData || {}
       });
@@ -154,6 +156,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         if (productIndex < 0) productIndex = null;
       }
 
+      // ✅ CORRIGÉ: Passer aussi mediaData et gpsData pour pré-remplir les médias et localisation
       (navigation as any).replace('AjouterProduitSimple', {
         mode: 'edit',
         serviceId: serviceId,
@@ -161,8 +164,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         productIndex: productIndex,
         prefill: editProductData,
         suggestionIA: {
-          data: suggestion || {}
-        }
+          data: suggestion?.data || suggestion || {},
+          session_id: suggestion?.session_id,
+        },
+        mediaData: mediaData || {},
+        gpsData: gpsData || {},
       });
       return;
     }

@@ -1451,10 +1451,10 @@ impl NativeSearchService {
         let sql = format!(
             r#"
 WITH all_products_extracted AS (
-    -- ✅ CORRIGÉ 2025-11-29: Extraire TOUS les produits de TOUS les services actifs
-    -- PAS de filtre sur titre_service/description/category ici pour permettre de trouver
-    -- des produits même si le service ne contient pas le terme recherché
-    SELECT 
+    -- ✅ CORRIGÉ 2025-12-12: Extraire TOUS les produits de TOUS les services actifs
+    -- Inclut les services depuis services.data->'produits' ET depuis autocomplete_characteristics
+    -- pour garantir que tous les produits sont trouvés, même si services.data->'produits' est vide
+    SELECT DISTINCT
         s.id as service_id,
         s.data,
         s.created_at,
@@ -1470,6 +1470,26 @@ WITH all_products_extracted AS (
         END as products_array
     FROM services s
     WHERE s.is_active = true
+    AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
+    
+    UNION
+    
+    -- ✅ NOUVEAU 2025-12-12: Inclure les services depuis autocomplete_characteristics
+    -- même s'ils n'ont pas de produits dans services.data->'produits'
+    -- Cela garantit que tous les produits indexés dans autocomplete_characteristics sont trouvables
+    SELECT DISTINCT
+        s.id as service_id,
+        s.data,
+        s.created_at,
+        s.user_id,
+        s.gps,
+        s.category,
+        '[]'::jsonb as products_array  -- Produits dans autocomplete_characteristics, pas dans services.data
+    FROM services s
+    INNER JOIN autocomplete_characteristics ac ON ac.service_id = s.id
+    WHERE s.is_active = true
+    AND ac.is_real_product = TRUE
+    AND ac.identifiant_base = 'produits'
     AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
 ),
 products_extracted AS (

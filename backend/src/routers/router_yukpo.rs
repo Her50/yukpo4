@@ -715,6 +715,7 @@ async fn handle_direct_search(
 ) -> AppResult<impl IntoResponse> {
     use crate::services::rechercher_besoin::rechercher_besoin_direct;
     use crate::utils::log::log_info;
+    use std::time::Duration;
 
     // Extraire specialized_type depuis l'input (pour recherche spécialisée dédiée)
     let specialized_type = input.specialized_type.as_deref();
@@ -870,19 +871,56 @@ async fn handle_direct_search(
                 let search_radius_km = Some(50);
 
                 // ✅ APPELER RECHERCHE avec l'input combiné
-                let (mut result, tokens_consumed_search) = rechercher_besoin_direct(
-                    &_state.pg,                          // ✅ CORRIGÉ: Utiliser le pool existant
-                    Some(_state.cache_service.clone()),  // ✅ CORRIGÉ: Réutiliser le cache service
-                    _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique (déjà Option)
-                    Some(_state.search_metrics.clone()), // ✅ NOUVEAU 2025-12-01: Service de métriques singleton
-                    Some(_state.scalability.clone()), // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour cache optimisé
-                    Some(user.id),
-                    &combined_search_text,
-                    gps_zone,
-                    search_radius_km,
-                    specialized_type, // ✅ Transmettre specialized_type
+                log_info(&format!("[DIRECT_SEARCH] 🚀 Démarrage recherche avec texte: '{}'", &combined_search_text.chars().take(100).collect::<String>()));
+                let search_start = std::time::Instant::now();
+                
+                // ✅ CORRIGÉ 2025-12-12: Timeout de 30s (même que client) - temporairement augmenté pour debug
+                let search_result = tokio::time::timeout(
+                    Duration::from_secs(30),
+                    rechercher_besoin_direct(
+                        &_state.pg,                          // ✅ CORRIGÉ: Utiliser le pool existant
+                        Some(_state.cache_service.clone()),  // ✅ CORRIGÉ: Réutiliser le cache service
+                        _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique (déjà Option)
+                        Some(_state.search_metrics.clone()), // ✅ NOUVEAU 2025-12-01: Service de métriques singleton
+                        Some(_state.scalability.clone()), // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour cache optimisé
+                        Some(user.id),
+                        &combined_search_text,
+                        gps_zone,
+                        search_radius_km,
+                        specialized_type, // ✅ Transmettre specialized_type
+                    )
                 )
-                .await?;
+                .await;
+                
+                let search_duration = search_start.elapsed();
+                log_info(&format!("[DIRECT_SEARCH] ⏱️ Recherche terminée en {:?}", search_duration));
+                
+                let (mut result, tokens_consumed_search) = match search_result {
+                    Ok(Ok((r, t))) => {
+                        log_info(&format!("[DIRECT_SEARCH] ✅ Recherche réussie: {} résultats", 
+                            r.get("resultats").and_then(|res| res.as_array()).map(|arr| arr.len()).unwrap_or(0)));
+                        (r, t)
+                    },
+                    Ok(Err(e)) => {
+                        log_error(&format!("[DIRECT_SEARCH] ❌ Erreur recherche: {}", e));
+                        return Err(e);
+                    },
+                    Err(_) => {
+                        log_error(&format!("[DIRECT_SEARCH] ⏱️ Timeout recherche après 30s (durée réelle: {:?})", search_duration));
+                        // Retourner résultat vide avec message d'erreur
+                        let response = serde_json::json!({
+                            "status": "partial",
+                            "intention": "recherche_besoin",
+                            "resultats": json!({"resultats": []}),
+                            "prestataires": json!({}),
+                            "tokens_consumed": 0,
+                            "message": "Timeout: La recherche a pris trop de temps (30 secondes). Le serveur peut être surchargé. Veuillez réessayer.",
+                            "search_method": "image_ai_timeout",
+                            "timeout": true
+                        });
+                        return Ok(Json(response));
+                    }
+                };
 
                 let results_count = result
                     .get("resultats")
@@ -1094,19 +1132,56 @@ async fn handle_direct_search(
     ));
 
     // Recherche directe sans détection d'intention, avec filtrage GPS
-    let (mut result, tokens_consumed) = rechercher_besoin_direct(
-        &_state.pg,                          // ✅ CORRIGÉ: Utiliser le pool existant
-        Some(_state.cache_service.clone()),  // ✅ CORRIGÉ: Réutiliser le cache service
-        _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique (déjà Option)
-        Some(_state.search_metrics.clone()), // ✅ NOUVEAU 2025-12-01: Service de métriques singleton
-        Some(_state.scalability.clone()), // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour cache optimisé
-        Some(user.id),
-        &user_text,
-        gps_zone,
-        search_radius_km,
-        specialized_type,
+    log_info(&format!("[DIRECT_SEARCH] 🚀 Démarrage recherche textuelle avec texte: '{}'", &user_text.chars().take(100).collect::<String>()));
+    let search_start = std::time::Instant::now();
+    
+    // ✅ CORRIGÉ 2025-12-12: Timeout de 30s (même que client) - temporairement augmenté pour debug
+    let search_result = tokio::time::timeout(
+        Duration::from_secs(30),
+        rechercher_besoin_direct(
+            &_state.pg,                          // ✅ CORRIGÉ: Utiliser le pool existant
+            Some(_state.cache_service.clone()),  // ✅ CORRIGÉ: Réutiliser le cache service
+            _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique (déjà Option)
+            Some(_state.search_metrics.clone()), // ✅ NOUVEAU 2025-12-01: Service de métriques singleton
+            Some(_state.scalability.clone()), // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour cache optimisé
+            Some(user.id),
+            &user_text,
+            gps_zone,
+            search_radius_km,
+            specialized_type,
+        )
     )
-    .await?;
+    .await;
+    
+    let search_duration = search_start.elapsed();
+    log_info(&format!("[DIRECT_SEARCH] ⏱️ Recherche terminée en {:?}", search_duration));
+    
+    let (mut result, tokens_consumed) = match search_result {
+        Ok(Ok((r, t))) => {
+            let results_count = r.get("resultats").and_then(|res| res.as_array()).map(|arr| arr.len()).unwrap_or(0);
+            log_info(&format!("[DIRECT_SEARCH] ✅ Recherche réussie: {} résultats", results_count));
+            (r, t)
+        },
+        Ok(Err(e)) => {
+            log_error(&format!("[DIRECT_SEARCH] ❌ Erreur recherche: {}", e));
+            return Err(e);
+        },
+        Err(_) => {
+            log_error(&format!("[DIRECT_SEARCH] ⏱️ Timeout recherche après 30s (durée réelle: {:?})", search_duration));
+            // Retourner résultat vide avec message d'erreur
+            let response = serde_json::json!({
+                "status": "partial",
+                "intention": "recherche_besoin",
+                "resultats": json!({"resultats": []}),
+                "prestataires": json!({}),
+                "tokens_consumed": 0,
+                "message": "Timeout: La recherche a pris trop de temps (30 secondes). Le serveur peut être surchargé. Veuillez réessayer.",
+                "search_method": "text_timeout",
+                "timeout": true
+            });
+            return Ok(Json(response));
+        }
+    };
 
     // ✅ ENRICHIR avec données de publicité et booster scores
     if let Some(resultats) = result.get_mut("resultats").and_then(|r| r.as_array_mut()) {

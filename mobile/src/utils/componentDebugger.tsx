@@ -17,7 +17,7 @@ class ComponentDebugger {
     private static instance: ComponentDebugger;
     private debugLog: ComponentDebugInfo[] = [];
     private maxLogs = 50;
-    private enabled = true; // ✅ CRITIQUE: Toujours activé pour capturer les erreurs en production
+    private enabled = __DEV__; // ✅ Activé uniquement en développement (cleanChildren gère déjà les primitives)
 
     static getInstance(): ComponentDebugger {
         if (!ComponentDebugger.instance) {
