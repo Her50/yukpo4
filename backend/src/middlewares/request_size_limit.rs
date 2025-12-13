@@ -33,10 +33,18 @@ pub async fn request_size_limit(req: Request<Body>, next: Next) -> Result<Respon
             }
         }
     } else {
-        // Si pas de Content-Length, on laisse passer mais on log un avertissement
-        log::debug!(
-            "[request_size_limit] ⚠️ Pas de header Content-Length - impossible de vérifier la taille avant traitement"
-        );
+        // Si pas de Content-Length, on laisse passer mais on log un debug (pas un warning)
+        // C'est normal pour les requêtes GET et certaines requêtes POST avec chunked encoding
+        let method = req.method();
+        if method == http::Method::GET {
+            // Pas de log pour les GET (normal qu'ils n'aient pas Content-Length)
+        } else {
+            // Pour les autres méthodes, log en debug seulement
+            log::debug!(
+                "[request_size_limit] Pas de header Content-Length pour {} - impossible de vérifier la taille avant traitement",
+                method
+            );
+        }
     }
     Ok(next.run(req).await)
 }

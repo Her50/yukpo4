@@ -1,5 +1,6 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
@@ -1218,26 +1219,38 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
             {/* Liste des services */}
             {sortedServices.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                    {/* ✅ NOUVEAU: Illustration améliorée */}
+                    {/* ✅ AMÉLIORÉ: Illustration moderne avec gradient */}
                     <View style={styles.emptyIllustration}>
-                        <Text style={styles.emptyIcon}>📋</Text>
+                        <LinearGradient
+                            colors={[modernColors.primary + '20', modernColors.primary + '10']}
+                            style={styles.emptyGradient}
+                        >
+                            <SafeIcon name="inbox" size={64} color={modernColors.primary} type="lucide" />
+                        </LinearGradient>
                         <View style={styles.emptyDecoration}>
-                            <View style={[styles.emptyDot, { top: 10, left: 20 }]} />
-                            <View style={[styles.emptyDot, { top: 30, right: 15 }]} />
-                            <View style={[styles.emptyDot, { bottom: 20, left: 15 }]} />
+                            <View style={[styles.emptyDot, { top: 10, left: 20, backgroundColor: modernColors.primary + '40' }]} />
+                            <View style={[styles.emptyDot, { top: 30, right: 15, backgroundColor: modernColors.primary + '30' }]} />
+                            <View style={[styles.emptyDot, { bottom: 20, left: 15, backgroundColor: modernColors.primary + '50' }]} />
                         </View>
                     </View>
-                    <Text style={styles.emptyTitle}>Aucun service spécialisé</Text>
-                    <Text style={styles.emptyText}>
+                    <Text style={styles.emptyTitle} accessibilityRole="header">
                         {searchQuery || filter !== 'tous'
-                            ? 'Aucun service ne correspond à vos critères de recherche'
-                            : 'Créez votre premier service spécialisé pour commencer à proposer vos services'}
+                            ? 'Aucun résultat trouvé'
+                            : 'Aucun service spécialisé'}
                     </Text>
-                    {/* ✅ NOUVEAU: CTA amélioré avec plusieurs options */}
+                    <Text style={styles.emptyText} accessibilityRole="text">
+                        {searchQuery || filter !== 'tous'
+                            ? 'Aucun service ne correspond à vos critères de recherche. Essayez de modifier vos filtres.'
+                            : 'Créez votre premier service spécialisé pour commencer à proposer vos services sur Yukpo'}
+                    </Text>
+                    {/* ✅ AMÉLIORÉ: CTA avec meilleur design et accessibilité */}
                     <View style={styles.emptyActions}>
                         <TouchableOpacity
                             onPress={() => (navigation as any).navigate('MesServicesSpecialises')}
                             style={[styles.createButton, { backgroundColor: modernColors.primary }]}
+                            accessibilityRole="button"
+                            accessibilityLabel="Créer un nouveau service spécialisé"
+                            accessibilityHint="Ouvre le formulaire de création de service"
                         >
                             <SafeIcon name="plus" size={18} color="#fff" />
                             <Text style={styles.createButtonText}>Créer un service</Text>
@@ -1247,15 +1260,25 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 onPress={() => {
                                     setSearchQuery('');
                                     setFilter('tous');
+                                    setAdvancedFilters({
+                                        type: 'all',
+                                        status: 'all',
+                                        dateRange: 'all',
+                                    });
                                 }}
                                 style={[styles.createButton, styles.clearButton]}
+                                accessibilityRole="button"
+                                accessibilityLabel="Réinitialiser tous les filtres"
                             >
+                                <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
                                 <Text style={styles.clearButtonText}>Réinitialiser les filtres</Text>
                             </TouchableOpacity>
                         ) : (
                             <TouchableOpacity
                                 onPress={() => (navigation as any).navigate('SpecializedServicesHub')}
                                 style={styles.exploreButton}
+                                accessibilityRole="button"
+                                accessibilityLabel="Explorer les services disponibles"
                             >
                                 <SafeIcon name="compass" size={18} color={modernColors.primary} />
                                 <Text style={styles.exploreButtonText}>Explorer les services</Text>
@@ -1285,20 +1308,20 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     removeClippedSubviews={true} // Retirer les vues hors écran de la hiérarchie native
                     updateCellsBatchingPeriod={50} // Délai entre les batches (ms)
                     getItemLayout={(data, index) => {
-                        // ✅ Phase 7.3: Optimisation avec getItemLayout pour calculer la position sans mesurer
+                        // ✅ OPTIMISÉ: Calcul précis avec marges et padding
                         if (viewMode === 'card') {
-                            const cardHeight = 200; // Hauteur approximative d'une carte
-                            const cardWidth = 180; // Largeur approximative d'une carte
+                            // Hauteur réelle: header (120) + nom (44) + footer (32) + available badge (32 optionnel) + padding (32) + margin (12)
+                            const cardHeight = 120 + 44 + 32 + 12 + 32; // 240px avec badge, 208px sans
                             const numColumns = 2;
                             const row = Math.floor(index / numColumns);
-                            const col = index % numColumns;
                             return {
                                 length: cardHeight,
                                 offset: row * cardHeight,
                                 index,
                             };
                         } else {
-                            const itemHeight = 120; // Hauteur approximative d'un item liste
+                            // Hauteur réelle: padding (16*2) + contenu (~88) + margin (12)
+                            const itemHeight = 16 + 88 + 16 + 12; // 132px
                             return {
                                 length: itemHeight,
                                 offset: index * itemHeight,
@@ -1753,6 +1776,16 @@ const styles = StyleSheet.create({
     emptyIllustration: {
         position: 'relative',
         marginBottom: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emptyGradient: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
     },
     emptyIcon: {
         fontSize: 80,
@@ -1760,8 +1793,11 @@ const styles = StyleSheet.create({
     },
     emptyDecoration: {
         position: 'absolute',
-        width: 100,
-        height: 100,
+        width: 120,
+        height: 120,
+        top: 0,
+        left: '50%',
+        marginLeft: -60,
     },
     emptyDot: {
         position: 'absolute',

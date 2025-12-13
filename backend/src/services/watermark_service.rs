@@ -59,7 +59,7 @@ impl WatermarkService {
         output_video: &Path,
         config: Option<WatermarkConfig>,
     ) -> AppResult<PathBuf> {
-        let config = config.unwrap_or_else(WatermarkConfig::default);
+        let mut config = config.unwrap_or_else(WatermarkConfig::default);
 
         // Vérifier que la vidéo source existe
         if !input_video.exists() {
@@ -69,11 +69,30 @@ impl WatermarkService {
             )));
         }
 
-        // Vérifier que le logo existe
-        if !config.logo_path.exists() {
+        // Vérifier que le logo existe (essayer plusieurs chemins possibles)
+        let possible_paths = vec![
+            config.logo_path.clone(),
+            PathBuf::from("assets/logo/yukpo_logo.png"),
+            PathBuf::from("backend/assets/logo/yukpo_logo.png"),
+            PathBuf::from("../assets/logo/yukpo_logo.png"),
+        ];
+
+        let mut logo_found = false;
+        for path in &possible_paths {
+            if path.exists() {
+                config.logo_path = path.clone();
+                logo_found = true;
+                break;
+            }
+        }
+
+        if !logo_found {
             warn!(
-                "[WatermarkService] Logo introuvable: {}. Watermark désactivé.",
-                config.logo_path.display()
+                "[WatermarkService] Logo introuvable aux emplacements suivants: {:?}. Watermark désactivé.",
+                possible_paths.iter().map(|p| p.display().to_string()).collect::<Vec<_>>()
+            );
+            warn!(
+                "[WatermarkService] 💡 Pour activer le watermark, ajoutez yukpo_logo.png dans l'un de ces dossiers: assets/logo/, backend/assets/logo/, ou configurez le chemin dans WatermarkConfig"
             );
             // Si le logo n'existe pas, copier la vidéo source sans watermark
             fs::copy(input_video, output_video).await.map_err(|err| {
@@ -115,11 +134,12 @@ impl WatermarkService {
         ffmpeg_args.push("-i".to_string());
         ffmpeg_args.push(input_video.to_string_lossy().to_string());
 
-        // Input logo
+        // Input logo (utiliser le logo_path trouvé dans config)
         ffmpeg_args.push("-i".to_string());
         ffmpeg_args.push(config.logo_path.to_string_lossy().to_string());
 
         // Construire le filtre complexe pour overlay + animation
+        // Utiliser le logo_path trouvé (config est déjà utilisé avec le bon logo_path)
         let filter_complex =
             self.build_filter_complex(&config, start_time, watermark_duration, video_duration)?;
 

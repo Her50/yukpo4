@@ -3544,21 +3544,185 @@ async fn generate_voiceover_audio(
 }
 
 async fn generate_additional_variant(
-    _session_dir: &Path,
-    _source_path: &Path,
-    _service_id: i32,
-    _product_index: i32,
-    _state: &Arc<AppState>,
+    session_dir: &Path,
+    source_path: &Path,
+    service_id: i32,
+    product_index: i32,
+    state: &Arc<AppState>,
     format_label: &str,
-    _target_width: u32,
-    _target_height: u32,
+    target_width: u32,
+    target_height: u32,
     _original_relative_path: &str,
 ) -> AppResult<Option<AlternativeVideoFormat>> {
-    warn!(
-        "[VideoGeneration] Variante vidéo '{}' non générée faute d'implémentation dédiée.",
-        format_label
+    use std::path::PathBuf;
+    use tokio::process::Command;
+    use uuid::Uuid;
+
+    // Vérifier que la vidéo source existe
+    if !source_path.exists() {
+        warn!(
+            "[VideoGeneration] Vidéo source introuvable pour variante '{}': {:?}",
+            format_label, source_path
+        );
+        return Ok(None);
+    }
+
+    info!(
+        "[VideoGeneration] Génération variante '{}' ({}x{}) pour service_id={}, product_index={}",
+        format_label, target_width, target_height, service_id, product_index
     );
-    Ok(None)
+
+    // Construire le filtre FFmpeg pour redimensionner et pad
+    // Format: scale=WIDTH:HEIGHT:force_original_aspect_ratio=decrease,pad=WIDTH:HEIGHT:(WIDTH-iw)/2:(HEIGHT-ih)/2
+    let filter = format!(
+        "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:({}-iw)/2:({}-ih)/2",
+        target_width, target_height, target_width, target_height, target_width, target_height
+    );
+
+    // Chemin de sortie temporaire dans le session_dir
+    let variant_filename = format!("variant_{}_{}.mp4", format_label, Uuid::new_v4());
+    let variant_path = session_dir.join(&variant_filename);
+
+    // Exécuter FFmpeg pour générer la variante
+    let output = Command::new("ffmpeg")
+        .args([
+            "-y", // Overwrite output
+            "-i",
+            source_path.to_string_lossy().as_ref(),
+            "-vf",
+            &filter,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "fast",
+            "-crf",
+            "23",
+            "-c:a",
+            "copy", // Copier l'audio sans ré-encoder
+            variant_path.to_string_lossy().as_ref(),
+        ])
+        .output()
+        .await
+        .map_err(|err| {
+            error!(
+                "[VideoGeneration] ❌ Impossible d'exécuter FFmpeg pour variante '{}': {err:?}",
+                format_label
+            );
+            AppError::Internal(format!(
+                "FFmpeg est requis pour générer les variantes vidéo. Erreur: {}",
+                err
+            ))
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        warn!(
+            "[VideoGeneration] ❌ FFmpeg a échoué pour variante '{}': {}",
+            format_label, stderr
+        );
+        return Ok(None);
+    }
+
+    // Vérifier que le fichier a été créé
+    if !variant_path.exists() {
+        warn!(
+            "[VideoGeneration] ❌ Variante '{}' non créée après FFmpeg",
+            format_label
+        );
+        return Ok(None);
+    }
+
+    // Obtenir la taille du fichier
+    let file_size = tokio::fs::metadata(&variant_path)
+        .await
+        .map(|m| m.len())
+        .unwrap_or(0);
+
+    if file_size == 0 {
+        warn!(
+            "[VideoGeneration] ❌ Variante '{}' créée mais vide (0 bytes)",
+            format_label
+        );
+        return Ok(None);
+    }
+
+    // Stocker la variante dans le système de stockage
+    let storage_key = format!(
+        "services/{}/products/{}/videos/variant_{}_{}.mp4",
+        service_id, product_index, format_label, Uuid::new_v4()
+    );
+
+    let stored_variant = state
+        .media_storage
+        .store_file(&variant_path, &storage_key, Some("video/mp4"))
+        .await
+        .map_err(|err| {
+            error!(
+                "[VideoGeneration] ❌ Impossible de stocker la variante '{}': {err:?}",
+                format_label
+            );
+            AppError::Internal(format!(
+                "Impossible de stocker la variante vidéo: {}",
+                err
+            ))
+        })?;
+
+    // Nettoyer le fichier temporaire
+    if let Err(err) = tokio::fs::remove_file(&variant_path).await {
+        warn!(
+            "[VideoGeneration] ⚠️ Impossible de supprimer le fichier temporaire {:?}: {}",
+            variant_path, err
+        );
+    }
+
+    // Enregistrer la variante dans la DB comme média
+    let media_id = sqlx::query_scalar::<_, i32>(
+        r#"
+        INSERT INTO media (
+            service_id,
+            type,
+            media_type,
+            path,
+            file_size,
+            file_format,
+            ai_description,
+            ai_tags,
+            uploaded_at
+        )
+        VALUES ($1, 'video', 'video', $2, $3, 'mp4', $4, $5, NOW())
+        RETURNING id
+        "#,
+    )
+    .bind(service_id)
+    .bind(&stored_variant.storage_path)
+    .bind(file_size as i64)
+    .bind(format!("Variante vidéo {} ({}x{})", format_label, target_width, target_height))
+    .bind(&vec![
+        "video".to_string(),
+        "variant".to_string(),
+        format_label.to_string(),
+    ])
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|err| {
+        error!(
+            "[VideoGeneration] ❌ Erreur insertion média variante '{}': {:?}",
+            format_label, err
+        );
+        AppError::from(err)
+    })?;
+
+    info!(
+        "[VideoGeneration] ✅ Variante '{}' générée et stockée (media_id={}, url={})",
+        format_label, media_id, stored_variant.public_url
+    );
+
+    Ok(Some(AlternativeVideoFormat {
+        format: format_label.to_string(),
+        path: stored_variant.storage_path,
+        video_url: stored_variant.public_url,
+        media_id,
+    }))
 }
 
 fn extract_delivery_sla_hint(value: &Value) -> Option<u32> {

@@ -952,7 +952,23 @@ const MesServicesScreen: React.FC = () => {
       [
         { text: 'Annuler', style: 'cancel' },
         {
-          text: 'Créer une promotion',
+          text: '⚡ Créer un flash promotionnel',
+          onPress: () => {
+            try {
+              // Navigation vers l'écran de création de flash promotionnel
+              (navigation as any).navigate('CreateFlashPromo', {
+                serviceId: service.id,
+                serviceData: service.data,
+                serviceTitle: titre
+              });
+            } catch (error) {
+              logger.error('Erreur navigation flash promo:', error);
+              Alert.alert('Erreur', 'Impossible d\'ouvrir la création de flash promotionnel');
+            }
+          }
+        },
+        {
+          text: '🎉 Créer une promotion',
           onPress: () => {
             try {
               // Navigation vers l'écran de modification pour créer une promotion

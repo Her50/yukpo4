@@ -51,6 +51,7 @@ use crate::routes::{
     embedding_routes::embedding_routes,
     export_routes::export_routes, // ✅ NOUVEAU Phase 2.3: Routes pour jobs d'export vidéo
     extended_audio_routes::extended_audio_routes, // ✅ NOUVEAU Phase 2.2: Routes bibliothèque audio étendue
+    flash_promo_routes::flash_promo_routes, // ✅ NOUVEAU: Routes pour flash promotionnels de produits (gratuit)
     generative_routes::generative_routes, // ✅ NOUVEAU Phase 3.1: Routes pour génération vidéo IA
     global_promo_routes::global_promo_routes,
     health_routes::health_routes,
@@ -232,6 +233,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let analytics = analytics_routes(state.clone());
     let provider_analytics = provider_analytics_routes(state.clone());
     let global_promos = global_promo_routes(state.clone());
+    let flash_promos = flash_promo_routes(state.clone()); // ✅ NOUVEAU: Routes pour flash promotionnels de produits (gratuit)
     let token_packs = token_pack_routes(state.clone());
     let product_lifecycle = product_lifecycle_routes(state.clone());
     let search_history = search_history_routes(state.clone());
@@ -333,6 +335,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(analytics)
         .merge(provider_analytics)
         .merge(global_promos)
+        .merge(flash_promos) // ✅ NOUVEAU: Routes pour flash promotionnels de produits (gratuit)
         .merge(token_packs)
         .merge(product_lifecycle)
         .merge(search_history)

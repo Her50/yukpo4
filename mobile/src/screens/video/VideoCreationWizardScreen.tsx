@@ -149,6 +149,12 @@ const VideoCreationWizardScreen: React.FC = () => {
     const [currentJobId, setCurrentJobId] = useState<string | null>(null);
     // ✅ CORRECTION: Flag pour éviter les toasts multiples
     const completionHandledRef = useRef(false);
+    // ✅ CORRECTION: Refs pour les ScrollView de chaque étape (pour remettre le scroll au début lors du changement d'étape)
+    const scrollViewRefs = useRef<Record<WizardStep, React.ComponentRef<typeof ScrollView> | null>>({
+        1: null,
+        2: null,
+        3: null,
+    });
 
     const [brief, setBrief] = useState('');
     const [headline, setHeadline] = useState('');
@@ -410,6 +416,17 @@ const VideoCreationWizardScreen: React.FC = () => {
             );
         }
     }, [step, validateStepCompletion, markStepCompleted]);
+
+    // ✅ CORRECTION: Remettre le scroll au début lors du changement d'étape
+    useEffect(() => {
+        const scrollViewRef = scrollViewRefs.current[step];
+        if (scrollViewRef) {
+            // Utiliser un petit délai pour s'assurer que le ScrollView est rendu
+            setTimeout(() => {
+                scrollViewRef.scrollTo({ y: 0, animated: true });
+            }, 100);
+        }
+    }, [step]);
 
     const fetchServiceDetails = useCallback(async () => {
         if (!serviceId && serviceId !== 0) {
@@ -1548,6 +1565,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 return (
                     <Animated.View style={stepAnimatedStyle}>
                         <ScrollView
+                            ref={(ref) => { scrollViewRefs.current[1] = ref; }}
                             contentContainerStyle={getStepContentStyle()}
                             showsVerticalScrollIndicator={false}
                             style={styles.scrollView}
@@ -1786,6 +1804,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 return (
                     <Animated.View style={stepAnimatedStyle}>
                         <ScrollView
+                            ref={(ref) => { scrollViewRefs.current[2] = ref; }}
                             contentContainerStyle={getStepContentStyle()}
                             showsVerticalScrollIndicator={false}
                             style={styles.scrollView}
@@ -2067,6 +2086,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 return (
                     <Animated.View style={stepAnimatedStyle}>
                         <ScrollView
+                            ref={(ref) => { scrollViewRefs.current[3] = ref; }}
                             contentContainerStyle={getStepContentStyle()}
                             showsVerticalScrollIndicator={false}
                             style={styles.scrollView}

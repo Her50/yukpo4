@@ -25,13 +25,14 @@ const errorHandler = {
 
 const API_BASE_URL = config.API_BASE_URL;
 
-// Types pour les réponses API
+// ✅ AMÉLIORÉ: Types pour les réponses API avec codes d'erreur
 interface ApiResponse<T = any> {
   data?: T;
   success?: boolean;
   message?: string;
   error?: string;
   status?: number; // ✅ NOUVEAU 2025-12-11: Status HTTP pour gestion spécifique des erreurs
+  code?: string; // ✅ NOUVEAU: Code d'erreur pour gestion spécifique
 }
 
 export interface UploadedMediaItem {
@@ -149,8 +150,104 @@ const removeAuthToken = async (): Promise<void> => {
   }
 };
 
-// Fonction générique pour les appels API
-export const apiCall = async <T>(
+// ✅ NOUVEAU: Système de retry avec backoff exponentiel
+interface RetryConfig {
+  maxRetries?: number;
+  retryableStatuses?: number[];
+  retryableErrors?: string[];
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 3,
+  retryableStatuses: [408, 429, 500, 502, 503, 504], // Timeout, Too Many Requests, Server Errors
+  retryableErrors: ['Network request failed', 'Failed to fetch', 'AbortError'],
+};
+
+const shouldRetry = (error: any, status?: number, config: RetryConfig = DEFAULT_RETRY_CONFIG): boolean => {
+  // Ne pas retry pour les erreurs 4xx (sauf 408, 429)
+  if (status && status >= 400 && status < 500 && !config.retryableStatuses?.includes(status)) {
+    return false;
+  }
+
+  // Retry pour les erreurs réseau
+  if (error?.message && config.retryableErrors?.some(err => error.message.includes(err))) {
+    return true;
+  }
+
+  // Retry pour les statuts HTTP retryables
+  if (status && config.retryableStatuses?.includes(status)) {
+    return true;
+  }
+
+  return false;
+};
+
+const delay = (ms: number): Promise<void> => {
+  return new Promise(resolve => setTimeout(resolve, ms));
+};
+
+// ✅ NOUVEAU: Fonction de retry avec backoff exponentiel
+const apiCallWithRetry = async <T>(
+  endpoint: string,
+  options: RequestInit = {},
+  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG
+): Promise<ApiResponse<T>> => {
+  const maxRetries = retryConfig.maxRetries ?? 3;
+  let lastError: any = null;
+  let lastStatus: number | undefined = undefined;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await apiCallInternal<T>(endpoint, options);
+      
+      // Si succès, retourner immédiatement
+      if (result.success !== false && (!result.status || result.status < 400)) {
+        return result;
+      }
+
+      // Si erreur, vérifier si on doit retry
+      lastStatus = result.status;
+      if (attempt < maxRetries && shouldRetry(result.error || result, lastStatus, retryConfig)) {
+        // Calculer le délai avec backoff exponentiel (1s, 2s, 4s)
+        const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000); // Max 10s
+        console.log(`[Mobile API] Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint}`);
+        await delay(delayMs);
+        continue;
+      }
+
+      // Ne pas retry, retourner l'erreur
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      
+      // Vérifier si on doit retry
+      if (attempt < maxRetries && shouldRetry(error, undefined, retryConfig)) {
+        const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000);
+        console.log(`[Mobile API] Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint}`);
+        await delay(delayMs);
+        continue;
+      }
+
+      // Ne pas retry, lancer l'erreur
+      throw error;
+    }
+  }
+
+  // Si on arrive ici, tous les retries ont échoué
+  if (lastError) {
+    throw lastError;
+  }
+
+  return {
+    success: false,
+    error: 'Tous les tentatives ont échoué',
+    status: lastStatus,
+    data: null,
+  };
+};
+
+// ✅ NOUVEAU: Fonction interne pour les appels API (sans retry)
+const apiCallInternal = async <T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
@@ -385,14 +482,88 @@ export const apiCall = async <T>(
       };
     }
 
-    // Gérer les autres erreurs
+    // ✅ AMÉLIORÉ: Gérer les erreurs avec codes spécifiques
     const apiError = errorHandler.handleApiError(error, 'API Call');
     return {
       success: false,
-      error: apiError.message || 'Une erreur inattendue s\'est produite',
+      error: apiError.userMessage, // Message utilisateur au lieu du message technique
       data: null,
+      status: apiError.status,
+      code: apiError.code, // ✅ NOUVEAU: Code d'erreur pour gestion spécifique
     };
   }
+};
+
+// ✅ NOUVEAU: Fonction de retry avec backoff exponentiel (wrapper autour de apiCallInternal)
+const apiCallWithRetry = async <T>(
+  endpoint: string,
+  options: RequestInit = {},
+  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG
+): Promise<ApiResponse<T>> => {
+  const maxRetries = retryConfig.maxRetries ?? 3;
+  let lastError: any = null;
+  let lastStatus: number | undefined = undefined;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await apiCallInternal<T>(endpoint, options);
+      
+      // Si succès, retourner immédiatement
+      if (result.success !== false && (!result.status || result.status < 400)) {
+        return result;
+      }
+
+      // Si erreur, vérifier si on doit retry
+      lastStatus = result.status;
+      if (attempt < maxRetries && shouldRetry(result.error || result, lastStatus, retryConfig)) {
+        // Calculer le délai avec backoff exponentiel (1s, 2s, 4s)
+        const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000); // Max 10s
+        console.log(`[Mobile API] Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint}`);
+        await delay(delayMs);
+        continue;
+      }
+
+      // Ne pas retry, retourner l'erreur
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      
+      // Vérifier si on doit retry
+      if (attempt < maxRetries && shouldRetry(error, undefined, retryConfig)) {
+        const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000);
+        console.log(`[Mobile API] Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint}`);
+        await delay(delayMs);
+        continue;
+      }
+
+      // Ne pas retry, lancer l'erreur
+      throw error;
+    }
+  }
+
+  // Si on arrive ici, tous les retries ont échoué
+  if (lastError) {
+    throw lastError;
+  }
+
+  return {
+    success: false,
+    error: 'Tous les tentatives ont échoué',
+    status: lastStatus,
+    data: null,
+  };
+};
+
+// ✅ NOUVEAU: Fonction principale avec retry par défaut (peut être désactivé)
+export const apiCall = async <T>(
+  endpoint: string,
+  options: RequestInit = {},
+  useRetry: boolean = true
+): Promise<ApiResponse<T>> => {
+  if (useRetry) {
+    return apiCallWithRetry<T>(endpoint, options);
+  }
+  return apiCallInternal<T>(endpoint, options);
 };
 
 // ===== AUTHENTIFICATION =====

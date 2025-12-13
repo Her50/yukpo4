@@ -278,6 +278,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 }) => {
     const insets = useSafeAreaInsets();
     const [activeStep, setActiveStep] = useState<ModalStep>(1);
+    // ✅ CORRECTION: Ref pour le ScrollView principal (pour remettre le scroll au début lors du changement d'étape)
+    const mainScrollViewRef = useRef<ScrollView | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<ManagedProduct | null>(primaryProduct);
     const [selectedRelatedProducts, setSelectedRelatedProducts] = useState<Set<number>>(new Set());
     const [selectedMediaIds, setSelectedMediaIds] = useState<Set<number>>(new Set());
@@ -2992,6 +2994,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         setActiveStep(newStep);
     };
 
+    // ✅ CORRECTION: Remettre le scroll au début lors du changement d'étape
+    useEffect(() => {
+        if (mainScrollViewRef.current) {
+            // Utiliser un petit délai pour s'assurer que le ScrollView est rendu
+            setTimeout(() => {
+                mainScrollViewRef.current?.scrollTo({ y: 0, animated: true });
+            }, 100);
+        }
+    }, [activeStep]);
+
     // ✅ CORRIGÉ: Fonction wrapper pour applyBriefVariant avec les setters du composant
     // ✅ CORRIGÉ 2025-11-28: Retiré les setters des dépendances car ils sont stables
     const handleApplyBriefVariant = useCallback((variant: AIVideoBriefVariant) => {
@@ -3813,6 +3825,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         </View>
 
                         <ScrollView
+                            ref={(ref) => { mainScrollViewRef.current = ref; }}
                             style={styles.modalBody}
                             contentContainerStyle={getStepContentStyle()}
                             showsVerticalScrollIndicator={false}

@@ -38,6 +38,7 @@ pub mod duet_remix_controller; // ✅ NOUVEAU: Contrôleur pour duet/remix
 pub mod embedding_controller;
 pub mod export_controller; // ✅ NOUVEAU Phase 2.3: Contrôleur pour jobs d'export vidéo
 pub mod extended_audio_controller; // ✅ NOUVEAU Phase 2.2: Contrôleur pour bibliothèque audio étendue
+pub mod flash_promo_controller; // ✅ NOUVEAU: Contrôleur pour flash promotionnels de produits (gratuit)
 pub mod generative_video_controller; // ✅ NOUVEAU Phase 3.1: Contrôleur pour génération vidéo IA complète
 pub mod global_promo_controller;
 pub mod hashtag_controller; // ✅ NOUVEAU: Contrôleur pour gestion hashtags

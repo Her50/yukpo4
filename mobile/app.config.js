@@ -38,6 +38,7 @@ module.exports = {
                     }
                 ],
                 NSCameraUsageDescription: "Cette app utilise la caméra pour l'édition vidéo en réalité augmentée",
+                NSMicrophoneUsageDescription: "Cette app utilise le microphone pour enregistrer l'audio des vidéos AR immersives",
                 NSLocationWhenInUseUsageDescription: "Cette app utilise la localisation pour améliorer l'expérience AR"
             }
         },

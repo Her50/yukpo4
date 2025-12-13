@@ -193,8 +193,15 @@ pub async fn attach_loop_to_service(
                 "[AudioLibrary] CDN inaccessible (DNS) et fichier local introuvable: {}. Service_id: {}, Loop_id: {}",
                 local_path.display(), service_id, loop_id
             );
+            warn!(
+                "[AudioLibrary] 💡 Pour résoudre ce problème:\n\
+                1. Vérifiez que le CDN (cdn.yukpomnang.com) est accessible\n\
+                2. Ou ajoutez le fichier audio dans: assets/audio/{}.mp3\n\
+                3. Les fichiers audio requis: ambient_wave.mp3, pulse_groove.mp3, lofi_sunset.mp3, cinematic_rise.mp3",
+                loop_id
+            );
             return Err(AppError::BadRequest(format!(
-                "Boucle audio temporairement indisponible. Le CDN est inaccessible et le fichier local n'est pas disponible. Réessayez plus tard ou contactez le support si le problème persiste. (Loop: {})",
+                "Boucle audio '{}' temporairement indisponible. Le CDN est inaccessible et le fichier local n'est pas disponible dans assets/audio/. Réessayez plus tard ou contactez le support si le problème persiste.",
                 loop_id
             )));
         }

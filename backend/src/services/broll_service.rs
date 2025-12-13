@@ -94,9 +94,27 @@ impl BrollService {
             return Ok(ai_clip);
         }
 
-        Err(AppError::Internal(
-            "Impossible de récupérer un b-roll pour ce segment".to_string(),
-        ))
+        // ✅ AMÉLIORATION: Message d'erreur plus détaillé avec suggestions
+        warn!(
+            "[Broll] ❌ Impossible de récupérer un b-roll pour catégorie '{}' (location: {:?}, mood: {:?}, style: {:?})",
+            request.category,
+            request.location,
+            request.mood,
+            request.style
+        );
+        warn!(
+            "[Broll] 💡 Suggestions:\n\
+            1. Vérifiez que les fichiers b-roll locaux existent dans assets/broll/\n\
+            2. Configurez les clés API pour les services de stock (stock_api_url, stock_api_key)\n\
+            3. Configurez les endpoints IA pour la génération (runway_endpoint, pika_endpoint, sora_endpoint)\n\
+            4. Vérifiez la connectivité Redis pour le cache"
+        );
+        
+        Err(AppError::Internal(format!(
+            "Impossible de récupérer un b-roll pour ce segment (catégorie: '{}'). \
+            Vérifiez la configuration des sources b-roll (local, stock, IA) et les logs pour plus de détails.",
+            request.category
+        )))
     }
 
     async fn try_cache(&self, request: &BrollRequest) -> AppResult<Option<BrollClip>> {

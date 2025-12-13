@@ -237,6 +237,10 @@ const CreatePubliciteScreen: React.FC = () => {
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
     const [showTemplates, setShowTemplates] = useState(false);
 
+    // ✅ NOUVEAU: Refs pour la navigation entre sections
+    const scrollViewRef = useRef<ScrollView>(null);
+    const sectionPositions = useRef<{ [key: string]: number }>({});
+
     // ✅ NOUVEAU: États pour fonctionnalités avancées (100% parité)
     const [targeting, setTargeting] = useState({
         ageRange: { min: 18, max: 65 },
@@ -906,6 +910,40 @@ const CreatePubliciteScreen: React.FC = () => {
         }
     }, [titre, description, selectedProduits, videos]);
 
+    // ✅ NOUVEAU: Capturer la position d'une section
+    const handleSectionLayout = useCallback((stepId: string, event: any) => {
+        const { y } = event.nativeEvent.layout;
+        // La position Y est relative au parent (ScrollView content)
+        sectionPositions.current[stepId] = y;
+    }, []);
+
+    // ✅ NOUVEAU: Navigation vers une section spécifique
+    const scrollToSection = useCallback((stepIndex: number) => {
+        const stepId = STEPS[stepIndex]?.id;
+        if (!stepId) return;
+
+        const position = sectionPositions.current[stepId];
+        if (position !== undefined && scrollViewRef.current) {
+            // Scroll avec un offset pour ne pas coller au bord supérieur
+            // On soustrait aussi la hauteur du header et du stepper (environ 120px)
+            scrollViewRef.current.scrollTo({
+                y: Math.max(0, position - 100),
+                animated: true,
+            });
+        } else {
+            console.warn('[CreatePublicite] Position non disponible pour la section:', stepId);
+        }
+    }, []);
+
+    // ✅ NOUVEAU: Gestion du clic sur une étape du stepper
+    const handleStepPress = useCallback((stepIndex: number) => {
+        setCurrentStep(stepIndex);
+        // Petit délai pour s'assurer que les positions sont bien calculées
+        setTimeout(() => {
+            scrollToSection(stepIndex);
+        }, 150);
+    }, [scrollToSection]);
+
     return (
         <View style={styles.container}>
             <LinearGradient colors={modernColors.primaryGradient} style={styles.header}>
@@ -921,10 +959,18 @@ const CreatePubliciteScreen: React.FC = () => {
 
             {/* ✅ NOUVEAU: Stepper de progression */}
             <View style={styles.stepperContainer}>
-                <AdCreationStepper currentStep={currentStep} steps={STEPS} />
+                <AdCreationStepper 
+                    currentStep={currentStep} 
+                    steps={STEPS}
+                    onStepPress={handleStepPress}
+                />
             </View>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+                ref={scrollViewRef}
+                style={styles.content} 
+                showsVerticalScrollIndicator={false}
+            >
                 {/* ✅ NOUVEAU: Section Templates */}
                 {!titre && !showTemplates && (
                     <NativeCard style={styles.templatesCard}>
@@ -996,8 +1042,11 @@ const CreatePubliciteScreen: React.FC = () => {
                 </NativeCard>
 
                 {/* Titre et description */}
-                <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>📝 Informations générales</Text>
+                <View
+                    onLayout={(e) => handleSectionLayout('info', e)}
+                >
+                    <NativeCard style={styles.sectionCard}>
+                        <Text style={styles.sectionTitle}>📝 Informations générales</Text>
 
                     <View style={styles.fieldContainer}>
                         <View style={styles.fieldLabelRow}>
@@ -1107,9 +1156,13 @@ const CreatePubliciteScreen: React.FC = () => {
                         </View>
                     </View>
                 </NativeCard>
+                </View>
 
                 {/* Sélection des produits */}
-                <NativeCard style={styles.sectionCard}>
+                <View
+                    onLayout={(e) => handleSectionLayout('products', e)}
+                >
+                    <NativeCard style={styles.sectionCard}>
                     <Text style={styles.sectionTitle}>📦 {t('publicite.products')} ({selectedProduits.length})</Text>
                     <Text style={styles.sectionHint}>✨ Optionnel - Sélectionnez les produits à promouvoir</Text>
 
@@ -1151,9 +1204,13 @@ const CreatePubliciteScreen: React.FC = () => {
                         </ScrollView>
                     )}
                 </NativeCard>
+                </View>
 
                 {/* Vidéos promotionnelles */}
-                <NativeCard style={styles.sectionCard}>
+                <View
+                    onLayout={(e) => handleSectionLayout('media', e)}
+                >
+                    <NativeCard style={styles.sectionCard}>
                     <Text style={styles.sectionTitle}>🎬 {t('publicite.videos')} ({videos.length})</Text>
                     <Text style={styles.sectionHint}>Maximum 30 secondes par vidéo</Text>
 
@@ -1218,9 +1275,13 @@ const CreatePubliciteScreen: React.FC = () => {
                         </View>
                     )}
                 </NativeCard>
+                </View>
 
                 {/* ✅ AMÉLIORÉ: Budget avec slider interactif */}
-                <NativeCard style={[styles.sectionCard, styles.summaryCard]}>
+                <View
+                    onLayout={(e) => handleSectionLayout('budget', e)}
+                >
+                    <NativeCard style={[styles.sectionCard, styles.summaryCard]}>
                     <Text style={styles.sectionTitle}>💰 Budget & Performance</Text>
 
                     <BudgetSlider
@@ -1273,6 +1334,7 @@ const CreatePubliciteScreen: React.FC = () => {
                         <Text style={styles.totalValue}>{coutEstime.toLocaleString()} {userCurrency}</Text>
                     </View>
                 </NativeCard>
+                </View>
 
                 {/* ✅ NOUVEAU: Ciblage avancé */}
                 <AdvancedTargeting

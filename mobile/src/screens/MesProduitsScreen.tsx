@@ -1034,36 +1034,6 @@ const MesProduitsScreen: React.FC = () => {
         }
 
         try {
-            // ✅ CORRECTION CRITIQUE: Charger les données COMPLÈTES du produit depuis l'API du service
-            let productDataFromAPI: any = null;
-            if (product.serviceId) {
-                try {
-                    console.log('[MesProduitsScreen] 📥 Chargement des données complètes du service pour édition produit:', {
-                        serviceId: product.serviceId
-                    });
-                    const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
-                    if (serviceResponse?.success && serviceResponse?.data) {
-                        const serviceData = serviceResponse.data.data || serviceResponse.data;
-                        // Extraire le produit spécifique depuis les produits du service
-                        if (serviceData.produits && Array.isArray(serviceData.produits)) {
-                            const productIndex = product.product_index ?? 0;
-                            if (serviceData.produits[productIndex]) {
-                                productDataFromAPI = serviceData.produits[productIndex];
-                                console.log('[MesProduitsScreen] ✅ Données produit chargées depuis API:', {
-                                    hasData: !!productDataFromAPI,
-                                    keys: productDataFromAPI ? Object.keys(productDataFromAPI) : []
-                                });
-                            }
-                        }
-                    }
-                } catch (apiError) {
-                    console.warn('[MesProduitsScreen] ⚠️ Erreur chargement données service depuis API:', apiError);
-                }
-            }
-
-            // ✅ CORRECTION CRITIQUE: Utiliser les données de l'API si disponibles, sinon les données du produit normalisé
-            const productToUse = productDataFromAPI ? { ...product, ...productDataFromAPI } : product;
-
             // ✅ CORRECTION CRITIQUE: Charger les médias depuis l'API avant de construire le prefill
             let loadedImages: string[] = [];
             let loadedVideos: string[] = [];
@@ -1115,8 +1085,7 @@ const MesProduitsScreen: React.FC = () => {
                 }
             }
 
-            // ✅ CORRECTION CRITIQUE: Construire le prefill avec les données complètes de l'API
-            const prefill = buildProductPrefill(productToUse);
+            const prefill = buildProductPrefill(product);
 
             // ✅ CORRECTION: Utiliser les médias chargés depuis l'API en priorité, sinon ceux du prefill
             const finalImages = loadedImages.length > 0 ? loadedImages : (Array.isArray(prefill.images) ? prefill.images : []);
@@ -1230,36 +1199,6 @@ const MesProduitsScreen: React.FC = () => {
     // Dupliquer un produit
     const handleDuplicateProduct = async (product: ManagedProduct) => {
         try {
-            // ✅ CORRECTION CRITIQUE: Charger les données COMPLÈTES du produit depuis l'API du service
-            let productDataFromAPI: any = null;
-            if (product.serviceId) {
-                try {
-                    console.log('[MesProduitsScreen] 📥 Chargement des données complètes du service pour duplication produit:', {
-                        serviceId: product.serviceId
-                    });
-                    const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
-                    if (serviceResponse?.success && serviceResponse?.data) {
-                        const serviceData = serviceResponse.data.data || serviceResponse.data;
-                        // Extraire le produit spécifique depuis les produits du service
-                        if (serviceData.produits && Array.isArray(serviceData.produits)) {
-                            const productIndex = product.product_index ?? 0;
-                            if (serviceData.produits[productIndex]) {
-                                productDataFromAPI = serviceData.produits[productIndex];
-                                console.log('[MesProduitsScreen] ✅ Données produit chargées depuis API (duplication):', {
-                                    hasData: !!productDataFromAPI,
-                                    keys: productDataFromAPI ? Object.keys(productDataFromAPI) : []
-                                });
-                            }
-                        }
-                    }
-                } catch (apiError) {
-                    console.warn('[MesProduitsScreen] ⚠️ Erreur chargement données service depuis API (duplication):', apiError);
-                }
-            }
-
-            // ✅ CORRECTION CRITIQUE: Utiliser les données de l'API si disponibles, sinon les données du produit normalisé
-            const productToUse = productDataFromAPI ? { ...product, ...productDataFromAPI } : product;
-
             // ✅ CORRECTION CRITIQUE: Charger les médias depuis l'API avant de construire le prefill
             let loadedImages: string[] = [];
             let loadedVideos: string[] = [];
@@ -1311,8 +1250,7 @@ const MesProduitsScreen: React.FC = () => {
                 }
             }
 
-            // ✅ CORRECTION CRITIQUE: Construire le prefill avec les données complètes de l'API
-            const prefill = buildProductPrefill(productToUse);
+            const prefill = buildProductPrefill(product);
             const originalName = prefill.nom_produit || product.nom || 'Produit';
             prefill.nom_produit = `${originalName} (Copie)`;
 
@@ -1714,36 +1652,36 @@ const MesProduitsScreen: React.FC = () => {
 
         // ✅ CORRECTION CRITIQUE: Champs de base avec extraction depuis objets structurés
         // S'assurer que les champs sont bien présents même s'ils ont été normalisés
-        const nomRaw = product.nom || product.nom_produit || prefill.nom_produit;
-        const categorieRaw = product.categorie_produit || product.categorie || product.category || prefill.categorie_produit;
-        const descriptionRaw = product.description || product.description_produit || prefill.description_produit;
+        const nomRaw = product.nom || product.nom_produit;
+        const categorieRaw = product.categorie_produit || product.categorie || product.category;
+        const descriptionRaw = product.description || product.description_produit;
 
         // ✅ CORRECTION: Toujours extraire et définir les valeurs, même si elles sont vides
         // Cela garantit que les champs sont toujours présents dans le prefill
         const nomValue = extractValue(nomRaw);
         if (nomValue !== undefined && nomValue !== null && String(nomValue).trim().length > 0) {
-            prefill.nom_produit = typeof nomValue === 'string' ? nomValue.trim() : String(nomValue).trim();
+            prefill.nom_produit = typeof nomValue === 'string' ? nomValue : String(nomValue);
         } else if (typeof nomRaw === 'string' && nomRaw.trim().length > 0) {
             prefill.nom_produit = nomRaw.trim();
-        } else if (prefill.nom_produit === undefined || prefill.nom_produit === null) {
+        } else if (!prefill.nom_produit) {
             prefill.nom_produit = '';
         }
 
         const categorieValue = extractValue(categorieRaw);
         if (categorieValue !== undefined && categorieValue !== null && String(categorieValue).trim().length > 0) {
-            prefill.categorie_produit = typeof categorieValue === 'string' ? categorieValue.trim() : String(categorieValue).trim();
+            prefill.categorie_produit = typeof categorieValue === 'string' ? categorieValue : String(categorieValue);
         } else if (typeof categorieRaw === 'string' && categorieRaw.trim().length > 0) {
             prefill.categorie_produit = categorieRaw.trim();
-        } else if (prefill.categorie_produit === undefined || prefill.categorie_produit === null) {
+        } else if (!prefill.categorie_produit) {
             prefill.categorie_produit = '';
         }
 
         const descriptionValue = extractValue(descriptionRaw);
         if (descriptionValue !== undefined && descriptionValue !== null && String(descriptionValue).trim().length > 0) {
-            prefill.description_produit = typeof descriptionValue === 'string' ? descriptionValue.trim() : String(descriptionValue).trim();
+            prefill.description_produit = typeof descriptionValue === 'string' ? descriptionValue : String(descriptionValue);
         } else if (typeof descriptionRaw === 'string' && descriptionRaw.trim().length > 0) {
             prefill.description_produit = descriptionRaw.trim();
-        } else if (prefill.description_produit === undefined || prefill.description_produit === null) {
+        } else if (!prefill.description_produit) {
             prefill.description_produit = '';
         }
 

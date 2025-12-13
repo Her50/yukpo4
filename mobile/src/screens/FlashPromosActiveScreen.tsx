@@ -1,0 +1,365 @@
+import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeNativeView } from '../components/SafeNativeView';
+import { useAuth } from '../contexts/AuthContext';
+import { apiGet } from '../services/api';
+import { modernColors } from '../theme/modernTheme';
+import SafeIcon from '../components/SafeIcon';
+
+const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x300?text=Produit';
+
+interface FlashPromo {
+    id: string;
+    service_id: number;
+    service_title: string;
+    title: string;
+    description?: string;
+    discount_type: string;
+    discount_value?: number;
+    starts_at: string;
+    ends_at: string;
+    availability: string;
+    products: any[];
+    stock_cap?: number;
+}
+
+const formatTimeRemaining = (endsAt: string): string => {
+    const end = new Date(endsAt);
+    const now = new Date();
+    const diff = end.getTime() - now.getTime();
+
+    if (diff <= 0) return 'Terminé';
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 24) {
+        const days = Math.floor(hours / 24);
+        return `${days}j restant${days > 1 ? 's' : ''}`;
+    }
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+};
+
+const FlashPromosActiveScreen: React.FC = () => {
+    const navigation = useNavigation();
+    const { user } = useAuth();
+    const [flashPromos, setFlashPromos] = useState<FlashPromo[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const loadFlashPromos = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await apiGet('/api/flash-promos/active');
+            if (response.success && Array.isArray(response.data)) {
+                setFlashPromos(response.data);
+            } else {
+                setFlashPromos([]);
+            }
+        } catch (error: any) {
+            console.error('[FlashPromosActiveScreen] Erreur chargement:', error);
+            Alert.alert('Erreur', error.message || 'Impossible de charger les flash promotionnels');
+            setFlashPromos([]);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadFlashPromos().catch(() => undefined);
+    }, [loadFlashPromos]);
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        loadFlashPromos();
+    }, [loadFlashPromos]);
+
+    const handlePromoPress = useCallback(
+        (promo: FlashPromo) => {
+            (navigation as any).navigate('ServiceDetail', {
+                serviceId: promo.service_id,
+                highlightPromo: promo.id,
+            });
+        },
+        [navigation]
+    );
+
+    const formatDiscount = (promo: FlashPromo): string => {
+        if (promo.discount_type === 'percentage' && promo.discount_value) {
+            return `-${promo.discount_value}%`;
+        }
+        if (promo.discount_type === 'fixed' && promo.discount_value) {
+            return `-${promo.discount_value.toLocaleString('fr-FR')} CFA`;
+        }
+        if (promo.discount_type === 'free') {
+            return 'GRATUIT';
+        }
+        return 'Promotion';
+    };
+
+    if (loading && flashPromos.length === 0) {
+        return (
+            <SafeNativeView style={styles.container}>
+                <View style={styles.centerContent}>
+                    <ActivityIndicator size="large" color={modernColors.primary} />
+                    <Text style={styles.loadingText}>Chargement des promotions...</Text>
+                </View>
+            </SafeNativeView>
+        );
+    }
+
+    return (
+        <SafeNativeView style={styles.container}>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <SafeIcon name="chevron-left" size={24} color={modernColors.text} />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>⚡ Flash Promotionnels</Text>
+                <View style={styles.placeholder} />
+            </View>
+
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            >
+                {flashPromos.length === 0 ? (
+                    <View style={styles.emptyState}>
+                        <Text style={styles.emptyStateIcon}>⚡</Text>
+                        <Text style={styles.emptyStateText}>Aucun flash promotionnel actif</Text>
+                        <Text style={styles.emptyStateSubtext}>
+                            Les promotions limitées apparaîtront ici lorsqu'elles seront disponibles
+                        </Text>
+                    </View>
+                ) : (
+                    flashPromos.map((promo) => {
+                        const product = promo.products?.[0];
+                        const image = product?.images?.[0] || product?.cover_media || PLACEHOLDER_IMAGE;
+                        const timeRemaining = formatTimeRemaining(promo.ends_at);
+
+                        return (
+                            <TouchableOpacity
+                                key={promo.id}
+                                style={styles.promoCard}
+                                onPress={() => handlePromoPress(promo)}
+                            >
+                                <View style={styles.promoImageContainer}>
+                                    <Image source={{ uri: image }} style={styles.promoImage} resizeMode="cover" />
+                                    <View style={styles.discountBadge}>
+                                        <Text style={styles.discountBadgeText}>{formatDiscount(promo)}</Text>
+                                    </View>
+                                    {promo.availability === 'live' || promo.availability === 'both' ? (
+                                        <View style={styles.liveBadge}>
+                                            <Text style={styles.liveBadgeText}>📺 LIVE</Text>
+                                        </View>
+                                    ) : null}
+                                </View>
+
+                                <View style={styles.promoContent}>
+                                    <Text style={styles.promoTitle}>{promo.title}</Text>
+                                    {promo.description && (
+                                        <Text style={styles.promoDescription} numberOfLines={2}>
+                                            {promo.description}
+                                        </Text>
+                                    )}
+                                    <Text style={styles.serviceTitle}>{promo.service_title}</Text>
+
+                                    <View style={styles.promoFooter}>
+                                        <View style={styles.timeContainer}>
+                                            <SafeIcon name="clock" size={16} color={modernColors.textSecondary} />
+                                            <Text style={styles.timeText}>{timeRemaining}</Text>
+                                        </View>
+                                        {promo.stock_cap && (
+                                            <View style={styles.stockContainer}>
+                                                <SafeIcon name="package" size={16} color={modernColors.textSecondary} />
+                                                <Text style={styles.stockText}>Stock limité</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })
+                )}
+            </ScrollView>
+        </SafeNativeView>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: modernColors.background,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 12,
+        backgroundColor: modernColors.background,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    backButton: {
+        padding: 8,
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.text,
+        flex: 1,
+        textAlign: 'center',
+    },
+    placeholder: {
+        width: 40,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        padding: 16,
+    },
+    centerContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 16,
+        color: modernColors.textSecondary,
+    },
+    emptyState: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 60,
+    },
+    emptyStateIcon: {
+        fontSize: 64,
+        marginBottom: 16,
+    },
+    emptyStateText: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    emptyStateSubtext: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        paddingHorizontal: 32,
+    },
+    promoCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        marginBottom: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    promoImageContainer: {
+        position: 'relative',
+        width: '100%',
+        height: 200,
+    },
+    promoImage: {
+        width: '100%',
+        height: '100%',
+    },
+    discountBadge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        backgroundColor: '#DC2626',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    discountBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    liveBadge: {
+        position: 'absolute',
+        top: 12,
+        left: 12,
+        backgroundColor: '#8B5CF6',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    liveBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    promoContent: {
+        padding: 16,
+    },
+    promoTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    promoDescription: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        marginBottom: 8,
+    },
+    serviceTitle: {
+        fontSize: 14,
+        color: modernColors.primary,
+        fontWeight: '600',
+        marginBottom: 12,
+    },
+    promoFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    timeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    timeText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+    },
+    stockContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    stockText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+    },
+});
+
+export default FlashPromosActiveScreen;
+

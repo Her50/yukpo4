@@ -106,36 +106,37 @@ type FilterCategory = 'all' | 'with_stock' | 'with_variants' | 'nearby';
 const HEADER_HEIGHT = 72;
 const RESULTS_PER_PAGE = 20;
 
-// Fonctions utilitaires (extraits du fichier original)
+// ✅ OPTIMISÉ: Fonction d'extraction des résultats avec early returns et normalisation
 const extractSearchResults = (response: any): Product[] => {
+    // Early return si pas de réponse
     if (!response) return [];
 
-    const data = response?.data ?? response;
+    // Extraire les données (support multiple formats)
+    const data = response.data ?? response;
     if (!data) return [];
 
+    // ✅ OPTIMISÉ: Extraction directe avec priorité
     let resultsArray: any[] = [];
     if (Array.isArray(data)) {
         resultsArray = data;
-    } else {
-        const nestedCandidates = [
-            data?.resultats?.resultats,
-            data?.resultats,
-            data?.data,
-            data?.items,
-        ];
-        for (const candidate of nestedCandidates) {
-            if (Array.isArray(candidate)) {
-                resultsArray = candidate;
-                break;
-            }
-        }
+    } else if (Array.isArray(data.resultats?.resultats)) {
+        resultsArray = data.resultats.resultats;
+    } else if (Array.isArray(data.resultats)) {
+        resultsArray = data.resultats;
+    } else if (Array.isArray(data.data)) {
+        resultsArray = data.data;
+    } else if (Array.isArray(data.items)) {
+        resultsArray = data.items;
     }
 
+    // Early return si pas de résultats
     if (!Array.isArray(resultsArray) || resultsArray.length === 0) {
         return [];
     }
 
-    return resultsArray.map((item: any) => {
+    // ✅ OPTIMISÉ: Normalisation avec fonction helper
+    const normalizeProduct = (item: any): Product => {
+        // Extraire le nom avec priorité
         const nom = item?.data?.titre_service?.valeur ||
             item?.data?.titre_service ||
             item?.nom ||
@@ -143,8 +144,34 @@ const extractSearchResults = (response: any): Product[] => {
             item?.data?.nom ||
             'Produit';
 
+        // Extraire les vecteurs de localisation
         const location_vector = item.location_vector || item?.data?.location_vector || [];
         const chosen_location = item.chosen_location || item?.data?.chosen_location || location_vector[0];
+
+        // Extraire les images (support multiple formats)
+        const extractImages = (): string[] => {
+            if (Array.isArray(item.images)) return item.images;
+            if (Array.isArray(item?.data?.images)) return item.data.images;
+            if (Array.isArray(item?.data?.images?.valeur)) return item.data.images.valeur;
+            if (item.image) return [item.image];
+            if (item?.data?.image) return [item.data.image];
+            return [];
+        };
+
+        // Extraire les vidéos
+        const extractVideos = (): string[] => {
+            if (Array.isArray(item.videos)) return item.videos;
+            if (Array.isArray(item?.data?.videos)) return item.data.videos;
+            if (Array.isArray(item?.data?.videos?.valeur)) return item.data.videos.valeur;
+            return [];
+        };
+
+        // Extraire les infos prestataire
+        const prestataire = {
+            nom: item.prestataire?.nom || item.user?.nom_complet || item.user?.nom || 'Prestataire',
+            avatar_url: item.prestataire?.avatar_url || item.user?.avatar_url,
+            user_id: item.prestataire?.user_id || item.user?.id || item.user_id || 0,
+        };
 
         return {
             service_id: item.service_id || item.id || 0,
@@ -156,23 +183,14 @@ const extractSearchResults = (response: any): Product[] => {
             chosen_location,
             usage_count: item.usage_count || item?.data?.usage_count,
             distance_km: item.distance_km || item?.data?.distance_km || undefined,
-            prestataire: {
-                nom: item.prestataire?.nom || item.user?.nom_complet || item.user?.nom || 'Prestataire',
-                avatar_url: item.prestataire?.avatar_url || item.user?.avatar_url,
-                user_id: item.prestataire?.user_id || item.user?.id || item.user_id || 0,
-            },
+            prestataire,
             has_variant: item.has_variant || item?.data?.has_variant || false,
             variants: item.variants || item?.data?.variants,
             prix: item.prix || item?.data?.prix,
             devise: item.devise || item?.data?.devise || 'XAF',
             image: item.image || item?.data?.image,
-            images: Array.isArray(item.images) ? item.images :
-                Array.isArray(item?.data?.images) ? item.data.images :
-                    Array.isArray(item?.data?.images?.valeur) ? item.data.images.valeur :
-                        item.image ? [item.image] : [],
-            videos: Array.isArray(item.videos) ? item.videos :
-                Array.isArray(item?.data?.videos) ? item.data.videos :
-                    Array.isArray(item?.data?.videos?.valeur) ? item.data.videos.valeur : [],
+            images: extractImages(),
+            videos: extractVideos(),
             coordinates: item.coordinates || item?.data?.coordinates,
             id: item.id || item.service_id || undefined,
             is_active: item.is_active !== undefined ? item.is_active : true,
@@ -180,7 +198,10 @@ const extractSearchResults = (response: any): Product[] => {
             user_id: item.user_id || item.user?.id || item.prestataire?.user_id || undefined,
             ...item,
         } as Product;
-    });
+    };
+
+    // ✅ OPTIMISÉ: Map avec fonction normalisée
+    return resultsArray.map(normalizeProduct);
 };
 
 const extractBase64 = (dataUrl: string): string => {

@@ -96,10 +96,22 @@ pub async fn automate_media_distribution(
                 }
             });
         } else {
-            warn!(
-                "[DistributionAutomation] Aucun connecteur pour cible '{}' (user={})",
-                target, user_id
-            );
+            // ✅ AMÉLIORATION: Message plus informatif selon le type de cible
+            let message = if target == "product" || target == "chat" {
+                format!(
+                    "[DistributionAutomation] ⚠️ Aucun connecteur configuré pour cible '{}' (user={}). \
+                    Cette cible nécessite une configuration spécifique. La distribution sera mise en attente.",
+                    target, user_id
+                )
+            } else {
+                format!(
+                    "[DistributionAutomation] ⚠️ Aucun connecteur pour cible '{}' (user={}). \
+                    L'utilisateur doit configurer un connecteur pour cette plateforme.",
+                    target, user_id
+                )
+            };
+            warn!("{}", message);
+            
             update_missing_connector(
                 &state,
                 media_id,

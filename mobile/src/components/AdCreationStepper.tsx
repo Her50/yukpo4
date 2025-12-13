@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -12,9 +12,10 @@ interface Step {
 interface AdCreationStepperProps {
     currentStep: number;
     steps: Step[];
+    onStepPress?: (stepIndex: number) => void;
 }
 
-export const AdCreationStepper: React.FC<AdCreationStepperProps> = ({ currentStep, steps }) => {
+export const AdCreationStepper: React.FC<AdCreationStepperProps> = ({ currentStep, steps, onStepPress }) => {
     return (
         <View style={styles.container}>
             {steps.map((step, index) => {
@@ -24,7 +25,12 @@ export const AdCreationStepper: React.FC<AdCreationStepperProps> = ({ currentSte
 
                 return (
                     <React.Fragment key={step.id}>
-                        <View style={styles.stepContainer}>
+                        <TouchableOpacity
+                            style={styles.stepContainer}
+                            onPress={() => onStepPress?.(index)}
+                            activeOpacity={0.7}
+                            disabled={!onStepPress}
+                        >
                             <View
                                 style={[
                                     styles.stepCircle,
@@ -60,7 +66,7 @@ export const AdCreationStepper: React.FC<AdCreationStepperProps> = ({ currentSte
                             >
                                 {step.label}
                             </Text>
-                        </View>
+                        </TouchableOpacity>
                         {index < steps.length - 1 && (
                             <View
                                 style={[

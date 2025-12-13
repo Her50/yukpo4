@@ -1,4 +1,5 @@
-// ✅ Écran de recherche de biens immobiliers
+// ✅ Écran de recherche de biens immobiliers (Mobile) - VERSION REFONDUE
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
@@ -12,8 +13,11 @@ import {
 import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
+import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
+import { hapticPress } from '../../utils/hapticFeedback';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface ImmobilierSearchFilters {
     ville?: string;
@@ -36,8 +40,8 @@ const ImmobilierSearchScreen: React.FC = () => {
     const navigation = useNavigation();
     const { location } = useLocation();
 
-    const [ville, setVille] = useState('');
-    const [quartier, setQuartier] = useState('');
+    const [ville, setVille] = useState<LocationObject | string>('');
+    const [quartier, setQuartier] = useState<LocationObject | string>('');
     const [selectedQuartiers, setSelectedQuartiers] = useState<string[]>([]);
     const [gpsString, setGpsString] = useState('');
     const [gpsData, setGpsData] = useState<{ lat: number; lng: number } | null>(null);
@@ -107,7 +111,10 @@ const ImmobilierSearchScreen: React.FC = () => {
             Alert.alert('Erreur', 'Veuillez délimiter une zone sur la carte');
             return;
         }
-        if (searchMode === 'point' && !ville.trim() && !quartier.trim() && !gpsData) {
+        const villeStr = typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || '';
+        const quartierStr = typeof quartier === 'string' ? quartier : (quartier as LocationObject)?.components?.quartier || (quartier as LocationObject)?.place_name || '';
+        
+        if (searchMode === 'point' && !villeStr.trim() && !quartierStr.trim() && !gpsData) {
             Alert.alert('Erreur', 'Veuillez renseigner une ville/quartier ou sélectionner un point GPS');
             return;
         }
@@ -121,8 +128,8 @@ const ImmobilierSearchScreen: React.FC = () => {
             filters.search_zone = searchZone;
         } else {
             // Mode point
-            if (ville.trim()) filters.ville = ville.trim();
-            if (quartier.trim()) filters.quartier = quartier.trim();
+            if (villeStr.trim()) filters.ville = villeStr.trim();
+            if (quartierStr.trim()) filters.quartier = quartierStr.trim();
             if (gpsData) {
                 filters.lat = gpsData.lat;
                 filters.lng = gpsData.lng;
@@ -147,280 +154,426 @@ const ImmobilierSearchScreen: React.FC = () => {
     const statuts = ['À vendre', 'À louer (bail)', 'À louer meublé', 'Location courte durée', 'Colocation'];
     const standings = ['Économique', 'Standard', 'Bon standing', 'Haut standing', 'Luxe / Prestige'];
 
-    return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
-                >
-                    <SafeIcon name="arrow-left" size={24} color="#111827" />
-                </TouchableOpacity>
-                <Text style={styles.title}>Rechercher un bien immobilier</Text>
-            </View>
+    // Recherches rapides spécifiques immobilier
+    const quickSearches = [
+        {
+            id: 'vente',
+            title: 'À vendre',
+            icon: 'tag',
+            description: 'Biens en vente',
+            action: () => {
+                hapticPress();
+                setStatut('À vendre');
+            }
+        },
+        {
+            id: 'location',
+            title: 'À louer',
+            icon: 'key',
+            description: 'Biens à louer',
+            action: () => {
+                hapticPress();
+                setStatut('À louer (bail)');
+            }
+        },
+        {
+            id: 'proche',
+            title: 'Plus proche',
+            icon: 'map-pin',
+            description: 'À proximité',
+            action: () => {
+                hapticPress();
+                setMaxDistance(10);
+                setSearchMode('point');
+            }
+        },
+    ];
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {/* Mode de recherche */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🔍 Mode de recherche</Text>
-                    <View style={styles.modeSelector}>
-                        <TouchableOpacity
-                            style={[styles.modeButton, searchMode === 'point' && styles.modeButtonActive]}
-                            onPress={() => setSearchMode('point')}
-                        >
-                            <SafeIcon name="map-pin" size={18} color={searchMode === 'point' ? '#fff' : modernColors.primary} />
-                            <Text style={[styles.modeButtonText, searchMode === 'point' && styles.modeButtonTextActive]}>
-                                Point GPS
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.modeButton, searchMode === 'zone' && styles.modeButtonActive]}
-                            onPress={() => {
-                                setSearchMode('zone');
-                                setShowZoneSelector(true);
-                            }}
-                        >
-                            <SafeIcon name="map" size={18} color={searchMode === 'zone' ? '#fff' : modernColors.primary} />
-                            <Text style={[styles.modeButtonText, searchMode === 'zone' && styles.modeButtonTextActive]}>
-                                Zone carte
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.modeButton, searchMode === 'quartiers' && styles.modeButtonActive]}
-                            onPress={() => setSearchMode('quartiers')}
-                        >
-                            <SafeIcon name="layers" size={18} color={searchMode === 'quartiers' ? '#fff' : modernColors.primary} />
-                            <Text style={[styles.modeButtonText, searchMode === 'quartiers' && styles.modeButtonTextActive]}>
-                                Quartiers
-                            </Text>
-                        </TouchableOpacity>
+    return (
+        <SafeNativeView style={styles.container}>
+            {/* Header avec gradient bleu foncé (immobilier) */}
+            <LinearGradient
+                colors={['#1E40AF', '#3B82F6']}
+                style={styles.headerGradient}
+            >
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        onPress={() => {
+                            hapticPress();
+                            navigation.goBack();
+                        }}
+                        style={styles.backButton}
+                    >
+                        <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <View style={styles.headerContent}>
+                        <View style={styles.headerIconContainer}>
+                            <SafeIcon name="home" size={32} color="#FFFFFF" type="lucide" />
+                        </View>
+                        <Text style={styles.headerTitle}>Rechercher un bien immobilier</Text>
+                        <Text style={styles.headerSubtitle}>
+                            Trouvez le bien idéal selon vos critères
+                        </Text>
+                    </View>
+                </View>
+            </LinearGradient>
+
+            <ScrollView
+                style={styles.content}
+                contentContainerStyle={styles.contentContainer}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Recherches rapides */}
+                <View style={styles.quickSearchesSection}>
+                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
+                    <View style={styles.quickSearchesGrid}>
+                        {quickSearches.map((search) => (
+                            <TouchableOpacity
+                                key={search.id}
+                                style={styles.quickSearchCard}
+                                onPress={search.action}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.quickSearchIconContainer}>
+                                    <SafeIcon
+                                        name={search.icon}
+                                        size={24}
+                                        color="#1E40AF"
+                                        type="lucide"
+                                    />
+                                </View>
+                                <Text style={styles.quickSearchTitle}>{search.title}</Text>
+                                <Text style={styles.quickSearchDescription}>{search.description}</Text>
+                            </TouchableOpacity>
+                        ))}
                     </View>
                 </View>
 
-                {/* Localisation selon le mode */}
-                {searchMode === 'point' && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>📍 Localisation</Text>
-                        <NativeInput
-                            placeholder="Ville (ex: Douala, Yaoundé)"
-                            value={ville}
-                            onChangeText={setVille}
-                            style={styles.input}
-                        />
-                        <NativeInput
-                            placeholder="Quartier (ex: Akwa, Bonanjo)"
-                            value={quartier}
-                            onChangeText={setQuartier}
-                            style={styles.input}
-                        />
-                        <TouchableOpacity
-                            style={styles.gpsButton}
-                            onPress={() => {
-                                setShowGPSModal(true);
-                            }}
-                        >
-                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                            <Text style={styles.gpsButtonText}>
-                                {gpsString || 'Sélectionner un point GPS'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {searchMode === 'zone' && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>🗺️ Zone de recherche</Text>
-                        <TouchableOpacity
-                            style={styles.zoneButton}
-                            onPress={() => setShowZoneSelector(true)}
-                        >
-                            <SafeIcon name="map" size={20} color={modernColors.primary} />
-                            <Text style={styles.zoneButtonText}>
-                                {searchZone ? 'Zone délimitée (modifier)' : 'Délimiter une zone sur la carte'}
-                            </Text>
-                        </TouchableOpacity>
-                        {searchZone && (
-                            <View style={styles.zoneInfo}>
-                                <SafeIcon name="check-circle" size={16} color="#10B981" />
-                                <Text style={styles.zoneInfoText}>
-                                    Zone configurée ({searchZone.split('|').length} points)
+                {/* Formulaire de recherche */}
+                <View style={styles.searchFormCard}>
+                    {/* Mode de recherche */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.sectionTitle}>🔍 Mode de recherche</Text>
+                        <View style={styles.modeSelector}>
+                            <TouchableOpacity
+                                style={[styles.modeButton, searchMode === 'point' && styles.modeButtonActive]}
+                                onPress={() => {
+                                    hapticPress();
+                                    setSearchMode('point');
+                                }}
+                            >
+                                <SafeIcon name="map-pin" size={18} color={searchMode === 'point' ? '#fff' : '#1E40AF'} type="lucide" />
+                                <Text style={[styles.modeButtonText, searchMode === 'point' && styles.modeButtonTextActive]}>
+                                    Point GPS
                                 </Text>
-                            </View>
-                        )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modeButton, searchMode === 'zone' && styles.modeButtonActive]}
+                                onPress={() => {
+                                    hapticPress();
+                                    setSearchMode('zone');
+                                    setShowZoneSelector(true);
+                                }}
+                            >
+                                <SafeIcon name="map" size={18} color={searchMode === 'zone' ? '#fff' : '#1E40AF'} type="lucide" />
+                                <Text style={[styles.modeButtonText, searchMode === 'zone' && styles.modeButtonTextActive]}>
+                                    Zone carte
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modeButton, searchMode === 'quartiers' && styles.modeButtonActive]}
+                                onPress={() => {
+                                    hapticPress();
+                                    setSearchMode('quartiers');
+                                }}
+                            >
+                                <SafeIcon name="layers" size={18} color={searchMode === 'quartiers' ? '#fff' : '#1E40AF'} type="lucide" />
+                                <Text style={[styles.modeButtonText, searchMode === 'quartiers' && styles.modeButtonTextActive]}>
+                                    Quartiers
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                )}
 
-                {searchMode === 'quartiers' && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>🏘️ Sélectionner des quartiers</Text>
-                        <Text style={styles.sectionSubtitle}>
-                            Sélectionnez un ou plusieurs quartiers pour filtrer la recherche
-                        </Text>
-                        <View style={styles.quartiersGrid}>
-                            {popularQuartiers.map((q) => (
-                                <TouchableOpacity
-                                    key={q}
-                                    style={[
-                                        styles.quartierChip,
-                                        selectedQuartiers.includes(q) && styles.quartierChipActive,
-                                    ]}
-                                    onPress={() => handleQuartierToggle(q)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.quartierChipText,
-                                            selectedQuartiers.includes(q) && styles.quartierChipTextActive,
-                                        ]}
-                                    >
-                                        {q}
+                    {/* Localisation selon le mode */}
+                    {searchMode === 'point' && (
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.sectionTitle}>📍 Localisation</Text>
+                            <LocationSelector
+                                label="Ville"
+                                value={ville}
+                                onSelect={(location) => setVille(location)}
+                                placeholder="Rechercher une ville..."
+                                scope="city"
+                                enrichWithBackend={true}
+                            />
+                            <View style={{ marginTop: 12 }}>
+                                <LocationSelector
+                                    label="Quartier (optionnel)"
+                                    value={quartier}
+                                    onSelect={(location) => setQuartier(location)}
+                                    placeholder="Rechercher un quartier..."
+                                    scope="neighborhood"
+                                    cityContext={typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || ''}
+                                    enrichWithBackend={true}
+                                />
+                            </View>
+                            <TouchableOpacity
+                                style={styles.gpsButton}
+                                onPress={() => {
+                                    hapticPress();
+                                    setShowGPSModal(true);
+                                }}
+                            >
+                                <SafeIcon name="map-pin" size={20} color="#1E40AF" type="lucide" />
+                                <Text style={styles.gpsButtonText}>
+                                    {gpsString || 'Sélectionner un point GPS'}
+                                </Text>
+                                <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {searchMode === 'zone' && (
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.sectionTitle}>🗺️ Zone de recherche</Text>
+                            <TouchableOpacity
+                                style={styles.zoneButton}
+                                onPress={() => {
+                                    hapticPress();
+                                    setShowZoneSelector(true);
+                                }}
+                            >
+                                <SafeIcon name="map" size={20} color="#1E40AF" type="lucide" />
+                                <Text style={styles.zoneButtonText}>
+                                    {searchZone ? 'Zone délimitée (modifier)' : 'Délimiter une zone sur la carte'}
+                                </Text>
+                                <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
+                            </TouchableOpacity>
+                            {searchZone && (
+                                <View style={styles.zoneInfo}>
+                                    <SafeIcon name="check-circle" size={16} color="#10B981" type="lucide" />
+                                    <Text style={styles.zoneInfoText}>
+                                        Zone configurée ({searchZone.split('|').length} points)
                                     </Text>
-                                    {selectedQuartiers.includes(q) && (
-                                        <SafeIcon name="check" size={14} color="#fff" />
-                                    )}
+                                </View>
+                            )}
+                        </View>
+                    )}
+
+                    {searchMode === 'quartiers' && (
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.sectionTitle}>🏘️ Sélectionner des quartiers</Text>
+                            <Text style={styles.sectionSubtitle}>
+                                Sélectionnez un ou plusieurs quartiers pour filtrer la recherche
+                            </Text>
+                            <View style={styles.quartiersGrid}>
+                                {popularQuartiers.map((q) => (
+                                    <TouchableOpacity
+                                        key={q}
+                                        style={[
+                                            styles.quartierChip,
+                                            selectedQuartiers.includes(q) && styles.quartierChipActive,
+                                        ]}
+                                        onPress={() => {
+                                            hapticPress();
+                                            handleQuartierToggle(q);
+                                        }}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.quartierChipText,
+                                                selectedQuartiers.includes(q) && styles.quartierChipTextActive,
+                                            ]}
+                                        >
+                                            {q}
+                                        </Text>
+                                        {selectedQuartiers.includes(q) && (
+                                            <SafeIcon name="check" size={14} color="#fff" type="lucide" />
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                            {selectedQuartiers.length > 0 && (
+                                <View style={styles.selectedQuartiersInfo}>
+                                    <Text style={styles.selectedQuartiersText}>
+                                        {selectedQuartiers.length} quartier{selectedQuartiers.length > 1 ? 's' : ''} sélectionné{selectedQuartiers.length > 1 ? 's' : ''}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+
+                    {/* Type et Statut */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.sectionTitle}>🏠 Type de bien</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
+                            {typesBiens.map((type) => (
+                                <TouchableOpacity
+                                    key={type}
+                                    style={[styles.chip, typeBien === type && styles.chipActive]}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setTypeBien(typeBien === type ? '' : type);
+                                    }}
+                                >
+                                    <Text style={[styles.chipText, typeBien === type && styles.chipTextActive]}>
+                                        {type}
+                                    </Text>
                                 </TouchableOpacity>
                             ))}
+                        </ScrollView>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.sectionTitle}>💰 Statut</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
+                            {statuts.map((s) => (
+                                <TouchableOpacity
+                                    key={s}
+                                    style={[styles.chip, statut === s && styles.chipActive]}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setStatut(statut === s ? '' : statut);
+                                    }}
+                                >
+                                    <Text style={[styles.chipText, statut === s && styles.chipTextActive]}>
+                                        {s}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+
+                    {/* Prix */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.sectionTitle}>💵 Prix (FCFA)</Text>
+                        <View style={styles.row}>
+                            <NativeInput
+                                placeholder="Prix min"
+                                value={prixMin}
+                                onChangeText={setPrixMin}
+                                keyboardType="numeric"
+                                style={[styles.input, styles.halfInput]}
+                            />
+                            <NativeInput
+                                placeholder="Prix max"
+                                value={prixMax}
+                                onChangeText={setPrixMax}
+                                keyboardType="numeric"
+                                style={[styles.input, styles.halfInput]}
+                            />
                         </View>
-                        {selectedQuartiers.length > 0 && (
-                            <View style={styles.selectedQuartiersInfo}>
-                                <Text style={styles.selectedQuartiersText}>
-                                    {selectedQuartiers.length} quartier{selectedQuartiers.length > 1 ? 's' : ''} sélectionné{selectedQuartiers.length > 1 ? 's' : ''}
-                                </Text>
+                    </View>
+
+                    {/* Superficie */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.sectionTitle}>📐 Superficie (m²)</Text>
+                        <View style={styles.row}>
+                            <NativeInput
+                                placeholder="Min"
+                                value={superficieMin}
+                                onChangeText={setSuperficieMin}
+                                keyboardType="numeric"
+                                style={[styles.input, styles.halfInput]}
+                            />
+                            <NativeInput
+                                placeholder="Max"
+                                value={superficieMax}
+                                onChangeText={setSuperficieMax}
+                                keyboardType="numeric"
+                                style={[styles.input, styles.halfInput]}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Caractéristiques */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.sectionTitle}>🏡 Caractéristiques</Text>
+                        <NativeInput
+                            placeholder="Nombre de chambres minimum"
+                            value={nbChambresMin}
+                            onChangeText={setNbChambresMin}
+                            keyboardType="numeric"
+                            style={styles.input}
+                        />
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
+                            {standings.map((s) => (
+                                <TouchableOpacity
+                                    key={s}
+                                    style={[styles.chip, standing === s && styles.chipActive]}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setStanding(standing === s ? '' : standing);
+                                    }}
+                                >
+                                    <Text style={[styles.chipText, standing === s && styles.chipTextActive]}>
+                                        {s}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+
+                    {/* Distance */}
+                    {searchMode === 'point' && (
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.sectionTitle}>📍 Distance maximum</Text>
+                            <View style={styles.distanceCard}>
+                                <TouchableOpacity
+                                    style={styles.distanceButton}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setMaxDistance(Math.max(5, maxDistance - 5));
+                                    }}
+                                >
+                                    <SafeIcon name="minus" size={18} color="#FFFFFF" type="lucide" />
+                                </TouchableOpacity>
+                                <View style={styles.distanceValueContainer}>
+                                    <Text style={styles.distanceValue}>{maxDistance}</Text>
+                                    <Text style={styles.distanceUnit}>km</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.distanceButton}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setMaxDistance(Math.min(100, maxDistance + 5));
+                                    }}
+                                >
+                                    <SafeIcon name="plus" size={18} color="#FFFFFF" type="lucide" />
+                                </TouchableOpacity>
                             </View>
-                        )}
-                    </View>
-                )}
-
-                {/* Type et Statut */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🏠 Type de bien</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
-                        {typesBiens.map((type) => (
-                            <TouchableOpacity
-                                key={type}
-                                style={[styles.chip, typeBien === type && styles.chipActive]}
-                                onPress={() => setTypeBien(typeBien === type ? '' : type)}
-                            >
-                                <Text style={[styles.chipText, typeBien === type && styles.chipTextActive]}>
-                                    {type}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>💰 Statut</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
-                        {statuts.map((s) => (
-                            <TouchableOpacity
-                                key={s}
-                                style={[styles.chip, statut === s && styles.chipActive]}
-                                onPress={() => setStatut(statut === s ? '' : statut)}
-                            >
-                                <Text style={[styles.chipText, statut === s && styles.chipTextActive]}>
-                                    {s}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-
-                {/* Prix */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>💵 Prix</Text>
-                    <View style={styles.row}>
-                        <NativeInput
-                            placeholder="Prix min (FCFA)"
-                            value={prixMin}
-                            onChangeText={setPrixMin}
-                            keyboardType="numeric"
-                            style={[styles.input, styles.halfInput]}
-                        />
-                        <NativeInput
-                            placeholder="Prix max (FCFA)"
-                            value={prixMax}
-                            onChangeText={setPrixMax}
-                            keyboardType="numeric"
-                            style={[styles.input, styles.halfInput]}
-                        />
-                    </View>
-                </View>
-
-                {/* Superficie */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📐 Superficie</Text>
-                    <View style={styles.row}>
-                        <NativeInput
-                            placeholder="Min (m²)"
-                            value={superficieMin}
-                            onChangeText={setSuperficieMin}
-                            keyboardType="numeric"
-                            style={[styles.input, styles.halfInput]}
-                        />
-                        <NativeInput
-                            placeholder="Max (m²)"
-                            value={superficieMax}
-                            onChangeText={setSuperficieMax}
-                            keyboardType="numeric"
-                            style={[styles.input, styles.halfInput]}
-                        />
-                    </View>
-                </View>
-
-                {/* Caractéristiques */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🏡 Caractéristiques</Text>
-                    <NativeInput
-                        placeholder="Nombre de chambres minimum"
-                        value={nbChambresMin}
-                        onChangeText={setNbChambresMin}
-                        keyboardType="numeric"
-                        style={styles.input}
-                    />
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
-                        {standings.map((s) => (
-                            <TouchableOpacity
-                                key={s}
-                                style={[styles.chip, standing === s && styles.chipActive]}
-                                onPress={() => setStanding(standing === s ? '' : standing)}
-                            >
-                                <Text style={[styles.chipText, standing === s && styles.chipTextActive]}>
-                                    {s}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-
-                {/* Distance */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📍 Distance maximum</Text>
-                    <Text style={styles.distanceText}>{maxDistance} km</Text>
-                    <View style={styles.sliderContainer}>
-                        <TouchableOpacity
-                            style={styles.sliderButton}
-                            onPress={() => setMaxDistance(Math.max(5, maxDistance - 5))}
-                        >
-                            <Text style={styles.sliderButtonText}>-</Text>
-                        </TouchableOpacity>
-                        <View style={styles.sliderTrack}>
-                            <View style={[styles.sliderFill, { width: `${(maxDistance / 100) * 100}%` }]} />
                         </View>
-                        <TouchableOpacity
-                            style={styles.sliderButton}
-                            onPress={() => setMaxDistance(Math.min(100, maxDistance + 5))}
-                        >
-                            <Text style={styles.sliderButtonText}>+</Text>
-                        </TouchableOpacity>
-                    </View>
+                    )}
+
+                    {/* Bouton recherche */}
+                    <NativeButton
+                        onPress={handleSearch}
+                        disabled={loading}
+                        style={styles.searchButton}
+                    >
+                        <View style={styles.searchButtonContent}>
+                            <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.searchButtonText}>
+                                {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
+                            </Text>
+                        </View>
+                    </NativeButton>
                 </View>
 
-                <NativeButton
-                    title="🔍 Rechercher"
-                    onPress={handleSearch}
-                    style={styles.searchButton}
-                    loading={loading}
-                />
+                {/* Info section */}
+                <View style={styles.infoCard}>
+                    <View style={styles.infoHeader}>
+                        <SafeIcon name="info" size={20} color="#1E40AF" type="lucide" />
+                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
+                    </View>
+                    <Text style={styles.infoText}>
+                        • La recherche par zone permet de délimiter précisément votre zone d'intérêt{'\n'}
+                        • Comparez les prix par quartier pour trouver les meilleures opportunités{'\n'}
+                        • Les alertes prix vous notifient quand un bien correspond à vos critères{'\n'}
+                        • Vérifiez les photos et visites virtuelles avant de réserver une visite
+                    </Text>
+                </View>
             </ScrollView>
 
             <ModernGPSModal
@@ -441,35 +594,118 @@ const ImmobilierSearchScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#F9FAFB',
+    },
+    headerGradient: {
+        paddingTop: 20,
+        paddingBottom: 24,
     },
     header: {
         flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        alignItems: 'flex-start',
+        paddingHorizontal: 16,
     },
     backButton: {
         marginRight: 12,
+        marginTop: 4,
     },
-    title: {
-        fontSize: 20,
+    headerContent: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    headerIconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    headerTitle: {
+        fontSize: 24,
         fontWeight: '700',
-        color: '#111827',
+        color: '#FFFFFF',
+        marginBottom: 6,
+        textAlign: 'center',
+    },
+    headerSubtitle: {
+        fontSize: 14,
+        color: 'rgba(255, 255, 255, 0.9)',
+        textAlign: 'center',
+        paddingHorizontal: 20,
+        lineHeight: 20,
     },
     content: {
         flex: 1,
-        padding: 16,
     },
-    section: {
+    contentContainer: {
+        padding: 16,
+        paddingBottom: 32,
+    },
+    quickSearchesSection: {
         marginBottom: 24,
     },
     sectionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 18,
+        fontWeight: '700',
         color: '#111827',
         marginBottom: 12,
+    },
+    quickSearchesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+    },
+    quickSearchCard: {
+        flex: 1,
+        minWidth: '30%',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    quickSearchIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#DBEAFE',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    quickSearchTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 4,
+        textAlign: 'center',
+    },
+    quickSearchDescription: {
+        fontSize: 11,
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+    searchFormCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    inputGroup: {
+        marginBottom: 20,
     },
     input: {
         marginBottom: 12,
@@ -484,77 +720,115 @@ const styles = StyleSheet.create({
     gpsButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 8,
-        marginTop: 8,
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 12,
     },
     gpsButtonText: {
-        marginLeft: 8,
+        flex: 1,
         fontSize: 14,
-        color: modernColors.primary,
+        color: '#374151',
         fontWeight: '500',
+    },
+    distanceCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    distanceButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#1E40AF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    distanceValueContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    distanceValue: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    distanceUnit: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 2,
     },
     chipsContainer: {
         flexDirection: 'row',
         marginTop: 8,
+        gap: 8,
     },
     chip: {
         paddingHorizontal: 16,
-        paddingVertical: 8,
+        paddingVertical: 10,
         borderRadius: 20,
         backgroundColor: '#F3F4F6',
-        marginRight: 8,
+        borderWidth: 1.5,
+        borderColor: '#D1D5DB',
     },
     chipActive: {
-        backgroundColor: modernColors.primary,
+        backgroundColor: '#1E40AF',
+        borderColor: '#1E40AF',
     },
     chipText: {
         fontSize: 14,
-        color: '#6B7280',
+        color: '#374151',
+        fontWeight: '600',
     },
     chipTextActive: {
-        color: '#fff',
-        fontWeight: '600',
-    },
-    distanceText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: modernColors.primary,
-        marginBottom: 8,
-    },
-    sliderContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    sliderButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: modernColors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    sliderButtonText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    sliderTrack: {
-        flex: 1,
-        height: 8,
-        backgroundColor: '#E5E7EB',
-        borderRadius: 4,
-        marginHorizontal: 12,
-        overflow: 'hidden',
-    },
-    sliderFill: {
-        height: '100%',
-        backgroundColor: modernColors.primary,
+        color: '#FFFFFF',
     },
     searchButton: {
-        marginTop: 24,
-        marginBottom: 32,
+        marginTop: 16,
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    searchButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    searchButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    infoCard: {
+        backgroundColor: '#DBEAFE',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#93C5FD',
+    },
+    infoHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+        gap: 8,
+    },
+    infoTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1E3A8A',
+    },
+    infoText: {
+        fontSize: 13,
+        color: '#1E3A8A',
+        lineHeight: 20,
     },
     modeSelector: {
         flexDirection: 'row',
@@ -568,39 +842,44 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 12,
         paddingHorizontal: 12,
-        borderRadius: 8,
+        borderRadius: 12,
         backgroundColor: '#F3F4F6',
+        borderWidth: 1.5,
+        borderColor: '#D1D5DB',
         gap: 6,
     },
     modeButtonActive: {
-        backgroundColor: modernColors.primary,
+        backgroundColor: '#1E40AF',
+        borderColor: '#1E40AF',
     },
     modeButtonText: {
         fontSize: 12,
         fontWeight: '600',
-        color: modernColors.primary,
+        color: '#1E40AF',
     },
     modeButtonTextActive: {
-        color: '#fff',
+        color: '#FFFFFF',
     },
     zoneButton: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 8,
-        marginTop: 8,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 12,
     },
     zoneButtonText: {
-        marginLeft: 12,
+        flex: 1,
         fontSize: 14,
-        color: modernColors.primary,
-        fontWeight: '600',
+        color: '#374151',
+        fontWeight: '500',
     },
     zoneInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 8,
+        marginTop: 12,
         padding: 12,
         backgroundColor: '#D1FAE5',
         borderRadius: 8,
@@ -629,29 +908,34 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 20,
         backgroundColor: '#F3F4F6',
+        borderWidth: 1.5,
+        borderColor: '#D1D5DB',
         gap: 6,
     },
     quartierChipActive: {
-        backgroundColor: modernColors.primary,
+        backgroundColor: '#1E40AF',
+        borderColor: '#1E40AF',
     },
     quartierChipText: {
         fontSize: 14,
-        color: '#6B7280',
+        color: '#374151',
         fontWeight: '500',
     },
     quartierChipTextActive: {
-        color: '#fff',
+        color: '#FFFFFF',
         fontWeight: '600',
     },
     selectedQuartiersInfo: {
         marginTop: 12,
         padding: 12,
-        backgroundColor: '#EFF6FF',
+        backgroundColor: '#DBEAFE',
         borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#93C5FD',
     },
     selectedQuartiersText: {
         fontSize: 14,
-        color: modernColors.primary,
+        color: '#1E3A8A',
         fontWeight: '600',
     },
 });

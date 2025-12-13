@@ -26,6 +26,7 @@ pub mod echange_routes;
 pub mod embedding_routes; // ✅ Routes pour embeddings
 pub mod export_routes; // ✅ NOUVEAU Phase 2.3: Routes pour jobs d'export vidéo
 pub mod extended_audio_routes; // ✅ NOUVEAU Phase 2.2: Routes pour bibliothèque audio étendue
+pub mod flash_promo_routes; // ✅ NOUVEAU: Routes pour flash promotionnels de produits (gratuit)
 pub mod fournitures_routes;
 pub mod generative_routes; // ✅ NOUVEAU Phase 3.1: Routes pour génération vidéo IA complète
 pub mod global_promo_routes;

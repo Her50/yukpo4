@@ -1,17 +1,23 @@
-// ✅ Écran de recherche d'établissements (Mobile)
-
+// ✅ Écran de recherche d'établissements (Mobile) - VERSION REFONDUE
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
+    ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { NativeButton, NativeInput } from '../../components/NativeDesign';
+import SafeIcon from '../../components/SafeIcon';
+import { SafeNativeView } from '../../components/SafeNativeView';
 import { apiGet } from '../../services/api';
+import { modernColors } from '../../theme/modernTheme';
+import { hapticPress } from '../../utils/hapticFeedback';
+import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 
 interface Etablissement {
     id: number;
@@ -35,8 +41,8 @@ const EtablissementSearchScreen: React.FC = () => {
 
     // Filtres
     const [typeEtablissement, setTypeEtablissement] = useState(typeParam);
-    const [ville, setVille] = useState('');
-    const [region, setRegion] = useState('');
+    const [ville, setVille] = useState<LocationObject | string>('');
+    const [region, setRegion] = useState<LocationObject | string>('');
     const [filiere, setFiliere] = useState('');
 
     useEffect(() => {
@@ -54,8 +60,10 @@ const EtablissementSearchScreen: React.FC = () => {
             });
 
             if (typeEtablissement) params.append('type_etablissement', typeEtablissement);
-            if (ville) params.append('ville', ville);
-            if (region) params.append('region', region);
+            const villeStr = typeof ville === 'string' ? ville : (ville as LocationObject)?.components?.ville || (ville as LocationObject)?.place_name || '';
+            const regionStr = typeof region === 'string' ? region : (region as LocationObject)?.components?.region || (region as LocationObject)?.place_name || '';
+            if (villeStr) params.append('ville', villeStr);
+            if (regionStr) params.append('region', regionStr);
             if (filiere) params.append('filiere', filiere);
 
             const response = await apiGet(
@@ -82,82 +90,267 @@ const EtablissementSearchScreen: React.FC = () => {
     const renderEtablissement = ({ item }: { item: Etablissement }) => (
         <TouchableOpacity
             style={styles.card}
-            onPress={() => navigation.navigate('EtablissementDetails', { id: item.id })}
+            onPress={() => {
+                hapticPress();
+                navigation.navigate('EtablissementDetails', { id: item.id });
+            }}
+            activeOpacity={0.7}
         >
-            <Text style={styles.cardTitle}>{item.nom_etablissement}</Text>
-            <Text style={styles.cardSubtitle}>
-                📍 {item.ville}
-                {item.region && `, ${item.region}`}
-            </Text>
-            <Text style={styles.cardSubtitle}>🎓 {item.type_etablissement}</Text>
-            {item.filieres && item.filieres.length > 0 && (
-                <Text style={styles.cardSubtitle}>📚 {item.filieres.join(', ')}</Text>
-            )}
-            {item.is_verified && (
-                <View style={styles.verifiedBadge}>
-                    <Text style={styles.verifiedText}>✓ Vérifié</Text>
+            <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderLeft}>
+                    <View style={styles.cardIconContainer}>
+                        <SafeIcon name="school" size={24} color="#3B82F6" type="lucide" />
+                    </View>
+                    <View style={styles.cardTitleContainer}>
+                        <Text style={styles.cardTitle}>{item.nom_etablissement}</Text>
+                        {item.is_verified && (
+                            <View style={styles.verifiedBadge}>
+                                <SafeIcon name="check-circle" size={12} color="#10B981" type="lucide" />
+                                <Text style={styles.verifiedText}>Vérifié</Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
-            )}
+            </View>
+            <View style={styles.cardContent}>
+                <View style={styles.cardInfoRow}>
+                    <SafeIcon name="map-pin" size={16} color="#6B7280" type="lucide" />
+                    <Text style={styles.cardSubtitle}>
+                        {item.ville}
+                        {item.region && `, ${item.region}`}
+                    </Text>
+                </View>
+                <View style={styles.cardInfoRow}>
+                    <SafeIcon name="graduation-cap" size={16} color="#6B7280" type="lucide" />
+                    <Text style={styles.cardSubtitle}>{item.type_etablissement}</Text>
+                </View>
+                {item.filieres && item.filieres.length > 0 && (
+                    <View style={styles.cardInfoRow}>
+                        <SafeIcon name="book" size={16} color="#6B7280" type="lucide" />
+                        <Text style={styles.cardSubtitle}>{item.filieres.join(', ')}</Text>
+                    </View>
+                )}
+            </View>
         </TouchableOpacity>
     );
 
-    return (
-        <View style={styles.container}>
-            {/* Filtres */}
-            <View style={styles.filtersContainer}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Ville (ex: Douala)"
-                    value={ville}
-                    onChangeText={setVille}
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Région (ex: Littoral)"
-                    value={region}
-                    onChangeText={setRegion}
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Filière (ex: Scientifique)"
-                    value={filiere}
-                    onChangeText={setFiliere}
-                />
-                <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-                    <Text style={styles.searchButtonText}>Rechercher</Text>
-                </TouchableOpacity>
-            </View>
+    const typesEtablissements = ['Primaire', 'Secondaire', 'Supérieur', 'Formation professionnelle'];
+    const filieres = ['Scientifique', 'Littéraire', 'Technique', 'Commercial', 'Artistique'];
 
-            {/* Résultats */}
-            {loading ? (
-                <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color="#3B82F6" />
-                    <Text style={styles.loadingText}>Chargement...</Text>
-                </View>
-            ) : etablissements.length > 0 ? (
-                <>
-                    <Text style={styles.resultsCount}>
-                        {total} établissement{total > 1 ? 's' : ''} trouvé{total > 1 ? 's' : ''}
-                    </Text>
-                    <FlatList
-                        data={etablissements}
-                        renderItem={renderEtablissement}
-                        keyExtractor={(item) => item.id.toString()}
-                        contentContainerStyle={styles.list}
-                        onEndReached={() => {
-                            if (page * 20 < total) {
-                                setPage((p) => p + 1);
-                            }
+    // Recherches rapides spécifiques établissements
+    const quickSearches = [
+        {
+            id: 'primaire',
+            title: 'Primaire',
+            icon: 'book-open',
+            description: 'Écoles primaires',
+            action: () => {
+                hapticPress();
+                setTypeEtablissement('Primaire');
+            }
+        },
+        {
+            id: 'secondaire',
+            title: 'Secondaire',
+            icon: 'graduation-cap',
+            description: 'Collèges & Lycées',
+            action: () => {
+                hapticPress();
+                setTypeEtablissement('Secondaire');
+            }
+        },
+        {
+            id: 'superieur',
+            title: 'Supérieur',
+            icon: 'university',
+            description: 'Universités',
+            action: () => {
+                hapticPress();
+                setTypeEtablissement('Supérieur');
+            }
+        },
+    ];
+
+    return (
+        <SafeNativeView style={styles.container}>
+            {/* Header avec gradient bleu (éducation) */}
+            <LinearGradient
+                colors={['#3B82F6', '#60A5FA']}
+                style={styles.headerGradient}
+            >
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        onPress={() => {
+                            hapticPress();
+                            navigation.goBack();
                         }}
-                        onEndReachedThreshold={0.5}
-                    />
-                </>
-            ) : (
-                <View style={styles.centerContainer}>
-                    <Text style={styles.emptyText}>Aucun établissement trouvé</Text>
+                        style={styles.backButton}
+                    >
+                        <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <View style={styles.headerContent}>
+                        <View style={styles.headerIconContainer}>
+                            <SafeIcon name="school" size={32} color="#FFFFFF" type="lucide" />
+                        </View>
+                        <Text style={styles.headerTitle}>Rechercher un établissement</Text>
+                        <Text style={styles.headerSubtitle}>
+                            Trouvez l'établissement idéal pour votre orientation
+                        </Text>
+                    </View>
                 </View>
-            )}
-        </View>
+            </LinearGradient>
+
+            <ScrollView
+                style={styles.content}
+                contentContainerStyle={styles.contentContainer}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Recherches rapides */}
+                <View style={styles.quickSearchesSection}>
+                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
+                    <View style={styles.quickSearchesGrid}>
+                        {quickSearches.map((search) => (
+                            <TouchableOpacity
+                                key={search.id}
+                                style={styles.quickSearchCard}
+                                onPress={search.action}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.quickSearchIconContainer}>
+                                    <SafeIcon
+                                        name={search.icon}
+                                        size={24}
+                                        color="#3B82F6"
+                                        type="lucide"
+                                    />
+                                </View>
+                                <Text style={styles.quickSearchTitle}>{search.title}</Text>
+                                <Text style={styles.quickSearchDescription}>{search.description}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
+                {/* Formulaire de recherche */}
+                <View style={styles.searchFormCard}>
+                    <Text style={styles.sectionTitle}>📍 Localisation</Text>
+                    
+                    {/* Ville */}
+                    <View style={styles.inputGroup}>
+                        <LocationSelector
+                            label="Ville"
+                            value={ville}
+                            onSelect={(location) => setVille(location)}
+                            placeholder="Rechercher une ville..."
+                            scope="city"
+                            enrichWithBackend={true}
+                        />
+                    </View>
+
+                    {/* Région */}
+                    <View style={styles.inputGroup}>
+                        <LocationSelector
+                            label="Région"
+                            value={region}
+                            onSelect={(location) => setRegion(location)}
+                            placeholder="Rechercher une région..."
+                            scope="city"
+                            enrichWithBackend={true}
+                        />
+                    </View>
+
+                    {/* Type établissement */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>
+                            <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" /> Type d'établissement
+                        </Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
+                            {typesEtablissements.map((type) => (
+                                <TouchableOpacity
+                                    key={type}
+                                    style={[styles.chip, typeEtablissement === type && styles.chipActive]}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setTypeEtablissement(typeEtablissement === type ? '' : type);
+                                    }}
+                                >
+                                    <Text style={[styles.chipText, typeEtablissement === type && styles.chipTextActive]}>
+                                        {type}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+
+                    {/* Filière */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>
+                            <SafeIcon name="book" size={14} color={modernColors.primary} type="lucide" /> Filière
+                        </Text>
+                        <NativeInput
+                            value={filiere}
+                            onChangeText={setFiliere}
+                            placeholder="Ex: Scientifique, Littéraire"
+                        />
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
+                            {filieres.map((f) => (
+                                <TouchableOpacity
+                                    key={f}
+                                    style={[styles.chip, filiere === f && styles.chipActive]}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setFiliere(filiere === f ? '' : f);
+                                    }}
+                                >
+                                    <Text style={[styles.chipText, filiere === f && styles.chipTextActive]}>
+                                        {f}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+
+                    {/* Bouton recherche */}
+                    <NativeButton
+                        onPress={handleSearch}
+                        disabled={loading}
+                        style={styles.searchButton}
+                    >
+                        <View style={styles.searchButtonContent}>
+                            <SafeIcon name="search" size={20} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.searchButtonText}>
+                                {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
+                            </Text>
+                        </View>
+                    </NativeButton>
+                </View>
+
+                {/* Résultats */}
+                {loading ? (
+                    <View style={styles.centerContainer}>
+                        <ActivityIndicator size="large" color="#3B82F6" />
+                        <Text style={styles.loadingText}>Chargement...</Text>
+                    </View>
+                ) : etablissements.length > 0 ? (
+                    <View style={styles.resultsSection}>
+                        <Text style={styles.resultsCount}>
+                            {total} établissement{total > 1 ? 's' : ''} trouvé{total > 1 ? 's' : ''}
+                        </Text>
+                        {etablissements.map((item) => renderEtablissement({ item }))}
+                    </View>
+                ) : (
+                    <View style={styles.infoCard}>
+                        <View style={styles.infoHeader}>
+                            <SafeIcon name="info" size={20} color="#3B82F6" type="lucide" />
+                            <Text style={styles.infoTitle}>💡 Aucun résultat</Text>
+                        </View>
+                        <Text style={styles.infoText}>
+                            Aucun établissement ne correspond à vos critères. Essayez de modifier vos filtres de recherche.
+                        </Text>
+                    </View>
+                )}
+            </ScrollView>
+        </SafeNativeView>
     );
 };
 
@@ -166,86 +359,278 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F9FAFB',
     },
-    filtersContainer: {
-        backgroundColor: '#FFFFFF',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+    headerGradient: {
+        paddingTop: 20,
+        paddingBottom: 24,
     },
-    input: {
-        backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-        padding: 12,
+    header: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        paddingHorizontal: 16,
+    },
+    backButton: {
+        marginRight: 12,
+        marginTop: 4,
+    },
+    headerContent: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    headerIconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
         marginBottom: 12,
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 6,
+        textAlign: 'center',
+    },
+    headerSubtitle: {
+        fontSize: 14,
+        color: 'rgba(255, 255, 255, 0.9)',
+        textAlign: 'center',
+        paddingHorizontal: 20,
+        lineHeight: 20,
+    },
+    content: {
+        flex: 1,
+    },
+    contentContainer: {
+        padding: 16,
+        paddingBottom: 32,
+    },
+    quickSearchesSection: {
+        marginBottom: 24,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 12,
+    },
+    quickSearchesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+    },
+    quickSearchCard: {
+        flex: 1,
+        minWidth: '30%',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
         borderWidth: 1,
         borderColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    quickSearchIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#DBEAFE',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    quickSearchTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 4,
+        textAlign: 'center',
+    },
+    quickSearchDescription: {
+        fontSize: 11,
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+    searchFormCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    inputGroup: {
+        marginBottom: 20,
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    chipsContainer: {
+        flexDirection: 'row',
+        marginTop: 8,
+        gap: 8,
+    },
+    chip: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1.5,
+        borderColor: '#D1D5DB',
+    },
+    chipActive: {
+        backgroundColor: '#3B82F6',
+        borderColor: '#3B82F6',
+    },
+    chipText: {
+        fontSize: 14,
+        color: '#374151',
+        fontWeight: '600',
+    },
+    chipTextActive: {
+        color: '#FFFFFF',
     },
     searchButton: {
-        backgroundColor: '#3B82F6',
-        borderRadius: 8,
-        padding: 14,
+        marginTop: 16,
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    searchButtonContent: {
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
     },
     searchButtonText: {
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
     },
-    resultsCount: {
-        padding: 16,
-        color: '#6B7280',
-        fontSize: 14,
+    resultsSection: {
+        marginTop: 8,
     },
-    list: {
-        padding: 16,
+    resultsCount: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 16,
     },
     card: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
         elevation: 3,
+    },
+    cardHeader: {
+        marginBottom: 12,
+    },
+    cardHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    cardIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#DBEAFE',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cardTitleContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flexWrap: 'wrap',
     },
     cardTitle: {
         fontSize: 18,
-        fontWeight: '600',
+        fontWeight: '700',
         color: '#111827',
-        marginBottom: 8,
+        flex: 1,
+    },
+    verifiedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#D1FAE5',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        gap: 4,
+    },
+    verifiedText: {
+        color: '#065F46',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    cardContent: {
+        gap: 8,
+    },
+    cardInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     cardSubtitle: {
         fontSize: 14,
         color: '#6B7280',
-        marginBottom: 4,
-    },
-    verifiedBadge: {
-        alignSelf: 'flex-start',
-        backgroundColor: '#D1FAE5',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
-        marginTop: 8,
-    },
-    verifiedText: {
-        color: '#065F46',
-        fontSize: 12,
-        fontWeight: '500',
+        flex: 1,
     },
     centerContainer: {
-        flex: 1,
-        justifyContent: 'center',
+        padding: 48,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     loadingText: {
         marginTop: 16,
         color: '#6B7280',
+        fontSize: 14,
     },
-    emptyText: {
-        color: '#6B7280',
+    infoCard: {
+        backgroundColor: '#DBEAFE',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#93C5FD',
+        marginTop: 16,
+    },
+    infoHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+        gap: 8,
+    },
+    infoTitle: {
         fontSize: 16,
+        fontWeight: '600',
+        color: '#1E3A8A',
+    },
+    infoText: {
+        fontSize: 13,
+        color: '#1E3A8A',
+        lineHeight: 20,
     },
 });
 

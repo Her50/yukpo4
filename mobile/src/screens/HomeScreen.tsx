@@ -20,20 +20,16 @@ import {
 } from 'react-native';
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
-import ErrorBoundary from '../components/ErrorBoundary';
-import { GamificationBadge } from '../components/GamificationBadge';
 import LanguageSelector from '../components/LanguageSelector';
-import { LeaderboardModal } from '../components/LeaderboardModal';
-import MixedContentCarousel from '../components/MixedContentCarousel';
 import ModernGPSModal from '../components/ModernGPSModal';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import UserAvatarMenu from '../components/UserAvatarMenu';
+import YukpoServicesQuickAccess from '../components/YukpoServicesQuickAccess';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
-import userBehaviorService from '../services/userBehaviorService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 import { modernColors } from '../theme/modernTheme';
 import { hapticPress } from '../utils/hapticFeedback';
@@ -51,24 +47,7 @@ const HomeScreen: React.FC = () => {
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
-    const [showLeaderboard, setShowLeaderboard] = useState(false);
-    const [userBehavior, setUserBehavior] = useState<string[]>([]);
 
-    // Charger le comportement utilisateur pour le carousel
-    React.useEffect(() => {
-        const loadUserBehavior = async () => {
-            try {
-                const categories = await userBehaviorService.getPreferredCategories(5);
-                setUserBehavior(categories || []);
-            } catch (error) {
-                console.error('[HomeScreen] Erreur chargement comportement utilisateur:', error);
-                setUserBehavior([]);
-            }
-        };
-        if (user?.id) {
-            loadUserBehavior();
-        }
-    }, [user?.id]);
 
     // Navigation simplifiée
     const navigate = useCallback((routeName: string, params?: any) => {
@@ -333,16 +312,6 @@ const HomeScreen: React.FC = () => {
                             onLanguageChange={setLanguage}
                             compact={true}
                         />
-                        {user?.id && (
-                            <GamificationBadge
-                                userId={user.id}
-                                compact={true}
-                                onPress={() => {
-                                    hapticPress();
-                                    setShowLeaderboard(true);
-                                }}
-                            />
-                        )}
                     </View>
 
                     {/* Titre centré avec branding Yukpo */}
@@ -446,25 +415,83 @@ const HomeScreen: React.FC = () => {
                     />
                 </View>
 
-                {/* Carousel mixte (produits organiques + publicités) basé sur le comportement utilisateur */}
-                {user?.id && (
-                    <ErrorBoundary
-                        fallback={
-                            <View style={styles.carouselErrorContainer}>
-                                <Text style={styles.carouselErrorText}>
-                                    Les produits recommandés sont temporairement indisponibles
-                                </Text>
-                            </View>
-                        }
+                {/* ✅ NOUVEAU: Bannières Flash Promotionnels et Black Friday */}
+                <View style={styles.promotionsContainer}>
+                    <TouchableOpacity
+                        style={[styles.promotionBanner, styles.flashPromoBanner]}
+                        onPress={() => {
+                            hapticPress();
+                            navigate('FlashPromosActive');
+                        }}
                     >
-                        <MixedContentCarousel
-                            userId={String(user.id)}
-                            userBehavior={userBehavior}
-                            publiciteFrequency={3}
-                            mode="recommended"
-                        />
-                    </ErrorBoundary>
-                )}
+                        <View style={styles.promotionBannerContent}>
+                            <Text style={styles.promotionBannerIcon}>⚡</Text>
+                            <View style={styles.promotionBannerText}>
+                                <Text style={styles.promotionBannerTitle}>Flash Promotionnels</Text>
+                                <Text style={styles.promotionBannerSubtitle}>Promotions limitées en cours</Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.promotionBanner, styles.blackFridayBanner]}
+                        onPress={() => {
+                            hapticPress();
+                            navigate('GlobalPromoCatalog');
+                        }}
+                    >
+                        <View style={styles.promotionBannerContent}>
+                            <Text style={styles.promotionBannerIcon}>🛍️</Text>
+                            <View style={styles.promotionBannerText}>
+                                <Text style={styles.promotionBannerTitle}>Black Friday</Text>
+                                <Text style={styles.promotionBannerSubtitle}>Campagne promotionnelle globale</Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.promotionBanner, styles.liveBanner]}
+                        onPress={() => {
+                            hapticPress();
+                            navigate('VideoFeed');
+                        }}
+                    >
+                        <View style={styles.promotionBannerContent}>
+                            <Text style={styles.promotionBannerIcon}>📺</Text>
+                            <View style={styles.promotionBannerText}>
+                                <Text style={styles.promotionBannerTitle}>Lives en cours</Text>
+                                <Text style={styles.promotionBannerSubtitle}>Rejoignez les sessions live</Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
+                        </View>
+                    </TouchableOpacity>
+                </View>
+
+                {/* ✅ Services spécialisés Yukpo - Accès recherche uniquement */}
+                <View style={styles.specializedServicesContainer}>
+                    <Text style={styles.specializedServicesTitle}>Services spécialisés</Text>
+                    <YukpoServicesQuickAccess
+                        onServicePress={(serviceId) => {
+                            hapticPress();
+                            // Navigation vers les écrans de RECHERCHE uniquement (pas de configuration)
+                            const searchRoutes: Record<string, string> = {
+                                'sante': 'HealthServicesHub', // Hub santé avec choix entre Pharmacie, Hôpital, Laboratoire, Banque de sang
+                                'etude': 'EtablissementSearch', // Orientation scolaire
+                                'immo': 'ImmobilierSearch',
+                                'bayamselam': 'BayamSelamSearch', // Comparateur de prix
+                                'livraison': 'Delivery',
+                                'voyage': 'AgenceVoyageSearch', // Point d'entrée voyage
+                                'auto': 'AutoServicesSearch', // Recherche véhicules
+                                'assurance': 'InsuranceServicesSearch', // Recherche assurance
+                                'emploi': 'OffresEmploiHub', // Hub offres d'emploi
+                            };
+                            const route = searchRoutes[serviceId] || 'Home';
+                            navigate(route);
+                        }}
+                    />
+                </View>
 
                 {/* Zone de contenu vide pour l'instant */}
                 <View style={styles.contentArea}>
@@ -509,14 +536,6 @@ const HomeScreen: React.FC = () => {
                 />
             )}
 
-            {/* Modal Leaderboard */}
-            {user?.id && (
-                <LeaderboardModal
-                    visible={showLeaderboard}
-                    onClose={() => setShowLeaderboard(false)}
-                    userId={user.id}
-                />
-            )}
         </SafeNativeView>
     );
 };
@@ -572,7 +591,7 @@ const styles = StyleSheet.create({
         paddingRight: 16,
     },
     brandTitle: {
-        fontSize: 22,
+        fontSize: 26,
         fontWeight: '900',
         letterSpacing: -0.3,
     },
@@ -673,6 +692,62 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#92400E',
         textAlign: 'center',
+    },
+    promotionsContainer: {
+        marginTop: 20,
+        marginHorizontal: 16,
+        gap: 12,
+    },
+    promotionBanner: {
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    flashPromoBanner: {
+        backgroundColor: '#F59E0B', // Orange/Amber pour flash
+    },
+    blackFridayBanner: {
+        backgroundColor: '#DC2626', // Rouge pour Black Friday
+    },
+    liveBanner: {
+        backgroundColor: '#8B5CF6', // Violet pour lives
+    },
+    promotionBannerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    promotionBannerIcon: {
+        fontSize: 32,
+    },
+    promotionBannerText: {
+        flex: 1,
+    },
+    promotionBannerTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    promotionBannerSubtitle: {
+        fontSize: 14,
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
+    specializedServicesContainer: {
+        paddingHorizontal: 16,
+        marginTop: 8,
+        marginBottom: 12, // Réduit pour éviter le débordement
+    },
+    specializedServicesTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 12,
     },
 });
 

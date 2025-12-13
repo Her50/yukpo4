@@ -32,8 +32,10 @@ import GestionServicesSpecialisesScreen from '../screens/specialized/GestionServ
 import ServicesDashboard from '../screens/specialized/ServicesDashboard';
 
 // ✅ IMPORTS DIRECTS - Écrans Flash Sales et Promos
+import FlashPromosActiveScreen from '../screens/FlashPromosActiveScreen';
 import FlashSaleScreen from '../screens/FlashSaleScreen';
 import GlobalPromoCatalogScreen from '../screens/GlobalPromoCatalogScreen';
+import CreateFlashPromoScreen from '../screens/CreateFlashPromoScreen';
 
 // ✅ IMPORTS DIRECTS - Écrans secondaires
 import AgencyTicketManagementScreen from '../screens/AgencyTicketManagementScreen';
@@ -111,6 +113,8 @@ import PharmacieSearchScreen from '../screens/specialized/PharmacieSearchScreen'
 import BanqueSangDetailsScreen from '../screens/specialized/BanqueSangDetailsScreen';
 import BanqueSangListScreen from '../screens/specialized/BanqueSangListScreen';
 import BanqueSangSearchScreen from '../screens/specialized/BanqueSangSearchScreen';
+// ✅ NOUVEAU: Hub services de santé
+import HealthServicesHubScreen from '../screens/specialized/HealthServicesHubScreen';
 // ✅ NOUVEAU: Écrans Agence de voyage
 import AgenceVoyageDetailsScreen from '../screens/specialized/AgenceVoyageDetailsScreen';
 import AgenceVoyageListScreen from '../screens/specialized/AgenceVoyageListScreen';
@@ -164,6 +168,10 @@ import ProfilCandidatScreen from '../screens/offres-emploi/ProfilCandidatScreen'
 import BourseLivreScreen from '../screens/BourseLivreScreen';
 // ✅ NOUVEAU 2025-01-27: Écrans Planification Menus
 import MenuPlanningHubScreen from '../screens/specialized/MenuPlanningHubScreen';
+// ✅ NOUVEAU: Écrans BayamSelam, Automobile, Assurance
+import BayamSelamSearchScreen from '../screens/specialized/BayamSelamSearchScreen';
+import AutoServicesSearchScreen from '../screens/specialized/AutoServicesSearchScreen';
+import InsuranceServicesSearchScreen from '../screens/specialized/InsuranceServicesSearchScreen';
 import MenuWeekCalendarScreen from '../screens/specialized/MenuWeekCalendarScreen';
 import RecipeDetailsScreen from '../screens/specialized/RecipeDetailsScreen';
 import ShoppingListScreen from '../screens/specialized/ShoppingListScreen';
@@ -230,6 +238,7 @@ const PharmacieListScreenWithSafeArea = withNavigatorSafeArea(PharmacieListScree
 const PharmacieDetailsScreenWithSafeArea = withNavigatorSafeArea(PharmacieDetailsScreen);
 // ✅ NOUVEAU: Banque de sang
 const BanqueSangSearchScreenWithSafeArea = withNavigatorSafeArea(BanqueSangSearchScreen);
+const HealthServicesHubScreenWithSafeArea = withNavigatorSafeArea(HealthServicesHubScreen);
 const BanqueSangListScreenWithSafeArea = withNavigatorSafeArea(BanqueSangListScreen);
 const BanqueSangDetailsScreenWithSafeArea = withNavigatorSafeArea(BanqueSangDetailsScreen);
 // ✅ NOUVEAU: Agence de voyage
@@ -276,6 +285,10 @@ const CreateOffreScreenWithSafeArea = withNavigatorSafeArea(CreateOffreScreen);
 const ProfilCandidatScreenWithSafeArea = withNavigatorSafeArea(ProfilCandidatScreen);
 // ✅ NOUVEAU 2025-01-27: Bourse du Livre avec SafeArea
 const BourseLivreScreenWithSafeArea = withNavigatorSafeArea(BourseLivreScreen);
+// ✅ NOUVEAU: BayamSelam, Automobile, Assurance avec SafeArea
+const BayamSelamSearchScreenWithSafeArea = withNavigatorSafeArea(BayamSelamSearchScreen);
+const AutoServicesSearchScreenWithSafeArea = withNavigatorSafeArea(AutoServicesSearchScreen);
+const InsuranceServicesSearchScreenWithSafeArea = withNavigatorSafeArea(InsuranceServicesSearchScreen);
 const ReservationScreenWithSafeArea = withNavigatorSafeArea(ReservationScreen);
 const MesReservationsScreenWithSafeArea = withNavigatorSafeArea(MesReservationsScreen);
 const PrestataireReservationsScreenWithSafeArea = withNavigatorSafeArea(PrestataireReservationsScreen);
@@ -372,6 +385,7 @@ const TabIcon: React.FC<{ name: string; focused: boolean; badgeCount?: number }>
     'delivery': '🚚',
     'video': '➕',
     'create': '➕',
+    'videocreationintro': '➕', // ✅ NOUVEAU: Bouton création vidéo
     'videos': '📹',
     'videosfeed': '📹',
     'services': '📦', // ✅ MODIFIÉ: Icône package pour Mes Services
@@ -727,15 +741,14 @@ const MainStack = () => {
           }}
         />
       )}
-      {/* ✅ SUPPRIMÉ: Onglet vidéo (disponible dans Mes Services) */}
-      {/* ✅ NOUVEAU: Onglet Services Spécialisés */}
+      {/* ✅ REMPLACÉ: Onglet Services Spécialisés par bouton création vidéo */}
       <Tab.Screen
-        name="SpecializedServicesHub"
-        component={SpecializedServicesHubScreenWithSafeArea}
+        name="VideoCreationIntro"
+        component={VideoCreationIntroScreenWithSafeArea}
         options={{
-          tabBarLabel: 'Services',
+          tabBarLabel: 'Créer',
           tabBarIcon: ({ focused, color, size }) => (
-            <SafeIcon name="sparkles" size={size} color={focused ? modernColors.primary : color} type="lucide" />
+            <SafeIcon name="plus" size={size} color={focused ? modernColors.primary : color} type="lucide" />
           ),
         }}
       />
@@ -854,6 +867,8 @@ const SecondaryStack = () => {
         <Stack.Screen name="PharmacieSearch" component={PharmacieSearchScreenWithSafeArea} />
         <Stack.Screen name="PharmacieList" component={PharmacieListScreenWithSafeArea} />
         <Stack.Screen name="PharmacieDetails" component={PharmacieDetailsScreenWithSafeArea} />
+        {/* ✅ NOUVEAU: Hub services de santé */}
+        <Stack.Screen name="HealthServicesHub" component={HealthServicesHubScreenWithSafeArea} />
         {/* ✅ NOUVEAU: Banque de sang */}
         <Stack.Screen name="BanqueSangSearch" component={BanqueSangSearchScreenWithSafeArea} />
         <Stack.Screen name="BanqueSangList" component={BanqueSangListScreenWithSafeArea} />
@@ -1223,6 +1238,22 @@ const SecondaryStack = () => {
           component={withNavigatorSafeArea(BusTicketSearchScreen)}
           options={{ title: 'Rechercher un trajet' }}
         />
+        {/* ✅ NOUVEAU: BayamSelam, Automobile, Assurance */}
+        <Stack.Screen
+          name="BayamSelamSearch"
+          component={BayamSelamSearchScreenWithSafeArea}
+          options={{ title: 'BayamSelam - Comparateur de prix' }}
+        />
+        <Stack.Screen
+          name="AutoServicesSearch"
+          component={AutoServicesSearchScreenWithSafeArea}
+          options={{ title: 'Rechercher un véhicule' }}
+        />
+        <Stack.Screen
+          name="InsuranceServicesSearch"
+          component={InsuranceServicesSearchScreenWithSafeArea}
+          options={{ title: 'Rechercher une assurance' }}
+        />
         <Stack.Screen
           name="BusTicketBooking"
           component={withNavigatorSafeArea(BusTicketBookingScreen)}
@@ -1345,6 +1376,22 @@ const SecondaryStack = () => {
           options={{
             ...defaultScreenOptions,
             title: '🔥 Ventes Flash',
+          }}
+        />
+        <Stack.Screen
+          name="FlashPromosActive"
+          component={withNavigatorSafeArea(FlashPromosActiveScreen)}
+          options={{
+            ...defaultScreenOptions,
+            title: '⚡ Flash Promotionnels',
+          }}
+        />
+        <Stack.Screen
+          name="CreateFlashPromo"
+          component={withNavigatorSafeArea(CreateFlashPromoScreen)}
+          options={{
+            ...defaultScreenOptions,
+            title: '⚡ Créer Flash Promo',
           }}
         />
         <Stack.Screen
