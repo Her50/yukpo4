@@ -25,11 +25,11 @@ pub fn flash_promo_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(create_flash_promo),
         )
         .route(
-            "/api/flash-promos/service/:service_id",
+            "/api/flash-promos/service/{service_id}",
             get(list_flash_promos),
         )
         .route(
-            "/api/flash-promos/service/:service_id/:promo_id",
+            "/api/flash-promos/service/{service_id}/{promo_id}",
             delete(delete_flash_promo),
         )
         .layer(middleware::from_fn(jwt_auth));
