@@ -489,6 +489,9 @@ pub async fn get_active_flash_promos(
                     // ✅ NOUVEAU: Service d'enrichissement pour la livraison
                     let enrichment_service = ProductEnrichmentService::new(pool.clone());
                     
+                    // Cloner product_indexes_array pour pouvoir l'utiliser après la boucle
+                    let product_indexes_array_clone = product_indexes_array.clone();
+                    
                     let mut promo_products: Vec<Value> = Vec::new();
                     for index_value in product_indexes_array {
                         if let Some(index) = index_value.as_i64() {
@@ -547,7 +550,7 @@ pub async fn get_active_flash_promos(
                     // ✅ NOUVEAU: Ajouter les informations nécessaires pour l'achat direct
                     // Les produits sont déjà dans "products" avec toutes leurs infos
                     // Ajouter aussi les index pour référence rapide
-                    enriched_promo["product_indexes"] = json!(product_indexes_array);
+                    enriched_promo["product_indexes"] = json!(product_indexes_array_clone);
                     
                     active_promos.push(enriched_promo);
                 }
