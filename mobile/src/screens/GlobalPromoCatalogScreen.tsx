@@ -70,11 +70,17 @@ const GlobalPromoCatalogScreen: React.FC = () => {
             } else {
                 setPageData((prev) => [...prev, ...data.items]);
             }
-            setHasMore(data.hasMore);
-            setTotal(data.total);
+            setHasMore(data.hasMore || false);
+            setTotal(data.total || 0);
         } catch (error: any) {
             console.error('[GlobalPromoCatalogScreen] Erreur chargement catalogue:', error);
-            Alert.alert('Erreur', error.message || 'Impossible de charger le catalogue');
+            // ✅ CORRIGÉ: Gestion d'erreur robuste avec message clair
+            const errorMessage = error?.message || error?.toString() || 'Impossible de charger le catalogue';
+            if (reset) {
+                // Seulement afficher l'alerte si c'est le chargement initial
+                Alert.alert('Erreur', errorMessage);
+            }
+            // En cas d'erreur, garder les données existantes (pas de reset)
         } finally {
             setLoading(false);
             setRefreshing(false);

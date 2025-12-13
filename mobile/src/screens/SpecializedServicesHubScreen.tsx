@@ -165,7 +165,7 @@ const SpecializedServicesHubScreen: React.FC = () => {
             icon: 'BookOpen',
             color: '#8B5CF6',
             count: 0, // À implémenter : statistiques pour livres scolaires
-            route: 'LivreScolaireSearch',
+            route: 'LivreScolaireForm',
             category: 'education',
         },
         {
@@ -236,24 +236,6 @@ const SpecializedServicesHubScreen: React.FC = () => {
                 />
             )}
 
-            {/* Barre de recherche globale */}
-            <View style={styles.searchContainer}>
-                <TouchableOpacity
-                    style={styles.searchBar}
-                    onPress={() => {
-                        (navigation as any).navigate('SpecializedSearch', {
-                            specializedType: 'all',
-                            serviceName: 'Tous les services',
-                        });
-                    }}
-                >
-                    <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
-                    <Text style={styles.searchPlaceholder}>
-                        Rechercher un service spécialisé...
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
             {/* Accès rapide par type - Santé */}
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
@@ -264,14 +246,6 @@ const SpecializedServicesHubScreen: React.FC = () => {
                 </View>
                 <View style={styles.quickAccessGrid}>
                     {santeTypes.map((type) => {
-                        // ✅ Phase 3: Double action pour Hôpitaux, Laboratoires, Pharmacie, Banque de sang (Créer + Rechercher)
-                        const isSearchable = type.id === 'hopital' || type.id === 'laboratoire' || type.id === 'pharmacie' || type.id === 'banque_sang';
-                        const searchRoute =
-                            type.id === 'hopital' ? 'HopitalSearch' :
-                                type.id === 'laboratoire' ? 'LaboratoireSearch' :
-                                    type.id === 'pharmacie' ? 'PharmacieSearch' :
-                                        type.id === 'banque_sang' ? 'BanqueSangSearch' : '';
-
                         return (
                             <View key={type.id} style={[styles.quickAccessCard, { borderLeftColor: type.color }]}>
                                 <TouchableOpacity
@@ -300,19 +274,6 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                         </Text>
                                     )}
                                 </TouchableOpacity>
-                                {isSearchable && (
-                                    <TouchableOpacity
-                                        style={styles.searchButton}
-                                        onPress={() => {
-                                            (navigation as any).navigate(searchRoute);
-                                        }}
-                                    >
-                                        <SafeIcon name="search" size={16} color={type.color} />
-                                        <Text style={[styles.searchButtonText, { color: type.color }]}>
-                                            Rechercher
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
                             </View>
                         );
                     })}
@@ -346,13 +307,6 @@ const SpecializedServicesHubScreen: React.FC = () => {
                 </View>
                 <View style={styles.quickAccessGrid}>
                     {transportTypes.map((type) => {
-                        // ✅ Phase 3: Double action pour Taxi, Covoiturage et Agence de voyage (Créer + Rechercher)
-                        const isSearchable = type.id === 'taxi' || type.id === 'covoiturage' || type.id === 'agence_voyage';
-                        const searchRoute =
-                            type.id === 'taxi' ? 'TaxiSearch' :
-                                type.id === 'covoiturage' ? 'CovoiturageSearch' :
-                                    type.id === 'agence_voyage' ? 'AgenceVoyageSearch' : '';
-
                         return (
                             <View key={type.id} style={[styles.quickAccessCard, { borderLeftColor: type.color }]}>
                                 <TouchableOpacity
@@ -381,19 +335,6 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                         </Text>
                                     )}
                                 </TouchableOpacity>
-                                {isSearchable && (
-                                    <TouchableOpacity
-                                        style={styles.searchButton}
-                                        onPress={() => {
-                                            (navigation as any).navigate(searchRoute);
-                                        }}
-                                    >
-                                        <SafeIcon name="search" size={16} color={type.color} />
-                                        <Text style={[styles.searchButtonText, { color: type.color }]}>
-                                            Rechercher
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
                             </View>
                         );
                     })}
@@ -416,8 +357,8 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                     <TouchableOpacity
                                         style={styles.quickAccessCardContent}
                                         onPress={() => {
-                                            // Navigation vers la recherche de livres scolaires
-                                            (navigation as any).navigate('LivreScolaireSearch');
+                                            // Navigation vers la configuration
+                                            (navigation as any).navigate(type.route, { mode: 'create' });
                                         }}
                                     >
                                         <View
@@ -438,17 +379,6 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                     <View style={styles.actionButtonsRow}>
                                         <TouchableOpacity
                                             style={styles.searchButton}
-                                            onPress={() => {
-                                                (navigation as any).navigate('LivreScolaireSearch');
-                                            }}
-                                        >
-                                            <SafeIcon name="search" size={16} color={type.color} />
-                                            <Text style={[styles.searchButtonText, { color: type.color }]}>
-                                                Rechercher
-                                            </Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={[styles.searchButton, { marginLeft: 8 }]}
                                             onPress={() => {
                                                 (navigation as any).navigate('MesLivres');
                                             }}
@@ -511,19 +441,6 @@ const SpecializedServicesHubScreen: React.FC = () => {
                                         </View>
                                         <Text style={styles.quickAccessName}>{type.name}</Text>
                                     </TouchableOpacity>
-                                    <View style={styles.actionButtonsRow}>
-                                        <TouchableOpacity
-                                            style={styles.searchButton}
-                                            onPress={() => {
-                                                (navigation as any).navigate('OffreSearch');
-                                            }}
-                                        >
-                                            <SafeIcon name="search" size={16} color={type.color} />
-                                            <Text style={[styles.searchButtonText, { color: type.color }]}>
-                                                Rechercher
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
                                 </View>
                             );
                         })}
@@ -659,17 +576,6 @@ const SpecializedServicesHubScreen: React.FC = () => {
                     <Text style={styles.suggestionText}>
                         📍 Pharmacie de garde près de vous
                     </Text>
-                    <NativeButton
-                        title="Rechercher"
-                        variant="outline"
-                        onPress={() => {
-                            (navigation as any).navigate('SpecializedSearch', {
-                                specializedType: 'pharmacie',
-                                serviceName: 'Pharmacie',
-                                prefillQuery: 'pharmacie de garde',
-                            });
-                        }}
-                    />
                 </NativeCard>
             </View>
         </ScrollView>

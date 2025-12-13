@@ -363,14 +363,27 @@ pub async fn delete_flash_promo(
 
 /// ✅ NOUVEAU: Récupérer tous les flash promotionnels actifs (pour les utilisateurs)
 /// Route: GET /api/flash-promos/active
+/// ✅ OPTIMISÉ: Ajout de pagination pour éviter de charger tous les services en mémoire
 pub async fn get_active_flash_promos(
     State(state): State<Arc<AppState>>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
 
-    info!("[FlashPromo] Récupération flash promos actifs");
+    // ✅ NOUVEAU: Pagination pour limiter la mémoire
+    let limit = params
+        .get("limit")
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(100)
+        .min(500); // Max 500 services par requête
+    let offset = params
+        .get("offset")
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(0);
 
-    // Récupérer tous les services avec des flash promos actifs
+    info!("[FlashPromo] Récupération flash promos actifs (limit={}, offset={})", limit, offset);
+
+    // ✅ OPTIMISÉ: Pagination pour éviter de charger tous les services en mémoire
     let services_rows = sqlx::query_as::<_, (i32, i32, Value)>(
         r#"
         SELECT id, user_id, data
@@ -378,8 +391,12 @@ pub async fn get_active_flash_promos(
         WHERE data->'promotion'->'flash_promos' IS NOT NULL
         AND data->'promotion'->'flash_promos' != '[]'::jsonb
         AND is_active = TRUE
+        ORDER BY id
+        LIMIT $1 OFFSET $2
         "#
     )
+    .bind(limit)
+    .bind(offset)
     .fetch_all(pool)
     .await
     .map_err(|e| {
@@ -576,12 +593,17 @@ pub async fn get_active_flash_promos(
         }
     });
 
-    info!("[FlashPromo] {} flash promos actifs trouvés", active_promos.len());
+    info!("[FlashPromo] {} flash promos actifs trouvés (limit={}, offset={})", active_promos.len(), limit, offset);
 
     Ok(Json(json!({
         "success": true,
         "data": active_promos,
-        "count": active_promos.len()
+        "count": active_promos.len(),
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "has_more": active_promos.len() == limit as usize // Si on a récupéré exactement la limite, il y a probablement plus
+        }
     })))
 }
 

@@ -2154,6 +2154,17 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         }
     }, [productVector, productLabels]);
 
+    // ✅ NOUVEAU: Réinitialiser aussi quand sousCaracteristiques change (nouvelles données IA)
+    useEffect(() => {
+        if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0) {
+            // Si on a de nouvelles données IA, réinitialiser pour permettre l'affichage du tableau
+            autoAppliedRef.current = false;
+            initialMountRef.current = true;
+            // ✅ CORRIGÉ: Réinitialiser la validation du tableau initial pour afficher le nouveau tableau
+            setIsTableauInitialValidated(false);
+        }
+    }, [sousCaracteristiques]);
+
 
     // Modifier une caractéristique
     const handleModifyChip = (chipIndex: number) => {
@@ -2374,7 +2385,12 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             {/* Le tableau s'affiche au chargement pour permettre la validation */}
             {/* Après validation (isTableauInitialValidated = true), le tableau disparaît et seuls les chips s'affichent */}
             {/* ✅ CORRECTION: Afficher le tableau même si des chips existent déjà, tant qu'il n'a pas été validé */}
-            {!isTableauInitialValidated && (loadingSuggestions || loadingCombinationSuggestions || finalCandidateToDisplay || combinationError) && (
+            {/* ✅ CORRIGÉ: Vérifier aussi directement les données IA (productVector/productLabels ou sousCaracteristiques) pour afficher le tableau au chargement */}
+            {!isTableauInitialValidated && (
+                (loadingSuggestions || loadingCombinationSuggestions || finalCandidateToDisplay || combinationError) ||
+                (productVector && productLabels && productVector.length > 0) ||
+                (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0)
+            ) && (
                 <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
 
@@ -2389,9 +2405,52 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     {!loadingSuggestions && !loadingCombinationSuggestions && (() => {
                         // ✅ CORRECTION RACINE: Utiliser finalCandidateToDisplay qui est créé SYNCHRONEMENT depuis les données
                         // Ce candidat est TOUJOURS disponible si les données existent, garantissant l'affichage automatique
-                        const candidateToDisplay = finalCandidateToDisplay;
+                        let candidateToDisplay = finalCandidateToDisplay;
 
-                        // Si aucun candidat n'existe, ne rien afficher (mais cela ne devrait jamais arriver si les données sont disponibles)
+                        // ✅ CORRIGÉ: Si finalCandidateToDisplay est null mais qu'on a des données IA, créer le candidat directement
+                        if (!candidateToDisplay || !candidateToDisplay.rows || candidateToDisplay.rows.length === 0) {
+                            // Créer directement depuis les données IA disponibles
+                            let rows: Array<{ label: string; value: string }> = [];
+                            
+                            // PRIORITÉ 1: productVector/productLabels
+                            if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0 && productVector.length === productLabels.length) {
+                                rows = productVector.map((val, idx) => ({
+                                    label: productLabels[idx] || `Caractéristique ${idx + 1}`,
+                                    value: val
+                                })).filter(row => row.value && typeof row.value === 'string' && row.value.trim().length > 0);
+                            }
+                            // PRIORITÉ 2: sousCaracteristiques (prop brute)
+                            else if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && !Array.isArray(sousCaracteristiques)) {
+                                const keys = Object.keys(sousCaracteristiques);
+                                if (keys.length > 0) {
+                                    Object.entries(sousCaracteristiques).forEach(([charKey, values]) => {
+                                        if (Array.isArray(values) && values.length > 0) {
+                                            const firstValue = values[0];
+                                            if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
+                                                rows.push({
+                                                    label: charKey,
+                                                    value: firstValue,
+                                                });
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                            
+                            // Si on a créé des rows, créer le candidat
+                            if (rows.length > 0) {
+                                candidateToDisplay = {
+                                    key: 'ia-sous-caracteristiques-preferred',
+                                    source: 'ia' as SuggestionSource,
+                                    rows: rows,
+                                    score: 15,
+                                    title: 'Caractéristiques suggérées par l\'IA',
+                                    isPreferred: true,
+                                } as SuggestionCandidate;
+                            }
+                        }
+
+                        // Si aucun candidat n'existe après tous les fallbacks, ne rien afficher
                         if (!candidateToDisplay || !candidateToDisplay.rows || candidateToDisplay.rows.length === 0) {
                             return null;
                         }
@@ -2551,8 +2610,9 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         nestedScrollEnabled={true}
                         keyboardShouldPersistTaps="handled"
                         style={styles.chipsScrollView}
-                        bounces={false}
-                        alwaysBounceHorizontal={false}
+                        bounces={true}
+                        alwaysBounceHorizontal={true}
+                        directionalLockEnabled={false}
                     >
                         <TouchableOpacity
                             style={styles.addCharacteristicButton}

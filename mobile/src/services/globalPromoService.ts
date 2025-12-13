@@ -101,16 +101,29 @@ export const fetchGlobalPromoCatalog = async (params?: {
 
         const response = await apiGet<ApiResponse<GlobalPromoCatalogPage>>(url);
         const payload = response.data || response;
-        if (payload.success === false) {
-            throw new Error(payload.error || payload.message || 'Erreur lors de la récupération du catalogue');
+        
+        // ✅ CORRIGÉ: Gestion robuste des erreurs et réponses invalides
+        if (payload && typeof payload === 'object') {
+            if ('success' in payload && payload.success === false) {
+                const errorMessage = payload.error || payload.message || 'Erreur lors de la récupération du catalogue';
+                throw new Error(errorMessage);
+            }
+            if ('data' in payload && payload.data) {
+                return payload.data;
+            }
+            // Si payload est directement un GlobalPromoCatalogPage
+            if ('items' in payload && Array.isArray(payload.items)) {
+                return payload as GlobalPromoCatalogPage;
+            }
         }
-        if (!payload.data) {
-            return { items: [], page: 1, pageSize: 24, total: 0, hasMore: false };
-        }
-        return payload.data;
+        
+        // Fallback: retourner une page vide
+        return { items: [], page: 1, pageSize: 24, total: 0, hasMore: false };
     } catch (error: any) {
         console.error('[globalPromoService] Erreur fetchGlobalPromoCatalog:', error);
-        throw error;
+        // ✅ CORRIGÉ: S'assurer de toujours retourner un objet valide même en cas d'erreur
+        const errorMessage = error?.message || error?.toString() || 'Erreur inconnue';
+        throw new Error(errorMessage);
     }
 };
 

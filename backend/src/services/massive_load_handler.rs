@@ -77,6 +77,34 @@ impl MassiveLoadHandler {
         let batch_processor = Arc::new(RwLock::new(BatchProcessor::new()));
         let connection_pool = Arc::new(RwLock::new(ConnectionPool::new()));
 
+        // ✅ NOUVEAU: Démarrer le nettoyage périodique du cache
+        let cache_clone = request_cache.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // Toutes les 5 minutes
+            loop {
+                interval.tick().await;
+                let mut cache = cache_clone.write().await;
+                let now = Instant::now();
+                let max_entries = 1000; // ✅ Limite de 1000 entrées max
+                
+                // Nettoyer les entrées expirées
+                cache.retain(|_, cached| {
+                    now.duration_since(cached.timestamp) < cached.ttl
+                });
+                
+                // Si le cache dépasse la limite, supprimer les plus anciennes
+                if cache.len() > max_entries {
+                    let mut entries: Vec<_> = cache.iter().collect();
+                    entries.sort_by_key(|(_, cached)| cached.timestamp);
+                    let to_remove = cache.len() - max_entries;
+                    for (key, _) in entries.iter().take(to_remove) {
+                        cache.remove(*key);
+                    }
+                    log::info!("🧹 Cache nettoyé: {} entrées supprimées (limite: {})", to_remove, max_entries);
+                }
+            }
+        });
+
         Self {
             request_semaphore,
             request_cache,

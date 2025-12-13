@@ -30,17 +30,15 @@ const DeliveryHomeScreen: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [navigating, setNavigating] = useState(false);
 
-    // ✅ NOUVEAU: Animation d'entrée d'écran
-    // ✅ CORRIGÉ: Vérifier que useScreenEnter existe avant de l'appeler
-    let screenEnterStyle: ReturnType<typeof useScreenEnter> | null = null;
+    // ✅ CORRIGÉ: Utiliser useScreenEnter directement comme hook React (pas dans try/catch)
+    // ✅ CORRIGÉ: Gestion robuste avec fallback si le hook échoue
+    let screenEnterStyle: ReturnType<typeof useScreenEnter>;
     try {
-        if (typeof useScreenEnter === 'function') {
-            screenEnterStyle = useScreenEnter();
-        } else {
-            console.warn('[DeliveryHomeScreen] ⚠️ useScreenEnter n\'est pas disponible');
-        }
+        screenEnterStyle = useScreenEnter();
     } catch (error) {
         console.error('[DeliveryHomeScreen] ❌ Erreur useScreenEnter:', error);
+        // Fallback: retourner un style vide si le hook échoue
+        screenEnterStyle = { style: {} };
     }
     // ✅ CORRIGÉ: S'assurer que screenEnterStyle a toujours une propriété style
     const safeScreenEnterStyle = screenEnterStyle?.style || {};

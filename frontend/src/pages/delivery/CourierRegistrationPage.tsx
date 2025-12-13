@@ -470,21 +470,23 @@ const CourierRegistrationPage: React.FC = () => {
                             <label className="block text-sm font-medium text-slate-700 mb-2">
                                 Type de véhicule *
                             </label>
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                                {vehicleTypes.map((type) => (
-                                    <button
-                                        key={type.value}
-                                        type="button"
-                                        onClick={() => handleInputChange('vehicleType', type.value)}
-                                        className={`p-3 rounded-lg border-2 transition-colors ${formData.vehicleType === type.value
-                                            ? 'border-primary bg-primary/10'
-                                            : 'border-slate-200 hover:border-slate-300'
-                                            }`}
-                                    >
-                                        <div className="text-2xl mb-1">{type.icon}</div>
-                                        <div className="text-sm font-medium">{type.label}</div>
-                                    </button>
-                                ))}
+                            <div className="overflow-x-auto -mx-6 px-6">
+                                <div className="flex gap-3 min-w-max md:grid md:grid-cols-5 md:min-w-0">
+                                    {vehicleTypes.map((type) => (
+                                        <button
+                                            key={type.value}
+                                            type="button"
+                                            onClick={() => handleInputChange('vehicleType', type.value)}
+                                            className={`p-3 rounded-lg border-2 transition-colors flex-shrink-0 w-24 md:w-auto ${formData.vehicleType === type.value
+                                                ? 'border-primary bg-primary/10'
+                                                : 'border-slate-200 hover:border-slate-300'
+                                                }`}
+                                        >
+                                            <div className="text-2xl mb-1">{type.icon}</div>
+                                            <div className="text-sm font-medium">{type.label}</div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                         {/* ✅ NOUVEAU : Formulaire conditionnel selon le type de véhicule */}

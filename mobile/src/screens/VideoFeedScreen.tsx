@@ -403,11 +403,14 @@ const viewabilityConfig = {
     waitForInteraction: false, // Ne pas attendre interaction utilisateur
 };
 
-const VideoFeedScreen: React.FC = () => {
+const VideoFeedScreen: React.FC = ({ route }: any) => {
     console.log('[VideoFeedScreen] 🎬 Initialisation du composant');
     
     const navigation = useNavigation();
     const { user } = useAuth();
+    
+    // ✅ NOUVEAU: Paramètre pour afficher uniquement les vidéos du prestataire
+    const showOnlyMyVideos = route?.params?.showOnlyMyVideos || false;
     
     // ✅ SÉCURITÉ: Gestion d'erreur pour les hooks optionnels
     let isScreenReaderEnabled = false;
@@ -907,34 +910,42 @@ const VideoFeedScreen: React.FC = () => {
                 parsed = processResponse(response.data);
             }
 
-            // ✅ NOUVEAU: Combiner les vidéos de l'utilisateur avec le feed principal
-            // Les vidéos de l'utilisateur sont ajoutées en premier
-            const combinedFeed = [...myVideos, ...parsed];
-            setForYouSource(combinedFeed);
-
-            // ✅ OPTIMISÉ: Réordonner avec recommandations ML (comme TikTok)
-            let ordered: FeedItem[];
-            if (user?.id) {
-                try {
-                    const userId = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
-                    if (!isNaN(userId)) {
-                        ordered = await videoRecommendationService.reorderFeedByRecommendations(
-                            userId,
-                            combinedFeed
-                        );
-                    } else {
-                        ordered = reorderFeed(combinedFeed);
-                    }
-                } catch (error) {
-                    console.warn('[VideoFeedScreen] Erreur recommandations ML, fallback basique:', error);
-                    ordered = reorderFeed(combinedFeed);
-                }
+            // ✅ NOUVEAU: Si showOnlyMyVideos est activé, afficher uniquement les vidéos du prestataire
+            let finalFeed: FeedItem[];
+            if (showOnlyMyVideos) {
+                // Afficher uniquement les vidéos créées par le prestataire
+                finalFeed = myVideos;
+                setForYouSource(myVideos);
+                console.log('[VideoFeedScreen] 📹 Mode "Mes Vidéos" activé:', myVideos.length, 'vidéos');
             } else {
-                ordered = reorderFeed(combinedFeed);
+                // ✅ NOUVEAU: Combiner les vidéos de l'utilisateur avec le feed principal
+                // Les vidéos de l'utilisateur sont ajoutées en premier
+                const combinedFeed = [...myVideos, ...parsed];
+                setForYouSource(combinedFeed);
+
+                // ✅ OPTIMISÉ: Réordonner avec recommandations ML (comme TikTok)
+                if (user?.id) {
+                    try {
+                        const userId = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
+                        if (!isNaN(userId)) {
+                            finalFeed = await videoRecommendationService.reorderFeedByRecommendations(
+                                userId,
+                                combinedFeed
+                            );
+                        } else {
+                            finalFeed = reorderFeed(combinedFeed);
+                        }
+                    } catch (error) {
+                        console.warn('[VideoFeedScreen] Erreur recommandations ML, fallback basique:', error);
+                        finalFeed = reorderFeed(combinedFeed);
+                    }
+                } else {
+                    finalFeed = reorderFeed(combinedFeed);
+                }
             }
 
-            setFeed(ordered);
-            feedRef.current = ordered; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
+            setFeed(finalFeed);
+            feedRef.current = finalFeed; // ✅ Phase 9 - Amélioration 31 : Mettre à jour la ref du feed
             if (isFollowingLane) {
                 setActiveLane('foryou');
             }

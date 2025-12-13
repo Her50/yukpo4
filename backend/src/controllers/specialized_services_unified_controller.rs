@@ -787,7 +787,7 @@ async fn calculate_statistics(
         _ => "",
     };
 
-    // Requête simplifiée pour statistiques
+    // ✅ CORRIGÉ: Requête simplifiée pour statistiques avec gestion du cas vide
     let sql = format!(
         r#"
         WITH all_services AS (
@@ -801,26 +801,43 @@ async fn calculate_statistics(
                 COUNT(*)::bigint as count_by_type
             FROM all_services
             GROUP BY specialized_type
+        ),
+        stats_base AS (
+            SELECT 
+                (SELECT COUNT(*)::bigint FROM all_services) as total,
+                (SELECT COUNT(*)::bigint FROM all_services WHERE is_active = true) as active,
+                (SELECT COUNT(*)::bigint FROM all_services WHERE is_active = false) as inactive
         )
         SELECT 
-            (SELECT COUNT(*)::bigint FROM all_services) as total,
-            (SELECT COUNT(*)::bigint FROM all_services WHERE is_active = true) as active,
-            (SELECT COUNT(*)::bigint FROM all_services WHERE is_active = false) as inactive,
-            COALESCE(
-                jsonb_object_agg(
-                    COALESCE(specialized_type, 'unknown'),
-                    count_by_type
-                ),
-                '{}'::jsonb
-            ) as by_type
-        FROM type_counts
+            COALESCE((SELECT total FROM stats_base), 0::bigint) as total,
+            COALESCE((SELECT active FROM stats_base), 0::bigint) as active,
+            COALESCE((SELECT inactive FROM stats_base), 0::bigint) as inactive,
+            CASE 
+                WHEN EXISTS(SELECT 1 FROM type_counts) THEN
+                    COALESCE(
+                        (
+                            SELECT jsonb_object_agg(
+                                COALESCE(specialized_type, 'unknown'),
+                                count_by_type
+                            )
+                            FROM type_counts
+                        ),
+                        '{{}}'::jsonb
+                    )
+                ELSE '{{}}'::jsonb
+            END as by_type
+        FROM stats_base
+        LIMIT 1
         "#,
         status_condition
     );
 
     let row = sqlx::query(&sql).bind(user_id).fetch_one(pool).await?;
 
-    let by_type: serde_json::Value = row.get::<serde_json::Value, _>("by_type");
+    // ✅ CORRIGÉ: Gestion robuste du JSON avec fallback
+    let by_type: serde_json::Value = row
+        .try_get::<serde_json::Value, _>("by_type")
+        .unwrap_or_else(|_| json!({}));
 
     Ok(ServicesStatistics {
         total: row.get::<i64, _>("total"),

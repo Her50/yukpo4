@@ -144,12 +144,273 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
         },
     );
 
+    // ✅ CORRIGÉ: Ajouter effet "split screen" (manquant)
+    m.insert(
+        "split screen",
+        EffectDefinition {
+            ffmpeg_filter: "split[main][tmp];[tmp]crop=iw/2:ih:0:0[left];[tmp]crop=iw/2:ih:iw/2:0[right];[left][right]hstack".to_string(),
+            description: "Écran divisé avec deux vues côte à côte".to_string(),
+        },
+    );
+    m.insert(
+        "splitscreen",
+        EffectDefinition {
+            ffmpeg_filter: "split[main][tmp];[tmp]crop=iw/2:ih:0:0[left];[tmp]crop=iw/2:ih:iw/2:0[right];[left][right]hstack".to_string(),
+            description: "Écran divisé avec deux vues côte à côte".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet "glitch" (manquant)
+    m.insert(
+        "glitch",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/0.58 1/1',hue=s=1.1,eq=contrast=1.2:brightness=0.05".to_string(),
+            description: "Effet glitch avec distorsion des couleurs".to_string(),
+        },
+    );
+    m.insert(
+        "glitch effect",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/0.58 1/1',hue=s=1.1,eq=contrast=1.2:brightness=0.05".to_string(),
+            description: "Effet glitch avec distorsion des couleurs".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet "pan" (mouvement panoramique)
+    m.insert(
+        "pan",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw*0.8:ih:iw*0.1:0,scale=iw*1.25:ih,setpts=PTS-STARTPTS".to_string(),
+            description: "Mouvement panoramique horizontal pour effet dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "panoramic",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw*0.8:ih:iw*0.1:0,scale=iw*1.25:ih,setpts=PTS-STARTPTS".to_string(),
+            description: "Mouvement panoramique horizontal pour effet dynamique".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet "slow motion" (ralenti)
+    m.insert(
+        "slow motion",
+        EffectDefinition {
+            ffmpeg_filter: "setpts=2.0*PTS".to_string(),
+            description: "Ralenti pour effet dramatique".to_string(),
+        },
+    );
+    m.insert(
+        "slowmotion",
+        EffectDefinition {
+            ffmpeg_filter: "setpts=2.0*PTS".to_string(),
+            description: "Ralenti pour effet dramatique".to_string(),
+        },
+    );
+    m.insert(
+        "slow",
+        EffectDefinition {
+            ffmpeg_filter: "setpts=2.0*PTS".to_string(),
+            description: "Ralenti pour effet dramatique".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet "focus blur" (flou de profondeur de champ)
+    m.insert(
+        "focus blur",
+        EffectDefinition {
+            ffmpeg_filter: "boxblur=5:2:enable='between(t,0,1)+between(t,2,3)'".to_string(),
+            description: "Flou de profondeur de champ pour effet cinématique".to_string(),
+        },
+    );
+    m.insert(
+        "focusblur",
+        EffectDefinition {
+            ffmpeg_filter: "boxblur=5:2:enable='between(t,0,1)+between(t,2,3)'".to_string(),
+            description: "Flou de profondeur de champ pour effet cinématique".to_string(),
+        },
+    );
+    m.insert(
+        "depth of field",
+        EffectDefinition {
+            ffmpeg_filter: "boxblur=5:2:enable='between(t,0,1)+between(t,2,3)'".to_string(),
+            description: "Flou de profondeur de champ pour effet cinématique".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet "cinematic" (effet cinématique)
+    m.insert(
+        "cinematic",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/0.45 1/1',eq=contrast=1.1:saturation=0.85:gamma=1.05".to_string(),
+            description: "Effet cinématique avec courbes de couleur et contraste".to_string(),
+        },
+    );
+    m.insert(
+        "cinema",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/0.45 1/1',eq=contrast=1.1:saturation=0.85:gamma=1.05".to_string(),
+            description: "Effet cinématique avec courbes de couleur et contraste".to_string(),
+        },
+    );
+    m.insert(
+        "cinéma",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/0.45 1/1',eq=contrast=1.1:saturation=0.85:gamma=1.05".to_string(),
+            description: "Effet cinématique avec courbes de couleur et contraste".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet "ken burns" (zoom + pan combiné)
+    m.insert(
+        "ken burns",
+        EffectDefinition {
+            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'".to_string(),
+            description: "Effet Ken Burns combinant zoom et mouvement panoramique".to_string(),
+        },
+    );
+    m.insert(
+        "kenburns",
+        EffectDefinition {
+            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'".to_string(),
+            description: "Effet Ken Burns combinant zoom et mouvement panoramique".to_string(),
+        },
+    );
+    m.insert(
+        "ken",
+        EffectDefinition {
+            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'".to_string(),
+            description: "Effet Ken Burns combinant zoom et mouvement panoramique".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet "slide" (transition slide comme effet)
+    m.insert(
+        "slide",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw:ih*0.9:0:ih*0.05,scale=iw:ih".to_string(),
+            description: "Effet slide pour transition dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "slideleft",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw*0.9:ih:iw*0.1:0,scale=iw:ih".to_string(),
+            description: "Slide vers la gauche pour transition dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "slideright",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw*0.9:ih:0:0,scale=iw:ih".to_string(),
+            description: "Slide vers la droite pour transition dynamique".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter alias français pour les effets courants
+    m.insert(
+        "zoom dynamique",
+        EffectDefinition {
+            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=75".to_string(),
+            description: "Zoom progressif pour créer un effet dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "fade doux",
+        EffectDefinition {
+            ffmpeg_filter: "fade=t=in:st=0:d=0.5,fade=t=out:st=2.5:d=0.5".to_string(),
+            description: "Fondu en entrée et sortie pour transition douce".to_string(),
+        },
+    );
+    m.insert(
+        "ralenti",
+        EffectDefinition {
+            ffmpeg_filter: "setpts=2.0*PTS".to_string(),
+            description: "Ralenti pour effet dramatique".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet "parallax" (mentionné dans timeline_converter)
+    m.insert(
+        "parallax",
+        EffectDefinition {
+            ffmpeg_filter: "crop=iw*0.9:ih:iw*0.05:0,scale=iw:ih".to_string(),
+            description: "Effet parallaxe pour profondeur visuelle".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet "orbit" ou "3d" (rotation 3D)
+    m.insert(
+        "orbit",
+        EffectDefinition {
+            ffmpeg_filter: "perspective=x0=iw/2:y0=ih/2:x1=iw/2+100:y1=ih/2-50:x2=iw/2-100:y2=ih/2-50:x3=iw/2:y3=ih/2+100".to_string(),
+            description: "Rotation orbitale 3D pour effet immersif".to_string(),
+        },
+    );
+    m.insert(
+        "3d",
+        EffectDefinition {
+            ffmpeg_filter: "perspective=x0=iw/2:y0=ih/2:x1=iw/2+100:y1=ih/2-50:x2=iw/2-100:y2=ih/2-50:x3=iw/2:y3=ih/2+100".to_string(),
+            description: "Rotation orbitale 3D pour effet immersif".to_string(),
+        },
+    );
+    m.insert(
+        "orbit3d",
+        EffectDefinition {
+            ffmpeg_filter: "perspective=x0=iw/2:y0=ih/2:x1=iw/2+100:y1=ih/2-50:x2=iw/2-100:y2=ih/2-50:x3=iw/2:y3=ih/2+100".to_string(),
+            description: "Rotation orbitale 3D pour effet immersif".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet "speed ramp" (accélération/ralenti variable)
+    m.insert(
+        "speed ramp",
+        EffectDefinition {
+            ffmpeg_filter: "setpts='if(lt(t,1),0.5*PTS,if(lt(t,2),PTS,2*PTS))'".to_string(),
+            description: "Variation de vitesse pour effet dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "speedramp",
+        EffectDefinition {
+            ffmpeg_filter: "setpts='if(lt(t,1),0.5*PTS,if(lt(t,2),PTS,2*PTS))'".to_string(),
+            description: "Variation de vitesse pour effet dynamique".to_string(),
+        },
+    );
+    m.insert(
+        "speed-ramp",
+        EffectDefinition {
+            ffmpeg_filter: "setpts='if(lt(t,1),0.5*PTS,if(lt(t,2),PTS,2*PTS))'".to_string(),
+            description: "Variation de vitesse pour effet dynamique".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ: Ajouter effet "overlay" (superposition - effet visuel de base)
+    // Note: "Texte animé" et "Overlay élégant" sont des overlays de texte, pas des effets FFmpeg purs
+    // Mais on peut créer un effet de superposition visuelle
+    m.insert(
+        "overlay",
+        EffectDefinition {
+            ffmpeg_filter: "eq=contrast=1.1:brightness=0.05".to_string(),
+            description: "Effet de superposition pour enrichir la composition".to_string(),
+        },
+    );
+    m.insert(
+        "overlay élégant",
+        EffectDefinition {
+            ffmpeg_filter: "eq=contrast=1.1:brightness=0.05".to_string(),
+            description: "Effet de superposition pour enrichir la composition".to_string(),
+        },
+    );
+
     m
 }
 
 /// Récupère la définition d'un effet (fallback hardcodé si DB non disponible)
+/// ✅ CORRIGÉ: Normalisation du nom d'effet (lowercase, trim, etc.)
 fn get_effect_definition(effect_name: &str) -> Option<EffectDefinition> {
-    get_effect_definitions().get(effect_name).cloned()
+    let normalized = effect_name.trim().to_lowercase();
+    get_effect_definitions().get(normalized.as_str()).cloned()
 }
 
 /// Récupère la définition d'un effet depuis la base de données
@@ -204,9 +465,21 @@ pub async fn generate_effect_preview(
         request.effect_name, request.sample_media_url
     );
 
-    // Récupérer la définition de l'effet
-    let effect_def = get_effect_definition(&request.effect_name)
-        .ok_or_else(|| AppError::Internal(format!("Effet '{}' non trouvé", request.effect_name)))?;
+    // ✅ CORRIGÉ: Récupérer la définition de l'effet avec normalisation
+    let normalized_effect_name = request.effect_name.trim().to_lowercase();
+    let effect_def = get_effect_definition(&normalized_effect_name)
+        .ok_or_else(|| {
+            let available_effects: Vec<&str> = get_effect_definitions().keys().copied().collect();
+            error!(
+                "[EffectPreview] Effet '{}' (normalisé: '{}') non trouvé. Effets disponibles: {:?}",
+                request.effect_name, normalized_effect_name, available_effects
+            );
+            AppError::BadRequest(format!(
+                "Effet '{}' non trouvé. Effets disponibles: {}",
+                request.effect_name,
+                available_effects.join(", ")
+            ))
+        })?;
 
     let duration = request.duration.unwrap_or(3.0);
     let quality = request.quality.as_deref().unwrap_or("low");
@@ -218,17 +491,26 @@ pub async fn generate_effect_preview(
         _ => ("libx264", "28", "ultrafast"), // low quality, rapide
     };
 
+    // ✅ CORRIGÉ: Vérifier que le fichier d'entrée existe avant d'appeler FFmpeg
+    let input_path = &request.sample_media_url;
+    if !std::path::Path::new(input_path).exists() && !input_path.starts_with("http") {
+        return Err(AppError::BadRequest(format!(
+            "Fichier d'entrée introuvable: {}. Vérifiez que le chemin est correct ou utilisez une URL HTTP/HTTPS.",
+            input_path
+        )));
+    }
+
     // Générer le nom du fichier de sortie
     let output_path = format!(
         "{}_preview_{}_{}.mp4",
-        request.sample_media_url, request.effect_name, quality
+        request.sample_media_url, normalized_effect_name, quality
     );
 
-    // Appliquer l'effet avec FFmpeg
+    // ✅ CORRIGÉ: Appliquer l'effet avec FFmpeg avec meilleure gestion d'erreur
     let ffmpeg_result = Command::new("ffmpeg")
         .args(&[
             "-i",
-            &request.sample_media_url,
+            input_path,
             "-vf",
             &effect_def.ffmpeg_filter,
             "-t",
@@ -280,16 +562,39 @@ pub async fn generate_effect_preview(
                 })
             } else {
                 let error = String::from_utf8_lossy(&output.stderr);
-                error!("[EffectPreview] ❌ Erreur FFmpeg: {}", error);
-                Err(AppError::Internal(format!(
-                    "Erreur génération preview: {}",
-                    error
-                )))
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                error!(
+                    "[EffectPreview] ❌ Erreur FFmpeg pour effet '{}':\nSTDERR: {}\nSTDOUT: {}\nInput: {}",
+                    normalized_effect_name, error, stdout, input_path
+                );
+                
+                // ✅ CORRIGÉ: Messages d'erreur plus informatifs
+                let error_msg = if error.contains("No such file or directory") {
+                    format!(
+                        "Fichier d'entrée introuvable: {}. Vérifiez que l'URL est accessible ou que le chemin local est correct.",
+                        input_path
+                    )
+                } else if error.contains("Invalid data found") {
+                    format!(
+                        "Format de fichier invalide ou corrompu: {}. Vérifiez que le fichier est un média valide.",
+                        input_path
+                    )
+                } else {
+                    format!("Erreur génération preview: {}", error)
+                };
+                
+                Err(AppError::BadRequest(error_msg))
             }
         }
         Err(e) => {
-            error!("[EffectPreview] ❌ Erreur commande FFmpeg: {}", e);
-            Err(AppError::Internal(format!("Erreur FFmpeg: {}", e)))
+            error!(
+                "[EffectPreview] ❌ Erreur commande FFmpeg pour effet '{}': {}",
+                normalized_effect_name, e
+            );
+            Err(AppError::Internal(format!(
+                "Erreur FFmpeg: {}. Vérifiez que FFmpeg est installé et accessible.",
+                e
+            )))
         }
     }
 }

@@ -41,7 +41,8 @@ pub async fn generate_all_combinations_background(
     );
 
     // 3. Extraire les labels (dimensions)
-    let product_labels = generator.dimensions[..generator.dimensions.len() - 1].to_vec();
+    // ✅ CORRIGÉ: Passer toutes les dimensions pour calculer product_labels dynamiquement
+    let all_dimensions = generator.dimensions.clone();
     let location_labels = vec!["lieu".to_string()];
 
     // 4. Sauvegarder par BATCHES
@@ -62,7 +63,7 @@ pub async fn generate_all_combinations_background(
             &state.pg,
             chunk,
             &session_id,
-            &product_labels,
+            &all_dimensions,
             &location_labels,
         )
         .await?;
@@ -124,7 +125,7 @@ async fn save_combinations_batch(
     pool: &PgPool,
     combinations: &[Vec<String>],
     session_id: &str,
-    product_labels: &[String],
+    all_dimensions: &[String], // ✅ CORRIGÉ: Passer toutes les dimensions au lieu de product_labels fixes
     location_labels: &[String],
 ) -> Result<(), AppError> {
     // Construire query bulk insert
@@ -179,11 +180,24 @@ async fn save_combinations_batch(
                 Vec::new()
             };
 
+            // ✅ CORRIGÉ: Calculer product_labels dynamiquement pour correspondre à la longueur de product_vector
+            // Cela garantit que array_length(product_vector) = array_length(product_labels)
+            let product_labels = if product_vector.len() <= all_dimensions.len() {
+                all_dimensions[..product_vector.len()].to_vec()
+            } else {
+                // Fallback: utiliser toutes les dimensions disponibles et compléter avec des labels génériques
+                let mut labels = all_dimensions.to_vec();
+                while labels.len() < product_vector.len() {
+                    labels.push(format!("dimension_{}", labels.len() + 1));
+                }
+                labels[..product_vector.len()].to_vec()
+            };
+
             b.push_bind(session_id)
                 .push_bind(product_vector) // Pas de &, on donne ownership
                 .push_bind(location_vector) // Pas de &, on donne ownership
                 .push_bind(full_vector)
-                .push_bind(product_labels)
+                .push_bind(product_labels) // ✅ CORRIGÉ: Labels calculés dynamiquement
                 .push_bind(location_labels)
                 .push_bind(duplicates) // usage_count initial = occurrences dans le batch
                 .push_bind(false) // is_ai_preferred

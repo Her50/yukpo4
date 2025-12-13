@@ -314,7 +314,7 @@ async fn get_engagement_based_recommendations_enhanced(
         SELECT 
             m.id::text as id,
             COALESCE(m.id::text, 'media_' || m.service_id || '_' || m.id) as content_id,
-            COALESCE(s.data->>'titre_service'->>'valeur', s.data->>'titre', 'Vidéo') as titre,
+            COALESCE(s.data->'titre_service'->>'valeur', s.data->>'titre', 'Vidéo') as titre,
             s.data->>'description' as description,
             m.path as video_url_raw,
             (SELECT path FROM media m2 WHERE m2.service_id = m.service_id AND m2.type = 'image' LIMIT 1) as thumbnail_raw,
@@ -591,7 +591,7 @@ async fn get_collaborative_recommendations(
         SELECT DISTINCT
             m.id::text as id,
             COALESCE(m.id::text, 'media_' || m.service_id || '_' || m.id) as content_id,
-            COALESCE(s.data->>'titre_service'->>'valeur', s.data->>'titre', 'Vidéo') as titre,
+            COALESCE(s.data->'titre_service'->>'valeur', s.data->>'titre', 'Vidéo') as titre,
             s.data->>'description' as description,
             m.path as video_url_raw,
             (SELECT path FROM media m2 WHERE m2.service_id = m.service_id AND m2.type = 'image' LIMIT 1) as thumbnail_raw,

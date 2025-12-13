@@ -304,19 +304,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       .replace(/\\n/g, '\n');
   }, []);
   const handleMediaHorizontalScrollStart = useCallback(() => {
-    // ✅ CORRIGÉ: Ne pas désactiver complètement, permettre le scroll entre blocs
-    // Le scroll horizontal entre blocs reste actif même pendant le scroll des médias
-    // On ne désactive que temporairement pour éviter les conflits
-    setBlockHorizontalScrollEnabled(false);
-    // ✅ Réactiver automatiquement après un court délai pour permettre le scroll entre blocs
-    setTimeout(() => {
-      setBlockHorizontalScrollEnabled(true);
-    }, 500);
+    // ✅ CORRIGÉ: Ne pas désactiver le scroll horizontal entre blocs
+    // Permettre les gestes simultanés - le scroll des médias et le scroll entre blocs peuvent coexister
+    // On garde le scroll horizontal activé pour permettre le scroll manuel entre blocs
+    // Le système de gestes de React Native gérera automatiquement la priorité
   }, []);
 
   const handleMediaHorizontalScrollEnd = useCallback(() => {
-    // ✅ CORRIGÉ: Réactiver immédiatement le scroll horizontal entre blocs
-    setBlockHorizontalScrollEnabled(true);
+    // ✅ CORRIGÉ: Pas besoin de réactiver car on ne désactive jamais
+    // Le scroll horizontal entre blocs reste toujours actif
   }, []);
 
   const displayedBlocks = useMemo(() => {
@@ -5183,8 +5179,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         {activeStep === 2 && (
           <KeyboardAvoidingView
             style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            enabled={Platform.OS === 'ios'}
           >
             {/* Navigation par blocs - Sticky */}
             {blocks.length > 0 && (
@@ -5218,6 +5215,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     contentContainerStyle={styles.blockNavigationContent}
                     style={styles.blockNavigationScrollView}
                     scrollEventThrottle={16}
+                    nestedScrollEnabled={true}
+                    alwaysBounceHorizontal={true}
+                    bounces={true}
                   >
                     <View style={styles.blockNavigation}>
                       {displayedBlocks.map(({ block, index: originalIndex }) => (
@@ -5247,10 +5247,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   ref={blockContentRef}
                   horizontal
                   pagingEnabled
-                  scrollEnabled={blockHorizontalScrollEnabled}
+                  scrollEnabled={true}
                   showsHorizontalScrollIndicator={false}
                   style={styles.contentScrollViewHorizontal}
                   contentContainerStyle={styles.contentContainerHorizontal}
+                  nestedScrollEnabled={true}
+                  scrollEventThrottle={16}
                   onMomentumScrollEnd={(event) => {
                     // ✅ Détecter le bloc affiché après scroll horizontal manuel
                     const scrollX = event.nativeEvent.contentOffset.x;
@@ -5261,7 +5263,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       setCurrentBlock(blockInfo.index);
                     }
                   }}
-                  scrollEventThrottle={16}
+                  onScrollBeginDrag={() => {
+                    // ✅ Réactiver le scroll horizontal si jamais il était désactivé
+                    setBlockHorizontalScrollEnabled(true);
+                  }}
                 >
                   {/* Affichage de TOUS les blocs côte à côte */}
                   {displayedBlocks.map(({ block, index: blockIndex }) => (
@@ -5269,13 +5274,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       <ScrollView
                         style={styles.blockPanelScroll}
                         contentContainerStyle={styles.blockPanelContent}
-                        showsVerticalScrollIndicator={false}
+                        showsVerticalScrollIndicator={true}
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
                         nestedScrollEnabled={true}
                         scrollEnabled={true}
-                        // ✅ CORRIGÉ: Permettre le scroll horizontal même dans le bloc produit
+                        alwaysBounceVertical={true}
+                        bounces={true}
+                        // ✅ CORRIGÉ: Permettre le scroll vertical et horizontal simultanément
                         directionalLockEnabled={false}
+                        // ✅ CORRIGÉ: S'assurer que le scroll vertical fonctionne même avec beaucoup de contenu
+                        contentInsetAdjustmentBehavior="automatic"
                       >
                         <View style={styles.sectionContainer}>
                           <LinearGradient
@@ -5472,7 +5481,8 @@ const styles = StyleSheet.create({
   },
   blockPanelContent: {
     padding: 20,
-    paddingBottom: 300,
+    paddingBottom: 400, // ✅ Augmenté pour permettre le scroll jusqu'en bas, surtout dans le bloc produits
+    flexGrow: 1, // ✅ Permet au contenu de s'étendre et d'activer le scroll si nécessaire
   },
   stepContainer: {
     gap: 20,
@@ -5670,6 +5680,8 @@ const styles = StyleSheet.create({
   },
   productBlockContent: {
     gap: 24,
+    flex: 1, // ✅ Permet au contenu de s'étendre correctement
+    minHeight: '100%', // ✅ S'assure que le contenu prend au moins toute la hauteur disponible
   },
   productIntroRow: {
     flexDirection: 'row',

@@ -42,6 +42,8 @@ import { QuickPreview } from './QuickPreview';
 import { TimelineVariantSelector } from './TimelineVariantSelector';
 // ✅ NOUVEAU Phase 3.2: Éditeur AR immersif
 import ARVideoEditor from './ARVideoEditor';
+// ✅ NOUVEAU: Modal de progression visuelle
+import { VideoGenerationProgressModal } from './VideoGenerationProgressModal';
 
 type VideoStylePreset = 'tiktok' | 'story' | 'cinematic' | 'carousel';
 type MusicMode = 'pulse' | 'lofi' | 'ambient' | 'cinematic' | 'none';
@@ -355,6 +357,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [shortPreviewUrl, setShortPreviewUrl] = useState<string | null>(null);
     const [shortPreviewLoading, setShortPreviewLoading] = useState<boolean>(false);
     const [prewarmedShortPreviewUrl, setPrewarmedShortPreviewUrl] = useState<string | undefined>();
+
+    // ✅ NOUVEAU: États pour le modal de progression visuelle
+    const [showProgressModal, setShowProgressModal] = useState<boolean>(false);
+    const [currentJobId, setCurrentJobId] = useState<string | undefined>();
+    const [currentJobStatus, setCurrentJobStatus] = useState<'pending' | 'running' | 'completed' | 'failed'>('pending');
+    const [currentProgressSteps, setCurrentProgressSteps] = useState<Array<{ key: string; label: string; status: string; detail?: string }>>([]);
+    const [currentStepNumber, setCurrentStepNumber] = useState<number>(0);
+    const [currentErrorMessage, setCurrentErrorMessage] = useState<string | undefined>();
 
     // ✅ NOUVEAU: Auto-Storyboard Toggle (depuis Wizard)
     const [autoStoryboard, setAutoStoryboard] = useState<boolean>(true);
@@ -1472,6 +1482,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         gap: 20,
         paddingBottom: 100 + insets.bottom, // ✅ Espace pour les boutons fixes + safe area
         flexGrow: 1,
+        // ✅ CORRECTION: Permettre le scroll même si le contenu est plus petit que la hauteur visible
+        minHeight: '100%',
     }), [insets.bottom]);
 
     const getFixedBottomButtonStyle = useCallback(() => ({
@@ -3374,9 +3386,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             console.log('[ProductVideoCreationModal] ✅ Job lancé avec job_id:', jobId);
 
+            // ✅ NOUVEAU: Afficher le modal de progression
+            setCurrentJobId(jobId);
+            setCurrentJobStatus('running');
+            setShowProgressModal(true);
+            setCurrentProgressSteps([]);
+            setCurrentStepNumber(0);
+
             // ✅ ÉTAPE 3: Poller le statut du job jusqu'à ce qu'il soit terminé
             const pollJobStatus = async (): Promise<GeneratedVideoResponse> => {
-                const maxAttempts = 120; // 2 minutes max (1 seconde par tentative)
+                const maxAttempts = 240; // ✅ AUGMENTÉ: 4 minutes max (1 seconde par tentative) pour correspondre au timeout backend de 2h
                 let attempts = 0;
 
                 while (attempts < maxAttempts) {
@@ -3389,6 +3408,58 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                         const jobStatus = statusResponse.data;
                         console.log('[ProductVideoCreationModal] Job status:', jobStatus.status, `(${attempts}/${maxAttempts})`);
+
+                        // ✅ NOUVEAU: Mettre à jour le modal de progression
+                        setCurrentJobStatus(jobStatus.status as 'pending' | 'running' | 'completed' | 'failed');
+                        
+                        // Extraire les progress_steps depuis le jobStatus
+                        if (jobStatus.progress_steps && Array.isArray(jobStatus.progress_steps)) {
+                            const steps = jobStatus.progress_steps.map((step: any) => ({
+                                key: step.key || '',
+                                label: step.label || '',
+                                status: step.status || 'pending',
+                                detail: step.detail || undefined,
+                            }));
+                            setCurrentProgressSteps(steps);
+                            
+                            // ✅ CORRIGÉ: Calculer le numéro d'étape actuel basé sur les étapes complétées
+                            const completedSteps = steps.filter((s: any) => s.status === 'completed').length;
+                            const runningSteps = steps.filter((s: any) => s.status === 'running').length;
+                            // Le numéro d'étape = étapes complétées + 1 si une étape est en cours
+                            const currentStep = completedSteps + (runningSteps > 0 ? 1 : 0);
+                            const totalSteps = 120; // Nombre total d'étapes
+                            setCurrentStepNumber(Math.min(Math.max(currentStep, 0), totalSteps));
+                            
+                            console.log(`[ProductVideoCreationModal] 📊 Progression: ${currentStep}/${totalSteps} (${completedSteps} complétées, ${runningSteps} en cours)`);
+                        } else if (jobStatus.progress_steps && typeof jobStatus.progress_steps === 'object') {
+                            // Si progress_steps est un objet, essayer de le convertir
+                            try {
+                                const stepsArray = Object.values(jobStatus.progress_steps) as any[];
+                                if (Array.isArray(stepsArray)) {
+                                    const steps = stepsArray.map((step: any) => ({
+                                        key: step.key || '',
+                                        label: step.label || '',
+                                        status: step.status || 'pending',
+                                        detail: step.detail || undefined,
+                                    }));
+                                    setCurrentProgressSteps(steps);
+                                    
+                                    const completedSteps = steps.filter((s: any) => s.status === 'completed').length;
+                                    const runningSteps = steps.filter((s: any) => s.status === 'running').length;
+                                    const currentStep = completedSteps + (runningSteps > 0 ? 1 : 0);
+                                    setCurrentStepNumber(Math.min(Math.max(currentStep, 0), 120));
+                                }
+                            } catch (e) {
+                                console.warn('[ProductVideoCreationModal] Erreur parsing progress_steps:', e);
+                            }
+                        } else {
+                            // ✅ FALLBACK: Si pas de progress_steps, estimer depuis le statut
+                            if (jobStatus.status === 'running') {
+                                // Estimer la progression basée sur le temps écoulé (approximation)
+                                const estimatedProgress = Math.min(attempts * 0.5, 118); // Max 118 jusqu'à ce que les étapes finales soient ajoutées
+                                setCurrentStepNumber(Math.round(estimatedProgress));
+                            }
+                        }
 
                         if (jobStatus.status === 'completed') {
                             // ✅ Job terminé avec succès
@@ -3418,6 +3489,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         } else if (jobStatus.status === 'failed') {
                             // ✅ Job échoué
                             const errorMsg = jobStatus.error_message || 'La génération de la vidéo a échoué';
+                            setCurrentJobStatus('failed');
+                            setCurrentErrorMessage(errorMsg);
+                            // Le modal restera ouvert pour afficher l'erreur
                             throw new Error(errorMsg);
                         } else if (jobStatus.status === 'running' || jobStatus.status === 'pending') {
                             // ✅ Job encore en cours, continuer le polling
@@ -3446,11 +3520,23 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             // Lancer le polling
             const result = await pollJobStatus();
+            
+            // ✅ NOUVEAU: Marquer comme complété dans le modal
+            setCurrentJobStatus('completed');
+            
+            // Attendre un peu pour que l'utilisateur voie le succès
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Fermer le modal et appeler onSuccess
+            setShowProgressModal(false);
             await onSuccess(result);
 
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur génération vidéo:', error);
 
+            // ✅ NOUVEAU: Mettre à jour le modal avec l'erreur
+            setCurrentJobStatus('failed');
+            
             // ✅ CORRECTION: Améliorer les messages d'erreur avec des détails spécifiques
             let errorMessage = 'Nous ne parvenons pas à générer la vidéo.';
 
@@ -3475,10 +3561,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 }
             }
 
-            Alert.alert(
-                'Génération impossible',
-                errorMessage + '\n\nVérifiez votre connexion et réessayez.'
-            );
+            // ✅ NOUVEAU: Mettre à jour le message d'erreur dans le modal
+            setCurrentErrorMessage(errorMessage);
+            
+            // Le modal affichera l'erreur et l'utilisateur pourra le fermer manuellement
+            // Ne pas afficher d'Alert supplémentaire car le modal gère déjà l'affichage de l'erreur
         } finally {
             setIsSubmitting(false);
         }
@@ -3545,8 +3632,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 <Text style={styles.sectionSubtitle}>
                     Choisissez un service puis un produit pour lancer la création automatique de votre vidéo verticale.
                 </Text>
-                {/* ✅ CORRECTION: Remplacer ScrollView imbriqué par View pour éviter les problèmes de toucher */}
-                <View style={styles.productSelectionList}>
+                {/* ✅ CORRECTION: Utiliser ScrollView pour permettre le scroll vertical de tous les produits */}
+                <ScrollView 
+                    style={styles.productSelectionList}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                    contentContainerStyle={styles.productSelectionListContent}
+                >
                     {Array.isArray(groupedProducts) && groupedProducts.length > 0 ? (
                         groupedProducts.map((group) => {
                             // ✅ CORRIGÉ: Vérifier que group et group.items sont définis
@@ -3624,7 +3716,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <Text style={styles.emptyStateText}>Aucun produit disponible</Text>
                         </View>
                     )}
-                </View>
+                </ScrollView>
             </NativeCard>
         );
     };
@@ -3828,7 +3920,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             ref={(ref) => { mainScrollViewRef.current = ref; }}
                             style={styles.modalBody}
                             contentContainerStyle={getStepContentStyle()}
-                            showsVerticalScrollIndicator={false}
+                            showsVerticalScrollIndicator={activeStep === 1}
+                            nestedScrollEnabled={true}
                         >
                             {renderStepContent()}
                         </ScrollView>
@@ -4004,6 +4097,25 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                 </View>
             </Modal>
+
+            {/* ✅ NOUVEAU: Modal de progression visuelle pour la génération vidéo */}
+            <VideoGenerationProgressModal
+                visible={showProgressModal}
+                jobId={currentJobId}
+                status={currentJobStatus}
+                progressSteps={currentProgressSteps}
+                currentStep={currentStepNumber}
+                totalSteps={120}
+                errorMessage={currentErrorMessage || (currentJobStatus === 'failed' ? 'Une erreur est survenue lors de la génération' : undefined)}
+                onClose={() => {
+                    setShowProgressModal(false);
+                    setCurrentJobId(undefined);
+                    setCurrentJobStatus('pending');
+                    setCurrentProgressSteps([]);
+                    setCurrentStepNumber(0);
+                    setCurrentErrorMessage(undefined);
+                }}
+            />
         </>
     );
 };
@@ -4052,6 +4164,7 @@ const styles = StyleSheet.create({
     },
     modalBody: {
         paddingHorizontal: 20,
+        flex: 1, // ✅ Permettre au ScrollView de prendre toute la hauteur disponible
     },
     sectionCard: {
         marginBottom: 16,
@@ -4191,7 +4304,10 @@ const styles = StyleSheet.create({
     },
     productSelectionList: {
         marginTop: 12,
-        // ✅ Pas de maxHeight car le ScrollView parent gère le scroll
+        maxHeight: 400, // ✅ Hauteur maximale pour permettre le scroll
+    },
+    productSelectionListContent: {
+        paddingBottom: 8, // ✅ Espace en bas pour le dernier produit
     },
     productGroup: {
         marginBottom: 16,

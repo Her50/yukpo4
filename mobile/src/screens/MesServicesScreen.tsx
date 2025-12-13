@@ -1116,7 +1116,7 @@ const MesServicesScreen: React.FC = () => {
               <View style={dynamicStyles.logoContainer}>
                 <SafeIcon name="briefcase" size={22} color="#fff" />
                 <View style={dynamicStyles.titleContainer}>
-                  <Text style={dynamicStyles.title}>Mes Produits</Text>
+                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Mes Produits</Text>
                 </View>
               </View>
               {/* ✅ AMÉLIORÉ: Bouton Sidebar + Bulk Mode + Création Vidéo + Configuration Livraison */}
@@ -1235,7 +1235,7 @@ const MesServicesScreen: React.FC = () => {
                   (navigation as any).navigate('AnalyticsDashboard');
                 }}
               >
-                <SafeIcon name="bar-chart-3" size={18} color="#3B82F6" />
+                <SafeIcon name="tablet" size={18} color="#3B82F6" />
                 <Text style={dynamicStyles.menuItemText}>Statistiques</Text>
               </TouchableOpacity>
 
@@ -1284,17 +1284,6 @@ const MesServicesScreen: React.FC = () => {
                 <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>Mes Vidéos Créées</Text>
               </TouchableOpacity>
 
-              {/* ✅ NOUVEAU: Participation Black Friday */}
-              <TouchableOpacity
-                style={dynamicStyles.menuItem}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  (navigation as any).navigate('GlobalPromoSubmission');
-                }}
-              >
-                <SafeIcon name="dollar-sign" size={18} color="#F59E0B" />
-                <Text style={dynamicStyles.menuItemText}>Black Friday</Text>
-              </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Analytiques Vidéos */}
               <TouchableOpacity
@@ -1520,19 +1509,6 @@ const MesServicesScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
 
-            {/* ✅ COMPACT: Bouton catégories intégré dans la ligne des filtres */}
-            <TouchableOpacity
-              style={[
-                dynamicStyles.filterChip,
-                { paddingHorizontal: 10, paddingVertical: 6 }
-              ]}
-              onPress={() => {
-                // TODO: Implémenter le filtre par catégorie
-                toaster.info('Filtre par catégorie - Fonctionnalité à venir');
-              }}
-            >
-              <SafeIcon name="tag" size={14} color={colors.primary} />
-            </TouchableOpacity>
           </ScrollView>
 
           {/* ✅ AMÉLIORÉ: FlashList pour virtualisation (performance +50%) */}
@@ -1815,7 +1791,7 @@ const MesServicesScreen: React.FC = () => {
             {
               id: 'analytics',
               label: 'Statistiques',
-              icon: 'bar-chart-3',
+              icon: 'tablet',
               section: 'Analytics',
               color: '#3B82F6',
               onPress: () => (navigation as any).navigate('AnalyticsDashboard'),
@@ -1877,10 +1853,44 @@ const MesServicesScreen: React.FC = () => {
             {
               id: 'black-friday',
               label: 'Black Friday',
-              icon: 'dollar-sign',
+              icon: 'flame',
               section: 'Promotions',
               color: '#F59E0B',
               onPress: () => (navigation as any).navigate('GlobalPromoSubmission'),
+            },
+            {
+              id: 'flash-promo',
+              label: 'Flash Promo',
+              icon: 'zap',
+              section: 'Promotions',
+              color: '#F59E0B',
+              onPress: () => {
+                // Préparer la liste des produits pour sélection
+                const productsList = prepareProductsForSelector();
+                if (productsList.length === 0) {
+                  toaster.warning('Vous devez d\'abord créer des produits avant de créer un flash promo.');
+                  return;
+                }
+                // Si un seul produit, naviguer directement
+                if (productsList.length === 1) {
+                  const product = productsList[0];
+                  (navigation as any).navigate('CreateFlashPromo', {
+                    serviceId: product.serviceId,
+                    productIndex: product.productIndex,
+                  });
+                } else {
+                  // Plusieurs produits : ouvrir un sélecteur ou naviguer vers l'écran avec sélection
+                  // Pour l'instant, on prend le premier service
+                  const firstServiceId = productsList[0]?.serviceId;
+                  if (firstServiceId) {
+                    (navigation as any).navigate('CreateFlashPromo', {
+                      serviceId: firstServiceId,
+                    });
+                  } else {
+                    toaster.warning('Aucun produit disponible pour créer un flash promo.');
+                  }
+                }
+              },
             },
             {
               id: 'settings',
@@ -2020,7 +2030,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: 8,
   },
   logoContainer: {
@@ -2028,15 +2038,18 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flex: 1,
+    minWidth: 0,
   },
   titleContainer: {
     flex: 1,
+    minWidth: 0,
   },
   title: {
     fontSize: 18,
     fontWeight: '700',
     color: '#fff',
-    flexShrink: 1,
+    flexShrink: 0,
+    numberOfLines: 1,
   },
   subtitleCompact: {
     fontSize: 11,
@@ -2049,6 +2062,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     gap: 8,
     alignItems: 'center',
     justifyContent: 'flex-end',
+    flexShrink: 0,
   },
   headerButton: {
     flexDirection: 'row',

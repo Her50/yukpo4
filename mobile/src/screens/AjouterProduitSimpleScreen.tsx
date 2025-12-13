@@ -439,6 +439,14 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     : 'VIDE',
                 images_count: Array.isArray(prefill.images) ? prefill.images.length : 0,
                 videos_count: Array.isArray(prefill.videos) ? prefill.videos.length : 0,
+                audios_count: Array.isArray(prefill.audios) ? prefill.audios.length : 0,
+                documents_count: Array.isArray(prefill.documents) ? prefill.documents.length : 0,
+            });
+            console.log('[AjouterProduitSimple] 📦 MediaData reçu:', {
+                base64_image_count: Array.isArray(mediaData?.base64_image) ? mediaData.base64_image.length : 0,
+                video_base64_count: Array.isArray(mediaData?.video_base64) ? mediaData.video_base64.length : 0,
+                audio_base64_count: Array.isArray(mediaData?.audio_base64) ? mediaData.audio_base64.length : 0,
+                doc_base64_count: Array.isArray(mediaData?.doc_base64) ? mediaData.doc_base64.length : 0,
             });
             console.log('[AjouterProduitSimple] 📝 Valeurs initiales formValues:', {
                 nom_produit: initialFormValues.nom_produit || 'VIDE',
@@ -452,6 +460,9 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     ? Object.keys(initialFormValues.sous_caracteristiques).length
                     : 0,
                 images_count: Array.isArray(initialFormValues.images) ? initialFormValues.images.length : 0,
+                videos_count: Array.isArray(initialFormValues.videos) ? initialFormValues.videos.length : 0,
+                audios_count: Array.isArray(initialFormValues.audios) ? initialFormValues.audios.length : 0,
+                documents_count: Array.isArray(initialFormValues.documents) ? initialFormValues.documents.length : 0,
             });
         }
     }, [mode, prefill, initialFormValues]);

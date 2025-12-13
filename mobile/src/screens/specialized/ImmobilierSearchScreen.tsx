@@ -587,7 +587,7 @@ const ImmobilierSearchScreen: React.FC = () => {
                 allowZoneSelection={searchMode === 'zone'}
                 title={searchMode === 'zone' ? 'Délimiter une zone de recherche' : 'Sélectionner un point GPS'}
             />
-        </View>
+        </SafeNativeView>
     );
 };
 

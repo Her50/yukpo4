@@ -208,7 +208,7 @@ pub async fn get_my_videos(
             m.path,
             m.ai_description,
             m.ai_metadata,
-            m.created_at,
+            COALESCE(m.uploaded_at, s.created_at) as created_at,
             s.data->>'titre' as service_title,
             (
                 SELECT (array_agg(elem->>'nom'))[1]
@@ -229,7 +229,7 @@ pub async fn get_my_videos(
         WHERE s.user_id = $1
         AND m.type = 'video_generated'
         AND m.media_type = 'video'
-        ORDER BY m.created_at DESC
+        ORDER BY COALESCE(m.uploaded_at, s.created_at) DESC
         "#,
     )
     .bind(user.id)

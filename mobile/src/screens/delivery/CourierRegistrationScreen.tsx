@@ -591,7 +591,14 @@ const CourierRegistrationScreen: React.FC = () => {
                 {/* Transport */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Moyen de transport</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.vehicleScroll}>
+                    <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={true}
+                        nestedScrollEnabled={true}
+                        scrollEnabled={true}
+                        style={styles.vehicleScroll}
+                        contentContainerStyle={styles.vehicleScrollContent}
+                    >
                         {vehicleTypes.map((type) => (
                             <TouchableOpacity
                                 key={type.value}
@@ -903,6 +910,9 @@ const styles = StyleSheet.create({
     },
     vehicleScroll: {
         marginBottom: 16,
+    },
+    vehicleScrollContent: {
+        paddingRight: 16,
     },
     vehicleOption: {
         alignItems: 'center',

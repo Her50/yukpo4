@@ -107,7 +107,12 @@ const ProfileScreen: React.FC = () => {
   const handleActionPress = (action: any) => {
     try {
       if (action.route) {
-        navigation.navigate(action.route as never);
+        // ✅ NOUVEAU: Passer les paramètres si disponibles
+        if (action.params) {
+          navigation.navigate(action.route as never, action.params);
+        } else {
+          navigation.navigate(action.route as never);
+        }
       } else {
         Alert.alert('Information', 'Cette fonctionnalité sera bientôt disponible');
       }
@@ -237,6 +242,7 @@ const ProfileScreen: React.FC = () => {
       icon: 'video', // ✅ NOUVEAU: Accès aux vidéos créées
       color: '#EC4899',
       route: 'VideoFeed',
+      params: { showOnlyMyVideos: true }, // ✅ NOUVEAU: Afficher uniquement les vidéos du prestataire
       description: 'Voir et gérer vos vidéos créées'
     },
     {

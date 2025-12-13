@@ -56,8 +56,8 @@ export const useWebSocket = (
   const connect = useCallback(() => {
     if (!isConnected && !isConnecting) {
       if (!userId) {
-        console.warn('⚠️ [useWebSocket] userId requis pour la connexion');
-        setLastError('userId requis');
+        // ✅ CORRIGÉ: Ne pas logger d'erreur si userId n'est pas encore disponible (chargement auth)
+        // Juste ignorer silencieusement, la connexion sera réessayée quand userId sera disponible
         return;
       }
       setIsConnecting(true);

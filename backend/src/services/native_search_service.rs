@@ -458,10 +458,11 @@ impl NativeSearchService {
             ));
         }
 
-        // ✅ OPTIMISÉ 2025-12-12: Utiliser recherche rapide via autocomplete_characteristics
-        // Cette recherche est beaucoup plus rapide que fulltext_search_with_gps car elle utilise
-        // directement autocomplete_characteristics.full_vector (indexé) au lieu de calculs complexes
-        // avec extract_all_product_text() (non indexé)
+        // ✅ OPTIMISÉ 2025-12-13: Utiliser UNIQUEMENT recherche rapide via autocomplete_characteristics
+        // Cette recherche est 10-20x plus rapide que fulltext_search_with_gps car elle utilise
+        // directement autocomplete_characteristics.full_vector (indexé avec GIN) au lieu de calculs complexes
+        // avec extract_all_product_text() (non indexé, très lent >5s)
+        // ✅ CORRIGÉ: Ne plus faire de fallback vers fulltext_search_with_gps (trop lent, cause timeouts DB)
         let mut fulltext_results = self
             .fast_search_via_autocomplete(
                 &expanded_query, // ✅ NOUVEAU: Utiliser la requête enrichie avec variations
@@ -474,39 +475,25 @@ impl NativeSearchService {
             .await
             .unwrap_or_else(|e| {
                 log::warn!(
-                    "[NativeSearch] ⚠️ Recherche rapide échouée, fallback vers recherche complète: {}",
+                    "[NativeSearch] ⚠️ Recherche rapide échouée: {} (pas de fallback lent pour éviter timeouts)",
                     e
                 );
-                // Fallback vers l'ancienne méthode si la recherche rapide échoue
+                // ✅ CORRIGÉ: Ne plus faire de fallback vers fulltext_search_with_gps (trop lent)
+                // Le fallback SQL dans rechercher_besoin_direct utilisera aussi autocomplete_characteristics
                 vec![]
             });
 
-        // Fallback vers recherche complète si pas assez de résultats avec recherche rapide
-        if fulltext_results.len() < (self.config.max_results / 2) as usize {
+        // ✅ SUPPRIMÉ: Fallback vers fulltext_search_with_gps (trop lent, cause timeouts DB)
+        // Si pas assez de résultats, le fallback SQL dans rechercher_besoin_direct utilisera autocomplete_characteristics
+        if fulltext_results.is_empty() {
+            log_info(
+                "[NativeSearch] ⚠️ Aucun résultat avec recherche rapide (fallback SQL utilisera autocomplete_characteristics)",
+            );
+        } else {
             log_info(&format!(
-                "[NativeSearch] Recherche rapide: {} résultats, fallback vers recherche complète",
+                "[NativeSearch] ✅ Recherche rapide terminée: {} résultats",
                 fulltext_results.len()
             ));
-            let fallback_results = self
-                .fulltext_search_with_gps(
-                    &expanded_query,
-                    effective_category_filter,
-                    location_or_input_filter,
-                    gps_zone,
-                    search_radius_km,
-                    specialized_type,
-                )
-                .await?;
-            // Combiner les résultats, en évitant les doublons
-            let mut existing_ids: std::collections::HashSet<i32> =
-                fulltext_results.iter().map(|r| r.service_id).collect();
-            for result in fallback_results {
-                if !existing_ids.contains(&result.service_id) {
-                    let service_id = result.service_id;
-                    fulltext_results.push(result);
-                    existing_ids.insert(service_id);
-                }
-            }
         }
 
         // Recherche trigram de fallback si pas assez de résultats

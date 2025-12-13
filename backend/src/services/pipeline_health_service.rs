@@ -207,10 +207,10 @@ pub async fn mark_stale_jobs_as_failed(state: Arc<AppState>) -> AppResult<usize>
         r#"
         UPDATE video_generation_jobs
         SET status = 'failed',
-            error_message = COALESCE(error_message, 'Job timeout: job bloqué depuis plus de 1 heure'),
+            error_message = COALESCE(error_message, 'Job timeout: job bloqué depuis plus de 2 heures'),
             updated_at = NOW()
         WHERE status IN ('queued', 'running')
-          AND updated_at < NOW() - INTERVAL '1 hour'
+          AND updated_at < NOW() - INTERVAL '2 hours'
         RETURNING job_id
         "#
     )

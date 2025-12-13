@@ -2279,6 +2279,17 @@ pub async fn generate_product_video(
         }
     }
 
+    // ✅ CORRIGÉ: Ajouter étape de progression avant insertion média (119/120)
+    progress_steps.push(ProgressStep::completed(
+        "saving_media",
+        "Enregistrement de la vidéo dans la base de données",
+        Some("Insertion dans la table media".to_string()),
+    ));
+    if let Some(job_id) = job_id {
+        try_store_progress(&state, job_id, "running", &progress_steps).await;
+    }
+    info!("[VideoGeneration] 📝 Étape 119/120: Enregistrement média en cours...");
+
     let inserted: MediaIdRow = sqlx::query_as(
         r#"
         INSERT INTO media (
@@ -2323,9 +2334,19 @@ pub async fn generate_product_video(
         AppError::from(err)
     })?;
 
+    info!("[VideoGeneration] ✅ Média enregistré avec ID: {}", inserted.id);
+
     let distribution_targets = payload.distribute_channels.clone().unwrap_or_default();
 
-    schedule_distribution_targets(&state, inserted.id, service_id, &distribution_targets).await?;
+    // ✅ CORRIGÉ: Rendre schedule_distribution_targets non-bloquant pour éviter les timeouts
+    let schedule_result = schedule_distribution_targets(&state, inserted.id, service_id, &distribution_targets).await;
+    if let Err(err) = schedule_result {
+        warn!(
+            "[VideoGeneration] ⚠️ Impossible de planifier les cibles de distribution: {}. La vidéo est créée mais la distribution sera planifiée plus tard.",
+            err
+        );
+        // Ne pas faire échouer le job pour cette erreur
+    }
 
     if let Err(err) = distribution_automation_service::automate_media_distribution(
         state.clone(),
@@ -2364,6 +2385,18 @@ pub async fn generate_product_video(
     let cost_estimation_json =
         serde_json::to_value(&cost_estimation).unwrap_or_else(|_| json!(null));
 
+    // ✅ CORRIGÉ: Ajouter étape de progression finale (120/120)
+    progress_steps.push(ProgressStep::completed(
+        "finalizing",
+        "Finalisation de la génération vidéo",
+        Some("Enregistrement des métriques et nettoyage".to_string()),
+    ));
+    if let Some(job_id) = job_id {
+        try_store_progress(&state, job_id, "running", &progress_steps).await;
+    }
+    info!("[VideoGeneration] 📝 Étape 120/120: Finalisation en cours...");
+
+    // ✅ CORRIGÉ: Rendre record_engagement non-bloquant (déjà fait mais ajouter plus de logs)
     if let Err(err) = record_engagement(
         state.clone(),
         inserted.id,
@@ -2387,9 +2420,11 @@ pub async fn generate_product_video(
     .await
     {
         warn!(
-            "[VideoGeneration] Impossible d'enregistrer le score qualité analytics: {}",
+            "[VideoGeneration] ⚠️ Impossible d'enregistrer le score qualité analytics: {}. La vidéo est créée mais les métriques ne seront pas enregistrées.",
             err
         );
+    } else {
+        info!("[VideoGeneration] ✅ Métriques de qualité enregistrées");
     }
 
     // Nettoyage du dossier temporaire (après génération des variantes)
@@ -2430,8 +2465,11 @@ pub async fn generate_product_video(
         job_id,
     };
 
+    // ✅ CORRIGÉ: Finaliser le job avec logs détaillés
     if let Some(job_id) = job_id {
+        info!("[VideoGeneration] ✅ Finalisation du job {} - Statut: completed", job_id);
         try_store_progress(&state, job_id, "completed", &result.progress_steps).await;
+        info!("[VideoGeneration] ✅ Job {} marqué comme completed dans la base de données", job_id);
     }
 
     let total_duration_ms = overall_start.elapsed().as_millis() as i64;

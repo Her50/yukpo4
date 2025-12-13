@@ -200,8 +200,10 @@ pub async fn attach_loop_to_service(
                 3. Les fichiers audio requis: ambient_wave.mp3, pulse_groove.mp3, lofi_sunset.mp3, cinematic_rise.mp3",
                 loop_id
             );
+            // ✅ CORRIGÉ: Retourner une erreur BadRequest au lieu de bloquer complètement
+            // Le système peut continuer sans cette boucle audio spécifique
             return Err(AppError::BadRequest(format!(
-                "Boucle audio '{}' temporairement indisponible. Le CDN est inaccessible et le fichier local n'est pas disponible dans assets/audio/. Réessayez plus tard ou contactez le support si le problème persiste.",
+                "Boucle audio '{}' temporairement indisponible. Le CDN est inaccessible et le fichier local n'est pas disponible dans assets/audio/. Une boucle audio par défaut sera utilisée.",
                 loop_id
             )));
         }

@@ -96,16 +96,32 @@ impl StatusManager {
 
     pub async fn cleanup_inactive_users(&self) {
         let mut users = self.users.write().await;
+        let mut connections = self.connections.write().await;
         let now = Utc::now();
-        let timeout = chrono::Duration::minutes(5); // 5 minutes
+        let timeout = chrono::Duration::minutes(10); // ✅ Augmenté à 10 minutes
 
-        users.retain(|_, status| {
-            if status.is_online && now.signed_duration_since(status.last_seen) > timeout {
-                log::info!("Utilisateur {} marqué comme inactif", status.user_id);
-                status.is_online = false;
+        // ✅ OPTIMISÉ: Supprimer complètement les utilisateurs inactifs depuis plus de 30 minutes
+        let long_timeout = chrono::Duration::minutes(30);
+        let mut to_remove: Vec<i32> = Vec::new();
+        
+        for (user_id, status) in users.iter() {
+            let inactive_duration = now.signed_duration_since(status.last_seen);
+            if status.is_online && inactive_duration > timeout {
+                log::info!("Utilisateur {} marqué comme inactif", user_id);
             }
-            true
-        });
+            // Supprimer complètement si inactif depuis plus de 30 minutes
+            if inactive_duration > long_timeout {
+                to_remove.push(*user_id);
+            }
+        }
+        
+        // Supprimer les utilisateurs très inactifs
+        for user_id in to_remove {
+            users.remove(&user_id);
+            // Nettoyer aussi les connexions associées
+            connections.retain(|_, uid| *uid != user_id);
+            log::info!("🧹 Utilisateur {} supprimé (inactif > 30 min)", user_id);
+        }
     }
 
     pub async fn broadcast_status_update(&self, user_id: i32, is_online: bool) -> StatusUpdate {

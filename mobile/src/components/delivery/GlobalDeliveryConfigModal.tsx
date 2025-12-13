@@ -100,9 +100,17 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
     });
 
     // ✅ CORRIGÉ: Ne pas utiliser le dernier produit, mais afficher tous les produits sélectionnés
-    const validProducts = Array.isArray(selectedProducts) 
-        ? selectedProducts.filter(p => p && p.serviceId && typeof p.productIndex === 'number') 
-        : [];
+    // ✅ AMÉLIORÉ: S'assurer que les produits sont toujours à jour et ne se figent pas
+    const validProducts = React.useMemo(() => {
+        if (!Array.isArray(selectedProducts)) return [];
+        return selectedProducts.filter(p => 
+            p && 
+            p.serviceId && 
+            typeof p.serviceId === 'number' && 
+            typeof p.productIndex === 'number' &&
+            p.productName // ✅ S'assurer que productName existe
+        );
+    }, [selectedProducts]);
     const validProductsCount = validProducts.length || 0;
 
     useEffect(() => {
@@ -394,7 +402,10 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                             </Text>
                             {validProductsCount > 0 && (
                                 <Text style={styles.headerSubtitle}>
-                                    {validProductsCount} produit{validProductsCount > 1 ? 's' : ''} sélectionné{validProductsCount > 1 ? 's' : ''}
+                                    {validProductsCount === 1 
+                                        ? `1 produit sélectionné`
+                                        : `${validProductsCount} produits sélectionnés - Configuration identique pour tous`
+                                    }
                                 </Text>
                             )}
                         </View>

@@ -12,10 +12,35 @@ use jsonschema::JSONSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::env;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::fs;
 use uuid::Uuid;
+
+// ✅ NOUVEAU: Limites de taille de fichiers pour éviter les problèmes de mémoire
+// Configurables via variables d'environnement
+const DEFAULT_MAX_IMAGE_SIZE: usize = 10 * 1024 * 1024; // 10 MB
+const DEFAULT_MAX_AUDIO_SIZE: usize = 10 * 1024 * 1024; // 10 MB
+const DEFAULT_MAX_VIDEO_SIZE: usize = 50 * 1024 * 1024; // 50 MB (vidéos plus grandes)
+const DEFAULT_MAX_DOC_SIZE: usize = 10 * 1024 * 1024; // 10 MB
+const DEFAULT_MAX_EXCEL_SIZE: usize = 5 * 1024 * 1024; // 5 MB
+
+fn get_max_file_size(file_type: &str) -> usize {
+    let env_key = format!("MAX_{}_SIZE_MB", file_type.to_uppercase());
+    env::var(&env_key)
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .map(|mb| mb * 1024 * 1024)
+        .unwrap_or_else(|| match file_type {
+            "IMAGE" => DEFAULT_MAX_IMAGE_SIZE,
+            "AUDIO" => DEFAULT_MAX_AUDIO_SIZE,
+            "VIDEO" => DEFAULT_MAX_VIDEO_SIZE,
+            "DOC" => DEFAULT_MAX_DOC_SIZE,
+            "EXCEL" => DEFAULT_MAX_EXCEL_SIZE,
+            _ => DEFAULT_MAX_IMAGE_SIZE,
+        })
+}
 
 /// ?? Configuration d'orchestration IA ultra-moderne
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,10 +130,26 @@ pub async fn orchestrer_intention_ia(
     let mut all_file_names: Vec<String> = Vec::new();
     let mut all_mime_types: Vec<String> = Vec::new();
 
+    // ✅ OPTIMISÉ: Validation de taille des fichiers pour éviter les problèmes de mémoire
+    let max_image_size = get_max_file_size("IMAGE");
+    let max_audio_size = get_max_file_size("AUDIO");
+    let max_video_size = get_max_file_size("VIDEO");
+    let max_doc_size = get_max_file_size("DOC");
+    let max_excel_size = get_max_file_size("EXCEL");
+
     // Images
     if let Some(images) = &input.base64_image {
         for (i, img) in images.iter().enumerate() {
             if let Ok(data) = general_purpose::STANDARD.decode(img) {
+                if data.len() > max_image_size {
+                    log::warn!(
+                        "[orchestration_ia] ⚠️ Image {} rejetée: {} MB > {} MB max",
+                        i,
+                        data.len() / 1024 / 1024,
+                        max_image_size / 1024 / 1024
+                    );
+                    continue;
+                }
                 all_files.push(data);
                 all_file_names.push(format!("image_{}.jpg", i));
                 all_mime_types.push("image/jpeg".to_string());
@@ -120,6 +161,15 @@ pub async fn orchestrer_intention_ia(
     if let Some(audios) = &input.audio_base64 {
         for (i, audio) in audios.iter().enumerate() {
             if let Ok(data) = general_purpose::STANDARD.decode(audio) {
+                if data.len() > max_audio_size {
+                    log::warn!(
+                        "[orchestration_ia] ⚠️ Audio {} rejeté: {} MB > {} MB max",
+                        i,
+                        data.len() / 1024 / 1024,
+                        max_audio_size / 1024 / 1024
+                    );
+                    continue;
+                }
                 all_files.push(data);
                 all_file_names.push(format!("audio_{}.mp3", i));
                 all_mime_types.push("audio/mpeg".to_string());
@@ -131,6 +181,15 @@ pub async fn orchestrer_intention_ia(
     if let Some(videos) = &input.video_base64 {
         for (i, video) in videos.iter().enumerate() {
             if let Ok(data) = general_purpose::STANDARD.decode(video) {
+                if data.len() > max_video_size {
+                    log::warn!(
+                        "[orchestration_ia] ⚠️ Vidéo {} rejetée: {} MB > {} MB max",
+                        i,
+                        data.len() / 1024 / 1024,
+                        max_video_size / 1024 / 1024
+                    );
+                    continue;
+                }
                 all_files.push(data);
                 all_file_names.push(format!("video_{}.mp4", i));
                 all_mime_types.push("video/mp4".to_string());
@@ -142,6 +201,15 @@ pub async fn orchestrer_intention_ia(
     if let Some(docs) = &input.doc_base64 {
         for (i, doc) in docs.iter().enumerate() {
             if let Ok(data) = general_purpose::STANDARD.decode(doc) {
+                if data.len() > max_doc_size {
+                    log::warn!(
+                        "[orchestration_ia] ⚠️ Document {} rejeté: {} MB > {} MB max",
+                        i,
+                        data.len() / 1024 / 1024,
+                        max_doc_size / 1024 / 1024
+                    );
+                    continue;
+                }
                 all_files.push(data);
                 all_file_names.push(format!("document_{}.pdf", i));
                 all_mime_types.push("application/pdf".to_string());
@@ -153,6 +221,15 @@ pub async fn orchestrer_intention_ia(
     if let Some(excel_files) = &input.excel_base64 {
         for (i, excel) in excel_files.iter().enumerate() {
             if let Ok(data) = general_purpose::STANDARD.decode(excel) {
+                if data.len() > max_excel_size {
+                    log::warn!(
+                        "[orchestration_ia] ⚠️ Fichier Excel {} rejeté: {} MB > {} MB max",
+                        i,
+                        data.len() / 1024 / 1024,
+                        max_excel_size / 1024 / 1024
+                    );
+                    continue;
+                }
                 all_files.push(data);
                 all_file_names.push(format!("excel_{}.xlsx", i));
                 all_mime_types.push(

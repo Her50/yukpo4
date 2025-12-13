@@ -41,8 +41,8 @@ pub async fn get_popular_products_similar_to(
                 -- Calcul tendance : usage_count actuel vs il y a 7 jours (via updated_at)
                 CASE 
                     WHEN ac.updated_at >= NOW() - INTERVAL '7 days' 
-                    THEN 1 -- Tendance hausse (produit actif récemment)
-                    ELSE 0 -- Stable/baisse
+                    THEN TRUE -- Tendance hausse (produit actif récemment)
+                    ELSE FALSE -- Stable/baisse
                 END as is_trending
             FROM autocomplete_combinations ac
             WHERE ac.usage_count >= 2

@@ -41,7 +41,8 @@ class WebSocketManager implements WebSocketService {
 
   connect(userId?: string | number): void {
     if (!userId) {
-      console.error('❌ [WebSocket] userId requis pour la connexion');
+      // ✅ CORRIGÉ: Ne pas logger d'erreur si userId n'est pas encore disponible (chargement auth)
+      // Juste ignorer silencieusement, la connexion sera réessayée quand userId sera disponible
       return;
     }
 
