@@ -404,12 +404,39 @@ const viewabilityConfig = {
 };
 
 const VideoFeedScreen: React.FC = () => {
+    console.log('[VideoFeedScreen] 🎬 Initialisation du composant');
+    
     const navigation = useNavigation();
     const { user } = useAuth();
-    // ✅ NOUVEAU: Accessibilité
-    const { isScreenReaderEnabled, isReduceMotionEnabled } = useAccessibility();
-    // ✅ NOUVEAU: Optimisations batterie
-    const { isBackground, shouldPauseVideos, shouldReducePreload, optimalFPS } = useBatteryOptimization();
+    
+    // ✅ SÉCURITÉ: Gestion d'erreur pour les hooks optionnels
+    let isScreenReaderEnabled = false;
+    let isReduceMotionEnabled = false;
+    let isBackground = false;
+    let shouldPauseVideos = false;
+    let shouldReducePreload = false;
+    let optimalFPS = 60;
+    
+    try {
+        // ✅ NOUVEAU: Accessibilité
+        const accessibility = useAccessibility();
+        isScreenReaderEnabled = accessibility?.isScreenReaderEnabled || false;
+        isReduceMotionEnabled = accessibility?.isReduceMotionEnabled || false;
+    } catch (error) {
+        console.warn('[VideoFeedScreen] ⚠️ Erreur useAccessibility, utilisation valeurs par défaut:', error);
+    }
+    
+    try {
+        // ✅ NOUVEAU: Optimisations batterie
+        const battery = useBatteryOptimization();
+        isBackground = battery?.isBackground || false;
+        shouldPauseVideos = battery?.shouldPauseVideos || false;
+        shouldReducePreload = battery?.shouldReducePreload || false;
+        optimalFPS = battery?.optimalFPS || 60;
+    } catch (error) {
+        console.warn('[VideoFeedScreen] ⚠️ Erreur useBatteryOptimization, utilisation valeurs par défaut:', error);
+    }
+    
     const [loading, setLoading] = useState(true);
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [forYouSource, setForYouSource] = useState<FeedItem[]>([]);
@@ -824,6 +851,7 @@ const VideoFeedScreen: React.FC = () => {
     }, [feed, logVisibility, trackWatchTime]);
 
     const loadFeed = useCallback(async () => {
+        console.log('[VideoFeedScreen] 🎬 Démarrage loadFeed', { userId: user?.id });
         try {
             setLoading(true);
 
@@ -984,7 +1012,14 @@ const VideoFeedScreen: React.FC = () => {
     }, [isFollowingLane, loadFeed, reorderFeed, searchQuery]);
 
     useEffect(() => {
-        loadFeed().catch(() => undefined);
+        console.log('[VideoFeedScreen] 🔄 useEffect loadFeed déclenché');
+        loadFeed()
+            .then(() => {
+                console.log('[VideoFeedScreen] ✅ loadFeed terminé avec succès');
+            })
+            .catch((error) => {
+                console.error('[VideoFeedScreen] ❌ Erreur loadFeed:', error);
+            });
     }, [loadFeed]);
 
     useEffect(() => {
@@ -1125,27 +1160,39 @@ const VideoFeedScreen: React.FC = () => {
 
     const handleViewableItemsChanged = useCallback(
         ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-            if (viewableItems.length === 0) return;
-            const firstVisible = viewableItems[0];
-            if (firstVisible?.index == null) {
-                return;
-            }
-            const nextIndex = firstVisible.index;
-            if (nextIndex === currentIndexRef.current) {
-                return;
-            }
+            try {
+                if (!viewableItems || viewableItems.length === 0) {
+                    return;
+                }
+                const firstVisible = viewableItems[0];
+                if (!firstVisible || firstVisible?.index == null) {
+                    return;
+                }
+                const nextIndex = firstVisible.index;
+                if (nextIndex === currentIndexRef.current) {
+                    return;
+                }
 
-            flushCurrentView();
-            currentIndexRef.current = nextIndex;
-            currentStartTimeRef.current = Date.now();
-            setCurrentIndex(nextIndex);
-            setCurrentDurationMs(0);
-
-            if (feed[nextIndex]) {
-                logVisibility(feed[nextIndex], nextIndex, {
-                    viewed: true,
-                    viewDurationMs: 0,
+                console.log('[VideoFeedScreen] 📹 Changement vidéo visible:', {
+                    previousIndex: currentIndexRef.current,
+                    nextIndex,
+                    feedLength: feed.length
                 });
+
+                flushCurrentView();
+                currentIndexRef.current = nextIndex;
+                currentStartTimeRef.current = Date.now();
+                setCurrentIndex(nextIndex);
+                setCurrentDurationMs(0);
+
+                if (feed[nextIndex]) {
+                    logVisibility(feed[nextIndex], nextIndex, {
+                        viewed: true,
+                        viewDurationMs: 0,
+                    });
+                }
+            } catch (error) {
+                console.error('[VideoFeedScreen] ❌ Erreur handleViewableItemsChanged:', error);
             }
         },
         [feed, flushCurrentView, logVisibility]
@@ -2210,6 +2257,15 @@ const VideoFeedScreen: React.FC = () => {
         ),
         [],
     );
+
+    // ✅ DIAGNOSTIC: Log avant le rendu
+    console.log('[VideoFeedScreen] 🎨 Rendu du composant', {
+        loading,
+        feedLength: feed.length,
+        currentIndex,
+        hasUser: !!user,
+        userId: user?.id
+    });
 
     return (
         <SafeNativeView style={styles.container} edges={['top', 'bottom']}>

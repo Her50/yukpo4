@@ -4,14 +4,17 @@ import {
     Modal,
     ScrollView,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { apiGet, apiPost, deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { NativeButton, NativeCard } from '../NativeDesign';
+import ModernGPSModal from '../ModernGPSModal';
 import SafeIcon from '../SafeIcon';
 
 interface Product {
@@ -34,6 +37,31 @@ interface ParcelType {
     description?: string;
 }
 
+interface TimeSlot {
+    start: string;
+    end: string;
+}
+
+interface WeeklySchedule {
+    lundi?: TimeSlot[];
+    mardi?: TimeSlot[];
+    mercredi?: TimeSlot[];
+    jeudi?: TimeSlot[];
+    vendredi?: TimeSlot[];
+    samedi?: TimeSlot[];
+    dimanche?: TimeSlot[];
+}
+
+const DAYS_OF_WEEK = [
+    { key: 'lundi' as const, label: 'Lundi' },
+    { key: 'mardi' as const, label: 'Mardi' },
+    { key: 'mercredi' as const, label: 'Mercredi' },
+    { key: 'jeudi' as const, label: 'Jeudi' },
+    { key: 'vendredi' as const, label: 'Vendredi' },
+    { key: 'samedi' as const, label: 'Samedi' },
+    { key: 'dimanche' as const, label: 'Dimanche' },
+];
+
 const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
     visible,
     onClose,
@@ -51,28 +79,38 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
         is_active: boolean;
     }>>([]);
     const [loadingLocations, setLoadingLocations] = useState(false);
+    const [showGPSModal, setShowGPSModal] = useState(false);
+    const [gpsField, setGpsField] = useState<'pickup' | null>(null);
+    
     const [config, setConfig] = useState({
         pickup_address: '',
         pickup_latitude: 0,
         pickup_longitude: 0,
         storage_location_id: undefined as number | undefined,
         required_vehicle_type_id: 0,
+        preparation_time_minutes: '', // ✅ NOUVEAU: Temps de préparation en minutes
         weight_kg: '',
         volume_cm3: '',
         requires_isothermal: false,
         requires_fragile_handling: false,
-        pickup_availability_schedule: '{}',
+        pickup_availability_schedule: {} as WeeklySchedule,
         pickup_instructions: '',
-        billing_mode: 'standard',
+        billing_mode: 'standard' as 'standard' | 'partner',
         billing_partner_label: ''
     });
 
+    // ✅ CORRIGÉ: Ne pas utiliser le dernier produit, mais afficher tous les produits sélectionnés
+    const validProducts = Array.isArray(selectedProducts) 
+        ? selectedProducts.filter(p => p && p.serviceId && typeof p.productIndex === 'number') 
+        : [];
+    const validProductsCount = validProducts.length || 0;
+
     useEffect(() => {
-        if (visible && selectedProducts.length > 0) {
+        if (visible && validProductsCount > 0) {
             loadParcelTypes();
             loadStorageLocations();
         }
-    }, [visible, selectedProducts]);
+    }, [visible, validProductsCount]);
 
     const loadStorageLocations = async () => {
         setLoadingLocations(true);
@@ -80,7 +118,6 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
             const response = await deliveryApi.listStorageLocations();
             if (response.success && response.data) {
                 const data = response.data as any;
-                // ✅ Sécuriser : Filtrer uniquement les lieux actifs
                 const activeLocations = Array.isArray(data?.locations)
                     ? data.locations.filter((loc: any) => loc && loc.is_active)
                     : [];
@@ -113,7 +150,6 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
             const response = await apiGet('/api/delivery/parcel-types');
             if (response.success && response.data) {
                 const data = response.data as any;
-                // ✅ Sécuriser : S'assurer que parcelTypes est un tableau
                 const types = Array.isArray(data?.parcel_types)
                     ? data.parcel_types.filter((t: any) => t && t.id && t.name)
                     : [];
@@ -124,10 +160,115 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
         }
     };
 
+    // ✅ NOUVEAU: Gérer la sélection GPS via ModernGPSModal avec géocodage inverse
+    const handleGPSSelect = async (coordinates: string) => {
+        if (!gpsField) return;
+        
+        const [lat, lng] = coordinates.split(',').map(Number.parseFloat);
+        if (isNaN(lat) || isNaN(lng)) {
+            setShowGPSModal(false);
+            setGpsField(null);
+            return;
+        }
+
+        // ✅ Géocodage inverse pour récupérer l'adresse automatiquement
+        try {
+            const reverseGeocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+            if (reverseGeocode && reverseGeocode.length > 0) {
+                const addr = reverseGeocode[0];
+                const fullAddress = [
+                    addr.streetNumber,
+                    addr.street,
+                    addr.district || addr.subregion,
+                    addr.city,
+                    addr.region
+                ].filter(Boolean).join(', ').trim() || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+                setConfig(prev => ({
+                    ...prev,
+                    pickup_address: fullAddress,
+                    pickup_latitude: lat,
+                    pickup_longitude: lng,
+                }));
+            } else {
+                setConfig(prev => ({
+                    ...prev,
+                    pickup_address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                    pickup_latitude: lat,
+                    pickup_longitude: lng,
+                }));
+            }
+        } catch (error) {
+            console.error('Erreur géocodage inverse:', error);
+            // En cas d'erreur, utiliser les coordonnées comme adresse
+            setConfig(prev => ({
+                ...prev,
+                pickup_address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                pickup_latitude: lat,
+                pickup_longitude: lng,
+            }));
+        }
+
+        setShowGPSModal(false);
+        setGpsField(null);
+    };
+
+    // ✅ NOUVEAU: Gérer les plages horaires avec interface utilisateur
+    const toggleDaySchedule = (day: keyof WeeklySchedule) => {
+        setConfig(prev => {
+            const schedule = { ...prev.pickup_availability_schedule };
+            if (schedule[day] && schedule[day]!.length > 0) {
+                delete schedule[day];
+            } else {
+                schedule[day] = [{ start: '08:00', end: '18:00' }];
+            }
+            return { ...prev, pickup_availability_schedule: schedule };
+        });
+    };
+
+    const updateTimeSlot = (day: keyof WeeklySchedule, slotIndex: number, field: 'start' | 'end', value: string) => {
+        setConfig(prev => {
+            const schedule = { ...prev.pickup_availability_schedule };
+            if (!schedule[day]) return prev;
+            const slots = [...(schedule[day] || [])];
+            slots[slotIndex] = { ...slots[slotIndex], [field]: value };
+            schedule[day] = slots;
+            return { ...prev, pickup_availability_schedule: schedule };
+        });
+    };
+
+    const addTimeSlot = (day: keyof WeeklySchedule) => {
+        setConfig(prev => {
+            const schedule = { ...prev.pickup_availability_schedule };
+            if (!schedule[day]) schedule[day] = [];
+            schedule[day]!.push({ start: '08:00', end: '18:00' });
+            return { ...prev, pickup_availability_schedule: schedule };
+        });
+    };
+
+    const removeTimeSlot = (day: keyof WeeklySchedule, slotIndex: number) => {
+        setConfig(prev => {
+            const schedule = { ...prev.pickup_availability_schedule };
+            if (!schedule[day]) return prev;
+            const slots = schedule[day]!.filter((_, i) => i !== slotIndex);
+            if (slots.length === 0) {
+                delete schedule[day];
+            } else {
+                schedule[day] = slots;
+            }
+            return { ...prev, pickup_availability_schedule: schedule };
+        });
+    };
+
     const handleSave = async () => {
         // Validation
         if (!config.pickup_address.trim()) {
             Alert.alert('Erreur', 'Veuillez sélectionner ou saisir une adresse de départ');
+            return;
+        }
+
+        if (!config.pickup_latitude || !config.pickup_longitude || config.pickup_latitude === 0 || config.pickup_longitude === 0) {
+            Alert.alert('Erreur', 'Veuillez sélectionner une position GPS précise pour le matching avec les coursiers');
             return;
         }
 
@@ -136,7 +277,17 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
             return;
         }
 
-        if (selectedProducts.length === 0) {
+        if (Object.keys(config.pickup_availability_schedule).length === 0) {
+            Alert.alert('Erreur', 'Veuillez définir au moins une plage horaire de départ');
+            return;
+        }
+
+        if (!config.preparation_time_minutes || isNaN(parseInt(config.preparation_time_minutes)) || parseInt(config.preparation_time_minutes) <= 0) {
+            Alert.alert('Erreur', 'Veuillez saisir un temps de préparation valide (en minutes)');
+            return;
+        }
+
+        if (validProductsCount === 0) {
             Alert.alert('Erreur', 'Aucun produit sélectionné');
             return;
         }
@@ -144,8 +295,8 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
         setLoading(true);
 
         try {
-            // ✅ Grouper les produits par serviceId pour optimiser les appels API
-            const productsByService = selectedProducts.reduce((acc, product) => {
+            // Grouper les produits par serviceId pour optimiser les appels API
+            const productsByService = validProducts.reduce((acc, product) => {
                 if (!acc[product.serviceId]) {
                     acc[product.serviceId] = [];
                 }
@@ -153,8 +304,6 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                 return acc;
             }, {} as Record<number, number[]>);
 
-            // ✅ Appliquer la configuration à tous les produits sélectionnés
-            // ✅ CORRECTION: Vérifier que productsByService et productIndices sont valides
             const entries = Object.entries(productsByService).filter(([serviceIdStr, productIndices]) => {
                 const serviceId = parseInt(serviceIdStr, 10);
                 return !isNaN(serviceId) && Array.isArray(productIndices) && productIndices.length > 0;
@@ -170,11 +319,12 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
                         pickup_longitude: config.pickup_longitude,
                         storage_location_id: config.storage_location_id,
                         required_vehicle_type_id: config.required_vehicle_type_id,
+                        preparation_time_minutes: parseInt(config.preparation_time_minutes), // ✅ NOUVEAU: Temps de préparation
                         weight_kg: config.weight_kg ? parseFloat(config.weight_kg) : null,
                         volume_cm3: config.volume_cm3 ? parseFloat(config.volume_cm3) : null,
                         requires_isothermal: config.requires_isothermal,
                         requires_fragile_handling: config.requires_fragile_handling,
-                        pickup_availability_schedule: JSON.parse(config.pickup_availability_schedule || '{}'),
+                        pickup_availability_schedule: config.pickup_availability_schedule, // ✅ Déjà un objet, pas de JSON.parse
                         pickup_instructions: config.pickup_instructions,
                         billing_mode: config.billing_mode,
                         billing_partner_label: config.billing_partner_label || ''
@@ -184,7 +334,6 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
 
             const results = await Promise.all(promises.flat());
 
-            // ✅ Vérifier si toutes les configurations ont été appliquées avec succès
             const successCount = results.filter((r: any) => r && r.success === true).length;
             const totalCount = results.length;
 
@@ -228,290 +377,417 @@ const GlobalDeliveryConfigModal: React.FC<GlobalDeliveryConfigModalProps> = ({
         }
     };
 
-    // ✅ Sécuriser : Vérifier que selectedProducts est un tableau valide
-    const validProducts = Array.isArray(selectedProducts) ? selectedProducts.filter(p => p && p.serviceId && typeof p.productIndex === 'number') : [];
-    const validProductsCount = validProducts.length || 0;
-
     return (
-        <Modal
-            visible={visible}
-            animationType="slide"
-            presentationStyle="fullScreen"
-            onRequestClose={onClose}
-        >
-            <View style={styles.container}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Configuration livraison globale</Text>
-                    <TouchableOpacity onPress={onClose}>
-                        <SafeIcon name="x" size={24} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-
-                <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                    {/* Liste des produits sélectionnés */}
-                    <NativeCard style={styles.productsCard}>
-                        <View style={styles.productsHeader}>
-                            <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.productsTitle}>
-                                Produits sélectionnés ({String(validProductsCount)})
+        <>
+            <Modal
+                visible={visible}
+                animationType="slide"
+                presentationStyle="fullScreen"
+                onRequestClose={onClose}
+            >
+                <View style={styles.container}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <View style={styles.headerLeft}>
+                            <Text style={styles.headerTitle}>
+                                Configuration livraison
                             </Text>
-                        </View>
-                        {validProducts.length === 0 ? (
-                            <Text style={styles.emptyText}>Aucun produit sélectionné</Text>
-                        ) : (
-                            <ScrollView style={styles.productsList} nestedScrollEnabled>
-                                {validProducts.map((product, index) => {
-                                    // ✅ SÉCURISÉ: Extraire les noms de manière sûre
-                                    const productNameDisplay = (() => {
-                                        if (!product.productName) return 'Produit sans nom';
-                                        if (typeof product.productName === 'string') {
-                                            return product.productName.trim() || 'Produit sans nom';
-                                        }
-                                        if (typeof product.productName === 'object' && product.productName !== null) {
-                                            const obj = product.productName as any;
-                                            if ('valeur' in obj && typeof obj.valeur === 'string') {
-                                                return obj.valeur.trim() || 'Produit sans nom';
-                                            }
-                                        }
-                                        return String(product.productName) || 'Produit sans nom';
-                                    })();
-
-                                    const serviceNameDisplay = (() => {
-                                        if (!product.serviceName) return 'Service sans nom';
-                                        if (typeof product.serviceName === 'string') {
-                                            return product.serviceName.trim() || 'Service sans nom';
-                                        }
-                                        if (typeof product.serviceName === 'object' && product.serviceName !== null) {
-                                            const obj = product.serviceName as any;
-                                            if ('valeur' in obj && typeof obj.valeur === 'string') {
-                                                return obj.valeur.trim() || 'Service sans nom';
-                                            }
-                                        }
-                                        return String(product.serviceName) || 'Service sans nom';
-                                    })();
-
-                                    return (
-                                        <View key={`${String(product.serviceId)}_${String(product.productIndex)}_${index}`} style={styles.productItem}>
-                                            <SafeIcon name="check-circle" size={16} color="#10B981" />
-                                            <View style={styles.productInfo}>
-                                                <Text style={styles.productName} numberOfLines={1}>
-                                                    {productNameDisplay}
-                                                </Text>
-                                                <Text style={styles.serviceName} numberOfLines={1}>
-                                                    Service: {serviceNameDisplay}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                    );
-                                })}
-                            </ScrollView>
-                        )}
-                    </NativeCard>
-
-                    {/* Adresse de départ */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>Adresse de départ *</Text>
-                        {/* Lieu de stock */}
-                        {Array.isArray(storageLocations) && storageLocations.length > 0 && (
-                            <TouchableOpacity
-                                style={styles.select}
-                                onPress={() => {
-                                    Alert.alert(
-                                        'Lieu de stock',
-                                        'Sélectionnez un lieu de stock',
-                                        [
-                                            ...storageLocations.map(loc => ({
-                                                text: `${loc.name} - ${loc.address}`,
-                                                onPress: () => {
-                                                    setConfig(prev => ({
-                                                        ...prev,
-                                                        storage_location_id: loc.id,
-                                                        pickup_address: loc.address,
-                                                        pickup_latitude: loc.latitude,
-                                                        pickup_longitude: loc.longitude,
-                                                    }));
-                                                }
-                                            })),
-                                            { text: 'Annuler', style: 'cancel' as const }
-                                        ]
-                                    );
-                                }}
-                            >
-                                <Text style={styles.selectText}>
-                                    {config.storage_location_id
-                                        ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.name || 'Lieu sélectionné')
-                                        : 'Sélectionner un lieu de stock (optionnel)'}
+                            {validProductsCount > 0 && (
+                                <Text style={styles.headerSubtitle}>
+                                    {validProductsCount} produit{validProductsCount > 1 ? 's' : ''} sélectionné{validProductsCount > 1 ? 's' : ''}
                                 </Text>
-                                <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
-                            </TouchableOpacity>
-                        )}
-                        <TextInput
-                            style={styles.input}
-                            value={config.pickup_address}
-                            onChangeText={(text) => setConfig(prev => ({ ...prev, pickup_address: text }))}
-                            placeholder="Ou saisir une adresse manuellement"
-                            placeholderTextColor={modernColors.textSecondary}
-                        />
-                    </View>
-
-                    {/* Type de véhicule */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>Type de véhicule requis *</Text>
-                        {Array.isArray(parcelTypes) && parcelTypes.length > 0 ? (
-                            <TouchableOpacity
-                                style={styles.select}
-                                onPress={() => {
-                                    Alert.alert(
-                                        'Type de véhicule',
-                                        'Sélectionnez un type de véhicule',
-                                        [
-                                            ...parcelTypes.map(pt => ({
-                                                text: pt.name,
-                                                onPress: () => setConfig(prev => ({ ...prev, required_vehicle_type_id: pt.id }))
-                                            })),
-                                            { text: 'Annuler', style: 'cancel' as const }
-                                        ]
-                                    );
-                                }}
-                            >
-                                <Text style={styles.selectText}>
-                                    {config.required_vehicle_type_id
-                                        ? (parcelTypes.find(pt => pt.id === config.required_vehicle_type_id)?.name || 'Type sélectionné')
-                                        : 'Sélectionner un type'}
-                                </Text>
-                                <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
-                            </TouchableOpacity>
-                        ) : (
-                            <Text style={styles.hint}>Chargement des types de véhicule...</Text>
-                        )}
-                    </View>
-
-                    {/* Poids et volume */}
-                    <View style={styles.row}>
-                        <View style={[styles.section, styles.halfSection]}>
-                            <Text style={styles.label}>Poids (kg)</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={config.weight_kg}
-                                onChangeText={(text) => setConfig(prev => ({ ...prev, weight_kg: text }))}
-                                placeholder="0"
-                                keyboardType="numeric"
-                                placeholderTextColor={modernColors.textSecondary}
-                            />
+                            )}
                         </View>
-                        <View style={[styles.section, styles.halfSection]}>
-                            <Text style={styles.label}>Volume (cm³)</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={config.volume_cm3}
-                                onChangeText={(text) => setConfig(prev => ({ ...prev, volume_cm3: text }))}
-                                placeholder="0"
-                                keyboardType="numeric"
-                                placeholderTextColor={modernColors.textSecondary}
-                            />
-                        </View>
-                    </View>
-
-                    {/* Options spéciales */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>Options spéciales</Text>
-                        <View style={styles.checkboxRow}>
-                            <TouchableOpacity
-                                style={styles.checkbox}
-                                onPress={() => setConfig(prev => ({ ...prev, requires_isothermal: !prev.requires_isothermal }))}
-                            >
-                                <SafeIcon
-                                    name={config.requires_isothermal ? "check-square" : "square"}
-                                    size={20}
-                                    color={modernColors.primary}
-                                />
-                                <Text style={styles.checkboxLabel}>Isotherme (froid)</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.checkbox}
-                                onPress={() => setConfig(prev => ({ ...prev, requires_fragile_handling: !prev.requires_fragile_handling }))}
-                            >
-                                <SafeIcon
-                                    name={config.requires_fragile_handling ? "check-square" : "square"}
-                                    size={20}
-                                    color={modernColors.primary}
-                                />
-                                <Text style={styles.checkboxLabel}>Manipulation fragile</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {/* Instructions */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>Instructions de départ</Text>
-                        <TextInput
-                            style={[styles.input, styles.textArea]}
-                            value={config.pickup_instructions}
-                            onChangeText={(text) => setConfig(prev => ({ ...prev, pickup_instructions: text }))}
-                            placeholder="Instructions spéciales pour le coursier"
-                            multiline
-                            numberOfLines={3}
-                            placeholderTextColor={modernColors.textSecondary}
-                        />
-                    </View>
-
-                    {/* Mode de facturation */}
-                    <View style={styles.section}>
-                        <Text style={styles.label}>Mode de facturation</Text>
-                        <TouchableOpacity
-                            style={styles.select}
-                            onPress={() => {
-                                Alert.alert(
-                                    'Mode de facturation',
-                                    '',
-                                    [
-                                        { text: 'Standard', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'standard' })) },
-                                        { text: 'Partenaire', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'partner' })) },
-                                        { text: 'Annuler', style: 'cancel' as const }
-                                    ]
-                                );
-                            }}
-                        >
-                            <Text style={styles.selectText}>
-                                {config.billing_mode === 'partner' ? 'Partenaire' : 'Standard'}
-                            </Text>
-                            <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                            <SafeIcon name="x" size={24} color="#fff" />
                         </TouchableOpacity>
                     </View>
 
-                    {config.billing_mode === 'partner' && (
+                    <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                        {/* Liste des produits sélectionnés */}
+                        {validProductsCount > 0 && (
+                            <NativeCard style={styles.productsCard}>
+                                <View style={styles.productsHeader}>
+                                    <SafeIcon name="package" size={20} color={modernColors.primary} />
+                                    <Text style={styles.productsTitle}>
+                                        Produits concernés ({validProductsCount})
+                                    </Text>
+                                </View>
+                                <ScrollView style={styles.productsList} nestedScrollEnabled>
+                                    {validProducts.map((product, index) => {
+                                        const productNameDisplay = (() => {
+                                            if (!product.productName) return 'Produit sans nom';
+                                            if (typeof product.productName === 'string') {
+                                                return product.productName.trim() || 'Produit sans nom';
+                                            }
+                                            return String(product.productName) || 'Produit sans nom';
+                                        })();
+
+                                        const serviceNameDisplay = (() => {
+                                            if (!product.serviceName) return 'Service sans nom';
+                                            if (typeof product.serviceName === 'string') {
+                                                return product.serviceName.trim() || 'Service sans nom';
+                                            }
+                                            return String(product.serviceName) || 'Service sans nom';
+                                        })();
+
+                                        return (
+                                            <View key={`${product.serviceId}_${product.productIndex}_${index}`} style={styles.productItem}>
+                                                <SafeIcon name="check-circle" size={16} color="#10B981" />
+                                                <View style={styles.productInfo}>
+                                                    <Text style={styles.productName} numberOfLines={1}>
+                                                        {productNameDisplay}
+                                                    </Text>
+                                                    <Text style={styles.serviceName} numberOfLines={1}>
+                                                        {serviceNameDisplay}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </NativeCard>
+                        )}
+
+                        {/* Adresse de départ avec GPS */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Label partenaire</Text>
+                            <Text style={styles.label}>Adresse de départ *</Text>
+                            
+                            {/* Lieu de stock optionnel */}
+                            {Array.isArray(storageLocations) && storageLocations.length > 0 && (
+                                <TouchableOpacity
+                                    style={styles.select}
+                                    onPress={() => {
+                                        Alert.alert(
+                                            'Lieu de stock',
+                                            'Sélectionnez un lieu de stock (optionnel)',
+                                            [
+                                                { 
+                                                    text: 'Aucun (saisie manuelle)', 
+                                                    onPress: () => setConfig(prev => ({ ...prev, storage_location_id: undefined }))
+                                                },
+                                                ...storageLocations.map(loc => ({
+                                                    text: `${loc.name} - ${loc.address}`,
+                                                    onPress: () => {
+                                                        setConfig(prev => ({
+                                                            ...prev,
+                                                            storage_location_id: loc.id,
+                                                            pickup_address: loc.address,
+                                                            pickup_latitude: loc.latitude,
+                                                            pickup_longitude: loc.longitude,
+                                                        }));
+                                                    }
+                                                })),
+                                                { text: 'Annuler', style: 'cancel' as const }
+                                            ]
+                                        );
+                                    }}
+                                >
+                                    <Text style={styles.selectText}>
+                                        {config.storage_location_id
+                                            ? (storageLocations.find(loc => loc.id === config.storage_location_id)?.name || 'Lieu sélectionné')
+                                            : 'Sélectionner un lieu de stock (optionnel)'}
+                                    </Text>
+                                    <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            )}
+
+                            {/* ✅ NOUVEAU: Champ avec bouton GPS pour géocodage intelligent */}
+                            <View style={styles.addressRow}>
+                                <TextInput
+                                    style={[styles.input, styles.addressInput]}
+                                    value={config.pickup_address}
+                                    onChangeText={(text) => setConfig(prev => ({ ...prev, pickup_address: text }))}
+                                    placeholder="Rechercher un quartier, une ville, une adresse..."
+                                    placeholderTextColor={modernColors.textSecondary}
+                                />
+                                <TouchableOpacity
+                                    style={styles.gpsButton}
+                                    onPress={() => {
+                                        setGpsField('pickup');
+                                        setShowGPSModal(true);
+                                    }}
+                                >
+                                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* ✅ Afficher les coordonnées GPS */}
+                            {(config.pickup_latitude !== 0 || config.pickup_longitude !== 0) && (
+                                <View style={styles.gpsInfo}>
+                                    <SafeIcon name="navigation" size={16} color="#10B981" />
+                                    <Text style={styles.gpsText}>
+                                        GPS: {config.pickup_latitude.toFixed(6)}, {config.pickup_longitude.toFixed(6)}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Type de véhicule */}
+                        <View style={styles.section}>
+                            <Text style={styles.label}>Type de véhicule requis *</Text>
+                            {Array.isArray(parcelTypes) && parcelTypes.length > 0 ? (
+                                <TouchableOpacity
+                                    style={styles.select}
+                                    onPress={() => {
+                                        Alert.alert(
+                                            'Type de véhicule',
+                                            'Sélectionnez un type de véhicule',
+                                            [
+                                                ...parcelTypes.map(pt => ({
+                                                    text: pt.name,
+                                                    onPress: () => setConfig(prev => ({ ...prev, required_vehicle_type_id: pt.id }))
+                                                })),
+                                                { text: 'Annuler', style: 'cancel' as const }
+                                            ]
+                                        );
+                                    }}
+                                >
+                                    <Text style={styles.selectText}>
+                                        {config.required_vehicle_type_id
+                                            ? (parcelTypes.find(pt => pt.id === config.required_vehicle_type_id)?.name || 'Type sélectionné')
+                                            : 'Sélectionner un type'}
+                                    </Text>
+                                    <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            ) : (
+                                <Text style={styles.hint}>Chargement des types de véhicule...</Text>
+                            )}
+                        </View>
+
+                        {/* ✅ NOUVEAU: Temps de préparation */}
+                        <View style={styles.section}>
+                            <Text style={styles.label}>Temps de préparation *</Text>
+                            <Text style={styles.hint}>
+                                Durée en minutes nécessaire pour préparer le produit avant l'arrivée du coursier
+                            </Text>
+                            <View style={styles.preparationTimeRow}>
+                                <TextInput
+                                    style={[styles.input, styles.preparationInput]}
+                                    value={config.preparation_time_minutes}
+                                    onChangeText={(text) => setConfig(prev => ({ ...prev, preparation_time_minutes: text }))}
+                                    placeholder="30"
+                                    keyboardType="numeric"
+                                    placeholderTextColor={modernColors.textSecondary}
+                                />
+                                <Text style={styles.preparationUnit}>minutes</Text>
+                            </View>
+                        </View>
+
+                        {/* Poids et volume */}
+                        <View style={styles.row}>
+                            <View style={[styles.section, styles.halfSection]}>
+                                <Text style={styles.label}>Poids (kg)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={config.weight_kg}
+                                    onChangeText={(text) => setConfig(prev => ({ ...prev, weight_kg: text }))}
+                                    placeholder="Optionnel"
+                                    keyboardType="numeric"
+                                    placeholderTextColor={modernColors.textSecondary}
+                                />
+                            </View>
+                            <View style={[styles.section, styles.halfSection]}>
+                                <Text style={styles.label}>Volume (cm³)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={config.volume_cm3}
+                                    onChangeText={(text) => setConfig(prev => ({ ...prev, volume_cm3: text }))}
+                                    placeholder="Optionnel"
+                                    keyboardType="numeric"
+                                    placeholderTextColor={modernColors.textSecondary}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Options spéciales */}
+                        <View style={styles.section}>
+                            <Text style={styles.label}>Options spéciales</Text>
+                            <View style={styles.checkboxRow}>
+                                <View style={styles.checkbox}>
+                                    <Switch
+                                        value={config.requires_isothermal}
+                                        onValueChange={(value) => setConfig(prev => ({ ...prev, requires_isothermal: value }))}
+                                        trackColor={{ false: '#ccc', true: modernColors.primary }}
+                                    />
+                                    <Text style={styles.checkboxLabel}>Isotherme (froid)</Text>
+                                </View>
+                                <View style={styles.checkbox}>
+                                    <Switch
+                                        value={config.requires_fragile_handling}
+                                        onValueChange={(value) => setConfig(prev => ({ ...prev, requires_fragile_handling: value }))}
+                                        trackColor={{ false: '#ccc', true: modernColors.primary }}
+                                    />
+                                    <Text style={styles.checkboxLabel}>Manipulation fragile</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* ✅ NOUVEAU: Plages horaires avec interface utilisateur (remplace JSON) */}
+                        <View style={styles.section}>
+                            <Text style={styles.label}>Plages horaires de départ *</Text>
+                            <Text style={styles.hint}>
+                                Définissez les heures auxquelles les coursiers peuvent récupérer les colis
+                            </Text>
+                            
+                            {DAYS_OF_WEEK.map((day) => {
+                                const isActive = config.pickup_availability_schedule[day.key] && config.pickup_availability_schedule[day.key]!.length > 0;
+                                const slots = config.pickup_availability_schedule[day.key] || [];
+
+                                return (
+                                    <View key={day.key} style={styles.daySchedule}>
+                                        <TouchableOpacity
+                                            style={styles.dayHeader}
+                                            onPress={() => toggleDaySchedule(day.key)}
+                                        >
+                                            <View style={styles.dayHeaderLeft}>
+                                                <SafeIcon 
+                                                    name={isActive ? "check-square" : "square"} 
+                                                    size={20} 
+                                                    color={isActive ? modernColors.primary : modernColors.textSecondary} 
+                                                />
+                                                <Text style={[styles.dayLabel, isActive && styles.dayLabelActive]}>
+                                                    {day.label}
+                                                </Text>
+                                            </View>
+                                            {isActive && (
+                                                <Text style={styles.slotCount}>
+                                                    {slots.length} plage{slots.length > 1 ? 's' : ''}
+                                                </Text>
+                                            )}
+                                        </TouchableOpacity>
+
+                                        {isActive && (
+                                            <View style={styles.timeSlots}>
+                                                {slots.map((slot, slotIndex) => (
+                                                    <View key={slotIndex} style={styles.timeSlotRow}>
+                                                        <TextInput
+                                                            style={[styles.timeInput, styles.halfInput]}
+                                                            value={slot.start}
+                                                            onChangeText={(value) => updateTimeSlot(day.key, slotIndex, 'start', value)}
+                                                            placeholder="08:00"
+                                                            placeholderTextColor={modernColors.textSecondary}
+                                                        />
+                                                        <Text style={styles.timeSeparator}>-</Text>
+                                                        <TextInput
+                                                            style={[styles.timeInput, styles.halfInput]}
+                                                            value={slot.end}
+                                                            onChangeText={(value) => updateTimeSlot(day.key, slotIndex, 'end', value)}
+                                                            placeholder="18:00"
+                                                            placeholderTextColor={modernColors.textSecondary}
+                                                        />
+                                                        {slots.length > 1 && (
+                                                            <TouchableOpacity
+                                                                style={styles.removeSlotButton}
+                                                                onPress={() => removeTimeSlot(day.key, slotIndex)}
+                                                            >
+                                                                <SafeIcon name="x" size={16} color="#EF4444" />
+                                                            </TouchableOpacity>
+                                                        )}
+                                                    </View>
+                                                ))}
+                                                <TouchableOpacity
+                                                    style={styles.addSlotButton}
+                                                    onPress={() => addTimeSlot(day.key)}
+                                                >
+                                                    <SafeIcon name="plus" size={16} color={modernColors.primary} />
+                                                    <Text style={styles.addSlotText}>Ajouter une plage</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </View>
+                                );
+                            })}
+                        </View>
+
+                        {/* Instructions */}
+                        <View style={styles.section}>
+                            <Text style={styles.label}>Instructions de départ</Text>
                             <TextInput
-                                style={styles.input}
-                                value={config.billing_partner_label}
-                                onChangeText={(text) => setConfig(prev => ({ ...prev, billing_partner_label: text }))}
-                                placeholder="Nom du partenaire"
+                                style={[styles.input, styles.textArea]}
+                                value={config.pickup_instructions}
+                                onChangeText={(text) => setConfig(prev => ({ ...prev, pickup_instructions: text }))}
+                                placeholder="Instructions spéciales pour le coursier (optionnel)"
+                                multiline
+                                numberOfLines={3}
                                 placeholderTextColor={modernColors.textSecondary}
                             />
                         </View>
-                    )}
 
-                    {/* Actions */}
-                    <View style={styles.actions}>
-                        <NativeButton
-                            title="Annuler"
-                            variant="secondary"
-                            onPress={onClose}
-                            style={styles.actionButton}
-                        />
-                        <NativeButton
-                            title={loading ? `Application à ${String(validProductsCount)} produit(s)...` : `Appliquer à ${String(validProductsCount)} produit(s)`}
-                            variant="primary"
-                            onPress={handleSave}
-                            disabled={loading || validProductsCount === 0}
-                            style={styles.actionButton}
-                        />
-                    </View>
-                </ScrollView>
-            </View>
-        </Modal>
+                        {/* Mode de facturation */}
+                        <View style={styles.section}>
+                            <Text style={styles.label}>Mode de facturation</Text>
+                            <TouchableOpacity
+                                style={styles.select}
+                                onPress={() => {
+                                    Alert.alert(
+                                        'Mode de facturation',
+                                        '',
+                                        [
+                                            { text: 'Standard', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'standard' })) },
+                                            { text: 'Partenaire', onPress: () => setConfig(prev => ({ ...prev, billing_mode: 'partner' })) },
+                                            { text: 'Annuler', style: 'cancel' as const }
+                                        ]
+                                    );
+                                }}
+                            >
+                                <Text style={styles.selectText}>
+                                    {config.billing_mode === 'partner' ? 'Partenaire' : 'Standard'}
+                                </Text>
+                                <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {config.billing_mode === 'partner' && (
+                            <View style={styles.section}>
+                                <Text style={styles.label}>Label partenaire</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={config.billing_partner_label}
+                                    onChangeText={(text) => setConfig(prev => ({ ...prev, billing_partner_label: text }))}
+                                    placeholder="Nom du partenaire"
+                                    placeholderTextColor={modernColors.textSecondary}
+                                />
+                            </View>
+                        )}
+
+                        {/* Actions */}
+                        <View style={styles.actions}>
+                            <NativeButton
+                                title="Annuler"
+                                variant="secondary"
+                                onPress={onClose}
+                                style={styles.actionButton}
+                            />
+                            <NativeButton
+                                title={loading ? `Application...` : `Appliquer à ${validProductsCount} produit${validProductsCount > 1 ? 's' : ''}`}
+                                variant="primary"
+                                onPress={handleSave}
+                                disabled={loading || validProductsCount === 0}
+                                style={styles.actionButton}
+                            />
+                        </View>
+                    </ScrollView>
+                </View>
+            </Modal>
+
+            {/* ✅ Modal GPS pour sélection intelligente d'adresse */}
+            <ModernGPSModal
+                visible={showGPSModal}
+                onClose={() => {
+                    setShowGPSModal(false);
+                    setGpsField(null);
+                }}
+                onSelect={handleGPSSelect}
+                currentLocation={
+                    config.pickup_latitude !== 0 && config.pickup_longitude !== 0
+                        ? { lat: config.pickup_latitude, lng: config.pickup_longitude }
+                        : null
+                }
+                title="Sélectionner l'adresse de départ"
+                allowZoneSelection={false}
+            />
+        </>
     );
 };
 
@@ -528,10 +804,21 @@ const styles = StyleSheet.create({
         paddingTop: 60,
         backgroundColor: modernColors.primary,
     },
+    headerLeft: {
+        flex: 1,
+    },
     headerTitle: {
         fontSize: 20,
         fontWeight: 'bold',
         color: '#fff',
+    },
+    headerSubtitle: {
+        fontSize: 14,
+        color: 'rgba(255, 255, 255, 0.9)',
+        marginTop: 4,
+    },
+    closeButton: {
+        padding: 8,
     },
     content: {
         flex: 1,
@@ -576,12 +863,6 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         marginTop: 2,
     },
-    emptyText: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        textAlign: 'center',
-        paddingVertical: 16,
-    },
     section: {
         marginBottom: 20,
     },
@@ -602,6 +883,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.textSecondary,
         fontStyle: 'italic',
+        marginBottom: 12,
     },
     input: {
         borderWidth: 1,
@@ -611,6 +893,35 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.text,
         backgroundColor: modernColors.surface,
+    },
+    addressRow: {
+        flexDirection: 'row',
+        gap: 8,
+        alignItems: 'center',
+    },
+    addressInput: {
+        flex: 1,
+    },
+    gpsButton: {
+        padding: 12,
+        backgroundColor: modernColors.surface,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    gpsInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 8,
+        padding: 8,
+        backgroundColor: '#F0FDF4',
+        borderRadius: 6,
+    },
+    gpsText: {
+        fontSize: 12,
+        color: '#166534',
+        fontFamily: 'monospace',
     },
     textArea: {
         minHeight: 80,
@@ -634,6 +945,7 @@ const styles = StyleSheet.create({
     checkboxRow: {
         flexDirection: 'row',
         gap: 16,
+        flexWrap: 'wrap',
     },
     checkbox: {
         flexDirection: 'row',
@@ -644,6 +956,79 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.text,
     },
+    daySchedule: {
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    dayHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: modernColors.surface,
+    },
+    dayHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    dayLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.text,
+    },
+    dayLabelActive: {
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    slotCount: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+    },
+    timeSlots: {
+        padding: 12,
+        backgroundColor: modernColors.background,
+        gap: 8,
+    },
+    timeSlotRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    timeInput: {
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 6,
+        padding: 8,
+        fontSize: 14,
+        color: modernColors.text,
+        backgroundColor: modernColors.surface,
+    },
+    halfInput: {
+        flex: 1,
+    },
+    timeSeparator: {
+        fontSize: 16,
+        color: modernColors.textSecondary,
+    },
+    removeSlotButton: {
+        padding: 8,
+    },
+    addSlotButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        padding: 8,
+        marginTop: 4,
+    },
+    addSlotText: {
+        fontSize: 12,
+        color: modernColors.primary,
+        fontWeight: '500',
+    },
     actions: {
         flexDirection: 'row',
         gap: 12,
@@ -652,6 +1037,20 @@ const styles = StyleSheet.create({
     },
     actionButton: {
         flex: 1,
+    },
+    preparationTimeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    preparationInput: {
+        flex: 1,
+    },
+    preparationUnit: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        fontWeight: '500',
+        minWidth: 70,
     },
 });
 

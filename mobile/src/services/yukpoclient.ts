@@ -1,6 +1,8 @@
 import { API_BASE_URL } from '../config/api';
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import SafeStorage from '../utils/safeStorage';
+// ✅ NOUVEAU: Utiliser le nouveau service de recherche
+import { searchServices } from './searchService';
 
 // Interface pour la réponse IA
 export interface IAResponse {
@@ -124,79 +126,35 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
   }
 }
 
-// ✅ Fonction pour rechercher des services
+// ✅ REFONTE: Fonction pour rechercher des services - Utilise le nouveau service de recherche
 export async function rechercherServices(input: any): Promise<any> {
-  const token = await getToken();
-
-  if (!token) {
-    throw new Error('Token d\'authentification manquant');
-  }
-
-  // ✅ CORRECTION: Ajouter un timeout pour éviter les connexions fermées et les attentes infinies
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s pour recherche (plus court que IA)
-
   try {
-    console.log('[yukpoclient] Appel /api/search/direct...');
-    const response = await fetch(`${API_BASE_URL}/api/search/direct`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(input),
-      signal: controller.signal,
+    console.log('[yukpoclient] Recherche via nouveau service...');
+    
+    // Utiliser le nouveau service de recherche
+    const result = await searchServices({
+      texte: input.texte || input.text || input.description || '',
+      base64_image: input.base64_image || [],
+      audio_base64: input.audio_base64 || [],
+      video_base64: input.video_base64 || [],
+      gps_mobile: input.gps_mobile,
+      gps_fixe: input.gps_fixe,
+      user_id: input.user_id
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      // ✅ AMÉLIORATION: Extraire le message d'erreur du backend si disponible
-      let errorMessage = `Erreur HTTP: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
-      } catch (e) {
-        // Si le parsing JSON échoue, utiliser le message par défaut
-      }
-      throw new Error(errorMessage);
+    // Si erreur, lancer une exception
+    if (!result.success) {
+      throw new Error(result.message || 'Erreur lors de la recherche');
     }
 
-    const result = await response.json();
-    console.log('[yukpoclient] ===== RÉPONSE API RECHERCHE =====');
-    console.log('[yukpoclient] Status:', response.status);
-    console.log('[yukpoclient] Headers:', {
-      contentType: response.headers.get('content-type'),
-      tokensRemaining: response.headers.get('x-tokens-remaining')
-    });
-    console.log('[yukpoclient] Résultats bruts:', JSON.stringify(result, null, 2));
-    console.log('[yukpoclient] Structure:', {
-      hasResultats: !!result.resultats,
-      typeResultats: typeof result.resultats,
-      isArray: Array.isArray(result.resultats),
-      hasNestedResultats: !!result.resultats?.resultats,
-      nestedType: typeof result.resultats?.resultats,
-      nestedIsArray: Array.isArray(result.resultats?.resultats),
-      nestedLength: Array.isArray(result.resultats?.resultats) ? result.resultats.resultats.length : 'N/A'
-    });
-
-    // Mettre à jour le solde de tokens
-    const remaining = response.headers.get('x-tokens-remaining');
-    if (remaining) {
-      await SafeStorage.setItem('tokens_balance', remaining);
-    }
-
-    console.log('[yukpoclient] Retour du résultat complet');
-    return result;
+    // Retourner dans le format attendu par le code existant
+    return {
+      success: true,
+      resultats: result.resultats || result.results || [],
+      nombre_matchings: result.nombre_matchings || (result.resultats?.length || 0),
+      message: result.message
+    };
   } catch (error: any) {
-    clearTimeout(timeoutId);
-
-    // ✅ AMÉLIORATION: Gérer spécifiquement les erreurs de timeout
-    if (error.name === 'AbortError') {
-      console.error('[yukpoclient] Timeout lors de la recherche (30 secondes)');
-      throw new Error('Timeout: La recherche a pris trop de temps (30 secondes). Le serveur peut être surchargé. Veuillez réessayer.');
-    }
-
     console.error('[yukpoclient] Erreur recherche:', error);
     throw error;
   }

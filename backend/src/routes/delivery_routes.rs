@@ -456,9 +456,12 @@ async fn save_product_delivery_config(
     // ✅ 4. Vérifier si la configuration est complète (tous les champs requis présents)
     let schedule = payload.pickup_availability_schedule.as_object();
     let has_schedule = schedule.map(|s| !s.is_empty()).unwrap_or(false);
+    let has_preparation_time = payload.preparation_time_minutes.is_some() 
+        && payload.preparation_time_minutes.unwrap_or(0) > 0;
     let is_complete = !payload.pickup_address.trim().is_empty()
         && payload.required_vehicle_type_id > 0
-        && has_schedule;
+        && has_schedule
+        && has_preparation_time; // ✅ NOUVEAU: Vérifier que le temps de préparation est défini
 
     // ✅ NOUVEAU : Stocker le type de véhicule requis dans les métadonnées de la configuration
     // On va utiliser un champ JSONB dans la table pour stocker les métadonnées additionnelles
@@ -496,16 +499,16 @@ async fn save_product_delivery_config(
         INSERT INTO product_delivery_config (
             service_id, product_index,
             pickup_address, pickup_latitude, pickup_longitude,
-            required_vehicle_type_id, weight_kg, volume_cm3,
+            required_vehicle_type_id, preparation_time_minutes, weight_kg, volume_cm3,
             requires_isothermal, requires_fragile_handling,
             pickup_availability_schedule,
             pickup_instructions, billing_mode, billing_partner_label,
             is_configured, configured_at, configured_by
         )
         VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 
-            CASE WHEN $15 THEN NOW() ELSE NULL END, 
-            CASE WHEN $15 THEN $16 ELSE NULL END
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+            CASE WHEN $16 THEN NOW() ELSE NULL END, 
+            CASE WHEN $16 THEN $17 ELSE NULL END
         )
         ON CONFLICT (service_id, product_index)
         DO UPDATE SET
@@ -513,6 +516,7 @@ async fn save_product_delivery_config(
             pickup_latitude = EXCLUDED.pickup_latitude,
             pickup_longitude = EXCLUDED.pickup_longitude,
             required_vehicle_type_id = EXCLUDED.required_vehicle_type_id,
+            preparation_time_minutes = EXCLUDED.preparation_time_minutes,
             weight_kg = EXCLUDED.weight_kg,
             volume_cm3 = EXCLUDED.volume_cm3,
             requires_isothermal = EXCLUDED.requires_isothermal,
@@ -534,6 +538,7 @@ async fn save_product_delivery_config(
     .bind(payload.pickup_latitude)
     .bind(payload.pickup_longitude)
     .bind(payload.required_vehicle_type_id)
+    .bind(payload.preparation_time_minutes) // ✅ NOUVEAU: Temps de préparation
     .bind(payload.weight_kg)
     .bind(payload.volume_cm3)
     .bind(payload.requires_isothermal.unwrap_or(false))

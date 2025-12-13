@@ -1926,7 +1926,6 @@ LIMIT 100
             }
         }) {
             // Recherche avec GPS
-            let radius = search_radius_km.unwrap_or(50);
             format!(
                 r#"
                 SELECT DISTINCT ON (s.id)

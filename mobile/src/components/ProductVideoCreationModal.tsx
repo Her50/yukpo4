@@ -1691,104 +1691,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     }, [studioSessionId, prewarmedShortPreviewUrl, selectedProduct, activeStep]);
 
     const renderStep1 = () => {
-        // Étape 1 : Sélection produit uniquement
+        // Étape 1 : Sélection produit uniquement (nettoyée - éléments essentiels seulement)
         return (
             <>
                 {renderProductSelection()}
-                {/* ✅ NOUVEAU: CreatorStudioCard (depuis Wizard) */}
-                {selectedProduct && (
-                    <CreatorStudioCard
-                        serviceName={`Service #${selectedProduct.serviceId}`}
-                        productName={normalizeProductName(selectedProduct)}
-                    />
-                )}
-                {/* ✅ NOUVEAU: Templates Narratifs Serveur (depuis Wizard) */}
-                {selectedProduct && storyTemplates.length > 0 && (
-                    <NativeCard style={styles.sectionCard}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>📚 Templates narratifs</Text>
-                            {storyTemplatesLoading && (
-                                <ActivityIndicator size="small" color={modernColors.primary} />
-                            )}
-                        </View>
-                        <Text style={styles.sectionSubtitle}>
-                            Choisissez un template pour structurer votre vidéo.
-                        </Text>
-                        <View style={styles.templateList}>
-                            {storyTemplates.slice(0, 4).map((spec) => {
-                                const active = spec.id === storyTemplateId;
-                                return (
-                                    <TouchableOpacity
-                                        key={spec.id}
-                                        style={[styles.templateCard, active && styles.templateCardActive]}
-                                        onPress={() => setStoryTemplateId(spec.id)}
-                                    >
-                                        <Text style={[styles.templateTitle, active && styles.templateTitleActive]}>
-                                            {spec.label}
-                                        </Text>
-                                        <Text style={styles.templateDescription} numberOfLines={2}>
-                                            {spec.description}
-                                        </Text>
-                                        <Text style={styles.templateMeta}>
-                                            {spec.suggestedScenes} scènes · ~{spec.defaultDurationSeconds}s
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    </NativeCard>
-                )}
-
-                {/* ✅ NOUVEAU: Storyboard IA via Studio (depuis Wizard) */}
-                {selectedProduct && (
-                    <NativeCard style={styles.sectionCard}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>🎬 Storyboard IA</Text>
-                            <TouchableOpacity
-                                style={styles.linkButton}
-                                onPress={handleGenerateStoryboard}
-                                disabled={storyboardLoading}
-                            >
-                                {storyboardLoading ? (
-                                    <ActivityIndicator size="small" color={modernColors.primary} />
-                                ) : (
-                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                                )}
-                                <Text style={styles.linkButtonText}>
-                                    {storyboardLoading ? 'Génération…' : 'Générer storyboard'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={styles.sectionSubtitle}>
-                            Génère une proposition de scènes (intro, bénéfices, preuves, CTA) à partir de ton brief.
-                        </Text>
-                        {/* ✅ NOUVEAU: Auto-Storyboard Toggle (depuis Wizard) */}
-                        <View style={styles.inlineRow}>
-                            <Text style={styles.inlineLabel}>Storyboard automatique</Text>
-                            <Switch
-                                value={autoStoryboard}
-                                onValueChange={setAutoStoryboard}
-                                trackColor={{ true: modernColors.primary }}
-                            />
-                        </View>
-                        {storyboard && storyboard.scenes.length > 0 && (
-                            <View style={styles.storyboardList}>
-                                {storyboard.scenes.slice(0, 4).map((scene) => (
-                                    <View key={scene.index} style={styles.storyboardItem}>
-                                        <Text style={styles.storyboardSceneType}>
-                                            {scene.sceneType}
-                                        </Text>
-                                        <Text style={styles.storyboardSceneText} numberOfLines={2}>
-                                            {scene.headline || scene.body || 'Scène générée'}
-                                        </Text>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-                    </NativeCard>
-                )}
-                {coachPanel}
-                {selectedProduct && renderRelatedProducts()}
             </>
         );
     };
@@ -3882,22 +3788,24 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     Assemblez en 30 secondes une vidéo verticale prête pour TikTok, Reels et votre fiche
                                     produit.
                                 </Text>
-                                {/* ✅ NOUVEAU: Indicateur d'étapes */}
-                                <View style={styles.stepIndicator}>
-                                    {[1, 2, 3, 4, 5, 6].map((step) => (
-                                        <View
-                                            key={step}
-                                            style={[
-                                                styles.stepDot,
-                                                activeStep === step && styles.stepDotActive,
-                                                activeStep > step && styles.stepDotCompleted,
-                                            ]}
-                                        />
-                                    ))}
-                                    <Text style={styles.stepText}>
-                                        Étape {activeStep} sur 6
-                                    </Text>
-                                </View>
+                                {/* ✅ NOUVEAU: Indicateur d'étapes (masqué à l'étape 1 pour éviter la confusion) */}
+                                {activeStep > 1 && (
+                                    <View style={styles.stepIndicator}>
+                                        {[1, 2, 3, 4, 5, 6].map((step) => (
+                                            <View
+                                                key={step}
+                                                style={[
+                                                    styles.stepDot,
+                                                    activeStep === step && styles.stepDotActive,
+                                                    activeStep > step && styles.stepDotCompleted,
+                                                ]}
+                                            />
+                                        ))}
+                                        <Text style={styles.stepText}>
+                                            Étape {activeStep} sur 6
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
                             <TouchableOpacity onPress={onClose} disabled={isSubmitting} style={styles.closeButton}>
                                 <SafeIcon name="x" size={20} color={modernColors.textSecondary} />

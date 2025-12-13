@@ -1048,9 +1048,9 @@ const MesServicesScreen: React.FC = () => {
           <View style={dynamicStyles.headerContent}>
             <View style={dynamicStyles.headerTop}>
               <View style={dynamicStyles.logoContainer}>
-                <SafeIcon name="briefcase" size={22} color="#fff" />
+                <SafeIcon name="briefcase" size={18} color="#fff" />
                 <View style={dynamicStyles.titleContainer}>
-                  <Text style={dynamicStyles.title}>Mes Produits</Text>
+                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Mes Produits</Text>
                 </View>
               </View>
             </View>
@@ -1103,8 +1103,42 @@ const MesServicesScreen: React.FC = () => {
                   <Text style={dynamicStyles.title}>Mes Produits</Text>
                 </View>
               </View>
-              {/* ✅ AMÉLIORÉ: Bouton Sidebar + Bulk Mode */}
+              {/* ✅ AMÉLIORÉ: Bouton Sidebar + Bulk Mode + Création Vidéo + Configuration Livraison */}
               <View style={dynamicStyles.headerActions}>
+                {/* ✅ NOUVEAU: Bouton création vidéo */}
+                <TouchableOpacity
+                  style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+                  onPress={() => {
+                    try {
+                      (navigation as any).navigate('VideoCreationIntro');
+                    } catch (error) {
+                      logger.error('[MesServicesScreen] Erreur navigation vers VideoCreationIntro:', error);
+                      toaster.error('Impossible d\'ouvrir la création de vidéo');
+                    }
+                  }}
+                  accessibilityLabel="Créer une vidéo"
+                  accessibilityRole="button"
+                >
+                  <SafeIcon name="plus" size={20} color="#fff" type="lucide" />
+                </TouchableOpacity>
+                {/* ✅ NOUVEAU: Configuration de livraison dans l'en-tête */}
+                <TouchableOpacity
+                  style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}
+                  onPress={() => {
+                    const productsList = prepareProductsForSelector();
+                    if (productsList.length === 0) {
+                      toaster.warning('Vous devez d\'abord créer des produits avant de configurer la livraison.');
+                      return;
+                    }
+                    setProductsForSelection(productsList);
+                    setProductSelectorMode('delivery');
+                    setShowProductSelector(true);
+                  }}
+                  accessibilityLabel="Configuration livraison"
+                  accessibilityRole="button"
+                >
+                  <SafeIcon name="truck" size={18} color="#fff" />
+                </TouchableOpacity>
                 {filteredServices.length > 0 && (
                   <TouchableOpacity
                     style={[dynamicStyles.headerButton, bulkMode && { backgroundColor: 'rgba(255, 255, 255, 0.4)' }]}
@@ -1117,7 +1151,7 @@ const MesServicesScreen: React.FC = () => {
                     accessibilityLabel={bulkMode ? "Désactiver sélection multiple" : "Activer sélection multiple"}
                     accessibilityRole="button"
                   >
-                    <SafeIcon name={bulkMode ? "check-square" : "square"} size={20} color="#fff" />
+                    <SafeIcon name={bulkMode ? "check-square" : "square"} size={18} color="#fff" />
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -1126,7 +1160,7 @@ const MesServicesScreen: React.FC = () => {
                   accessibilityLabel="Menu navigation"
                   accessibilityRole="button"
                 >
-                  <SafeIcon name="menu" size={22} color="#fff" />
+                  <SafeIcon name="menu" size={20} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -1145,26 +1179,6 @@ const MesServicesScreen: React.FC = () => {
               >
                 <SafeIcon name="image" size={18} color={colors.success} />
                 <Text style={[dynamicStyles.menuItemText, { color: colors.success }]}>Galerie Médias</Text>
-              </TouchableOpacity>
-
-              {/* ✅ NOUVEAU: Configuration de livraison globale */}
-              <TouchableOpacity
-                style={dynamicStyles.menuItem}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  // ✅ Préparer la liste des produits et ouvrir le sélecteur
-                  const productsList = prepareProductsForSelector();
-                  if (productsList.length === 0) {
-                    toaster.warning('Vous devez d\'abord créer des produits avant de configurer la livraison.');
-                    return;
-                  }
-                  setProductsForSelection(productsList);
-                  setProductSelectorMode('delivery');
-                  setShowProductSelector(true);
-                }}
-              >
-                <SafeIcon name="truck" size={18} color="#10B981" />
-                <Text style={dynamicStyles.menuItemText}>Configuration livraison</Text>
               </TouchableOpacity>
 
               {/* ✅ Bouton Membres existant - amélioré pour sélection produits/services */}
@@ -1490,17 +1504,18 @@ const MesServicesScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
 
+            {/* ✅ COMPACT: Bouton catégories intégré dans la ligne des filtres */}
             <TouchableOpacity
-              style={dynamicStyles.filterChip}
+              style={[
+                dynamicStyles.filterChip,
+                { paddingHorizontal: 10, paddingVertical: 6 }
+              ]}
               onPress={() => {
                 // TODO: Implémenter le filtre par catégorie
                 toaster.info('Filtre par catégorie - Fonctionnalité à venir');
               }}
             >
-              <SafeIcon name="tag" size={16} color={colors.primary} />
-              <Text style={dynamicStyles.filterChipText}>
-                Toutes catégories
-              </Text>
+              <SafeIcon name="tag" size={14} color={colors.primary} />
             </TouchableOpacity>
           </ScrollView>
 
@@ -1765,23 +1780,6 @@ const MesServicesScreen: React.FC = () => {
               onPress: () => setShowProductGallery(true),
             },
             {
-              id: 'delivery',
-              label: 'Configuration livraison',
-              icon: 'truck',
-              section: 'Actions',
-              color: '#10B981',
-              onPress: () => {
-                const productsList = prepareProductsForSelector();
-                if (productsList.length === 0) {
-                  toaster.warning('Vous devez d\'abord créer des produits avant de configurer la livraison.');
-                  return;
-                }
-                setProductsForSelection(productsList);
-                setProductSelectorMode('delivery');
-                setShowProductSelector(true);
-              },
-            },
-            {
               id: 'team',
               label: 'Gérer équipe',
               icon: 'users',
@@ -2019,9 +2017,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
+    flexShrink: 1,
   },
   subtitleCompact: {
     fontSize: 11,

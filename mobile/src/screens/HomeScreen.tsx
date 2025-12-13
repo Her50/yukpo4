@@ -20,16 +20,20 @@ import {
 } from 'react-native';
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { GamificationBadge } from '../components/GamificationBadge';
 import LanguageSelector from '../components/LanguageSelector';
 import { LeaderboardModal } from '../components/LeaderboardModal';
+import MixedContentCarousel from '../components/MixedContentCarousel';
 import ModernGPSModal from '../components/ModernGPSModal';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
+import SafeIcon from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
+import userBehaviorService from '../services/userBehaviorService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 import { modernColors } from '../theme/modernTheme';
 import { hapticPress } from '../utils/hapticFeedback';
@@ -48,6 +52,23 @@ const HomeScreen: React.FC = () => {
     const [showChatModal, setShowChatModal] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [userBehavior, setUserBehavior] = useState<string[]>([]);
+
+    // Charger le comportement utilisateur pour le carousel
+    React.useEffect(() => {
+        const loadUserBehavior = async () => {
+            try {
+                const categories = await userBehaviorService.getPreferredCategories(5);
+                setUserBehavior(categories || []);
+            } catch (error) {
+                console.error('[HomeScreen] Erreur chargement comportement utilisateur:', error);
+                setUserBehavior([]);
+            }
+        };
+        if (user?.id) {
+            loadUserBehavior();
+        }
+    }, [user?.id]);
 
     // Navigation simplifiée
     const navigate = useCallback((routeName: string, params?: any) => {
@@ -64,7 +85,7 @@ const HomeScreen: React.FC = () => {
         }
     }, [navigation]);
 
-    // Handler recherche
+    // ✅ REFONTE: Handler recherche simplifié utilisant le nouveau service
     const handleSearch = useCallback(async (input: any) => {
         try {
             if (!user) {
@@ -75,57 +96,47 @@ const HomeScreen: React.FC = () => {
             setLoading(true);
             console.log('[HomeScreen] Recherche avec:', input);
 
+            // Utiliser le nouveau service de recherche
             const result = await rechercherServices(input);
-            console.log('[HomeScreen] Résultat brut de l\'API:', JSON.stringify(result, null, 2));
+            console.log('[HomeScreen] Résultat reçu:', {
+                success: result.success,
+                count: result.resultats?.length || 0,
+                structure: typeof result.resultats
+            });
 
-            // ✅ CORRIGÉ: Le backend retourne {status, resultats: {resultats: [...], nombre_matchings: ...}, ...}
-            // Structure: result.resultats.resultats (array) OU result.resultats peut être directement un array
-            let results: any[] = [];
-
-            if (result) {
-                // Cas 1: result.resultats est un objet avec un champ resultats (array)
-                if (result.resultats && typeof result.resultats === 'object' && !Array.isArray(result.resultats)) {
-                    const resultatsObj = result.resultats;
-                    if (Array.isArray(resultatsObj.resultats)) {
-                        results = resultatsObj.resultats;
-                    } else if (Array.isArray(resultatsObj)) {
-                        // Cas rare: result.resultats est directement un array
-                        results = resultatsObj;
-                    }
-                }
-                // Cas 2: result.resultats est directement un array
-                else if (Array.isArray(result.resultats)) {
-                    results = result.resultats;
-                }
-                // Cas 3: result.data.resultats (fallback pour compatibilité)
-                else if (result.data) {
-                    if (Array.isArray(result.data.resultats)) {
-                        results = result.data.resultats;
-                    } else if (result.data.resultats?.resultats && Array.isArray(result.data.resultats.resultats)) {
-                        results = result.data.resultats.resultats;
-                    } else if (Array.isArray(result.data)) {
-                        results = result.data;
-                    }
-                }
-            }
-
-            console.log('[HomeScreen] Résultats extraits:', results.length, 'résultats');
-
-            // Vérifier si c'est un timeout ou une erreur
-            if (result?.timeout || (result?.status === 'partial' && (!results || results.length === 0))) {
-                Alert.alert(
-                    'Recherche interrompue',
-                    result?.message || 'La recherche a pris trop de temps. Veuillez réessayer.'
-                );
+            // Vérifier si la recherche a réussi
+            if (!result.success) {
+                Alert.alert('Erreur', result.message || 'Une erreur est survenue lors de la recherche');
                 setLoading(false);
                 return;
             }
 
-            if (Array.isArray(results) && results.length > 0) {
+            // Extraire et normaliser les résultats
+            let results: any[] = [];
+
+            // Le service retourne déjà un array normalisé dans result.resultats
+            if (Array.isArray(result.resultats)) {
+                results = result.resultats;
+            } else if (result.resultats && typeof result.resultats === 'object') {
+                // Si c'est un objet, essayer d'extraire l'array
+                if (Array.isArray(result.resultats.resultats)) {
+                    results = result.resultats.resultats;
+                } else if (Array.isArray(result.resultats.data)) {
+                    results = result.resultats.data;
+                } else if (Array.isArray(result.resultats.results)) {
+                    results = result.resultats.results;
+                }
+            }
+
+            console.log('[HomeScreen] Résultats normalisés:', results.length, 'résultats');
+
+            if (results.length > 0) {
+                // Navigation vers les résultats
+                // ResultatBesoinScreen gère déjà la normalisation, donc on peut passer directement
                 navigate('ResultatBesoin', {
-                    results: results,
+                    results: results, // Array de résultats
                     type: 'recherche_besoin',
-                    searchQuery: input.texte || input.text || '',
+                    searchQuery: input.texte || input.text || input.description || '',
                     hasError: false,
                 });
             } else {
@@ -323,21 +334,14 @@ const HomeScreen: React.FC = () => {
                             compact={true}
                         />
                         {user?.id && (
-                            <>
-                                <GamificationBadge
-                                    userId={user.id}
-                                    compact={true}
-                                    onPress={() => {
-                                        hapticPress();
-                                        setShowLeaderboard(true);
-                                    }}
-                                />
-                                <LeaderboardModal
-                                    visible={showLeaderboard}
-                                    onClose={() => setShowLeaderboard(false)}
-                                    userId={user.id}
-                                />
-                            </>
+                            <GamificationBadge
+                                userId={user.id}
+                                compact={true}
+                                onPress={() => {
+                                    hapticPress();
+                                    setShowLeaderboard(true);
+                                }}
+                            />
                         )}
                     </View>
 
@@ -349,10 +353,24 @@ const HomeScreen: React.FC = () => {
                         </Text>
                     </View>
 
-                    {/* Colonne droite: Chat + Notifications */}
+                    {/* Colonne droite: Livraison + Chat + Notifications */}
                     <View style={styles.headerRight}>
                         <TouchableOpacity
-                            style={[styles.headerButton, { marginRight: 12 }]}
+                            style={styles.deliveryButton}
+                            onPress={() => {
+                                hapticPress();
+                                navigate('Delivery');
+                            }}
+                        >
+                            <SafeIcon
+                                name="Package"
+                                size={22}
+                                color="#FFFFFF"
+                                type="lucide"
+                            />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.headerButton}
                             onPress={() => {
                                 hapticPress();
                                 setShowChatModal(true);
@@ -428,6 +446,26 @@ const HomeScreen: React.FC = () => {
                     />
                 </View>
 
+                {/* Carousel mixte (produits organiques + publicités) basé sur le comportement utilisateur */}
+                {user?.id && (
+                    <ErrorBoundary
+                        fallback={
+                            <View style={styles.carouselErrorContainer}>
+                                <Text style={styles.carouselErrorText}>
+                                    Les produits recommandés sont temporairement indisponibles
+                                </Text>
+                            </View>
+                        }
+                    >
+                        <MixedContentCarousel
+                            userId={String(user.id)}
+                            userBehavior={userBehavior}
+                            publiciteFrequency={3}
+                            mode="recommended"
+                        />
+                    </ErrorBoundary>
+                )}
+
                 {/* Zone de contenu vide pour l'instant */}
                 <View style={styles.contentArea}>
                     <Text style={styles.contentText}>
@@ -470,6 +508,15 @@ const HomeScreen: React.FC = () => {
                     }}
                 />
             )}
+
+            {/* Modal Leaderboard */}
+            {user?.id && (
+                <LeaderboardModal
+                    visible={showLeaderboard}
+                    onClose={() => setShowLeaderboard(false)}
+                    userId={user.id}
+                />
+            )}
         </SafeNativeView>
     );
 };
@@ -492,14 +539,22 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 16,
         paddingBottom: 12,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: modernColors.background,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
         minHeight: 60,
+        // Ombre discrète pour effet premium
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 4,
     },
     headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        gap: 8,
+        gap: 6,
         flex: 1,
         minWidth: 0,
     },
@@ -511,9 +566,10 @@ const styles = StyleSheet.create({
     },
     headerCenter: {
         flex: 1,
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
-        paddingHorizontal: 16,
+        paddingLeft: 8,
+        paddingRight: 16,
     },
     brandTitle: {
         fontSize: 22,
@@ -530,7 +586,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        gap: 8,
+        gap: 6,
         flex: 1,
         minWidth: 0,
     },
@@ -544,6 +600,21 @@ const styles = StyleSheet.create({
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    deliveryButton: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: '#10B981', // Vert pour livraison/colis
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#059669',
+        shadowColor: '#10B981',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
     },
     headerButtonIcon: {
         fontSize: 20,
@@ -588,6 +659,19 @@ const styles = StyleSheet.create({
     contentText: {
         fontSize: 16,
         color: '#6B7280',
+        textAlign: 'center',
+    },
+    carouselErrorContainer: {
+        padding: 20,
+        marginHorizontal: 16,
+        marginVertical: 12,
+        backgroundColor: '#FEF3C7',
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    carouselErrorText: {
+        fontSize: 14,
+        color: '#92400E',
         textAlign: 'center',
     },
 });

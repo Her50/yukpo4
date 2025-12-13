@@ -543,6 +543,8 @@ pub struct ProductDeliveryConfigInput {
     // ✅ NOUVEAU : Type de véhicule requis (aligné avec formulaire de commande)
     // 'bike', 'motorcycle', 'tricycle', 'car', 'pickup', 'van', 'truck', 'walking'
     pub required_vehicle_type: Option<String>,
+    // ✅ NOUVEAU : Temps de préparation en minutes (obligatoire pour le matching)
+    pub preparation_time_minutes: Option<i32>,
     pub weight_kg: Option<f64>,
     pub volume_cm3: Option<f64>,
     pub requires_isothermal: Option<bool>,

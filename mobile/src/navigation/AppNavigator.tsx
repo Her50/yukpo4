@@ -171,6 +171,7 @@ import VideoCreationIntroScreen from '../screens/video/VideoCreationIntroScreen'
 import VideoCreationWizardScreen from '../screens/video/VideoCreationWizardScreen';
 import VideoGenerationResultScreen from '../screens/video/VideoGenerationResultScreen';
 import VideoAnalyticsScreen from '../screens/VideoAnalyticsScreen';
+import ErrorBoundary from '../components/ErrorBoundary';
 import VideoFeedScreen from '../screens/VideoFeedScreen';
 import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
 
@@ -279,7 +280,31 @@ const ReservationScreenWithSafeArea = withNavigatorSafeArea(ReservationScreen);
 const MesReservationsScreenWithSafeArea = withNavigatorSafeArea(MesReservationsScreen);
 const PrestataireReservationsScreenWithSafeArea = withNavigatorSafeArea(PrestataireReservationsScreen);
 const ServiceDetailScreenWithSafeArea = withNavigatorSafeArea(ServiceDetailScreen);
-const VideoFeedScreenWithSafeArea = withNavigatorSafeArea(VideoFeedScreen);
+// ✅ SÉCURITÉ: Wrapper VideoFeedScreen avec ErrorBoundary pour éviter les crashes
+const VideoFeedScreenWithErrorBoundary = (props: any) => (
+    <ErrorBoundary
+        fallback={
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+                <Text style={{ color: '#FFF', fontSize: 16, marginBottom: 20 }}>
+                    Impossible de charger le feed vidéo
+                </Text>
+                <TouchableOpacity
+                    style={{ backgroundColor: modernColors.primary, padding: 12, borderRadius: 8 }}
+                    onPress={() => {
+                        // Réessayer en naviguant à nouveau
+                        (props.navigation as any)?.navigate('Videos');
+                    }}
+                >
+                    <Text style={{ color: '#FFF', fontWeight: '600' }}>Réessayer</Text>
+                </TouchableOpacity>
+            </View>
+        }
+    >
+        <VideoFeedScreen {...props} />
+    </ErrorBoundary>
+);
+
+const VideoFeedScreenWithSafeArea = withNavigatorSafeArea(VideoFeedScreenWithErrorBoundary);
 const HashtagDiscoveryScreenWithSafeArea = withNavigatorSafeArea(HashtagDiscoveryScreen);
 const CreatorAnalyticsScreenWithSafeArea = withNavigatorSafeArea(CreatorAnalyticsScreen);
 const VideoAnalyticsScreenWithSafeArea = withNavigatorSafeArea(VideoAnalyticsScreen);
@@ -1305,7 +1330,11 @@ const SecondaryStack = () => {
           }}
         />
         <Stack.Screen name="YukpoServicePlaceholder" component={YukpoServicePlaceholderScreenWithSafeArea} />
-        <Stack.Screen name="VideoFeed" component={VideoFeedScreenWithSafeArea} />
+        <Stack.Screen 
+          name="VideoFeed" 
+          component={VideoFeedScreenWithSafeArea}
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="HashtagDiscovery" component={HashtagDiscoveryScreenWithSafeArea} />
         <Stack.Screen name="CreatorAnalytics" component={CreatorAnalyticsScreenWithSafeArea} />
         <Stack.Screen name="VideoAnalytics" component={VideoAnalyticsScreenWithSafeArea} />

@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -36,7 +36,23 @@ const CourierRegistrationScreen: React.FC = () => {
     const [applicationStatus, setApplicationStatus] = useState<'none' | 'draft' | 'submitted' | 'approved' | 'rejected'>('none');
 
     // Informations personnelles
-    const [fullName, setFullName] = useState(user?.name || '');
+    // ✅ CORRIGÉ: Extraire le nom sans duplication (user?.name peut contenir nom + prénom déjà)
+    const getCleanName = (name: string | undefined): string => {
+        if (!name) return '';
+        // Si le nom contient déjà des espaces multiples ou semble dupliqué, nettoyer
+        const cleaned = name.trim().replace(/\s+/g, ' ');
+        // Vérifier si le nom est dupliqué (ex: "Jean Dupont Jean Dupont")
+        const parts = cleaned.split(' ');
+        if (parts.length >= 4) {
+            const firstHalf = parts.slice(0, Math.floor(parts.length / 2)).join(' ');
+            const secondHalf = parts.slice(Math.floor(parts.length / 2)).join(' ');
+            if (firstHalf === secondHalf) {
+                return firstHalf; // Retourner seulement la première moitié si c'est dupliqué
+            }
+        }
+        return cleaned;
+    };
+    const [fullName, setFullName] = useState(getCleanName(user?.name));
     const [phone, setPhone] = useState('');
     const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
@@ -70,7 +86,52 @@ const CourierRegistrationScreen: React.FC = () => {
 
     useEffect(() => {
         checkApplicationStatus();
+        loadUserPhoneFromServices();
     }, [user]);
+
+    // ✅ NOUVEAU: Mettre à jour le nom complet si l'utilisateur change (seulement à l'initialisation)
+    const hasInitializedNameRef = React.useRef(false);
+    useEffect(() => {
+        if (user?.name && !hasInitializedNameRef.current) {
+            const cleanedName = getCleanName(user.name);
+            setFullName(cleanedName);
+            hasInitializedNameRef.current = true;
+        }
+    }, [user?.name]);
+
+    // ✅ NOUVEAU: Charger le téléphone depuis le WhatsApp des services/produits existants
+    const loadUserPhoneFromServices = async () => {
+        if (!user?.id || phone) return; // Ne pas écraser si déjà rempli
+
+        try {
+            const { apiGet } = require('../../services/api');
+            const response = await apiGet('/api/prestataire/services');
+            const services = response.data || response;
+
+            if (Array.isArray(services) && services.length > 0) {
+                // Chercher le WhatsApp dans les services
+                for (const service of services) {
+                    const serviceData = service.data || service;
+                    
+                    // Chercher whatsapp dans différentes structures possibles
+                    const whatsapp = serviceData.whatsapp || 
+                                   serviceData.whatsapp_contact?.valeur ||
+                                   serviceData.contact?.whatsapp ||
+                                   serviceData.contact_whatsapp?.valeur ||
+                                   serviceData.telephone_whatsapp?.valeur;
+
+                    if (whatsapp && typeof whatsapp === 'string' && whatsapp.trim().length > 0) {
+                        console.log('[CourierRegistrationScreen] ✅ WhatsApp trouvé dans service:', whatsapp);
+                        setPhone(whatsapp.trim());
+                        return; // Arrêter après avoir trouvé le premier
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('[CourierRegistrationScreen] Erreur chargement téléphone depuis services:', error);
+            // Ne pas bloquer si l'erreur survient
+        }
+    };
 
     const checkApplicationStatus = async () => {
         if (!user?.id) {

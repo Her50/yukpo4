@@ -680,7 +680,16 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // ✅ NOUVEAU 2025-12-01: État pour suivre si le tableau initial des sous-caractéristiques a été validé
     // Le tableau doit s'afficher TOUJOURS en premier, même si des chips existent déjà
     // L'utilisateur doit cliquer sur "Valider" pour appliquer les caractéristiques
-    const [isTableauInitialValidated, setIsTableauInitialValidated] = useState(false);
+    // ✅ CORRIGÉ 2025-12-13: Initialiser à false pour toujours afficher le tableau au début
+    // Si des chips existent déjà (données pré-remplies), on les affiche aussi mais le tableau reste visible
+    const [isTableauInitialValidated, setIsTableauInitialValidated] = useState(() => {
+        // Si des chips existent déjà mais qu'on a des données IA (productVector/productLabels ou sousCaracteristiques),
+        // on affiche le tableau pour permettre la validation/modification
+        const hasIAData = (productVector && productLabels && productVector.length > 0) ||
+            (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0);
+        // Si on a des chips mais pas de données IA, on considère que c'est déjà validé
+        return value.length > 0 && !hasIAData;
+    });
     const getPopularSuggestionKey = useCallback(
         (product: PopularProduct, index: number) =>
             `popular-${index}-${sanitizeKey((product?.product_vector || []).join('-') || `p-${index}`)}`,
@@ -2361,9 +2370,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 )}
             </View>
 
-            {/* ✅ CORRIGÉ 2025-12-01: Afficher le tableau TOUJOURS en premier, même si des chips existent */}
+            {/* ✅ CORRIGÉ 2025-12-13: Afficher le tableau TOUJOURS en premier, même si des chips existent */}
             {/* Le tableau s'affiche au chargement pour permettre la validation */}
             {/* Après validation (isTableauInitialValidated = true), le tableau disparaît et seuls les chips s'affichent */}
+            {/* ✅ CORRECTION: Afficher le tableau même si des chips existent déjà, tant qu'il n'a pas été validé */}
             {!isTableauInitialValidated && (loadingSuggestions || loadingCombinationSuggestions || finalCandidateToDisplay || combinationError) && (
                 <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
@@ -2528,16 +2538,21 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             )}
 
-            {/* ✅ Afficher les chips validés (miniatures avec scroll horizontal) APRÈS validation */}
-            {/* Le tableau disparaît après validation, seuls les chips restent visibles */}
+            {/* ✅ Afficher les chips validés (miniatures avec scroll horizontal) */}
+            {/* ✅ CORRIGÉ 2025-12-13: Afficher les chips même si le tableau est visible (données pré-remplies) */}
+            {/* Après validation, le tableau disparaît et seuls les chips restent visibles */}
             {chips.length > 0 && (
                 <View style={[styles.vectorContainer, styles.vectorContainerActive]}>
                     <ScrollView
                         horizontal
-                        showsHorizontalScrollIndicator={false}
+                        showsHorizontalScrollIndicator={true}
                         contentContainerStyle={[styles.chipsScroll, styles.chipsScrollActive]}
-                        nestedScrollEnabled
+                        scrollEnabled={true}
+                        nestedScrollEnabled={true}
                         keyboardShouldPersistTaps="handled"
+                        style={styles.chipsScrollView}
+                        bounces={false}
+                        alwaysBounceHorizontal={false}
                     >
                         <TouchableOpacity
                             style={styles.addCharacteristicButton}
@@ -2839,9 +2854,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         paddingVertical: 8,
+        paddingRight: 16, // ✅ CORRIGÉ: Ajouter padding à droite pour permettre le scroll
     },
     chipsScrollActive: {
         paddingVertical: 4,
+        paddingRight: 16, // ✅ CORRIGÉ: Ajouter padding à droite pour permettre le scroll
+    },
+    chipsScrollView: {
+        maxHeight: 80,
+        flexGrow: 0,
     },
     chip: {
         flexDirection: 'row',

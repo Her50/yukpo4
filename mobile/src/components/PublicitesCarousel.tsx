@@ -292,54 +292,96 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
             setLoading(true);
 
             const params = new URLSearchParams();
-            if (userBehavior.length > 0) {
-                params.append('categories', userBehavior.join(','));
+            // ✅ SÉCURITÉ: Vérifier que userBehavior est un array valide
+            if (Array.isArray(userBehavior) && userBehavior.length > 0) {
+                try {
+                    params.append('categories', userBehavior.join(','));
+                } catch (e) {
+                    console.warn('[PublicitesCarousel] Erreur ajout catégories:', e);
+                }
             }
             if (userId) {
-                params.append('user_id', userId);
+                try {
+                    params.append('user_id', String(userId));
+                } catch (e) {
+                    console.warn('[PublicitesCarousel] Erreur ajout user_id:', e);
+                }
             }
             // ✅ NOUVEAU: Ajouter placement (par défaut: "feed")
             params.append('placement', 'feed');
 
-            // ✅ NOUVEAU: Ajouter localisation si disponible
-            // TODO: Récupérer depuis GPS ou profil utilisateur
-            // if (userLocation) {
-            //     params.append('latitude', userLocation.latitude.toString());
-            //     params.append('longitude', userLocation.longitude.toString());
-            // }
+            // ✅ SÉCURITÉ: Timeout pour éviter les appels API bloquants
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout')), 10000); // 10s timeout
+            });
 
-            const response = await apiGet(`/api/publicites/actives?${params.toString()}`);
+            try {
+                const response = await Promise.race([
+                    apiGet(`/api/publicites/actives?${params.toString()}`),
+                    timeoutPromise,
+                ]) as any;
 
-            if (response.success && response.data) {
-                let pubs = Array.isArray(response.data) ? response.data : [];
+                if (response && response.success && response.data) {
+                    let pubs = Array.isArray(response.data) ? response.data : [];
 
-                if (userBehavior.length > 0 && pubs.length > 0) {
-                    pubs = pubs.sort((a: ApiPublicite, b: ApiPublicite) => {
-                        const scoreA =
-                            a.produits?.filter((p: any) => userBehavior.includes(p.type)).length || 0;
-                        const scoreB =
-                            b.produits?.filter((p: any) => userBehavior.includes(p.type)).length || 0;
-                        return scoreB - scoreA;
-                    });
+                    // ✅ SÉCURITÉ: Trier seulement si on a des pubs et des catégories valides
+                    if (Array.isArray(userBehavior) && userBehavior.length > 0 && pubs.length > 0) {
+                        try {
+                            pubs = pubs.sort((a: ApiPublicite, b: ApiPublicite) => {
+                                try {
+                                    const produitsA = Array.isArray(a.produits) ? a.produits : [];
+                                    const produitsB = Array.isArray(b.produits) ? b.produits : [];
+                                    const scoreA = produitsA.filter((p: any) => 
+                                        p && typeof p === 'object' && userBehavior.includes(p.type)
+                                    ).length;
+                                    const scoreB = produitsB.filter((p: any) => 
+                                        p && typeof p === 'object' && userBehavior.includes(p.type)
+                                    ).length;
+                                    return scoreB - scoreA;
+                                } catch (e) {
+                                    console.warn('[PublicitesCarousel] Erreur tri:', e);
+                                    return 0;
+                                }
+                            });
+                        } catch (e) {
+                            console.warn('[PublicitesCarousel] Erreur lors du tri:', e);
+                        }
+                    }
+
+                    // ✅ SÉCURITÉ: Normaliser avec vérifications
+                    const normalized = pubs
+                        .filter((pub: any) => pub && (pub.id || pub.publicite_id))
+                        .map((pub: ApiPublicite) => {
+                            try {
+                                const id = String(pub.id ?? pub.publicite_id ?? Math.random().toString(36).slice(2));
+                                return {
+                                    ...pub,
+                                    id,
+                                    videos_meta: Array.isArray(pub.videos_meta) ? pub.videos_meta : [],
+                                    video_stats: pub.video_stats && typeof pub.video_stats === 'object' ? pub.video_stats : {},
+                                };
+                            } catch (e) {
+                                console.warn('[PublicitesCarousel] Erreur normalisation pub:', e);
+                                return null;
+                            }
+                        })
+                        .filter((pub: any) => pub !== null);
+
+                    setPublicites(normalized);
+                    setCurrentIndex(0);
+                    setVideoReady({});
+                    setFailedVideos({});
+                    setNeedsManualPlay({});
+                    viewedRef.current.clear();
+                } else {
+                    setPublicites([]);
                 }
-
-                const normalized = pubs.map((pub: ApiPublicite) => {
-                    const id = String(pub.id ?? pub.publicite_id ?? Math.random().toString(36).slice(2));
-                    return {
-                        ...pub,
-                        id,
-                        videos_meta: Array.isArray(pub.videos_meta) ? pub.videos_meta : [],
-                        video_stats: pub.video_stats ?? {},
-                    };
-                });
-
-                setPublicites(normalized);
-                setCurrentIndex(0);
-                setVideoReady({});
-                setFailedVideos({});
-                setNeedsManualPlay({});
-                viewedRef.current.clear();
-            } else {
+            } catch (apiError: any) {
+                if (apiError?.message === 'Timeout') {
+                    console.warn('[PublicitesCarousel] Timeout chargement publicités');
+                } else {
+                    console.error('[PublicitesCarousel] Erreur API:', apiError);
+                }
                 setPublicites([]);
             }
         } catch (error) {
@@ -355,23 +397,46 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
     }, [loadPublicites]);
 
     useEffect(() => {
-        if (orderedPublicites.length <= 1) {
+        // ✅ SÉCURITÉ: Ne pas auto-scroll si pas focus ou moins de 2 items
+        if (!isFocused || !orderedPublicites || orderedPublicites.length <= 1) {
             return;
         }
 
+        // ✅ SÉCURITÉ: Vérifier que scrollViewRef est valide
         const interval = setInterval(() => {
-            setCurrentIndex((prev) => {
-                const nextIndex = (prev + 1) % orderedPublicites.length;
-                scrollViewRef.current?.scrollTo({
-                    x: nextIndex * (CARD_WIDTH + CARD_MARGIN),
-                    animated: true,
+            try {
+                if (!scrollViewRef.current) {
+                    return;
+                }
+
+                setCurrentIndex((prev) => {
+                    try {
+                        const nextIndex = (prev + 1) % orderedPublicites.length;
+                        scrollViewRef.current?.scrollTo({
+                            x: nextIndex * (CARD_WIDTH + CARD_MARGIN),
+                            animated: true,
+                        }).catch((e) => {
+                            console.warn('[PublicitesCarousel] Erreur scroll:', e);
+                        });
+                        return nextIndex;
+                    } catch (e) {
+                        console.warn('[PublicitesCarousel] Erreur calcul index:', e);
+                        return prev;
+                    }
                 });
-                return nextIndex;
-            });
+            } catch (e) {
+                console.warn('[PublicitesCarousel] Erreur interval scroll:', e);
+            }
         }, AUTO_SCROLL_INTERVAL);
 
-        return () => clearInterval(interval);
-    }, [orderedPublicites.length]);
+        return () => {
+            try {
+                clearInterval(interval);
+            } catch (e) {
+                console.warn('[PublicitesCarousel] Erreur nettoyage interval:', e);
+            }
+        };
+    }, [orderedPublicites.length, isFocused]);
 
     useEffect(() => {
         const activePub = orderedPublicites[currentIndex];
@@ -582,7 +647,22 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
             });
     }, []);
 
-    if (loading || orderedPublicites.length === 0) {
+    // ✅ SÉCURITÉ: Retourner null de manière sûre
+    if (loading) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>✨ {t('publicite.promotions')}</Text>
+                </View>
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color={modernColors.primary} />
+                </View>
+            </View>
+        );
+    }
+
+    // ✅ SÉCURITÉ: Ne pas afficher si pas de publicités
+    if (!orderedPublicites || orderedPublicites.length === 0) {
         return null;
     }
 
