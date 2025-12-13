@@ -94,11 +94,19 @@ impl MassiveLoadHandler {
                 
                 // Si le cache dépasse la limite, supprimer les plus anciennes
                 if cache.len() > max_entries {
-                    let mut entries: Vec<_> = cache.iter().collect();
-                    entries.sort_by_key(|(_, cached)| cached.timestamp);
+                    let mut entries: Vec<(String, Instant)> = cache
+                        .iter()
+                        .map(|(key, cached)| (key.clone(), cached.timestamp))
+                        .collect();
+                    entries.sort_by_key(|(_, timestamp)| *timestamp);
                     let to_remove = cache.len() - max_entries;
-                    for (key, _) in entries.iter().take(to_remove) {
-                        cache.remove(*key);
+                    let keys_to_remove: Vec<String> = entries
+                        .iter()
+                        .take(to_remove)
+                        .map(|(key, _)| key.clone())
+                        .collect();
+                    for key in keys_to_remove {
+                        cache.remove(&key);
                     }
                     log::info!("🧹 Cache nettoyé: {} entrées supprimées (limite: {})", to_remove, max_entries);
                 }
