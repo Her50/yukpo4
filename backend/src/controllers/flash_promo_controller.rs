@@ -553,7 +553,6 @@ pub async fn get_active_flash_promos(
                 }
             }
         }
-    }
 
     // Trier par date de fin (les plus urgentes en premier)
     active_promos.sort_by(|a, b| {
