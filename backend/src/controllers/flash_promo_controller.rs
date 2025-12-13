@@ -286,7 +286,7 @@ pub async fn list_flash_promos(
         .and_then(|p| p.get("flash_promos"))
         .and_then(|fp| fp.as_array())
         .cloned()
-        .unwrap_or_else(|| Value::Array(Vec::new()));
+        .unwrap_or_else(Vec::new);
 
     Ok(Json(json!({
         "success": true,
@@ -422,10 +422,9 @@ pub async fn get_active_flash_promos(
             .and_then(|p| p.get("flash_promos"))
             .and_then(|fp| fp.as_array())
             .cloned()
-            .unwrap_or_else(|| Value::Array(Vec::new()));
+            .unwrap_or_else(Vec::new);
 
-        if let Some(promos_array) = flash_promos.as_array() {
-            for promo in promos_array {
+        for promo in flash_promos {
                 // Vérifier si la promo est active
                 let is_active = promo
                     .get("is_active")
