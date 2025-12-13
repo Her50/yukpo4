@@ -494,66 +494,6 @@ const apiCallInternal = async <T>(
   }
 };
 
-// ✅ NOUVEAU: Fonction de retry avec backoff exponentiel (wrapper autour de apiCallInternal)
-const apiCallWithRetry = async <T>(
-  endpoint: string,
-  options: RequestInit = {},
-  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG
-): Promise<ApiResponse<T>> => {
-  const maxRetries = retryConfig.maxRetries ?? 3;
-  let lastError: any = null;
-  let lastStatus: number | undefined = undefined;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const result = await apiCallInternal<T>(endpoint, options);
-      
-      // Si succès, retourner immédiatement
-      if (result.success !== false && (!result.status || result.status < 400)) {
-        return result;
-      }
-
-      // Si erreur, vérifier si on doit retry
-      lastStatus = result.status;
-      if (attempt < maxRetries && shouldRetry(result.error || result, lastStatus, retryConfig)) {
-        // Calculer le délai avec backoff exponentiel (1s, 2s, 4s)
-        const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000); // Max 10s
-        console.log(`[Mobile API] Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint}`);
-        await delay(delayMs);
-        continue;
-      }
-
-      // Ne pas retry, retourner l'erreur
-      return result;
-    } catch (error: any) {
-      lastError = error;
-      
-      // Vérifier si on doit retry
-      if (attempt < maxRetries && shouldRetry(error, undefined, retryConfig)) {
-        const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000);
-        console.log(`[Mobile API] Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint}`);
-        await delay(delayMs);
-        continue;
-      }
-
-      // Ne pas retry, lancer l'erreur
-      throw error;
-    }
-  }
-
-  // Si on arrive ici, tous les retries ont échoué
-  if (lastError) {
-    throw lastError;
-  }
-
-  return {
-    success: false,
-    error: 'Tous les tentatives ont échoué',
-    status: lastStatus,
-    data: null,
-  };
-};
-
 // ✅ NOUVEAU: Fonction principale avec retry par défaut (peut être désactivé)
 export const apiCall = async <T>(
   endpoint: string,
@@ -2038,6 +1978,7 @@ export default {
   serviceService,
   networkDiagnostics,
 };
+
 
 
 

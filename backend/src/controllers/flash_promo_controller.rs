@@ -422,7 +422,7 @@ pub async fn get_active_flash_promos(
             .and_then(|p| p.get("flash_promos"))
             .and_then(|fp| fp.as_array())
             .cloned()
-            .unwrap_or_else(|| json!([]));
+            .unwrap_or_else(|| Value::Array(Vec::new()));
 
         if let Some(promos_array) = flash_promos.as_array() {
             for promo in promos_array {
@@ -465,52 +465,56 @@ pub async fn get_active_flash_promos(
                     enriched_promo["service_owner_id"] = json!(service.user_id);
 
                     // Récupérer les produits concernés
-                    let product_indexes = promo
+                    let product_indexes_value = promo
                         .get("product_indexes")
-                        .and_then(|v| v.as_array())
                         .cloned()
-                        .unwrap_or_else(|| json!([]));
+                        .unwrap_or_else(|| Value::Array(Vec::new()));
+                    
+                    let product_indexes_array = product_indexes_value
+                        .as_array()
+                        .cloned()
+                        .unwrap_or_else(Vec::new);
 
-                    let produits = service
+                    let produits_value = service
                         .data
                         .get("produits")
                         .and_then(|p| p.get("valeur"))
-                        .and_then(|v| v.as_array())
                         .cloned()
-                        .unwrap_or_else(|| json!([]));
+                        .unwrap_or_else(|| Value::Array(Vec::new()));
+                    
+                    let produits_array = produits_value
+                        .as_array()
+                        .cloned()
+                        .unwrap_or_else(Vec::new);
 
                     // ✅ NOUVEAU: Service d'enrichissement pour la livraison
                     let enrichment_service = ProductEnrichmentService::new(pool.clone());
                     
                     let mut promo_products: Vec<Value> = Vec::new();
-                    if let (Some(indexes_array), Some(produits_array)) =
-                        (product_indexes.as_array(), produits.as_array())
-                    {
-                        for index_value in indexes_array {
-                            if let Some(index) = index_value.as_i64() {
-                                let idx = index as usize;
-                                if idx < produits_array.len() {
-                                    let mut product = produits_array[idx].clone();
-                                    // ✅ NOUVEAU: Ajouter les infos nécessaires pour l'achat direct
-                                    if let Some(product_obj) = product.as_object_mut() {
-                                        product_obj.insert("_service_id".to_string(), json!(service.id));
-                                        product_obj.insert("_product_index".to_string(), json!(idx));
-                                        product_obj.insert("_service_title".to_string(), json!(service.title));
-                                        
-                                        // ✅ NOUVEAU: Enrichir avec la configuration de livraison
-                                        if let Err(e) = enrichment_service
-                                            .enrich_product(service.id, idx as i32, &mut product)
-                                            .await
-                                        {
-                                            warn!(
-                                                "[FlashPromo] Erreur enrichissement livraison pour service {} produit {}: {:?}",
-                                                service.id, idx, e
-                                            );
-                                            // Continuer même en cas d'erreur
-                                        }
+                    for index_value in product_indexes_array {
+                        if let Some(index) = index_value.as_i64() {
+                            let idx = index as usize;
+                            if idx < produits_array.len() {
+                                let mut product = produits_array[idx].clone();
+                                // ✅ NOUVEAU: Ajouter les infos nécessaires pour l'achat direct
+                                if let Some(product_obj) = product.as_object_mut() {
+                                    product_obj.insert("_service_id".to_string(), json!(service.id));
+                                    product_obj.insert("_product_index".to_string(), json!(idx));
+                                    product_obj.insert("_service_title".to_string(), json!(service.title));
+                                    
+                                    // ✅ NOUVEAU: Enrichir avec la configuration de livraison
+                                    if let Err(e) = enrichment_service
+                                        .enrich_product(service.id, idx as i32, &mut product)
+                                        .await
+                                    {
+                                        warn!(
+                                            "[FlashPromo] Erreur enrichissement livraison pour service {} produit {}: {:?}",
+                                            service.id, idx, e
+                                        );
+                                        // Continuer même en cas d'erreur
                                     }
-                                    promo_products.push(product);
                                 }
+                                promo_products.push(product);
                             }
                         }
                     }
@@ -544,7 +548,7 @@ pub async fn get_active_flash_promos(
                     // ✅ NOUVEAU: Ajouter les informations nécessaires pour l'achat direct
                     // Les produits sont déjà dans "products" avec toutes leurs infos
                     // Ajouter aussi les index pour référence rapide
-                    enriched_promo["product_indexes"] = product_indexes;
+                    enriched_promo["product_indexes"] = json!(product_indexes_array);
                     
                     active_promos.push(enriched_promo);
                 }
