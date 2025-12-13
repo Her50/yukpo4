@@ -1,5 +1,5 @@
-use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::services::product_enrichment_service::ProductEnrichmentService;
 use crate::state::AppState;
 use axum::{
     extract::{Extension, Path, State},
@@ -12,7 +12,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::FromRow;
 use std::sync::Arc;
-use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateFlashPromoRequest {
@@ -53,6 +52,15 @@ pub struct FlashPromoResponse {
 struct ServiceOwnerRow {
     user_id: i32,
     data: Value,
+}
+
+#[derive(FromRow)]
+struct ServiceWithPromosRow {
+    id: i32,
+    user_id: i32,
+    data: Value,
+    #[sqlx(default)]
+    title: String,
 }
 
 /// Créer un flash promotionnel pour un produit (GRATUIT)
@@ -278,7 +286,7 @@ pub async fn list_flash_promos(
         .and_then(|p| p.get("flash_promos"))
         .and_then(|fp| fp.as_array())
         .cloned()
-        .unwrap_or_else(|| json!([]));
+        .unwrap_or_else(|| Value::Array(Vec::new()));
 
     Ok(Json(json!({
         "success": true,
@@ -363,9 +371,9 @@ pub async fn get_active_flash_promos(
     info!("[FlashPromo] Récupération flash promos actifs");
 
     // Récupérer tous les services avec des flash promos actifs
-    let services = sqlx::query!(
+    let services_rows = sqlx::query_as::<_, (i32, i32, Value)>(
         r#"
-        SELECT id, user_id, data, title
+        SELECT id, user_id, data
         FROM services
         WHERE data->'promotion'->'flash_promos' IS NOT NULL
         AND data->'promotion'->'flash_promos' != '[]'::jsonb
@@ -378,6 +386,31 @@ pub async fn get_active_flash_promos(
         error!("[FlashPromo] Erreur récupération services: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
+
+    // Convertir en ServiceWithPromosRow en extrayant le titre depuis le JSON
+    let services: Vec<ServiceWithPromosRow> = services_rows
+        .into_iter()
+        .map(|(id, user_id, data)| {
+            let title = data
+                .get("titre_service")
+                .and_then(|v| v.as_str())
+                .or_else(|| {
+                    data.get("titre_service")
+                        .and_then(|v| v.get("valeur"))
+                        .and_then(|v| v.as_str())
+                })
+                .or_else(|| data.get("titre").and_then(|v| v.as_str()))
+                .or_else(|| data.get("nom").and_then(|v| v.as_str()))
+                .unwrap_or("Service")
+                .to_string();
+            ServiceWithPromosRow {
+                id,
+                user_id,
+                data,
+                title,
+            }
+        })
+        .collect();
 
     let now = Utc::now();
     let mut active_promos: Vec<Value> = Vec::new();
@@ -429,7 +462,6 @@ pub async fn get_active_flash_promos(
                     // Enrichir avec les infos du service
                     let mut enriched_promo = promo.clone();
                     enriched_promo["service_id"] = json!(service.id);
-                    enriched_promo["service_title"] = json!(service.title);
                     enriched_promo["service_owner_id"] = json!(service.user_id);
 
                     // Récupérer les produits concernés
@@ -447,6 +479,9 @@ pub async fn get_active_flash_promos(
                         .cloned()
                         .unwrap_or_else(|| json!([]));
 
+                    // ✅ NOUVEAU: Service d'enrichissement pour la livraison
+                    let enrichment_service = ProductEnrichmentService::new(pool.clone());
+                    
                     let mut promo_products: Vec<Value> = Vec::new();
                     if let (Some(indexes_array), Some(produits_array)) =
                         (product_indexes.as_array(), produits.as_array())
@@ -455,13 +490,62 @@ pub async fn get_active_flash_promos(
                             if let Some(index) = index_value.as_i64() {
                                 let idx = index as usize;
                                 if idx < produits_array.len() {
-                                    promo_products.push(produits_array[idx].clone());
+                                    let mut product = produits_array[idx].clone();
+                                    // ✅ NOUVEAU: Ajouter les infos nécessaires pour l'achat direct
+                                    if let Some(product_obj) = product.as_object_mut() {
+                                        product_obj.insert("_service_id".to_string(), json!(service.id));
+                                        product_obj.insert("_product_index".to_string(), json!(idx));
+                                        product_obj.insert("_service_title".to_string(), json!(service.title));
+                                        
+                                        // ✅ NOUVEAU: Enrichir avec la configuration de livraison
+                                        if let Err(e) = enrichment_service
+                                            .enrich_product(service.id, idx as i32, &mut product)
+                                            .await
+                                        {
+                                            warn!(
+                                                "[FlashPromo] Erreur enrichissement livraison pour service {} produit {}: {:?}",
+                                                service.id, idx, e
+                                            );
+                                            // Continuer même en cas d'erreur
+                                        }
+                                    }
+                                    promo_products.push(product);
                                 }
                             }
                         }
                     }
 
+                    // ✅ NOUVEAU: Déterminer le titre intelligent
+                    // Si un seul produit : utiliser son nom, sinon le titre du service
+                    let display_title = if promo_products.len() == 1 {
+                        // Un seul produit : utiliser son nom
+                        promo_products[0]
+                            .get("nom_produit")
+                            .and_then(|v| v.as_str())
+                            .or_else(|| {
+                                promo_products[0]
+                                    .get("nom_produit")
+                                    .and_then(|v| v.get("valeur"))
+                                    .and_then(|v| v.as_str())
+                            })
+                            .or_else(|| promo_products[0].get("nom").and_then(|v| v.as_str()))
+                            .unwrap_or("Produit en promotion")
+                            .to_string()
+                    } else {
+                        // Plusieurs produits : utiliser le titre du service
+                        service.title.clone()
+                    };
+
+                    enriched_promo["display_title"] = json!(display_title);
+                    enriched_promo["service_title"] = json!(service.title);
                     enriched_promo["products"] = json!(promo_products);
+                    enriched_promo["product_count"] = json!(promo_products.len());
+                    
+                    // ✅ NOUVEAU: Ajouter les informations nécessaires pour l'achat direct
+                    // Les produits sont déjà dans "products" avec toutes leurs infos
+                    // Ajouter aussi les index pour référence rapide
+                    enriched_promo["product_indexes"] = product_indexes;
+                    
                     active_promos.push(enriched_promo);
                 }
             }

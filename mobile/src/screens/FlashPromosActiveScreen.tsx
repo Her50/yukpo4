@@ -12,6 +12,7 @@ import {
     View,
 } from 'react-native';
 import { SafeNativeView } from '../components/SafeNativeView';
+import ProductCard from '../components/ProductCard';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
@@ -23,14 +24,18 @@ interface FlashPromo {
     id: string;
     service_id: number;
     service_title: string;
+    service_owner_id?: number;
     title: string;
+    display_title?: string; // ✅ NOUVEAU: Titre intelligent (nom produit si 1 seul, sinon titre service)
     description?: string;
     discount_type: string;
     discount_value?: number;
     starts_at: string;
     ends_at: string;
     availability: string;
-    products: any[];
+    products: any[]; // ✅ Les produits incluent maintenant delivery_availability
+    product_indexes?: number[];
+    product_count?: number;
     stock_cap?: number;
 }
 
@@ -148,51 +153,83 @@ const FlashPromosActiveScreen: React.FC = () => {
                     </View>
                 ) : (
                     flashPromos.map((promo) => {
-                        const product = promo.products?.[0];
-                        const image = product?.images?.[0] || product?.cover_media || PLACEHOLDER_IMAGE;
+                        const products = promo.products || [];
                         const timeRemaining = formatTimeRemaining(promo.ends_at);
 
                         return (
-                            <TouchableOpacity
-                                key={promo.id}
-                                style={styles.promoCard}
-                                onPress={() => handlePromoPress(promo)}
-                            >
-                                <View style={styles.promoImageContainer}>
-                                    <Image source={{ uri: image }} style={styles.promoImage} resizeMode="cover" />
-                                    <View style={styles.discountBadge}>
-                                        <Text style={styles.discountBadgeText}>{formatDiscount(promo)}</Text>
-                                    </View>
-                                    {promo.availability === 'live' || promo.availability === 'both' ? (
-                                        <View style={styles.liveBadge}>
-                                            <Text style={styles.liveBadgeText}>📺 LIVE</Text>
-                                        </View>
-                                    ) : null}
-                                </View>
-
-                                <View style={styles.promoContent}>
-                                    <Text style={styles.promoTitle}>{promo.title}</Text>
-                                    {promo.description && (
-                                        <Text style={styles.promoDescription} numberOfLines={2}>
-                                            {promo.description}
-                                        </Text>
-                                    )}
-                                    <Text style={styles.serviceTitle}>{promo.service_title}</Text>
-
-                                    <View style={styles.promoFooter}>
-                                        <View style={styles.timeContainer}>
-                                            <SafeIcon name="clock" size={16} color={modernColors.textSecondary} />
-                                            <Text style={styles.timeText}>{timeRemaining}</Text>
-                                        </View>
-                                        {promo.stock_cap && (
-                                            <View style={styles.stockContainer}>
-                                                <SafeIcon name="package" size={16} color={modernColors.textSecondary} />
-                                                <Text style={styles.stockText}>Stock limité</Text>
-                                            </View>
+                            <View key={promo.id} style={styles.promoSection}>
+                                {/* En-tête de la promo */}
+                                <View style={styles.promoHeader}>
+                                    <View style={styles.promoHeaderContent}>
+                                        <Text style={styles.promoTitle}>{promo.title || promo.display_title}</Text>
+                                        {promo.description && (
+                                            <Text style={styles.promoDescription} numberOfLines={2}>
+                                                {promo.description}
+                                            </Text>
                                         )}
+                                        <View style={styles.promoHeaderFooter}>
+                                            <View style={styles.timeContainer}>
+                                                <SafeIcon name="clock" size={14} color={modernColors.textSecondary} />
+                                                <Text style={styles.timeText}>{timeRemaining}</Text>
+                                            </View>
+                                            <View style={styles.discountBadgeInline}>
+                                                <Text style={styles.discountBadgeTextInline}>{formatDiscount(promo)}</Text>
+                                            </View>
+                                            {promo.availability === 'live' || promo.availability === 'both' ? (
+                                                <View style={styles.liveBadgeInline}>
+                                                    <Text style={styles.liveBadgeTextInline}>📺 LIVE</Text>
+                                                </View>
+                                            ) : null}
+                                        </View>
                                     </View>
                                 </View>
-                            </TouchableOpacity>
+
+                                {/* Produits avec ProductCard (inclut bouton "Me livrer") */}
+                                {products.length > 0 ? (
+                                    products.map((product: any, index: number) => {
+                                        // Construire le service minimal pour ProductCard
+                                        const service = {
+                                            id: promo.service_id,
+                                            data: {
+                                                produits: {
+                                                    valeur: [product]
+                                                },
+                                                titre_service: {
+                                                    valeur: promo.service_title
+                                                }
+                                            }
+                                        };
+
+                                        return (
+                                            <View key={`${promo.id}-product-${index}`} style={styles.productCardContainer}>
+                                                <ProductCard
+                                                    product={{
+                                                        ...product,
+                                                        product_index: product._product_index || index,
+                                                        service_id: promo.service_id,
+                                                    }}
+                                                    service={service}
+                                                    prestataire={{
+                                                        user_id: promo.service_owner_id,
+                                                        nom: promo.service_title,
+                                                    }}
+                                                />
+                                            </View>
+                                        );
+                                    })
+                                ) : (
+                                    <TouchableOpacity
+                                        style={styles.promoCard}
+                                        onPress={() => handlePromoPress(promo)}
+                                    >
+                                        <View style={styles.promoContent}>
+                                            <Text style={styles.emptyProductsText}>
+                                                Aucun produit disponible
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
                         );
                     })
                 )}
@@ -358,6 +395,60 @@ const styles = StyleSheet.create({
     stockText: {
         fontSize: 14,
         color: modernColors.textSecondary,
+    },
+    promoSection: {
+        marginBottom: 24,
+    },
+    promoHeader: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        marginBottom: 12,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    promoHeaderContent: {
+        gap: 8,
+    },
+    promoHeaderFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginTop: 8,
+    },
+    discountBadgeInline: {
+        backgroundColor: '#DC2626',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    discountBadgeTextInline: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    liveBadgeInline: {
+        backgroundColor: '#8B5CF6',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    liveBadgeTextInline: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    productCardContainer: {
+        marginBottom: 12,
+    },
+    emptyProductsText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        padding: 16,
     },
 });
 

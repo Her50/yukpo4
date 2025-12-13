@@ -3554,7 +3554,6 @@ async fn generate_additional_variant(
     target_height: u32,
     _original_relative_path: &str,
 ) -> AppResult<Option<AlternativeVideoFormat>> {
-    use std::path::PathBuf;
     use tokio::process::Command;
     use uuid::Uuid;
 
