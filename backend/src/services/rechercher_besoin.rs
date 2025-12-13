@@ -1324,7 +1324,7 @@ pub async fn rechercher_besoin_direct(
 /// ✅ CORRIGÉ 2025-12-13: Utiliser autocomplete_characteristics (comme autocomplete) pour recherche RAPIDE dans les produits
 async fn search_services_direct_fallback(
     pool: &sqlx::PgPool,
-    primary_keyword: &str,
+    _primary_keyword: &str,
     all_keywords: &[String],
 ) -> Result<Vec<serde_json::Value>, crate::core::types::AppError> {
     use crate::utils::log::log_info;

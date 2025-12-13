@@ -828,8 +828,7 @@ async fn calculate_statistics(
             END as by_type
         FROM stats_base
         LIMIT 1
-        "#,
-        status_condition
+        "#
     );
 
     let row = sqlx::query(&sql).bind(user_id).fetch_one(pool).await?;

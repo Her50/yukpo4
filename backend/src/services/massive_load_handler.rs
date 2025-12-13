@@ -73,7 +73,7 @@ impl MassiveLoadHandler {
     /// ?? Cr?e un nouveau gestionnaire de charge massive
     pub fn new() -> Self {
         let request_semaphore = Arc::new(Semaphore::new(10000)); // 10k requ?tes simultan?es
-        let request_cache = Arc::new(RwLock::new(HashMap::new()));
+        let request_cache = Arc::new(RwLock::new(HashMap::<String, CachedResponse>::new()));
         let batch_processor = Arc::new(RwLock::new(BatchProcessor::new()));
         let connection_pool = Arc::new(RwLock::new(ConnectionPool::new()));
 
