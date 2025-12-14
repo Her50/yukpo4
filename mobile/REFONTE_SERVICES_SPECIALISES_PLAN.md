@@ -241,3 +241,4 @@ Pour chaque service refondu, vérifier :
 **Dernière mise à jour** : 2025-01-XX
 **Statut global** : 1/14 services terminés (Pharmacie)
 
+

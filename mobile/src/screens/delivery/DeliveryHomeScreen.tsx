@@ -31,15 +31,8 @@ const DeliveryHomeScreen: React.FC = () => {
     const [navigating, setNavigating] = useState(false);
 
     // ✅ CORRIGÉ: Utiliser useScreenEnter directement comme hook React (pas dans try/catch)
-    // ✅ CORRIGÉ: Gestion robuste avec fallback si le hook échoue
-    let screenEnterStyle: ReturnType<typeof useScreenEnter>;
-    try {
-        screenEnterStyle = useScreenEnter();
-    } catch (error) {
-        console.error('[DeliveryHomeScreen] ❌ Erreur useScreenEnter:', error);
-        // Fallback: retourner un style vide si le hook échoue
-        screenEnterStyle = { style: {} };
-    }
+    // Les hooks React doivent être appelés de manière inconditionnelle
+    const screenEnterStyle = useScreenEnter();
     // ✅ CORRIGÉ: S'assurer que screenEnterStyle a toujours une propriété style
     const safeScreenEnterStyle = screenEnterStyle?.style || {};
 

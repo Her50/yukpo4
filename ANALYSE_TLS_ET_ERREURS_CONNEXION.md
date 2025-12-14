@@ -265,3 +265,4 @@ wscat -c wss://yukpomnang.onrender.com/ws/notifications/1
 - Renouvellement préventif des connexions
 - Pool de connexions optimisé
 
+

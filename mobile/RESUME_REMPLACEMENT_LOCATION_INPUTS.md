@@ -72,3 +72,4 @@ Tous les écrans de configuration utilisent déjà `LocationSelector` :
 - ✅ Parsing automatique des composants (ville, quartier, région, pays)
 - ✅ Interface utilisateur moderne et intuitive
 
+

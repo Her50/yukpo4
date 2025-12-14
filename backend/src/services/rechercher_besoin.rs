@@ -808,7 +808,7 @@ pub async fn rechercher_besoin_direct(
                 WHERE service_id = ANY($1::int[])
                 AND type IN ('image', 'video')
                 AND path IS NOT NULL
-                ORDER BY service_id, created_at ASC
+                ORDER BY service_id, uploaded_at ASC
                 "#,
             )
             .bind(&service_ids)

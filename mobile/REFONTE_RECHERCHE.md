@@ -156,3 +156,4 @@ import SimpleSearchBar from '../components/SimpleSearchBar';
 - Les résultats sont normalisés automatiquement
 - Le timeout est fixé à 30 secondes (configurable)
 
+

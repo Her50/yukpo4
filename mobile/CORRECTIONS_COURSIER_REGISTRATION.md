@@ -111,3 +111,4 @@ const loadUserPhoneFromServices = async () => {
 4. ✅ Vérifier que le téléphone reste vide si l'utilisateur n'a pas de service
 5. ✅ Vérifier que le téléphone peut être modifié manuellement
 
+

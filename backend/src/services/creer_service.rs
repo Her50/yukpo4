@@ -3,6 +3,7 @@
 use crate::core::types::{AppError, AppResult};
 use crate::services::google_places_service::GooglePlacesService;
 use crate::utils::currency::{auto_fill_currencies, extract_country};
+use crate::utils::db_retry::retry_service_operation;
 use crate::utils::embedding_client::AddEmbeddingPineconeRequest;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;
@@ -1854,7 +1855,7 @@ pub async fn creer_service(
         );
     }
 
-    let auto_deactivate_at = chrono::Utc::now() + chrono::Duration::days(active_days);
+    let auto_deactivate_at = (chrono::Utc::now() + chrono::Duration::days(active_days)).naive_utc();
 
     let _cache_key = format!(
         "creation_service:{}:{}:{}",
@@ -1950,129 +1951,161 @@ pub async fn creer_service(
 
     // ✅ NOUVEAU 2025-01-27 : Démarrer une transaction globale AVANT le débit
     // Cela garantit l'atomicité de toutes les opérations (débit, insertion service, médias)
-    let mut tx = pool
-        .begin()
-        .await
-        .map_err(|e| AppError::Internal(format!("Échec début transaction: {}", e)))?;
+    // ✅ CORRIGÉ 2025-01-27 : Wrapper la transaction critique dans un retry pour gérer les erreurs de connexion DB
+    // Fonction interne pour la transaction critique avec retry
+    async fn execute_critical_transaction<'a>(
+        pool: &'a PgPool,
+        user_id: i32,
+        cout_reel_xaf: i64,
+        data_obj: &serde_json::Value,
+        is_tarissable: bool,
+        gps_str: &str,
+        auto_deactivate_at: Option<chrono::NaiveDateTime>,
+    ) -> AppResult<(sqlx::Transaction<'a, sqlx::Postgres>, i64, i64, i32)> {
+        // Démarrer la transaction
+        let mut tx = pool
+            .begin()
+            .await
+            .map_err(|e| AppError::Internal(format!("Échec début transaction: {}", e)))?;
 
-    // ✅ AMÉLIORATION 2025-01-27 : Utiliser SELECT FOR UPDATE pour éviter les race conditions
-    // Vérifier le solde dans la transaction avec FOR UPDATE pour éviter les débits simultanés
-    let balance_check_result =
-        sqlx::query("SELECT tokens_balance FROM users WHERE id = $1 FOR UPDATE")
+        // ✅ AMÉLIORATION 2025-01-27 : Utiliser SELECT FOR UPDATE pour éviter les race conditions
+        // Vérifier le solde dans la transaction avec FOR UPDATE pour éviter les débits simultanés
+        let balance_check_result =
+            sqlx::query("SELECT tokens_balance FROM users WHERE id = $1 FOR UPDATE")
+                .bind(user_id)
+                .fetch_one(&mut *tx)
+                .await;
+
+        let verified_balance = match balance_check_result {
+            Ok(row) => row.get::<i64, _>("tokens_balance"),
+            Err(e) => {
+                let _ = tx.rollback().await;
+                log::error!(
+                    "[creer_service] ❌ Erreur récupération solde dans transaction: {}",
+                    e
+                );
+                return Err(AppError::Internal(format!(
+                    "Erreur récupération solde: {}",
+                    e
+                )));
+            }
+        };
+
+        // Vérifier à nouveau le solde dans la transaction (peut avoir changé)
+        if verified_balance < cout_reel_xaf {
+            let _ = tx.rollback().await;
+            log::error!(
+                "[creer_service] ❌ Solde insuffisant dans transaction pour user {}: {} FCFA < {} FCFA requis",
+                user_id,
+                verified_balance,
+                cout_reel_xaf
+            );
+            return Err(AppError::BadRequest(format!(
+                "Solde insuffisant: {} FCFA disponible, {} FCFA requis",
+                verified_balance, cout_reel_xaf
+            )));
+        }
+
+        // ✅ CRITIQUE 2025-01-27 : Débiter le solde DANS la transaction
+        // Cela garantit que le débit et l'insertion sont atomiques
+        let debit_result = sqlx::query(
+            "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
+        )
+            .bind(cout_reel_xaf)
             .bind(user_id)
             .fetch_one(&mut *tx)
             .await;
 
-    let verified_balance = match balance_check_result {
-        Ok(row) => row.get::<i64, _>("tokens_balance"),
-        Err(e) => {
-            let _ = tx.rollback().await;
-            log::error!(
-                "[creer_service] ❌ Erreur récupération solde dans transaction: {}",
-                e
-            );
-            return Err(AppError::Internal(format!(
-                "Erreur récupération solde: {}",
-                e
-            )));
-        }
-    };
+        let new_balance = match debit_result {
+            Ok(row) => row.get::<i64, _>("tokens_balance"),
+            Err(e) => {
+                let _ = tx.rollback().await;
+                log::error!(
+                    "[creer_service] ❌ Échec débit solde dans transaction pour user {}: {}",
+                    user_id,
+                    e
+                );
+                return Err(AppError::Internal(format!("Erreur débit solde: {}", e)));
+            }
+        };
 
-    // Vérifier à nouveau le solde dans la transaction (peut avoir changé)
-    if verified_balance < cout_reel_xaf {
-        let _ = tx.rollback().await;
-        log::error!(
-            "[creer_service] ❌ Solde insuffisant dans transaction pour user {}: {} FCFA < {} FCFA requis",
-            user_id,
+        log::info!(
+            "[creer_service] ✅ Solde débité dans transaction : {} FCFA (ancien: {}, nouveau: {})",
+            cout_reel_xaf,
             verified_balance,
-            cout_reel_xaf
+            new_balance
         );
-        return Err(AppError::BadRequest(format!(
-            "Solde insuffisant: {} FCFA disponible, {} FCFA requis",
-            verified_balance, cout_reel_xaf
-        )));
-    }
 
-    // ✅ CRITIQUE 2025-01-27 : Débiter le solde DANS la transaction
-    // Cela garantit que le débit et l'insertion sont atomiques
-    let debit_result = sqlx::query(
-        "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
-    )
-        .bind(cout_reel_xaf)
+        // Ajout des champs dans la transaction SQL
+        // Étape 1 : INSERT dans services et récupérer l'id
+        let row_result = sqlx::query(
+            r#"
+            INSERT INTO services (user_id, data, is_tarissable, gps, auto_deactivate_at)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id AS service_id
+            "#,
+        )
         .bind(user_id)
+        .bind(data_obj)
+        .bind(is_tarissable)
+        .bind(gps_str)
+        .bind(auto_deactivate_at)
         .fetch_one(&mut *tx)
         .await;
 
-    let new_balance = match debit_result {
-        Ok(row) => row.get::<i64, _>("tokens_balance"),
-        Err(e) => {
-            let _ = tx.rollback().await;
-            log::error!(
-                "[creer_service] ❌ Échec débit solde dans transaction pour user {}: {}",
+        let row = match row_result {
+            Ok(row) => row,
+            Err(e) => {
+                // Log détaillé pour diagnostiquer l'erreur
+                let json_size = serde_json::to_string(data_obj)
+                    .map(|s| s.len())
+                    .unwrap_or(0);
+                let has_base64_image = data_obj
+                    .as_object()
+                    .and_then(|m| m.get("base64_image"))
+                    .is_some();
+
+                log::error!(
+                    "[creer_service] Erreur SQL lors de l'insertion: {} | user_id={} | json_size={} bytes | has_base64_image={}",
+                    e,
+                    user_id,
+                    json_size,
+                    has_base64_image
+                );
+
+                // ✅ AMÉLIORATION 2025-01-27 : Rollback automatique de la transaction
+                // Le débit est dans la transaction, donc le rollback annule automatiquement le débit
+                let _ = tx.rollback().await;
+                log::error!("[creer_service] ❌ Transaction rollback - débit annulé automatiquement");
+
+                return Err(AppError::Internal(format!(
+                    "Échec insertion service: {}",
+                    e
+                )));
+            }
+        };
+
+        let service_id: i32 = row.get::<i32, _>("service_id");
+
+        Ok((tx, verified_balance, new_balance, service_id))
+    }
+
+    // Appeler la fonction avec retry
+    let (mut tx, verified_balance, new_balance, service_id) = retry_service_operation(
+        || {
+            Box::pin(execute_critical_transaction(
+                pool,
                 user_id,
-                e
-            );
-            return Err(AppError::Internal(format!("Erreur débit solde: {}", e)));
-        }
-    };
-
-    log::info!(
-        "[creer_service] ✅ Solde débité dans transaction : {} FCFA (ancien: {}, nouveau: {})",
-        cout_reel_xaf,
-        verified_balance,
-        new_balance
-    );
-
-    // Ajout des champs dans la transaction SQL
-    // Étape 1 : INSERT dans services et récupérer l'id
-    let row_result = sqlx::query(
-        r#"
-        INSERT INTO services (user_id, data, is_tarissable, gps, auto_deactivate_at)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id AS service_id
-        "#,
+                cout_reel_xaf,
+                &data_obj,
+                is_tarissable,
+                &gps_str,
+                Some(auto_deactivate_at),
+            ))
+        },
+        5, // max_retries: 5 tentatives
     )
-    .bind(user_id)
-    .bind(&data_obj)
-    .bind(is_tarissable)
-    .bind(gps_str)
-    .bind(auto_deactivate_at)
-    .fetch_one(&mut *tx)
-    .await;
-
-    let row = match row_result {
-        Ok(row) => row,
-        Err(e) => {
-            // Log détaillé pour diagnostiquer l'erreur
-            let json_size = serde_json::to_string(&data_obj)
-                .map(|s| s.len())
-                .unwrap_or(0);
-            let has_base64_image = data_obj
-                .as_object()
-                .and_then(|m| m.get("base64_image"))
-                .is_some();
-
-            log::error!(
-                "[creer_service] Erreur SQL lors de l'insertion: {} | user_id={} | json_size={} bytes | has_base64_image={}",
-                e,
-                user_id,
-                json_size,
-                has_base64_image
-            );
-
-            // ✅ AMÉLIORATION 2025-01-27 : Rollback automatique de la transaction
-            // Le débit est dans la transaction, donc le rollback annule automatiquement le débit
-            let _ = tx.rollback().await;
-            log::error!("[creer_service] ❌ Transaction rollback - débit annulé automatiquement");
-
-            return Err(AppError::Internal(format!(
-                "Échec insertion service: {}",
-                e
-            )));
-        }
-    };
-
-    let service_id: i32 = row.get::<i32, _>("service_id");
+    .await?;
 
     // Étape 2 : UPDATE users pour activer le provider (pas bloquant si déjà TRUE)
     let _ = sqlx::query(

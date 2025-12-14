@@ -210,3 +210,4 @@ ON services USING GIN (to_tsvector('french', products_text_cache));
 
 **Solution** : Utiliser full-text search (`@@`) qui crée un index GIN spécialisé pour la recherche de texte.
 
+

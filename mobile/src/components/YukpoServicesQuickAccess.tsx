@@ -220,7 +220,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                 {/* ✅ NOUVEAU: Style soft comme GOZEM - fond gris clair au lieu de gradient */}
                                 <View style={styles.categorySoftContainer}>
                                     <View style={styles.categoryIconContainer}>
-                                        <SafeIcon name={category.icon} size={22} color="#6B7280" />
+                                        <SafeIcon name={category.icon} size={18} color="#6B7280" />
                                     </View>
                                     <Text style={styles.categoryTitle} numberOfLines={2}>
                                         {category.title}
@@ -379,11 +379,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
-        gap: 8,
+        gap: 6,
     },
     categoryWrapper: {
         width: '48%', // 2 colonnes avec espacement
-        marginBottom: 8,
+        marginBottom: 6,
     },
     categoryBlock: {
         minWidth: 150,
@@ -397,8 +397,8 @@ const styles = StyleSheet.create({
     },
     // ✅ NOUVEAU: Style soft comme GOZEM - fond blanc/gris clair
     categorySoftContainer: {
-        padding: 14,
-        minHeight: 110,
+        padding: 8,
+        minHeight: 70,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
@@ -406,24 +406,24 @@ const styles = StyleSheet.create({
         borderColor: '#E5E7EB',
     },
     categoryIconContainer: {
-        marginBottom: 8,
+        marginBottom: 4,
         alignItems: 'center',
         justifyContent: 'center',
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         backgroundColor: '#F3F4F6', // ✅ Gris clair comme GOZEM
     },
     categoryTitle: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '600',
         color: '#111827', // ✅ Texte foncé sur fond clair
         textAlign: 'center',
-        marginBottom: 4,
-        lineHeight: 18,
+        marginBottom: 2,
+        lineHeight: 16,
     },
     categoryDescription: {
-        fontSize: 11,
+        fontSize: 10,
         color: '#6B7280', // ✅ Gris moyen
         textAlign: 'center',
     },

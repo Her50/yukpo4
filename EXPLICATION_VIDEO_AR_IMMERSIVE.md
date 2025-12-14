@@ -136,3 +136,4 @@ Souhaitez-vous que je :
 2. Désactive le bouton temporairement ?
 3. Implémente la vraie capture vidéo avec `react-native-vision-camera` ?
 
+

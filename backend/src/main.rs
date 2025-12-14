@@ -117,8 +117,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .max_connections(max_connections)
                 .min_connections(min_connections)
                 .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
-                .idle_timeout(Some(std::time::Duration::from_secs(300))) // ✅ CORRIGÉ 2025-12-13: 5 min (au lieu de 3) pour éviter fermetures prématurées
-                .max_lifetime(Some(std::time::Duration::from_secs(360))) // ✅ CORRIGÉ 2025-12-13: 6 min (au lieu de 4) pour renouveler AVANT que Render ne ferme (~5-10 min)
+                .idle_timeout(Some(std::time::Duration::from_secs(180))) // ✅ CORRIGÉ 2025-01-27: 3 min pour renouveler AVANT que Render ne ferme (~5 min)
+                .max_lifetime(Some(std::time::Duration::from_secs(240))) // ✅ CORRIGÉ 2025-01-27: 4 min pour renouveler AVANT que Render ne ferme (~5 min)
                 .test_before_acquire(true)
                 .after_connect(|conn, _meta| {
                     Box::pin(async move {

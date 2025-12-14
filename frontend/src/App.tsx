@@ -135,6 +135,7 @@ import CreatePublicitePage from '@/pages/CreatePublicitePage';
 import Dashboard from '@/pages/Dashboard';
 import AnalyticsDashboard from '@/pages/dashboard/AnalyticsDashboard';
 import MesServices from '@/pages/dashboard/MesServices';
+import MesProduits from '@/pages/dashboard/MesProduits';
 import MonProfil from '@/pages/dashboard/MonProfil';
 import DashboardPrestataire from '@/pages/DashboardPrestataire';
 import GoLivePage from '@/pages/GoLivePage';
@@ -221,6 +222,11 @@ function App() {
                         <Route path={ROUTES.MES_SERVICES} element={
                           <RequireAuth>
                             <MesServices />
+                          </RequireAuth>
+                        } />
+                        <Route path={ROUTES.MES_PRODUITS} element={
+                          <RequireAuth>
+                            <MesProduits />
                           </RequireAuth>
                         } />
                         <Route path={ROUTES.ANALYTICS_DASHBOARD} element={

@@ -140,7 +140,7 @@ export const transitionConfig: {
                 animation: 'timing',
                 config: {
                     duration: 250,
-                    easing: Easing.in(Easing.ease),
+                    easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.in(Easing.ease)
                 },
             },
         },
@@ -182,7 +182,7 @@ export const transitionConfig: {
                 animation: 'timing',
                 config: {
                     duration: 250,
-                    easing: Easing.in(Easing.ease),
+                    easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.in(Easing.ease)
                 },
             },
         },

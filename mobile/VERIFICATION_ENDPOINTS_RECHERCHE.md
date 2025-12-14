@@ -142,3 +142,4 @@ pub struct MultiModalInput {
 
 **Le nouveau service de recherche utilise exactement les mêmes endpoints que l'ancien système, garantissant la compatibilité totale.**
 
+

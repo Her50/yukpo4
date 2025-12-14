@@ -49,7 +49,7 @@ export const useScreenTransition = (options: UseScreenTransitionOptions = {}) =>
 
                     opacity.value = withTiming(1, {
                         duration,
-                        easing: Easing.out(Easing.ease),
+                        easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.out(Easing.ease)
                     });
 
                     if (type === 'slide') {
@@ -111,28 +111,28 @@ export const useScreenTransition = (options: UseScreenTransitionOptions = {}) =>
         try {
             opacity.value = withTiming(0, {
                 duration: duration * 0.7,
-                easing: Easing.in(Easing.ease),
+                easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.in(Easing.ease)
             });
 
             if (type === 'slide') {
                 translateX.value = withTiming(-50, {
                     duration: duration * 0.7,
-                    easing: Easing.in(Easing.ease),
+                    easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.in(Easing.ease)
                 });
             } else if (type === 'slideUp') {
                 translateY.value = withTiming(50, {
                     duration: duration * 0.7,
-                    easing: Easing.in(Easing.ease),
+                    easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.in(Easing.ease)
                 });
             } else if (type === 'slideDown') {
                 translateY.value = withTiming(-50, {
                     duration: duration * 0.7,
-                    easing: Easing.in(Easing.ease),
+                    easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.in(Easing.ease)
                 });
             } else if (type === 'scale') {
                 scale.value = withTiming(0.9, {
                     duration: duration * 0.7,
-                    easing: Easing.in(Easing.ease),
+                    easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.in(Easing.ease)
                 });
             }
 

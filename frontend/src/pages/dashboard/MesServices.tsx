@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { API_ENDPOINTS, buildUrl } from "../../config/api.config";
+import { ROUTES } from "../../routes/AppRoutesRegistry";
 
 
 const MesServices = () => {
@@ -616,6 +617,12 @@ const MesServices = () => {
         <div className="mt-8 pt-8 border-t border-gray-200">
           <div className="flex flex-col gap-4">
             <div className="flex justify-center gap-3 flex-wrap">
+              <Button
+                onClick={() => navigate(ROUTES.MES_PRODUITS)}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                📦 Mes Produits
+              </Button>
               <Button
                 onClick={() => navigate('/creer-publicite')}
                 className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"

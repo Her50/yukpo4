@@ -181,3 +181,4 @@ Les deux systèmes sont complémentaires :
 - **LocationSelector** : Pour recherche par nom de lieu (ville, quartier)
 - **ModernGPSModal** : Pour localisation GPS précise (coordonnées exactes)
 
+

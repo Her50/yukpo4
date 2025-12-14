@@ -124,3 +124,4 @@ Après corrections, vérifier :
 - [ ] Plus d'erreurs "terminating connection"
 - [ ] Pool de connexions stable (< 30 connexions actives)
 
+

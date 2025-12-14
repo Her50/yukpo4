@@ -39,6 +39,7 @@ export const ROUTES = {
   LIVE_VIEW: "/live/:sessionId",
   DASHBOARD_ADMIN_AUDIT: "/admin/audit",
   MES_SERVICES: "/dashboard/mes-services", // ✅ Correction : route complète pour correspondre à la configuration imbriquée
+  MES_PRODUITS: "/dashboard/mes-produits", // ✅ Route pour la gestion des produits
   ANALYTICS_DASHBOARD: "/dashboard/analytics", // ✅ Phase 10 - Analytics Dashboard
   DASHBOARD: "/dashboard",
   DASHBOARD_ADMIN_API: "/admin/api",

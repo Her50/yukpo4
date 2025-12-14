@@ -550,54 +550,57 @@ const HomeScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* ChatInputMobile */}
-                <View style={styles.inputContainer}>
-                    <ChatInputMobile
-                        onSubmit={handleSubmit}
-                        loading={loading}
-                        placeholder={
-                            isCreateService
-                                ? 'Décrivez le service que vous voulez créer...'
-                                : 'Décrivez votre besoin...'
-                        }
-                        onGPSPress={handleGPSPress}
-                        showSendButton={true}
-                        showAutocomplete={!isCreateService}
-                        isSearchMode={!isCreateService}
-                        isCreateService={isCreateService}
-                    />
-                </View>
-
-                {/* ✅ NOUVEAU: Bouton unique pour promotions avec menu horizontal */}
-                <PromotionsMenu navigate={navigate} />
-
-                {/* ✅ Services spécialisés Yukpo - Accès recherche uniquement */}
-                <View style={styles.specializedServicesContainer}>
-                    <Text style={styles.specializedServicesTitle}>Services spécialisés</Text>
-                    <YukpoServicesQuickAccess
-                        onServicePress={(serviceId) => {
-                            hapticPress();
-                            console.log('[HomeScreen] 🎯 Service pressé:', serviceId);
-                            // Navigation vers les écrans de RECHERCHE uniquement (pas de configuration)
-                            const searchRoutes: Record<string, string> = {
-                                'sante': 'HealthServicesHub', // Hub santé avec choix entre Pharmacie, Hôpital, Laboratoire, Banque de sang
-                                'etude': 'EtablissementSearch', // Orientation scolaire
-                                'immo': 'ImmobilierSearch',
-                                'bayamselam': 'BayamSelamSearch', // Comparateur de prix
-                                'livraison': 'Delivery',
-                                'voyage': 'AgenceVoyageSearch', // Point d'entrée voyage
-                                'auto': 'AutoServicesSearch', // Recherche véhicules
-                                'assurance': 'InsuranceServicesSearch', // Recherche assurance
-                                'emploi': 'OffresEmploiHub', // Hub offres d'emploi
-                            };
-                            const route = searchRoutes[serviceId] || 'Home';
-                            console.log('[HomeScreen] 🚀 Navigation vers:', route, 'pour service:', serviceId);
-                            const success = navigate(route);
-                            if (!success) {
-                                console.error('[HomeScreen] ❌ Échec navigation vers:', route);
+                {/* ✅ Conteneur avec fond foncé pour ChatInputMobile et Services spécialisés */}
+                <View style={styles.darkBackgroundContainer}>
+                    {/* ChatInputMobile */}
+                    <View style={styles.inputContainer}>
+                        <ChatInputMobile
+                            onSubmit={handleSubmit}
+                            loading={loading}
+                            placeholder={
+                                isCreateService
+                                    ? 'Décrivez le service que vous voulez créer...'
+                                    : 'Décrivez votre besoin...'
                             }
-                        }}
-                    />
+                            onGPSPress={handleGPSPress}
+                            showSendButton={true}
+                            showAutocomplete={!isCreateService}
+                            isSearchMode={!isCreateService}
+                            isCreateService={isCreateService}
+                        />
+                    </View>
+
+                    {/* ✅ NOUVEAU: Bouton unique pour promotions avec menu horizontal */}
+                    <PromotionsMenu navigate={navigate} />
+
+                    {/* ✅ Services spécialisés Yukpo - Accès recherche uniquement */}
+                    <View style={styles.specializedServicesContainer}>
+                        <Text style={styles.specializedServicesTitle}>Services spécialisés</Text>
+                        <YukpoServicesQuickAccess
+                            onServicePress={(serviceId) => {
+                                hapticPress();
+                                console.log('[HomeScreen] 🎯 Service pressé:', serviceId);
+                                // Navigation vers les écrans de RECHERCHE uniquement (pas de configuration)
+                                const searchRoutes: Record<string, string> = {
+                                    'sante': 'HealthServicesHub', // Hub santé avec choix entre Pharmacie, Hôpital, Laboratoire, Banque de sang
+                                    'etude': 'EtablissementSearch', // Orientation scolaire
+                                    'immo': 'ImmobilierSearch',
+                                    'bayamselam': 'BayamSelamSearch', // Comparateur de prix
+                                    'livraison': 'Delivery',
+                                    'voyage': 'AgenceVoyageSearch', // Point d'entrée voyage
+                                    'auto': 'AutoServicesSearch', // Recherche véhicules
+                                    'assurance': 'InsuranceServicesSearch', // Recherche assurance
+                                    'emploi': 'OffresEmploiHub', // Hub offres d'emploi
+                                };
+                                const route = searchRoutes[serviceId] || 'Home';
+                                console.log('[HomeScreen] 🚀 Navigation vers:', route, 'pour service:', serviceId);
+                                const success = navigate(route);
+                                if (!success) {
+                                    console.error('[HomeScreen] ❌ Échec navigation vers:', route);
+                                }
+                            }}
+                        />
+                    </View>
                 </View>
 
                 {/* Zone de contenu vide pour l'instant */}
@@ -773,9 +776,21 @@ const styles = StyleSheet.create({
     modeButtonTextActive: {
         color: '#FFFFFF',
     },
+    darkBackgroundContainer: {
+        backgroundColor: '#1E3A8A', // Bleu foncé pour le fond
+        marginHorizontal: 16,
+        borderRadius: 16,
+        padding: 16,
+        marginTop: 8,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 4,
+    },
     inputContainer: {
-        paddingHorizontal: 16,
-        marginBottom: 20,
+        marginBottom: 8,
     },
     contentArea: {
         paddingHorizontal: 16,
@@ -801,13 +816,13 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     promotionsContainer: {
-        marginTop: 20,
-        marginHorizontal: 16,
+        marginTop: 8,
+        marginHorizontal: 0, // Pas de marge horizontale car déjà dans le conteneur foncé
     },
     promotionsMainButton: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 14,
+        borderRadius: 10,
+        padding: 10,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         shadowColor: '#000',
@@ -819,30 +834,30 @@ const styles = StyleSheet.create({
     promotionsMainButtonContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 10,
     },
     promotionsMainIconContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
     },
     promotionsMainIcon: {
-        fontSize: 24,
+        fontSize: 20,
     },
     promotionsMainText: {
         flex: 1,
     },
     promotionsMainTitle: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '600',
         color: '#111827',
         marginBottom: 2,
     },
     promotionsMainSubtitle: {
-        fontSize: 12,
+        fontSize: 11,
         color: '#6B7280',
     },
     promotionsChevron: {
@@ -883,15 +898,14 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     specializedServicesContainer: {
-        paddingHorizontal: 16,
-        marginTop: 8,
-        marginBottom: 12, // Réduit pour éviter le débordement
+        marginTop: 4,
+        marginBottom: 0, // Réduit car déjà dans le conteneur foncé
     },
     specializedServicesTitle: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
-        color: modernColors.text,
-        marginBottom: 12,
+        color: '#FFFFFF', // Blanc pour contraste sur fond foncé
+        marginBottom: 8,
     },
 });
 

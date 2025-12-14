@@ -21,6 +21,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { ROUTES } from '@/routes/AppRoutesRegistry';
 
 interface Product {
     id: string;
@@ -55,7 +56,7 @@ const MesProduits: React.FC = () => {
 
             const response = await fetch('/api/prestataire/services', {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
 
@@ -144,7 +145,7 @@ const MesProduits: React.FC = () => {
             // Récupérer le service
             const serviceResponse = await fetch(`/api/services/${product.serviceId}`, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
 
@@ -161,7 +162,7 @@ const MesProduits: React.FC = () => {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
                 body: JSON.stringify({
                     data: {
@@ -190,7 +191,7 @@ const MesProduits: React.FC = () => {
             const response = await fetch(endpoint, {
                 method: 'PATCH',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
 
@@ -251,13 +252,22 @@ const MesProduits: React.FC = () => {
                                 {products.length} produit{products.length > 1 ? 's' : ''}
                             </p>
                         </div>
-                        <Button
-                            onClick={() => navigate('/formulaire-yukpo-intelligent')}
-                            className="bg-white text-blue-600 hover:bg-blue-50"
-                        >
-                            <Plus className="w-5 h-5 mr-2" />
-                            Nouveau produit
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={() => navigate(ROUTES.MES_SERVICES)}
+                                variant="outline"
+                                className="bg-white/10 text-white border-white/30 hover:bg-white/20"
+                            >
+                                🧰 Mes Services
+                            </Button>
+                            <Button
+                                onClick={() => navigate('/formulaire-yukpo-intelligent')}
+                                className="bg-white text-blue-600 hover:bg-blue-50"
+                            >
+                                <Plus className="w-5 h-5 mr-2" />
+                                Nouveau produit
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
