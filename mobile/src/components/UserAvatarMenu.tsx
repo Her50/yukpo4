@@ -63,24 +63,27 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
 
     const getInitials = (name: string) => {
         if (!name || typeof name !== 'string') return 'U';
-        // ✅ CORRIGÉ: Filtrer les mots vides et s'assurer qu'ils ont au moins un caractère
+        // ✅ Filtrer les mots vides et s'assurer qu'ils ont au moins un caractère
         const words = name.trim().split(/\s+/).filter(word => word.length > 0);
         if (words.length >= 2) {
-            // ✅ CORRIGÉ: Prendre uniquement les deux premières lettres (une par mot)
+            // ✅ Prendre uniquement les deux premières lettres (une par mot)
             const firstLetter = words[0] && words[0].length > 0 ? words[0][0] : '';
             const secondLetter = words[1] && words[1].length > 0 ? words[1][0] : '';
-            return (firstLetter + secondLetter).toUpperCase().slice(0, 2);
+            const initials = (firstLetter + secondLetter).toUpperCase().slice(0, 2);
+            // ✅ S'assurer qu'on retourne seulement les initiales, pas le nom complet
+            return initials.length > 0 ? initials : 'U';
         }
-        // ✅ CORRIGÉ: Si un seul mot, prendre les deux premières lettres
+        // ✅ Si un seul mot, prendre les deux premières lettres
         if (words.length === 1 && words[0].length >= 2) {
             return words[0].substring(0, 2).toUpperCase();
         }
-        // ✅ CORRIGÉ: Si un seul mot avec une seule lettre, prendre cette lettre
+        // ✅ Si un seul mot avec une seule lettre, prendre cette lettre
         if (words.length === 1 && words[0].length === 1) {
             return words[0].toUpperCase();
         }
-        // ✅ Fallback
-        return name.trim()[0]?.toUpperCase() || 'U';
+        // ✅ Fallback - s'assurer qu'on retourne seulement une lettre
+        const firstChar = name.trim()[0];
+        return firstChar ? firstChar.toUpperCase() : 'U';
     };
 
     return (
@@ -94,8 +97,12 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                     <Image source={{ uri: user.avatar || user.photo }} style={styles.avatarImage} />
                 ) : (
                     <View style={styles.avatarPlaceholder}>
-                        <Text style={styles.avatarText}>
-                            {getInitials(user?.name || 'Utilisateur')}
+                        <Text style={styles.avatarText} numberOfLines={1} ellipsizeMode="clip">
+                            {(() => {
+                                const initials = getInitials(user?.name || 'Utilisateur');
+                                // ✅ S'assurer qu'on affiche seulement les initiales (max 2 caractères)
+                                return initials.length > 2 ? initials.substring(0, 2) : initials;
+                            })()}
                         </Text>
                     </View>
                 )}
@@ -128,8 +135,64 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
                                 )}
                             </View>
                             <View style={styles.menuUserInfo}>
-                                <Text style={styles.menuUserName}>{user?.name || 'Utilisateur'}</Text>
-                                <Text style={styles.menuUserEmail}>{user?.email || 'email@example.com'}</Text>
+                                <Text style={styles.menuUserName} numberOfLines={1}>
+                                    {(() => {
+                                        const userName = user?.name || 'Utilisateur';
+                                        // ✅ Nettoyer le nom pour éviter les doublons
+                                        if (typeof userName === 'string') {
+                                            // Supprimer les espaces multiples
+                                            const cleaned = userName.trim().replace(/\s+/g, ' ');
+                                            const words = cleaned.split(' ').filter(w => w.length > 0);
+                                            
+                                            if (words.length === 0) return 'Utilisateur';
+                                            
+                                            // ✅ Cas 1: Vérifier si la première moitié = deuxième moitié (ex: "LELE Hernandez LELE Hernandez")
+                                            if (words.length >= 4 && words.length % 2 === 0) {
+                                                const midPoint = words.length / 2;
+                                                const firstHalf = words.slice(0, midPoint).join(' ');
+                                                const secondHalf = words.slice(midPoint).join(' ');
+                                                
+                                                if (firstHalf === secondHalf) {
+                                                    return firstHalf;
+                                                }
+                                            }
+                                            
+                                            // ✅ Cas 2: Vérifier si les 2 premiers mots se répètent (ex: "LELE Hernandez LELE Hernandez")
+                                            if (words.length >= 4) {
+                                                const firstTwo = words.slice(0, 2).join(' ');
+                                                const nextTwo = words.slice(2, 4).join(' ');
+                                                
+                                                if (firstTwo === nextTwo) {
+                                                    return firstTwo; // Retourner seulement les 2 premiers mots
+                                                }
+                                            }
+                                            
+                                            // ✅ Cas 3: Détecter les répétitions de patterns plus complexes
+                                            // Si on a un nombre pair de mots >= 4, vérifier les patterns
+                                            if (words.length >= 4) {
+                                                // Vérifier si les mots se répètent en pattern (ex: A B A B ou A B C A B C)
+                                                for (let patternLength = 2; patternLength <= Math.floor(words.length / 2); patternLength++) {
+                                                    const pattern = words.slice(0, patternLength).join(' ');
+                                                    const nextPattern = words.slice(patternLength, patternLength * 2).join(' ');
+                                                    
+                                                    if (pattern === nextPattern) {
+                                                        // Vérifier si le reste correspond aussi au pattern
+                                                        const remainingWords = words.slice(patternLength * 2);
+                                                        if (remainingWords.length === 0 || remainingWords.join(' ') === pattern) {
+                                                            return pattern;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            
+                                            return cleaned;
+                                        }
+                                        return userName;
+                                    })()}
+                                </Text>
+                                <Text style={styles.menuUserEmail} numberOfLines={1}>
+                                    {user?.email || 'email@example.com'}
+                                </Text>
                             </View>
                         </View>
 
@@ -214,6 +277,8 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
+        textAlign: 'center',
+        maxWidth: 40,
     },
     modalOverlay: {
         flex: 1,

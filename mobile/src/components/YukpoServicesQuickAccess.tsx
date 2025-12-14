@@ -40,131 +40,170 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
     const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
     const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
 
-    // Tous les services disponibles
+    // ✅ Les 13 services spécialisés (incluant bourse_livre et bayamselam, excluant livraison)
     const allServices: YukpoService[] = [
+        // Santé (4 services)
         {
-            id: 'sante',
-            title: 'Santé',
-            icon: 'heart',
-            gradient: ['#EC4899', '#F472B6'],
-            description: 'Rechercher pharmacies, hôpitaux, banques de sang',
+            id: 'pharmacie',
+            title: 'Pharmacie',
+            icon: 'pill',
+            gradient: ['#10B981', '#34D399'],
+            description: 'Pharmacies de garde',
             comingSoon: false
         },
         {
-            id: 'assurance',
-            title: 'Assurance',
-            icon: 'shield',
-            gradient: ['#14B8A6', '#2DD4BF'],
-            description: 'Produits assurance, sinistres',
-            comingSoon: true
+            id: 'hopital',
+            title: 'Hôpital',
+            icon: 'hospital',
+            gradient: ['#EF4444', '#F87171'],
+            description: 'Hôpitaux, cliniques',
+            comingSoon: false
         },
         {
-            id: 'etude',
-            title: 'Étude',
-            icon: 'book-open',
+            id: 'laboratoire',
+            title: 'Laboratoire',
+            icon: 'microscope',
             gradient: ['#3B82F6', '#60A5FA'],
-            description: 'Rechercher établissements, orientation',
+            description: 'Analyses médicales',
             comingSoon: false
         },
+        {
+            id: 'banque_sang',
+            title: 'Banque de Sang',
+            icon: 'droplet',
+            gradient: ['#DC2626', '#F87171'],
+            description: 'Don de sang',
+            comingSoon: false
+        },
+        // Transport (3 services)
+        {
+            id: 'agence_voyage',
+            title: 'Agence Voyage',
+            icon: 'bus',
+            gradient: ['#F59E0B', '#FBBF24'],
+            description: 'Billets, réservations',
+            comingSoon: false
+        },
+        {
+            id: 'covoiturage',
+            title: 'Covoiturage',
+            icon: 'users',
+            gradient: ['#8B5CF6', '#A78BFA'],
+            description: 'Partage de trajet',
+            comingSoon: false
+        },
+        {
+            id: 'taxi',
+            title: 'Taxi',
+            icon: 'car',
+            gradient: ['#F97316', '#FB923C'],
+            description: 'Transport rapide',
+            comingSoon: false
+        },
+        // Éducation (2 services)
+        {
+            id: 'orientation_scolaire',
+            title: 'Orientation',
+            icon: 'book-open',
+            gradient: ['#10B981', '#34D399'],
+            description: 'Orientation scolaire',
+            comingSoon: false
+        },
+        {
+            id: 'bourse_livre',
+            title: 'Bourse du Livre',
+            icon: 'book-open',
+            gradient: ['#8B5CF6', '#A78BFA'],
+            description: 'Livres scolaires',
+            comingSoon: false
+        },
+        // Emploi (1 service)
+        {
+            id: 'offres_emploi',
+            title: 'Offres d\'Emploi',
+            icon: 'briefcase',
+            gradient: ['#6366F1', '#818CF8'],
+            description: 'Recrutement',
+            comingSoon: false
+        },
+        // Vie quotidienne (1 service)
+        {
+            id: 'menu_planning',
+            title: 'Planification Menus',
+            icon: 'coffee',
+            gradient: ['#F59E0B', '#FBBF24'],
+            description: 'Menus, repas',
+            comingSoon: false
+        },
+        // Immobilier (1 service)
         {
             id: 'immo',
-            title: 'Immo',
+            title: 'Immobilier',
             icon: 'home',
             gradient: ['#8B5CF6', '#A78BFA'],
-            description: 'Rechercher biens immobiliers',
+            description: 'Biens immobiliers',
             comingSoon: false
         },
-        {
-            id: 'voyage',
-            title: 'Voyage',
-            icon: 'map',
-            gradient: ['#06B6D4', '#22D3EE'],
-            description: 'Rechercher agences, covoiturage',
-            comingSoon: false
-        },
-        {
-            id: 'livraison',
-            title: 'Livraison',
-            icon: 'truck',
-            gradient: ['#F59E0B', '#FBBF24'],
-            description: 'Transfert colis, suivi GPS',
-            comingSoon: false
-        },
-        {
-            id: 'auto',
-            title: 'Auto',
-            icon: 'car',
-            gradient: ['#EF4444', '#F87171'],
-            description: 'Vente automobile, occasion',
-            comingSoon: true
-        },
+        // Commerce (1 service)
         {
             id: 'bayamselam',
             title: 'BayamSelam',
             icon: 'trending-down',
             gradient: ['#10B981', '#34D399'],
-            description: 'Comparatif prix, achats',
+            description: 'Comparatif prix',
             comingSoon: true
-        },
-        {
-            id: 'emploi',
-            title: 'Emploi',
-            icon: 'briefcase',
-            gradient: ['#6366F1', '#818CF8'],
-            description: 'Offres d\'emploi, recrutement',
-            comingSoon: false
         }
     ];
 
-    // Regroupement en catégories (6 blocs - 2 colonnes x 3 lignes)
+    // ✅ Regroupement en 6 catégories (3 colonnes x 2 lignes = 6 blocs)
     const categories: ServiceCategory[] = [
         {
-            id: 'sante-protection',
-            title: 'Santé & Protection',
+            id: 'sante',
+            title: 'Santé',
             icon: 'heart',
             gradient: ['#EC4899', '#F472B6'],
-            description: 'Santé, assurance',
-            services: allServices.filter(s => s.id === 'sante' || s.id === 'assurance')
+            description: '4 services',
+            services: allServices.filter(s => ['pharmacie', 'hopital', 'laboratoire', 'banque_sang'].includes(s.id))
+        },
+        {
+            id: 'transport',
+            title: 'Transport',
+            icon: 'truck',
+            gradient: ['#F59E0B', '#FBBF24'],
+            description: '3 services',
+            services: allServices.filter(s => ['agence_voyage', 'covoiturage', 'taxi'].includes(s.id))
         },
         {
             id: 'education',
             title: 'Éducation',
             icon: 'book-open',
             gradient: ['#3B82F6', '#60A5FA'],
-            description: 'Formation, orientation',
-            services: allServices.filter(s => s.id === 'etude')
+            description: '2 services',
+            services: allServices.filter(s => ['orientation_scolaire', 'bourse_livre'].includes(s.id))
+        },
+        {
+            id: 'emploi',
+            title: 'Emploi',
+            icon: 'briefcase',
+            gradient: ['#6366F1', '#818CF8'],
+            description: '1 service',
+            services: allServices.filter(s => s.id === 'offres_emploi')
+        },
+        {
+            id: 'vie_quotidienne',
+            title: 'Vie Quotidienne',
+            icon: 'coffee',
+            gradient: ['#F59E0B', '#FBBF24'],
+            description: '2 services',
+            services: allServices.filter(s => ['menu_planning', 'bayamselam'].includes(s.id))
         },
         {
             id: 'immobilier',
             title: 'Immobilier',
             icon: 'home',
             gradient: ['#8B5CF6', '#A78BFA'],
-            description: 'Biens immobiliers',
+            description: '1 service',
             services: allServices.filter(s => s.id === 'immo')
-        },
-        {
-            id: 'transport',
-            title: 'Transport & Mobilité',
-            icon: 'truck',
-            gradient: ['#F59E0B', '#FBBF24'],
-            description: 'Voyage, livraison, auto',
-            services: allServices.filter(s => s.id === 'voyage' || s.id === 'livraison' || s.id === 'auto')
-        },
-        {
-            id: 'commerce',
-            title: 'Commerce & Marché',
-            icon: 'trending-down',
-            gradient: ['#10B981', '#34D399'],
-            description: 'Comparatif, achats',
-            services: allServices.filter(s => s.id === 'bayamselam')
-        },
-        {
-            id: 'emploi-services',
-            title: 'Emploi & Services Pro',
-            icon: 'briefcase',
-            gradient: ['#6366F1', '#818CF8'],
-            description: 'Emploi, services pro',
-            services: allServices.filter(s => s.id === 'emploi')
         }
     ];
 
@@ -202,9 +241,11 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
         setSelectedCategory(null);
     };
 
+    const expandedCategory = categories.find(c => expandedCategoryId === c.id);
+    
     return (
         <View style={styles.container}>
-            {/* ✅ Blocs de catégories (3 lignes x 2 colonnes - 6 blocs au total) */}
+            {/* ✅ Blocs de catégories (2 lignes x 3 colonnes - 6 blocs au total) */}
             <View style={styles.categoriesGrid}>
                 {categories.map((category) => {
                     const isExpanded = expandedCategoryId === category.id;
@@ -217,10 +258,10 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                 onPress={() => handleCategoryPress(category)}
                                 activeOpacity={0.8}
                             >
-                                {/* ✅ NOUVEAU: Style soft comme GOZEM - fond gris clair au lieu de gradient */}
+                                {/* ✅ Style miniaturisé comme GOZEM - fond gris clair */}
                                 <View style={styles.categorySoftContainer}>
                                     <View style={styles.categoryIconContainer}>
-                                        <SafeIcon name={category.icon} size={18} color="#6B7280" />
+                                        <SafeIcon name={category.icon} size={16} color="#6B7280" />
                                     </View>
                                     <Text style={styles.categoryTitle} numberOfLines={2}>
                                         {category.title}
@@ -230,43 +271,43 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                     </Text>
                                 </View>
                             </TouchableOpacity>
-                            
-                            {/* ✅ NOUVEAU: Menu horizontal des services au même endroit */}
-                            {isExpanded && hasMultipleServices && (
-                                <View style={styles.expandedServicesContainer}>
-                                    <ScrollView
-                                        horizontal
-                                        showsHorizontalScrollIndicator={false}
-                                        contentContainerStyle={styles.expandedServicesContent}
-                                    >
-                                        {category.services.map((service) => (
-                                            <TouchableOpacity
-                                                key={service.id}
-                                                style={styles.expandedServiceItem}
-                                                onPress={() => handleServiceSelect(service.id)}
-                                                activeOpacity={0.7}
-                                                disabled={service.comingSoon}
-                                            >
-                                                <View style={[styles.expandedServiceIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
-                                                    <SafeIcon name={service.icon} size={20} color={service.gradient[0]} />
-                                                    {service.comingSoon && (
-                                                        <View style={styles.serviceComingSoonBadge}>
-                                                            <Text style={styles.serviceComingSoonText}>Bientôt</Text>
-                                                        </View>
-                                                    )}
-                                                </View>
-                                                <Text style={styles.expandedServiceTitle} numberOfLines={1}>
-                                                    {service.title}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </ScrollView>
-                                </View>
-                            )}
                         </View>
                     );
                 })}
             </View>
+            
+            {/* ✅ Menu horizontal des services (affiché en dessous de la grille, toute largeur) */}
+            {expandedCategory && expandedCategory.services.length > 1 && (
+                <View style={styles.expandedServicesContainer}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.expandedServicesContent}
+                    >
+                        {expandedCategory.services.map((service) => (
+                            <TouchableOpacity
+                                key={service.id}
+                                style={styles.expandedServiceItem}
+                                onPress={() => handleServiceSelect(service.id)}
+                                activeOpacity={0.7}
+                                disabled={service.comingSoon}
+                            >
+                                <View style={[styles.expandedServiceIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
+                                    <SafeIcon name={service.icon} size={18} color={service.gradient[0]} />
+                                    {service.comingSoon && (
+                                        <View style={styles.serviceComingSoonBadge}>
+                                            <Text style={styles.serviceComingSoonText}>Bientôt</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={styles.expandedServiceTitle} numberOfLines={1}>
+                                    {service.title}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
 
             {/* Modal pour afficher les services d'une catégorie */}
             <Modal
@@ -374,16 +415,16 @@ const styles = StyleSheet.create({
         marginVertical: 0,
         paddingHorizontal: 0,
     },
-    // Grille de catégories (3 lignes x 2 colonnes - 6 blocs au total)
+    // ✅ Grille de catégories (2 lignes x 3 colonnes - 6 blocs au total)
     categoriesGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
-        gap: 6,
+        gap: 4,
     },
     categoryWrapper: {
-        width: '48%', // 2 colonnes avec espacement
-        marginBottom: 6,
+        width: '31%', // 3 colonnes avec espacement
+        marginBottom: 4,
     },
     categoryBlock: {
         minWidth: 150,
@@ -395,66 +436,68 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
         elevation: 1,
     },
-    // ✅ NOUVEAU: Style soft comme GOZEM - fond blanc/gris clair
+    // ✅ Style miniaturisé comme GOZEM - fond blanc/gris clair
     categorySoftContainer: {
-        padding: 8,
-        minHeight: 70,
+        padding: 6,
+        minHeight: 60,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#E5E7EB',
+        borderRadius: 10,
     },
     categoryIconContainer: {
-        marginBottom: 4,
+        marginBottom: 3,
         alignItems: 'center',
         justifyContent: 'center',
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         backgroundColor: '#F3F4F6', // ✅ Gris clair comme GOZEM
     },
     categoryTitle: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
         color: '#111827', // ✅ Texte foncé sur fond clair
         textAlign: 'center',
-        marginBottom: 2,
-        lineHeight: 16,
+        marginBottom: 1,
+        lineHeight: 14,
     },
     categoryDescription: {
-        fontSize: 10,
+        fontSize: 9,
         color: '#6B7280', // ✅ Gris moyen
         textAlign: 'center',
     },
-    // ✅ NOUVEAU: Styles pour menu horizontal des services
+    // ✅ Styles pour menu horizontal des services (affiché en dessous de la grille, toute largeur)
     expandedServicesContainer: {
         marginTop: 8,
         backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        padding: 12,
+        borderRadius: 8,
+        padding: 8,
         borderWidth: 1,
         borderColor: '#E5E7EB',
+        width: '100%',
     },
     expandedServicesContent: {
-        gap: 12,
-        paddingHorizontal: 4,
+        gap: 8,
+        paddingHorizontal: 2,
     },
     expandedServiceItem: {
         alignItems: 'center',
-        minWidth: 70,
+        minWidth: 60,
     },
     expandedServiceIconContainer: {
         position: 'relative',
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 6,
+        marginBottom: 4,
     },
     expandedServiceTitle: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '500',
         color: '#374151',
         textAlign: 'center',

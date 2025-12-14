@@ -1829,10 +1829,11 @@ pub async fn creer_service(
     // Correction?: la colonne gps est TEXT en base, il faut passer "true"/"false" (string)
     let gps_str = gps
         .map(|b| if b { "true" } else { "false" })
-        .unwrap_or("false");
+        .unwrap_or("false")
+        .to_string();
     // Correction?: forcer la valeur de gps dans data_obj à être une string (pour cohérence JSON stocké)
     if let Some(gps_val) = data_obj.get_mut("gps") {
-        *gps_val = serde_json::Value::String(gps_str.to_string());
+        *gps_val = serde_json::Value::String(gps_str.clone());
     }
     let active_days = if is_tarissable {
         data_obj
@@ -2090,10 +2091,12 @@ pub async fn creer_service(
         Ok((tx, verified_balance, new_balance, service_id))
     }
 
-    // Appeler la fonction avec retry
-    let (mut tx, verified_balance, new_balance, service_id) = retry_service_operation(
-        || {
-            Box::pin(execute_critical_transaction(
+    // Appeler la fonction avec retry (implémentation manuelle pour éviter les problèmes de lifetime avec les transactions)
+    let max_retries = 5;
+    let mut last_error = None;
+    let (mut tx, _verified_balance, _new_balance, service_id) = 'retry_loop: loop {
+        for attempt in 1..=max_retries {
+            match execute_critical_transaction(
                 pool,
                 user_id,
                 cout_reel_xaf,
@@ -2101,11 +2104,52 @@ pub async fn creer_service(
                 is_tarissable,
                 &gps_str,
                 Some(auto_deactivate_at),
-            ))
-        },
-        5, // max_retries: 5 tentatives
-    )
-    .await?;
+            )
+            .await
+            {
+                Ok(result) => break 'retry_loop result,
+                Err(e) => {
+                    let error_str = e.to_string();
+                    let is_retryable = error_str.contains("peer closed connection")
+                        || error_str.contains("TLS close_notify")
+                        || error_str.contains("terminating connection")
+                        || error_str.contains("crash of another server process")
+                        || error_str.contains("error communicating with database")
+                        || error_str.contains("connection closed")
+                        || error_str.contains("broken pipe")
+                        || error_str.contains("connection reset")
+                        || error_str.contains("Database(");
+
+                    if is_retryable && attempt < max_retries {
+                        let backoff_ms = 200 * (1u64 << (attempt - 1)).min(2000);
+                        log::debug!(
+                            "[Service Retry] Tentative {}/{} échouée (erreur récupérable): {}. Retry dans {}ms",
+                            attempt,
+                            max_retries,
+                            error_str,
+                            backoff_ms
+                        );
+                        tokio::time::sleep(std::time::Duration::from_millis(backoff_ms)).await;
+                        last_error = Some(e);
+                    } else {
+                        if attempt >= max_retries {
+                            log::error!(
+                                "[Service Retry] ❌ Toutes les {} tentatives ont échoué. Dernière erreur: {}",
+                                max_retries,
+                                error_str
+                            );
+                        }
+                        return Err(e);
+                    }
+                }
+            }
+        }
+        return Err(last_error.unwrap_or_else(|| {
+            crate::core::types::AppError::Internal(
+                "Toutes les tentatives de retry ont échoué".to_string(),
+            )
+        }));
+    };
 
     // Étape 2 : UPDATE users pour activer le provider (pas bloquant si déjà TRUE)
     let _ = sqlx::query(

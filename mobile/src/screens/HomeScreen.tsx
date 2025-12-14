@@ -581,16 +581,27 @@ const HomeScreen: React.FC = () => {
                                 hapticPress();
                                 console.log('[HomeScreen] 🎯 Service pressé:', serviceId);
                                 // Navigation vers les écrans de RECHERCHE uniquement (pas de configuration)
+                                // ✅ Mapping des 13 services spécialisés vers leurs routes
                                 const searchRoutes: Record<string, string> = {
-                                    'sante': 'HealthServicesHub', // Hub santé avec choix entre Pharmacie, Hôpital, Laboratoire, Banque de sang
-                                    'etude': 'EtablissementSearch', // Orientation scolaire
+                                    // Santé (4 services)
+                                    'pharmacie': 'PharmacieSearch',
+                                    'hopital': 'HopitalSearch',
+                                    'laboratoire': 'LaboratoireSearch',
+                                    'banque_sang': 'BanqueSangSearch',
+                                    // Transport (3 services)
+                                    'agence_voyage': 'AgenceVoyageSearch',
+                                    'covoiturage': 'CovoiturageList',
+                                    'taxi': 'TaxiList',
+                                    // Éducation (2 services)
+                                    'orientation_scolaire': 'EtablissementSearch',
+                                    'bourse_livre': 'LivreScolaireForm',
+                                    // Emploi (1 service)
+                                    'offres_emploi': 'OffresEmploiHub',
+                                    // Vie quotidienne (2 services)
+                                    'menu_planning': 'MenuPlanningHub',
+                                    'bayamselam': 'BayamSelamSearch',
+                                    // Immobilier (1 service)
                                     'immo': 'ImmobilierSearch',
-                                    'bayamselam': 'BayamSelamSearch', // Comparateur de prix
-                                    'livraison': 'Delivery',
-                                    'voyage': 'AgenceVoyageSearch', // Point d'entrée voyage
-                                    'auto': 'AutoServicesSearch', // Recherche véhicules
-                                    'assurance': 'InsuranceServicesSearch', // Recherche assurance
-                                    'emploi': 'OffresEmploiHub', // Hub offres d'emploi
                                 };
                                 const route = searchRoutes[serviceId] || 'Home';
                                 console.log('[HomeScreen] 🚀 Navigation vers:', route, 'pour service:', serviceId);
