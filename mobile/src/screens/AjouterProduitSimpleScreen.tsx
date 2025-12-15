@@ -886,7 +886,17 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                                 PRODUCT_FIELDS.forEach(key => {
                                     const value = formValues[key];
-                                    if (value !== undefined && value !== null && value !== '') {
+                                    // ✅ CORRECTION 2025-12-14 : Filtrer explicitement les chaînes vides pour prix
+                                    // Ne pas envoyer prix_produit ou prix s'ils sont vides (pour éviter erreur 400 backend)
+                                    if (key === 'prix_produit' || key === 'prix') {
+                                        // Pour les prix, accepter uniquement les nombres ou chaînes non vides avec contenu numérique
+                                        if (value !== undefined && value !== null && value !== '') {
+                                            const trimmed = String(value).trim();
+                                            if (trimmed.length > 0 && !isNaN(Number(trimmed))) {
+                                                nouveauProduit[key] = trimmed;
+                                            }
+                                        }
+                                    } else if (value !== undefined && value !== null && value !== '') {
                                         nouveauProduit[key] = value;
                                     }
                                 });

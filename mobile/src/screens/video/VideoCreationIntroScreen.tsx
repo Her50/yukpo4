@@ -22,7 +22,6 @@ import type { ManagedProduct } from '../../types/ManagedProduct';
 import type { GeneratedVideoResponse } from '../../types/VideoGeneration';
 import { extractProductName, extractServiceName } from '../../utils/displayHelpers';
 import { normalizeServiceProducts } from '../../utils/productNormalizer';
-import { apiCallWithRetry } from '../../utils/retryWithBackoff';
 import SafeStorage from '../../utils/safeStorage';
 
 interface VideoCreationIntroParams {
@@ -140,18 +139,10 @@ const VideoCreationIntroScreen: React.FC = () => {
             try {
                 setLoadingServices(true);
 
-                // ✅ Timeout de 10 secondes
-                const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error('Timeout')), 10000);
-                });
-
-                // ✅ PHASE 1: Retry automatique avec backoff
-                const response = await apiCallWithRetry(() =>
-                    Promise.race([
-                        apiGet('/api/prestataire/services'),
-                        timeoutPromise
-                    ]) as Promise<any>
-                );
+                // ✅ CORRIGÉ: apiGet gère déjà son propre timeout (15s) et retry (4 tentatives)
+                // Ne pas ajouter de timeout supplémentaire qui entre en conflit
+                // Le timeout total peut être jusqu'à 60s (4 tentatives × 15s) ce qui est acceptable
+                const response = await apiGet('/api/prestataire/services');
 
                 console.log('[VideoCreationIntroScreen] 🔍 Réponse API chargement services:', {
                     success: response.success,
@@ -216,17 +207,25 @@ const VideoCreationIntroScreen: React.FC = () => {
                 }
             } catch (error: any) {
                 console.error('[VideoCreationIntroScreen] ❌ Erreur chargement services:', error);
-                if (error.message === 'Timeout') {
+                // ✅ CORRIGÉ: Gérer les erreurs de timeout et réseau de manière plus spécifique
+                const errorMessage = error?.message || error?.error || '';
+                if (errorMessage.includes('Timeout') || errorMessage.includes('expiré') || errorMessage.includes('timeout')) {
                     Alert.alert(
                         'Chargement lent',
                         'Le chargement prend plus de temps que prévu. Vérifiez votre connexion internet.',
+                        [{ text: 'OK' }]
+                    );
+                } else if (errorMessage.includes('réseau') || errorMessage.includes('connexion') || errorMessage.includes('Network')) {
+                    Alert.alert(
+                        'Problème de connexion',
+                        'Impossible de se connecter au serveur. Vérifiez votre connexion internet.',
                         [{ text: 'OK' }]
                     );
                 } else {
                     // ✅ AMÉLIORATION: Afficher une alerte pour les autres erreurs
                     Alert.alert(
                         'Erreur de chargement',
-                        'Impossible de charger vos services. Veuillez réessayer plus tard.',
+                        errorMessage || 'Impossible de charger vos services. Veuillez réessayer plus tard.',
                         [{ text: 'OK' }]
                     );
                 }
@@ -236,6 +235,26 @@ const VideoCreationIntroScreen: React.FC = () => {
         };
         loadServices();
     }, []);
+
+    // ✅ NOUVEAU: Ouvrir automatiquement le modal si des paramètres sont présents après le chargement des services
+    useEffect(() => {
+        if (!loadingServices && userServices.length > 0 && params.serviceId && params.productIndex !== undefined) {
+            const service = userServices.find(
+                (s: any) => (s.id || s.service_id) === params.serviceId
+            );
+            if (service) {
+                openVideoCreationModal({
+                    serviceId: params.serviceId,
+                    productIndex: params.productIndex,
+                    productName: params.productName || 'Produit',
+                    serviceName: extractServiceName(service, `Service #${params.serviceId}`)
+                }).catch((error) => {
+                    console.error('[VideoCreationIntroScreen] Erreur ouverture automatique modal:', error);
+                });
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loadingServices, userServices, params.serviceId, params.productIndex]);
 
     // ✅ MIGRÉ: fadeUp remplacé par useAnimatedStyle (voir styles animés ci-dessus)
 

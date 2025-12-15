@@ -3,7 +3,6 @@
 use crate::core::types::{AppError, AppResult};
 use crate::services::google_places_service::GooglePlacesService;
 use crate::utils::currency::{auto_fill_currencies, extract_country};
-use crate::utils::db_retry::retry_service_operation;
 use crate::utils::embedding_client::AddEmbeddingPineconeRequest;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;

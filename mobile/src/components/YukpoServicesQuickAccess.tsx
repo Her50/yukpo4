@@ -261,7 +261,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                 {/* ✅ Style miniaturisé comme GOZEM - fond gris clair */}
                                 <View style={styles.categorySoftContainer}>
                                     <View style={styles.categoryIconContainer}>
-                                        <SafeIcon name={category.icon} size={16} color="#6B7280" />
+                                        <SafeIcon name={category.icon} size={12} color="#6B7280" /> {/* ✅ MINIATURISÉ: De 16 à 12 */}
                                     </View>
                                     <Text style={styles.categoryTitle} numberOfLines={2}>
                                         {category.title}
@@ -438,22 +438,23 @@ const styles = StyleSheet.create({
     },
     // ✅ Style miniaturisé comme GOZEM - fond blanc/gris clair
     categorySoftContainer: {
-        padding: 6,
-        minHeight: 60,
+        padding: 8, // ✅ AUGMENTÉ: De 6 à 8 pour plus d'espace autour des éléments
+        minHeight: 70, // ✅ AUGMENTÉ: De 60 à 70 pour plus d'espace vertical entre les blocs
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#E5E7EB',
         borderRadius: 10,
+        gap: 4, // ✅ NOUVEAU: Espacement entre les éléments
     },
     categoryIconContainer: {
         marginBottom: 3,
         alignItems: 'center',
         justifyContent: 'center',
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+        width: 20, // ✅ MINIATURISÉ: De 28 à 20 pour plus d'espace entre les blocs
+        height: 20, // ✅ MINIATURISÉ: De 28 à 20 pour plus d'espace entre les blocs
+        borderRadius: 10, // ✅ MINIATURISÉ: De 14 à 10
         backgroundColor: '#F3F4F6', // ✅ Gris clair comme GOZEM
     },
     categoryTitle: {
@@ -461,7 +462,8 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#111827', // ✅ Texte foncé sur fond clair
         textAlign: 'center',
-        marginBottom: 1,
+        marginTop: 4, // ✅ AUGMENTÉ: De marginBottom à marginTop pour plus d'espace après l'icône
+        marginBottom: 2, // ✅ AUGMENTÉ: De 1 à 2
         lineHeight: 14,
     },
     categoryDescription: {

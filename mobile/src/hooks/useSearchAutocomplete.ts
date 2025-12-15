@@ -117,11 +117,20 @@ export const useSearchAutocomplete = () => {
     setIsLoadingAutocomplete(true);
 
     try {
-      // Appeler l'API d'autocomplete
-      const response = await apiPost('/api/autocomplete/search-products', {
-        query: query.trim(),
-        limit: 5,
+      // ✅ OPTIMISÉ 2025-01-14: Timeout de 5 secondes pour éviter les blocages
+      // Utiliser Promise.race pour implémenter le timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout: La recherche autocomplete a pris trop de temps (5 secondes)')), 5000);
       });
+
+      // Appeler l'API d'autocomplete avec timeout
+      const response = await Promise.race([
+        apiPost('/api/autocomplete/search-products', {
+          query: query.trim(),
+          limit: 5,
+        }),
+        timeoutPromise
+      ]) as any;
 
       if (response.success && response.data) {
         const suggestions = Array.isArray(response.data)

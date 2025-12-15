@@ -68,14 +68,15 @@ export const navigateToVideoWizard = (
         return false;
     }
 
-    // Navigation
+    // ✅ CORRIGÉ: Naviguer vers VideoCreationIntro au lieu de VideoCreationWizard
+    // VideoCreationIntroScreen ouvre directement ProductVideoCreationModal avec les produits
     try {
         const parent = navigation.getParent ? navigation.getParent() : null;
         if (parent) {
-            parent.navigate('VideoCreationWizard', params);
+            parent.navigate('VideoCreationIntro', params);
             return true;
         } else {
-            navigation.navigate('VideoCreationWizard' as never, params as never);
+            navigation.navigate('VideoCreationIntro' as never, params as never);
             return true;
         }
     } catch (error) {

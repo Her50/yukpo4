@@ -34,7 +34,7 @@ export const DoubleTapLike: React.FC<DoubleTapLikeProps> = ({
                 scale.value = withSequence(
                     withTiming(1.2, {
                         duration: 150,
-                        easing: Easing.out(Easing.quad),
+                        easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.out() qui peut être undefined
                     }),
                     withSpring(1, {
                         damping: 8,

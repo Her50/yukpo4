@@ -28,7 +28,7 @@ const ProgressWizard: React.FC<ProgressWizardProps> = ({ steps, currentStep, sty
         Animated.timing(progressAnim, {
             toValue: progress,
             duration: 400,
-            easing: Animated.Easing.out(Animated.Easing.cubic),
+            easing: Animated.Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.out() qui peut être undefined
             useNativeDriver: false,
         }).start();
     }, [currentStep, steps.length]);

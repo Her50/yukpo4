@@ -138,9 +138,13 @@ pub async fn search_by_autocomplete_vector(
             INNER JOIN services s ON s.id = ac.service_id
             INNER JOIN users u ON u.id = s.user_id
             WHERE 
+                -- ✅ OPTIMISÉ 2025-01-14: Utiliser index composite pour filtres fréquents
                 ac.is_real_product = TRUE
-                AND s.is_active = TRUE
                 AND ac.identifiant_base = 'produits'
+                AND s.is_active = TRUE
+                -- ✅ OPTIMISÉ: Utiliser opérateur && pour recherche GIN plus rapide
+                AND ac.full_vector && $1::TEXT[]
+                -- ✅ OPTIMISÉ: Vérifier correspondance après filtrage par index
                 AND (
                     -- Au moins UN élément du vecteur recherché doit matcher
                     EXISTS (
@@ -224,9 +228,13 @@ pub async fn search_by_autocomplete_vector(
             INNER JOIN services s ON s.id = ac.service_id
             INNER JOIN users u ON u.id = s.user_id
             WHERE 
+                -- ✅ OPTIMISÉ 2025-01-14: Utiliser index composite pour filtres fréquents
                 ac.is_real_product = TRUE
-                AND s.is_active = TRUE
                 AND ac.identifiant_base = 'produits'
+                AND s.is_active = TRUE
+                -- ✅ OPTIMISÉ: Utiliser opérateur && pour recherche GIN plus rapide
+                AND ac.full_vector && $1::TEXT[]
+                -- ✅ OPTIMISÉ: Vérifier correspondance après filtrage par index
                 AND (
                     EXISTS (
                         SELECT 1 FROM unnest($1::TEXT[]) AS search_val

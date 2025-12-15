@@ -108,6 +108,7 @@ fn validate_product_name(data: &Value, result: &mut ProductValidationResult) {
 
 /// Valide le prix du produit
 fn validate_product_price(data: &Value, result: &mut ProductValidationResult) {
+    // ✅ CORRECTION 2025-12-14 : Vérifier prix comme string ET comme nombre
     let price_str =
         extract_string_field(data, "prix").or_else(|| extract_string_field(data, "prix_produit"));
 
@@ -135,15 +136,29 @@ fn validate_product_price(data: &Value, result: &mut ProductValidationResult) {
             }
         }
     } else {
-        // Essayer de récupérer comme nombre
-        if let Some(price_num) = data.get("prix").and_then(|v| v.as_f64()) {
+        // ✅ CORRECTION 2025-12-14 : Vérifier prix ET prix_produit comme nombre
+        let price_num = data
+            .get("prix")
+            .and_then(|v| v.as_f64())
+            .or_else(|| data.get("prix_produit").and_then(|v| v.as_f64()));
+
+        if let Some(price_num) = price_num {
             if price_num < 0.0 {
                 result.add_error("Le prix ne peut pas être négatif".to_string());
+            } else if price_num == 0.0 {
+                result.add_warning(
+                    "Le prix est à zéro, vérifiez que c'est intentionnel".to_string(),
+                );
             } else if price_num > 1_000_000_000.0 {
                 result.add_error("Le prix est trop élevé (maximum 1 milliard)".to_string());
             }
         } else {
-            result.add_error("Le prix du produit est requis".to_string());
+            // ✅ CORRECTION 2025-12-14 : Rendre le prix optionnel pour certains types de produits
+            // (échanges, dons, services gratuits, etc.)
+            // On accepte l'absence de prix mais on log un avertissement
+            result.add_warning(
+                "Aucun prix spécifié. Le produit sera affiché sans prix.".to_string(),
+            );
         }
     }
 }

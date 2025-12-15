@@ -37,7 +37,7 @@ const AnimatedDeliveryCard: React.FC<AnimatedDeliveryCardProps> = React.memo(({
                 toValue: 0,
                 duration: 400,
                 delay: index * 100,
-                easing: Animated.Easing.out(Animated.Easing.cubic),
+                easing: Animated.Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.out() qui peut être undefined
                 useNativeDriver: true,
             }),
             Animated.spring(scaleAnim, {

@@ -2906,6 +2906,31 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
         .execute(pool)
         .await?;
 
+    // ✅ OPTIMISÉ 2025-01-14: Index composites pour améliorer les performances autocomplete
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_real_product_composite ON autocomplete_characteristics(identifiant_base, is_real_product, service_id) WHERE is_real_product = TRUE AND identifiant_base = 'produits'")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_relevance_sort ON autocomplete_characteristics(service_id, usage_count DESC) WHERE is_real_product = TRUE AND identifiant_base = 'produits'")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_services_active_id ON services(id) WHERE is_active = TRUE")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_services_user_id ON services(user_id) WHERE is_active = TRUE")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_full_vector_gin_filtered ON autocomplete_characteristics USING GIN(full_vector) WHERE is_real_product = TRUE AND identifiant_base = 'produits'")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_chosen_location_filtered ON autocomplete_characteristics(chosen_location) WHERE is_real_product = TRUE AND chosen_location IS NOT NULL")
+        .execute(pool)
+        .await?;
+
     // Fonction pour updated_at
     sqlx::query(
         r#"

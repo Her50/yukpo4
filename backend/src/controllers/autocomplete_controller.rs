@@ -13,8 +13,10 @@ use axum::{
 };
 use log::info;
 use serde::Deserialize;
-use std::sync::Arc; // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT avec priorité + GPS
-                    // use crate::services::autocomplete_client_service;  // ❌ Remplacé par autocomplete_search_service
+use std::sync::Arc;
+use std::time::Duration; // ✅ NOUVEAU 2025-12-14: Pour set_with_ttl
+// ✅ NOUVEAU 2025-11-04: Suggestions CLIENT avec priorité + GPS
+// use crate::services::autocomplete_client_service;  // ❌ Remplacé par autocomplete_search_service
 
 #[derive(Debug, Deserialize)]
 pub struct AutocompleteSuggestionsQuery {
@@ -455,6 +457,28 @@ pub async fn search_product_suggestions(
         })));
     }
 
+    // ✅ OPTIMISÉ 2025-01-14: Cache pour améliorer les performances
+    let cache_key = format!(
+        "autocomplete:{}:{}:{}:{}",
+        query,
+        limit,
+        request.user_lat.unwrap_or(0.0),
+        request.user_lng.unwrap_or(0.0)
+    );
+    
+    // Vérifier le cache (TTL: 5 minutes pour autocomplete)
+    if let Ok(cached) = state.cache_service.get::<serde_json::Value>(&cache_key).await {
+        if let Some(cached_data) = cached {
+            info!("✅ Suggestions autocomplete depuis cache");
+            return Ok(Json(serde_json::json!({
+                "success": true,
+                "data": cached_data,
+                "count": cached_data.as_array().map(|a| a.len()).unwrap_or(0),
+                "cached": true
+            })));
+        }
+    }
+
     // ✅ Parser la query en vecteur de mots
     let combination_vector: Vec<String> = query.split_whitespace().map(|s| s.to_string()).collect();
 
@@ -483,6 +507,11 @@ pub async fn search_product_suggestions(
                 "✅ {} suggestions avec priorité chosen_location + GPS",
                 suggestions.len()
             );
+            
+            // ✅ OPTIMISÉ 2025-01-14: Mettre en cache les résultats (TTL: 5 minutes)
+            let suggestions_json = serde_json::to_value(&suggestions).unwrap_or(serde_json::json!([]));
+            let _ = state.cache_service.set_with_ttl(&cache_key, &suggestions_json, Duration::from_secs(300)).await; // 5 min TTL
+            
             Ok(Json(serde_json::json!({
                 "success": true,
                 "data": suggestions,

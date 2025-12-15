@@ -33,8 +33,18 @@ const DeliveryHomeScreen: React.FC = () => {
     // ✅ CORRIGÉ: Utiliser useScreenEnter directement comme hook React (pas dans try/catch)
     // Les hooks React doivent être appelés de manière inconditionnelle
     const screenEnterStyle = useScreenEnter();
-    // ✅ CORRIGÉ: S'assurer que screenEnterStyle a toujours une propriété style
-    const safeScreenEnterStyle = screenEnterStyle?.style || {};
+    // ✅ CORRIGÉ: S'assurer que screenEnterStyle a toujours une propriété style valide
+    // Protection supplémentaire contre les erreurs d'animation
+    const safeScreenEnterStyle = React.useMemo(() => {
+        try {
+            if (screenEnterStyle && screenEnterStyle.style) {
+                return screenEnterStyle.style;
+            }
+        } catch (error) {
+            console.warn('[DeliveryHomeScreen] Erreur screenEnterStyle:', error);
+        }
+        return {};
+    }, [screenEnterStyle]);
 
     useFocusEffect(
         useCallback(() => {

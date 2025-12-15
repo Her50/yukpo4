@@ -664,7 +664,7 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#FFFFFF', // ✅ REVENU: Fond blanc comme demandé
     },
     scrollView: {
         flex: 1,
@@ -679,9 +679,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 16,
         paddingBottom: 12,
-        backgroundColor: modernColors.background,
+        backgroundColor: modernColors.background, // ✅ REVENU: Fond original
         borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
+        borderBottomColor: modernColors.border, // ✅ REVENU: Bordure originale
         minHeight: 60,
         // Ombre discrète pour effet premium
         shadowColor: '#000',
@@ -777,7 +777,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     modeButtonActive: {
-        backgroundColor: modernColors.primary,
+        backgroundColor: '#059669', // ✅ CORRIGÉ: Couleur verte du bouton "Envoyer" au lieu du bleu
     },
     modeButtonText: {
         fontSize: 14,
@@ -788,7 +788,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     darkBackgroundContainer: {
-        backgroundColor: '#1E3A8A', // Bleu foncé pour le fond
+        backgroundColor: '#4B5563', // ✅ CORRIGÉ: Gris sombre (#4B5563 - gris-600) pour correspondre à la couleur derrière ChatInputMobile
         marginHorizontal: 16,
         borderRadius: 16,
         padding: 16,

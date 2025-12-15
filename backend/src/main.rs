@@ -82,20 +82,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     log::info!("🔌 Connexion à la base de données PostgreSQL...");
 
-    // ✅ CORRIGÉ RACINE 2025-12-11: Pool réduit pour éviter surcharge PostgreSQL
-    // Le problème: 300 connexions max surcharge Render PostgreSQL et cause des crashes
-    // Render PostgreSQL a une limite de ~50-100 connexions selon le plan
-    // Solution: Réduire à 30 max pour éviter les crashes "terminating connection because of crash"
-    // ✅ CORRIGÉ 2025-12-12: Réduit de 50 à 30 pour améliorer stabilité
+    // ✅ OPTIMISÉ 2025-01-14: Pool augmenté pour améliorer performance autocomplete
+    // Le problème: Requêtes autocomplete prennent 3-5s à cause de la saturation du pool
+    // Solution: Augmenter à 50 max (Render PostgreSQL supporte jusqu'à 100 sur plan Standard)
+    // Avec les optimisations SQL, les requêtes seront plus rapides et libéreront les connexions plus vite
     let max_connections: u32 = env::var("DB_POOL_SIZE")
-        .unwrap_or_else(|_| "30".to_string()) // ✅ CORRIGÉ 2025-12-12: Réduit de 50 à 30 pour améliorer stabilité
+        .unwrap_or_else(|_| "50".to_string()) // ✅ OPTIMISÉ 2025-01-14: Augmenté de 30 à 50 pour performance
         .parse()
-        .unwrap_or(30);
+        .unwrap_or(50);
 
     let min_connections: u32 = env::var("DB_POOL_MIN_SIZE")
-        .unwrap_or_else(|_| "5".to_string()) // ✅ CORRIGÉ RACINE: Réduit de 20 à 5 pour éviter surcharge au démarrage
+        .unwrap_or_else(|_| "10".to_string()) // ✅ OPTIMISÉ 2025-01-14: Augmenté de 5 à 10 pour réduire latence
         .parse()
-        .unwrap_or(5);
+        .unwrap_or(10);
 
     let acquire_timeout_secs: u64 = env::var("DB_ACQUIRE_TIMEOUT_SECS")
         .unwrap_or_else(|_| "30".to_string()) // ✅ Phase 1: Augmenté à 30s (était 15s)

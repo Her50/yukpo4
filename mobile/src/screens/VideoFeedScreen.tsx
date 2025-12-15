@@ -888,7 +888,14 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 // Continuer même si l'endpoint échoue
             }
 
-            const categories = await userBehaviorService.getPreferredCategories(5);
+            // ✅ CORRIGÉ: Gestion d'erreur pour getPreferredCategories
+            let categories: string[] = [];
+            try {
+                categories = await userBehaviorService.getPreferredCategories(5);
+            } catch (error) {
+                console.warn('[VideoFeedScreen] Erreur chargement catégories préférées:', error);
+                // Continuer avec catégories vides
+            }
 
             const params = new URLSearchParams();
             params.append('limit', '25');
@@ -957,7 +964,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         } finally {
             setLoading(false);
         }
-    }, [isFollowingLane, processResponse, reorderFeed, user?.id]);
+    }, [isFollowingLane, processResponse, reorderFeed, showOnlyMyVideos, user?.id]);
 
     const searchFeed = useCallback(async () => {
         if (!searchQuery.trim()) {
@@ -1024,13 +1031,21 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     useEffect(() => {
         console.log('[VideoFeedScreen] 🔄 useEffect loadFeed déclenché');
+        let cancelled = false;
         loadFeed()
             .then(() => {
-                console.log('[VideoFeedScreen] ✅ loadFeed terminé avec succès');
+                if (!cancelled) {
+                    console.log('[VideoFeedScreen] ✅ loadFeed terminé avec succès');
+                }
             })
             .catch((error) => {
-                console.error('[VideoFeedScreen] ❌ Erreur loadFeed:', error);
+                if (!cancelled) {
+                    console.error('[VideoFeedScreen] ❌ Erreur loadFeed:', error);
+                }
             });
+        return () => {
+            cancelled = true;
+        };
     }, [loadFeed]);
 
     useEffect(() => {
@@ -2730,7 +2745,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     </View>
                 </View>
             </Modal>
-            {!loading && (
+            {!loading && feed.length > 0 && feed[currentIndex] && (
                 <TouchableOpacity
                     style={styles.creationFab}
                     activeOpacity={0.9}

@@ -330,6 +330,23 @@ CREATE INDEX IF NOT EXISTS idx_autochar_product_id ON autocomplete_characteristi
 CREATE INDEX IF NOT EXISTS idx_autochar_geoname_id ON autocomplete_characteristics(chosen_location_geoname_id) WHERE chosen_location_geoname_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_autochar_location_usage ON autocomplete_characteristics(chosen_location, usage_count DESC) WHERE chosen_location IS NOT NULL;
 
+-- ✅ OPTIMISÉ 2025-01-14: Index composites pour améliorer les performances autocomplete
+CREATE INDEX IF NOT EXISTS idx_autocomplete_real_product_composite 
+ON autocomplete_characteristics(identifiant_base, is_real_product, service_id) 
+WHERE is_real_product = TRUE AND identifiant_base = 'produits';
+
+CREATE INDEX IF NOT EXISTS idx_autocomplete_relevance_sort 
+ON autocomplete_characteristics(service_id, usage_count DESC) 
+WHERE is_real_product = TRUE AND identifiant_base = 'produits';
+
+CREATE INDEX IF NOT EXISTS idx_autocomplete_full_vector_gin_filtered 
+ON autocomplete_characteristics USING GIN(full_vector) 
+WHERE is_real_product = TRUE AND identifiant_base = 'produits';
+
+CREATE INDEX IF NOT EXISTS idx_autocomplete_chosen_location_filtered 
+ON autocomplete_characteristics(chosen_location) 
+WHERE is_real_product = TRUE AND chosen_location IS NOT NULL;
+
 -- Index conditionnels pour autocomplete_characteristics
 DO $$
 BEGIN

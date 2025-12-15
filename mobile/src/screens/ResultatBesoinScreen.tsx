@@ -288,6 +288,13 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ MIGRÉ: Animations avec Reanimated
     const scrollY = useSharedValue(0);
 
+    // ✅ MIGRÉ: Handler de scroll avec Reanimated
+    const scrollHandler = useAnimatedScrollHandler({
+        onScroll: (event) => {
+            scrollY.value = event.contentOffset.y;
+        },
+    });
+
     // ✅ MIGRÉ: Style animé du header avec Reanimated
     const headerAnimatedStyle = useAnimatedStyle(() => {
         const translateY = scrollY.value > HEADER_HEIGHT

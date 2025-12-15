@@ -83,7 +83,7 @@ export const VideoGenerationProgressModal: React.FC<VideoGenerationProgressModal
         Animated.timing(animatedProgress, {
             toValue: progress,
             duration: 500,
-            easing: Easing.out(Easing.cubic),
+            easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.out() qui peut être undefined
             useNativeDriver: false,
         }).start();
     }, [currentStep, totalSteps]);
@@ -96,13 +96,13 @@ export const VideoGenerationProgressModal: React.FC<VideoGenerationProgressModal
                     Animated.timing(pulseAnim, {
                         toValue: 1.1,
                         duration: 1000,
-                        easing: Easing.inOut(Easing.ease),
+                        easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.inOut(Easing.ease) qui peut être undefined
                         useNativeDriver: true,
                     }),
                     Animated.timing(pulseAnim, {
                         toValue: 1,
                         duration: 1000,
-                        easing: Easing.inOut(Easing.ease),
+                        easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.inOut(Easing.ease) qui peut être undefined
                         useNativeDriver: true,
                     }),
                 ])
