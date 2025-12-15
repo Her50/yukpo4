@@ -138,7 +138,7 @@ impl HybridImageSearchService {
 
         // ✅ Appeler l'IA avec le même format que la création (base64 pur dans Vec)
         let (json_response, model_name, tokens_used) = app_ia.predict_multimodal(
-            search_prompt,
+            &search_prompt,
             Some(vec![image_base64_pure])
         ).await?;
 
@@ -190,7 +190,7 @@ impl HybridImageSearchService {
         // ✅ NOUVEAU: Extraire depuis autocomplete.valeur (format: ["Logitech,MX Master 3,Sans fil,Noir"])
         let produits_autocomplete = data_obj.get("produits");
         let mut marque: Option<String> = None;
-        let mut modele: Option<String> = None;
+        let mut _modele: Option<String> = None;
         let mut couleurs: Vec<String> = Vec::new();
         let mut tags: Vec<String> = Vec::new();
 
@@ -215,7 +215,7 @@ impl HybridImageSearchService {
                 
                 // Modèle
                 if let Some(modeles_arr) = sous_caracs.get("modele").or_else(|| sous_caracs.get("model")).and_then(|m| m.as_array()) {
-                    modele = modeles_arr.first().and_then(|v| v.as_str()).map(|s| s.to_string());
+                    _modele = modeles_arr.first().and_then(|v| v.as_str()).map(|s| s.to_string());
                     tags.extend(modeles_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
                 }
                 
@@ -226,7 +226,7 @@ impl HybridImageSearchService {
                 }
                 
                 // Ajouter toutes les autres caractéristiques aux tags
-                for (key, value) in sous_caracs.iter() {
+                for (_key, value) in sous_caracs.iter() {
                     if let Some(vals) = value.as_array() {
                         tags.extend(vals.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
                     }

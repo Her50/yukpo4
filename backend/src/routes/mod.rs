@@ -35,6 +35,59 @@ pub mod embedding_routes; // ✅ Routes pour embeddings
 pub mod places_routes; // ✅ NOUVEAU: Routes pour autocomplete de lieux (Google Maps API)
 pub mod products_management; // ✅ Routes pour gestion des produits
 pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consommation de tokens
+pub mod video_metrics_routes;
+pub mod chat_media_routes;
+pub mod advanced_analytics_routes;
+pub mod advanced_timeline_routes;
+pub mod analytics_routes;
+pub mod ar_routes;
+pub mod bourse_livre_routes;
+pub mod chat_reactions_routes;
+pub mod combination_routes;
+pub mod content_routes;
+pub mod creator_analytics_routes;
+pub mod debug_routes;
+pub mod delivery_external_routes;
+pub mod delivery_metrics_routes;
+pub mod delivery_optimization_routes;
+pub mod delivery_routes;
+pub mod diagnostic_routes;
+pub mod export_routes;
+pub mod extended_audio_routes;
+pub mod flash_promo_routes;
+pub mod generative_routes;
+pub mod global_promo_routes;
+pub mod health_routes;
+pub mod kyc_admin_routes;
+pub mod kyc_webhook_routes;
+pub mod live_ai_routes;
+pub mod live_routes;
+pub mod metrics_routes;
+pub mod metrics_tracking_routes;
+pub mod mobile_logs_routes;
+pub mod negotiated_price_routes;
+pub mod offres_emploi_routes;
+pub mod order_routes;
+pub mod orientation_scolaire_routes;
+pub mod plugin_routes;
+pub mod popular_products_routes;
+pub mod product_reactions_routes;
+pub mod provider_analytics_routes;
+pub mod publicite_ab_testing_routes;
+pub mod publicite_ai_routes;
+pub mod publicite_assets_routes;
+pub mod publicite_audiences_routes;
+pub mod publicite_auto_optimization_routes;
+pub mod publicite_pixel_routes;
+pub mod shopping_routes;
+pub mod social_features_routes;
+pub mod specialized_services_routes;
+pub mod stock_media_routes;
+pub mod system_health_routes;
+pub mod upload_routes;
+pub mod video_hls_routes;
+pub mod video_ml_routes;
+pub mod video_routes;
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

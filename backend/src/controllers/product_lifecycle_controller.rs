@@ -2,14 +2,15 @@
 // Désactivation manuelle, auto (30j), réactivation avec coût variable
 
 use crate::core::types::{AppError, AppResult};
-use crate::state::AppState;
 use crate::middlewares::jwt::AuthenticatedUser;
-use axum::{Extension, Json, extract::{Path, State}};
+use crate::state::AppState;
+use crate::utils::log::log_warn;
+use axum::{extract::{Path, State}, Extension, Json};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
 use std::sync::Arc;
-use chrono::Utc;
 
 #[derive(Debug, Deserialize)]
 pub struct DeactivateProductRequest {
@@ -58,7 +59,7 @@ pub async fn deactivate_product(
     Path((service_id, product_index)): Path<(i32, usize)>,
     Json(request): Json<DeactivateProductRequest>,
 ) -> AppResult<Json<ProductLifecycleResponse>> {
-    use crate::utils::log::{log_info, log_warn};
+    use crate::utils::log::log_info;
     
     log_info(&format!("[deactivate_product] 🔴 Désactivation produit {} du service {}", product_index, service_id));
     
@@ -69,7 +70,7 @@ pub async fn deactivate_product(
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération service: {}", e)))?;
     
-    let (owner_id, mut service_data): (i32, Value) = match service_row {
+    let (owner_id, service_data): (i32, Value) = match service_row {
         Some(row) => (
             row.try_get("user_id").map_err(|e| AppError::Internal(e.to_string()))?,
             row.try_get("data").map_err(|e| AppError::Internal(e.to_string()))?
@@ -83,46 +84,56 @@ pub async fn deactivate_product(
         return Err(AppError::Unauthorized("Vous n'êtes pas le propriétaire de ce service".to_string()));
     }
     
-    // Marquer le produit comme désactivé
-    let produits_array = service_data
-        .get_mut("produits")
-        .and_then(|p| p.as_object_mut())
-        .and_then(|obj| obj.get_mut("valeur"))
-        .and_then(|v| v.as_array_mut())
-        .ok_or_else(|| AppError::NotFound("Produits introuvables".to_string()))?;
-    
-    let produit = produits_array.get_mut(product_index)
-        .ok_or_else(|| AppError::NotFound(format!("Produit {} introuvable", product_index)))?;
-    
-    let produit_obj = produit.as_object_mut()
-        .ok_or_else(|| AppError::Internal("Produit invalide".to_string()))?;
-    
-    // Vérifier si déjà désactivé
-    let is_active = produit_obj.get("is_active").and_then(|v| v.as_bool()).unwrap_or(true);
-    if !is_active {
-        return Err(AppError::BadRequest("Le produit est déjà désactivé".to_string()));
-    }
-    
-    // Désactiver
-    produit_obj.insert("is_active".to_string(), json!(false));
-    produit_obj.insert("deactivated_at".to_string(), json!(Utc::now().to_rfc3339()));
-    produit_obj.insert("deactivation_type".to_string(), json!("manual"));
-    if let Some(reason) = request.reason {
-        produit_obj.insert("deactivation_reason".to_string(), json!(reason));
-    }
-    
+    // Marquer le produit comme désactivé dans un bloc local pour limiter les emprunts
+    let (updated_data, product_name) = {
+        let mut data = service_data;
+
+        let produits_array = data
+            .get_mut("produits")
+            .and_then(|p| p.as_object_mut())
+            .and_then(|obj| obj.get_mut("valeur"))
+            .and_then(|v| v.as_array_mut())
+            .ok_or_else(|| AppError::NotFound("Produits introuvables".to_string()))?;
+        
+        let produit = produits_array
+            .get_mut(product_index)
+            .ok_or_else(|| AppError::NotFound(format!("Produit {} introuvable", product_index)))?;
+        
+        let produit_obj = produit
+            .as_object_mut()
+            .ok_or_else(|| AppError::Internal("Produit invalide".to_string()))?;
+        
+        // Vérifier si déjà désactivé
+        let is_active = produit_obj.get("is_active").and_then(|v| v.as_bool()).unwrap_or(true);
+        if !is_active {
+            return Err(AppError::BadRequest("Le produit est déjà désactivé".to_string()));
+        }
+        
+        // Désactiver
+        produit_obj.insert("is_active".to_string(), json!(false));
+        produit_obj.insert("deactivated_at".to_string(), json!(Utc::now().to_rfc3339()));
+        produit_obj.insert("deactivation_type".to_string(), json!("manual"));
+        if let Some(reason) = request.reason {
+            produit_obj.insert("deactivation_reason".to_string(), json!(reason));
+        }
+
+        // Nom du produit pour la notification
+        let product_name: String = produit_obj
+            .get("nom")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| format!("Produit #{}", product_index + 1));
+
+        (data, product_name)
+    };
+
     // Mettre à jour le service
     sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
-        .bind(&service_data)
+        .bind(&updated_data)
         .bind(service_id)
         .execute(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur mise à jour: {}", e)))?;
-    
-    // Notification
-    let product_name = produit_obj.get("nom")
-        .and_then(|v| v.as_str())
-        .unwrap_or(&format!("Produit #{}", product_index + 1));
     
     let _ = crate::services::notification_service::create_notification(
         &state.pg,
@@ -155,7 +166,7 @@ pub async fn reactivate_product(
     Extension(user): Extension<AuthenticatedUser>,
     Path((service_id, product_index)): Path<(i32, usize)>,
 ) -> AppResult<Json<ProductLifecycleResponse>> {
-    use crate::utils::log::{log_info, log_error};
+    use crate::utils::log::{log_error, log_info};
     
     log_info(&format!("[reactivate_product] 🟢 Réactivation produit {} du service {}", product_index, service_id));
     
@@ -166,7 +177,7 @@ pub async fn reactivate_product(
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération service: {}", e)))?;
     
-    let (owner_id, mut service_data): (i32, Value) = match service_row {
+    let (owner_id, service_data): (i32, Value) = match service_row {
         Some(row) => (
             row.try_get("user_id").map_err(|e| AppError::Internal(e.to_string()))?,
             row.try_get("data").map_err(|e| AppError::Internal(e.to_string()))?
@@ -179,46 +190,71 @@ pub async fn reactivate_product(
         return Err(AppError::Unauthorized("Vous n'êtes pas le propriétaire de ce service".to_string()));
     }
     
-    // Récupérer le produit
-    let produits_array = service_data
-        .get_mut("produits")
-        .and_then(|p| p.as_object_mut())
-        .and_then(|obj| obj.get_mut("valeur"))
-        .and_then(|v| v.as_array_mut())
-        .ok_or_else(|| AppError::NotFound("Produits introuvables".to_string()))?;
+    // Travailler sur une copie locale pour éviter les conflits d'emprunt
+    let (updated_data, product_name, days_inactive, cost) = {
+        let mut data = service_data;
+
+        // Récupérer le produit
+        let produits_array = data
+            .get_mut("produits")
+            .and_then(|p| p.as_object_mut())
+            .and_then(|obj| obj.get_mut("valeur"))
+            .and_then(|v| v.as_array_mut())
+            .ok_or_else(|| AppError::NotFound("Produits introuvables".to_string()))?;
+        
+        let produit = produits_array
+            .get_mut(product_index)
+            .ok_or_else(|| AppError::NotFound(format!("Produit {} introuvable", product_index)))?;
+        
+        let produit_obj = produit
+            .as_object_mut()
+            .ok_or_else(|| AppError::Internal("Produit invalide".to_string()))?;
+
+        // Vérifier si désactivé
+        let is_active = produit_obj.get("is_active").and_then(|v| v.as_bool()).unwrap_or(true);
+        if is_active {
+            return Err(AppError::BadRequest("Le produit est déjà actif".to_string()));
+        }
+        
+        // Calculer le coût de réactivation
+        let deactivated_at_str = produit_obj
+            .get("deactivated_at")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::Internal("Date de désactivation manquante".to_string()))?;
+        
+        let deactivated_at = chrono::DateTime::parse_from_rfc3339(deactivated_at_str)
+            .map_err(|e| AppError::Internal(format!("Date invalide: {}", e)))?
+            .naive_utc();
+        
+        let deactivation_type = produit_obj
+            .get("deactivation_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("manual");
+        
+        let now = Utc::now().naive_utc();
+        let days_inactive = (now - deactivated_at).num_days();
+        
+        let cost = reactivation_costs::calculate_reactivation_cost(days_inactive, deactivation_type);
+
+        // Nom du produit pour les notifications
+        let product_name: String = produit_obj
+            .get("nom")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| format!("Produit #{}", product_index + 1));
+
+        // Réactiver le produit dans les données
+        produit_obj.insert("is_active".to_string(), json!(true));
+        produit_obj.insert("reactivated_at".to_string(), json!(Utc::now().to_rfc3339()));
+        produit_obj.remove("deactivated_at");
+        produit_obj.remove("deactivation_type");
+        produit_obj.remove("deactivation_reason");
+
+        (data, product_name, days_inactive, cost)
+    };
     
-    let produit = produits_array.get_mut(product_index)
-        .ok_or_else(|| AppError::NotFound(format!("Produit {} introuvable", product_index)))?;
-    
-    let produit_obj = produit.as_object_mut()
-        .ok_or_else(|| AppError::Internal("Produit invalide".to_string()))?;
-    
-    // Vérifier si désactivé
-    let is_active = produit_obj.get("is_active").and_then(|v| v.as_bool()).unwrap_or(true);
-    if is_active {
-        return Err(AppError::BadRequest("Le produit est déjà actif".to_string()));
-    }
-    
-    // Calculer le coût de réactivation
-    let deactivated_at_str = produit_obj.get("deactivated_at")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| AppError::Internal("Date de désactivation manquante".to_string()))?;
-    
-    let deactivated_at = chrono::DateTime::parse_from_rfc3339(deactivated_at_str)
-        .map_err(|e| AppError::Internal(format!("Date invalide: {}", e)))?
-        .naive_utc();
-    
-    let deactivation_type = produit_obj.get("deactivation_type")
-        .and_then(|v| v.as_str())
-        .unwrap_or("manual");
-    
-    let now = Utc::now().naive_utc();
-    let days_inactive = (now - deactivated_at).num_days();
-    
-    let cost = reactivation_costs::calculate_reactivation_cost(days_inactive, deactivation_type);
-    
-    log_info(&format!("[reactivate_product] 💰 Coût calculé: {} FCFA ({} jours, type: {})", 
-        cost, days_inactive, deactivation_type));
+    log_info(&format!("[reactivate_product] 💰 Coût calculé: {} FCFA ({} jours)", 
+        cost, days_inactive));
     
     // Vérifier le solde
     let current_balance = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
@@ -251,25 +287,13 @@ pub async fn reactivate_product(
     
     log_info(&format!("[reactivate_product] ✅ Solde débité: {} FCFA (nouveau: {})", cost, new_balance));
     
-    // Réactiver le produit
-    produit_obj.insert("is_active".to_string(), json!(true));
-    produit_obj.insert("reactivated_at".to_string(), json!(Utc::now().to_rfc3339()));
-    produit_obj.remove("deactivated_at");
-    produit_obj.remove("deactivation_type");
-    produit_obj.remove("deactivation_reason");
-    
     // Mettre à jour le service
     sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
-        .bind(&service_data)
+        .bind(&updated_data)
         .bind(service_id)
         .execute(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur mise à jour: {}", e)))?;
-    
-    // Notification
-    let product_name = produit_obj.get("nom")
-        .and_then(|v| v.as_str())
-        .unwrap_or(&format!("Produit #{}", product_index + 1));
     
     let _ = crate::services::notification_service::create_notification(
         &state.pg,
@@ -301,7 +325,7 @@ pub async fn reactivate_product(
 pub async fn auto_deactivate_expired_products(
     pool: &sqlx::PgPool,
 ) -> Result<usize, String> {
-    use crate::utils::log::{log_info, log_warn};
+    use crate::utils::log::log_info;
     
     log_info("[auto_deactivate] 🤖 Démarrage du job de désactivation automatique...");
     
@@ -349,9 +373,11 @@ pub async fn auto_deactivate_expired_products(
                         log_info(&format!("[auto_deactivate] Produit {} du service {} désactivé automatiquement", index, service_id));
                         
                         // Notification
-                        let product_name = produit_obj.get("nom")
+                        let product_name = produit_obj
+                            .get("nom")
                             .and_then(|v| v.as_str())
-                            .unwrap_or(&format!("Produit #{}", index + 1));
+                            .map(|s| s.to_string())
+                            .unwrap_or_else(|| format!("Produit #{}", index + 1));
                         
                         let _ = crate::services::notification_service::create_notification(
                             pool,

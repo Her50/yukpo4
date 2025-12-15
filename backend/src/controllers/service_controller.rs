@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Path, Query, State, Extension},
-    response::IntoResponse,
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
+    response::IntoResponse,
     Json,
 };
 use serde_json::{json, Value};
 use sqlx::Row;
-use log::{info, error, warn};
+use log::{error, info, warn};
 use serde::Deserialize;
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;
@@ -35,13 +35,15 @@ pub async fn creer_service(
 ) -> axum::response::Response {
     info!("[creer_service] Called for user_id={}", payload.user_id);
     
-    // Utiliser le service creer_service qui retourne les tokens consomm?s
+    // Utiliser le service creer_service qui retourne les tokens consommés
     match crate::services::creer_service::creer_service(
         &state.pg,
         payload.user_id,
         &payload.data,
         &state.redis_client,
-    ).await {
+        None,
+    )
+    .await {
         Ok((service_creation_result, tokens_consumed)) => {
             info!("[creer_service] ? Service cr?? avec succ?s - Tokens consomm?s: {}", tokens_consumed);
             info!("[creer_service] Type des tokens: {:?}", std::any::type_name_of_val(&tokens_consumed));
@@ -189,6 +191,34 @@ pub async fn insert_user(
         return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Insert error: {}", e)}))).into_response();
     }
     (StatusCode::CREATED, Json(json!({"message": "Utilisateur enregistr? avec succ?s"}))).into_response()
+}
+
+/// Endpoint liste de services (deprecated / placeholder)
+pub async fn get_services_list(
+    State(_state): State<Arc<AppState>>,
+) -> axum::response::Response {
+    (StatusCode::NOT_IMPLEMENTED, Json(json!({
+        "error": "Endpoint get_services_list temporairement désactivé"
+    }))).into_response()
+}
+
+/// Endpoint services récents (deprecated / placeholder)
+pub async fn get_services_recent(
+    State(_state): State<Arc<AppState>>,
+) -> axum::response::Response {
+    (StatusCode::NOT_IMPLEMENTED, Json(json!({
+        "error": "Endpoint get_services_recent temporairement désactivé"
+    }))).into_response()
+}
+
+/// Endpoint services de l'utilisateur (deprecated / placeholder)
+pub async fn get_my_services(
+    State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+) -> axum::response::Response {
+    (StatusCode::NOT_IMPLEMENTED, Json(json!({
+        "error": "Endpoint get_my_services temporairement désactivé"
+    }))).into_response()
 }
 
 #[derive(Debug, Deserialize)]

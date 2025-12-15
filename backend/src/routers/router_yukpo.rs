@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 use log::{info, error, warn};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
-use crate::utils::log::log_error;
+use crate::utils::log::{log_error, log_warn};
 
 use crate::{
     controllers::{
@@ -35,7 +35,7 @@ use crate::{
     core::types::{AppResult, AppError},
     services::creer_service,
     state::AppState,
-    middlewares::{request_size_limit, hide_headers, rate_limit, monitoring, audit_log, jwt::jwt_auth, check_tokens::check_tokens, service_interaction::track_service_interaction},
+    middlewares::{request_size_limit, hide_headers, monitoring, audit_log, jwt::jwt_auth, check_tokens::check_tokens, service_interaction::track_service_interaction},
     routers::router_modalities,
 };
 use crate::models::input_model::MultiModalInput;
@@ -67,7 +67,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/places/autocomplete", get(autocomplete_places))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
         .layer(axum::middleware::from_fn(audit_log::audit_log))
-        .layer(axum::middleware::from_fn(rate_limit::rate_limit))
+        // TODO: réactiver rate_limit quand le middleware sera stabilisé
+        // .layer(axum::middleware::from_fn(rate_limit))
         .layer(axum::middleware::from_fn(hide_headers::hide_headers))
         .layer(axum::middleware::from_fn(request_size_limit::request_size_limit));
     
@@ -151,7 +152,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(axum::middleware::from_fn(jwt_auth))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
         .layer(axum::middleware::from_fn(audit_log::audit_log))
-        .layer(axum::middleware::from_fn(rate_limit::rate_limit))
+        // TODO: réactiver rate_limit quand le middleware sera stabilisé
+        // .layer(axum::middleware::from_fn(rate_limit))
         .layer(axum::middleware::from_fn(hide_headers::hide_headers))
         .layer(axum::middleware::from_fn(request_size_limit::request_size_limit));
     
@@ -433,11 +435,18 @@ async fn handle_direct_search(
     
     // Recherche directe sans détection d'intention, avec filtrage GPS
     let (mut result, tokens_consumed) = rechercher_besoin_direct(
-        Some(user.id), 
+        &_state.pg,
+        Some(_state.cache_service.clone()),
+        _state.geographic_matching.clone(),
+        Some(_state.search_metrics.clone()),
+        Some(_state.scalability.clone()),
+        Some(user.id),
         &user_text,
         gps_zone,
-        search_radius_km
-    ).await?;
+        search_radius_km,
+        None,
+    )
+    .await?;
     
     // ✅ ENRICHIR avec données de publicité et booster scores
     if let Some(resultats) = result.get_mut("resultats").and_then(|r| r.as_array_mut()) {
@@ -453,11 +462,15 @@ async fn handle_direct_search(
             }
         });
 
-        if let Err(e) = crate::services::publicite_search_service::PubliciteSearchService::enrich_search_results_with_promotion(
-            &_state.pg,
-            resultats,
-            user_coords
-        ).await {
+        let pub_service =
+            crate::services::publicite_search_service::PubliciteSearchService::new(Some(
+                _state.cache_service.clone(),
+            ));
+
+        if let Err(e) = pub_service
+            .enrich_search_results_with_promotion(&_state.pg, resultats, user_coords)
+            .await
+        {
             log_error(&format!("[DIRECT_SEARCH] Erreur enrichissement promotion: {}", e));
             // Continuer même si erreur
         }

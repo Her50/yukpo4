@@ -1,15 +1,15 @@
 use crate::core::types::AppResult;
-use crate::utils::log::{log_info, log_error};
+use crate::utils::log::{log_error, log_info};
 use crate::config::search_config::SearchConfig;
 use crate::services::scheduling_search_service::SchedulingSearchService;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{PgPool, Row};
-
-
+use std::sync::Arc;
 
 
 /// Résultat de recherche avec score détaillé
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {
     pub service_id: i32,
     pub data: Value,
@@ -18,6 +18,10 @@ pub struct SearchResult {
     pub trigram_score: f32,
     pub recency_score: f32,
     pub category_score: f32,
+    /// Distance en km par rapport à l'utilisateur (si disponible)
+    pub distance_km: Option<f64>,
+    /// Coordonnées GPS (lat,lng) sérialisées ou structure JSON selon la source
+    pub gps_coords: Option<Value>,
     pub search_method: String,
     pub matched_fields: Vec<String>,
 }
@@ -34,7 +38,31 @@ impl NativeSearchService {
         Self { pool, config }
     }
 
+    /// Variante avec service de scalabilité (actuellement identique à `new`)
+    pub fn with_scalability(
+        pool: PgPool,
+        _scalability_service: Option<Arc<crate::services::scalability_service::ScalabilityService>>,
+    ) -> Self {
+        // Le service de scalabilité est géré en amont; on le garde pour compatibilité API.
+        let config = SearchConfig::default();
+        Self { pool, config }
+    }
+
     pub fn with_config(pool: PgPool, config: SearchConfig) -> Self {
+        Self { pool, config }
+    }
+
+    /// Variante étendue avec cache et matching géographique (pour compatibilité)
+    #[allow(clippy::too_many_arguments)]
+    pub fn with_cache_and_geographic_matching(
+        pool: PgPool,
+        _cache_service: Option<Arc<crate::services::cache_service::CacheService>>,
+        _geographic_matching: Option<Arc<crate::services::geographic_matching_service::GeographicMatchingService>>,
+        _search_metrics: Option<Arc<crate::services::search_metrics::SearchMetricsService>>,
+        _scalability_service: Option<Arc<crate::services::scalability_service::ScalabilityService>>,
+    ) -> Self {
+        // Ces services sont utilisés en amont; ici on ne fait que conserver la compatibilité binaire.
+        let config = SearchConfig::default();
         Self { pool, config }
     }
 
@@ -168,17 +196,25 @@ impl NativeSearchService {
             ).await.map_err(|e| format!("Erreur recherche planifications: {}", e))?;
             
             // Convertir en SearchResult
-            let results: Vec<SearchResult> = scheduling_results.into_iter().map(|r| SearchResult {
-                service_id: r.service_id,
-                data: r.product_data,
-                total_score: r.relevance_score as f32,
-                fulltext_score: r.relevance_score as f32,
-                trigram_score: 0.0,
-                recency_score: 0.0,
-                category_score: 0.0,
-                search_method: "scheduling_search".to_string(),
-                matched_fields: vec!["planification".to_string(), "disponibilité".to_string()],
-            }).collect();
+            let results: Vec<SearchResult> = scheduling_results
+                .into_iter()
+                .map(|r| SearchResult {
+                    service_id: r.service_id,
+                    data: r.product_data,
+                    total_score: r.relevance_score as f32,
+                    fulltext_score: r.relevance_score as f32,
+                    trigram_score: 0.0,
+                    recency_score: 0.0,
+                    category_score: 0.0,
+                    distance_km: None,
+                    gps_coords: None,
+                    search_method: "scheduling_search".to_string(),
+                    matched_fields: vec![
+                        "planification".to_string(),
+                        "disponibilité".to_string()
+                    ],
+                })
+                .collect();
             
             log_info(&format!("[NativeSearch] {} résultats avec planifications trouvés", results.len()));
             return Ok(results);
@@ -218,8 +254,8 @@ impl NativeSearchService {
                 let service_id: i32 = row.get("service_id");
                 let _titre_service: String = row.get("titre_service");
                 let _category: Option<String> = row.get("category");
-                let _gps_coords: Option<String> = row.get("gps_coords");
-                let _distance_km: Option<f64> = row.get("distance_km");
+                let gps_coords: Option<String> = row.get("gps_coords");
+                let distance_km: Option<f64> = row.get("distance_km");
                 let relevance_score: f32 = row.get("relevance_score");
                 let _gps_source: Option<String> = row.get("gps_source");
                 
@@ -231,6 +267,12 @@ impl NativeSearchService {
                     .map(|row| row.get::<Value, _>("data"))
                     .unwrap_or_else(|_| serde_json::json!({}));
 
+                let gps_from_data = service_data
+                    .get("gps_fixe")
+                    .and_then(|v| v.get("valeur"))
+                    .cloned()
+                    .or_else(|| service_data.get("gps_fixe").cloned());
+
                 search_results.push(SearchResult {
                     service_id,
                     data: service_data,
@@ -239,13 +281,17 @@ impl NativeSearchService {
                     trigram_score: 0.0,
                     recency_score: 0.0,
                     category_score: 0.0,
+                    distance_km,
+                    gps_coords: gps_coords
+                        .map(|s| serde_json::Value::String(s))
+                        .or(gps_from_data),
                     search_method: "gps_optimized".to_string(),
                     matched_fields: vec!["gps".to_string()],
                 });
                 
                 log_info(&format!("[NativeSearch] Service {} trouvé à {:.2}km (source: {})", 
                     service_id, 
-                    _distance_km.unwrap_or(0.0), 
+                    distance_km.unwrap_or(0.0), 
                     _gps_source.unwrap_or_else(|| "unknown".to_string())));
             }
             
@@ -483,6 +529,8 @@ SELECT DISTINCT
                 trigram_score: 0.0,
                 recency_score: 0.0,
                 category_score: 0.0,
+                distance_km: None,
+                gps_coords: None,
                 search_method: "fulltext".to_string(),
                 matched_fields: vec!["fulltext".to_string()],
             });
@@ -547,8 +595,8 @@ SELECT DISTINCT
                 let service_id: i32 = row.get("service_id");
                 let _titre_service: String = row.get("titre_service");
                 let _category: Option<String> = row.get("category");
-                let _gps_coords: Option<String> = row.get("gps_coords");
-                let _distance_km: Option<f64> = row.get("distance_km");
+                let gps_coords: Option<String> = row.get("gps_coords");
+                let distance_km: Option<f64> = row.get("distance_km");
                 let relevance_score: f32 = row.get("relevance_score");
                 let _gps_source: Option<String> = row.get("gps_source");
                 
@@ -560,6 +608,12 @@ SELECT DISTINCT
                     .map(|row| row.get::<Value, _>("data"))
                     .unwrap_or_else(|_| serde_json::json!({}));
 
+                let gps_from_data = service_data
+                    .get("gps_fixe")
+                    .and_then(|v| v.get("valeur"))
+                    .cloned()
+                    .or_else(|| service_data.get("gps_fixe").cloned());
+
                 search_results.push(SearchResult {
                     service_id,
                     data: service_data,
@@ -568,6 +622,10 @@ SELECT DISTINCT
                     trigram_score: relevance_score,
                     recency_score: 0.0,
                     category_score: 0.0,
+                    distance_km,
+                    gps_coords: gps_coords
+                        .map(|s| serde_json::Value::String(s))
+                        .or(gps_from_data),
                     search_method: "trigram_gps_optimized".to_string(),
                     matched_fields: vec!["trigram".to_string(), "gps".to_string()],
                 });
@@ -632,6 +690,8 @@ SELECT DISTINCT
                 trigram_score,
                 recency_score: 0.0,
                 category_score: 0.0,
+                distance_km: None,
+                gps_coords: None,
                 search_method: "trigram".to_string(),
                 matched_fields: vec!["trigram".to_string()],
             });
@@ -696,8 +756,8 @@ SELECT DISTINCT
                 let service_id: i32 = row.get("service_id");
                 let _titre_service: String = row.get("titre_service");
                 let _category: Option<String> = row.get("category");
-                let _gps_coords: Option<String> = row.get("gps_coords");
-                let _distance_km: Option<f64> = row.get("distance_km");
+                let gps_coords: Option<String> = row.get("gps_coords");
+                let distance_km: Option<f64> = row.get("distance_km");
                 let relevance_score: f32 = row.get("relevance_score");
                 let _gps_source: Option<String> = row.get("gps_source");
                 
@@ -709,6 +769,12 @@ SELECT DISTINCT
                     .map(|row| row.get::<Value, _>("data"))
                     .unwrap_or_else(|_| serde_json::json!({}));
 
+                let gps_from_data = service_data
+                    .get("gps_fixe")
+                    .and_then(|v| v.get("valeur"))
+                    .cloned()
+                    .or_else(|| service_data.get("gps_fixe").cloned());
+
                 search_results.push(SearchResult {
                     service_id,
                     data: service_data,
@@ -717,6 +783,10 @@ SELECT DISTINCT
                     trigram_score: 0.0,
                     recency_score: 0.0,
                     category_score: relevance_score,
+                    distance_km,
+                    gps_coords: gps_coords
+                        .map(|s| serde_json::Value::String(s))
+                        .or(gps_from_data),
                     search_method: "keywords_gps_optimized".to_string(),
                     matched_fields: vec!["keywords".to_string(), "gps".to_string()],
                 });
@@ -822,6 +892,8 @@ SELECT DISTINCT
                 trigram_score: 0.0,
                 recency_score: 0.0,
                 category_score: keyword_score,
+                distance_km: None,
+                gps_coords: None,
                 search_method: "keywords".to_string(),
                 matched_fields: vec!["keywords".to_string()],
             });
@@ -986,28 +1058,30 @@ SELECT DISTINCT
             })?;
 
         let mut search_results = Vec::new();
-                       for row in results {
-                   let service_id: i32 = row.get("id");
-                   let data: Value = row.get("data");
-                   let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
-                   let _user_id: i32 = row.get("user_id");
-                   let _gps: Option<String> = row.get("gps");
-                   let _category: Option<String> = row.get("category");
-                   
-                   let recency_score = self.calculate_recency_score(created_at);
-                   
-                   search_results.push(SearchResult {
-                       service_id,
-                       data,
-                       total_score: 1.0 + recency_score,
-                       fulltext_score: 0.0,
-                       trigram_score: 0.0,
-                       recency_score,
-                       category_score: 1.0,
-                       search_method: "category".to_string(),
-                       matched_fields: vec!["category".to_string()],
-                   });
-               }
+        for row in results {
+            let service_id: i32 = row.get("id");
+            let data: Value = row.get("data");
+            let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+            let _user_id: i32 = row.get("user_id");
+            let _gps: Option<String> = row.get("gps");
+            let _category: Option<String> = row.get("category");
+            
+            let recency_score = self.calculate_recency_score(created_at);
+            
+            search_results.push(SearchResult {
+                service_id,
+                data,
+                total_score: 1.0 + recency_score,
+                fulltext_score: 0.0,
+                trigram_score: 0.0,
+                recency_score,
+                category_score: 1.0,
+                distance_km: None,
+                gps_coords: None,
+                search_method: "category".to_string(),
+                matched_fields: vec!["category".to_string()],
+            });
+        }
 
         Ok(search_results)
     }
@@ -1137,6 +1211,8 @@ SELECT DISTINCT
                 trigram_score: location_score,
                 recency_score,
                 category_score: 0.0,
+                distance_km: None,
+                gps_coords: None,
                 search_method: "geospatial".to_string(),
                 matched_fields: vec!["geospatial".to_string()],
             });

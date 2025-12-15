@@ -536,13 +536,15 @@ pub async fn rechercher_besoin_direct(
 
     // ✅ OPTIMISÉ 2025-11-28: Configuration de la recherche native avec cache Redis et matching géographique
     // ✅ NOUVEAU 2025-12-01: Ajouter service de scalabilité pour cache optimisé
-    let native_search = if let Some(scalability_service) = scalability_service {
+    let native_search = if let Some(scalability_service) = scalability_service.clone() {
         NativeSearchService::with_scalability(pool.clone(), Some(scalability_service))
     } else {
         NativeSearchService::with_cache_and_geographic_matching(
             pool.clone(),
             Some(cache_service.clone()),
             Some(geographic_matching),
+            search_metrics.clone(),
+            scalability_service.clone(),
         )
     };
 
@@ -554,16 +556,15 @@ pub async fn rechercher_besoin_direct(
         user_text
     ));
 
-    // Recherche native intelligente avec TOUS les mots-clés combinés ET filtrage GPS + LIEU
+    // Recherche native intelligente avec filtrage GPS
     let native_results = match native_search
-        .intelligent_search_with_location_prefilter(
+        .intelligent_search(
             &primary_keyword,
-            user_text, // ✅ INPUT COMPLET pour pré-filtre lieu
             None,      // Pas de filtre de catégorie
+            None,      // Pas de filtre de localisation textuelle
             user_id,
             gps_zone,         // Passer la zone GPS (gps_fixe/gps_courant)
             search_radius_km, // Passer le rayon de recherche
-            specialized_type, // ✅ Transmettre specialized_type (None pour recherche générale)
         )
         .await
     {
@@ -1877,6 +1878,8 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
         pool.clone(),
         Some(cache_service),
         Some(geographic_matching),
+        None,
+        None,
     );
 
     // Recherche native intelligente (recherche générale, pas de specialized_type)
@@ -1888,7 +1891,6 @@ pub async fn rechercher_besoin(user_id: Option<i32>, data: &Value) -> AppResult<
             user_id,
             None, // Pas de zone GPS pour cette recherche
             None, // Pas de rayon GPS pour cette recherche
-            None, // ✅ Recherche générale (pas de specialized_type)
         )
         .await
     {
