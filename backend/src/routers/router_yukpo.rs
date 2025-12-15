@@ -8,6 +8,7 @@ use axum::{
     body::Body,
 };
 use serde_json::{json, Value};
+use sqlx::Row;
 use log::{info, error, warn};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -916,12 +917,13 @@ async fn handle_optimization_metrics(
     info!("[optimization_metrics] Consultation des m?triques pour utilisateur {}", user_id);
     
     // R?cup?rer le solde actuel de l'utilisateur
-    let solde_result = sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user_id)
+    let solde_result = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user_id)
         .fetch_one(&state.pg)
         .await;
     
     let solde_actuel = match solde_result {
-        Ok(user_data) => user_data.tokens_balance,
+        Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
         Err(_) => 0,
     };
     
