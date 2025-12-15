@@ -267,7 +267,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                         {category.title}
                                     </Text>
                                     <Text style={styles.categoryDescription} numberOfLines={1}>
-                                        {category.services.length} service{category.services.length > 1 ? 's' : ''}
+                                        {`${category.services.length} service${category.services.length > 1 ? 's' : ''}`}
                                     </Text>
                                 </View>
                             </TouchableOpacity>
