@@ -151,7 +151,7 @@ const PromotionsMenu: React.FC<{ navigate: (route: string) => boolean }> = ({ na
                                     <Text style={styles.promotionMenuIcon}>{promo.icon}</Text>
                                 </View>
                                 <Text style={styles.promotionMenuTitle} numberOfLines={1}>
-                                    {promo.title}
+                                    {promo.title || ''}
                                 </Text>
                             </TouchableOpacity>
                         ))}

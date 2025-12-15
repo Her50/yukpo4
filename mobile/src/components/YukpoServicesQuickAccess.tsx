@@ -163,7 +163,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
             icon: 'heart',
             gradient: ['#EC4899', '#F472B6'],
             description: '4 services',
-            services: allServices.filter(s => ['pharmacie', 'hopital', 'laboratoire', 'banque_sang'].includes(s.id))
+            services: allServices.filter(s => s && s.id && ['pharmacie', 'hopital', 'laboratoire', 'banque_sang'].includes(s.id))
         },
         {
             id: 'transport',
@@ -171,7 +171,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
             icon: 'truck',
             gradient: ['#F59E0B', '#FBBF24'],
             description: '3 services',
-            services: allServices.filter(s => ['agence_voyage', 'covoiturage', 'taxi'].includes(s.id))
+            services: allServices.filter(s => s && s.id && ['agence_voyage', 'covoiturage', 'taxi'].includes(s.id))
         },
         {
             id: 'education',
@@ -179,7 +179,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
             icon: 'book-open',
             gradient: ['#3B82F6', '#60A5FA'],
             description: '2 services',
-            services: allServices.filter(s => ['orientation_scolaire', 'bourse_livre'].includes(s.id))
+            services: allServices.filter(s => s && s.id && ['orientation_scolaire', 'bourse_livre'].includes(s.id))
         },
         {
             id: 'emploi',
@@ -187,7 +187,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
             icon: 'briefcase',
             gradient: ['#6366F1', '#818CF8'],
             description: '1 service',
-            services: allServices.filter(s => s.id === 'offres_emploi')
+            services: allServices.filter(s => s && s.id && s.id === 'offres_emploi')
         },
         {
             id: 'vie_quotidienne',
@@ -195,7 +195,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
             icon: 'coffee',
             gradient: ['#F59E0B', '#FBBF24'],
             description: '2 services',
-            services: allServices.filter(s => ['menu_planning', 'bayamselam'].includes(s.id))
+            services: allServices.filter(s => s && s.id && ['menu_planning', 'bayamselam'].includes(s.id))
         },
         {
             id: 'immobilier',
@@ -203,7 +203,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
             icon: 'home',
             gradient: ['#8B5CF6', '#A78BFA'],
             description: '1 service',
-            services: allServices.filter(s => s.id === 'immo')
+            services: allServices.filter(s => s && s.id && s.id === 'immo')
         }
     ];
 
@@ -213,17 +213,21 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
         console.log('[YukpoServicesQuickAccess] 📦 Services disponibles:', category.services.map(s => s.id));
         
         // ✅ NOUVEAU: Si la catégorie a plusieurs services, ouvrir horizontalement au même endroit
-        if (category.services.length > 1) {
+        if (category.services && category.services.length > 1) {
             setExpandedCategoryId(expandedCategoryId === category.id ? null : category.id);
         } else {
             // Si un seul service, naviguer directement
-            if (category.services.length === 1) {
+            if (category.services && category.services.length === 1 && category.services[0] && category.services[0].id) {
                 handleServiceSelect(category.services[0].id);
             }
         }
     };
 
     const handleServiceSelect = (serviceId: string) => {
+        if (!serviceId || typeof serviceId !== 'string') {
+            console.warn('[YukpoServicesQuickAccess] ⚠️ Service ID invalide:', serviceId);
+            return;
+        }
         hapticPress();
         console.log('[YukpoServicesQuickAccess] ✅ Service sélectionné:', serviceId);
         setSelectedCategory(null);
@@ -241,18 +245,31 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
         setSelectedCategory(null);
     };
 
-    const expandedCategory = categories.find(c => expandedCategoryId === c.id);
+    const expandedCategory = expandedCategoryId ? categories.find(c => c.id === expandedCategoryId) : null;
     
     return (
         <View style={styles.container}>
             {/* ✅ Blocs de catégories (2 lignes x 3 colonnes - 6 blocs au total) */}
             <View style={styles.categoriesGrid}>
-                {categories.map((category) => {
+                {categories.map((category, index) => {
                     const isExpanded = expandedCategoryId === category.id;
-                    const hasMultipleServices = category.services.length > 1;
+                    const hasMultipleServices = category.services && category.services.length > 1;
+                    
+                    // ✅ SÉCURISÉ: Vérifier que category existe et a les propriétés nécessaires
+                    if (!category || !category.id) {
+                        return null;
+                    }
+                    
+                    // ✅ SÉCURISÉ: Calculer le nombre de services de manière sécurisée
+                    const servicesCount = (category.services && Array.isArray(category.services)) 
+                        ? category.services.length 
+                        : 0;
+                    const servicesText = servicesCount > 0 
+                        ? `${servicesCount} service${servicesCount > 1 ? 's' : ''}`
+                        : '0 service';
                     
                     return (
-                        <View key={category.id} style={styles.categoryWrapper}>
+                        <View key={category.id || `category-${index}`} style={styles.categoryWrapper}>
                             <TouchableOpacity
                                 style={styles.categoryBlock}
                                 onPress={() => handleCategoryPress(category)}
@@ -261,13 +278,13 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                 {/* ✅ Style miniaturisé comme GOZEM - fond gris clair */}
                                 <View style={styles.categorySoftContainer}>
                                     <View style={styles.categoryIconContainer}>
-                                        <SafeIcon name={category.icon} size={12} color="#6B7280" /> {/* ✅ MINIATURISÉ: De 16 à 12 */}
+                                        <SafeIcon name={category.icon || 'default'} size={12} color="#6B7280" /> {/* ✅ MINIATURISÉ: De 16 à 12 */}
                                     </View>
                                     <Text style={styles.categoryTitle} numberOfLines={2}>
-                                        {category.title}
+                                        {category?.title ? String(category.title) : ''}
                                     </Text>
                                     <Text style={styles.categoryDescription} numberOfLines={1}>
-                                        {`${category.services.length} service${category.services.length > 1 ? 's' : ''}`}
+                                        {servicesText}
                                     </Text>
                                 </View>
                             </TouchableOpacity>
@@ -277,34 +294,41 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
             </View>
             
             {/* ✅ Menu horizontal des services (affiché en dessous de la grille, toute largeur) */}
-            {expandedCategory && expandedCategory.services.length > 1 && (
+            {expandedCategory && expandedCategory.services && expandedCategory.services.length > 1 && (
                 <View style={styles.expandedServicesContainer}>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.expandedServicesContent}
                     >
-                        {expandedCategory.services.map((service) => (
-                            <TouchableOpacity
-                                key={service.id}
-                                style={styles.expandedServiceItem}
-                                onPress={() => handleServiceSelect(service.id)}
-                                activeOpacity={0.7}
-                                disabled={service.comingSoon}
-                            >
-                                <View style={[styles.expandedServiceIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
-                                    <SafeIcon name={service.icon} size={18} color={service.gradient[0]} />
-                                    {service.comingSoon && (
-                                        <View style={styles.serviceComingSoonBadge}>
-                                            <Text style={styles.serviceComingSoonText}>Bientôt</Text>
-                                        </View>
-                                    )}
-                                </View>
+                        {expandedCategory.services.filter(s => s && s.id).map((service, index) => {
+                            // ✅ SÉCURISÉ: Vérifier que service existe et a les propriétés nécessaires
+                            if (!service || !service.id) {
+                                return null;
+                            }
+                            
+                            return (
+                                <TouchableOpacity
+                                    key={service.id || `service-${index}`}
+                                    style={styles.expandedServiceItem}
+                                    onPress={() => handleServiceSelect(service.id || '')}
+                                    activeOpacity={0.7}
+                                    disabled={service.comingSoon}
+                                >
+                                    <View style={[styles.expandedServiceIconContainer, { backgroundColor: service.gradient && service.gradient[0] ? `${service.gradient[0]}15` : '#F3F4F615' }]}>
+                                        <SafeIcon name={service.icon || 'default'} size={18} color={service.gradient && service.gradient[0] ? service.gradient[0] : '#6B7280'} />
+                                        {service.comingSoon && (
+                                            <View style={styles.serviceComingSoonBadge}>
+                                                <Text style={styles.serviceComingSoonText}>Bientôt</Text>
+                                            </View>
+                                        )}
+                                    </View>
                                 <Text style={styles.expandedServiceTitle} numberOfLines={1}>
-                                    {service.title}
+                                    {service?.title ? String(service.title) : ''}
                                 </Text>
-                            </TouchableOpacity>
-                        ))}
+                                </TouchableOpacity>
+                            );
+                        })}
                     </ScrollView>
                 </View>
             )}
@@ -324,19 +348,19 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                             <>
                                 <View style={styles.modalHeader}>
                                     <LinearGradient
-                                        colors={selectedCategory.gradient}
+                                        colors={selectedCategory.gradient && selectedCategory.gradient.length > 0 ? selectedCategory.gradient : ['#6B7280', '#9CA3AF']}
                                         style={styles.modalHeaderGradient}
                                     >
                                         <View style={styles.modalHeaderContent}>
                                             <View style={styles.modalIconContainer}>
-                                                <SafeIcon name={selectedCategory.icon} size={32} color="#FFFFFF" />
+                                                <SafeIcon name={selectedCategory.icon || 'default'} size={32} color="#FFFFFF" />
                                             </View>
                                             <View style={styles.modalTitleContainer}>
                                                 <Text style={styles.modalTitle}>
-                                                    {selectedCategory.title}
+                                                    {selectedCategory?.title ? String(selectedCategory.title) : ''}
                                                 </Text>
                                                 <Text style={styles.modalSubtitle}>
-                                                    {selectedCategory.description}
+                                                    {selectedCategory?.description ? String(selectedCategory.description) : ''}
                                                 </Text>
                                             </View>
                                             <TouchableOpacity
@@ -355,50 +379,57 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                     contentContainerStyle={styles.servicesListContent}
                                     showsVerticalScrollIndicator={true}
                                 >
-                                    {selectedCategory.services.length === 0 ? (
+                                    {!selectedCategory.services || selectedCategory.services.length === 0 ? (
                                         <View style={styles.emptyServicesContainer}>
                                             <Text style={styles.emptyServicesText}>
                                                 Aucun service disponible dans cette catégorie
                                             </Text>
                                         </View>
                                     ) : (
-                                        selectedCategory.services.map((service) => (
-                                            <TouchableOpacity
-                                                key={service.id}
-                                                style={styles.serviceItem}
-                                                onPress={() => {
-                                                    console.log('[YukpoServicesQuickAccess] 🎯 Clic sur service:', service.id, service.title);
-                                                    handleServiceSelect(service.id);
-                                                }}
-                                                activeOpacity={0.7}
-                                                disabled={service.comingSoon}
-                                            >
-                                            <LinearGradient
-                                                colors={service.gradient}
-                                                style={styles.serviceItemGradient}
-                                            >
-                                                <View style={styles.serviceItemIconContainer}>
-                                                    <SafeIcon name={service.icon} size={24} color="#FFFFFF" />
-                                                    {service.comingSoon && (
-                                                        <View style={styles.serviceComingSoonBadge}>
-                                                            <Text style={styles.serviceComingSoonText}>Bientôt</Text>
+                                        selectedCategory.services.filter(s => s && s.id).map((service, index) => {
+                                            // ✅ SÉCURISÉ: Vérifier que service existe et a les propriétés nécessaires
+                                            if (!service || !service.id) {
+                                                return null;
+                                            }
+                                            
+                                            return (
+                                                <TouchableOpacity
+                                                    key={service.id || `service-${index}`}
+                                                    style={styles.serviceItem}
+                                                    onPress={() => {
+                                                        console.log('[YukpoServicesQuickAccess] 🎯 Clic sur service:', service.id || 'unknown', service.title || '');
+                                                        handleServiceSelect(service.id || '');
+                                                    }}
+                                                    activeOpacity={0.7}
+                                                    disabled={service.comingSoon}
+                                                >
+                                                    <LinearGradient
+                                                        colors={service.gradient && service.gradient.length > 0 ? service.gradient : ['#6B7280', '#9CA3AF']}
+                                                        style={styles.serviceItemGradient}
+                                                    >
+                                                        <View style={styles.serviceItemIconContainer}>
+                                                            <SafeIcon name={service.icon || 'default'} size={24} color="#FFFFFF" />
+                                                            {service.comingSoon && (
+                                                                <View style={styles.serviceComingSoonBadge}>
+                                                                    <Text style={styles.serviceComingSoonText}>Bientôt</Text>
+                                                                </View>
+                                                            )}
                                                         </View>
-                                                    )}
-                                                </View>
-                                                <View style={styles.serviceItemContent}>
+                                                        <View style={styles.serviceItemContent}>
                                                     <Text style={styles.serviceItemTitle}>
-                                                        {service.title}
+                                                        {service?.title ? String(service.title) : ''}
                                                     </Text>
                                                     <Text style={styles.serviceItemDescription} numberOfLines={2}>
-                                                        {service.description}
+                                                        {service?.description ? String(service.description) : ''}
                                                     </Text>
-                                                </View>
-                                                <View style={styles.serviceItemArrow}>
-                                                    <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
-                                                </View>
-                                            </LinearGradient>
-                                        </TouchableOpacity>
-                                        ))
+                                                        </View>
+                                                        <View style={styles.serviceItemArrow}>
+                                                            <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
+                                                        </View>
+                                                    </LinearGradient>
+                                                </TouchableOpacity>
+                                            );
+                                        })
                                     )}
                                 </ScrollView>
                             </>
