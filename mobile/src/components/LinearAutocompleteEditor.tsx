@@ -1,13 +1,12 @@
 /**
- * LinearAutocompleteEditor - Version 3.0 (2025-11-04)
- * Affiche et édite le vecteur autocomplete généré par l'IA
- * ✅ NOUVEAU : Suggestions populaires depuis autocomplete_combinations
+ * Composant LinearAutocompleteEditor
+ * Autocomplete linéaire avec affichage horizontal des suggestions (style SelectorLocation)
+ * Permet édition inline, ajout de modalités personnalisées, et cache des suggestions IA
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Modal,
     ScrollView,
     StyleSheet,
@@ -16,492 +15,29 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { apiGet, apiPost } from '../services/api';
+import { autocompleteHistoryService } from '../services/autocompleteHistoryService';
+import { placesService } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
 interface LinearAutocompleteEditorProps {
     label: string;
     identifiantBase: string;
-    sousCaracteristiques: Record<string, string[]>; // { marque: ["Nike"], pointure: ["38", "39", "40"] }
+    sousCaracteristiques: Record<string, string[]>; // Ex: { style: ["Moderne"], matiere: ["Bois"] }
     separateur: string;
-    value: string[]; // ["Nike,Air Max,Noir,40"] - Position 0 affichée
-    onChange: (values: string[], updatedSousCaracs?: Record<string, string[]>) => void; // ✅ NOUVEAU: passer aussi sous-caracs
+    value: string[]; // Modalités concaténées: ["Moderne,Bois,Table,6 places"]
+    onChange: (values: string[]) => void;
     required?: boolean;
-    readonly?: boolean;
-    placeholder?: string; // ✅ AJOUT: Support pour placeholder personnalisé
-    allowCustomModality?: boolean; // ✅ AJOUT: Support pour modalités personnalisées
-    filtrable?: boolean; // ✅ AJOUT: Support pour champs filtrables
-    contextValues?: string[]; // ✅ NOUVEAU 2025-11-08 : Textes contextuels (description, titre, etc.)
-    categoryValue?: string; // ✅ NOUVEAU 2025-11-08 : Catégorie principale saisie par le prestataire
-    productVector?: string[]; // ✅ NOUVEAU: Tableau des valeurs dans l'ordre exact (depuis la base)
-    productLabels?: string[]; // ✅ NOUVEAU: Tableau des labels dans l'ordre exact (depuis la base)
+    placeholder?: string;
+    allowCustomModality?: boolean;
+    filtrable?: boolean;
 }
 
-interface ChipData {
-    key: string;      // "marque"
-    value: string;    // "Nike"
-    index: number;    // Position dans vecteur
+interface ModalityChip {
+    key: string; // Ex: "style"
+    value: string; // Ex: "Moderne"
+    index: number; // Position dans la modalité concaténée
 }
-
-interface PopularProduct {
-    product_vector: string[];
-    product_labels: string[];
-    usage_count: number;
-    prix_moyen?: number;
-    has_variant: boolean;
-    variant_dimension?: string;
-    is_trending: boolean;  // ✅ Tendance (actif dans les 7 derniers jours)
-}
-
-interface CombinationSuggestion {
-    id: number;
-    productVector: string[];
-    productLabels: string[];
-    usageCount: number;
-    prix?: number;
-    devise?: string;
-    isAIPreferred?: boolean;
-    occurrences?: number;
-}
-
-type SuggestionSource = 'popular' | 'combination' | 'ia';
-
-interface SuggestionCandidate {
-    key: string;
-    source: SuggestionSource;
-    rows: Array<{ label: string; value: string }>;
-    score: number;
-    title: string;
-    subtitle?: string;
-    sellerCount?: number;
-    priceDisplay?: string | null;
-    occurrences?: number;
-    isTrending?: boolean;
-    isPreferred?: boolean;
-    product?: PopularProduct;
-    combination?: CombinationSuggestion;
-    iaValue?: string;
-}
-
-const normalizeSearchText = (input: string): string => {
-    if (typeof input !== 'string') {
-        return '';
-    }
-
-    try {
-        return input
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-zA-Z0-9\s]/g, '')
-            .toLowerCase();
-    } catch (error) {
-        // Fallback si normalize n'est pas supporté
-        return input.toLowerCase();
-    }
-};
-
-const buildSearchTokens = (input: string): string[] => {
-    if (!input || typeof input !== 'string') {
-        return [];
-    }
-
-    return input
-        .split(/[\s,;\-|/_]+/)
-        .map(token => normalizeSearchText(token.trim()))
-        .filter(Boolean);
-};
-
-const vectorMatchesTokens = (
-    vector: string[] = [],
-    tokens: string[] = [],
-    labels: string[] = [],
-): boolean => {
-    if (tokens.length === 0) {
-        return true;
-    }
-
-    const normalizedVector = vector
-        .filter((item) => typeof item === 'string')
-        .map((item) => normalizeSearchText(item));
-    const normalizedLabels = labels
-        .filter((item) => typeof item === 'string')
-        .map((item) => normalizeSearchText(item));
-
-    return tokens.every((token) =>
-        normalizedVector.some((value) => value.includes(token)) ||
-        normalizedLabels.some((label) => label.includes(token))
-    );
-};
-
-const computeSuggestionScore = (
-    vector: string[] = [],
-    labels: string[] = [],
-    usageCount: number = 0,
-    isTrending: boolean = false,
-    tokens: string[] = [],
-    categoryTokens: string[] = [],
-): number => {
-    const normalizedVector = vector
-        .filter((item) => typeof item === 'string')
-        .map((item) => normalizeSearchText(item));
-    const normalizedLabels = labels
-        .filter((item) => typeof item === 'string')
-        .map((item) => normalizeSearchText(item));
-
-    let score = usageCount * 2;
-    if (isTrending) {
-        score += 15;
-    }
-
-    const uniqueTokens = Array.from(new Set(tokens));
-    uniqueTokens.forEach((token) => {
-        if (token.length === 0) {
-            return;
-        }
-        if (normalizedVector.some((value) => value.includes(token))) {
-            score += 6;
-        } else if (normalizedLabels.some((value) => value.includes(token))) {
-            score += 4;
-        }
-    });
-
-    const normalizedCategoryTokens = Array.from(new Set(categoryTokens));
-    normalizedCategoryTokens.forEach((token) => {
-        if (token.length === 0) {
-            return;
-        }
-        if (normalizedVector.some((value) => value.includes(token))) {
-            score += 12;
-        } else if (normalizedLabels.some((value) => value.includes(token))) {
-            score += 8;
-        }
-    });
-
-    return score;
-};
-
-const computeCombinationSuggestionScore = (
-    combo: CombinationSuggestion,
-    tokens: string[] = [],
-    categoryTokens: string[] = [],
-): number => {
-    const vector = Array.isArray(combo?.productVector) ? combo.productVector : [];
-    const labels = Array.isArray(combo?.productLabels) ? combo.productLabels : [];
-
-    const normalizedVector = vector
-        .filter((value) => typeof value === 'string')
-        .map((value) => normalizeSearchText(value));
-    const normalizedLabels = labels
-        .filter((value) => typeof value === 'string')
-        .map((value) => normalizeSearchText(value));
-
-    let score = (combo?.occurrences ?? combo?.usageCount ?? 0) * 4;
-    score += (combo?.usageCount ?? 0) * 2;
-    if (combo?.isAIPreferred) {
-        score += 18;
-    }
-
-    const uniqueTokens = Array.from(new Set(tokens));
-    uniqueTokens.forEach((token) => {
-        if (!token) {
-            return;
-        }
-        if (normalizedVector.some((value) => value.includes(token))) {
-            score += 6;
-        } else if (normalizedLabels.some((value) => value.includes(token))) {
-            score += 4;
-        }
-    });
-
-    const uniqueCategoryTokens = Array.from(new Set(categoryTokens));
-    uniqueCategoryTokens.forEach((token) => {
-        if (!token) {
-            return;
-        }
-        if (normalizedVector.some((value) => value.includes(token))) {
-            score += 12;
-        } else if (normalizedLabels.some((value) => value.includes(token))) {
-            score += 8;
-        }
-    });
-
-    return score;
-};
-
-const computeIaSuggestionScore = (
-    parts: string[] = [],
-    tokens: string[] = [],
-    categoryTokens: string[] = [],
-): number => {
-    const normalizedParts = parts
-        .filter((value) => typeof value === 'string')
-        .map((value) => normalizeSearchText(value));
-
-    let score = 10;
-
-    const uniqueTokens = Array.from(new Set(tokens));
-    uniqueTokens.forEach((token) => {
-        if (!token) {
-            return;
-        }
-        if (normalizedParts.some((value) => value.includes(token))) {
-            score += 5;
-        }
-    });
-
-    const uniqueCategoryTokens = Array.from(new Set(categoryTokens));
-    uniqueCategoryTokens.forEach((token) => {
-        if (!token) {
-            return;
-        }
-        if (normalizedParts.some((value) => value.includes(token))) {
-            score += 9;
-        }
-    });
-
-    return score;
-};
-
-interface BuildPairsOptions {
-    maxValuesPerLabel?: number;
-    contextTokens?: string[];
-    categoryTokens?: string[];
-}
-
-const selectTopValues = (
-    rawValue: string,
-    maxValues: number,
-    contextTokens: string[],
-    categoryTokens: string[],
-): string[] => {
-    if (typeof rawValue !== 'string') {
-        return [];
-    }
-
-    const segments = smartSplit(rawValue, ',');
-    if (segments.length <= 1) {
-        return [rawValue.trim()].filter(Boolean);
-    }
-
-    const uniqueSegments = Array.from(
-        new Set(
-            segments
-                .map((segment) => segment.trim())
-                .filter((segment) => segment.length > 0)
-        )
-    );
-
-    const scoredSegments = uniqueSegments.map((segment) => {
-        const normalized = normalizeSearchText(segment);
-        let score = 1;
-
-        if (normalized.length >= 40) {
-            score -= 2; // pénaliser les valeurs trop longues
-        }
-
-        if (categoryTokens.some((token) => token && normalized.includes(token))) {
-            score += 12;
-        }
-
-        if (contextTokens.some((token) => token && normalized.includes(token))) {
-            score += 6;
-        }
-
-        // Bonus si segment est court (plus lisible)
-        if (segment.length <= 25) {
-            score += 3;
-        }
-
-        return { segment, score };
-    });
-
-    scoredSegments.sort((a, b) => b.score - a.score);
-
-    return scoredSegments
-        .slice(0, Math.max(1, Math.min(maxValues, 2)))
-        .map((item) => item.segment);
-};
-
-const buildLabeledPairs = (
-    values: string[] = [],
-    labels: string[] = [],
-    fallbackLabels: string[] = [],
-    options: BuildPairsOptions = {},
-): Array<{ label: string; value: string }> => {
-    const {
-        maxValuesPerLabel = 1,
-        contextTokens = [],
-        categoryTokens = [],
-    } = options;
-
-    return values
-        .filter((value) => typeof value === 'string' && value.trim().length > 0)
-        .map((value, index) => {
-            const rawLabel = labels[index] ?? fallbackLabels[index];
-            const label = rawLabel && rawLabel.toString().trim().length > 0
-                ? rawLabel
-                : `Caractéristique ${index + 1}`;
-
-            const selectedValues = selectTopValues(value, maxValuesPerLabel, contextTokens, categoryTokens);
-            const formattedValue = selectedValues.join(' • ') || value.trim();
-
-            return {
-                label,
-                value: formattedValue,
-            };
-        });
-};
-
-const sanitizeKey = (value: string): string =>
-    normalizeSearchText(value || '').replace(/[^a-z0-9]+/g, '-');
-
-const buildCombinationKey = (values: string[] = [], labels: string[] = []): string => {
-    const pairs = buildLabeledPairs(values, labels);
-    if (pairs.length === 0) {
-        return '';
-    }
-
-    return pairs
-        .map(({ label, value }) => {
-            const normalizedLabel = normalizeSearchText(label || '');
-            const normalizedValue = normalizeSearchText(value || '');
-            return `${normalizedLabel}=${normalizedValue}`;
-        })
-        .join('|');
-};
-
-const normalizeCombinationResponse = (response: any): any[] => {
-    if (!response) {
-        return [];
-    }
-
-    const payload = response.data ?? response;
-
-    if (Array.isArray(payload)) {
-        return payload;
-    }
-
-    if (Array.isArray(payload?.data)) {
-        return payload.data;
-    }
-
-    if (Array.isArray(payload?.results)) {
-        return payload.results;
-    }
-
-    if (Array.isArray(payload?.items)) {
-        return payload.items;
-    }
-
-    if (Array.isArray(payload?.data?.data)) {
-        return payload.data.data;
-    }
-
-    return [];
-};
-
-// ✅ 2025-11-06: Normaliser la réponse backend pour éviter les crashes (.map sur undefined)
-const normalizePopularProductsResponse = (response: any): PopularProduct[] => {
-    if (!response) {
-        return [];
-    }
-
-    // Cas 1 : L'API mobile renvoie directement un tableau (ApiResponse<T[]>)
-    if (Array.isArray(response)) {
-        return response as PopularProduct[];
-    }
-
-    // Cas 2 : ApiResponse<{ data: PopularProduct[] }>
-    if (Array.isArray(response.data)) {
-        return response.data as PopularProduct[];
-    }
-
-    // Cas 3 : Backend Axum renvoie { success: true, data: [...] }
-    if (response.data && Array.isArray(response.data.data)) {
-        return response.data.data as PopularProduct[];
-    }
-
-    // Cas 4 : Backend renvoie { products: [...] }
-    if (Array.isArray(response.products)) {
-        return response.products as PopularProduct[];
-    }
-
-    // Cas 5 : ApiResponse enveloppée (ApiResponse<{ products: [...] }>)
-    if (response.data && Array.isArray(response.data.products)) {
-        return response.data.products as PopularProduct[];
-    }
-
-    console.warn('[LinearAutocompleteEditor] ⚠️ Impossible de normaliser la réponse popular products:', response);
-    return [];
-};
-
-const smartSplit = (input: string, primarySeparator?: string): string[] => {
-    if (!input || typeof input !== 'string') {
-        return [];
-    }
-
-    const cleaned = input.trim();
-    if (!cleaned) {
-        return [];
-    }
-
-    const fallbackSeparators = [primarySeparator, ',', ';', '|', '•', ' - ', ' / ']
-        .filter((sep): sep is string => !!sep && typeof sep === 'string')
-        .filter((sep, index, array) => array.indexOf(sep) === index);
-
-    for (const separator of fallbackSeparators) {
-        const parts = cleaned
-            .split(separator)
-            .map((part) => part.trim())
-            .filter((part) => part.length > 0);
-
-        if (parts.length > 1) {
-            return parts;
-        }
-    }
-
-    return [cleaned];
-};
-
-const determineLabelOrder = (
-    values: string[] = [],
-    sousCaracs: Record<string, any> = {}
-): string[] => {
-    if (!Array.isArray(values) || values.length === 0) {
-        return Object.keys(sousCaracs || {});
-    }
-
-    const normalizedEntries = Object.entries(sousCaracs || {}).map(([label, options]) => ({
-        label,
-        options: Array.isArray(options) ? options.map((opt) => normalizeSearchText(opt || '')) : [],
-    }));
-
-    const usedLabels = new Set<string>();
-    const fallbackKeys = Object.keys(sousCaracs || {});
-
-    return values.map((rawValue, index) => {
-        const normalizedValue = normalizeSearchText(rawValue || '');
-
-        let matchedLabel = normalizedEntries.find(({ label, options }) => {
-            if (usedLabels.has(label)) {
-                return false;
-            }
-            return options.some((option) => option === normalizedValue);
-        })?.label;
-
-        if (!matchedLabel) {
-            matchedLabel = fallbackKeys.find((key) => !usedLabels.has(key));
-        }
-
-        if (!matchedLabel) {
-            matchedLabel = `Caractéristique ${index + 1}`;
-        }
-
-        usedLabels.add(matchedLabel);
-        return matchedLabel;
-    });
-};
 
 export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> = ({
     label,
@@ -511,1829 +47,220 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     value,
     onChange,
     required = false,
-    readonly = false,
     placeholder,
     allowCustomModality = true,
     filtrable = true,
-    contextValues = [],
-    categoryValue,
-    productVector, // ✅ NOUVEAU: Tableau des valeurs dans l'ordre exact
-    productLabels, // ✅ NOUVEAU: Tableau des labels dans l'ordre exact
 }) => {
-    // ✅ PROTECTION CRITIQUE 2025-11-06: Valider TOUTES les props critiques au début
-    try {
-        if (!onChange || typeof onChange !== 'function') {
-            console.error('[LinearAutocompleteEditor] ❌ onChange n\'est pas une fonction - rendu impossible');
-            return (
-                <View style={styles.container}>
-                    <Text style={{ color: 'red' }}>Erreur: onChange manquant</Text>
-                </View>
-            );
-        }
-
-        if (!separateur || typeof separateur !== 'string') {
-            console.error('[LinearAutocompleteEditor] ❌ separateur invalide:', separateur);
-            return (
-                <View style={styles.container}>
-                    <Text style={{ color: 'red' }}>Erreur: separateur invalide</Text>
-                </View>
-            );
-        }
-
-        // ✅ CORRIGÉ: Accepter sousCaracteristiques vide ou null, utiliser objet vide par défaut
-        if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object' || Array.isArray(sousCaracteristiques)) {
-            if (sousCaracteristiques !== null && sousCaracteristiques !== undefined) {
-                console.warn('[LinearAutocompleteEditor] ⚠️ sousCaracteristiques invalide, utilisation objet vide:', sousCaracteristiques);
-            }
-            // Utiliser un objet vide par défaut au lieu de retourner une erreur
-            // sousCaracteristiques sera défini plus bas avec une valeur par défaut
-        }
-    } catch (error) {
-        console.error('[LinearAutocompleteEditor] ❌ Erreur validation props:', error);
-        return (
-            <View style={styles.container}>
-                <Text style={{ color: 'red' }}>Erreur de validation</Text>
-            </View>
-        );
-    }
-
-    // ✅ CORRIGÉ: Normaliser sousCaracteristiques avec valeur par défaut
-    const normalizedSousCaracteristiques = useMemo(() => {
-        if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object' || Array.isArray(sousCaracteristiques)) {
-            return {}; // Objet vide par défaut
-        }
-        return sousCaracteristiques;
-    }, [sousCaracteristiques]);
-
-
-    // ✅ PROTECTION ULTIME 2025-11-06: S'assurer que displayValue est TOUJOURS une string
-    // ✅ CORRIGÉ: Ne pas logger de warning si value est simplement vide (c'est normal pour un champ non rempli)
-    const displayValue = (() => {
-        if (!value || !Array.isArray(value) || value.length === 0) {
-            // Ne pas logger de warning - c'est normal pour un champ vide
-            return '';
-        }
-
-        const firstValue = value[0];
-
-        // ✅ CRITIQUE: Vérifier que firstValue est une STRING
-        if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-            console.log('[LinearAutocompleteEditor] ✅ displayValue extrait depuis value[0]:', firstValue.substring(0, 100));
-            return firstValue;
-        } else if (firstValue && typeof firstValue === 'object') {
-            // Si c'est un objet, essayer de le stringifier
-            console.warn('[LinearAutocompleteEditor] ⚠️ value[0] est un objet, conversion en string:', firstValue);
-            const stringified = JSON.stringify(firstValue);
-            return stringified;
-        } else if (firstValue !== null && firstValue !== undefined) {
-            // Si c'est un nombre ou autre, le convertir
-            console.warn('[LinearAutocompleteEditor] ⚠️ value[0] n\'est pas une string, conversion:', firstValue);
-            return String(firstValue);
-        }
-
-        console.warn('[LinearAutocompleteEditor] ⚠️ Impossible d\'extraire displayValue depuis value:', value);
-        return '';
-    })();
-
-    const contextValuesArray = useMemo(
-        () => (Array.isArray(contextValues) ? contextValues.filter((item) => typeof item === 'string' && item.trim().length > 0) : []),
-        [contextValues]
-    );
-
-    const contextTokens = useMemo(() => {
-        const tokens = new Set<string>();
-        contextValuesArray.forEach((value) => {
-            buildSearchTokens(value).forEach((token) => tokens.add(token));
-        });
-        return Array.from(tokens);
-    }, [contextValuesArray]);
-
-    const categoryTokens = useMemo(() => {
-        if (typeof categoryValue !== 'string' || categoryValue.trim().length === 0) {
-            return [];
-        }
-        return buildSearchTokens(categoryValue);
-    }, [categoryValue]);
-
-    const contextQueryText = useMemo(() => {
-        if (contextValuesArray.length === 0) {
-            return '';
-        }
-
-        const merged = contextValuesArray.join(' ').replace(/\s+/g, ' ').trim();
-        return merged.length > 220 ? merged.slice(0, 220) : merged;
-    }, [contextValuesArray]);
-
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [editingChipIndex, setEditingChipIndex] = useState<number | null>(null);
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [newCharKey, setNewCharKey] = useState('');
-    const [newCharValue, setNewCharValue] = useState('');
-
-    // ✅ NOUVEAU 2025-11-04 : Recherche progressive
+    const [selectedModalities, setSelectedModalities] = useState<string[]>(value || []);
     const [searchQuery, setSearchQuery] = useState('');
-    const [suggestions, setSuggestions] = useState<PopularProduct[]>([]);
-    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-    const [combinationSuggestions, setCombinationSuggestions] = useState<CombinationSuggestion[]>([]);
-    const [loadingCombinationSuggestions, setLoadingCombinationSuggestions] = useState(false);
-    const [combinationError, setCombinationError] = useState<string | null>(null);
-    const [activeTokens, setActiveTokens] = useState<string[]>([]);
-    const limitedPopularSuggestions = useMemo(
-        () => suggestions.slice(0, 1),
-        [suggestions]
-    );
-    const limitedCombinationSuggestions = useMemo(
-        () => combinationSuggestions.slice(0, 1),
-        [combinationSuggestions]
-    );
+    const [iaSuggestions, setIaSuggestions] = useState<string[]>([]);
+    const [dbSuggestions, setDbSuggestions] = useState<string[]>([]);
+    const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [editingModalityIndex, setEditingModalityIndex] = useState<number | null>(null);
+    const [customKey, setCustomKey] = useState('');
+    const [customValue, setCustomValue] = useState('');
 
-    const iaCombinaisons = useMemo(() => {
-        if (!value || !Array.isArray(value)) {
-            return [];
-        }
+    // Extraire les suggestions de l'IA au montage (cache instantané)
+    useEffect(() => {
+        const iaCache: string[] = [];
+        const subCharKeys = Object.keys(sousCaracteristiques);
 
-        const combos = value
-            .filter((combo) => typeof combo === 'string' && combo.trim().length > 0)
-            .map((combo) => combo.trim());
-
-        return Array.from(new Set(combos));
-    }, [value]);
-    const limitedIaCombinaisons = useMemo(() => {
-        const alreadyProvided = limitedPopularSuggestions.length + limitedCombinationSuggestions.length;
-        if (alreadyProvided >= 2) {
-            return [];
-        }
-        const remaining = 2 - alreadyProvided;
-        return iaCombinaisons.slice(0, remaining);
-    }, [iaCombinaisons, limitedPopularSuggestions.length, limitedCombinationSuggestions.length]);
-    const [suggestionDrafts, setSuggestionDrafts] = useState<Record<string, Array<{ label: string; value: string }>>>({});
-    const [suggestionEditor, setSuggestionEditor] = useState<{ key: string; index: number; label: string; value: string } | null>(null);
-    const [suggestionEditorLabel, setSuggestionEditorLabel] = useState('');
-    const [suggestionEditorValue, setSuggestionEditorValue] = useState('');
-    const [suggestionAddTarget, setSuggestionAddTarget] = useState<string | null>(null);
-    const [suggestionAddLabel, setSuggestionAddLabel] = useState('');
-    const [suggestionAddValue, setSuggestionAddValue] = useState('');
-    const lastContextSignatureRef = useRef<string>('');
-    const fetchRequestSeqRef = useRef(0);
-    const autoAppliedRef = useRef(false); // ✅ NOUVEAU: Suivre si l'application automatique a déjà été faite
-    const initialMountRef = useRef(true); // ✅ NOUVEAU: Suivre si c'est le premier montage du composant
-    // ✅ NOUVEAU 2025-12-01: État pour suivre si le tableau initial des sous-caractéristiques a été validé
-    // Le tableau doit s'afficher TOUJOURS en premier, même si des chips existent déjà
-    // L'utilisateur doit cliquer sur "Valider" pour appliquer les caractéristiques
-    // ✅ CORRIGÉ 2025-12-13: Initialiser à false pour toujours afficher le tableau au début
-    // Si des chips existent déjà (données pré-remplies), on les affiche aussi mais le tableau reste visible
-    const [isTableauInitialValidated, setIsTableauInitialValidated] = useState(() => {
-        // Si des chips existent déjà mais qu'on a des données IA (productVector/productLabels ou sousCaracteristiques),
-        // on affiche le tableau pour permettre la validation/modification
-        const hasIAData = (productVector && productLabels && productVector.length > 0) ||
-            (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0);
-        // Si on a des chips mais pas de données IA, on considère que c'est déjà validé
-        return value.length > 0 && !hasIAData;
-    });
-    const getPopularSuggestionKey = useCallback(
-        (product: PopularProduct, index: number) =>
-            `popular-${index}-${sanitizeKey((product?.product_vector || []).join('-') || `p-${index}`)}`,
-        []
-    );
-    const getCombinationSuggestionKey = useCallback(
-        (combo: CombinationSuggestion, index: number) =>
-            `combo-${combo?.id ?? index}-${sanitizeKey((combo?.productVector || []).join('-') || `c-${index}`)}`,
-        []
-    );
-    const getIaSuggestionKey = useCallback(
-        (combo: string, index: number) =>
-            `ia-${index}-${sanitizeKey(combo || `ia-${index}`)}`,
-        []
-    );
-    const createVectorFromRows = useCallback(
-        (rows: Array<{ label: string; value: string }>) => {
-            const cleaned = rows
-                .map((row) => ({
-                    label: (row.label ?? '').trim() || 'Caractéristique',
-                    value: (row.value ?? '').trim(),
-                }))
-                .filter((row) => row.value.length > 0);
-
-            if (cleaned.length === 0) {
-                return null;
-            }
-
-            const vector = cleaned.map((row) => row.value).join(separateur || ',');
-            const sousCaracs: Record<string, string[]> = {};
-
-            cleaned.forEach((row) => {
-                if (!sousCaracs[row.label]) {
-                    sousCaracs[row.label] = [];
-                }
-                if (!sousCaracs[row.label].includes(row.value)) {
-                    sousCaracs[row.label].push(row.value);
-                }
+        // Créer des modalités complètes à partir des suggestions IA
+        if (subCharKeys.length > 0) {
+            // Prendre les premières valeurs de chaque caractéristique pour créer des exemples
+            const firstValues = subCharKeys.map(key => {
+                const values = sousCaracteristiques[key];
+                return Array.isArray(values) && values.length > 0 ? values[0] : '';
             });
 
-            return { vector, sousCaracs };
-        },
-        [separateur]
-    );
-    const updateSuggestionDraft = useCallback(
-        (key: string, updater: (rows: Array<{ label: string; value: string }>) => Array<{ label: string; value: string }>) => {
-            setSuggestionDrafts((prev) => {
-                const current = prev[key] || [];
-                const updated = updater(current);
-                return {
-                    ...prev,
-                    [key]: updated,
-                };
+            // Créer une modalité exemple avec toutes les caractéristiques
+            if (firstValues.every(v => v)) {
+                iaCache.push(firstValues.join(separateur));
+            }
+
+            // Créer des variantes avec différentes combinaisons
+            subCharKeys.forEach((key, idx) => {
+                const values = sousCaracteristiques[key];
+                if (Array.isArray(values) && values.length > 1) {
+                    // Pour chaque valeur supplémentaire, créer une variante
+                    for (let i = 1; i < Math.min(values.length, 3); i++) {
+                        const variant = [...firstValues];
+                        variant[idx] = values[i];
+                        if (variant.every(v => v)) {
+                            iaCache.push(variant.join(separateur));
+                        }
+                    }
+                }
             });
-        },
-        []
-    );
+        }
 
-    const openSuggestionEditorForRow = useCallback(
-        (key: string, rowIndex: number) => {
-            const rows = suggestionDrafts[key];
-            if (!rows || !rows[rowIndex]) {
-                return;
-            }
-            const target = rows[rowIndex];
-            setSuggestionEditor({ key, index: rowIndex, label: target.label, value: target.value });
-            setSuggestionEditorLabel(target.label);
-            setSuggestionEditorValue(target.value);
-        },
-        [suggestionDrafts]
-    );
+        setIaSuggestions(iaCache);
+    }, [sousCaracteristiques, separateur]);
 
-    const handleSaveSuggestionEditor = useCallback(() => {
-        if (!suggestionEditor) {
+    // ✅ AMÉLIORATION: Détecter si une caractéristique est de type localisation
+    const isLocationCharacteristic = (key: string): boolean => {
+        const locationKeys = ['localisation', 'ville', 'quartier', 'zone', 'lieu', 'city', 'location'];
+        return locationKeys.includes(key.toLowerCase());
+    };
+
+    // Charger les suggestions DB quand on tape (avec support intelligent pour localisation)
+    useEffect(() => {
+        if (!searchQuery || searchQuery.length < 1) {
+            setDbSuggestions([]);
             return;
         }
 
-        const label = suggestionEditorLabel.trim() || `Caractéristique ${suggestionEditor.index + 1}`;
-        const value = suggestionEditorValue.trim();
+        const loadDbSuggestions = async () => {
+            setIsLoadingSuggestions(true);
+            try {
+                const allSuggestions: string[] = [];
+                const subCharKeys = Object.keys(sousCaracteristiques);
 
-        if (value.length === 0) {
-            Alert.alert('Valeur manquante', 'Veuillez saisir une valeur pour cette modalité.');
-            return;
-        }
+                for (const key of subCharKeys) {
+                    // ✅ NOUVEAU: Si c'est une localisation, utiliser placesService
+                    if (isLocationCharacteristic(key)) {
+                        try {
+                            const locationSuggestions = await placesService.autocomplete(searchQuery, 'city');
 
-        updateSuggestionDraft(suggestionEditor.key, (rows) => {
-            const next = [...rows];
-            next[suggestionEditor.index] = { label, value };
-            return next;
-        });
+                            // Créer des modalités complètes avec ces lieux
+                            locationSuggestions.slice(0, 5).forEach(lieu => {
+                                const modalityParts = subCharKeys.map(k =>
+                                    k === key ? lieu : (sousCaracteristiques[k][0] || '')
+                                );
+                                if (modalityParts.every(p => p)) {
+                                    allSuggestions.push(modalityParts.join(separateur));
+                                }
+                            });
+                        } catch (error) {
+                            console.error('[LinearAutocompleteEditor] Erreur chargement lieux:', error);
+                        }
+                    } else {
+                        // Utiliser autocompleteHistoryService pour les autres caractéristiques
+                        const suggestions = await autocompleteHistoryService.getSuggestions(
+                            identifiantBase,
+                            key,
+                            searchQuery,
+                            5
+                        );
 
-        setSuggestionEditor(null);
-        setSuggestionEditorLabel('');
-        setSuggestionEditorValue('');
-    }, [suggestionEditor, suggestionEditorLabel, suggestionEditorValue, updateSuggestionDraft]);
+                        // Créer des modalités complètes avec ces suggestions
+                        suggestions.forEach(sugg => {
+                            const modalityParts = subCharKeys.map(k =>
+                                k === key ? sugg.valeur : (sousCaracteristiques[k][0] || '')
+                            );
+                            if (modalityParts.every(p => p)) {
+                                allSuggestions.push(modalityParts.join(separateur));
+                            }
+                        });
+                    }
+                }
 
-    const handleCancelSuggestionEditor = useCallback(() => {
-        setSuggestionEditor(null);
-        setSuggestionEditorLabel('');
-        setSuggestionEditorValue('');
-    }, []);
-
-    const handleSuggestionRowDelete = useCallback(
-        (key: string, rowIndex: number) => {
-            updateSuggestionDraft(key, (rows) => rows.filter((_, index) => index !== rowIndex));
-        },
-        [updateSuggestionDraft]
-    );
-
-    const openSuggestionAddModal = useCallback((key: string) => {
-        setSuggestionAddTarget(key);
-        setSuggestionAddLabel('');
-        setSuggestionAddValue('');
-    }, []);
-
-    const handleSaveSuggestionAdd = useCallback(() => {
-        if (!suggestionAddTarget) {
-            return;
-        }
-
-        const value = suggestionAddValue.trim();
-        if (value.length === 0) {
-            Alert.alert('Valeur manquante', 'Veuillez saisir une modalité à ajouter.');
-            return;
-        }
-
-        const label = suggestionAddLabel.trim()
-            || `Caractéristique ${(suggestionDrafts[suggestionAddTarget]?.length || 0) + 1}`;
-
-        updateSuggestionDraft(suggestionAddTarget, (rows) => [
-            ...rows,
-            { label, value },
-        ]);
-
-        setSuggestionAddTarget(null);
-        setSuggestionAddLabel('');
-        setSuggestionAddValue('');
-    }, [suggestionAddTarget, suggestionAddLabel, suggestionAddValue, suggestionDrafts, updateSuggestionDraft]);
-
-    const handleCancelSuggestionAdd = useCallback(() => {
-        setSuggestionAddTarget(null);
-        setSuggestionAddLabel('');
-        setSuggestionAddValue('');
-    }, []);
-
-    const applySuggestionDraft = useCallback(
-        (key: string, fallbackRows: Array<{ label: string; value: string }>) => {
-            const rows = suggestionDrafts[key] && suggestionDrafts[key].length > 0
-                ? suggestionDrafts[key]
-                : fallbackRows;
-            const result = createVectorFromRows(rows);
-
-            if (!result) {
-                Alert.alert('Suggestion vide', 'Ajoutez au moins une modalité avant de valider.');
-                return;
+                setDbSuggestions(allSuggestions);
+            } catch (error) {
+                console.error('[LinearAutocompleteEditor] Erreur chargement suggestions:', error);
+            } finally {
+                setIsLoadingSuggestions(false);
             }
-
-            onChange([result.vector], result.sousCaracs);
-            // ✅ NOUVEAU 2025-12-01: Marquer le tableau initial comme validé
-            // Cela permet de cacher le tableau et d'afficher seulement les chips après validation
-            if (key === 'ia-sous-caracteristiques-preferred') {
-                setIsTableauInitialValidated(true);
-            }
-            // ✅ CORRIGÉ: Réinitialiser tous les états pour fermer le modal de suggestion
-            setSearchQuery('');
-            setSuggestions([]);
-            setCombinationSuggestions([]);
-            setLoadingSuggestions(false);
-            setLoadingCombinationSuggestions(false);
-            setCombinationError(null);
-            // ✅ CORRECTION RACINE: TOUJOURS garder le draft préféré après validation pour permettre les modifications
-            // Le tableau doit rester visible avec les données validées pour que l'utilisateur puisse continuer à modifier
-            const preferredKey = 'ia-sous-caracteristiques-preferred';
-            setSuggestionDrafts((prev) => ({
-                ...prev,
-                [preferredKey]: rows.map(r => ({ ...r })), // Toujours mettre à jour le draft préféré avec les rows validées
-            }));
-        },
-        [createVectorFromRows, onChange, suggestionDrafts]
-    );
-
-    // Décomposer le vecteur en chips
-    const parseVectorToChips = (vectorStr: string, labelHints: string[] = []): ChipData[] => {
-        // ✅ PROTECTION ULTIME: Vérifier que vectorStr est une STRING et separateur est défini
-        if (!vectorStr || typeof vectorStr !== 'string') {
-            console.warn('[LinearAutocompleteEditor] ⚠️ vectorStr n\'est pas une string:', typeof vectorStr);
-            return [];
-        }
-
-        if (!separateur || typeof separateur !== 'string') {
-            console.warn('[LinearAutocompleteEditor] ⚠️ separateur n\'est pas une string:', typeof separateur);
-        }
-
-        const parts = smartSplit(vectorStr, separateur);
-        const subCharKeys = Object.keys(sousCaracteristiques || {});
-
-        if (parts.length === 0) {
-            return [];
-        }
-
-        const normalizedOptionsMap: Record<string, string[]> = {};
-        const normalizedLabelToOriginal: Record<string, string> = {};
-        Object.entries(sousCaracteristiques || {}).forEach(([rawLabel, options]) => {
-            const normalizedLabel = normalizeSearchText(rawLabel || '');
-            normalizedLabelToOriginal[normalizedLabel] = rawLabel;
-            normalizedOptionsMap[normalizedLabel] = Array.isArray(options)
-                ? options
-                    .map((option) => normalizeSearchText(option || ''))
-                    .filter(Boolean)
-                : [];
-        });
-
-        const normalizedParts = parts.map((raw) => normalizeSearchText(raw || ''));
-        const assignedLabels: Array<string | null> = Array(parts.length).fill(null);
-        const usedLabelKeys = new Set<string>();
-
-        const tryAssignLabel = (label: string | undefined | null, partIndex: number): boolean => {
-            if (!label || partIndex < 0 || partIndex >= parts.length) {
-                return false;
-            }
-
-            const normalizedLabel = normalizeSearchText(label);
-            if (usedLabelKeys.has(normalizedLabel)) {
-                return false;
-            }
-
-            assignedLabels[partIndex] = label;
-            usedLabelKeys.add(normalizedLabel);
-            return true;
         };
 
-        const findMatchingPartForLabel = (label: string | undefined | null): number => {
-            if (!label) {
-                return -1;
-            }
+        const timeoutId = setTimeout(loadDbSuggestions, 300);
+        return () => clearTimeout(timeoutId);
+    }, [searchQuery, identifiantBase, sousCaracteristiques, separateur]);
 
-            const normalizedLabel = normalizeSearchText(label);
-            const options = normalizedOptionsMap[normalizedLabel] || [];
-
-            const isPriceLabel = /prix|tarif|montant|cout|coût|budget|price|amount/.test(normalizedLabel);
-
-            for (let i = 0; i < normalizedParts.length; i += 1) {
-                if (assignedLabels[i]) {
-                    continue;
-                }
-
-                const normalizedValue = normalizedParts[i];
-                if (!normalizedValue) {
-                    continue;
-                }
-
-                const exactMatch = options.some((option) => option && normalizedValue === option);
-                const fuzzyMatch = options.some((option) => option && (normalizedValue.includes(option) || option.includes(normalizedValue)));
-                const labelInValue = normalizedValue.includes(normalizedLabel);
-                const numericMatch = isPriceLabel && /\d/.test(normalizedValue);
-
-                if (exactMatch || fuzzyMatch || labelInValue || numericMatch) {
-                    return i;
-                }
-            }
-
-            return -1;
-        };
-
-        labelHints.forEach((hint) => {
-            const matchIndex = findMatchingPartForLabel(hint);
-            if (matchIndex !== -1) {
-                tryAssignLabel(hint, matchIndex);
-            }
-        });
-
-        parts.forEach((_, index) => {
-            if (assignedLabels[index]) {
-                return;
-            }
-
-            const hint = labelHints[index];
-            if (tryAssignLabel(hint, index)) {
-                return;
-            }
-
-            const fallbackKey = subCharKeys.find((key) => !usedLabelKeys.has(normalizeSearchText(key)));
-            if (fallbackKey) {
-                tryAssignLabel(fallbackKey, index);
-                return;
-            }
-
-            assignedLabels[index] = `Caractéristique ${index + 1}`;
-        });
+    // Décomposer une modalité en chips
+    const decomposeModality = (modality: string): ModalityChip[] => {
+        const parts = modality.split(separateur).map(p => p.trim());
+        const subCharKeys = Object.keys(sousCaracteristiques);
 
         return parts.map((value, index) => ({
-            key: assignedLabels[index] || `Caractéristique ${index + 1}`,
-            value,
-            index,
+            key: subCharKeys[index] || `item_${index}`,
+            value: value,
+            index: index,
         }));
     };
 
-    const vectorParts = useMemo(() => {
-        if (!displayValue || typeof displayValue !== 'string') {
-            return [] as string[];
-        }
-        return smartSplit(displayValue, separateur);
-    }, [displayValue, separateur]);
+    // Ajouter une modalité
+    const addModality = useCallback((modality: string) => {
+        if (!modality || selectedModalities.includes(modality)) return;
 
-    const labelOrder = useMemo(() => determineLabelOrder(vectorParts, sousCaracteristiques), [vectorParts, sousCaracteristiques]);
+        const newModalities = [...selectedModalities, modality];
+        setSelectedModalities(newModalities);
+        onChange(newModalities);
+        setSearchQuery('');
 
-    // ✅ CORRECTION: Utiliser useMemo pour que chips se mette à jour quand value change
-    const chips = useMemo(() => {
-        // ✅ CORRIGÉ: Ne pas logger si displayValue est vide et value est un tableau vide (cas normal)
-        if (!displayValue || typeof displayValue !== 'string' || displayValue.trim().length === 0) {
-            // Cas normal : pas de données à afficher, pas besoin de logger
-            return [];
-        }
-        const parsedChips = parseVectorToChips(displayValue, labelOrder);
-        console.log('[LinearAutocompleteEditor] ✅ Chips créés:', parsedChips.length, 'depuis displayValue:', displayValue.substring(0, 100));
-        return parsedChips;
-    }, [displayValue, labelOrder, value]);
+        // Historiser
+        autocompleteHistoryService
+            .historizeField(
+                identifiantBase,
+                [modality],
+                separateur,
+                sousCaracteristiques,
+                'utilisateur'
+            )
+            .catch(console.error);
+    }, [selectedModalities, onChange, identifiantBase, separateur, sousCaracteristiques]);
 
-    const fetchSuggestionsForQuery = useCallback(
-        async (
-            input: string,
-            options: { reason?: 'search' | 'context'; force?: boolean } = {},
-        ) => {
-            const raw = typeof input === 'string' ? input : '';
-            const trimmed = raw.trim();
-            const searchTokens = buildSearchTokens(trimmed);
-            const chipTokens = (chips || [])
-                .map((chip) => chip?.value)
-                .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-                .flatMap((value) => buildSearchTokens(value));
+    // Supprimer une modalité
+    const removeModality = useCallback((index: number) => {
+        const newModalities = selectedModalities.filter((_, i) => i !== index);
+        setSelectedModalities(newModalities);
+        onChange(newModalities);
+    }, [selectedModalities, onChange]);
 
-            const tokensToMatchBase = searchTokens.length > 0
-                ? searchTokens
-                : [...chipTokens, ...contextTokens];
-            const tokensToMatch = Array.from(new Set(tokensToMatchBase));
-            setActiveTokens(tokensToMatch);
+    // Éditer une modalité
+    const editModality = useCallback((index: number) => {
+        setEditingModalityIndex(index);
+        const modality = selectedModalities[index];
+        const chips = decomposeModality(modality);
+        // Pré-remplir le formulaire d'édition si besoin
+    }, [selectedModalities]);
 
-            const shouldForce = options.force === true;
-            const hasMinimumQuery = trimmed.length >= 2;
-            const effectiveQuery = hasMinimumQuery
-                ? trimmed
-                : tokensToMatch.slice(0, 6).join(' ');
+    // Ajouter une modalité personnalisée
+    const addCustomModality = useCallback(() => {
+        if (!customKey || !customValue) return;
 
-            if (!shouldForce && !hasMinimumQuery) {
-                return;
-            }
-
-            if (!effectiveQuery || effectiveQuery.trim().length === 0) {
-                return;
-            }
-
-            const requestId = ++fetchRequestSeqRef.current;
-
-            setLoadingSuggestions(true);
-            setLoadingCombinationSuggestions(true);
-            setCombinationError(null);
-
-            try {
-                const [popularResult, combinationsResult] = await Promise.allSettled([
-                    apiGet(`/api/products/popular?search=${encodeURIComponent(effectiveQuery)}&limit=8`),
-                    apiPost('/api/combinations/search', {
-                        query: effectiveQuery,
-                        limit: 8,
-                    }),
-                ]);
-
-                if (fetchRequestSeqRef.current !== requestId) {
-                    return;
-                }
-
-                if (popularResult.status === 'fulfilled' && popularResult.value?.success) {
-                    const normalized = normalizePopularProductsResponse(
-                        popularResult.value?.data ?? popularResult.value
-                    );
-                    const filtered = normalized.filter((product) =>
-                        vectorMatchesTokens(
-                            Array.isArray(product?.product_vector) ? product.product_vector : [],
-                            tokensToMatch,
-                            Array.isArray(product?.product_labels) ? product.product_labels : [],
-                        )
-                    );
-                    const ranked = filtered
-                        .map((product) => ({
-                            product,
-                            score: computeSuggestionScore(
-                                Array.isArray(product?.product_vector) ? product.product_vector : [],
-                                Array.isArray(product?.product_labels) ? product.product_labels : [],
-                                product?.usage_count ?? 0,
-                                !!product?.is_trending,
-                                tokensToMatch,
-                                categoryTokens
-                            ),
-                        }))
-                        .sort((a, b) => b.score - a.score)
-                        .map((entry) => entry.product);
-                    setSuggestions(ranked.slice(0, 4));
-                } else {
-                    setSuggestions([]);
-                }
-
-                // ✅ NOUVEAU 2025-12-01: Vérifier si le tableau initial existe et n'est pas validé
-                // Si l'utilisateur fait une recherche sans avoir validé le tableau initial, ne pas afficher de suggestions de sous-caractéristiques
-                // L'utilisateur peut rechercher d'autres produits/caractéristiques pour remplacer le tableau initial
-                const hasInitialTableau = (productVector && productLabels && productVector.length > 0) ||
-                    (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0);
-                const shouldShowSubCharacteristics = isTableauInitialValidated || !hasInitialTableau;
-
-                if (combinationsResult.status === 'fulfilled' && combinationsResult.value?.success && shouldShowSubCharacteristics) {
-                    const combos = normalizeCombinationResponse(
-                        combinationsResult.value?.data ?? combinationsResult.value
-                    );
-
-                    const iaKeys = new Set(
-                        iaCombinaisons
-                            .map((combo) => {
-                                if (typeof combo !== 'string') {
-                                    return '';
-                                }
-                                const vectorParts = smartSplit(combo, separateur || ',');
-                                return buildCombinationKey(vectorParts, []);
-                            })
-                            .filter(Boolean)
-                    );
-
-                    const aggregated = new Map<string, CombinationSuggestion>();
-
-                    combos.forEach((item: any) => {
-                        const combo = item?.combination ?? item;
-                        if (!combo || !Array.isArray(combo.product_vector)) {
-                            return;
-                        }
-
-                        const rawVector = combo.product_vector
-                            .filter((part: any) => typeof part === 'string')
-                            .map((part: string) => part.trim())
-                            .filter(Boolean);
-
-                        if (rawVector.length === 0) {
-                            return;
-                        }
-
-                        const labels = Array.isArray(combo.product_labels) ? combo.product_labels : [];
-                        const comboKey = buildCombinationKey(rawVector, labels);
-
-                        if (!comboKey || iaKeys.has(comboKey)) {
-                            return;
-                        }
-
-                        if (tokensToMatch.length > 0 && !vectorMatchesTokens(rawVector, tokensToMatch, labels)) {
-                            return;
-                        }
-
-                        let prix: number | undefined;
-                        if (combo.prix !== null && combo.prix !== undefined) {
-                            const parsed = typeof combo.prix === 'number'
-                                ? combo.prix
-                                : parseFloat(combo.prix.toString());
-                            prix = Number.isNaN(parsed) ? undefined : parsed;
-                        }
-
-                        const usageCount = typeof combo.usage_count === 'number' ? combo.usage_count : 0;
-
-                        const existing = aggregated.get(comboKey);
-                        const incomingOccurrences = typeof combo.occurrences === 'number' && combo.occurrences > 0
-                            ? combo.occurrences
-                            : Math.max(usageCount || 0, 1);
-
-                        if (existing) {
-                            existing.occurrences = (existing.occurrences ?? 0) + incomingOccurrences;
-                            if (usageCount > (existing.usageCount ?? 0)) {
-                                existing.usageCount = usageCount;
-                            }
-                            if (prix !== undefined && existing.prix === undefined) {
-                                existing.prix = prix;
-                                existing.devise = combo.devise || existing.devise;
-                            }
-                            if (combo.is_ai_preferred) {
-                                existing.isAIPreferred = true;
-                            }
-                            return;
-                        }
-
-                        aggregated.set(comboKey, {
-                            id: combo.id,
-                            productVector: rawVector,
-                            productLabels: labels,
-                            usageCount,
-                            prix,
-                            devise: combo.devise || undefined,
-                            isAIPreferred: !!combo.is_ai_preferred,
-                            occurrences: incomingOccurrences,
-                        });
-                    });
-
-                    const aggregatedList = Array.from(aggregated.values()).sort((a, b) => {
-                        const aScore = (a.occurrences ?? a.usageCount ?? 0);
-                        const bScore = (b.occurrences ?? b.usageCount ?? 0);
-                        return bScore - aScore;
-                    });
-
-                    setCombinationSuggestions(aggregatedList);
-                    setCombinationError(
-                        aggregatedList.length === 0
-                            ? 'Aucune caractéristique pertinente trouvée.'
-                            : null
-                    );
-                } else if (combinationsResult.status === 'fulfilled' && !shouldShowSubCharacteristics) {
-                    // ✅ NOUVEAU 2025-12-01: Ne pas afficher de suggestions de sous-caractéristiques si le tableau initial n'est pas validé
-                    // L'utilisateur peut rechercher d'autres produits, mais pas de combinaisons de sous-caractéristiques
-                    setCombinationSuggestions([]);
-                    setCombinationError(null);
-                } else {
-                    setCombinationSuggestions([]);
-                }
-            } catch (error) {
-                if (fetchRequestSeqRef.current !== requestId) {
-                    return;
-                }
-                console.error('[LinearAutocompleteEditor] ❌ Erreur recherche:', error);
-                setSuggestions([]);
-                setCombinationSuggestions([]);
-                setCombinationError('Impossible de récupérer les caractéristiques recommandées.');
-            } finally {
-                if (fetchRequestSeqRef.current === requestId) {
-                    setLoadingSuggestions(false);
-                    setLoadingCombinationSuggestions(false);
-                }
-            }
-        },
-        [
-            apiGet,
-            apiPost,
-            categoryTokens,
-            chips,
-            contextTokens,
-            iaCombinaisons,
-            separateur,
-            setActiveTokens,
-            isTableauInitialValidated,
-            productVector,
-            productLabels,
-            sousCaracteristiques,
-        ]
-    );
-
-    useEffect(() => {
-        const signature = `${contextQueryText}::${categoryTokens.join('|')}`;
-
-        if (!contextQueryText) {
-            lastContextSignatureRef.current = signature;
-            setActiveTokens(contextTokens);
-            setSuggestions([]);
-            setCombinationSuggestions([]);
-            setCombinationError(null);
-            return;
-        }
-
-        if (lastContextSignatureRef.current === signature) {
-            return;
-        }
-
-        lastContextSignatureRef.current = signature;
-        fetchSuggestionsForQuery(contextQueryText, { reason: 'context', force: true });
-    }, [
-        categoryTokens,
-        contextQueryText,
-        contextTokens,
-        fetchSuggestionsForQuery,
-    ]);
-
-    const suggestedLabel = useMemo(() => {
-        const usedKeys = new Set((chips || []).map((chip) => (chip.key || '').toLowerCase()));
-        const orderedSuggestion = labelOrder.find((label) => label && !usedKeys.has(label.toLowerCase()));
-        if (orderedSuggestion) {
-            return orderedSuggestion;
-        }
-
-        const fallbackSuggestion = Object.keys(sousCaracteristiques || {}).find(
-            (label) => label && !usedKeys.has(label.toLowerCase())
-        );
-
-        return fallbackSuggestion || `Caractéristique ${chips.length + 1}`;
-    }, [chips, labelOrder, sousCaracteristiques]);
-
-    useEffect(() => {
-        if (showAddModal) {
-            setNewCharKey((prev) => prev || suggestedLabel || '');
-        } else {
-            setNewCharKey('');
-            setNewCharValue('');
-        }
-    }, [showAddModal, suggestedLabel]);
-
-    useEffect(() => {
-        const updates: Record<string, Array<{ label: string; value: string }>> = {};
-
-        limitedPopularSuggestions.forEach((product, index) => {
-            const key = getPopularSuggestionKey(product, index);
-            const rows = buildLabeledPairs(
-                Array.isArray(product?.product_vector) ? product.product_vector : [],
-                Array.isArray(product?.product_labels) ? product.product_labels : [],
-                labelOrder,
-                {
-                    maxValuesPerLabel: 2,
-                    contextTokens,
-                    categoryTokens,
-                }
-            );
-            updates[key] = rows;
+        // Créer une modalité avec cette nouvelle caractéristique
+        const subCharKeys = Object.keys(sousCaracteristiques);
+        const modalityParts = subCharKeys.map(key => {
+            if (key === customKey) return customValue;
+            return sousCaracteristiques[key][0] || '';
         });
 
-        limitedCombinationSuggestions.forEach((combo, index) => {
-            const key = getCombinationSuggestionKey(combo, index);
-            const rows = buildLabeledPairs(
-                combo.productVector || [],
-                combo.productLabels || [],
-                labelOrder,
-                {
-                    maxValuesPerLabel: 2,
-                    contextTokens,
-                    categoryTokens,
-                }
-            );
-            updates[key] = rows;
-        });
-
-        limitedIaCombinaisons.forEach((combo, index) => {
-            const key = getIaSuggestionKey(combo, index);
-            const parts = smartSplit(combo || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
-            const rows = buildLabeledPairs(parts, labelOrder, labelOrder, {
-                maxValuesPerLabel: 2,
-                contextTokens,
-                categoryTokens,
-            });
-            updates[key] = rows;
-        });
-
-        // ✅ NOUVEAU: Ajouter les sous_caracteristiques préférées de l'IA si disponibles
-        // Toujours les ajouter, même s'il y a d'autres suggestions, car ce sont les choix préférés de l'IA
-        if (sousCaracteristiques && typeof sousCaracteristiques === 'object') {
-            const sousCaracsKeys = Object.keys(normalizedSousCaracteristiques);
-            if (sousCaracsKeys.length > 0) {
-                const key = 'ia-sous-caracteristiques-preferred';
-                const rows: Array<{ label: string; value: string }> = [];
-
-                sousCaracsKeys.forEach((charKey) => {
-                    const values = normalizedSousCaracteristiques[charKey];
-                    if (Array.isArray(values) && values.length > 0) {
-                        // Prendre la première valeur (choix préféré de l'IA)
-                        rows.push({
-                            label: charKey,
-                            value: values[0],
-                        });
-                    }
-                    // Note: sousCaracteristiques est Record<string, string[]>, donc values est toujours string[]
-                });
-
-                if (rows.length > 0) {
-                    updates[key] = rows;
-                }
-            }
+        // Si la clé n'existe pas, l'ajouter à la fin
+        if (!subCharKeys.includes(customKey)) {
+            modalityParts.push(customValue);
         }
 
-        setSuggestionDrafts((prev) => {
-            let changed = false;
-            const next: Record<string, Array<{ label: string; value: string }>> = { ...prev };
-
-            Object.keys(next).forEach((key) => {
-                if (!(key in updates)) {
-                    delete next[key];
-                    changed = true;
-                }
-            });
-
-            Object.entries(updates).forEach(([key, rows]) => {
-                const existing = next[key];
-                const rowsCopy = rows.map((row) => ({ ...row }));
-
-                if (!existing) {
-                    next[key] = rowsCopy;
-                    changed = true;
-                    return;
-                }
-
-                const lengthsDiffer = existing.length !== rowsCopy.length;
-                const contentDiffer = lengthsDiffer
-                    || existing.some((row, rowIndex) => {
-                        const target = rowsCopy[rowIndex];
-                        return !target || row.label !== target.label || row.value !== target.value;
-                    });
-
-                if (contentDiffer) {
-                    next[key] = rowsCopy;
-                    changed = true;
-                }
-            });
-
-            return changed ? next : prev;
-        });
-    }, [
-        limitedPopularSuggestions,
-        limitedCombinationSuggestions,
-        limitedIaCombinaisons,
-        getPopularSuggestionKey,
-        getCombinationSuggestionKey,
-        getIaSuggestionKey,
-        contextTokens,
-        categoryTokens,
-        labelOrder,
-        separateur,
-        sousCaracteristiques,
-    ]);
-
-    // ✅ CORRECTION RACINE: Synchroniser suggestionDrafts avec les données sources pour permettre les modifications
-    // Ce useEffect maintient suggestionDrafts en synchronisation avec les données, mais ne bloque plus l'affichage
-    useEffect(() => {
-        const key = 'ia-sous-caracteristiques-preferred';
-        const rows: Array<{ label: string; value: string }> = [];
-
-        // ✅ PRIORITÉ 1: Utiliser productVector et productLabels si disponibles (ordre correct)
-        if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
-            rows.push(...productVector.map((val, idx) => ({
-                label: productLabels[idx] || `Caractéristique ${idx + 1}`,
-                value: val
-            })).filter(row => row.value && typeof row.value === 'string' && row.value.trim().length > 0));
-        }
-        // ✅ PRIORITÉ 2: Utiliser sousCaracteristiques (fallback)
-        else if (normalizedSousCaracteristiques && typeof normalizedSousCaracteristiques === 'object' && Object.keys(normalizedSousCaracteristiques).length > 0) {
-            Object.entries(normalizedSousCaracteristiques).forEach(([charKey, values]) => {
-                if (Array.isArray(values) && values.length > 0) {
-                    const firstValue = values[0];
-                    if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-                        rows.push({
-                            label: charKey,
-                            value: firstValue,
-                        });
-                    }
-                }
-            });
-        }
-
-        // Mettre à jour suggestionDrafts seulement si on a des rows à synchroniser et si les données ont changé
-        if (rows.length > 0) {
-            setSuggestionDrafts((prev) => {
-                const existing = prev[key];
-                // Vérifier si les données ont changé
-                if (existing && existing.length === rows.length &&
-                    !existing.some((row, idx) => {
-                        const newRow = rows[idx];
-                        return !newRow || row.label !== newRow.label || row.value !== newRow.value;
-                    })) {
-                    // Données identiques, pas de mise à jour nécessaire
-                    return prev;
-                }
-
-                // Mettre à jour avec les nouvelles données
-                return {
-                    ...prev,
-                    [key]: rows.map(r => ({ ...r })),
-                };
-            });
-        }
-    }, [normalizedSousCaracteristiques, productVector, productLabels, suggestionDrafts]);
-
-    // ✅ CORRECTION FINALE 2025-11-06 : Recherche progressive SANS useEffect
-    // Le useEffect avec searchSuggestions cause des problèmes de closure
-    // On va gérer la recherche directement dans onChangeText du TextInput
-
-    const applyPopularSuggestion = (product: PopularProduct, draftKey: string) => {
-        if (!product?.product_vector || !Array.isArray(product.product_vector)) {
-            console.warn('[LinearAutocompleteEditor] ⚠️ Produit sans product_vector valide');
-            return;
-        }
-
-        const fallbackRows = buildLabeledPairs(
-            product.product_vector,
-            product.product_labels || [],
-            labelOrder,
-            {
-                maxValuesPerLabel: 2,
-                contextTokens,
-                categoryTokens,
-            }
-        );
-
-        applySuggestionDraft(draftKey, fallbackRows);
-    };
-
-    const applyCombinationSuggestion = (suggestion: CombinationSuggestion, draftKey: string) => {
-        const vector = suggestion.productVector || [];
-        if (vector.length === 0) {
-            return;
-        }
-
-        const fallbackRows = buildLabeledPairs(
-            vector,
-            suggestion.productLabels || [],
-            labelOrder,
-            {
-                maxValuesPerLabel: 2,
-                contextTokens,
-                categoryTokens,
-            }
-        );
-
-        applySuggestionDraft(draftKey, fallbackRows);
-    };
-
-    const applyIaCombination = (combo: string, draftKey: string) => {
-        // ✅ CORRECTION: Utiliser product_vector et product_labels si disponibles (ordre correct)
-        let fallbackRows: Array<{ label: string; value: string }>;
-        if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
-            // Utiliser directement product_vector et product_labels pour l'ordre correct
-            fallbackRows = productVector.map((val, idx) => ({
-                label: productLabels[idx] || `Caractéristique ${idx + 1}`,
-                value: val
-            })).filter(row => row.value && row.value.trim().length > 0);
-        } else {
-            // Fallback: Parser la string (ancienne méthode)
-            const parts = smartSplit(combo || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
-            fallbackRows = buildLabeledPairs(parts, labelOrder, labelOrder, {
-                maxValuesPerLabel: 2,
-                contextTokens,
-                categoryTokens,
-            });
-        }
-        applySuggestionDraft(draftKey, fallbackRows);
-    };
-
-    const formatPriceDisplay = useCallback((price?: number, devise?: string) => {
-        if (price === undefined) {
-            return null;
-        }
-
-        const formatter = new Intl.NumberFormat('fr-FR');
-        return `${formatter.format(Math.round(price))} ${devise || 'XAF'}`;
-    }, []);
-
-    const suggestionCandidates = useMemo(() => {
-        const items: SuggestionCandidate[] = [];
-
-        limitedPopularSuggestions.forEach((product, index) => {
-            const draftKey = getPopularSuggestionKey(product, index);
-            const fallbackRows = buildLabeledPairs(
-                Array.isArray(product?.product_vector) ? product.product_vector : [],
-                Array.isArray(product?.product_labels) ? product.product_labels : [],
-                labelOrder,
-                {
-                    maxValuesPerLabel: 2,
-                    contextTokens,
-                    categoryTokens,
-                }
-            );
-            const rows = suggestionDrafts[draftKey] && suggestionDrafts[draftKey].length > 0
-                ? suggestionDrafts[draftKey]
-                : fallbackRows;
-            const sellerCount = Math.max(product?.usage_count ?? 0, 0);
-            const score = computeSuggestionScore(
-                Array.isArray(product?.product_vector) ? product.product_vector : [],
-                Array.isArray(product?.product_labels) ? product.product_labels : [],
-                product?.usage_count ?? 0,
-                !!product?.is_trending,
-                activeTokens,
-                categoryTokens,
-            ) + 12;
-
-            items.push({
-                key: draftKey,
-                source: 'popular',
-                rows,
-                score,
-                title: 'Produit populaire',
-                sellerCount,
-                priceDisplay: product?.prix_moyen ? `${product.prix_moyen.toFixed(0)} XAF` : null,
-                isTrending: !!product?.is_trending,
-                product,
-            });
-        });
-
-        limitedCombinationSuggestions.forEach((combo, index) => {
-            const draftKey = getCombinationSuggestionKey(combo, index);
-            const fallbackRows = buildLabeledPairs(
-                combo.productVector || [],
-                combo.productLabels || [],
-                labelOrder,
-                {
-                    maxValuesPerLabel: 2,
-                    contextTokens,
-                    categoryTokens,
-                }
-            );
-            const rows = suggestionDrafts[draftKey] && suggestionDrafts[draftKey].length > 0
-                ? suggestionDrafts[draftKey]
-                : fallbackRows;
-            const score = computeCombinationSuggestionScore(combo, activeTokens, categoryTokens) + 8;
-
-            items.push({
-                key: draftKey,
-                source: 'combination',
-                rows,
-                score,
-                title: combo.isAIPreferred ? 'Version IA des prestataires' : 'Combinaison des prestataires',
-                sellerCount: combo.usageCount,
-                occurrences: combo.occurrences,
-                priceDisplay: formatPriceDisplay(combo.prix, combo.devise),
-                isPreferred: combo.isAIPreferred,
-                combination: combo,
-            });
-        });
-
-        limitedIaCombinaisons.forEach((value, index) => {
-            if (typeof value !== 'string' || value.trim().length === 0) {
-                return;
-            }
-
-            const draftKey = getIaSuggestionKey(value, index);
-
-            // ✅ CORRECTION: Utiliser product_vector et product_labels si disponibles (ordre correct)
-            let fallbackRows: Array<{ label: string; value: string }>;
-            if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
-                // Utiliser directement product_vector et product_labels pour l'ordre correct
-                fallbackRows = productVector.map((val, idx) => ({
-                    label: productLabels[idx] || `Caractéristique ${idx + 1}`,
-                    value: val
-                })).filter(row => row.value && row.value.trim().length > 0);
-                console.log('[LinearAutocompleteEditor] ✅ Utilisation product_vector/product_labels pour combinaison IA:', {
-                    product_vector: productVector.length,
-                    product_labels: productLabels.length,
-                    rows: fallbackRows.length
-                });
-            } else {
-                // Fallback: Parser la string (ancienne méthode)
-                const parts = smartSplit(value || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
-                fallbackRows = buildLabeledPairs(parts, labelOrder, labelOrder, {
-                    maxValuesPerLabel: 2,
-                    contextTokens,
-                    categoryTokens,
-                });
-            }
-
-            const rows = suggestionDrafts[draftKey] && suggestionDrafts[draftKey].length > 0
-                ? suggestionDrafts[draftKey]
-                : fallbackRows;
-            const parts = productVector || smartSplit(value || '', separateur || ',').map((part) => part.trim()).filter(Boolean);
-            const score = computeIaSuggestionScore(parts, activeTokens, categoryTokens) + 4;
-
-            items.push({
-                key: draftKey,
-                source: 'ia',
-                rows,
-                score,
-                title: `Suggestion IA ${index + 1}`,
-                iaValue: value,
-            });
-        });
-
-        // ✅ CORRECTION: Créer un candidat directement à partir de product_vector/product_labels si disponibles
-        // Sinon, utiliser sous_caracteristiques (fallback)
-        const draftKey = 'ia-sous-caracteristiques-preferred';
-        let preferredRows: Array<{ label: string; value: string }> = [];
-
-        // ✅ PRIORITÉ 1: Utiliser product_vector et product_labels (ordre correct)
-        if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
-            preferredRows = productVector.map((val, idx) => ({
-                label: productLabels[idx] || `Caractéristique ${idx + 1}`,
-                value: val
-            })).filter(row => row.value && row.value.trim().length > 0);
-            console.log('[LinearAutocompleteEditor] ✅ Création candidat IA préféré depuis product_vector/product_labels:', {
-                rows: preferredRows.length
-            });
-        }
-        // ✅ PRIORITÉ 2: Utiliser sous_caracteristiques (fallback)
-        // ✅ CORRIGÉ: Prendre uniquement la PREMIÈRE valeur de chaque dimension (combinaison préférée)
-        else if (sousCaracteristiques && typeof sousCaracteristiques === 'object') {
-            const sousCaracsKeys = Object.keys(normalizedSousCaracteristiques);
-            if (sousCaracsKeys.length > 0) {
-                sousCaracsKeys.forEach((key) => {
-                    const values = sousCaracteristiques[key];
-                    if (Array.isArray(values) && values.length > 0) {
-                        // ✅ CORRIGÉ: Prendre uniquement la première valeur (combinaison préférée de l'IA)
-                        const firstValue = values[0];
-                        if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-                            preferredRows.push({
-                                label: key,
-                                value: firstValue,
-                            });
-                        }
-                    }
-                    // Note: sousCaracteristiques est Record<string, string[]>, donc values est toujours string[]
-                });
-            }
-        }
-
-        if (preferredRows.length > 0) {
-            const finalRows = suggestionDrafts[draftKey] && suggestionDrafts[draftKey].length > 0
-                ? suggestionDrafts[draftKey]
-                : preferredRows;
-
-            // Vérifier si ce candidat n'existe pas déjà
-            const existingIndex = items.findIndex(item => item.key === draftKey);
-            if (existingIndex === -1) {
-                items.push({
-                    key: draftKey,
-                    source: 'ia',
-                    rows: finalRows,
-                    score: 15, // Score très élevé pour les caractéristiques préférées de l'IA (priorité maximale)
-                    title: 'Caractéristiques suggérées par l\'IA',
-                    isPreferred: true,
-                });
-            } else {
-                // Mettre à jour le candidat existant
-                items[existingIndex] = {
-                    ...items[existingIndex],
-                    rows: finalRows,
-                    score: 15, // S'assurer que le score reste élevé
-                    isPreferred: true,
-                };
-            }
-        }
-
-        return items.sort((a, b) => b.score - a.score);
-    }, [
-        activeTokens,
-        categoryTokens,
-        contextTokens,
-        getCombinationSuggestionKey,
-        getIaSuggestionKey,
-        getPopularSuggestionKey,
-        labelOrder,
-        limitedCombinationSuggestions,
-        limitedIaCombinaisons,
-        limitedPopularSuggestions,
-        separateur,
-        suggestionDrafts,
-        formatPriceDisplay,
-        sousCaracteristiques,
-        productVector, // ✅ NOUVEAU: Dépendance ajoutée
-        productLabels, // ✅ NOUVEAU: Dépendance ajoutée
-    ]);
-
-    const bestSuggestionCandidate = suggestionCandidates.length > 0 ? suggestionCandidates[0] : null;
-
-    // ✅ CORRECTION RACINE: Créer preferredDraftCandidate SYNCHRONEMENT depuis les props, SANS dépendre de suggestionDrafts
-    // Cela garantit que le candidat existe dès le premier rendu si les données sont disponibles
-    const preferredDraftCandidate = useMemo(() => {
-        const draftKey = 'ia-sous-caracteristiques-preferred';
-
-        // ✅ PRIORITÉ 1: Créer directement depuis productVector/productLabels si disponibles (ordre correct, données préférées par l'IA)
-        if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0) {
-            const rows = productVector.map((val, idx) => ({
-                label: productLabels[idx] || `Caractéristique ${idx + 1}`,
-                value: val
-            })).filter(row => row.value && typeof row.value === 'string' && row.value.trim().length > 0);
-
-            if (rows.length > 0) {
-                return {
-                    key: draftKey,
-                    source: 'ia' as SuggestionSource,
-                    rows: rows,
-                    score: 15,
-                    title: 'Caractéristiques suggérées par l\'IA',
-                    isPreferred: true,
-                } as SuggestionCandidate;
-            }
-        }
-
-        // ✅ PRIORITÉ 2: Créer directement depuis sousCaracteristiques (fallback)
-        if (normalizedSousCaracteristiques && typeof normalizedSousCaracteristiques === 'object' && Object.keys(normalizedSousCaracteristiques).length > 0) {
-            const rows: Array<{ label: string; value: string }> = [];
-            Object.entries(normalizedSousCaracteristiques).forEach(([charKey, values]) => {
-                if (Array.isArray(values) && values.length > 0) {
-                    // Prendre la première valeur (choix préféré de l'IA)
-                    const firstValue = values[0];
-                    if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-                        rows.push({
-                            label: charKey,
-                            value: firstValue,
-                        });
-                    }
-                }
-            });
-
-            if (rows.length > 0) {
-                return {
-                    key: draftKey,
-                    source: 'ia' as SuggestionSource,
-                    rows: rows,
-                    score: 15,
-                    title: 'Caractéristiques suggérées par l\'IA',
-                    isPreferred: true,
-                } as SuggestionCandidate;
-            }
-        }
-
-        // ✅ PRIORITÉ 3: Utiliser le draft s'il existe déjà (mis à jour par useEffect) - seulement comme fallback
-        const draftRows = suggestionDrafts[draftKey];
-        if (draftRows && draftRows.length > 0) {
-            return {
-                key: draftKey,
-                source: 'ia' as SuggestionSource,
-                rows: draftRows,
-                score: 15,
-                title: 'Caractéristiques suggérées par l\'IA',
-                isPreferred: true,
-            } as SuggestionCandidate;
-        }
-
-        return null;
-    }, [normalizedSousCaracteristiques, productVector, productLabels, suggestionDrafts]);
-
-
-    // ✅ PRIORITÉ: Utiliser le candidat préféré du draft s'il existe
-    // Priorité 1: preferredDraftCandidate (sous-caractéristiques préférées de l'IA) - TOUJOURS afficher en premier
-    // Priorité 2: bestSuggestionCandidate s'il est préféré (isPreferred: true)
-    // Priorité 3: bestSuggestionCandidate normal
-    // ✅ CORRIGÉ: Toujours privilégier preferredDraftCandidate s'il existe, car il vient directement de sousCaracteristiques
-    // ✅ NOUVEAU: Afficher le tableau des sous-caractéristiques préférées d'abord pour validation
-    // ✅ CORRECTION 2025-11-29: Afficher le tableau EN PRIORITÉ même si des chips validés existent déjà
-    // Le tableau doit s'afficher en premier pour permettre la validation/modification avant d'afficher les chips
-    const displayCandidate = preferredDraftCandidate && preferredDraftCandidate.rows.length > 0
-        ? preferredDraftCandidate
-        : (bestSuggestionCandidate?.isPreferred
-            ? bestSuggestionCandidate
-            : bestSuggestionCandidate);
-
-    // ✅ CORRECTION RACINE ABSOLUE: Créer le candidat final DIRECTEMENT depuis les props brutes
-    // PRIORITÉ ABSOLUE: productVector/productLabels > sousCaracteristiques (props brutes) > normalizedSousCaracteristiques > preferredDraftCandidate > displayCandidate
-    // Utiliser les props BRUTES directement pour éviter tout problème de timing avec les normalisations
-    const finalCandidateToDisplay = useMemo(() => {
-        const draftKey = 'ia-sous-caracteristiques-preferred';
-        let rows: Array<{ label: string; value: string }> = [];
-
-        // ✅ PRIORITÉ 1 ABSOLUE: Créer DIRECTEMENT depuis productVector/productLabels (props brutes, TOUJOURS disponibles si données IA présentes)
-        if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0 && productVector.length === productLabels.length) {
-            rows = productVector.map((val, idx) => ({
-                label: productLabels[idx] || `Caractéristique ${idx + 1}`,
-                value: val
-            })).filter(row => row.value && typeof row.value === 'string' && row.value.trim().length > 0);
-        }
-        // ✅ PRIORITÉ 2: Créer DIRECTEMENT depuis sousCaracteristiques (prop brute, pas normalized)
-        else if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && !Array.isArray(sousCaracteristiques)) {
-            const keys = Object.keys(sousCaracteristiques);
-            if (keys.length > 0) {
-                Object.entries(sousCaracteristiques).forEach(([charKey, values]) => {
-                    if (Array.isArray(values) && values.length > 0) {
-                        const firstValue = values[0];
-                        if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-                            rows.push({
-                                label: charKey,
-                                value: firstValue,
-                            });
-                        }
-                    }
-                });
-            }
-        }
-        // ✅ PRIORITÉ 3: Utiliser normalizedSousCaracteristiques si props brutes non disponibles
-        else if (normalizedSousCaracteristiques && typeof normalizedSousCaracteristiques === 'object' && Object.keys(normalizedSousCaracteristiques).length > 0) {
-            Object.entries(normalizedSousCaracteristiques).forEach(([charKey, values]) => {
-                if (Array.isArray(values) && values.length > 0) {
-                    const firstValue = values[0];
-                    if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-                        rows.push({
-                            label: charKey,
-                            value: firstValue,
-                        });
-                    }
-                }
-            });
-        }
-
-        // Si on a créé des rows depuis les props brutes, créer et retourner le candidat
-        if (rows.length > 0) {
-            return {
-                key: draftKey,
-                source: 'ia' as SuggestionSource,
-                rows: rows,
-                score: 15,
-                title: 'Caractéristiques suggérées par l\'IA',
-                isPreferred: true,
-            } as SuggestionCandidate;
-        }
-
-        // ✅ PRIORITÉ 4: Utiliser preferredDraftCandidate s'il existe (déjà créé depuis les données IA)
-        if (preferredDraftCandidate && preferredDraftCandidate.rows.length > 0) {
-            return preferredDraftCandidate;
-        }
-
-        // ✅ CORRIGÉ 2025-12-01: NE PAS utiliser displayCandidate (bestSuggestionCandidate) car il peut contenir
-        // des suggestions populaires ou des combinaisons, pas les caractéristiques préférées par l'IA
-        // Le tableau initial doit TOUJOURS afficher les caractéristiques préférées par l'IA (productVector/productLabels ou sousCaracteristiques)
-        // Si ces données n'existent pas, ne rien afficher (return null)
-        // Les suggestions populaires/combinaisons ne doivent apparaître qu'après validation du tableau initial
-        return null;
-    }, [productVector, productLabels, sousCaracteristiques, normalizedSousCaracteristiques, preferredDraftCandidate, displayCandidate]);
-
-
-    const handleApplySuggestion = useCallback(
-        (candidate: SuggestionCandidate | null) => {
-            if (!candidate) {
-                return;
-            }
-
-            if (candidate.source === 'popular' && candidate.product) {
-                applyPopularSuggestion(candidate.product, candidate.key);
-                return;
-            }
-
-            if (candidate.source === 'combination' && candidate.combination) {
-                applyCombinationSuggestion(candidate.combination, candidate.key);
-                return;
-            }
-
-            if (candidate.source === 'ia') {
-                // ✅ CORRIGÉ: Gérer le cas où le candidat vient de preferredDraftCandidate (pas de iaValue mais des rows)
-                if (candidate.key === 'ia-sous-caracteristiques-preferred' && candidate.rows && candidate.rows.length > 0) {
-                    // Utiliser directement les rows du candidat
-                    applySuggestionDraft(candidate.key, candidate.rows);
-                    return;
-                }
-
-                // Cas normal: candidat avec iaValue
-                if (candidate.iaValue) {
-                    applyIaCombination(candidate.iaValue, candidate.key);
-                } else {
-                    // ✅ CORRIGÉ 2025-12-01: Si le candidat IA n'a pas d'iaValue mais a des rows, utiliser les rows
-                    if (candidate.rows && candidate.rows.length > 0) {
-                        applySuggestionDraft(candidate.key, candidate.rows);
-                    }
-                }
-            }
-        },
-        [applyCombinationSuggestion, applyIaCombination, applyPopularSuggestion, applySuggestionDraft]
-    );
-
-    useEffect(() => {
-        if (searchQuery.trim().length > 0) {
-            return;
-        }
-
-        if (combinationSuggestions.length > 0 || loadingCombinationSuggestions) {
-            return;
-        }
-
-        // ✅ CORRECTION: Déclencher le chargement même si iaCombinaisons est vide
-        // Utiliser sous_caracteristiques ou contextValues comme point de départ
-        let seedQuery: string | null = null;
-        let contextTokens: string[] = [];
-
-        // PRIORITÉ 1: Utiliser iaCombinaisons si disponible
-        if (iaCombinaisons.length > 0) {
-            const firstCombo = iaCombinaisons[0];
-            if (firstCombo && typeof firstCombo === 'string') {
-                const parts = smartSplit(firstCombo, separateur || ',').map(part => part.trim()).filter(Boolean);
-                seedQuery = parts[0];
-                contextTokens = buildSearchTokens(parts.join(' '));
-            }
-        }
-
-        // PRIORITÉ 2: Utiliser sous_caracteristiques si disponible (première valeur de la première dimension)
-        if (!seedQuery && sousCaracteristiques && typeof sousCaracteristiques === 'object') {
-            const sousCaracsKeys = Object.keys(normalizedSousCaracteristiques);
-            if (sousCaracsKeys.length > 0) {
-                const firstKey = sousCaracsKeys[0];
-                const firstValues = sousCaracteristiques[firstKey];
-                if (Array.isArray(firstValues) && firstValues.length > 0 && typeof firstValues[0] === 'string') {
-                    seedQuery = firstValues[0].trim();
-                    // Construire les tokens depuis toutes les valeurs de sous_caracteristiques
-                    const allValues: string[] = [];
-                    sousCaracsKeys.forEach(key => {
-                        const values = sousCaracteristiques[key];
-                        if (Array.isArray(values)) {
-                            allValues.push(...values.filter(v => typeof v === 'string'));
-                        }
-                    });
-                    contextTokens = buildSearchTokens(allValues.join(' '));
-                }
-            }
-        }
-
-        // PRIORITÉ 3: Utiliser contextValues si disponible
-        if (!seedQuery && contextValues && Array.isArray(contextValues) && contextValues.length > 0) {
-            const firstContext = contextValues.find(v => v && typeof v === 'string' && v.trim().length > 0);
-            if (firstContext) {
-                const tokens = buildSearchTokens(firstContext);
-                if (tokens.length > 0) {
-                    seedQuery = tokens[0];
-                    contextTokens = tokens;
-                }
-            }
-        }
-
-        // PRIORITÉ 4: Utiliser categoryValue si disponible
-        if (!seedQuery && categoryValue && typeof categoryValue === 'string' && categoryValue.trim().length >= 2) {
-            seedQuery = categoryValue.trim();
-            contextTokens = buildSearchTokens(categoryValue);
-        }
-
-        // ✅ CORRECTION: Charger les combinaisons populaires même sans seedQuery
-        // ⚠️ NOTE: La combinaison préférée de l'IA (depuis productVector/productLabels ou sousCaracteristiques)
-        // est créée directement dans suggestionCandidates avec isPreferred: true et score 15 (priorité maximale).
-        // Le chargement des combinaisons populaires ici sert uniquement de fallback si aucune combinaison préférée n'est disponible.
-        // Si aucun seedQuery n'est disponible, utiliser une requête vide pour charger les plus populaires
-        if (!seedQuery || seedQuery.length < 2) {
-            seedQuery = ''; // Requête vide pour charger les combinaisons populaires (fallback uniquement)
-        }
-
-        let cancelled = false;
-
-        const loadInitialCombinations = async () => {
-            try {
-                setLoadingCombinationSuggestions(true);
-                // ✅ CORRECTION: Si seedQuery est vide, charger les combinaisons populaires
-                const requestPayload = seedQuery && seedQuery.trim().length >= 2
-                    ? { query: seedQuery, limit: 8 }
-                    : { limit: 8 }; // Charger les plus populaires sans filtre
-
-                const response = await apiPost('/api/combinations/search', requestPayload);
-
-                if (!cancelled && response?.success) {
-                    const combos = normalizeCombinationResponse(response);
-                    const iaKeys = new Set(
-                        iaCombinaisons
-                            .map((combo) => {
-                                if (typeof combo !== 'string') {
-                                    return '';
-                                }
-                                const vectorParts = smartSplit(combo, separateur || ',');
-                                return buildCombinationKey(vectorParts, []);
-                            })
-                            .filter(Boolean)
-                    );
-
-                    const aggregated = new Map<string, CombinationSuggestion>();
-
-                    combos.forEach((item: any) => {
-                        const combo = item?.combination ?? item;
-                        if (!combo || !Array.isArray(combo.product_vector)) {
-                            return;
-                        }
-
-                        const rawVector = combo.product_vector
-                            .filter((part: any) => typeof part === 'string')
-                            .map((part: string) => part.trim())
-                            .filter(Boolean);
-
-                        if (rawVector.length === 0) {
-                            return;
-                        }
-
-                        const labels = Array.isArray(combo.product_labels) ? combo.product_labels : [];
-                        const comboKey = buildCombinationKey(rawVector, labels);
-
-                        if (!comboKey || iaKeys.has(comboKey)) {
-                            return;
-                        }
-
-                        if (contextTokens.length > 0 && !vectorMatchesTokens(rawVector, contextTokens, labels)) {
-                            return;
-                        }
-
-                        let prix: number | undefined;
-                        if (combo.prix !== null && combo.prix !== undefined) {
-                            const parsed = typeof combo.prix === 'number'
-                                ? combo.prix
-                                : parseFloat(combo.prix.toString());
-                            prix = isNaN(parsed) ? undefined : parsed;
-                        }
-
-                        const usageCount = typeof combo.usage_count === 'number' ? combo.usage_count : 0;
-
-                        const existing = aggregated.get(comboKey);
-                        const incomingOccurrences = typeof combo.occurrences === 'number' && combo.occurrences > 0
-                            ? combo.occurrences
-                            : Math.max(usageCount || 0, 1);
-                        if (existing) {
-                            existing.occurrences = (existing.occurrences ?? 0) + incomingOccurrences;
-                            if (usageCount > (existing.usageCount ?? 0)) {
-                                existing.usageCount = usageCount;
-                            }
-                            if (prix !== undefined && existing.prix === undefined) {
-                                existing.prix = prix;
-                                existing.devise = combo.devise || existing.devise;
-                            }
-                            if (combo.is_ai_preferred) {
-                                existing.isAIPreferred = true;
-                            }
-                            return;
-                        }
-
-                        aggregated.set(comboKey, {
-                            id: combo.id,
-                            productVector: rawVector,
-                            productLabels: labels,
-                            usageCount,
-                            prix,
-                            devise: combo.devise || undefined,
-                            isAIPreferred: !!combo.is_ai_preferred,
-                            occurrences: incomingOccurrences,
-                        });
-                    });
-
-                    const aggregatedList = Array.from(aggregated.values()).sort((a, b) => {
-                        const aScore = (a.occurrences ?? a.usageCount ?? 0);
-                        const bScore = (b.occurrences ?? b.usageCount ?? 0);
-                        return bScore - aScore;
-                    });
-
-                    setCombinationSuggestions(aggregatedList);
-                    setCombinationError(
-                        aggregatedList.length === 0
-                            ? 'Aucune caractéristique pertinente trouvée.'
-                            : null
-                    );
-                }
-            } catch (error) {
-                if (!cancelled) {
-                    console.warn('[LinearAutocompleteEditor] ⚠️ Impossible de précharger les combinaisons:', error);
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoadingCombinationSuggestions(false);
-                }
-            }
-        };
-
-        loadInitialCombinations();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [iaCombinaisons, separateur, searchQuery, combinationSuggestions.length, loadingCombinationSuggestions, sousCaracteristiques, contextValues, categoryValue]);
-
-    // ✅ CORRIGÉ: NE PAS appliquer automatiquement les caractéristiques préférées de l'IA
-    // ⚠️ IMPORTANT: Afficher d'abord le tableau des sous-caractéristiques préférées pour validation
-    // L'utilisateur doit cliquer sur "Valider" pour appliquer les caractéristiques
-    // Cela permet de voir d'abord le tableau (comme lors de la recherche) avant de valider
-    useEffect(() => {
-        // ✅ NOUVEAU: Ne pas appliquer automatiquement - juste s'assurer que le tableau s'affiche
-        // Le tableau s'affichera automatiquement car displayCandidate est créé depuis suggestionDrafts
-        // L'utilisateur devra cliquer sur "Valider" pour appliquer
-
-        // Marquer comme initialisé pour éviter les logs répétés
-        if (initialMountRef.current) {
-            initialMountRef.current = false;
-        }
-
-        // ✅ LOG: Vérifier que le candidat préféré est disponible pour affichage
-    }, [
-        suggestionCandidates,
-        initialMountRef
-    ]);
-
-    // ✅ NOUVEAU: Réinitialiser autoAppliedRef quand productVector/productLabels changent (nouvelles données IA)
-    useEffect(() => {
-        if (productVector && productLabels && productVector.length > 0) {
-            // Si on a de nouvelles données IA, réinitialiser pour permettre une nouvelle application automatique
-            autoAppliedRef.current = false;
-            initialMountRef.current = true; // Réinitialiser aussi le flag de montage initial
-            // ✅ NOUVEAU 2025-12-01: Réinitialiser aussi la validation du tableau initial pour afficher le nouveau tableau
-            setIsTableauInitialValidated(false);
-        }
-    }, [productVector, productLabels]);
-
-    // ✅ NOUVEAU: Réinitialiser aussi quand sousCaracteristiques change (nouvelles données IA)
-    useEffect(() => {
-        if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0) {
-            // Si on a de nouvelles données IA, réinitialiser pour permettre l'affichage du tableau
-            autoAppliedRef.current = false;
-            initialMountRef.current = true;
-            // ✅ CORRIGÉ: Réinitialiser la validation du tableau initial pour afficher le nouveau tableau
-            setIsTableauInitialValidated(false);
-        }
-    }, [sousCaracteristiques]);
-
-
-    // Modifier une caractéristique
-    const handleModifyChip = (chipIndex: number) => {
-        setEditingChipIndex(chipIndex);
-        setShowEditModal(true);
-    };
-
-    // Sauvegarder modification
-    const saveChipModification = (newValue: string) => {
-        if (!newValue.trim() || editingChipIndex === null) return;
-
-        // ✅ PROTECTION ULTIME: Vérifier que displayValue EST UNE STRING
-        if (!displayValue || typeof displayValue !== 'string') {
-            console.warn('[LinearAutocompleteEditor] ⚠️ displayValue n\'est pas une string dans saveChipModification:', typeof displayValue);
-            setShowEditModal(false);
-            setEditingChipIndex(null);
-            return;
-        }
-
-        if (!separateur || typeof separateur !== 'string') {
-            console.warn('[LinearAutocompleteEditor] ⚠️ separateur n\'est pas une string dans saveChipModification');
-            setShowEditModal(false);
-            setEditingChipIndex(null);
-            return;
-        }
-
-        const parts = smartSplit(displayValue, separateur);
-        parts[editingChipIndex] = newValue.trim();
-
-        const newVector = parts.join(separateur);
-        onChange([newVector]);
-
-        setShowEditModal(false);
-        setEditingChipIndex(null);
-    };
-
-    // Supprimer une caractéristique
-    const handleDeleteChip = (chipIndex: number) => {
-        Alert.alert(
-            'Confirmation de suppression',
-            `Confirmez-vous la suppression de "${chips[chipIndex].value}" ?`,
-            [
-                { text: 'Annuler', style: 'cancel' },
-                {
-                    text: 'Supprimer',
-                    style: 'destructive',
-                    onPress: () => {
-                        // ✅ PROTECTION ULTIME: Vérifier que displayValue EST UNE STRING
-                        if (!displayValue || typeof displayValue !== 'string') {
-                            console.warn('[LinearAutocompleteEditor] ⚠️ displayValue n\'est pas une string dans handleDeleteChip:', typeof displayValue);
-                            return;
-                        }
-
-                        if (!separateur || typeof separateur !== 'string') {
-                            console.warn('[LinearAutocompleteEditor] ⚠️ separateur n\'est pas une string dans handleDeleteChip');
-                            return;
-                        }
-
-                        const parts = smartSplit(displayValue, separateur);
-                        parts.splice(chipIndex, 1);
-
-                        const newVector = parts.join(separateur);
-                        onChange([newVector]);
-                    }
-                }
-            ]
-        );
-    };
-
-    // Ajouter nouvelle caractéristique
-    const handleAddCharacteristic = () => {
-        if (!newCharValue.trim()) {
-            Alert.alert('Erreur', 'Veuillez remplir une valeur');
-            return;
-        }
-
-        // ✅ PROTECTION ULTIME: Vérifier que separateur et displayValue sont des strings
-        const safeSeparateur = (separateur && typeof separateur === 'string') ? separateur : ',';
-        const parts = (displayValue && typeof displayValue === 'string')
-            ? smartSplit(displayValue, safeSeparateur)
-            : [];
-        parts.push(newCharValue.trim());
-
-        const newVector = parts.join(safeSeparateur);
-
-        // ✅ CORRECTION 2025-11-04: Mettre à jour sousCaracteristiques avec le nouveau label
-        const updatedSousCaracs = { ...(sousCaracteristiques || {}) };
-        if (newCharKey.trim()) {
-            // Ajouter le label avec la valeur
-            if (!updatedSousCaracs[newCharKey.trim()]) {
-                updatedSousCaracs[newCharKey.trim()] = [];
-            }
-            if (!updatedSousCaracs[newCharKey.trim()].includes(newCharValue.trim())) {
-                updatedSousCaracs[newCharKey.trim()].push(newCharValue.trim());
-            }
-        }
-
-        // Passer le vecteur ET les sous-caractéristiques mises à jour
-        onChange([newVector], updatedSousCaracs);
+        const newModality = modalityParts.filter(p => p).join(separateur);
+        addModality(newModality);
 
         setShowAddModal(false);
-        setNewCharKey('');
-        setNewCharValue('');
+        setCustomKey('');
+        setCustomValue('');
+    }, [customKey, customValue, sousCaracteristiques, separateur, addModality]);
+
+    // Générer un texte d'aide dynamique
+    const getHelperText = () => {
+        const subCharKeys = Object.keys(sousCaracteristiques);
+        if (subCharKeys.length === 0) return 'Tapez pour rechercher...';
+
+        const examples = subCharKeys.slice(0, 3).map(key => {
+            const values = sousCaracteristiques[key];
+            return Array.isArray(values) && values.length > 0 ? values[0] : '';
+        }).filter(Boolean);
+
+        if (examples.length > 0) {
+            return `Ex: ${examples.join(', ')}`;
+        }
+        return `Recherchez: ${subCharKeys.slice(0, 4).join(', ')}`;
     };
 
-    if (readonly) {
-        return (
-            <View style={styles.container}>
-                <Text style={styles.label}>{label}</Text>
-                <View style={styles.chipsContainer}>
-                    {(chips || []).map((chip, index) => (
-                        <View key={index} style={styles.chipReadonly}>
-                            <Text style={styles.chipKey}>{chip.key}:</Text>
-                            <Text style={styles.chipValue}>{chip.value}</Text>
-                        </View>
-                    ))}
-                </View>
-            </View>
-        );
-    }
-
-    const generatePlaceholder = useCallback((): string => {
-        if (value && value.length > 0 && value[0] && separateur) {
-            const firstValue = value[0];
-            if (typeof firstValue === 'string' && typeof separateur === 'string') {
-                const allValues = smartSplit(firstValue, separateur);
-                if (allValues.length > 6) {
-                    return `🤖 Ex: ${allValues.slice(0, 5).join(' • ')}... (+${allValues.length - 5})`;
-                } else if (allValues.length > 0) {
-                    return `🤖 Ex: ${allValues.join(' • ')}`;
-                }
-            } else {
-                console.warn('[LinearAutocompleteEditor] ⚠️ value[0] ou separateur pas string dans generatePlaceholder');
-            }
-        }
-
-        if ((!displayValue || displayValue.length === 0) && iaCombinaisons.length > 0) {
-            const combo = iaCombinaisons[0];
-            if (typeof combo === 'string') {
-                const parts = smartSplit(combo, separateur || ',').map(v => v.trim()).filter(Boolean);
-                if (parts.length > 0) {
-                    return `✨ ${parts.slice(0, 6).join(' • ')}`;
-                }
-            }
-        }
-
-        if (sousCaracteristiques && Object.keys(sousCaracteristiques).length > 0) {
-            const exampleParts: string[] = [];
-
-            Object.keys(sousCaracteristiques).slice(0, 5).forEach((key) => {
-                const values = sousCaracteristiques[key];
-                if (Array.isArray(values) && values.length > 0) {
-                    exampleParts.push(values[0]);
-                }
-            });
-
-            if (exampleParts.length > 0) {
-                return `💡 Ex: ${exampleParts.join(' • ')}...`;
-            }
-        }
-
-        // Si des caractéristiques sont déjà affichées, indiquer que la recherche est toujours possible
-        if (displayValue && displayValue.trim().length > 0) {
-            return '🔍 Rechercher d\'autres options...';
-        }
-        return '🔍 Tapez pour rechercher ou voir suggestions IA...';
-    }, [value, separateur, displayValue, iaCombinaisons, sousCaracteristiques]);
-
-    const searchPlaceholder = useMemo(() => generatePlaceholder(), [generatePlaceholder]);
+    // Combiner les suggestions (IA en premier pour effet instantané)
+    const allSuggestions = [...iaSuggestions, ...dbSuggestions];
+    const uniqueSuggestions = Array.from(new Set(allSuggestions))
+        .filter(s => !selectedModalities.includes(s))
+        .slice(0, 10);
 
     return (
         <View style={styles.container}>
@@ -2344,521 +271,193 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     {required && <Text style={styles.required}> *</Text>}
                 </Text>
                 <Text style={styles.helperText}>
-                    🤖 Généré par l'IA - Modifiable
+                    {getHelperText()}
                 </Text>
             </View>
 
-            {/* ✅ Champ de recherche (toujours affiché, mais suggestions préchargées via description) */}
+            {/* Barre de recherche */}
             <View style={styles.searchContainer}>
-                <View style={styles.searchIconWrapper}>
-                    <SafeIcon name="search" size={18} color="#9CA3AF" />
-                </View>
+                <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
                 <TextInput
                     style={styles.searchInput}
-                    placeholder={placeholder || searchPlaceholder}
+                    placeholder={placeholder || "Tapez pour rechercher..."}
                     placeholderTextColor="#9CA3AF"
                     value={searchQuery}
-                    onChangeText={(text) => {
-                        setSearchQuery(text);
-                        fetchSuggestionsForQuery(text, { reason: 'search' });
-                    }}
+                    onChangeText={setSearchQuery}
+                    autoCapitalize="none"
+                    autoCorrect={false}
                 />
-                {searchQuery.length > 0 && (
+                {isLoadingSuggestions && (
+                    <ActivityIndicator size="small" color={modernColors.primary} />
+                )}
+                {allowCustomModality && (
                     <TouchableOpacity
-                        onPress={() => {
-                            setSearchQuery('');
-                            if (contextQueryText) {
-                                fetchSuggestionsForQuery(contextQueryText, { reason: 'context', force: true });
-                            } else {
-                                setSuggestions([]);
-                                setCombinationSuggestions([]);
-                                setCombinationError(null);
-                            }
-                        }}
+                        style={styles.addButton}
+                        onPress={() => setShowAddModal(true)}
                     >
-                        <SafeIcon name="x" size={18} color="#9CA3AF" />
+                        <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
                     </TouchableOpacity>
                 )}
             </View>
 
-            {/* ✅ CORRIGÉ 2025-12-13: Afficher le tableau TOUJOURS en premier, même si des chips existent */}
-            {/* Le tableau s'affiche au chargement pour permettre la validation */}
-            {/* Après validation (isTableauInitialValidated = true), le tableau disparaît et seuls les chips s'affichent */}
-            {/* ✅ CORRECTION: Afficher le tableau même si des chips existent déjà, tant qu'il n'a pas été validé */}
-            {/* ✅ CORRIGÉ: Vérifier aussi directement les données IA (productVector/productLabels ou sousCaracteristiques) pour afficher le tableau au chargement */}
-            {!isTableauInitialValidated && (
-                (loadingSuggestions || loadingCombinationSuggestions || finalCandidateToDisplay || combinationError) ||
-                (productVector && productLabels && productVector.length > 0) ||
-                (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0)
-            ) && (
-                <View style={styles.suggestionsContainer}>
-                    <Text style={styles.suggestionsTitle}>✨ Caractéristique recommandée</Text>
-
-                    {(loadingSuggestions || loadingCombinationSuggestions) && (
-                        <ActivityIndicator size="small" color={modernColors.primary} style={{ marginVertical: 12 }} />
-                    )}
-
-                    {/* ✅ CORRECTION: Le tableau s'affiche UNIQUEMENT si pas encore validé (chips.length === 0) */}
-                    {/* Après validation, le tableau disparaît et seuls les chips s'affichent */}
-                    {/* ✅ CORRIGÉ 2025-12-01: preferredDraftCandidate est maintenant créé directement depuis sousCaracteristiques dans useMemo */}
-                    {/* Donc il devrait toujours exister si sousCaracteristiques est disponible */}
-                    {!loadingSuggestions && !loadingCombinationSuggestions && (() => {
-                        // ✅ CORRECTION RACINE: Utiliser finalCandidateToDisplay qui est créé SYNCHRONEMENT depuis les données
-                        // Ce candidat est TOUJOURS disponible si les données existent, garantissant l'affichage automatique
-                        let candidateToDisplay = finalCandidateToDisplay;
-
-                        // ✅ CORRIGÉ: Si finalCandidateToDisplay est null mais qu'on a des données IA, créer le candidat directement
-                        if (!candidateToDisplay || !candidateToDisplay.rows || candidateToDisplay.rows.length === 0) {
-                            // Créer directement depuis les données IA disponibles
-                            let rows: Array<{ label: string; value: string }> = [];
-                            
-                            // PRIORITÉ 1: productVector/productLabels
-                            if (productVector && productLabels && Array.isArray(productVector) && Array.isArray(productLabels) && productVector.length > 0 && productVector.length === productLabels.length) {
-                                rows = productVector.map((val, idx) => ({
-                                    label: productLabels[idx] || `Caractéristique ${idx + 1}`,
-                                    value: val
-                                })).filter(row => row.value && typeof row.value === 'string' && row.value.trim().length > 0);
-                            }
-                            // PRIORITÉ 2: sousCaracteristiques (prop brute)
-                            else if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && !Array.isArray(sousCaracteristiques)) {
-                                const keys = Object.keys(sousCaracteristiques);
-                                if (keys.length > 0) {
-                                    Object.entries(sousCaracteristiques).forEach(([charKey, values]) => {
-                                        if (Array.isArray(values) && values.length > 0) {
-                                            const firstValue = values[0];
-                                            if (typeof firstValue === 'string' && firstValue.trim().length > 0) {
-                                                rows.push({
-                                                    label: charKey,
-                                                    value: firstValue,
-                                                });
-                                            }
-                                        }
-                                    });
-                                }
-                            }
-                            
-                            // Si on a créé des rows, créer le candidat
-                            if (rows.length > 0) {
-                                candidateToDisplay = {
-                                    key: 'ia-sous-caracteristiques-preferred',
-                                    source: 'ia' as SuggestionSource,
-                                    rows: rows,
-                                    score: 15,
-                                    title: 'Caractéristiques suggérées par l\'IA',
-                                    isPreferred: true,
-                                } as SuggestionCandidate;
-                            }
-                        }
-
-                        // Si aucun candidat n'existe après tous les fallbacks, ne rien afficher
-                        if (!candidateToDisplay || !candidateToDisplay.rows || candidateToDisplay.rows.length === 0) {
-                            return null;
-                        }
-
-                        return (
-                            <View key={candidateToDisplay.key} style={styles.suggestionCard}>
-                                <View style={styles.suggestionCardHeader}>
-                                    <View style={styles.suggestionCardHeaderLeft}>
-                                        <SafeIcon
-                                            name={
-                                                candidateToDisplay.source === 'popular'
-                                                    ? 'gift'
-                                                    : candidateToDisplay.source === 'combination'
-                                                        ? 'users'
-                                                        : 'sparkles'
-                                            }
-                                            size={16}
-                                            color={
-                                                candidateToDisplay.source === 'popular'
-                                                    ? modernColors.primary
-                                                    : candidateToDisplay.source === 'combination'
-                                                        ? '#F97316'
-                                                        : modernColors.primary
-                                            }
-                                        />
-                                        <Text style={styles.suggestionCardTitle}>{candidateToDisplay.title}</Text>
-                                    </View>
-                                    {candidateToDisplay.isTrending && (
-                                        <View style={styles.trendingBadge}>
-                                            <Text style={styles.trendingText}>📈 TENDANCE</Text>
-                                        </View>
-                                    )}
-                                    {candidateToDisplay.isPreferred && (
-                                        <View style={styles.combinationBadge}>
-                                            <SafeIcon name="sparkles" size={12} color={modernColors.primary} />
-                                            <Text style={styles.combinationBadgeText}>IA</Text>
-                                        </View>
-                                    )}
-                                </View>
-
-                                <View style={styles.suggestionTable}>
-                                    {candidateToDisplay.rows.length === 0 ? (
-                                        <Text style={styles.suggestionEmptyRow}>
-                                            Aucune modalité. Ajoutez-en pour personnaliser.
-                                        </Text>
-                                    ) : (
-                                        candidateToDisplay.rows.map((row, rowIndex) => (
-                                            <View
-                                                key={`${candidateToDisplay.key}-${row.label}-${rowIndex}`}
-                                                style={[
-                                                    styles.suggestionRow,
-                                                    rowIndex === candidateToDisplay.rows.length - 1 && styles.suggestionRowLast,
-                                                ]}
-                                            >
-                                                <View style={styles.suggestionRowContent}>
-                                                    <Text style={styles.suggestionCellLabel}>{row.label}</Text>
-                                                    <TouchableOpacity
-                                                        onPress={() => openSuggestionEditorForRow(candidateToDisplay.key, rowIndex)}
-                                                        style={styles.suggestionValueTouchable}
-                                                    >
-                                                        <Text style={styles.suggestionCellValue}>{row.value}</Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                                <View style={styles.suggestionRowActions}>
-                                                    <TouchableOpacity
-                                                        style={styles.suggestionActionButton}
-                                                        onPress={() => openSuggestionEditorForRow(candidateToDisplay.key, rowIndex)}
-                                                    >
-                                                        <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={styles.suggestionActionButton}
-                                                        onPress={() => handleSuggestionRowDelete(candidateToDisplay.key, rowIndex)}
-                                                    >
-                                                        <SafeIcon name="trash-2" size={14} color="#EF4444" />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            </View>
-                                        ))
-                                    )}
-                                </View>
-
-                                {(candidateToDisplay.sellerCount ||
-                                    candidateToDisplay.occurrences ||
-                                    candidateToDisplay.priceDisplay) && (
-                                        <View style={styles.suggestionMeta}>
-                                            <View style={styles.suggestionMetaLeft}>
-                                                {typeof candidateToDisplay.sellerCount === 'number' && candidateToDisplay.sellerCount > 0 && (
-                                                    <Text style={styles.suggestionCount}>
-                                                        👥 {candidateToDisplay.sellerCount} prestataire
-                                                        {candidateToDisplay.sellerCount > 1 ? 's' : ''}
-                                                    </Text>
-                                                )}
-                                                {typeof candidateToDisplay.occurrences === 'number' && candidateToDisplay.occurrences > 0 && (
-                                                    <Text style={styles.combinationOccurrence}>
-                                                        🔁 {candidateToDisplay.occurrences} occurrence
-                                                        {candidateToDisplay.occurrences > 1 ? 's' : ''}
-                                                    </Text>
-                                                )}
-                                            </View>
-                                            {candidateToDisplay.priceDisplay && (
-                                                <Text style={styles.suggestionPrice}>
-                                                    💰 {candidateToDisplay.priceDisplay}
-                                                </Text>
-                                            )}
-                                        </View>
-                                    )}
-
-                                <View style={styles.suggestionFooter}>
-                                    <TouchableOpacity
-                                        style={styles.suggestionAddButton}
-                                        onPress={() => openSuggestionAddModal(candidateToDisplay.key)}
-                                    >
-                                        <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
-                                        <Text style={styles.suggestionAddButtonText}>Ajouter une caractéristique</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.suggestionApplyButton}
-                                        onPress={() => {
-                                            handleApplySuggestion(candidateToDisplay);
-                                        }}
-                                        activeOpacity={0.7}
-                                    >
-                                        <SafeIcon name="check-circle" size={16} color="#FFFFFF" />
-                                        <Text style={styles.suggestionApplyText}>Valider</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        );
-                    })()}
-
-                    {!loadingSuggestions &&
-                        !loadingCombinationSuggestions &&
-                        !finalCandidateToDisplay &&
-                        !combinationError && (
-                            <Text style={styles.noSuggestionsText}>
-                                Aucune caractéristique pertinente trouvée.
-                            </Text>
-                        )}
-
-                    {combinationError && (
-                        <Text style={styles.combinationError}>{combinationError}</Text>
-                    )}
+            {/* Suggestions linéaires (affichage horizontal) */}
+            {uniqueSuggestions.length > 0 && (
+                <View style={styles.suggestionsSection}>
+                    <Text style={styles.suggestionsTitle}>💡 Suggestions</Text>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.suggestionsScroll}
+                    >
+                        {uniqueSuggestions.map((suggestion, idx) => (
+                            <TouchableOpacity
+                                key={idx}
+                                style={styles.suggestionChip}
+                                onPress={() => addModality(suggestion)}
+                            >
+                                <Text style={styles.suggestionText} numberOfLines={1}>
+                                    {suggestion}
+                                </Text>
+                                <SafeIcon name="plus" size={14} color={modernColors.primary} />
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
                 </View>
             )}
 
-            {/* ✅ Afficher les chips validés (miniatures avec scroll horizontal) */}
-            {/* ✅ CORRIGÉ 2025-12-13: Afficher les chips même si le tableau est visible (données pré-remplies) */}
-            {/* Après validation, le tableau disparaît et seuls les chips restent visibles */}
-            {chips.length > 0 && (
-                <View style={[styles.vectorContainer, styles.vectorContainerActive]}>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={true}
-                        contentContainerStyle={[styles.chipsScroll, styles.chipsScrollActive]}
-                        scrollEnabled={true}
-                        nestedScrollEnabled={true}
-                        keyboardShouldPersistTaps="handled"
-                        style={styles.chipsScrollView}
-                        bounces={true}
-                        alwaysBounceHorizontal={true}
-                        directionalLockEnabled={false}
-                    >
-                        <TouchableOpacity
-                            style={styles.addCharacteristicButton}
-                            onPress={() => setShowAddModal(true)}
-                        >
-                            <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
-                            <Text style={styles.addCharacteristicText}>Ajouter une caractéristique</Text>
-                        </TouchableOpacity>
-
-                        {(chips || []).map((chip, index) => {
-                            const rawKey = typeof chip.key === 'string' ? chip.key.trim() : '';
-                            const shouldHideKey = rawKey.length > 0 && /^caract[eé]ristique\s+\d+$/i.test(rawKey);
-
+            {/* Modalités sélectionnées (chips éditables) */}
+            {selectedModalities.length > 0 && (
+                <View style={styles.selectedSection}>
+                    <Text style={styles.selectedTitle}>
+                        ✓ {selectedModalities.length} sélectionnée(s)
+                    </Text>
+                    <View style={styles.selectedChips}>
+                        {selectedModalities.map((modality, index) => {
+                            const chips = decomposeModality(modality);
                             return (
-                                <View key={index} style={styles.chip}>
-                                    <View style={styles.chipContent}>
-                                        {!shouldHideKey && rawKey.length > 0 ? (
-                                            <Text style={styles.chipKey}>{rawKey}</Text>
-                                        ) : null}
-                                        <Text style={styles.chipValue}>{chip.value}</Text>
-                                    </View>
+                                <View key={index} style={styles.selectedChipContainer}>
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        style={styles.chipScroll}
+                                    >
+                                        {chips.map((chip, chipIdx) => (
+                                            <View key={chipIdx} style={styles.miniChip}>
+                                                <Text style={styles.miniChipKey}>{chip.key}:</Text>
+                                                <Text style={styles.miniChipValue}>{chip.value}</Text>
+                                            </View>
+                                        ))}
+                                    </ScrollView>
                                     <View style={styles.chipActions}>
                                         <TouchableOpacity
-                                            style={styles.chipButton}
-                                            onPress={() => handleModifyChip(index)}
+                                            style={styles.chipEditButton}
+                                            onPress={() => editModality(index)}
                                         >
-                                            <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
+                                            <SafeIcon name="edit" size={14} color={modernColors.primary} />
                                         </TouchableOpacity>
                                         <TouchableOpacity
-                                            style={styles.chipButton}
-                                            onPress={() => handleDeleteChip(index)}
+                                            style={styles.chipDeleteButton}
+                                            onPress={() => removeModality(index)}
                                         >
-                                            <SafeIcon name="trash-2" size={14} color="#EF4444" />
+                                            <SafeIcon name="x" size={14} color={modernColors.error} />
                                         </TouchableOpacity>
                                     </View>
                                 </View>
                             );
                         })}
-                    </ScrollView>
+                    </View>
                 </View>
             )}
 
-
-            {/* Modal Édition */}
-            <Modal
-                visible={showEditModal && editingChipIndex !== null}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setShowEditModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>
-                                Modifier {editingChipIndex !== null ? chips[editingChipIndex]?.key : ''}
-                            </Text>
-                            <TouchableOpacity onPress={() => setShowEditModal(false)}>
-                                <SafeIcon name="x" size={24} color="#6B7280" />
-                            </TouchableOpacity>
-                        </View>
-
-                        {editingChipIndex !== null && (
-                            <View style={styles.modalBody}>
-                                <Text style={styles.modalLabel}>Valeur actuelle</Text>
-                                <Text style={styles.currentValue}>{chips[editingChipIndex]?.value}</Text>
-
-                                {/* Options disponibles si définies par l'IA */}
-                                {sousCaracteristiques[chips[editingChipIndex]?.key] && (
-                                    <View style={styles.optionsSection}>
-                                        <Text style={styles.optionsTitle}>Options suggérées :</Text>
-                                        <ScrollView
-                                            style={styles.optionsList}
-                                            nestedScrollEnabled
-                                            keyboardShouldPersistTaps="handled"
-                                        >
-                                            {(Array.isArray(sousCaracteristiques[chips[editingChipIndex]?.key])
-                                                ? sousCaracteristiques[chips[editingChipIndex]?.key]
-                                                : []
-                                            ).map((option, idx) => (
-                                                <TouchableOpacity
-                                                    key={idx}
-                                                    style={[
-                                                        styles.optionItem,
-                                                        option === chips[editingChipIndex]?.value && styles.optionItemSelected
-                                                    ]}
-                                                    onPress={() => saveChipModification(option)}
-                                                >
-                                                    <Text style={[
-                                                        styles.optionText,
-                                                        option === chips[editingChipIndex]?.value && styles.optionTextSelected
-                                                    ]}>
-                                                        {option}
-                                                    </Text>
-                                                    {option === chips[editingChipIndex]?.value && (
-                                                        <SafeIcon name="check" size={16} color={modernColors.primary} />
-                                                    )}
-                                                </TouchableOpacity>
-                                            ))}
-                                        </ScrollView>
-                                    </View>
-                                )}
-
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
-                                    onPress={() => setShowEditModal(false)}
-                                >
-                                    <Text style={styles.cancelButtonText}>Annuler</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    </View>
+            {/* Message vide */}
+            {selectedModalities.length === 0 && uniqueSuggestions.length === 0 && !searchQuery && (
+                <View style={styles.emptyState}>
+                    <SafeIcon name="info" size={32} color={modernColors.textSecondary} />
+                    <Text style={styles.emptyText}>
+                        Aucune caractéristique ajoutée
+                    </Text>
+                    <Text style={styles.emptySubtext}>
+                        Tapez pour rechercher ou cliquez sur + pour ajouter
+                    </Text>
                 </View>
-            </Modal>
+            )}
 
-            {/* Modal Ajout */}
+            {/* Modal d'ajout personnalisé */}
             <Modal
                 visible={showAddModal}
-                animationType="slide"
+                animationType="fade"
                 transparent={true}
                 onRequestClose={() => setShowAddModal(false)}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
+                            <SafeIcon name="plus-circle" size={24} color={modernColors.primary} />
                             <Text style={styles.modalTitle}>Ajouter une caractéristique</Text>
-                            <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                                <SafeIcon name="x" size={24} color="#6B7280" />
+                            <TouchableOpacity
+                                style={styles.closeButton}
+                                onPress={() => {
+                                    setShowAddModal(false);
+                                    setCustomKey('');
+                                    setCustomValue('');
+                                }}
+                            >
+                                <SafeIcon name="x" size={20} color={modernColors.text} />
                             </TouchableOpacity>
                         </View>
 
                         <View style={styles.modalBody}>
-                            <Text style={styles.modalLabel}>Type de caractéristique</Text>
-                            <TextInput
-                                style={styles.modalInput}
-                                placeholder="Ex: matière, couleur, taille..."
-                                value={newCharKey}
-                                onChangeText={setNewCharKey}
-                            />
+                            <Text style={styles.modalDescription}>
+                                Ajoutez une nouvelle caractéristique personnalisée
+                            </Text>
 
-                            <Text style={styles.modalLabel}>Valeur</Text>
-                            <TextInput
-                                style={styles.modalInput}
-                                placeholder="Ex: Cuir, Rouge, XL..."
-                                value={newCharValue}
-                                onChangeText={setNewCharValue}
-                            />
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Nom de la caractéristique</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Ex: couleur, taille, matière..."
+                                    placeholderTextColor="#9CA3AF"
+                                    value={customKey}
+                                    onChangeText={setCustomKey}
+                                    autoCapitalize="none"
+                                />
+                            </View>
 
-                            <View style={styles.modalActions}>
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
-                                    onPress={() => setShowAddModal(false)}
-                                >
-                                    <Text style={styles.cancelButtonText}>Annuler</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.saveButton}
-                                    onPress={handleAddCharacteristic}
-                                >
-                                    <SafeIcon name="plus" size={16} color="#FFF" />
-                                    <Text style={styles.saveButtonText}>Ajouter</Text>
-                                </TouchableOpacity>
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Valeur</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Ex: Noir, XL, Coton..."
+                                    placeholderTextColor="#9CA3AF"
+                                    value={customValue}
+                                    onChangeText={setCustomValue}
+                                    autoCapitalize="none"
+                                />
                             </View>
                         </View>
-                    </View>
-                </View>
-            </Modal>
 
-            <Modal
-                visible={!!suggestionEditor}
-                animationType="fade"
-                transparent
-                onRequestClose={handleCancelSuggestionEditor}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Modifier la modalité</Text>
-                            <TouchableOpacity onPress={handleCancelSuggestionEditor}>
-                                <SafeIcon name="x" size={24} color="#6B7280" />
+                        <View style={styles.modalFooter}>
+                            <TouchableOpacity
+                                style={styles.cancelButton}
+                                onPress={() => {
+                                    setShowAddModal(false);
+                                    setCustomKey('');
+                                    setCustomValue('');
+                                }}
+                            >
+                                <Text style={styles.cancelButtonText}>Annuler</Text>
                             </TouchableOpacity>
-                        </View>
-                        <View style={styles.modalBody}>
-                            <Text style={styles.modalLabel}>Intitulé</Text>
-                            <TextInput
-                                style={styles.modalInput}
-                                placeholder="Ex: Couleur"
-                                value={suggestionEditorLabel}
-                                onChangeText={setSuggestionEditorLabel}
-                            />
-                            <Text style={styles.modalLabel}>Valeur</Text>
-                            <TextInput
-                                style={styles.modalInput}
-                                placeholder="Ex: Noir"
-                                value={suggestionEditorValue}
-                                onChangeText={setSuggestionEditorValue}
-                            />
-                            <View style={styles.modalActions}>
-                                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelSuggestionEditor}>
-                                    <Text style={styles.cancelButtonText}>Annuler</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.saveButton} onPress={handleSaveSuggestionEditor}>
-                                    <Text style={styles.saveButtonText}>Enregistrer</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            <Modal
-                visible={suggestionAddTarget !== null}
-                animationType="fade"
-                transparent
-                onRequestClose={handleCancelSuggestionAdd}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Ajouter une modalité</Text>
-                            <TouchableOpacity onPress={handleCancelSuggestionAdd}>
-                                <SafeIcon name="x" size={24} color="#6B7280" />
+                            <TouchableOpacity
+                                style={[
+                                    styles.saveButton,
+                                    (!customKey || !customValue) && styles.saveButtonDisabled
+                                ]}
+                                onPress={addCustomModality}
+                                disabled={!customKey || !customValue}
+                            >
+                                <SafeIcon name="check" size={18} color="#FFFFFF" />
+                                <Text style={styles.saveButtonText}>Ajouter</Text>
                             </TouchableOpacity>
-                        </View>
-                        <View style={styles.modalBody}>
-                            <Text style={styles.modalLabel}>Intitulé</Text>
-                            <TextInput
-                                style={styles.modalInput}
-                                placeholder="Ex: Variante"
-                                value={suggestionAddLabel}
-                                onChangeText={setSuggestionAddLabel}
-                            />
-                            <Text style={styles.modalLabel}>Valeur</Text>
-                            <TextInput
-                                style={styles.modalInput}
-                                placeholder="Ex: Transmission automatique"
-                                value={suggestionAddValue}
-                                onChangeText={setSuggestionAddValue}
-                            />
-                            <View style={styles.modalActions}>
-                                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelSuggestionAdd}>
-                                    <Text style={styles.cancelButtonText}>Annuler</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.saveButton} onPress={handleSaveSuggestionAdd}>
-                                    <Text style={styles.saveButtonText}>Ajouter</Text>
-                                </TouchableOpacity>
-                            </View>
                         </View>
                     </View>
                 </View>
@@ -2869,832 +468,244 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
 const styles = StyleSheet.create({
     container: {
-        gap: 12,
+        marginBottom: 16,
     },
     header: {
-        gap: 6,
-    },
-    label: {
-        alignSelf: 'flex-start',
-        fontSize: 12,
-        fontWeight: '700',
-        color: modernColors.primary,
-        backgroundColor: 'rgba(99, 102, 241, 0.12)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
-    },
-    required: {
-        color: '#EF4444',
-    },
-    helperText: {
-        fontSize: 13,
-        color: '#6B7280',
-    },
-    vectorContainer: {
-        gap: 12,
-    },
-    vectorContainerActive: {
-        backgroundColor: '#F9FAFF',
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#E0E7FF',
-        paddingVertical: 12,
-        paddingHorizontal: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    chipsScroll: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingVertical: 8,
-        paddingRight: 16, // ✅ CORRIGÉ: Ajouter padding à droite pour permettre le scroll
-    },
-    chipsScrollActive: {
-        paddingVertical: 4,
-        paddingRight: 16, // ✅ CORRIGÉ: Ajouter padding à droite pour permettre le scroll
-    },
-    chipsScrollView: {
-        maxHeight: 80,
-        flexGrow: 0,
-    },
-    chip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F3F4F6',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        gap: 8,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    chipContent: {
-        gap: 2,
-    },
-    chipKey: {
-        fontSize: 11,
-        color: '#6B7280',
-        fontWeight: '500',
-    },
-    chipValue: {
-        fontSize: 14,
-        color: '#1F2937',
-        fontWeight: '600',
-    },
-    chipActions: {
-        flexDirection: 'row',
-        gap: 8,
-        marginLeft: 8,
-        paddingLeft: 8,
-        borderLeftWidth: 1,
-        borderLeftColor: '#E5E7EB',
-    },
-    chipButton: {
-        padding: 4,
-    },
-    chipReadonly: {
-        flexDirection: 'row',
-        gap: 4,
-        backgroundColor: '#F9FAFB',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-    },
-    addCharacteristicButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#C7D2FE',
-        backgroundColor: '#EEF2FF',
-    },
-    addCharacteristicText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    emptyState: {
-        alignItems: 'center',
-        paddingVertical: 32,
-        gap: 12,
-    },
-    emptyText: {
-        fontSize: 14,
-        color: '#9CA3AF',
-    },
-    addFirstButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        backgroundColor: modernColors.primary,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 8,
-    },
-    addFirstButtonText: {
-        color: '#FFF',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    chipsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: '#FFF',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        paddingBottom: 40,
-        maxHeight: '80%',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#1F2937',
-    },
-    modalBody: {
-        padding: 20,
-        gap: 16,
-    },
-    modalLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 4,
-    },
-    currentValue: {
-        fontSize: 16,
-        color: '#6B7280',
-        padding: 12,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-    },
-    optionsSection: {
-        gap: 8,
-    },
-    optionsTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
-    },
-    optionsList: {
-        maxHeight: 200,
-    },
-    optionItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 12,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-        marginBottom: 8,
-    },
-    optionItemSelected: {
-        backgroundColor: 'rgba(99, 102, 241, 0.14)',
-        borderWidth: 2,
-        borderColor: modernColors.primary,
-    },
-    optionText: {
-        fontSize: 15,
-        color: '#1F2937',
-    },
-    optionTextSelected: {
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    modalInput: {
-        borderWidth: 1,
-        borderColor: '#D1D5DB',
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 15,
-        color: '#1F2937',
-    },
-    modalActions: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 8,
-    },
-    cancelButton: {
-        flex: 1,
-        paddingVertical: 12,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#D1D5DB',
-        alignItems: 'center',
-    },
-    cancelButtonText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#6B7280',
-    },
-    saveButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 12,
-        borderRadius: 8,
-        backgroundColor: modernColors.primary,
-    },
-    saveButtonText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#FFF',
-    },
-    // ✅ NOUVEAU : Styles produits populaires
-    popularButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        backgroundColor: '#FFF',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: modernColors.primary,
-        marginTop: 12,
-    },
-    popularButtonEmoji: {
-        fontSize: 18,
-    },
-    popularButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.primary,
-        flex: 1,
-    },
-    popularCountBadge: {
-        backgroundColor: modernColors.primary,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-        minWidth: 24,
-        alignItems: 'center',
-    },
-    popularCountText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#FFF',
-    },
-    popularSection: {
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        padding: 12,
-        marginTop: 8,
-        maxHeight: 400,
-    },
-    loadingPopularContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        paddingVertical: 20,
-    },
-    loadingPopularText: {
-        fontSize: 14,
-        color: '#6B7280',
-    },
-    popularSectionTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#1F2937',
         marginBottom: 12,
     },
-    popularList: {
-        maxHeight: 350,
-    },
-    popularCard: {
-        backgroundColor: '#FFF',
-        borderRadius: 10,
-        padding: 12,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-        position: 'relative',
-    },
-    popularCardTrending: {
-        borderColor: '#EF4444',
-        borderWidth: 2,
-        backgroundColor: '#FEF2F2',
-    },
-    trendingBadgeSmall: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        backgroundColor: '#EF4444',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        zIndex: 10,
-    },
-    trendingBadgeText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: '#FFF',
-    },
-    popularCardContent: {
-        gap: 10,
-        marginBottom: 10,
-    },
-    popularChips: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-    },
-    popularChip: {
-        backgroundColor: '#EEF2FF',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: modernColors.primary,
-    },
-    popularChipText: {
-        fontSize: 12,
+    label: {
+        fontSize: 16,
         fontWeight: '600',
-        color: modernColors.primary,
-    },
-    popularStats: {
-        gap: 4,
-    },
-    popularUsage: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#EF4444',
-    },
-    popularPriceText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#059669',
-    },
-    popularVariantText: {
-        fontSize: 12,
-        color: '#6B7280',
-    },
-    popularSelectButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        backgroundColor: modernColors.primary,
-        paddingVertical: 8,
-        borderRadius: 8,
-    },
-    popularSelectText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#FFF',
-    },
-    noPopularContainer: {
-        alignItems: 'center',
-        paddingVertical: 20,
-    },
-    noPopularText: {
-        fontSize: 14,
-        color: '#9CA3AF',
-    },
-    // ✅ NOUVEAU 2025-11-04: Styles pour suggestions autocomplete
-    suggestionsContainer: {
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        padding: 12,
-        gap: 8,
-        marginTop: 8,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    suggestionsTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#6B7280',
+        color: modernColors.text,
         marginBottom: 4,
     },
-    iaCombosContainer: {
-        marginTop: 12,
-        gap: 12,
+    required: {
+        color: modernColors.error,
     },
-    iaCombosTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    iaComboCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        gap: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    iaComboHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    iaComboLabel: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    iaComboTable: {
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 10,
-        overflow: 'hidden',
-    },
-    iaComboRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-        gap: 12,
-    },
-    iaComboRowLast: {
-        borderBottomWidth: 0,
-    },
-    iaComboCellLabel: {
-        flex: 0.45,
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#6B7280',
-        textTransform: 'capitalize',
-    },
-    iaComboCellValue: {
-        flex: 0.55,
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#1F2937',
-        textAlign: 'right',
-    },
-    iaComboApply: {
+    helperText: {
         fontSize: 12,
         color: modernColors.textSecondary,
-        fontStyle: 'italic',
-    },
-    suggestionCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        gap: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    suggestionCardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    suggestionCardHeaderLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        flexShrink: 1,
-    },
-    suggestionCardTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    suggestionTable: {
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 10,
-        overflow: 'hidden',
-    },
-    suggestionRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-        gap: 12,
-    },
-    suggestionRowLast: {
-        borderBottomWidth: 0,
-    },
-    suggestionRowContent: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
-    },
-    suggestionCellLabel: {
-        flex: 0.45,
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#6B7280',
-        textTransform: 'capitalize',
-    },
-    suggestionCellValue: {
-        flex: 0.55,
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#1F2937',
-        textAlign: 'right',
-    },
-    suggestionValueTouchable: {
-        flex: 1,
-        alignItems: 'flex-end',
-    },
-    suggestionRowActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    suggestionActionButton: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: '#F9FAFB',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    suggestionMeta: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    suggestionMetaLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    trendingBadge: {
-        backgroundColor: '#EF4444',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-    },
-    trendingText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: '#FFF',
-    },
-    suggestionCount: {
-        fontSize: 11,
-        color: '#6B7280',
-    },
-    suggestionPrice: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#059669',
-    },
-    suggestionFooter: {
-        marginTop: 12,
-        gap: 10,
-        alignItems: 'stretch',
-    },
-    suggestionAddButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        justifyContent: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        backgroundColor: '#F8FAFC',
-        alignSelf: 'stretch',
-    },
-    suggestionAddButtonText: {
-        fontSize: 12,
-        color: modernColors.primary,
-        fontWeight: '600',
-    },
-    suggestionApplyButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        justifyContent: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderRadius: 12,
-        backgroundColor: modernColors.primary,
-        alignSelf: 'stretch',
-    },
-    suggestionApplyText: {
-        fontSize: 13,
-        color: '#FFFFFF',
-        fontWeight: '600',
-    },
-    suggestionEmptyRow: {
-        padding: 12,
-        fontSize: 12,
-        color: '#9CA3AF',
-        textAlign: 'center',
-    },
-    noSuggestionsContainer: {
-        alignItems: 'center',
-        paddingVertical: 20,
-        gap: 8,
-    },
-    noSuggestionsText: {
-        fontSize: 13,
-        color: '#6B7280',
-        textAlign: 'center',
-    },
-    noSuggestionsHint: {
-        fontSize: 12,
-        color: '#9CA3AF',
-        textAlign: 'center',
         fontStyle: 'italic',
     },
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFF',
-        borderWidth: 2,
-        borderColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: modernColors.border,
         borderRadius: 12,
         paddingHorizontal: 12,
-        paddingVertical: 8,
+        paddingVertical: 10,
         gap: 8,
-    },
-    searchIconWrapper: {
-        marginRight: 8,
     },
     searchInput: {
         flex: 1,
-        fontSize: 15,
-        color: '#1F2937',
-        paddingVertical: 4,
+        fontSize: 14,
+        color: modernColors.text,
+        padding: 0,
     },
-    combinationError: {
-        fontSize: 13,
-        color: '#EF4444',
-        textAlign: 'center',
+    addButton: {
+        padding: 4,
+    },
+    suggestionsSection: {
         marginTop: 12,
     },
-    combinationSuggestionsContainer: {
-        marginTop: 12,
-        gap: 12,
-    },
-    combinationSuggestionsTitle: {
-        fontSize: 13,
+    suggestionsTitle: {
+        fontSize: 12,
         fontWeight: '600',
-        color: '#6B7280',
-        marginBottom: 4,
+        color: modernColors.primary,
+        marginBottom: 8,
     },
-    combinationCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        gap: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+    suggestionsScroll: {
+        gap: 8,
+        paddingRight: 16,
     },
-    combinationCardHeader: {
+    suggestionChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 10,
-    },
-    combinationCardHeaderLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        backgroundColor: '#E0E7FF',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
         gap: 6,
-        flexShrink: 1,
+        maxWidth: 200,
     },
-    combinationCardTitle: {
+    suggestionText: {
         fontSize: 13,
-        fontWeight: '600',
-        color: '#1F2937',
+        color: modernColors.primary,
+        fontWeight: '500',
     },
-    combinationBadge: {
+    selectedSection: {
+        marginTop: 12,
+    },
+    selectedTitle: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.success,
+        marginBottom: 8,
+    },
+    selectedChips: {
+        gap: 8,
+    },
+    selectedChipContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        backgroundColor: '#F0FDF4',
+        borderWidth: 1,
+        borderColor: modernColors.success,
+        borderRadius: 8,
+        padding: 8,
+        gap: 8,
+    },
+    chipScroll: {
+        flex: 1,
+    },
+    miniChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 999,
-        backgroundColor: modernColors.primary + '1A',
+        borderRadius: 6,
+        marginRight: 4,
+        gap: 4,
     },
-    combinationBadgeText: {
+    miniChipKey: {
         fontSize: 11,
         fontWeight: '600',
-        color: modernColors.primary,
+        color: modernColors.textSecondary,
     },
-    combinationTable: {
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 10,
-        overflow: 'hidden',
+    miniChipValue: {
+        fontSize: 11,
+        color: modernColors.text,
     },
-    combinationRow: {
+    chipActions: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-        gap: 12,
+        gap: 4,
     },
-    combinationRowLast: {
-        borderBottomWidth: 0,
+    chipEditButton: {
+        padding: 4,
     },
-    combinationCellLabel: {
-        flex: 0.45,
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#6B7280',
-        textTransform: 'capitalize',
+    chipDeleteButton: {
+        padding: 4,
     },
-    combinationCellValue: {
-        flex: 0.55,
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 32,
+        gap: 8,
+    },
+    emptyText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#1F2937',
-        textAlign: 'right',
+        color: modernColors.textSecondary,
     },
-    combinationMeta: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    combinationMetaLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    combinationUsage: {
-        fontSize: 11,
-        color: '#6B7280',
-    },
-    combinationOccurrence: {
-        fontSize: 11,
-        color: modernColors.primary,
-        fontWeight: '600',
-    },
-    combinationPrice: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#059669',
-    },
-    combinationApply: {
+    emptySubtext: {
         fontSize: 12,
         color: modernColors.textSecondary,
-        fontStyle: 'italic',
+        textAlign: 'center',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        width: '100%',
+        maxWidth: 400,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+        gap: 12,
+    },
+    modalTitle: {
+        flex: 1,
+        fontSize: 18,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    closeButton: {
+        padding: 4,
+    },
+    modalBody: {
+        padding: 20,
+        gap: 20,
+    },
+    modalDescription: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        lineHeight: 20,
+    },
+    inputContainer: {
+        gap: 8,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        fontSize: 14,
+        color: modernColors.text,
+        backgroundColor: '#F9FAFB',
+    },
+    modalFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: modernColors.border,
+    },
+    cancelButton: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+    },
+    cancelButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    saveButton: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: modernColors.primary,
+        gap: 6,
+    },
+    saveButtonDisabled: {
+        backgroundColor: '#9CA3AF',
+        opacity: 0.5,
+    },
+    saveButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
 });
 
 export default LinearAutocompleteEditor;
+

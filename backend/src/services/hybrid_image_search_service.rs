@@ -3,10 +3,8 @@
 // Stocke les analyses pour amélioration continue
 
 use crate::core::types::{AppError, AppResult};
+use crate::services::intelligent_image_analysis_service::{AICost, ImageAnalysis, IntelligentImageAnalysisService};
 use crate::services::app_ia::AppIA;
-use crate::services::intelligent_image_analysis_service::{
-    AICost, ImageAnalysis, IntelligentImageAnalysisService,
-};
 use crate::utils::log::{log_error, log_info, log_warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -64,7 +62,7 @@ impl HybridImageSearchService {
                 analysis_type
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
             RETURNING id
-            "#,
+            "#
         )
         .bind(service_id)
         .bind(media_id)
@@ -86,10 +84,7 @@ impl HybridImageSearchService {
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
-            log_error(&format!(
-                "[HybridImageSearch] Erreur stockage analyse: {}",
-                e
-            ));
+            log_error(&format!("[HybridImageSearch] Erreur stockage analyse: {}", e));
             AppError::Internal(format!("Erreur stockage analyse: {}", e))
         })?;
 
@@ -109,26 +104,20 @@ impl HybridImageSearchService {
         image_base64: &str,
     ) -> AppResult<(ImageAnalysis, AICost)> {
         use crate::utils::log::log_info;
-
+        
         log_info("[HybridImageSearch] 🔍 Analyse image avec prompt de recherche dédié...");
-
-        // ✅ NOUVEAU 2025-11-04: Charger le nouveau prompt optimisé pour recherche par image
-        // Ce prompt extrait uniquement le vecteur de caractéristiques (sans dépendances/combinaisons)
-        let search_prompt = match tokio::fs::read_to_string(
-            "ia_prompts/recherche_image_produit_prompt.md",
-        )
-        .await
-        {
+        
+        // ✅ NOUVEAU 2025-11-01: Charger le prompt dédié recherche_image_prompt.md
+        // Ce prompt est IDENTIQUE au prompt de création pour assurer compatibilité du JSON
+        let search_prompt = match tokio::fs::read_to_string("backend/ia_prompts/recherche_image_prompt.md").await {
             Ok(content) => {
-                log_info(
-                    "[HybridImageSearch] ✅ Prompt de recherche par image chargé depuis fichier",
-                );
+                log_info("[HybridImageSearch] ✅ Prompt de recherche chargé depuis fichier (1169 lignes)");
                 content
-            }
+            },
             Err(e) => {
                 log_warn(&format!("[HybridImageSearch] ⚠️ Impossible de charger prompt fichier: {}, utilisation embedded", e));
-                // Fallback vers prompt embedded
-                include_str!("../../ia_prompts/recherche_image_produit_prompt.md").to_string()
+                // Fallback vers prompt embedded (identique au fichier)
+                include_str!("../../ia_prompts/recherche_image_prompt.md").to_string()
             }
         };
 
@@ -136,27 +125,22 @@ impl HybridImageSearchService {
         // Lors de la création, input.base64_image est un Option<Vec<String>> où chaque string est base64 pur
         // predict_multimodal formate automatiquement avec "data:image/jpeg;base64,{}" dans call_openai_multimodal
         // Donc on passe juste le base64 pur, comme lors de la création
-        let image_base64_pure =
-            if image_base64.starts_with("http://") || image_base64.starts_with("https://") {
-                // URL directe - passer tel quel (rare cas)
-                image_base64.to_string()
-            } else if image_base64.starts_with("data:") {
-                // Data URI - extraire le base64 pur pour être cohérent avec la création
-                image_base64
-                    .split("base64,")
-                    .nth(1)
-                    .unwrap_or(image_base64)
-                    .to_string()
-            } else {
-                // Base64 pur - passer tel quel (format attendu comme lors de la création)
-                image_base64.to_string()
-            };
+        let image_base64_pure = if image_base64.starts_with("http://") || image_base64.starts_with("https://") {
+            // URL directe - passer tel quel (rare cas)
+            image_base64.to_string()
+        } else if image_base64.starts_with("data:") {
+            // Data URI - extraire le base64 pur pour être cohérent avec la création
+            image_base64.split("base64,").nth(1).unwrap_or(image_base64).to_string()
+        } else {
+            // Base64 pur - passer tel quel (format attendu comme lors de la création)
+            image_base64.to_string()
+        };
 
         // ✅ Appeler l'IA avec le même format que la création (base64 pur dans Vec)
-        // ?? CORRECTION : L'ordre de retour est (model_name, response, tokens)
-        let (model_name, json_response, tokens_used) = app_ia
-            .predict_multimodal(&search_prompt, Some(vec![image_base64_pure]))
-            .await?;
+        let (json_response, model_name, tokens_used) = app_ia.predict_multimodal(
+            search_prompt,
+            Some(vec![image_base64_pure])
+        ).await?;
 
         // Parser le JSON
         let cleaned_json = json_response
@@ -164,83 +148,98 @@ impl HybridImageSearchService {
             .replace("```", "")
             .trim()
             .to_string();
+        
+        let parsed_json: serde_json::Value = serde_json::from_str(&cleaned_json)
+            .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur parsing JSON: {}", e)))?;
 
-        let parsed_json: serde_json::Value = serde_json::from_str(&cleaned_json).map_err(|e| {
-            crate::core::types::AppError::Internal(format!("Erreur parsing JSON image: {}", e))
-        })?;
-
-        // ✅ NOUVEAU 2025-11-04: Parser le nouveau format avec vecteur_caracteristiques
-        log_info(&format!(
-            "[HybridImageSearch] JSON parsé: {}",
-            &cleaned_json.chars().take(200).collect::<String>()
-        ));
-
-        // ✅ NOUVEAU 2025-11-04: Parser le nouveau format avec vecteur_caracteristiques
-        let vecteur_caracteristiques = parsed_json
-            .get("vecteur_caracteristiques")
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                    .collect::<Vec<String>>()
+        // ✅ NOUVEAU 2025-11-01: Parser le JSON au format création (avec data ou directement)
+        let data_obj = parsed_json.get("data").unwrap_or(&parsed_json);
+        
+        // Extraire category (au niveau service)
+        let category_str = data_obj.get("category")
+            .and_then(|c| {
+                if let Some(obj) = c.as_object() {
+                    obj.get("valeur").and_then(|v| v.as_str())
+                } else {
+                    c.as_str()
+                }
             })
-            .unwrap_or_default();
+            .unwrap_or("autre");
 
-        let labels_dimensions = parsed_json
-            .get("labels_dimensions")
-            .and_then(|l| l.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                    .collect::<Vec<String>>()
+        // ✅ Extraire nom_produit, categorie_produit, description_produit (format création)
+        let nom_produit = data_obj.get("nom_produit")
+            .and_then(|n| {
+                if let Some(obj) = n.as_object() {
+                    obj.get("valeur").and_then(|v| v.as_str())
+                } else {
+                    n.as_str()
+                }
             })
-            .unwrap_or_default();
+            .unwrap_or("");
+            
+        let description_produit = data_obj.get("description_produit")
+            .and_then(|d| {
+                if let Some(obj) = d.as_object() {
+                    obj.get("valeur").and_then(|v| v.as_str())
+                } else {
+                    d.as_str()
+                }
+            })
+            .unwrap_or(nom_produit);
 
-        let categorie = parsed_json
-            .get("categorie_detectee")
-            .and_then(|c| c.as_str())
-            .unwrap_or("autre")
-            .to_string();
-
-        let nom = parsed_json
-            .get("nom_produit")
-            .and_then(|n| n.as_str())
-            .unwrap_or("Produit recherché")
-            .to_string();
-
-        let description = parsed_json
-            .get("description_produit")
-            .and_then(|d| d.as_str())
-            .unwrap_or(&nom)
-            .to_string();
-
-        let search_query_from_json = parsed_json
-            .get("search_query")
-            .and_then(|sq| sq.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        // Extraire marque depuis le vecteur (chercher index du label "marque")
+        // ✅ NOUVEAU: Extraire depuis autocomplete.valeur (format: ["Logitech,MX Master 3,Sans fil,Noir"])
+        let produits_autocomplete = data_obj.get("produits");
         let mut marque: Option<String> = None;
+        let mut modele: Option<String> = None;
         let mut couleurs: Vec<String> = Vec::new();
+        let mut tags: Vec<String> = Vec::new();
 
-        for (i, label) in labels_dimensions.iter().enumerate() {
-            if label == "marque" || label == "brand" {
-                if i < vecteur_caracteristiques.len() {
-                    marque = Some(vecteur_caracteristiques[i].clone());
+        // Parser l'autocomplete si présent
+        if let Some(prod_obj) = produits_autocomplete.and_then(|p| p.as_object()) {
+            // Extraire valeur autocomplete
+            if let Some(valeur_arr) = prod_obj.get("valeur").and_then(|v| v.as_array()) {
+                if let Some(first_val) = valeur_arr.first().and_then(|v| v.as_str()) {
+                    // Parser "Logitech,MX Master 3,Sans fil,Noir"
+                    let parts: Vec<&str> = first_val.split(',').map(|s| s.trim()).collect();
+                    tags.extend(parts.iter().map(|s| s.to_string()));
                 }
             }
-            if label.contains("couleur") || label == "color" {
-                if i < vecteur_caracteristiques.len() {
-                    couleurs.push(vecteur_caracteristiques[i].clone());
+            
+            // ✅ CRITIQUE: Extraire depuis sous_caracteristiques
+            if let Some(sous_caracs) = prod_obj.get("sous_caracteristiques").and_then(|sc| sc.as_object()) {
+                // Marque
+                if let Some(marques_arr) = sous_caracs.get("marque").or_else(|| sous_caracs.get("brand")).and_then(|m| m.as_array()) {
+                    marque = marques_arr.first().and_then(|v| v.as_str()).map(|s| s.to_string());
+                    tags.extend(marques_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
+                }
+                
+                // Modèle
+                if let Some(modeles_arr) = sous_caracs.get("modele").or_else(|| sous_caracs.get("model")).and_then(|m| m.as_array()) {
+                    modele = modeles_arr.first().and_then(|v| v.as_str()).map(|s| s.to_string());
+                    tags.extend(modeles_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
+                }
+                
+                // Couleurs
+                if let Some(couleurs_arr) = sous_caracs.get("couleur").or_else(|| sous_caracs.get("color")).and_then(|c| c.as_array()) {
+                    couleurs = couleurs_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
+                    tags.extend(couleurs.clone());
+                }
+                
+                // Ajouter toutes les autres caractéristiques aux tags
+                for (key, value) in sous_caracs.iter() {
+                    if let Some(vals) = value.as_array() {
+                        tags.extend(vals.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
+                    }
                 }
             }
         }
 
-        // Construire tags depuis le vecteur complet
-        let mut tags: Vec<String> = vecteur_caracteristiques.clone();
+        let nom = if !nom_produit.is_empty() { nom_produit.to_string() } else { "Produit recherché".to_string() };
+        let description = if !description_produit.is_empty() { description_produit.to_string() } else { nom.clone() };
+        let categorie = category_str.to_string();
 
-        // Ajouter nom et catégorie
+        // ✅ Tags déjà construits lors du parsing autocomplete ci-dessus
+        // Ajouter nom et catégorie si pas déjà présents
         if !tags.contains(&nom) {
             tags.push(nom.clone());
         }
@@ -248,58 +247,22 @@ impl HybridImageSearchService {
             tags.push(categorie.clone());
         }
 
-        // Ajouter texte visible si présent
-        if let Some(texte_visible_arr) = parsed_json
-            .get("texte_visible")
-            .and_then(|tv| tv.as_array())
-        {
-            tags.extend(
-                texte_visible_arr
-                    .iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string())),
-            );
-        }
-
         // Construire les requêtes de recherche
-        let search_query_exact = if !search_query_from_json.is_empty() {
-            search_query_from_json.clone()
-        } else {
-            vecteur_caracteristiques.join(" ")
-        };
-
-        let search_query_broad = format!(
-            "{} {} {} {}",
-            categorie,
-            vecteur_caracteristiques.join(" "),
+        let search_query_exact = format!("{} {} {}", 
+            marque.as_ref().unwrap_or(&String::new()),
             nom,
-            description.chars().take(50).collect::<String>()
-        )
-        .trim()
-        .to_string();
+            couleurs.first().unwrap_or(&String::new())
+        ).trim().to_string();
+
+        let search_query_broad = format!("{} {} {} {} {}", 
+            categorie,
+            nom,
+            marque.as_ref().unwrap_or(&String::new()),
+            couleurs.join(" "),
+            description.chars().take(30).collect::<String>()
+        ).trim().to_string();
 
         let search_query_semantic = description.clone();
-
-        // Extraire confiance
-        let confiance = parsed_json
-            .get("confiance")
-            .and_then(|c| c.as_f64())
-            .unwrap_or(0.95) as f32;
-
-        log_info(&format!(
-            "[HybridImageSearch] ✅ Vecteur extrait: {} caractéristiques, Catégorie: {}, Marque: {:?}, Confiance: {:.2}",
-            vecteur_caracteristiques.len(),
-            categorie,
-            marque,
-            confiance
-        ));
-
-        // Construire caracteristiques_cles depuis vecteur + labels
-        let mut caracteristiques_cles = std::collections::HashMap::new();
-        for (i, label) in labels_dimensions.iter().enumerate() {
-            if i < vecteur_caracteristiques.len() {
-                caracteristiques_cles.insert(label.clone(), vecteur_caracteristiques[i].clone());
-            }
-        }
 
         // Construire ImageAnalysis compatible
         let analysis = ImageAnalysis {
@@ -308,8 +271,8 @@ impl HybridImageSearchService {
             category_detected: categorie,
             marque,
             couleurs,
-            caracteristiques_cles,
-            confiance,
+            caracteristiques_cles: std::collections::HashMap::new(),
+            confiance: 0.95,
             search_query: search_query_exact.clone(),
             search_query_exact,
             search_query_broad,
@@ -326,10 +289,9 @@ impl HybridImageSearchService {
         };
 
         log_info(&format!(
-            "[HybridImageSearch] ✅ Analyse nouveau format: '{}' (confiance: {:.2}, vecteur: {} dims)",
+            "[HybridImageSearch] ✅ Analyse avec système création: '{}' (confiance: {:.2})",
             &analysis.description[..analysis.description.len().min(50)],
-            analysis.confiance,
-            vecteur_caracteristiques.len()
+            analysis.confiance
         ));
 
         Ok((analysis, cost))
@@ -403,7 +365,7 @@ impl HybridImageSearchService {
         max_results: i32,
     ) -> AppResult<Vec<HybridSearchResult>> {
         let couleur_principale = analysis.couleurs.first().map(|s| s.as_str());
-
+        
         // ✅ CORRECTION: Utiliser search_query_semantic OU search_query_broad pour meilleur matching
         let search_query = if !analysis.search_query_semantic.is_empty() {
             &analysis.search_query_semantic
@@ -440,7 +402,7 @@ impl HybridImageSearchService {
         .bind(category_filter)
         .bind(&analysis.marque)
         .bind(couleur_principale)
-        .bind(search_query) // ✅ CORRECTION: Utiliser search_query_semantic au lieu de description
+        .bind(search_query)  // ✅ CORRECTION: Utiliser search_query_semantic au lieu de description
         .bind(gps_lat)
         .bind(gps_lng)
         .bind(search_radius_km.unwrap_or(50))
@@ -454,28 +416,24 @@ impl HybridImageSearchService {
 
         let mut results = Vec::new();
         for row in rows {
-            let analysis_id: Option<i32> = row.get::<Option<_>, _>("analysis_id");
-            let service_id: i32 = row.get::<Option<_>, _>("service_id").unwrap_or(0);
-            let media_id: Option<i32> = row.get::<Option<_>, _>("media_id");
-            let product_description: String = row
-                .get::<Option<_>, _>("product_description")
-                .unwrap_or_default();
-
+            let analysis_id: Option<i32> = row.try_get("analysis_id").ok();
+            let service_id: i32 = row.try_get("service_id").unwrap_or(0);
+            let media_id: Option<i32> = row.try_get("media_id").ok();
+            let product_description: String = row.try_get("product_description").unwrap_or_default();
+            
             let product_tags: Vec<String> = row
                 .try_get::<Vec<String>, _>("product_tags")
                 .unwrap_or_default();
-
-            let product_marque: Option<String> = row.get::<Option<_>, _>("product_marque");
-
+            
+            let product_marque: Option<String> = row.try_get("product_marque").ok();
+            
             let product_couleurs: Vec<String> = row
                 .try_get::<Vec<String>, _>("product_couleurs")
                 .unwrap_or_default();
-
-            let match_score: f64 = row.get::<Option<_>, _>("match_score").unwrap_or(0.0);
-            let distance_km: Option<f64> = row.get::<Option<_>, _>("distance_km");
-            let service_data: Value = row
-                .get::<Option<_>, _>("service_data")
-                .unwrap_or(serde_json::json!({}));
+            
+            let match_score: f64 = row.try_get("match_score").unwrap_or(0.0);
+            let distance_km: Option<f64> = row.try_get("distance_km").ok();
+            let service_data: Value = row.try_get("service_data").unwrap_or(serde_json::json!({}));
 
             results.push(HybridSearchResult {
                 service_id,
@@ -555,7 +513,7 @@ impl HybridImageSearchService {
             WHERE user_id = $1 AND analysis_type = 'search'
             ORDER BY created_at DESC
             LIMIT $2
-            "#,
+            "#
         )
         .bind(user_id)
         .bind(limit)
@@ -565,24 +523,19 @@ impl HybridImageSearchService {
 
         let mut history = Vec::new();
         for row in rows {
-            let caracteristiques_cles_value: serde_json::Value =
-                row.get::<serde_json::Value, _>("caracteristiques_cles");
+            let caracteristiques_cles_value: serde_json::Value = row.get("caracteristiques_cles");
             let caracteristiques_cles: std::collections::HashMap<String, String> =
                 serde_json::from_value(caracteristiques_cles_value).unwrap_or_default();
 
-            let description: String = row.get::<String, _>("description");
-            let tags: Vec<String> = row.get::<Vec<String>, _>("tags");
-            let category_detected: Option<String> =
-                row.get::<Option<String>, _>("category_detected");
-            let marque: Option<String> = row.get::<Option<String>, _>("marque");
-            let couleurs: Vec<String> = row.get::<Vec<String>, _>("couleurs");
-            let confiance: Option<f64> = row.get::<Option<f64>, _>("confiance");
-            let search_query_exact: Option<String> =
-                row.get::<Option<String>, _>("search_query_exact");
-            let search_query_broad: Option<String> =
-                row.get::<Option<String>, _>("search_query_broad");
-            let search_query_semantic: Option<String> =
-                row.get::<Option<String>, _>("search_query_semantic");
+            let description: String = row.get("description");
+            let tags: Vec<String> = row.get("tags");
+            let category_detected: Option<String> = row.get("category_detected");
+            let marque: Option<String> = row.get("marque");
+            let couleurs: Vec<String> = row.get("couleurs");
+            let confiance: Option<f64> = row.get("confiance");
+            let search_query_exact: Option<String> = row.get("search_query_exact");
+            let search_query_broad: Option<String> = row.get("search_query_broad");
+            let search_query_semantic: Option<String> = row.get("search_query_semantic");
 
             history.push(ImageAnalysis {
                 description,
@@ -615,7 +568,7 @@ impl HybridImageSearchService {
             FROM image_analyses
             GROUP BY analysis_type, model_used
             ORDER BY total DESC
-            "#,
+            "#
         )
         .fetch_all(&self.pool)
         .await
@@ -624,12 +577,12 @@ impl HybridImageSearchService {
         let stats_json: Vec<Value> = stats
             .into_iter()
             .map(|row| {
-                let analysis_type: String = row.get::<String, _>("analysis_type");
-                let total: Option<i64> = row.get::<Option<i64>, _>("total");
-                let avg_confiance: Option<f64> = row.get::<Option<f64>, _>("avg_confiance");
-                let avg_tokens: Option<f64> = row.get::<Option<f64>, _>("avg_tokens");
-                let model_used: Option<String> = row.get::<Option<String>, _>("model_used");
-
+                let analysis_type: String = row.get("analysis_type");
+                let total: Option<i64> = row.get("total");
+                let avg_confiance: Option<f64> = row.get("avg_confiance");
+                let avg_tokens: Option<f64> = row.get("avg_tokens");
+                let model_used: Option<String> = row.get("model_used");
+                
                 serde_json::json!({
                     "analysis_type": analysis_type,
                     "total": total,
@@ -643,3 +596,4 @@ impl HybridImageSearchService {
         Ok(serde_json::json!({ "analyses": stats_json }))
     }
 }
+

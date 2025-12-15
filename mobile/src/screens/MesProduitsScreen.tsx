@@ -21,8 +21,7 @@ import Animated, {
     useAnimatedStyle,
     useSharedValue,
 } from 'react-native-reanimated';
-import GlobalDeliveryConfigModal from '../components/delivery/GlobalDeliveryConfigModal';
-import ServiceProductSelector from '../components/ServiceProductSelector';
+import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 import { NativeCard } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
@@ -37,7 +36,6 @@ import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
 import { getFieldValue } from '../utils/productNormalizer';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
-import { extractProductName, extractServiceName } from '../utils/displayHelpers';
 
 // ✅ CORRIGÉ: Utiliser getFieldValue standardisé au lieu d'extractValue locale
 const extractValue = (field: any): string | null => {
@@ -255,10 +253,7 @@ const MesProduitsScreen: React.FC = () => {
     const [videoCreatorProduct, setVideoCreatorProduct] = useState<ManagedProduct | null>(null);
     const [showMenuModal, setShowMenuModal] = useState(false);
     const [showDeliveryConfigModal, setShowDeliveryConfigModal] = useState(false);
-    const [selectedProductsForDelivery, setSelectedProductsForDelivery] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
-    const [showProductSelector, setShowProductSelector] = useState(false);
-    const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
-    const [productSelectorMode, setProductSelectorMode] = useState<'delivery' | null>(null);
+    const [deliveryConfigProduct, setDeliveryConfigProduct] = useState<ManagedProduct | null>(null);
     const [showMediaGallery, setShowMediaGallery] = useState(false);
     const [selectedServiceForGallery, setSelectedServiceForGallery] = useState<any>(null);
     // ✅ MIGRÉ: Utilise useSharedValue au lieu de Animated.Value
@@ -1039,38 +1034,6 @@ const MesProduitsScreen: React.FC = () => {
         }
 
         try {
-            // ✅ CORRECTION CRITIQUE: Charger les données complètes du service depuis l'API
-            let fullProductData: any = null;
-            if (typeof product.product_index === 'number' && product.serviceId) {
-                try {
-                    console.log('[MesProduitsScreen] 📥 Chargement des données complètes du service pour édition produit:', {
-                        serviceId: product.serviceId,
-                        productIndex: product.product_index
-                    });
-
-                    const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
-                    if (serviceResponse?.success && serviceResponse?.data) {
-                        const serviceData = serviceResponse.data.data || serviceResponse.data;
-                        
-                        // ✅ Extraire le produit spécifique depuis les produits du service
-                        const produits = serviceData?.produits?.valeur || serviceData?.produits || [];
-                        if (Array.isArray(produits) && produits.length > product.product_index) {
-                            fullProductData = produits[product.product_index];
-                            console.log('[MesProduitsScreen] ✅ Produit complet chargé depuis API:', {
-                                hasNom: !!fullProductData?.nom_produit,
-                                hasCategorie: !!fullProductData?.categorie_produit,
-                                hasDescription: !!fullProductData?.description_produit,
-                                hasPrix: !!fullProductData?.prix_produit,
-                                hasProduits: !!fullProductData?.produits,
-                                hasSousCaracs: !!fullProductData?.sous_caracteristiques
-                            });
-                        }
-                    }
-                } catch (serviceError) {
-                    console.warn('[MesProduitsScreen] ⚠️ Erreur chargement service depuis API, utilisation données produit:', serviceError);
-                }
-            }
-
             // ✅ CORRECTION CRITIQUE: Charger les médias depuis l'API avant de construire le prefill
             let loadedImages: string[] = [];
             let loadedVideos: string[] = [];
@@ -1078,6 +1041,11 @@ const MesProduitsScreen: React.FC = () => {
             let loadedDocuments: string[] = [];
 
             if (typeof product.product_index === 'number' && product.serviceId) {
+                console.log('[MesProduitsScreen] 📥 Chargement des médias pour édition produit:', {
+                    serviceId: product.serviceId,
+                    productIndex: product.product_index
+                });
+
                 try {
                     const mediaResponse = await mediaApi.getProductMedia(product.serviceId, product.product_index);
                     if (mediaResponse.success && mediaResponse.data) {
@@ -1117,22 +1085,13 @@ const MesProduitsScreen: React.FC = () => {
                 }
             }
 
-            // ✅ CORRECTION CRITIQUE: Utiliser les données complètes chargées depuis l'API si disponibles
-            const productToUse = fullProductData ? { ...product, ...fullProductData } : product;
-            const prefill = buildProductPrefill(productToUse);
+            const prefill = buildProductPrefill(product);
 
-            // ✅ CORRECTION CRITIQUE: Fusionner les médias chargés depuis l'API avec ceux du prefill
-            // Priorité: médias API > médias prefill > médias fullProductData
-            const prefillImages = Array.isArray(prefill.images) ? prefill.images : [];
-            const prefillVideos = Array.isArray(prefill.videos) ? prefill.videos : [];
-            const prefillAudios = Array.isArray(prefill.audios) ? prefill.audios : [];
-            const prefillDocuments = Array.isArray(prefill.documents) ? prefill.documents : [];
-            
-            // Fusionner en évitant les doublons (médias API en priorité)
-            const finalImages = [...loadedImages, ...prefillImages.filter(img => !loadedImages.includes(img))];
-            const finalVideos = [...loadedVideos, ...prefillVideos.filter(vid => !loadedVideos.includes(vid))];
-            const finalAudios = [...loadedAudios, ...prefillAudios.filter(aud => !loadedAudios.includes(aud))];
-            const finalDocuments = [...loadedDocuments, ...prefillDocuments.filter(doc => !loadedDocuments.includes(doc))];
+            // ✅ CORRECTION: Utiliser les médias chargés depuis l'API en priorité, sinon ceux du prefill
+            const finalImages = loadedImages.length > 0 ? loadedImages : (Array.isArray(prefill.images) ? prefill.images : []);
+            const finalVideos = loadedVideos.length > 0 ? loadedVideos : (Array.isArray(prefill.videos) ? prefill.videos : []);
+            const finalAudios = loadedAudios.length > 0 ? loadedAudios : (Array.isArray(prefill.audios) ? prefill.audios : []);
+            const finalDocuments = loadedDocuments.length > 0 ? loadedDocuments : (Array.isArray(prefill.documents) ? prefill.documents : []);
 
             // Mettre à jour le prefill avec les médias chargés
             prefill.images = finalImages;
@@ -1149,29 +1108,11 @@ const MesProduitsScreen: React.FC = () => {
 
             console.log('[MesProduitsScreen] 📦 Prefill final pour édition:', {
                 nom_produit: prefill.nom_produit,
-                categorie_produit: prefill.categorie_produit || 'VIDE',
-                description_produit: prefill.description_produit || 'VIDE',
-                prix_produit: prefill.prix_produit || 'VIDE',
-                devise_produit: prefill.devise_produit || 'VIDE',
                 images_count: finalImages.length,
                 videos_count: finalVideos.length,
                 audios_count: finalAudios.length,
-                documents_count: finalDocuments.length,
-                has_produits: !!prefill.produits && Array.isArray(prefill.produits) && prefill.produits.length > 0,
-                has_sous_caracteristiques: !!prefill.sous_caracteristiques && typeof prefill.sous_caracteristiques === 'object' && Object.keys(prefill.sous_caracteristiques).length > 0
+                documents_count: finalDocuments.length
             });
-
-            // ✅ CORRIGÉ: Charger les données du service pour suggestionIA (nécessaire pour les combinaisons autocomplete)
-            let serviceDataForSuggestion: any = null;
-            try {
-                const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
-                if (serviceResponse?.success && serviceResponse?.data) {
-                    serviceDataForSuggestion = serviceResponse.data.data || serviceResponse.data;
-                    console.log('[MesProduitsScreen] ✅ Données service chargées pour suggestionIA');
-                }
-            } catch (error) {
-                console.warn('[MesProduitsScreen] ⚠️ Impossible de charger les données du service pour suggestionIA:', error);
-            }
 
             navigation.navigate('AjouterProduitSimple' as never, {
                 mode: 'edit',
@@ -1180,9 +1121,6 @@ const MesProduitsScreen: React.FC = () => {
                 productIndex: product.product_index ?? 0,
                 prefill,
                 mediaData,
-                suggestionIA: serviceDataForSuggestion ? {
-                    data: serviceDataForSuggestion
-                } : undefined,
             } as never);
         } catch (error) {
             console.error('[MesProduitsScreen] ❌ Erreur lors de l\'édition du produit:', error);
@@ -1246,38 +1184,6 @@ const MesProduitsScreen: React.FC = () => {
     // Dupliquer un produit
     const handleDuplicateProduct = async (product: ManagedProduct) => {
         try {
-            // ✅ CORRECTION CRITIQUE: Charger les données complètes du service depuis l'API
-            let fullProductData: any = null;
-            if (typeof product.product_index === 'number' && product.serviceId) {
-                try {
-                    console.log('[MesProduitsScreen] 📥 Chargement des données complètes du service pour duplication produit:', {
-                        serviceId: product.serviceId,
-                        productIndex: product.product_index
-                    });
-
-                    const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
-                    if (serviceResponse?.success && serviceResponse?.data) {
-                        const serviceData = serviceResponse.data.data || serviceResponse.data;
-                        
-                        // ✅ Extraire le produit spécifique depuis les produits du service
-                        const produits = serviceData?.produits?.valeur || serviceData?.produits || [];
-                        if (Array.isArray(produits) && produits.length > product.product_index) {
-                            fullProductData = produits[product.product_index];
-                            console.log('[MesProduitsScreen] ✅ Produit complet chargé depuis API:', {
-                                hasNom: !!fullProductData?.nom_produit,
-                                hasCategorie: !!fullProductData?.categorie_produit,
-                                hasDescription: !!fullProductData?.description_produit,
-                                hasPrix: !!fullProductData?.prix_produit,
-                                hasProduits: !!fullProductData?.produits,
-                                hasSousCaracs: !!fullProductData?.sous_caracteristiques
-                            });
-                        }
-                    }
-                } catch (serviceError) {
-                    console.warn('[MesProduitsScreen] ⚠️ Erreur chargement service depuis API, utilisation données produit:', serviceError);
-                }
-            }
-
             // ✅ CORRECTION CRITIQUE: Charger les médias depuis l'API avant de construire le prefill
             let loadedImages: string[] = [];
             let loadedVideos: string[] = [];
@@ -1285,6 +1191,11 @@ const MesProduitsScreen: React.FC = () => {
             let loadedDocuments: string[] = [];
 
             if (typeof product.product_index === 'number' && product.serviceId) {
+                console.log('[MesProduitsScreen] 📥 Chargement des médias pour duplication produit:', {
+                    serviceId: product.serviceId,
+                    productIndex: product.product_index
+                });
+
                 try {
                     const mediaResponse = await mediaApi.getProductMedia(product.serviceId, product.product_index);
                     if (mediaResponse.success && mediaResponse.data) {
@@ -1324,24 +1235,15 @@ const MesProduitsScreen: React.FC = () => {
                 }
             }
 
-            // ✅ CORRECTION CRITIQUE: Utiliser les données complètes chargées depuis l'API si disponibles
-            const productToUse = fullProductData ? { ...product, ...fullProductData } : product;
-            const prefill = buildProductPrefill(productToUse);
+            const prefill = buildProductPrefill(product);
             const originalName = prefill.nom_produit || product.nom || 'Produit';
             prefill.nom_produit = `${originalName} (Copie)`;
 
-            // ✅ CORRECTION CRITIQUE: Fusionner les médias chargés depuis l'API avec ceux du prefill
-            // Priorité: médias API > médias prefill > médias fullProductData
-            const prefillImages = Array.isArray(prefill.images) ? prefill.images : [];
-            const prefillVideos = Array.isArray(prefill.videos) ? prefill.videos : [];
-            const prefillAudios = Array.isArray(prefill.audios) ? prefill.audios : [];
-            const prefillDocuments = Array.isArray(prefill.documents) ? prefill.documents : [];
-            
-            // Fusionner en évitant les doublons (médias API en priorité)
-            const finalImages = [...loadedImages, ...prefillImages.filter(img => !loadedImages.includes(img))];
-            const finalVideos = [...loadedVideos, ...prefillVideos.filter(vid => !loadedVideos.includes(vid))];
-            const finalAudios = [...loadedAudios, ...prefillAudios.filter(aud => !loadedAudios.includes(aud))];
-            const finalDocuments = [...loadedDocuments, ...prefillDocuments.filter(doc => !loadedDocuments.includes(doc))];
+            // ✅ CORRECTION: Utiliser les médias chargés depuis l'API en priorité, sinon ceux du prefill
+            const finalImages = loadedImages.length > 0 ? loadedImages : (Array.isArray(prefill.images) ? prefill.images : []);
+            const finalVideos = loadedVideos.length > 0 ? loadedVideos : (Array.isArray(prefill.videos) ? prefill.videos : []);
+            const finalAudios = loadedAudios.length > 0 ? loadedAudios : (Array.isArray(prefill.audios) ? prefill.audios : []);
+            const finalDocuments = loadedDocuments.length > 0 ? loadedDocuments : (Array.isArray(prefill.documents) ? prefill.documents : []);
 
             // Mettre à jour le prefill avec les médias chargés
             prefill.images = finalImages;
@@ -1358,38 +1260,17 @@ const MesProduitsScreen: React.FC = () => {
 
             console.log('[MesProduitsScreen] 📦 Prefill final pour duplication:', {
                 nom_produit: prefill.nom_produit,
-                categorie_produit: prefill.categorie_produit || 'VIDE',
-                description_produit: prefill.description_produit || 'VIDE',
-                prix_produit: prefill.prix_produit || 'VIDE',
-                devise_produit: prefill.devise_produit || 'VIDE',
                 images_count: finalImages.length,
                 videos_count: finalVideos.length,
                 audios_count: finalAudios.length,
-                documents_count: finalDocuments.length,
-                has_produits: !!prefill.produits && Array.isArray(prefill.produits) && prefill.produits.length > 0,
-                has_sous_caracteristiques: !!prefill.sous_caracteristiques && typeof prefill.sous_caracteristiques === 'object' && Object.keys(prefill.sous_caracteristiques).length > 0
+                documents_count: finalDocuments.length
             });
-
-            // ✅ CORRIGÉ: Charger les données du service pour suggestionIA (nécessaire pour les combinaisons autocomplete)
-            let serviceDataForSuggestion: any = null;
-            try {
-                const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
-                if (serviceResponse?.success && serviceResponse?.data) {
-                    serviceDataForSuggestion = serviceResponse.data.data || serviceResponse.data;
-                    console.log('[MesProduitsScreen] ✅ Données service chargées pour suggestionIA (duplication)');
-                }
-            } catch (error) {
-                console.warn('[MesProduitsScreen] ⚠️ Impossible de charger les données du service pour suggestionIA:', error);
-            }
 
             navigation.navigate('AjouterProduitSimple' as never, {
                 mode: 'duplicate',
                 serviceId: product.serviceId,
                 prefill,
                 mediaData,
-                suggestionIA: serviceDataForSuggestion ? {
-                    data: serviceDataForSuggestion
-                } : undefined,
             } as never);
         } catch (error) {
             console.error('[MesProduitsScreen] ❌ Erreur lors de la duplication du produit:', error);
@@ -2206,40 +2087,22 @@ const MesProduitsScreen: React.FC = () => {
         );
     };
 
-    // ✅ Fonction pour préparer les produits pour le sélecteur
-    const prepareProductsForSelector = useCallback((): Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> => {
-        const productsList: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> = [];
-
-        products.forEach((product: ManagedProduct) => {
-            const serviceId = product.serviceId || product.data?.serviceId;
-            const productIndex = product.product_index ?? product.data?.product_index ?? 0;
-            const productName = extractProductName(product, 'Produit sans nom');
-            const serviceName = extractServiceName(product, 'Service sans titre');
-
-            if (serviceId && !isNaN(Number(serviceId))) {
-                productsList.push({
-                    serviceId: typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId,
-                    productIndex: typeof productIndex === 'number' ? productIndex : parseInt(String(productIndex), 10),
-                    productName: String(productName),
-                    serviceName: String(serviceName)
-                });
-            }
-        });
-
-        return productsList;
-    }, [products]);
-
-    // ✅ Fonction pour ouvrir la configuration de livraison (avec sélecteur de produits)
-    const handleOpenDeliveryConfig = () => {
+    // ✅ Fonction pour ouvrir la configuration de livraison pour un produit spécifique
+    const handleOpenDeliveryConfig = (product: ManagedProduct) => {
         setShowMenuModal(false);
-        const productsList = prepareProductsForSelector();
-        if (productsList.length === 0) {
-            Alert.alert('Aucun produit', 'Vous devez d\'abord créer des produits avant de configurer la livraison.');
+        const serviceId = product.serviceId || product.data?.serviceId;
+        const productIndex = product.product_index ?? product.data?.product_index ?? 0;
+
+        if (!serviceId) {
+            Alert.alert(
+                'Erreur',
+                'Impossible de configurer la livraison : service ID manquant pour ce produit.'
+            );
             return;
         }
-        setProductsForSelection(productsList);
-        setProductSelectorMode('delivery');
-        setShowProductSelector(true);
+
+        setDeliveryConfigProduct(product);
+        setShowDeliveryConfigModal(true);
     };
 
     // ✅ Menu regroupant toutes les actions
@@ -2247,7 +2110,16 @@ const MesProduitsScreen: React.FC = () => {
         {
             label: 'Configuration livraison',
             icon: 'truck',
-            onPress: handleOpenDeliveryConfig,
+            onPress: () => {
+                setShowMenuModal(false);
+                if (filteredProducts && filteredProducts.length > 0) {
+                    // Prendre le premier produit actif, sinon le premier disponible
+                    const firstProduct = filteredProducts.find(p => p.is_active) || filteredProducts[0];
+                    handleOpenDeliveryConfig(firstProduct);
+                } else {
+                    Alert.alert('Aucun produit', 'Vous devez d\'abord créer un produit pour configurer la livraison.');
+                }
+            },
         },
         {
             label: 'Membres',
@@ -2434,7 +2306,6 @@ const MesProduitsScreen: React.FC = () => {
                 </View>
             </Animated.View>
 
-            {/* ✅ MIGRÉ: Utilise useAnimatedScrollHandler de Reanimated */}
             <Animated.ScrollView
                 contentContainerStyle={[styles.scrollContent, { paddingTop: headerHeight + 16 }]}
                 refreshControl={
@@ -2493,58 +2364,74 @@ const MesProduitsScreen: React.FC = () => {
                 onClose={closeVideoCreator}
                 onSuccess={handleVideoCreatorSuccess}
             />
-            {/* ✅ Sélecteur de produit - Mode multiple pour livraison */}
-            <ServiceProductSelector
-                visible={showProductSelector}
-                products={productsForSelection}
-                allowMultiple={productSelectorMode !== null}
-                onSelect={() => {
-                    setShowProductSelector(false);
-                    setProductsForSelection([]);
-                    setProductSelectorMode(null);
-                }}
-                onSelectMultiple={(selectedProducts) => {
-                    if (productSelectorMode === 'delivery') {
-                        // ✅ SÉCURISÉ: Normaliser les produits pour garantir que productName et serviceName sont des strings
-                        const normalizedProducts = (Array.isArray(selectedProducts) ? selectedProducts : []).map(product => ({
-                            serviceId: product?.serviceId || 0,
-                            productIndex: product?.productIndex ?? 0,
-                            productName: typeof product?.productName === 'string' ? product.productName.trim() :
-                                (product?.productName && typeof product.productName === 'object' && 'valeur' in product.productName && typeof product.productName.valeur === 'string' ? product.productName.valeur.trim() :
-                                    String(product?.productName || 'Produit sans nom')),
-                            serviceName: typeof product?.serviceName === 'string' ? product.serviceName.trim() :
-                                (product?.serviceName && typeof product.serviceName === 'object' && 'valeur' in product.serviceName && typeof product.serviceName.valeur === 'string' ? product.serviceName.valeur.trim() :
-                                    String(product?.serviceName || 'Service sans nom')),
-                        })).filter(p => p.serviceId > 0);
+            {/* ✅ NOUVEAU: Modal configuration livraison */}
+            {deliveryConfigProduct && (() => {
+                // ✅ CORRECTION CRITIQUE: Extraire et valider le serviceId
+                const serviceIdStr = deliveryConfigProduct.serviceId || deliveryConfigProduct.data?.serviceId;
+                const serviceIdNum = serviceIdStr ? parseInt(String(serviceIdStr), 10) : NaN;
 
-                        setSelectedProductsForDelivery(normalizedProducts);
-                        setShowDeliveryConfigModal(true);
+                // ✅ PROTECTION: Vérifier que serviceId est valide avant de rendre le modal
+                if (!serviceIdNum || isNaN(serviceIdNum)) {
+                    console.error('[MesProduitsScreen] ServiceId invalide pour configuration livraison:', {
+                        serviceIdStr,
+                        serviceIdNum,
+                        product: deliveryConfigProduct
+                    });
+                    return null;
+                }
+
+                const productIndex = deliveryConfigProduct.product_index ?? deliveryConfigProduct.data?.product_index ?? 0;
+
+                // ✅ CORRECTION CRITIQUE: Normaliser productName pour s'assurer que c'est toujours une string valide
+                const getProductName = (product: any): string => {
+                    if (!product) return 'Produit';
+                    // Essayer plusieurs champs possibles
+                    const candidates = [
+                        product.nom,
+                        product.nom_produit,
+                        product.name,
+                        product.title,
+                        product.data?.nom,
+                        product.data?.nom_produit,
+                        product.data?.name
+                    ];
+                    for (const candidate of candidates) {
+                        if (candidate && typeof candidate === 'string') {
+                            const trimmed = candidate.trim();
+                            if (trimmed.length > 0) return trimmed;
+                        }
+                        // Si c'est un objet avec une propriété 'valeur'
+                        if (candidate && typeof candidate === 'object' && 'valeur' in candidate) {
+                            const valeur = candidate.valeur;
+                            if (valeur && typeof valeur === 'string') {
+                                const trimmed = valeur.trim();
+                                if (trimmed.length > 0) return trimmed;
+                            }
+                        }
                     }
-                    setShowProductSelector(false);
-                    setProductsForSelection([]);
-                    setProductSelectorMode(null);
-                }}
-                onClose={() => {
-                    setShowProductSelector(false);
-                    setProductsForSelection([]);
-                    setProductSelectorMode(null);
-                }}
-            />
+                    return 'Produit';
+                };
 
-            {/* ✅ NOUVEAU: Modal de configuration de livraison globale */}
-            <GlobalDeliveryConfigModal
-                visible={showDeliveryConfigModal}
-                selectedProducts={selectedProductsForDelivery}
-                onClose={() => {
-                    setShowDeliveryConfigModal(false);
-                    setSelectedProductsForDelivery([]);
-                }}
-                onSuccess={() => {
-                    setShowDeliveryConfigModal(false);
-                    setSelectedProductsForDelivery([]);
-                    loadProducts(true); // Recharger les produits après configuration
-                }}
-            />
+                const productName = getProductName(deliveryConfigProduct);
+
+                return (
+                    <ProductDeliveryConfigModal
+                        visible={showDeliveryConfigModal}
+                        onClose={() => {
+                            setShowDeliveryConfigModal(false);
+                            setDeliveryConfigProduct(null);
+                        }}
+                        serviceId={serviceIdNum}
+                        productIndex={productIndex}
+                        productName={productName}
+                        onSuccess={() => {
+                            setShowDeliveryConfigModal(false);
+                            setDeliveryConfigProduct(null);
+                            loadProducts(true); // Recharger les produits après configuration
+                        }}
+                    />
+                );
+            })()}
             <Modal
                 visible={showTeamManager}
                 animationType="slide"

@@ -70,10 +70,10 @@ const SERVICES_DATA: Service[] = [
 // Données des catégories (6 catégories)
 const CATEGORIES_DATA: Category[] = [
     { id: 'sante', title: 'Santé', icon: 'heart', gradient: ['#EC4899', '#F472B6'], serviceIds: ['pharmacie', 'hopital', 'laboratoire', 'banque_sang'] },
-    { id: 'transport', title: 'Transport', icon: 'truck', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['agence_voyage', 'covoiturage', 'taxi'] },
+    { id: 'transport', title: 'Transport', icon: 'car', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['agence_voyage', 'covoiturage', 'taxi'] },
     { id: 'education', title: 'Éducation', icon: 'book-open', gradient: ['#3B82F6', '#60A5FA'], serviceIds: ['orientation_scolaire', 'bourse_livre'] },
     { id: 'emploi', title: 'Emploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], serviceIds: ['offres_emploi'] },
-    { id: 'vie_quotidienne', title: 'Vie Quotidienne', icon: 'coffee', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['menu_planning', 'bayamselam'] },
+    { id: 'vie_quotidienne', title: 'Ma cuisine', icon: 'utensils-crossed', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['menu_planning', 'bayamselam'] },
     { id: 'immobilier', title: 'Immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], serviceIds: ['immo'] },
 ];
 
@@ -166,61 +166,54 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                     const isExpanded = expandedCategoryId === category.id;
 
                     return (
-                        <View key={category.id} style={styles.categoryWrapper}>
-                            <TouchableOpacity
-                                style={styles.categoryBlock}
-                                onPress={() => handleCategoryPress(category.id)}
-                                activeOpacity={0.8}
-                            >
-                                <View style={styles.categoryContent}>
-                                    <View style={styles.categoryIconContainer}>
-                                        <SafeIcon name={category.icon} size={12} color="#6B7280" />
+                        <React.Fragment key={category.id}>
+                            <View style={styles.categoryWrapper}>
+                                <TouchableOpacity
+                                    style={[styles.categoryBlock, isExpanded && styles.categoryBlockExpanded]}
+                                    onPress={() => handleCategoryPress(category.id)}
+                                    activeOpacity={0.8}
+                                >
+                                    <View style={styles.categoryContent}>
+                                        <View style={styles.categoryIconContainer}>
+                                            <SafeIcon name={category.icon} size={12} color="#6B7280" />
+                                        </View>
+                                        <Text style={styles.categoryTitle} numberOfLines={2}>
+                                            {category.title}
+                                        </Text>
+                                        <Text style={styles.categoryDescription} numberOfLines={1}>
+                                            {serviceCountText}
+                                        </Text>
                                     </View>
-                                    <Text style={styles.categoryTitle} numberOfLines={2}>
-                                        {category.title}
-                                    </Text>
-                                    <Text style={styles.categoryDescription} numberOfLines={1}>
-                                        {serviceCountText}
-                                    </Text>
-                                </View>
-                            </TouchableOpacity>
-                        </View>
+                                </TouchableOpacity>
+                            </View>
+                            {/* Services de la catégorie étendue - affichés horizontalement après le bloc */}
+                            {isExpanded && category.services.length > 1 && (
+                                category.services.map((service) => (
+                                    <TouchableOpacity
+                                        key={service.id}
+                                        style={styles.serviceInlineItem}
+                                        onPress={() => handleServicePress(service.id)}
+                                        activeOpacity={0.7}
+                                        disabled={service.comingSoon}
+                                    >
+                                        <View style={[styles.serviceInlineIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
+                                            <SafeIcon name={service.icon} size={14} color={service.gradient[0]} />
+                                            {service.comingSoon && (
+                                                <View style={styles.badgeInline}>
+                                                    <Text style={styles.badgeInlineText}>Bientôt</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                        <Text style={styles.serviceInlineTitle} numberOfLines={1}>
+                                            {service.title}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))
+                            )}
+                        </React.Fragment>
                     );
                 })}
             </View>
-
-            {/* Menu horizontal des services (quand une catégorie est étendue) */}
-            {expandedCategory && expandedCategory.services.length > 1 && (
-                <View style={styles.expandedContainer}>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.expandedContent}
-                    >
-                        {expandedCategory.services.map((service) => (
-                            <TouchableOpacity
-                                key={service.id}
-                                style={styles.expandedItem}
-                                onPress={() => handleServicePress(service.id)}
-                                activeOpacity={0.7}
-                                disabled={service.comingSoon}
-                            >
-                                <View style={[styles.expandedIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
-                                    <SafeIcon name={service.icon} size={18} color={service.gradient[0]} />
-                                    {service.comingSoon && (
-                                        <View style={styles.badge}>
-                                            <Text style={styles.badgeText}>Bientôt</Text>
-                                        </View>
-                                    )}
-                                </View>
-                                <Text style={styles.expandedTitle} numberOfLines={1}>
-                                    {service.title}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-            )}
 
             {/* Modal pour afficher les services d'une catégorie */}
             <Modal
@@ -315,6 +308,7 @@ const styles = StyleSheet.create({
     container: {
         marginVertical: 0,
         paddingHorizontal: 0,
+        backgroundColor: 'rgba(99, 102, 241, 0.08)', // Couleur glass moderne pour le corps de l'écran
     },
     categoriesGrid: {
         flexDirection: 'row',
@@ -329,6 +323,10 @@ const styles = StyleSheet.create({
     categoryBlock: {
         borderRadius: 12,
         overflow: 'hidden',
+    },
+    categoryBlockExpanded: {
+        borderWidth: 2,
+        borderColor: '#6366F1',
     },
     categoryContent: {
         padding: 8,
@@ -515,6 +513,41 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.textSecondary,
         textAlign: 'center',
+    },
+    // Styles pour les services inline affichés horizontalement
+    serviceInlineItem: {
+        width: '31%',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    serviceInlineIconContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 4,
+        position: 'relative',
+    },
+    serviceInlineTitle: {
+        fontSize: 9,
+        fontWeight: '500',
+        color: '#374151',
+        textAlign: 'center',
+    },
+    badgeInline: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        borderRadius: 6,
+    },
+    badgeInlineText: {
+        fontSize: 7,
+        color: '#FFFFFF',
+        fontWeight: '700',
     },
 });
 

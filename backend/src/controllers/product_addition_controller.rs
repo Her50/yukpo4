@@ -4,22 +4,11 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::state::AppState;
-use axum::{
-    extract::{Path as AxumPath, State},
-    Extension, Json,
-};
-use base64::{engine::general_purpose::STANDARD, Engine};
-use chrono::Utc;
-#[cfg(feature = "image_search")]
-use md5;
-use reqwest::Client;
+use axum::{Extension, Json, extract::{Path, State}};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
-use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::fs;
-use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct AddProductRequest {
@@ -38,1229 +27,166 @@ pub struct AddProductResponse {
 
 /// Ajouter un nouveau produit à un service existant
 /// Route : POST /api/services/{service_id}/products
-/// ✅ AMÉLIORATION 2025-01-27 : Transaction globale + Validation stricte
 #[axum::debug_handler]
 pub async fn add_product_to_service(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
-    AxumPath(service_id): AxumPath<i32>,
+    Path(service_id): Path<i32>,
     Json(request): Json<AddProductRequest>,
 ) -> AppResult<Json<Value>> {
-    use crate::services::product_validation_service::validate_product_data_strict;
-    use crate::utils::log::{log_error, log_info, log_warn};
-    use std::time::Instant;
-
-    let start_time = Instant::now();
-    log_info(&format!(
-        "[add_product_to_service] 📦 Ajout d'un produit au service {}",
-        service_id
-    ));
-
-    // ✅ NOUVEAU 2025-01-27 : Métriques - Incrémenter compteur total
-    if let Ok(metrics) = crate::metrics::product_creation_metrics::ProductCreationMetrics::new() {
-        metrics.products_created_total.inc();
-        metrics.products_creation_in_progress.inc();
-    }
-
-    // ✅ NOUVEAU 2025-01-27 : Validation stricte AVANT toute opération
-    let validation_start = Instant::now();
-    validate_product_data_strict(&request.product_data)?;
-    let validation_duration = validation_start.elapsed();
-
-    // ✅ Métriques - Durée validation
-    if let Ok(metrics) = crate::metrics::product_creation_metrics::ProductCreationMetrics::new() {
-        metrics
-            .product_validation_duration
-            .observe(validation_duration.as_secs_f64());
-    }
-
-    log_info("[add_product_to_service] ✅ Validation des données réussie");
-
-    // ✅ NOUVEAU 2025-01-27 : Démarrer une transaction globale
-    let mut tx = state.pg.begin().await.map_err(|e| {
-        log_error(&format!(
-            "[add_product_to_service] Erreur début transaction: {}",
-            e
-        ));
-        AppError::Internal(format!("Erreur début transaction: {}", e))
-    })?;
-
-    // ✅ AMÉLIORATION : Utiliser SELECT FOR UPDATE pour éviter les race conditions
-    let service_row_result = sqlx::query(
-        "SELECT user_id, data FROM services WHERE id = $1 AND is_active = true FOR UPDATE",
+    use crate::utils::log::{log_info, log_error};
+    
+    log_info(&format!("[add_product_to_service] 📦 Ajout d'un produit au service {}", service_id));
+    
+    // ✅ Vérification : L'utilisateur est-il le propriétaire du service ?
+    let service_row = sqlx::query(
+        "SELECT user_id, data FROM services WHERE id = $1 AND is_active = true"
     )
     .bind(service_id)
-    .fetch_optional(&mut *tx)
-    .await;
-
-    let service_row = match service_row_result {
-        Ok(row) => row,
-        Err(e) => {
-            let _ = tx.rollback().await;
-            return Err(AppError::Internal(format!(
-                "Erreur récupération service: {}",
-                e
-            )));
-        }
-    };
-
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur récupération service: {}", e)))?;
+    
     let (owner_id, mut service_data): (i32, Value) = match service_row {
-        Some(row) => (row.get::<i32, _>("user_id"), row.get::<Value, _>("data")),
+        Some(row) => (
+            row.try_get("user_id").map_err(|e| AppError::Internal(e.to_string()))?,
+            row.try_get("data").map_err(|e| AppError::Internal(e.to_string()))?
+        ),
         None => {
-            log_error(&format!(
-                "[add_product_to_service] Service {} introuvable",
-                service_id
-            ));
-            return Err(AppError::NotFound(format!(
-                "Service {} introuvable",
-                service_id
-            )));
+            log_error(&format!("[add_product_to_service] Service {} introuvable", service_id));
+            return Err(AppError::NotFound(format!("Service {} introuvable", service_id)));
         }
     };
-
+    
     // Vérifier que l'utilisateur authentifié est bien le propriétaire
     if owner_id != user.id {
-        log_error(&format!(
-            "[add_product_to_service] User {} n'est pas propriétaire du service {}",
-            user.id, service_id
-        ));
-        return Err(AppError::Unauthorized(
-            "Vous n'êtes pas le propriétaire de ce service".to_string(),
-        ));
+        log_error(&format!("[add_product_to_service] User {} n'est pas propriétaire du service {}", user.id, service_id));
+        return Err(AppError::Unauthorized("Vous n'êtes pas le propriétaire de ce service".to_string()));
     }
-
-    // ✅ Coût fixe : 2000 FCFA pour ajouter un produit dupliqué
+    
+    // ✅ Coût fixe : 3000 FCFA pour ajouter un produit dupliqué
     mod service_costs {
-        pub const COST_NEW_PRODUCT_DUPLICATE_XAF: i64 = 2000;
+        pub const COST_NEW_PRODUCT_DUPLICATE_XAF: i64 = 3000;
     }
     let cout_ajout = service_costs::COST_NEW_PRODUCT_DUPLICATE_XAF;
-
-    // ✅ AMÉLIORATION : Vérifier le solde dans la transaction avec FOR UPDATE
-    let current_balance_result =
-        sqlx::query("SELECT tokens_balance FROM users WHERE id = $1 FOR UPDATE")
-            .bind(user.id)
-            .fetch_one(&mut *tx)
-            .await;
-
+    
+    // ✅ Vérifier le solde
+    let current_balance_result = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user.id)
+        .fetch_one(&state.pg)
+        .await;
+    
     let current_balance = match current_balance_result {
-        Ok(row) => row.get::<Option<i64>, _>("tokens_balance").unwrap_or(0),
+        Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
         Err(e) => {
-            let _ = tx.rollback().await;
-            log_error(&format!(
-                "[add_product_to_service] Erreur récupération solde: {}",
-                e
-            ));
-            return Err(AppError::Internal(format!(
-                "Erreur récupération solde: {}",
-                e
-            )));
+            log_error(&format!("[add_product_to_service] Erreur récupération solde: {}", e));
+            return Err(AppError::Internal(format!("Erreur récupération solde: {}", e)));
         }
     };
-
+    
     if current_balance < cout_ajout {
-        let _ = tx.rollback().await;
-        log_error(&format!(
-            "[add_product_to_service] Solde insuffisant: {} < {}",
-            current_balance, cout_ajout
-        ));
+        log_error(&format!("[add_product_to_service] Solde insuffisant: {} < {}", current_balance, cout_ajout));
         return Err(AppError::BadRequest(format!(
             "Solde insuffisant: {} FCFA disponible, {} FCFA requis",
             current_balance, cout_ajout
         )));
     }
-
-    // ✅ AMÉLIORATION : Débiter le solde dans la transaction
+    
+    // ✅ Débiter le solde
     let debit_result = sqlx::query(
         "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
     )
     .bind(cout_ajout)
     .bind(user.id)
-    .fetch_one(&mut *tx)
+    .fetch_one(&state.pg)
     .await;
-
+    
     let new_balance = match debit_result {
-        Ok(row) => row.get::<Option<i64>, _>("tokens_balance").unwrap_or(0),
+        Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
         Err(e) => {
-            let _ = tx.rollback().await;
-            log_error(&format!(
-                "[add_product_to_service] Échec débit solde: {}",
-                e
-            ));
+            log_error(&format!("[add_product_to_service] Échec débit solde: {}", e));
             return Err(AppError::Internal(format!("Erreur débit solde: {}", e)));
         }
     };
-
-    log_info(&format!(
-        "[add_product_to_service] ✅ Solde débité: {} FCFA (ancien: {}, nouveau: {})",
-        cout_ajout, current_balance, new_balance
-    ));
-
-    // ✅ CORRECTION 2025-11-24: Sauvegarder le produit comme un objet structuré au lieu d'une chaîne
-    // Format attendu par MesServicesScreen: { nom_produit, description_produit, categorie_produit, prix, devise, ... }
-    let extract_string = |value: &Value| -> Option<String> {
-        value.as_str().map(|s| s.to_string()).or_else(|| {
-            value
-                .get("valeur")
-                .and_then(|v| v.as_str().map(|s| s.to_string()))
-        })
-    };
-
-    let extract_number = |value: &Value| -> Option<f64> {
-        value
-            .as_f64()
-            .or_else(|| value.get("valeur").and_then(|v| v.as_f64()))
-    };
-
-    // Construire l'objet produit structuré
-    let mut product_obj = json!({});
-
-    // nom_produit
-    if let Some(nom) = request
-        .product_data
-        .get("nom_produit")
-        .or_else(|| request.product_data.get("produits"))
-        .and_then(extract_string)
-    {
-        if !nom.is_empty() {
-            product_obj["nom_produit"] = json!(nom);
-            // ✅ CORRECTION: Ajouter aussi le champ "nom" pour compatibilité avec MesServicesScreen
-            product_obj["nom"] = json!(nom);
-        }
-    }
-
-    // description_produit
-    if let Some(desc) = request
-        .product_data
-        .get("description_produit")
-        .and_then(extract_string)
-    {
-        if !desc.is_empty() {
-            product_obj["description_produit"] = json!(desc);
-        }
-    }
-
-    // categorie_produit
-    if let Some(cat) = request
-        .product_data
-        .get("categorie_produit")
-        .and_then(extract_string)
-    {
-        if !cat.is_empty() {
-            product_obj["categorie_produit"] = json!(cat);
-        }
-    }
-
-    // prix
-    if let Some(prix) = request
-        .product_data
-        .get("prix")
-        .or_else(|| request.product_data.get("prix_produit"))
-        .and_then(|v| extract_string(v).or_else(|| extract_number(v).map(|n| n.to_string())))
-    {
-        if !prix.is_empty() {
-            product_obj["prix"] = json!(prix);
-        }
-    }
-
-    // devise
-    if let Some(devise) = request.product_data.get("devise").and_then(extract_string) {
-        if !devise.is_empty() {
-            product_obj["devise"] = json!(devise);
-        }
-    }
-
-    // lieu_produit
-    if let Some(lieu) = request
-        .product_data
-        .get("lieu_produit")
-        .or_else(|| request.product_data.get("lieu_commercial"))
-        .or_else(|| request.product_data.get("lieu_commercialisation"))
-        .and_then(extract_string)
-    {
-        if !lieu.is_empty() {
-            product_obj["lieu_produit"] = json!(lieu);
-        }
-    }
-
-    // Conserver toutes les autres propriétés du product_data
-    if let Some(obj) = request.product_data.as_object() {
-        for (key, value) in obj {
-            if ![
-                "nom_produit",
-                "description_produit",
-                "categorie_produit",
-                "prix",
-                "prix_produit",
-                "devise",
-                "lieu_produit",
-                "lieu_commercial",
-                "lieu_commercialisation",
-                "produits",
-            ]
-            .contains(&key.as_str())
-            {
-                product_obj[key] = value.clone();
-            }
-        }
-    }
-
-    // ✅ OPTIMISATION : Plus besoin de générer la chaîne concaténée
-    // Les arrays pour la recherche seront générés directement depuis l'objet JSON dans save_autocomplete_combination
-    log_info(&format!(
-        "[add_product_to_service] 📝 Product object (structured JSON): {:?}",
-        product_obj
-    ));
-
-    // ✅ NOUVEAU 2025-11-26: Sauvegarder les médias du produit AVANT d'ajouter au service
-    // Cela permet d'obtenir le product_index correct pour lier les médias au produit
+    
+    log_info(&format!("[add_product_to_service] ✅ Solde débité: {} FCFA (ancien: {}, nouveau: {})", 
+        cout_ajout, current_balance, new_balance));
+    
+    // ✅ Ajouter le produit au JSON du service
     let produits_array = service_data
         .get_mut("produits")
         .and_then(|p| p.as_object_mut())
         .and_then(|obj| obj.get_mut("valeur"))
         .and_then(|v| v.as_array_mut());
-
-    // Calculer le product_index AVANT d'ajouter le produit (pour sauvegarder les médias)
+    
     let product_index = match produits_array {
-        Some(arr) => arr.len(), // Index du nouveau produit (pas encore ajouté)
-        None => 0,
-    };
-
-    // ✅ NOUVEAU 2025-11-26: Sauvegarder les médias du produit
-    // ⚠️ NOTE : Les opérations de fichiers sont faites AVANT la transaction
-    // car elles sont en parallèle et ne peuvent pas être dans une transaction DB.
-    // Si la transaction échoue après, on nettoiera les médias sauvegardés.
-    let saved_media_paths = match save_product_media(
-        &state,
-        service_id,
-        product_index,
-        &request.product_data,
-        &product_obj,
-    )
-    .await
-    {
-        Ok(paths) => paths,
-        Err(e) => {
-            let _ = tx.rollback().await;
-            // ✅ ROLLBACK : Rembourser l'utilisateur
-            let _ =
-                sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
-                    .bind(cout_ajout)
-                    .bind(user.id)
-                    .execute(&state.pg)
-                    .await;
-            log_error(&format!(
-                "[add_product_to_service] Erreur sauvegarde médias: {}",
-                e
-            ));
-            return Err(e);
-        }
-    };
-
-    // Remplacer les base64 par les chemins de fichiers dans product_obj
-    // ✅ CORRECTION: Utiliser une référence pour éviter le move
-    if let Some(ref image_paths) = saved_media_paths.images {
-        product_obj["images"] = json!(image_paths.clone());
-    }
-    if let Some(video_paths) = saved_media_paths.videos {
-        product_obj["videos"] = json!(video_paths);
-    }
-
-    // Maintenant ajouter le produit au service_data
-    let produits_array = service_data
-        .get_mut("produits")
-        .and_then(|p| p.as_object_mut())
-        .and_then(|obj| obj.get_mut("valeur"))
-        .and_then(|v| v.as_array_mut());
-
-    match produits_array {
         Some(arr) => {
-            // ✅ CORRECTION: Ajouter l'objet structuré au lieu de la chaîne
-            arr.push(product_obj.clone());
-        }
+            // Ajouter le nouveau produit au tableau existant
+            arr.push(request.product_data.clone());
+            arr.len() - 1
+        },
         None => {
             // Créer le tableau de produits s'il n'existe pas
             service_data["produits"] = json!({
                 "type_donnee": "autocomplete",
-                "valeur": vec![product_obj.clone()],
+                "valeur": vec![request.product_data.clone()],
                 "separateur": ",",
                 "sous_caracteristiques": {},
                 "filtrable": true,
                 "origine_champs": "formulaire"
             });
+            0
         }
     };
-
-    // ✅ NOUVEAU 2025-11-06: Ajouter lieu_produit au service_data pour save_autocomplete_combination
-    if let Some(lieu) = request
-        .product_data
-        .get("lieu_produit")
-        .or_else(|| request.product_data.get("lieu_commercial"))
-        .or_else(|| request.product_data.get("lieu_commercialisation"))
-    {
-        service_data["lieu_produit"] = json!({
-            "type_donnee": "string",
-            "valeur": lieu.as_str().unwrap_or(""),
-            "origine_champs": "formulaire"
-        });
-    }
-
-    // ✅ AMÉLIORATION : Mettre à jour le service dans la transaction
-    let update_result =
-        sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
-            .bind(&service_data)
-            .bind(service_id)
-            .execute(&mut *tx)
-            .await;
-
+    
+    // ✅ Mettre à jour le service en base
+    let update_result = sqlx::query(
+        "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2"
+    )
+    .bind(&service_data)
+    .bind(service_id)
+    .execute(&state.pg)
+    .await;
+    
     match update_result {
         Ok(_) => {
-            log_info(&format!(
-                "[add_product_to_service] ✅ Produit ajouté au service {} (index: {})",
-                service_id, product_index
-            ));
-
-            // ✅ NOUVEAU 2025-11-06: Sauvegarder dans autocomplete_characteristics et autocomplete_combinations
-            // Créer un data_obj temporaire avec SEULEMENT le nouveau produit (pas tous les produits du service)
-            // ✅ CORRECTION 2025-11-24: Extraire le nom du produit depuis product_obj pour autocomplete
-            let product_string = product_obj
-                .get("nom_produit")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-
-            let temp_data_obj = {
-                let mut obj = json!({
-                    "produits": {
-                        "type_donnee": "autocomplete",
-                        "valeur": product_string,
-                        "separateur": ",",
-                        "filtrable": true,
-                        "origine_champs": "formulaire"
-                    }
-                });
-
-                // Ajouter lieu_produit si présent
-                if let Some(lieu) = request
-                    .product_data
-                    .get("lieu_produit")
-                    .or_else(|| request.product_data.get("lieu_commercial"))
-                    .or_else(|| request.product_data.get("lieu_commercialisation"))
-                {
-                    obj["lieu_produit"] = json!({
-                        "type_donnee": "string",
-                        "valeur": lieu.as_str().unwrap_or(""),
-                        "origine_champs": "formulaire"
-                    });
-                }
-
-                obj
-            };
-
-            // ✅ AMÉLIORATION : Indexation dans la transaction
-            // Note: save_autocomplete_combination prend un &PgPool, pas une transaction
-            // On l'appelle après le commit pour éviter les problèmes de transaction
-            // TODO: Modifier save_autocomplete_combination pour accepter une transaction
-            if let Err(e) = crate::services::creer_service::save_autocomplete_combination(
-                &state.pg, // Utiliser le pool après commit
-                service_id,
-                &temp_data_obj,
-            )
-            .await
-            {
-                // ⚠️ Erreur d'indexation : on log mais on continue (non bloquant)
-                log_warn(&format!(
-                    "[add_product_to_service] ⚠️ Erreur sauvegarde autocomplete: {} (non bloquant, sera réindexé plus tard)",
-                    e
-                ));
-            } else {
-                log_info(&format!("[add_product_to_service] ✅ Produit indexé dans autocomplete_characteristics + autocomplete_combinations"));
-            }
-
-            // ✅ NOUVEAU 2025-01-27 : Commit de la transaction
-            if let Err(e) = tx.commit().await {
-                log_error(&format!(
-                    "[add_product_to_service] ❌ Erreur commit transaction: {}",
-                    e
-                ));
-                // Rembourser l'utilisateur
-                let _ = sqlx::query(
-                    "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2",
-                )
-                .bind(cout_ajout)
-                .bind(user.id)
-                .execute(&state.pg)
-                .await;
-                return Err(AppError::Internal(format!(
-                    "Erreur commit transaction: {}",
-                    e
-                )));
-            }
-            log_info("[add_product_to_service] ✅ Transaction commitée avec succès");
-
-            let extract_string = |value: &serde_json::Value| -> Option<String> {
-                value.as_str().map(|s| s.to_string()).or_else(|| {
-                    value
-                        .get("valeur")
-                        .and_then(|v| v.as_str().map(|s| s.to_string()))
-                })
-            };
-
-            let product_name = request
-                .product_data
-                .get("nom_produit")
-                .and_then(extract_string)
-                .unwrap_or_else(|| "Produit".to_string());
-
-            let product_category = request
-                .product_data
-                .get("categorie_produit")
-                .and_then(extract_string)
-                .unwrap_or_else(|| "Sans catégorie".to_string());
-
-            let product_price = request.product_data.get("prix_produit").and_then(|v| {
-                v.as_f64()
-                    .or_else(|| extract_string(v).and_then(|s| s.parse::<f64>().ok()))
-            });
-
-            let title = format!("✨ Produit ajouté: {}", product_name);
-
-            let mut details = format!(
-                "{} ajouté (catégorie: {}, index: {})",
-                product_name, product_category, product_index
-            );
-
-            if let Some(price) = product_price {
-                details.push_str(&format!(", prix: {} FCFA", price as i64));
-            }
-
+            log_info(&format!("[add_product_to_service] ✅ Produit ajouté au service {} (index: {})", service_id, product_index));
+            
+            // ✅ Créer notification
             let _ = crate::services::notification_service::create_notification(
                 &state.pg,
                 user.id,
                 crate::services::notification_service::NotificationType::ProductAdded,
-                title,
-                details,
                 Some(json!({
                     "service_id": service_id,
                     "product_index": product_index,
-                    "cost": cout_ajout,
-                    "product_name": product_name,
-                    "product_category": product_category,
-                    "product_price": product_price
-                })),
-            )
-            .await;
-
-            // ✅ AMÉLIORATION: Ajouter warning si aucune image
-            let warning_message = if saved_media_paths.images.is_none()
-                || (saved_media_paths
-                    .images
-                    .as_ref()
-                    .map(|v| v.is_empty())
-                    .unwrap_or(true))
-            {
-                Some(
-                    "Aucune image ajoutée. La génération de vidéo nécessite au moins une image."
-                        .to_string(),
-                )
-            } else {
-                None
-            };
-
-            // ✅ NOUVEAU 2025-01-27 : Métriques - Succès
-            let total_duration = start_time.elapsed();
-            if let Ok(metrics) =
-                crate::metrics::product_creation_metrics::ProductCreationMetrics::new()
-            {
-                metrics.products_created_success.inc();
-                metrics.products_creation_in_progress.dec();
-                metrics
-                    .product_creation_duration
-                    .observe(total_duration.as_secs_f64());
-            }
-
+                    "cost": cout_ajout
+                }))
+            ).await;
+            
             Ok(Json(json!({
                 "success": true,
                 "service_id": service_id,
                 "product_index": product_index,
                 "cost": cout_ajout,
                 "message": format!("Produit ajouté avec succès (coût: {} FCFA)", cout_ajout),
-                "new_balance": new_balance,
-                "warning": warning_message,
-                "duration_ms": total_duration.as_millis()
+                "new_balance": new_balance
             })))
-        }
+        },
         Err(e) => {
-            // ✅ AMÉLIORATION : Rollback automatique de la transaction
-            let rollback_err = tx.rollback().await;
-            if let Err(rollback_e) = rollback_err {
-                log_error(&format!(
-                    "[add_product_to_service] ❌ Erreur rollback transaction: {}",
-                    rollback_e
-                ));
-            }
-
-            log_error(&format!(
-                "[add_product_to_service] Erreur mise à jour service: {}",
-                e
-            ));
-
-            // ✅ NOUVEAU 2025-01-27 : Métriques - Échec
-            let total_duration = start_time.elapsed();
-            if let Ok(metrics) =
-                crate::metrics::product_creation_metrics::ProductCreationMetrics::new()
-            {
-                metrics.products_created_failed.inc();
-                metrics.products_creation_in_progress.dec();
-                metrics
-                    .product_creation_duration
-                    .observe(total_duration.as_secs_f64());
-            }
-
-            // ✅ ROLLBACK : Rembourser l'utilisateur en cas d'échec (sécurité supplémentaire)
-            let _ =
-                sqlx::query("UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2")
-                    .bind(cout_ajout)
-                    .bind(user.id)
-                    .execute(&state.pg)
-                    .await;
-
-            Err(AppError::Internal(format!(
-                "Erreur mise à jour service: {}",
-                e
-            )))
-        }
-    }
-}
-
-// ✅ NOUVEAU 2025-11-26: Structure pour stocker les chemins de médias sauvegardés
-struct SavedMediaPaths {
-    images: Option<Vec<String>>,
-    videos: Option<Vec<String>>,
-}
-
-// ✅ OPTIMISÉ: Fonction helper pour traiter une seule image en parallèle
-#[allow(dead_code)]
-async fn process_single_image_async(
-    storage_root: &PathBuf,
-    service_id: i32,
-    product_id: &str,
-    product_index: usize,
-    image_index: usize,
-    image_data: &str,
-    is_main: bool,
-    pool: &sqlx::PgPool,
-) -> AppResult<Option<String>> {
-    use crate::utils::log::{log_error, log_info, log_warn};
-
-    if image_data.is_empty() {
-        return Ok(None);
-    }
-
-    log_info(&format!(
-        "[process_single_image_async] 🖼️ Traitement image {} de produit {} (main: {})",
-        image_index, product_index, is_main
-    ));
-
-    // Sauvegarder l'image
-    let stored = if is_url(image_data) {
-        download_and_save_image(storage_root.as_path(), service_id, image_data, "images").await
-    } else if is_probable_base64(image_data) {
-        persist_base64_media(
-            storage_root.as_path(),
-            service_id,
-            "images",
-            image_data,
-            "jpg",
-        )
-        .await
-    } else {
-        log_warn(&format!(
-            "[process_single_image_async] Image ignorée (format non supporté) pour produit {}",
-            product_index
-        ));
-        return Ok(None);
-    };
-
-    let stored = match stored {
-        Ok(value) => value,
-        Err(err) => {
-            log_error(&format!(
-                "[process_single_image_async] Erreur sauvegarde image produit {}: {}",
-                product_index, err
-            ));
-            return Err(err);
-        }
-    };
-
-    let file_path = stored.path;
-    #[cfg(feature = "image_search")]
-    let mut image_bytes = stored.bytes;
-    #[cfg(not(feature = "image_search"))]
-    let _image_bytes = stored.bytes;
-
-    // ✅ NOUVEAU 2025-01-27 : Compression automatique des images
-    #[cfg(feature = "image")]
-    {
-        if !image_bytes.is_empty() {
-            match crate::services::image_compression_service::compress_image(
-                &image_bytes,
-                crate::services::image_compression_service::CompressionConfig::default(),
+            log_error(&format!("[add_product_to_service] Erreur mise à jour service: {}", e));
+            
+            // ✅ ROLLBACK : Rembourser l'utilisateur en cas d'échec
+            let _ = sqlx::query(
+                "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
             )
-            .await
-            {
-                Ok(compressed) => {
-                    if compressed.len() < image_bytes.len() {
-                        log::info!(
-                            "[process_single_image_async] ✅ Image compressée: {} -> {} bytes ({}% réduction)",
-                            image_bytes.len(),
-                            compressed.len(),
-                            ((image_bytes.len() - compressed.len()) * 100) / image_bytes.len()
-                        );
-                        // Sauvegarder la version compressée
-                        if let Err(e) = tokio::fs::write(&file_path, &compressed).await {
-                            log::warn!("[process_single_image_async] Erreur sauvegarde image compressée: {}, utilisation originale", e);
-                        } else {
-                            image_bytes = compressed;
-                        }
-                    } else {
-                        log::debug!("[process_single_image_async] Compression n'a pas réduit la taille, utilisation originale");
-                    }
-                }
-                Err(e) => {
-                    log::warn!("[process_single_image_async] Erreur compression image: {}, utilisation originale", e);
-                }
-            }
+            .bind(cout_ajout)
+            .bind(user.id)
+            .execute(&state.pg)
+            .await;
+            
+            Err(AppError::Internal(format!("Erreur mise à jour service: {}", e)))
         }
     }
-
-    // Générer signature d'image si disponible
-    #[cfg(feature = "image_search")]
-    let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
-        match crate::services::image_search_service::ImageSearchService::generate_image_signature(
-            &image_bytes,
-        ) {
-            Ok(signature) => {
-                let metadata = crate::services::image_search_service::ImageSearchService::extract_image_metadata(&image_bytes).unwrap_or_else(|_| {
-                    serde_json::json!({
-                        "width": 0,
-                        "height": 0,
-                        "format": "jpeg",
-                        "file_size": image_bytes.len(),
-                    })
-                });
-                let hash = format!("{:x}", md5::compute(&image_bytes));
-                (
-                    serde_json::to_value(&signature).unwrap_or_default(),
-                    hash,
-                    metadata,
-                )
-            }
-            Err(e) => {
-                log_warn(&format!(
-                    "[process_single_image_async] Erreur signature: {}",
-                    e
-                ));
-                (
-                    serde_json::Value::Null,
-                    String::new(),
-                    serde_json::Value::Null,
-                )
-            }
-        }
-    } else {
-        (
-            serde_json::Value::Null,
-            String::new(),
-            serde_json::Value::Null,
-        )
-    };
-
-    #[cfg(not(feature = "image_search"))]
-    let (image_signature, image_hash, image_metadata) = (
-        serde_json::Value::Null,
-        String::new(),
-        serde_json::Value::Null,
-    );
-
-    // ✅ AMÉLIORATION : Note - Cette fonction est appelée depuis save_product_media
-    // qui reçoit la transaction. On doit passer la transaction ici aussi.
-    // Pour l'instant, on garde pool mais idéalement on devrait passer tx
-    // Insérer dans la table media
-    if let Err(e) = sqlx::query(
-        r#"
-        INSERT INTO media (
-            service_id, product_id, product_index, type, path,
-            is_main_image, display_order, uploaded_at,
-            image_signature, image_hash, image_metadata
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        "#,
-    )
-    .bind(service_id)
-    .bind(product_id)
-    .bind(product_index as i32)
-    .bind("image")
-    .bind(&file_path)
-    .bind(is_main)
-    .bind(image_index as i32)
-    .bind(Utc::now().naive_utc())
-    .bind(image_signature)
-    .bind(image_hash)
-    .bind(image_metadata)
-    .execute(pool)
-    .await
-    {
-        log_error(&format!(
-            "[process_single_image_async] Erreur insertion media image: {}",
-            e
-        ));
-        return Err(AppError::Internal(format!("Erreur insertion media: {}", e)));
-    }
-
-    Ok(Some(file_path))
 }
 
-// ✅ OPTIMISÉ 2025-01-27: Fonction helper pour sauvegarder les médias d'un produit
-// Utilise OptimizedMediaProcessor pour traitement batch optimisé
-async fn save_product_media(
-    state: &Arc<AppState>,
-    service_id: i32,
-    product_index: usize,
-    product_data: &Value,
-    _product_obj: &Value,
-) -> AppResult<SavedMediaPaths> {
-    use crate::services::optimized_media_processor::{
-        MediaItem, OptimizedMediaProcessor, OptimizedMediaProcessorConfig,
-    };
-    use crate::utils::log::{log_error, log_info};
-
-    let storage_root = PathBuf::from(
-        std::env::var("UPLOAD_STORAGE_PATH").unwrap_or_else(|_| "./uploads".to_string()),
-    );
-
-    // ✅ NOUVEAU 2025-01-27 : Créer le processeur optimisé
-    let config = OptimizedMediaProcessorConfig {
-        max_concurrent: 10,
-        db_batch_size: 20,
-        generate_thumbnails: true,
-        adaptive_compression: true,
-        use_signature_cache: true,
-    };
-
-    let processor = OptimizedMediaProcessor::new(state.pg.clone(), storage_root.clone(), config);
-
-    let mut media_items: Vec<MediaItem> = Vec::new();
-
-    // ✅ OPTIMISÉ 2025-01-27 : Extraire les images et les convertir en MediaItem
-    // Chercher dans imageUrls (upload préalable)
-    if let Some(image_urls) = product_data.get("imageUrls").and_then(|v| v.as_array()) {
-        for img in image_urls {
-            if let Some(img_str) = img.as_str() {
-                if !img_str.is_empty() {
-                    let is_base64 = !is_url(img_str) && is_probable_base64(img_str);
-                    media_items.push(MediaItem::new_image(img_str.to_string(), is_base64));
-                }
-            }
-        }
-    }
-
-    // Chercher dans images (URLs ou base64)
-    if let Some(images) = product_data.get("images").and_then(|v| v.as_array()) {
-        for img in images {
-            if let Some(img_str) = img.as_str() {
-                if !img_str.is_empty() {
-                    let is_base64 = !is_url(img_str) && is_probable_base64(img_str);
-                    media_items.push(MediaItem::new_image(img_str.to_string(), is_base64));
-                }
-            }
-        }
-    }
-
-    // Chercher dans base64_image (rétrocompatibilité)
-    if let Some(base64_image) = product_data.get("base64_image") {
-        if let Some(base64_array) = base64_image.as_array() {
-            for img in base64_array {
-                if let Some(img_str) = img.as_str() {
-                    if !img_str.is_empty() {
-                        media_items.push(MediaItem::new_image(img_str.to_string(), true));
-                    }
-                }
-            }
-        } else if let Some(base64_str) = base64_image.as_str() {
-            if !base64_str.is_empty() {
-                media_items.push(MediaItem::new_image(base64_str.to_string(), true));
-            }
-        }
-    }
-
-    // ✅ OPTIMISÉ 2025-01-27 : Traiter les images en batch avec OptimizedMediaProcessor
-    let image_count = media_items.len();
-    let mut saved_images: Vec<String> = Vec::new();
-
-    if !media_items.is_empty() {
-        log_info(&format!(
-            "[add_product_to_service] 🚀 Traitement batch optimisé de {} images pour produit {}",
-            image_count, product_index
-        ));
-
-        // Traiter les images en batch
-        match processor
-            .process_media_batch(service_id, Some(product_index), media_items.clone())
-            .await
-        {
-            Ok(processed) => {
-                // Extraire les chemins des images traitées
-                for media in &processed {
-                    saved_images.push(media.file_path.clone());
-                }
-
-                // Insérer en batch optimisé
-                if let Err(e) = processor
-                    .insert_media_batch(service_id, Some(product_index as i32), processed)
-                    .await
-                {
-                    log_error(&format!(
-                        "[add_product_to_service] Erreur insertion batch images: {}",
-                        e
-                    ));
-                }
-            }
-            Err(e) => {
-                log_error(&format!(
-                    "[add_product_to_service] Erreur traitement batch images: {}",
-                    e
-                ));
-            }
-        }
-
-        log_info(&format!(
-            "[add_product_to_service] ✅ {} images sauvegardées avec traitement optimisé pour produit {}",
-            saved_images.len(),
-            product_index
-        ));
-    }
-
-    // Réinitialiser pour les vidéos
-    media_items.clear();
-
-    // ✅ OPTIMISÉ 2025-01-27 : Extraire et traiter les vidéos en batch
-    // Chercher dans videoUrls (upload préalable)
-    if let Some(video_urls) = product_data.get("videoUrls").and_then(|v| v.as_array()) {
-        for video in video_urls {
-            if let Some(video_str) = video.as_str() {
-                if !video_str.is_empty() {
-                    let is_base64 = !is_url(video_str) && is_probable_base64(video_str);
-                    media_items.push(MediaItem::new_video(video_str.to_string(), is_base64));
-                }
-            }
-        }
-    }
-
-    // Chercher dans videos (URLs ou base64)
-    if let Some(videos) = product_data.get("videos").and_then(|v| v.as_array()) {
-        for video in videos {
-            if let Some(video_str) = video.as_str() {
-                if !video_str.is_empty() {
-                    let is_base64 = !is_url(video_str) && is_probable_base64(video_str);
-                    media_items.push(MediaItem::new_video(video_str.to_string(), is_base64));
-                }
-            }
-        }
-    }
-
-    // Chercher dans video_base64 (rétrocompatibilité)
-    if let Some(video_base64) = product_data.get("video_base64") {
-        if let Some(video_array) = video_base64.as_array() {
-            for video in video_array {
-                if let Some(video_str) = video.as_str() {
-                    if !video_str.is_empty() {
-                        media_items.push(MediaItem::new_video(video_str.to_string(), true));
-                    }
-                }
-            }
-        } else if let Some(video_str) = video_base64.as_str() {
-            if !video_str.is_empty() {
-                media_items.push(MediaItem::new_video(video_str.to_string(), true));
-            }
-        }
-    }
-
-    let mut saved_videos: Vec<String> = Vec::new();
-
-    if !media_items.is_empty() {
-        log_info(&format!(
-            "[add_product_to_service] 🚀 Traitement batch optimisé de {} vidéos pour produit {}",
-            media_items.len(),
-            product_index
-        ));
-
-        // Traiter les vidéos en batch
-        match processor
-            .process_media_batch(service_id, Some(product_index), media_items)
-            .await
-        {
-            Ok(processed) => {
-                // Extraire les chemins des vidéos traitées
-                for media in &processed {
-                    saved_videos.push(media.file_path.clone());
-                }
-
-                // Insérer en batch optimisé
-                if let Err(e) = processor
-                    .insert_media_batch(service_id, Some(product_index as i32), processed.clone())
-                    .await
-                {
-                    log_error(&format!(
-                        "[add_product_to_service] Erreur insertion batch vidéos: {}",
-                        e
-                    ));
-                }
-            }
-            Err(e) => {
-                log_error(&format!(
-                    "[add_product_to_service] Erreur traitement batch vidéos: {}",
-                    e
-                ));
-            }
-        }
-
-        log_info(&format!(
-            "[add_product_to_service] ✅ {} vidéos sauvegardées avec traitement optimisé pour produit {}",
-            saved_videos.len(),
-            product_index
-        ));
-    }
-
-    Ok(SavedMediaPaths {
-        images: if saved_images.is_empty() {
-            None
-        } else {
-            Some(saved_images)
-        },
-        videos: if saved_videos.is_empty() {
-            None
-        } else {
-            Some(saved_videos)
-        },
-    })
-}
-
-// ✅ Helper functions (copiées depuis creer_service.rs)
-fn is_probable_base64(data: &str) -> bool {
-    if data.starts_with("data:") {
-        return true;
-    }
-    if data.starts_with("http://") || data.starts_with("https://") {
-        return false;
-    }
-    if data.len() < 80 {
-        return false;
-    }
-    let valid_chars = data
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '=' | '\n' | '\r' | ' '));
-    let has_base64_chars = data.contains('+') || data.contains('/') || data.contains('=');
-    let base64_char_count = data
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '='))
-        .count();
-    let base64_ratio = base64_char_count as f64 / data.len() as f64;
-    valid_chars && has_base64_chars && base64_ratio >= 0.8
-}
-
-fn is_url(data: &str) -> bool {
-    data.starts_with("http://") || data.starts_with("https://")
-}
-
-#[allow(dead_code)]
-fn strip_base64_prefix(data: &str) -> &str {
-    if let Some(idx) = data.find(',') {
-        let (prefix, payload) = data.split_at(idx + 1);
-        if prefix.contains("base64") {
-            return payload;
-        }
-    }
-    data
-}
-
-#[allow(dead_code)]
-fn infer_extension_from_data(data: &str, default_ext: &str) -> String {
-    if data.starts_with("data:") {
-        if let Some(end) = data.find(';') {
-            let mime = &data[5..end];
-            return match mime {
-                "image/png" => "png".to_string(),
-                "image/webp" => "webp".to_string(),
-                "image/gif" => "gif".to_string(),
-                "image/jpeg" | "image/jpg" => "jpg".to_string(),
-                "audio/mpeg" | "audio/mp3" => "mp3".to_string(),
-                "audio/wav" => "wav".to_string(),
-                "video/mp4" => "mp4".to_string(),
-                "application/pdf" => "pdf".to_string(),
-                _ => default_ext.to_string(),
-            };
-        }
-    }
-    default_ext.to_string()
-}
-
-#[allow(dead_code)]
-struct StoredMedia {
-    path: String,
-    bytes: Vec<u8>,
-}
-
-#[allow(dead_code)]
-async fn persist_base64_media(
-    storage_root: &Path,
-    service_id: i32,
-    subdir: &str,
-    base64_data: &str,
-    default_ext: &str,
-) -> AppResult<StoredMedia> {
-    let payload = strip_base64_prefix(base64_data);
-    let cleaned_payload: String = payload.chars().filter(|c| !c.is_whitespace()).collect();
-    let bytes = STANDARD
-        .decode(cleaned_payload.as_bytes())
-        .map_err(|e| AppError::BadRequest(format!("Décodage base64 invalide: {}", e)))?;
-
-    let extension = infer_extension_from_data(base64_data, default_ext);
-    let service_dir = storage_root
-        .join("services")
-        .join(service_id.to_string())
-        .join(subdir);
-    fs::create_dir_all(&service_dir).await?;
-
-    let file_name = format!(
-        "{}_{}.{}",
-        subdir.trim_end_matches('s'),
-        Uuid::new_v4(),
-        extension
-    );
-    let disk_path = service_dir.join(&file_name);
-    fs::write(&disk_path, &bytes).await?;
-
-    let relative_path = Path::new("uploads")
-        .join("services")
-        .join(service_id.to_string())
-        .join(subdir)
-        .join(&file_name);
-    let path_str = relative_path.to_string_lossy().replace('\\', "/");
-
-    Ok(StoredMedia {
-        path: path_str,
-        bytes,
-    })
-}
-
-#[allow(dead_code)]
-async fn download_and_save_image(
-    storage_root: &Path,
-    service_id: i32,
-    image_url: &str,
-    subdir: &str,
-) -> AppResult<StoredMedia> {
-    use crate::utils::log::log_info;
-
-    log_info(&format!(
-        "[add_product_to_service] 📥 Téléchargement image depuis URL: {}",
-        image_url
-    ));
-
-    let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|e| AppError::Internal(format!("Erreur création client HTTP: {}", e)))?;
-
-    let response = client.get(image_url).send().await.map_err(|e| {
-        AppError::BadRequest(format!(
-            "Erreur téléchargement image depuis {}: {}",
-            image_url, e
-        ))
-    })?;
-
-    if !response.status().is_success() {
-        return Err(AppError::BadRequest(format!(
-            "Erreur HTTP {} lors du téléchargement de l'image",
-            response.status()
-        )));
-    }
-
-    let content_type = response
-        .headers()
-        .get("content-type")
-        .and_then(|ct| ct.to_str().ok())
-        .map(|s| s.to_string());
-
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| AppError::BadRequest(format!("Erreur lecture image: {}", e)))?
-        .to_vec();
-
-    let extension = content_type
-        .as_deref()
-        .and_then(|ct| {
-            if ct.contains("image/png") {
-                Some("png")
-            } else if ct.contains("image/jpeg") || ct.contains("image/jpg") {
-                Some("jpg")
-            } else if ct.contains("image/gif") {
-                Some("gif")
-            } else if ct.contains("image/webp") {
-                Some("webp")
-            } else if ct.contains("image/svg") {
-                Some("svg")
-            } else {
-                None
-            }
-        })
-        .or_else(|| {
-            if let Some(dot_pos) = image_url.rfind('.') {
-                let ext = &image_url[dot_pos + 1..];
-                match ext.to_lowercase().as_str() {
-                    "png" => Some("png"),
-                    "jpg" | "jpeg" => Some("jpg"),
-                    "gif" => Some("gif"),
-                    "webp" => Some("webp"),
-                    "svg" => Some("svg"),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-        .unwrap_or("jpg");
-
-    let service_dir = storage_root
-        .join("services")
-        .join(service_id.to_string())
-        .join(subdir);
-    fs::create_dir_all(&service_dir).await?;
-
-    let file_name = format!(
-        "{}_{}.{}",
-        subdir.trim_end_matches('s'),
-        Uuid::new_v4(),
-        extension
-    );
-    let disk_path = service_dir.join(&file_name);
-    fs::write(&disk_path, &bytes).await?;
-
-    let relative_path = Path::new("uploads")
-        .join("services")
-        .join(service_id.to_string())
-        .join(subdir)
-        .join(&file_name);
-    let path_str = relative_path.to_string_lossy().replace('\\', "/");
-
-    log_info(&format!(
-        "[add_product_to_service] ✅ Image téléchargée et sauvegardée: {}",
-        path_str
-    ));
-
-    Ok(StoredMedia {
-        path: path_str,
-        bytes,
-    })
-}

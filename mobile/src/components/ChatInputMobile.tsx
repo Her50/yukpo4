@@ -1702,21 +1702,21 @@ const createStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#059669', // ✅ AUGMENTÉ: Vert plus foncé (#059669 au lieu de #10B981) pour meilleur contraste avec texte blanc
-        paddingVertical: 14, // ✅ AUGMENTÉ: De 12 à 14 pour meilleure visibilité
-        paddingHorizontal: 28, // ✅ AUGMENTÉ: De 24 à 28 pour meilleure visibilité
-        borderRadius: 12, // ✅ AUGMENTÉ: De 10 à 12 pour meilleure apparence
-        gap: 8, // ✅ AUGMENTÉ: De 6 à 8 pour meilleur espacement
-        borderWidth: 2, // ✅ AUGMENTÉ: De 1 à 2 pour meilleure visibilité
-        borderColor: '#047857', // ✅ AUGMENTÉ: Bordure encore plus foncée (#047857) pour meilleur contraste
-        shadowColor: '#059669',
-        shadowOffset: { width: 0, height: 4 }, // ✅ AUGMENTÉ: De 3 à 4 pour meilleure ombre
-        shadowOpacity: 0.5, // ✅ AUGMENTÉ: De 0.4 à 0.5 pour meilleure ombre
-        shadowRadius: 8, // ✅ AUGMENTÉ: De 6 à 8 pour meilleure ombre
-        elevation: 6, // ✅ AUGMENTÉ: De 5 à 6 pour Android
+        backgroundColor: 'rgba(99, 102, 241, 0.25)', // Couleur glass moderne moins foncée (indigo avec transparence)
+        paddingVertical: 14,
+        paddingHorizontal: 28,
+        borderRadius: 12,
+        gap: 8,
+        borderWidth: 1.5,
+        borderColor: 'rgba(99, 102, 241, 0.4)', // Bordure décalée pour bien distinguer
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 3,
         marginTop: 0,
         flex: 1,
-        minWidth: 140, // ✅ AUGMENTÉ: De 120 à 140 pour meilleure visibilité
+        minWidth: 140,
     },
     submitButtonDisabled: {
         backgroundColor: '#9CA3AF',
