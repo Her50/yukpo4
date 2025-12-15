@@ -125,3 +125,4 @@ Après corrections, vérifier :
 - [ ] Pool de connexions stable (< 30 connexions actives)
 
 
+

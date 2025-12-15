@@ -43,3 +43,4 @@ ANALYZE users;
 -- Augmenter work_mem temporairement pour cette session (si nécessaire)
 -- Note: Les paramètres globaux doivent être configurés au niveau du serveur PostgreSQL
 
+

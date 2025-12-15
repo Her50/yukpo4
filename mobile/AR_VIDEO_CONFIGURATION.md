@@ -142,3 +142,4 @@ expo run:ios
 - [iOS Info.plist](https://react-native-vision-camera.com/docs/guides/ios-permissions)
 
 
+

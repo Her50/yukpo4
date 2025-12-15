@@ -73,3 +73,4 @@ Tous les écrans de configuration utilisent déjà `LocationSelector` :
 - ✅ Interface utilisateur moderne et intuitive
 
 
+

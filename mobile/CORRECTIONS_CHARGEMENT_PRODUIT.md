@@ -121,3 +121,4 @@ Le chargement des médias depuis l'API était déjà implémenté et fonctionne 
 - La fonction `buildProductPrefill` préserve tous les champs du produit, y compris les champs spécialisés
 
 
+

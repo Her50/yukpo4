@@ -157,3 +157,4 @@ import SimpleSearchBar from '../components/SimpleSearchBar';
 - Le timeout est fixé à 30 secondes (configurable)
 
 
+
