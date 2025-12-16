@@ -32,7 +32,16 @@ import { SkeletonCard } from '../../components/delivery/SkeletonLoader';
 import StatusIndicator from '../../components/delivery/StatusIndicator';
 import TimelineStepper from '../../components/delivery/TimelineStepper';
 import ToastNotification from '../../components/delivery/ToastNotification';
+// ✅ CORRIGÉ: Import explicite pour éviter les problèmes d'export default
 import { NativeBadge, NativeButton } from '../../components/NativeDesign';
+
+// ✅ CORRIGÉ: Vérifier que les composants sont bien des composants React valides
+if (typeof NativeButton !== 'function' && typeof NativeButton !== 'object') {
+    console.error('[DeliveryShoppingTrackingScreen] NativeButton is not a valid React component:', typeof NativeButton);
+}
+if (typeof NativeBadge !== 'function' && typeof NativeBadge !== 'object') {
+    console.error('[DeliveryShoppingTrackingScreen] NativeBadge is not a valid React component:', typeof NativeBadge);
+}
 import { SafeIcon } from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
@@ -48,27 +57,6 @@ type TrackingTab = 'timeline' | 'basket' | 'courier';
 interface RouteParams {
     deliveryId: string;
 }
-
-// ✅ MIGRÉ: Composant helper pour les items animés
-const AnimatedItemCard: React.FC<{
-    children: React.ReactNode;
-    style?: any;
-    animationValue: { value: number };
-    index: number;
-}> = ({ children, style, animationValue, index }) => {
-    const animatedStyle = useAnimatedStyle(() => ({
-        opacity: animationValue.value,
-        transform: [{
-            translateX: (1 - animationValue.value) * 20 * (index + 1),
-        }],
-    }));
-
-    return (
-        <Animated.View style={[style, animatedStyle]}>
-            {children}
-        </Animated.View>
-    );
-};
 
 const DeliveryShoppingTrackingScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -87,6 +75,28 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         timeline: useSharedValue(activeTab === 'timeline' ? 1 : 0),
         basket: useSharedValue(activeTab === 'basket' ? 1 : 0),
         courier: useSharedValue(activeTab === 'courier' ? 1 : 0),
+    };
+
+    // ✅ CORRIGÉ: Définir AnimatedItemCard à l'intérieur du composant pour éviter les problèmes de hooks
+    // Cela évite l'erreur "Element type is invalid: expected a string... but got: object"
+    const AnimatedItemCard: React.FC<{
+        children: React.ReactNode;
+        style?: any;
+        animationValue: ReturnType<typeof useSharedValue<number>>;
+        index: number;
+    }> = ({ children, style, animationValue, index }) => {
+        const animatedStyle = useAnimatedStyle(() => ({
+            opacity: animationValue.value,
+            transform: [{
+                translateX: (1 - animationValue.value) * 20 * (index + 1),
+            }],
+        }));
+
+        return (
+            <Animated.View style={[style, animatedStyle]}>
+                {children}
+            </Animated.View>
+        );
     };
 
     // Animation d'entrée de la page
@@ -477,16 +487,21 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                 }}
                                 style={styles.statusButton}
                             />
-                            {getNextStatusOptions().map((option) => (
-                                <NativeButton
-                                    key={option.status}
-                                    title={`${option.icon} ${option.label}`}
-                                    variant="primary"
-                                    onPress={() => handleUpdateStatus(option.status)}
-                                    disabled={updatingStatus}
-                                    style={styles.statusButton}
-                                />
-                            ))}
+                            {getNextStatusOptions()
+                                .filter((option) => option && typeof option === 'object' && option.status && option.label)
+                                .map((option) => {
+                                // ✅ CORRIGÉ: option est déjà validé par filter
+                                return (
+                                    <NativeButton
+                                        key={option.status}
+                                        title={`${option.icon || ''} ${option.label}`}
+                                        variant="primary"
+                                        onPress={() => handleUpdateStatus(option.status)}
+                                        disabled={updatingStatus}
+                                        style={styles.statusButton}
+                                    />
+                                );
+                            })}
                         </View>
                     )}
 
@@ -628,7 +643,10 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                     </View>
                                 ) : (
                                     <View style={styles.itemsList}>
-                                        {shoppingItems.map((item, index) => {
+                                        {shoppingItems
+                                            .filter((item) => item && typeof item === 'object' && item.id)
+                                            .map((item, index) => {
+                                            // ✅ CORRIGÉ: item est déjà validé par filter
                                             const isRejected = item.status === 'rejected';
                                             const canReject = !isRejected &&
                                                 (delivery?.status === 'shopping_completed' ||
@@ -637,7 +655,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
                                             return (
                                                 <AnimatedItemCard
-                                                    key={item.id}
+                                                    key={item.id || `item-${index}`}
                                                     style={[styles.itemCard, isRejected && styles.itemCardRejected]}
                                                     animationValue={tabAnimations.basket}
                                                     index={index}
@@ -697,7 +715,11 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                                             title="Refuser"
                                                             variant="secondary"
                                                             size="small"
-                                                            onPress={() => setRejectingItem(item)}
+                                                            onPress={() => {
+                                                                if (item && typeof item === 'object') {
+                                                                    setRejectingItem(item);
+                                                                }
+                                                            }}
                                                             style={styles.rejectButton}
                                                         />
                                                     )}

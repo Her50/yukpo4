@@ -6895,6 +6895,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto delivery_matching_queue index: {}", e),
     }
 
+    // ✅ NOUVEAU 2025-12-16 : Optimisation performances création produits
+    match ensure_optimize_product_creation_performance(pool).await {
+        Ok(_) => info!("✅ Migration auto: optimize_product_creation_performance OK"),
+        Err(e) => error!("❌ Erreur migration auto optimize_product_creation_performance: {}", e),
+    }
+
     // ✅ NOUVEAU : Table delivery_engine_pricing pour calcul coût par type d'engin
     match ensure_delivery_engine_pricing_table(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_engine_pricing OK"),
@@ -12455,5 +12461,24 @@ pub async fn ensure_delivery_matching_queue_index(pool: &PgPool) -> Result<(), s
     execute_multiple_sql_commands(pool, migration_sql).await?;
 
     info!("✅ Index delivery_matching_queue optimisé créé");
+    Ok(())
+}
+
+/// ✅ 2025-12-16 : Optimisation performances création produits
+/// Migration: 20251216_optimize_product_creation_performance.sql
+/// Optimise:
+/// - Requête get_services_for_prestataire (1+ seconde -> <100ms)
+/// - Refresh vue matérialisée (10.8s -> <2s)
+/// - Utilise autocomplete_characteristics au lieu de extract_all_product_text()
+pub async fn ensure_optimize_product_creation_performance(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration optimize_product_creation_performance...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251216_optimize_product_creation_performance.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Migration optimize_product_creation_performance appliquée");
     Ok(())
 }

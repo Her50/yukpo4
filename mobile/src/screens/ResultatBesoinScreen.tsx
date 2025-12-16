@@ -5247,14 +5247,37 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ RÉÉCRITURE COMPLÈTE 2025-11-01 : Composant de rendu de carte produit
     // Simplifié et sécurisé pour éliminer toute erreur silencieuse
     const ProductCardComponent = React.memo(({ product }: { product: any }) => {
-        // Validation des données requises
-        if (!product || !product._service) {
-            console.warn('[ProductCard] Produit invalide ignoré:', product);
+        // ✅ CORRIGÉ: Validation plus permissive - accepter si _serviceId existe même sans _service
+        if (!product) {
+            console.warn('[ProductCard] Produit null/undefined ignoré');
             return null;
         }
 
-        const service = product._service;
-        const prestataire = product._prestataire || prestataires.get(service?.user_id) || null;
+        // ✅ CORRIGÉ: Si _service manque mais _serviceId existe, essayer de récupérer le service depuis services
+        let service = product._service;
+        if (!service && product._serviceId) {
+            // Chercher le service dans la liste des services chargés
+            const foundService = services.find(s => s.id === product._serviceId || s.id?.toString() === product._serviceId?.toString());
+            if (foundService) {
+                service = foundService;
+                // ✅ Mettre à jour product._service pour éviter de chercher à nouveau
+                product._service = foundService;
+            } else {
+                console.warn('[ProductCard] Service non trouvé pour _serviceId:', product._serviceId);
+            }
+        }
+
+        // ✅ Si toujours pas de service, accepter quand même le produit (ProductCard peut fonctionner sans service)
+        // Mais logger un avertissement
+        if (!service) {
+            console.warn('[ProductCard] Produit sans service (peut affecter certaines fonctionnalités):', {
+                productId: product.id,
+                productNom: product.nom,
+                serviceId: product._serviceId
+            });
+        }
+
+        const prestataire = product._prestataire || (service ? prestataires.get(service?.user_id) : null) || null;
 
         // ✅ Préparer la localisation utilisateur
         const userLocationForCard = location?.coords ? {
@@ -5815,9 +5838,22 @@ const ResultatBesoinScreen: React.FC = () => {
                                     try {
                                         const product = normalizeProduct(item);
 
-                                        // Validation supplémentaire
-                                        if (!product || !product._service) {
-                                            console.warn(`[ResultatBesoin] Produit ${index} invalide, ignoré`);
+                                        // ✅ CORRIGÉ: Validation plus permissive - accepter si _serviceId existe même sans _service
+                                        // Certains produits peuvent avoir _serviceId mais pas _service (si le service n'a pas été chargé)
+                                        if (!product) {
+                                            console.warn(`[ResultatBesoin] Produit ${index} est null/undefined, ignoré`);
+                                            return null;
+                                        }
+
+                                        // ✅ CORRIGÉ: Accepter le produit s'il a au moins _serviceId ou _service
+                                        // Si _service manque mais _serviceId existe, ProductCardComponent peut le récupérer
+                                        if (!product._service && !product._serviceId) {
+                                            console.warn(`[ResultatBesoin] Produit ${index} n'a ni _service ni _serviceId, ignoré:`, {
+                                                productId: product.id,
+                                                productNom: product.nom,
+                                                hasService: !!product._service,
+                                                hasServiceId: !!product._serviceId
+                                            });
                                             return null;
                                         }
 

@@ -564,7 +564,7 @@ const HomeScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Conteneur avec fond foncé pour ChatInputMobile et Services spécialisés */}
+                {/* Conteneur principal pour ChatInputMobile et Services spécialisés */}
                 <View style={styles.darkBackgroundContainer}>
                     {/* ChatInputMobile */}
                     <View style={styles.inputContainer}>
@@ -799,19 +799,13 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     darkBackgroundContainer: {
-        backgroundColor: 'transparent', // ✅ CORRIGÉ: Fond transparent
+        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc
         marginHorizontal: 16,
         borderRadius: 16,
         padding: 16,
         marginTop: 8,
         marginBottom: 12,
-        borderWidth: 1, // ✅ AJOUTÉ: Bordure pour distinguer les éléments
-        borderColor: '#E5E7EB', // ✅ AJOUTÉ: Bordure gris clair
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05, // ✅ RÉDUIT: Ombre plus discrète
-        shadowRadius: 4,
-        elevation: 2,
+        // ✅ SUPPRIMÉ: Bordure pour un look plus propre
     },
     inputContainer: {
         marginBottom: 8,
@@ -926,10 +920,11 @@ const styles = StyleSheet.create({
         marginBottom: 0, // Réduit car déjà dans le conteneur foncé
     },
     specializedServicesTitle: {
-        fontSize: 15,
+        fontSize: 17, // ✅ AUGMENTÉ: De 15 à 17 pour meilleure visibilité
         fontWeight: '700',
-        color: '#111827', // ✅ CORRIGÉ: Couleur sombre pour contraste sur fond blanc
-        marginBottom: 8,
+        color: '#111827',
+        marginBottom: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace
+        marginTop: 4, // ✅ AJOUTÉ: Marge en haut pour séparation
     },
 });
 

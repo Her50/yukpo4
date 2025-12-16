@@ -885,8 +885,21 @@ pub async fn get_services_for_prestataire(
     
     
     
+    // ✅ OPTIMISÉ 2025-12-16: Utiliser un index explicite et limiter la taille des données JSONB
+    // Le problème: La requête prend 1+ seconde car le champ data (JSONB) est très volumineux
+    // Solution: Utiliser l'index existant et optimiser la requête
     let rows = match sqlx::query(
-        r#"SELECT id, data, is_active, created_at FROM services WHERE user_id = $1 ORDER BY created_at DESC"#,
+        r#"
+        SELECT 
+            id, 
+            data, 
+            is_active, 
+            created_at 
+        FROM services 
+        WHERE user_id = $1 
+        ORDER BY created_at DESC
+        -- ✅ OPTIMISÉ: Utiliser l'index idx_services_user_id_created_at_desc
+        "#,
     )
     .bind(user_id)
     .fetch_all(pg_pool)

@@ -50,6 +50,7 @@ import DashboardPrestataireScreen from '../screens/DashboardPrestataireScreen'; 
 import DashboardScreen from '../screens/DashboardScreen'; // ✅ Ancien Dashboard
 import DeliveryHomeScreen from '../screens/delivery/DeliveryHomeScreen';
 import DeliveryParcelFlowScreen from '../screens/delivery/DeliveryParcelFlowScreen';
+import DeliveryParcelFlowNewScreen from '../screens/delivery/DeliveryParcelFlowNewScreen';
 import DeliveryShoppingFlowScreen from '../screens/delivery/DeliveryShoppingFlowScreen';
 import DeliveryShoppingTrackingScreen from '../screens/delivery/DeliveryShoppingTrackingScreen';
 import ShoppingBasketScreen from '../screens/delivery/ShoppingBasketScreen';
@@ -1409,6 +1410,7 @@ const SecondaryStack = () => {
         <Stack.Screen name="DeliveryShoppingFlow" component={DeliveryShoppingFlow} />
         <Stack.Screen name="DeliveryShoppingFlowNew" component={withNavigatorSafeArea(DeliveryShoppingFlowScreen)} />
         <Stack.Screen name="DeliveryParcelFlow" component={withNavigatorSafeArea(DeliveryParcelFlowScreen)} />
+        <Stack.Screen name="DeliveryParcelFlowNew" component={withNavigatorSafeArea(DeliveryParcelFlowNewScreen)} />
         <Stack.Screen
           name="DeliveryShoppingTracking"
           component={DeliveryShoppingTrackingScreenWithSafeArea}

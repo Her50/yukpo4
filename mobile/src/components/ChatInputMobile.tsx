@@ -1356,27 +1356,21 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
 // ✅ NOUVEAU: Fonction pour créer les styles avec support thème
 const createStyles = (colors: any) => StyleSheet.create({
     container: {
-        backgroundColor: 'transparent', // ✅ CORRIGÉ: Fond transparent au lieu de gris foncé
-        borderRadius: 12, // ✅ Réduit pour un look plus compact
-        padding: 10, // ✅ Réduit de 16 à 10 pour compacter
+        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc
+        borderRadius: 12,
+        padding: 10,
         marginHorizontal: 0,
-        marginBottom: 8, // ✅ Réduit de 12 à 8
-        borderWidth: 1.5, // ✅ Réduit de 2 à 1.5
-        borderColor: colors.border, // ✅ NOUVEAU: Support thème
-        minHeight: 70, // ✅ OPTIMISÉ: 60 → 70 (équilibre entre compacité et utilisabilité)
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 2, // ✅ Réduit pour un look plus subtil
+        marginBottom: 8,
+        // ✅ SUPPRIMÉ: Bordure foncée pour un look plus propre
+        minHeight: 70,
     },
     inputContainer: {
-        borderRadius: 8, // ✅ Réduit de 12 à 8 pour compacter
+        borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#D1D5DB',
-        backgroundColor: colors.surfaceVariant, // ✅ NOUVEAU: Support thème
-        marginBottom: 8, // ✅ Réduit de 12 à 8
-        minHeight: 55, // ✅ Ajusté de 50 à 55 pour meilleure lisibilité
+        borderColor: '#E5E7EB', // ✅ CORRIGÉ: Bordure plus claire
+        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc
+        marginBottom: 8,
+        minHeight: 55,
     },
     textInput: {
         fontSize: 14, // ✅ Réduit de 15 à 14 pour compacter

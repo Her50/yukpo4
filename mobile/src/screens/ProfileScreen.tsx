@@ -10,6 +10,51 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiPatch, servicesApi, userApi } from '../services/api';
 import { theme } from '../theme/theme';
 
+// ✅ NOUVEAU: Fonction pour nettoyer le nom et supprimer les doublons
+const cleanUserName = (name: string | undefined | null): string => {
+  if (!name || typeof name !== 'string') {
+    return 'Utilisateur';
+  }
+
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return 'Utilisateur';
+  }
+
+  // ✅ CORRECTION : Détecter et supprimer les doublons (ex: "LELE Hernandez LELE Hernandez" -> "LELE Hernandez")
+  const words = trimmed.split(/\s+/);
+  
+  // Méthode 1: Vérifier si la première moitié = deuxième moitié (ex: "LELE Hernandez LELE Hernandez")
+  if (words.length >= 4) {
+    const firstHalf = words.slice(0, Math.floor(words.length / 2)).join(' ');
+    const secondHalf = words.slice(Math.floor(words.length / 2)).join(' ');
+    if (firstHalf === secondHalf) {
+      return firstHalf;
+    }
+  }
+
+  // Méthode 2: Vérifier si les 2 premiers mots se répètent (ex: "LELE Hernandez LELE Hernandez")
+  if (words.length >= 4) {
+    const firstTwo = words.slice(0, 2).join(' ');
+    const nextTwo = words.slice(2, 4).join(' ');
+    if (firstTwo === nextTwo) {
+      return firstTwo;
+    }
+  }
+
+  // Méthode 3: Vérifier si le nom complet est répété (ex: "LELE Hernandez LELE Hernandez")
+  const midPoint = Math.floor(words.length / 2);
+  if (words.length > 2 && midPoint > 0) {
+    const firstPart = words.slice(0, midPoint).join(' ');
+    const secondPart = words.slice(midPoint).join(' ');
+    if (firstPart === secondPart) {
+      return firstPart;
+    }
+  }
+
+  return trimmed;
+};
+
 const ProfileScreen: React.FC = () => {
   const { user, logout, updateUser } = useAuth();
   const navigation = useNavigation();
@@ -341,12 +386,18 @@ const ProfileScreen: React.FC = () => {
             ) : (
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>
-                  {user?.name
-                    ?.split(' ')
-                    .map(word => word.charAt(0))
-                    .join('')
-                    .toUpperCase()
-                    .slice(0, 2) || 'U'}
+                  {(() => {
+                    const cleanedName = cleanUserName(user?.name || user?.nom_complet);
+                    if (cleanedName && cleanedName !== 'Utilisateur') {
+                      return cleanedName
+                        .split(' ')
+                        .map(word => word.charAt(0))
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2);
+                    }
+                    return 'U';
+                  })()}
                 </Text>
               </View>
             )}
@@ -354,7 +405,7 @@ const ProfileScreen: React.FC = () => {
               <Text style={styles.avatarEditIcon}>📷</Text>
             </View>
           </TouchableOpacity>
-          <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
+          <Text style={styles.userName}>{cleanUserName(user?.name || user?.nom_complet)}</Text>
           <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
           <View style={styles.verificationBadge}>
             <Text style={styles.verificationIcon}>✓</Text>

@@ -1496,14 +1496,29 @@ const ProductCard: React.FC<ProductCardProps> = ({
     if (serviceId && typeof serviceId === 'number' && serviceId > 0) {
       return Number(serviceId);
     }
-    // Sinon, essayer les autres sources
-    const fallbackId = product._serviceId ||
+    // Sinon, essayer les autres sources (priorité: service?.id car c'est le plus fiable)
+    const fallbackId = service?.id ||
+      service?.service_id ||
+      product._serviceId ||
+      product._service?.id ||
       product.service_id ||
       product.serviceId ||
-      service?.id ||
-      service?.service_id ||
       0;
-    return Number(fallbackId);
+    const numId = Number(fallbackId);
+    // ✅ DEBUG: Logger si commentServiceId est invalide
+    if (!numId || numId <= 0) {
+      console.warn('[ProductCard] ⚠️ commentServiceId invalide:', {
+        serviceId,
+        serviceIdType: typeof serviceId,
+        serviceIdValue: serviceId,
+        serviceId: service?.id,
+        serviceServiceId: service?.service_id,
+        productServiceId: product._serviceId,
+        productService: product._service?.id,
+        fallbackId
+      });
+    }
+    return numId;
   })();
   const serviceTitleForComments =
     product.nom ||
@@ -2243,18 +2258,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={[styles.actionButtonModern, styles.actionButtonChat]}
+            style={[styles.actionButtonModern, styles.actionButtonChat, !(serviceId && isProduct) && styles.actionButtonChatFullWidth]}
             onPress={handleChatPress}
           >
             <SafeIcon name="message-circle" size={16} color={modernColors.primary} />
             <Text style={[styles.actionButtonText, styles.actionButtonTextChat]}>Chat</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButtonModern, styles.actionButtonView]}
-            onPress={handleMainPress}
-          >
-            <SafeIcon name="eye" size={16} color="#6B7280" />
-            <Text style={[styles.actionButtonText, styles.actionButtonTextView]}>Voir</Text>
           </TouchableOpacity>
         </View>
 
@@ -2876,7 +2884,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             )}
 
                             <TouchableOpacity
-                              style={[styles.actionButtonModern, styles.actionButtonChat]}
+                              style={[styles.actionButtonModern, styles.actionButtonChat, !(serviceId && isProduct) && styles.actionButtonChatFullWidth]}
                               onPress={handleChatPress}
                               accessibilityRole="button"
                               accessibilityState={{ disabled: loadingReactions }}
@@ -2886,45 +2894,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
                               <SafeIcon name="message-circle" size={16} color={modernColors.primary} />
                               <Text style={[styles.actionButtonText, styles.actionButtonTextChat]} numberOfLines={1}>
                                 Chat
-                              </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                              style={[styles.actionButtonModern, styles.actionButtonView]}
-                              onPress={onPress || (() => {
-                                // ✅ CORRIGÉ: Vérifier et convertir serviceId en string avant navigation
-                                const targetServiceId = serviceId ||
-                                  product.service_id ||
-                                  product.serviceId ||
-                                  service?.id ||
-                                  service?.service_id ||
-                                  (typeof product.service === 'object' && product.service?.id);
-                                if (!targetServiceId) {
-                                  console.error('[ProductCard] ❌ ServiceId manquant pour navigation:', {
-                                    product: {
-                                      service_id: product.service_id,
-                                      serviceId: product.serviceId,
-                                      service: product.service
-                                    },
-                                    service: {
-                                      id: service?.id,
-                                      service_id: service?.service_id
-                                    }
-                                  });
-                                  toaster.error('Service introuvable : ID manquant');
-                                  return;
-                                }
-                                console.log('[ProductCard] ✅ Navigation vers ServiceDetail avec serviceId:', targetServiceId);
-                                navigation.navigate('ServiceDetail' as any, { serviceId: String(targetServiceId) });
-                              })}
-                              accessibilityRole="button"
-                              accessibilityState={{ disabled: false }}
-                              accessibilityLabel="Voir les détails"
-                              accessibilityHint="Ouvre la page de détails du produit"
-                            >
-                              <SafeIcon name="eye" size={16} color="#6B7280" />
-                              <Text style={[styles.actionButtonText, styles.actionButtonTextView]} numberOfLines={1}>
-                                Voir
                               </Text>
                             </TouchableOpacity>
                           </View>
@@ -3278,22 +3247,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
                               />
                             )}
                             <EnhancedActionButton
-                              style={[styles.actionButtonModern, styles.actionButtonChat]}
+                              style={[styles.actionButtonModern, styles.actionButtonChat, !(serviceId && isProduct) && styles.actionButtonChatFullWidth]}
                               onPress={handleChatPress}
                               icon="message-circle"
                               iconColor={modernColors.primary}
                               text="Chat"
                               textStyle={[styles.actionButtonText, styles.actionButtonTextChat]}
                               accessibilityLabel="Ouvrir le chat"
-                            />
-                            <EnhancedActionButton
-                              style={[styles.actionButtonModern, styles.actionButtonView]}
-                              onPress={handleMainPress}
-                              icon="eye"
-                              iconColor="#6B7280"
-                              text="Voir"
-                              textStyle={[styles.actionButtonText, styles.actionButtonTextView]}
-                              accessibilityLabel="Voir les détails"
                             />
                           </View>
 
@@ -4052,6 +4012,11 @@ const styles = StyleSheet.create({
   actionButtonChat: {
     borderColor: '#DBEAFE',
     backgroundColor: '#EFF6FF',
+  },
+  actionButtonChatFullWidth: {
+    // ✅ NOUVEAU: Style pour que le bouton Chat prenne toute la largeur quand il est seul
+    flex: 1,
+    maxWidth: '100%',
   },
   actionButtonView: {
     borderColor: '#E5E7EB',

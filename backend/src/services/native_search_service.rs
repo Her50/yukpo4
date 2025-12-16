@@ -299,116 +299,114 @@ impl NativeSearchService {
             return Ok(search_results);
         }
         
-        // ✅ CORRIGÉ 2025-12-16: Optimisation requête SQL - utiliser tsvector au lieu de conditions ILIKE multiples
-        // Le problème: create_partial_match_conditions génère une condition énorme avec beaucoup de ILIKE redondants
-        // Solution: Utiliser tsvector pour recherche full-text (utilise index GIN) + conditions simplifiées
+        // ✅ CORRIGÉ 2025-12-16: Optimisation majeure - utiliser autocomplete_characteristics en PREMIER (indexé GIN)
+        // Le problème: Scanner tous les services est très lent même avec index GIN
+        // Solution: Commencer par autocomplete_characteristics pour trouver les services qui matchent, puis enrichir
+        // Cette approche évite de scanner tous les services et utilise uniquement les index GIN
         let sql = r#"
-SELECT DISTINCT
-                s.id,
-                s.data,
-                s.created_at,
-                s.user_id,
-                s.gps,
-                s.category,
-                (
-                    -- ✅ OPTIMISÉ: Utiliser tsvector pour recherche full-text (index GIN)
-                    (
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 3.0 +
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0
-                    ) +
-                    -- Recherche dans produits avec tsvector
-                    (
-                        SELECT COALESCE(SUM(
-                            ts_rank(to_tsvector('french', extract_all_product_text(product)), plainto_tsquery('french', $1)) * 10.0
-                        ), 0.0)
-                        FROM jsonb_array_elements(
-                            CASE 
-                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                                THEN s.data->'produits'
-                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                                THEN s.data->'produits'->'valeur'
-                                ELSE '[]'::jsonb
-                            END
-                        ) AS product
-                    ) +
-                    -- ✅ OPTIMISÉ: Recherche dans autocomplete_characteristics (plus rapide que JSON)
-                    (
-                        SELECT COALESCE(SUM(
-                            CASE ac.sous_caracteristique
-                                WHEN 'marque' THEN 20.0
-                                WHEN 'brand' THEN 20.0
-                                WHEN 'modele' THEN 18.0
-                                WHEN 'model' THEN 18.0
-                                WHEN 'type' THEN 15.0
-                                WHEN 'categorie' THEN 15.0
-                                WHEN 'category' THEN 15.0
-                                ELSE 8.0
-                            END *
-                            ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) *
-                            (1.0 + (ac.usage_count::REAL / 10.0))
-                        ), 0.0)
-                        FROM autocomplete_characteristics ac
-                        WHERE ac.service_id = s.id
-                        AND ac.identifiant_base LIKE 'produit%'
-                        AND to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
-                    ) +
-                    -- Bonus correspondances exactes (simplifié)
-                    CASE 
-                        WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' THEN 8.0
-                        WHEN s.data->'description'->>'valeur' ILIKE '%' || $1 || '%' THEN 4.0
-                        WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 5.0
-                        ELSE 0.0
-                    END +
-                    -- Bonus produits (simplifié - seulement champs importants)
-                    (
-                        SELECT COALESCE(SUM(
-                            CASE 
-                                WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 8.0
-                                WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 5.0
-                                WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 5.0
-                                ELSE 0.0
-                            END
-                        ), 0.0)
-                        FROM jsonb_array_elements(
-                            CASE 
-                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                                THEN s.data->'produits'
-                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                                THEN s.data->'produits'->'valeur'
-                                ELSE '[]'::jsonb
-                            END
-                        ) AS product
-                    )
-                )::REAL as fulltext_score
-            FROM services s
-            WHERE s.is_active = true
-            AND (
-                -- ✅ OPTIMISÉ: Utiliser tsvector pour filtrage (utilise index GIN)
-                to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-                OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-                OR to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-                OR EXISTS (
-                    SELECT 1 FROM autocomplete_characteristics ac
-                    WHERE ac.service_id = s.id
-                    AND ac.identifiant_base = 'produits'
-                    AND ac.is_real_product = TRUE
-                    AND (
-                        EXISTS (
-                            SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                            WHERE to_tsvector('french', vec_val) @@ plainto_tsquery('french', $1)
-                        )
-                        OR EXISTS (
-                            SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
-                            WHERE to_tsvector('french', vec_val) @@ plainto_tsquery('french', $1)
-                        )
-                    )
-                )
-            )
-            AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
-            AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
-            ORDER BY fulltext_score DESC
-            LIMIT 100
+WITH matched_services AS (
+    -- ✅ ÉTAPE 1: Trouver les services via autocomplete_characteristics (RAPIDE - index GIN)
+    SELECT DISTINCT s.id as service_id
+    FROM autocomplete_characteristics ac
+    INNER JOIN services s ON s.id = ac.service_id
+    WHERE s.is_active = true
+    AND ac.identifiant_base = 'produits'
+    AND ac.is_real_product = TRUE
+    AND (
+        -- Recherche dans full_vector (correspondances partielles)
+        EXISTS (
+            SELECT 1 FROM unnest(ac.full_vector) AS vec_val
+            WHERE LOWER(vec_val) LIKE '%' || LOWER($1) || '%'
+        )
+        -- Recherche dans characteristic_vector
+        OR EXISTS (
+            SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
+            WHERE LOWER(vec_val) LIKE '%' || LOWER($1) || '%'
+        )
+        -- Recherche via tsvector sur valeur (index GIN)
+        OR to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
+    )
+    UNION
+    -- ✅ ÉTAPE 2: Trouver les services via champs service (tsvector - index GIN)
+    SELECT DISTINCT s.id as service_id
+    FROM services s
+    WHERE s.is_active = true
+    AND (
+        to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+        OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+        OR to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+    )
+)
+SELECT DISTINCT ON (s.id)
+    s.id,
+    s.data,
+    s.created_at,
+    s.user_id,
+    s.gps,
+    s.category,
+    (
+        -- ✅ OPTIMISÉ: Score service (tsvector avec index GIN)
+        (
+            ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 3.0 +
+            ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
+            ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0
+        ) +
+        -- ✅ OPTIMISÉ: Recherche PRODUITS via autocomplete_characteristics (RAPIDE - index GIN)
+        (
+            SELECT COALESCE(SUM(
+                CASE ac.sous_caracteristique
+                    WHEN 'marque' THEN 20.0
+                    WHEN 'brand' THEN 20.0
+                    WHEN 'modele' THEN 18.0
+                    WHEN 'model' THEN 18.0
+                    WHEN 'type' THEN 15.0
+                    WHEN 'categorie' THEN 15.0
+                    WHEN 'category' THEN 15.0
+                    ELSE 8.0
+                END *
+                ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) *
+                (1.0 + (ac.usage_count::REAL / 10.0))
+            ), 0.0)
+            FROM autocomplete_characteristics ac
+            WHERE ac.service_id = s.id
+            AND ac.identifiant_base = 'produits'
+            AND ac.is_real_product = TRUE
+            AND to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
+        ) +
+        -- ✅ OPTIMISÉ: Score full_vector (correspondances partielles)
+        (
+            SELECT COALESCE(SUM(
+                CASE 
+                    WHEN EXISTS (
+                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
+                        WHERE LOWER(vec_val) = LOWER($1)
+                    ) THEN 20.0
+                    WHEN EXISTS (
+                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
+                        WHERE LOWER(vec_val) LIKE '%' || LOWER($1) || '%'
+                    ) THEN 10.0
+                    ELSE 0.0
+                END * (1.0 + (ac.usage_count::REAL / 10.0))
+            ), 0.0)
+            FROM autocomplete_characteristics ac
+            WHERE ac.service_id = s.id
+            AND ac.identifiant_base = 'produits'
+            AND ac.is_real_product = TRUE
+        ) +
+        -- Bonus correspondances exactes service (rapide)
+        CASE 
+            WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' THEN 8.0
+            WHEN s.data->'description'->>'valeur' ILIKE '%' || $1 || '%' THEN 4.0
+            WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 5.0
+            ELSE 0.0
+        END
+    )::REAL as fulltext_score
+FROM matched_services ms
+INNER JOIN services s ON s.id = ms.service_id
+WHERE ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
+AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
+ORDER BY s.id, fulltext_score DESC
+LIMIT 100
         "#;
 
         let results = sqlx::query(&sql)

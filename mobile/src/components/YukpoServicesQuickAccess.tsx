@@ -340,32 +340,32 @@ const styles = StyleSheet.create({
         minHeight: 70,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 2, // ✅ CORRIGÉ: Bordure plus épaisse pour meilleure séparation visuelle
-        borderColor: '#D1D5DB', // ✅ CORRIGÉ: Bordure plus visible (gris plus foncé)
+        backgroundColor: '#F3F4F6', // ✅ CORRIGÉ: Même couleur que les boutons chat/notification de l'en-tête
+        // ✅ SUPPRIMÉ: Bordure noire foncée pour un look plus propre
         borderRadius: 10,
     },
     categoryIconContainer: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: '#F3F4F6',
+        width: 24, // ✅ AUGMENTÉ: De 20 à 24 pour meilleure visibilité
+        height: 24, // ✅ AUGMENTÉ: De 20 à 24 pour meilleure visibilité
+        borderRadius: 12, // ✅ AUGMENTÉ: De 10 à 12 pour correspondre à la taille
+        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc pour contraster avec le fond #F3F4F6
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 6, // ✅ AUGMENTÉ: De 4 à 6 pour plus d'espace
     },
     categoryTitle: {
-        fontSize: 11,
+        fontSize: 12, // ✅ AUGMENTÉ: De 11 à 12 pour meilleure lisibilité
         fontWeight: '600',
         color: '#111827',
         textAlign: 'center',
-        marginBottom: 2,
-        lineHeight: 14,
+        marginBottom: 4, // ✅ AUGMENTÉ: De 2 à 4 pour plus d'espace
+        lineHeight: 16, // ✅ AUGMENTÉ: De 14 à 16
     },
     categoryDescription: {
-        fontSize: 9,
+        fontSize: 10, // ✅ AUGMENTÉ: De 9 à 10 pour meilleure lisibilité
         color: '#6B7280',
         textAlign: 'center',
+        lineHeight: 14, // ✅ AJOUTÉ: Hauteur de ligne
     },
     expandedContainer: {
         marginTop: 8,

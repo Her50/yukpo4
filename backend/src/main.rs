@@ -907,8 +907,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             pool_clone_matviews.clone()
         };
 
-        let mut interval_services = interval(Duration::from_secs(300)); // Toutes les 5 minutes pour services_search_cache
-        let mut interval_products = interval(Duration::from_secs(600)); // Toutes les 10 minutes pour active_products_cache
+        // ✅ OPTIMISÉ 2025-12-16: Augmenter l'intervalle de refresh pour réduire la charge
+        // Le problème: REFRESH MATERIALIZED VIEW prend 5-10 secondes et bloque les connexions
+        // Solution: Augmenter l'intervalle à 15 minutes (était 5 min) pour réduire la fréquence
+        let refresh_interval_secs: u64 = std::env::var("MATERIALIZED_VIEW_REFRESH_INTERVAL_SECS")
+            .unwrap_or_else(|_| "900".to_string()) // 15 minutes par défaut
+            .parse()
+            .unwrap_or(900);
+        let mut interval_services = interval(Duration::from_secs(refresh_interval_secs));
+        let mut interval_products = interval(Duration::from_secs(refresh_interval_secs * 2)); // 30 minutes pour products
 
         loop {
             tokio::select! {

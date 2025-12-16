@@ -19,6 +19,7 @@ import { autocompleteHistoryService } from '../services/autocompleteHistoryServi
 import { placesService } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
+import SubCharacteristicsTable, { SubCharacteristicRow } from './SubCharacteristicsTable';
 
 interface LinearAutocompleteEditorProps {
     label: string;
@@ -26,11 +27,16 @@ interface LinearAutocompleteEditorProps {
     sousCaracteristiques: Record<string, string[]>; // Ex: { style: ["Moderne"], matiere: ["Bois"] }
     separateur: string;
     value: string[]; // Modalités concaténées: ["Moderne,Bois,Table,6 places"]
-    onChange: (values: string[]) => void;
+    onChange: (values: string[], updatedSousCaracs?: Record<string, string[]>) => void;
     required?: boolean;
     placeholder?: string;
     allowCustomModality?: boolean;
     filtrable?: boolean;
+    // Props optionnelles utilisées par les écrans
+    contextValues?: string[];
+    categoryValue?: string;
+    productVector?: string[];
+    productLabels?: string[];
 }
 
 interface ModalityChip {
@@ -60,6 +66,37 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const [editingModalityIndex, setEditingModalityIndex] = useState<number | null>(null);
     const [customKey, setCustomKey] = useState('');
     const [customValue, setCustomValue] = useState('');
+    const [showTable, setShowTable] = useState(false); // Afficher le tableau au lieu des chips
+    const [tableRows, setTableRows] = useState<SubCharacteristicRow[]>([]);
+
+    // ✅ NOUVEAU: Détecter si on doit afficher le tableau (si on a des sous-caractéristiques préférées de l'IA)
+    useEffect(() => {
+        const hasSubCharacteristics = sousCaracteristiques && 
+            Object.keys(sousCaracteristiques).length > 0 &&
+            Object.values(sousCaracteristiques).some(vals => Array.isArray(vals) && vals.length > 0);
+        
+        // Afficher le tableau si on a des sous-caractéristiques
+        // Le tableau s'affiche en priorité pour permettre l'édition des sous-caractéristiques préférées de l'IA
+        if (hasSubCharacteristics) {
+            setShowTable(true);
+        }
+    }, [sousCaracteristiques]);
+
+    // ✅ NOUVEAU: Convertir les modalités sélectionnées en lignes du tableau
+    useEffect(() => {
+        if (selectedModalities.length > 0 && !showTable) {
+            // Si on a des modalités sélectionnées, les convertir en lignes
+            const firstModality = selectedModalities[0];
+            if (firstModality) {
+                const chips = decomposeModality(firstModality);
+                const rows: SubCharacteristicRow[] = chips.map(chip => ({
+                    label: chip.key,
+                    value: chip.value,
+                }));
+                setTableRows(rows);
+            }
+        }
+    }, [selectedModalities, showTable]);
 
     // Extraire les suggestions de l'IA au montage (cache instantané)
     useEffect(() => {
@@ -240,6 +277,44 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         setCustomValue('');
     }, [customKey, customValue, sousCaracteristiques, separateur, addModality]);
 
+    // ✅ NOUVEAU: Callback pour valider le tableau
+    const handleTableValidate = useCallback((rows: SubCharacteristicRow[]) => {
+        // Convertir les lignes du tableau en modalité concaténée
+        const modality = rows.map(row => row.value).join(separateur);
+        
+        // Mettre à jour les modalités sélectionnées
+        const newModalities = [modality];
+        setSelectedModalities(newModalities);
+        
+        // Construire les sous-caractéristiques mises à jour
+        const updatedSousCaracs: Record<string, string[]> = {};
+        rows.forEach(row => {
+            if (!updatedSousCaracs[row.label]) {
+                updatedSousCaracs[row.label] = [];
+            }
+            if (!updatedSousCaracs[row.label].includes(row.value)) {
+                updatedSousCaracs[row.label].push(row.value);
+            }
+        });
+        
+        // Appeler onChange avec les deux paramètres
+        onChange(newModalities, updatedSousCaracs);
+        
+        // Masquer le tableau et afficher les chips
+        setShowTable(false);
+        
+        // Historiser
+        autocompleteHistoryService
+            .historizeField(
+                identifiantBase,
+                newModalities,
+                separateur,
+                updatedSousCaracs,
+                'utilisateur'
+            )
+            .catch(console.error);
+    }, [separateur, onChange, identifiantBase]);
+
     // Générer un texte d'aide dynamique
     const getHelperText = () => {
         const subCharKeys = Object.keys(sousCaracteristiques);
@@ -275,7 +350,18 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </Text>
             </View>
 
-            {/* Barre de recherche */}
+            {/* ✅ NOUVEAU: Tableau des sous-caractéristiques (affichage préféré) */}
+            {showTable && (
+                <SubCharacteristicsTable
+                    sousCaracteristiques={sousCaracteristiques}
+                    separateur={separateur}
+                    onValidate={handleTableValidate}
+                    initialRows={tableRows.length > 0 ? tableRows : undefined}
+                />
+            )}
+
+            {/* Barre de recherche (affichée seulement si le tableau n'est pas affiché) */}
+            {!showTable && (
             <View style={styles.searchContainer}>
                 <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
                 <TextInput
@@ -299,8 +385,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     </TouchableOpacity>
                 )}
             </View>
+            )}
 
-            {/* Suggestions linéaires (affichage horizontal) */}
+            {/* Suggestions linéaires (affichage horizontal) - seulement si le tableau n'est pas affiché */}
+            {!showTable && (
             {uniqueSuggestions.length > 0 && (
                 <View style={styles.suggestionsSection}>
                     <Text style={styles.suggestionsTitle}>💡 Suggestions</Text>
@@ -325,7 +413,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             )}
 
-            {/* Modalités sélectionnées (chips éditables) */}
+            {/* Modalités sélectionnées (chips éditables) - seulement si le tableau n'est pas affiché */}
+            {!showTable && (
             {selectedModalities.length > 0 && (
                 <View style={styles.selectedSection}>
                     <Text style={styles.selectedTitle}>
@@ -369,7 +458,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             )}
 
-            {/* Message vide */}
+            {/* Message vide - seulement si le tableau n'est pas affiché */}
+            {!showTable && (
             {selectedModalities.length === 0 && uniqueSuggestions.length === 0 && !searchQuery && (
                 <View style={styles.emptyState}>
                     <SafeIcon name="info" size={32} color={modernColors.textSecondary} />
@@ -382,7 +472,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             )}
 
-            {/* Modal d'ajout personnalisé */}
+            {/* Modal d'ajout personnalisé - seulement si le tableau n'est pas affiché */}
+            {!showTable && (
             <Modal
                 visible={showAddModal}
                 animationType="fade"
@@ -462,6 +553,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     </View>
                 </View>
             </Modal>
+            )}
         </View>
     );
 };

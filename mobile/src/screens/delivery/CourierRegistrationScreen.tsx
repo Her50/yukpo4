@@ -505,7 +505,11 @@ const CourierRegistrationScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+            <ScrollView 
+                style={styles.scroll} 
+                contentContainerStyle={styles.scrollContent}
+                nestedScrollEnabled={true}
+            >
                 <View style={styles.header}>
                     <Text style={styles.title}>Devenir coursier Yukpo</Text>
                     <Text style={styles.subtitle}>
@@ -593,11 +597,15 @@ const CourierRegistrationScreen: React.FC = () => {
                     <Text style={styles.sectionTitle}>Moyen de transport</Text>
                     <ScrollView 
                         horizontal 
-                        showsHorizontalScrollIndicator={true}
+                        showsHorizontalScrollIndicator={false}
                         nestedScrollEnabled={true}
                         scrollEnabled={true}
                         style={styles.vehicleScroll}
                         contentContainerStyle={styles.vehicleScrollContent}
+                        bounces={false}
+                        directionalLockEnabled={true}
+                        alwaysBounceHorizontal={false}
+                        alwaysBounceVertical={false}
                     >
                         {vehicleTypes.map((type) => (
                             <TouchableOpacity
@@ -916,13 +924,15 @@ const styles = StyleSheet.create({
     },
     vehicleOption: {
         alignItems: 'center',
+        justifyContent: 'center',
         padding: 12,
         marginRight: 12,
         borderRadius: 12,
         borderWidth: 2,
         borderColor: modernColors.border,
         backgroundColor: modernColors.surface,
-        minWidth: 80,
+        width: 90,
+        height: 90,
     },
     vehicleOptionSelected: {
         borderColor: modernColors.primary,

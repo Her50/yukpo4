@@ -65,33 +65,43 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
 
     // Ouvrir le modal pour ajouter une nouvelle modalité
     const openAddModal = useCallback(() => {
-        setTempModality({
+        // ✅ CORRIGÉ: Réinitialiser complètement les valeurs
+        const newModality: Partial<PriceModality> = {
             valeur: '',
             prix: 0,
             devise: defaultCurrency,
             stock: undefined,
             image: undefined,
-        });
+        };
+        setTempModality(newModality);
         setEditingModality(null);
         setEditIndex(null);
-        setShowModal(true);
+        // ✅ CORRIGÉ: Utiliser setTimeout pour s'assurer que l'état est mis à jour avant d'afficher le modal
+        setTimeout(() => {
+            setShowModal(true);
+        }, 0);
     }, [defaultCurrency]);
 
     // Ouvrir le modal pour éditer une modalité existante
     const openEditModal = useCallback(
         (modality: PriceModality, index: number) => {
-            setTempModality({
-                valeur: modality.valeur,
-                prix: modality.prix,
-                devise: modality.devise,
+            // ✅ CORRIGÉ: S'assurer que toutes les valeurs sont bien copiées
+            const editModality: Partial<PriceModality> = {
+                valeur: modality.valeur || '',
+                prix: modality.prix || 0,
+                devise: modality.devise || defaultCurrency,
                 stock: modality.stock,
                 image: modality.image,
-            });
+            };
+            setTempModality(editModality);
             setEditingModality(modality);
             setEditIndex(index);
-            setShowModal(true);
+            // ✅ CORRIGÉ: Utiliser setTimeout pour s'assurer que l'état est mis à jour avant d'afficher le modal
+            setTimeout(() => {
+                setShowModal(true);
+            }, 0);
         },
-        []
+        [defaultCurrency]
     );
 
     // Sauvegarder la modalité
@@ -295,19 +305,25 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalBodyContent}>
+                        <ScrollView 
+                            style={styles.modalBody} 
+                            contentContainerStyle={styles.modalBodyContent}
+                            showsVerticalScrollIndicator={true}
+                            keyboardShouldPersistTaps="handled"
+                        >
                             {/* Valeur */}
                             <View style={styles.inputGroup}>
                                 <Text style={styles.inputLabel}>
-                                    Valeur ({variable}) <Text style={styles.required}>*</Text>
+                                    Valeur {resolvedVariable ? `(${resolvedVariable})` : ''} <Text style={styles.required}>*</Text>
                                 </Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder={`Ex: 38, 39, 40...`}
+                                    placeholder={resolvedVariable ? `Ex: 38, 39, 40...` : 'Ex: Taille M, Formule VIP...'}
                                     placeholderTextColor="#9CA3AF"
-                                    value={tempModality.valeur}
+                                    value={tempModality.valeur || ''}
                                     onChangeText={(text) => setTempModality({ ...tempModality, valeur: text })}
                                     autoCapitalize="none"
+                                    autoFocus={editIndex === null} // Auto-focus sur le premier champ lors de l'ajout
                                 />
                             </View>
 
@@ -644,7 +660,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        maxHeight: '80%',
+        maxHeight: '90%',
+        minHeight: '50%',
     },
     modalHeader: {
         flexDirection: 'row',
@@ -667,6 +684,7 @@ const styles = StyleSheet.create({
     },
     modalBodyContent: {
         padding: 16,
+        paddingBottom: 32, // ✅ CORRIGÉ: Ajouter du padding en bas pour éviter que les champs soient coupés
     },
     inputGroup: {
         marginBottom: 20,

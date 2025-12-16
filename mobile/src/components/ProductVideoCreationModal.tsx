@@ -282,7 +282,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [activeStep, setActiveStep] = useState<ModalStep>(1);
     // ✅ CORRECTION: Ref pour le ScrollView principal (pour remettre le scroll au début lors du changement d'étape)
     const mainScrollViewRef = useRef<ScrollView | null>(null);
-    const [selectedProduct, setSelectedProduct] = useState<ManagedProduct | null>(primaryProduct);
+    // ✅ CORRIGÉ: Si plusieurs produits disponibles, initialiser à null pour afficher la liste de sélection
+    // Sinon, utiliser primaryProduct si disponible
+    const [selectedProduct, setSelectedProduct] = useState<ManagedProduct | null>(
+        products.length > 1 ? null : (primaryProduct || null)
+    );
     const [selectedRelatedProducts, setSelectedRelatedProducts] = useState<Set<number>>(new Set());
     const [selectedMediaIds, setSelectedMediaIds] = useState<Set<number>>(new Set());
 
@@ -1314,7 +1318,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return;
         }
 
-        setSelectedProduct(primaryProduct);
+        // ✅ CORRIGÉ: Si plusieurs produits disponibles, initialiser à null pour afficher la liste de sélection
+        // Sinon, utiliser primaryProduct si disponible
+        setSelectedProduct(products.length > 1 ? null : (primaryProduct || null));
         setSelectedRelatedProducts(new Set());
         setSelectedMediaIds(new Set());
         setStylePreset('tiktok');
@@ -1338,7 +1344,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         setSelectedMusicTrackId(null);
         setAvailableAudioTracks([]);
         setSelectedChannels(new Set(['chat', 'product']));
-    }, [visible, primaryProduct]);
+    }, [visible, primaryProduct, products.length]);
 
     useEffect(() => {
         if (!visible) {
@@ -1479,10 +1485,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU: Fonction helper pour calculer les styles dynamiquement avec insets
     // ✅ AMÉLIORATION: Augmenter significativement les paddings et gaps pour minimiser les scrolls verticaux
     const getStepContentStyle = useCallback(() => ({
-        padding: 28, // ✅ AUGMENTÉ: De 20 à 28 pour plus d'espace
-        paddingBottom: 120 + insets.bottom, // ✅ AUGMENTÉ: De 100 à 120 pour garantir que tout le contenu est visible
+        padding: 32, // ✅ AUGMENTÉ: De 28 à 32 pour encore plus d'espace
+        paddingBottom: 140 + insets.bottom, // ✅ AUGMENTÉ: De 120 à 140 pour garantir que tout le contenu est visible
         flexGrow: 1,
-        gap: 28, // ✅ AJOUTÉ: Gap entre les sections pour meilleure séparation visuelle
+        gap: 32, // ✅ AUGMENTÉ: De 28 à 32 pour meilleure séparation visuelle
         // ✅ CORRECTION: Retirer minHeight: '100%' qui cause des problèmes de rendu sur mobile
         // Le contenu doit pouvoir scroller naturellement
     }), [insets.bottom]);
@@ -3918,7 +3924,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         </View>
 
                         {/* ✅ CORRIGÉ: Utiliser une View wrapper pour garantir la structure flex correcte */}
-                        <View style={{ flex: 1, minHeight: 200 }}>
+                        <View style={{ flex: 1, minHeight: 500 }}> {/* ✅ AUGMENTÉ: De 200 à 500 pour que le contenu soit plus grand */}
                             <ScrollView
                                 ref={(ref) => { mainScrollViewRef.current = ref; }}
                                 style={styles.modalBody}
@@ -4067,7 +4073,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 <View style={styles.variantModalBackdrop}>
                     <View style={styles.variantModalContainer}>
                         <Text style={styles.variantModalTitle}>Choisissez un scénario IA</Text>
-                        <ScrollView style={{ maxHeight: 320 }}>
+                        <ScrollView style={{ maxHeight: 600 }}> {/* ✅ AUGMENTÉ: De 320 à 600 pour plus d'espace */}
                             {briefVariants.map((variant, index) => (
                                 <TouchableOpacity
                                     key={`brief_variant_${index}`}
@@ -4137,8 +4143,8 @@ const styles = StyleSheet.create({
     modalCard: {
         borderRadius: 28,
         padding: 0,
-        maxHeight: '94%',
-        minHeight: '50%', // ✅ CORRIGÉ: S'assurer que le modal a une hauteur minimale
+        maxHeight: '96%', // ✅ AUGMENTÉ: De 94% à 96% pour plus d'espace
+        minHeight: '85%', // ✅ AUGMENTÉ SIGNIFICATIVEMENT: De 50% à 85% pour que les étapes soient plus grandes
         overflow: 'hidden',
         backgroundColor: '#FFFFFF',
         // ✅ CORRIGÉ: Utiliser flex pour que le contenu s'adapte correctement
@@ -4176,8 +4182,8 @@ const styles = StyleSheet.create({
     modalBody: {
         paddingHorizontal: 0, // ✅ CORRIGÉ: Le padding est géré dans contentContainerStyle
         flex: 1, // ✅ Permettre au ScrollView de prendre toute la hauteur disponible
-        // ✅ CORRIGÉ: S'assurer que le ScrollView a une hauteur minimale
-        minHeight: 200,
+        // ✅ AUGMENTÉ SIGNIFICATIVEMENT: S'assurer que le ScrollView a une hauteur minimale suffisante
+        minHeight: 500, // ✅ AUGMENTÉ: De 200 à 500 pour que le contenu des étapes soit plus grand
     },
     sectionCard: {
         marginBottom: 24, // ✅ AUGMENTÉ: De 16 à 24
