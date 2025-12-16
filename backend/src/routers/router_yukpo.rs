@@ -168,21 +168,6 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(appliance_model_routes(state.clone()))
         .merge(phone_model_routes(state.clone()));
     
-    // ✅ NOUVEAU: Routes pour @mentions et multi-participants conversations
-    let conversation_routes_merged = crate::routes::conversation_routes::conversation_routes(state.clone());
-    
-    // ✅ NOUVEAU: Routes pour signalements
-    let signalement_routes_merged = crate::routes::signalement_routes::signalement_routes(state.clone());
-    
-    // ✅ NOUVEAU: Routes pour recherche avec planifications
-    let scheduling_search_routes_merged = crate::routes::scheduling_search_routes::scheduling_search_routes(state.clone());
-    
-    // ✅ NOUVEAU: Routes pour gestion d'équipe des services
-    let service_team_routes_merged = crate::routes::service_team_routes::service_team_routes(state.clone());
-    
-    // ✅ NOUVEAU: Routes pour recherche par image
-    let image_search_routes_merged = crate::routes::image_search_routes::image_search_routes(state.clone());
-    
     // ✅ NOUVEAU: Routes pour système de publicité (intégrées directement)
     use crate::controllers::publicite_controller;
     use crate::controllers::media_product_controller;
@@ -208,20 +193,11 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let media_fallback_route = Router::new()
         .route("/api/media/{*file_path}", get(serve_media_file));
     
-    // ✅ NOUVEAU: Routes pour statistiques de tokens
-    let token_stats_routes_merged = crate::routes::token_stats_routes::token_stats_routes();
-    
     // Combinaison des routes
     public_routes
         .merge(protected_routes)
         .merge(mobile_routes)
-        .merge(conversation_routes_merged)
-        .merge(signalement_routes_merged)
-        .merge(scheduling_search_routes_merged)
-        .merge(service_team_routes_merged)
-        .merge(image_search_routes_merged)
         .merge(publicite_routes_inline)
-        .merge(token_stats_routes_merged)
         .merge(modality_routes)
         .merge(media_fallback_route) // ⚠️ Route wildcard en dernier
         .with_state(state)
