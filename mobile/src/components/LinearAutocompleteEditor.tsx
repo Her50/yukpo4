@@ -388,8 +388,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             )}
 
             {/* Suggestions linéaires (affichage horizontal) - seulement si le tableau n'est pas affiché */}
-            {!showTable && (
-            {uniqueSuggestions.length > 0 && (
+            {!showTable && uniqueSuggestions.length > 0 && (
                 <View style={styles.suggestionsSection}>
                     <Text style={styles.suggestionsTitle}>💡 Suggestions</Text>
                     <ScrollView
@@ -414,8 +413,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             )}
 
             {/* Modalités sélectionnées (chips éditables) - seulement si le tableau n'est pas affiché */}
-            {!showTable && (
-            {selectedModalities.length > 0 && (
+            {!showTable && selectedModalities.length > 0 && (
                 <View style={styles.selectedSection}>
                     <Text style={styles.selectedTitle}>
                         ✓ {selectedModalities.length} sélectionnée(s)
@@ -459,8 +457,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             )}
 
             {/* Message vide - seulement si le tableau n'est pas affiché */}
-            {!showTable && (
-            {selectedModalities.length === 0 && uniqueSuggestions.length === 0 && !searchQuery && (
+            {!showTable && selectedModalities.length === 0 && uniqueSuggestions.length === 0 && !searchQuery && (
                 <View style={styles.emptyState}>
                     <SafeIcon name="info" size={32} color={modernColors.textSecondary} />
                     <Text style={styles.emptyText}>
