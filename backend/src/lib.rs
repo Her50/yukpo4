@@ -27,9 +27,9 @@ use crate::routes::{
     advanced_analytics_routes::advanced_analytics_routes, // ✅ NOUVEAU: Routes analytics avancés
     advanced_timeline_routes::advanced_timeline_routes, // ✅ NOUVEAU Phase 2: Routes timelines multi-pistes avancées
     // Routes déjà dans router_yukpo mais ajoutées ici pour être explicite
-    ai_chat_routes::ai_chat_routes,
+    // ai_chat_routes::ai_chat_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     analytics_routes::analytics_routes,
-    appliance_model_routes::appliance_model_routes,
+    // appliance_model_routes::appliance_model_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     ar_routes::ar_routes, // ✅ NOUVEAU Phase 3.2: Routes pour preview AR/VR
     auth_routes::auth_routes,
     autocomplete_routes::autocomplete_routes,
@@ -55,7 +55,7 @@ use crate::routes::{
     generative_routes::generative_routes, // ✅ NOUVEAU Phase 3.1: Routes pour génération vidéo IA
     global_promo_routes::global_promo_routes,
     health_routes::health_routes,
-    health_structure_routes::health_structure_routes,
+    // health_structure_routes::health_structure_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     history_routes::history_routes,
     ia_routes::ia_routes,
     kyc_admin_routes::kyc_admin_routes, // ✅ NOUVEAU 2025-01-29: Routes admin KYC
@@ -66,14 +66,14 @@ use crate::routes::{
     metrics_routes::metrics_routes,
     metrics_tracking_routes::metrics_tracking_routes,
     mobile_logs_routes::mobile_logs_routes,
-    nearby_services_routes::nearby_services_routes,
+    // nearby_services_routes::nearby_services_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     negotiated_price_routes::negotiated_price_routes,
     notification_routes::notification_routes,
     offres_emploi_routes::offres_emploi_routes, // ✅ NOUVEAU 2025-01-28: Routes offres d'emploi
     order_routes::order_routes,
     orientation_scolaire_routes::orientation_scolaire_routes,
     payment_routes::payment_routes,
-    phone_model_routes::phone_model_routes,
+    // phone_model_routes::phone_model_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     plugin_routes::plugin_routes, // ✅ NOUVEAU Phase 2: Routes gestion des plugins
     popular_products_routes::popular_products_routes,
     prestataire_routes::prestataire_routes,
@@ -102,11 +102,11 @@ use crate::routes::{
     token_stats_routes::token_stats_routes,
     upload_routes::upload_routes, // ✅ NOUVEAU: Routes upload préalable
     user_routes::user_routes,
-    vehicle_model_routes::vehicle_model_routes,
+    // vehicle_model_routes::vehicle_model_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     video_hls_routes::video_hls_routes,
     video_ml_routes::video_ml_routes, // ✅ NOUVEAU: Routes ML pour recommandations et hashtags
     video_routes::video_routes,       // ✅ NOUVEAU: Routes pour récupération des vidéos utilisateur
-    weather_routes::weather_routes,
+    // weather_routes::weather_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     webhook_routes::webhook_routes,
     webrtc_routes::webrtc_routes,
 };
@@ -264,14 +264,14 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let token_stats = token_stats_routes(); // Ne prend pas state
                                             // Routes déjà dans router_yukpo mais ajoutées ici pour être explicite
     // let ai_chat = ai_chat_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
-    let appliance_models = appliance_model_routes(state.clone());
+    // let appliance_models = appliance_model_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     let diagnostics = diagnostic_routes(state.clone());
-    let health_structure = health_structure_routes(state.clone());
-    let nearby_services = nearby_services_routes(state.clone());
-    let phone_models = phone_model_routes(state.clone());
+    // let health_structure = health_structure_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
+    // let nearby_services = nearby_services_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
+    // let phone_models = phone_model_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     let popular_products = popular_products_routes(state.clone());
-    let vehicle_models = vehicle_model_routes(state.clone());
-    let weather = weather_routes(state.clone());
+    // let vehicle_models = vehicle_model_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
+    // let weather = weather_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     let publicite_ai = publicite_ai_routes(state.clone()); // ✅ NOUVEAU: Routes IA publicité
     let publicite_audiences = publicite_audiences_routes(state.clone()); // ✅ NOUVEAU: Routes audiences
     let publicite_assets = publicite_assets_routes(state.clone()); // ✅ NOUVEAU: Routes assets
@@ -368,14 +368,14 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(token_stats)
         // Routes déjà dans router_yukpo mais ajoutées ici pour être explicite
         // .merge(ai_chat) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
-        .merge(appliance_models)
+        // .merge(appliance_models) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
         .merge(diagnostics)
-        .merge(health_structure)
-        .merge(nearby_services)
-        .merge(phone_models)
+        // .merge(health_structure) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
+        // .merge(nearby_services) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
+        // .merge(phone_models) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
         .merge(popular_products)
-        .merge(vehicle_models)
-        .merge(weather)
+        // .merge(vehicle_models) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
+        // .merge(weather) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
         .merge(publicite_ai) // ✅ NOUVEAU: Routes IA publicité
         .merge(publicite_audiences) // ✅ NOUVEAU: Routes audiences
         .merge(publicite_assets) // ✅ NOUVEAU: Routes assets
