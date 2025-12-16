@@ -85,6 +85,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/ia/creation-service",
             post(handle_creation_service_direct)
+                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // ✅ 200 MB - pour supporter médias base64 volumineux
                 .layer(axum::middleware::from_fn_with_state(
                     state.clone(), check_tokens
                 ))
@@ -705,13 +706,45 @@ async fn handle_creation_service_direct(
     log::info!("[handle_creation_service_direct] Fichiers détectés: images={}, audios={}, vidéos={}, docs={}, excels={}", 
         has_images, has_audios, has_videos, has_docs, has_excels);
     
-    // ?? NOUVEAU : Log détaillé des images pour debugging
+    // ✅ NOUVEAU : Validation de taille des fichiers avant traitement
+    const MAX_IMAGE_SIZE: usize = 10 * 1024 * 1024; // 10 MB par image
+    const MAX_TOTAL_PAYLOAD_SIZE: usize = 150 * 1024 * 1024; // 150 MB total (laisser marge pour le reste)
+    
+    // Vérifier la taille des images
     if has_images {
         if let Some(images) = &input.base64_image {
             log::info!("[handle_creation_service_direct] Images détectées: {} image(s)", images.len());
+            let mut total_images_size = 0;
             for (i, img) in images.iter().enumerate() {
-                log::info!("[handle_creation_service_direct] Image {}: {} bytes", i + 1, img.len());
+                let img_size = img.len();
+                total_images_size += img_size;
+                log::info!("[handle_creation_service_direct] Image {}: {} bytes ({:.2} MB)", 
+                    i + 1, img_size, img_size as f64 / 1_000_000.0);
+                
+                if img_size > MAX_IMAGE_SIZE {
+                    let error_msg = format!(
+                        "Image {} trop volumineuse: {:.2} MB (max: {} MB). Veuillez compresser ou réduire la taille de l'image.",
+                        i + 1,
+                        img_size as f64 / 1_000_000.0,
+                        MAX_IMAGE_SIZE / 1024 / 1024
+                    );
+                    log::warn!("[handle_creation_service_direct] {}", error_msg);
+                    return Err(AppError::BadRequest(error_msg));
+                }
             }
+            
+            if total_images_size > MAX_TOTAL_PAYLOAD_SIZE {
+                let error_msg = format!(
+                    "Taille totale des images trop importante: {:.2} MB (max: {} MB). Veuillez réduire le nombre ou la taille des images.",
+                    total_images_size as f64 / 1_000_000.0,
+                    MAX_TOTAL_PAYLOAD_SIZE / 1024 / 1024
+                );
+                log::warn!("[handle_creation_service_direct] {}", error_msg);
+                return Err(AppError::BadRequest(error_msg));
+            }
+            
+            log::info!("[handle_creation_service_direct] ✅ Taille totale des images: {:.2} MB", 
+                total_images_size as f64 / 1_000_000.0);
         }
     }
     
