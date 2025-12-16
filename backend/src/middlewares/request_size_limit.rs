@@ -36,7 +36,7 @@ pub async fn request_size_limit(req: Request<Body>, next: Next) -> Result<Respon
                         "status": 413
                     });
                     
-                    let mut response = Response::builder()
+                    let response = Response::builder()
                         .status(StatusCode::PAYLOAD_TOO_LARGE)
                         .header("content-type", HeaderValue::from_static("application/json"))
                         .body(Body::from(serde_json::to_string(&error_response).unwrap_or_default()))

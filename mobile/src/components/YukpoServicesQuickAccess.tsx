@@ -158,6 +158,39 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
 
     return (
         <View style={styles.container}>
+            {/* ✅ NOUVEAU: Barre horizontale des services au-dessus de la grille */}
+            {expandedCategoryId && expandedCategory && expandedCategory.services.length > 1 && (
+                <View style={styles.servicesBarContainer}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.servicesBarContent}
+                    >
+                        {expandedCategory.services.map((service) => (
+                            <TouchableOpacity
+                                key={service.id}
+                                style={styles.serviceMiniCard}
+                                onPress={() => handleServicePress(service.id)}
+                                activeOpacity={0.7}
+                                disabled={service.comingSoon}
+                            >
+                                <View style={[styles.serviceMiniIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
+                                    <SafeIcon name={service.icon} size={18} color={service.gradient[0]} />
+                                    {service.comingSoon && (
+                                        <View style={styles.badgeMini}>
+                                            <Text style={styles.badgeMiniText}>Bientôt</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={styles.serviceMiniTitle} numberOfLines={1}>
+                                    {service.title}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
+
             {/* Grille de catégories (3 colonnes x 2 lignes) */}
             <View style={styles.categoriesGrid}>
                 {categories.map((category) => {
@@ -166,51 +199,25 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                     const isExpanded = expandedCategoryId === category.id;
 
                     return (
-                        <React.Fragment key={category.id}>
-                            <View style={styles.categoryWrapper}>
-                                <TouchableOpacity
-                                    style={[styles.categoryBlock, isExpanded && styles.categoryBlockExpanded]}
-                                    onPress={() => handleCategoryPress(category.id)}
-                                    activeOpacity={0.8}
-                                >
-                                    <View style={styles.categoryContent}>
-                                        <View style={styles.categoryIconContainer}>
-                                            <SafeIcon name={category.icon} size={12} color="#6B7280" />
-                                        </View>
-                                        <Text style={styles.categoryTitle} numberOfLines={2}>
-                                            {category.title}
-                                        </Text>
-                                        <Text style={styles.categoryDescription} numberOfLines={1}>
-                                            {serviceCountText}
-                                        </Text>
+                        <View key={category.id} style={styles.categoryWrapper}>
+                            <TouchableOpacity
+                                style={[styles.categoryBlock, isExpanded && styles.categoryBlockExpanded]}
+                                onPress={() => handleCategoryPress(category.id)}
+                                activeOpacity={0.8}
+                            >
+                                <View style={styles.categoryContent}>
+                                    <View style={styles.categoryIconContainer}>
+                                        <SafeIcon name={category.icon} size={12} color="#6B7280" />
                                     </View>
-                                </TouchableOpacity>
-                            </View>
-                            {/* Services de la catégorie étendue - affichés horizontalement après le bloc */}
-                            {isExpanded && category.services.length > 1 && (
-                                category.services.map((service) => (
-                                    <TouchableOpacity
-                                        key={service.id}
-                                        style={styles.serviceInlineItem}
-                                        onPress={() => handleServicePress(service.id)}
-                                        activeOpacity={0.7}
-                                        disabled={service.comingSoon}
-                                    >
-                                        <View style={[styles.serviceInlineIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
-                                            <SafeIcon name={service.icon} size={14} color={service.gradient[0]} />
-                                            {service.comingSoon && (
-                                                <View style={styles.badgeInline}>
-                                                    <Text style={styles.badgeInlineText}>Bientôt</Text>
-                                                </View>
-                                            )}
-                                        </View>
-                                        <Text style={styles.serviceInlineTitle} numberOfLines={1}>
-                                            {service.title}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))
-                            )}
-                        </React.Fragment>
+                                    <Text style={styles.categoryTitle} numberOfLines={2}>
+                                        {category.title}
+                                    </Text>
+                                    <Text style={styles.categoryDescription} numberOfLines={1}>
+                                        {serviceCountText}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
                     );
                 })}
             </View>
@@ -308,7 +315,7 @@ const styles = StyleSheet.create({
     container: {
         marginVertical: 0,
         paddingHorizontal: 0,
-        backgroundColor: 'rgba(99, 102, 241, 0.08)', // Couleur glass moderne pour le corps de l'écran
+        backgroundColor: 'transparent', // ✅ CORRIGÉ: Fond transparent
     },
     categoriesGrid: {
         flexDirection: 'row',
@@ -514,37 +521,64 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         textAlign: 'center',
     },
-    // Styles pour les services inline affichés horizontalement
-    serviceInlineItem: {
-        width: '31%',
-        alignItems: 'center',
-        marginBottom: 4,
+    // ✅ NOUVEAU: Styles pour la barre horizontale des services au-dessus de la grille
+    servicesBarContainer: {
+        marginBottom: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        zIndex: 10, // ✅ Au-dessus de la grille
     },
-    serviceInlineIconContainer: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+    servicesBarContent: {
+        paddingHorizontal: 8,
+        gap: 8,
+    },
+    serviceMiniCard: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 70,
+        maxWidth: 90,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        marginRight: 8,
+    },
+    serviceMiniIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 6,
         position: 'relative',
     },
-    serviceInlineTitle: {
-        fontSize: 9,
-        fontWeight: '500',
-        color: '#374151',
+    serviceMiniTitle: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#111827',
         textAlign: 'center',
     },
-    badgeInline: {
+    badgeMini: {
         position: 'absolute',
-        top: -2,
-        right: -2,
+        top: -4,
+        right: -4,
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
         paddingHorizontal: 4,
         paddingVertical: 1,
         borderRadius: 6,
     },
-    badgeInlineText: {
+    badgeMiniText: {
         fontSize: 7,
         color: '#FFFFFF',
         fontWeight: '700',

@@ -308,15 +308,18 @@ const HomeScreen: React.FC = () => {
                 console.log('[HomeScreen] Résultat génération suggestions:', JSON.stringify(result, null, 2));
 
                 if (result && result.data) {
-                    const suggestionData = result.data.data || result.data.service_data?.data || result.data;
+                    // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
+                    const suggestionData = result.data.service_data?.data || result.data.data || result.data;
+                    // ✅ Passer aussi toute la réponse pour avoir accès à service_data.base64_image, etc.
+                    const fullSuggestionIA = {
+                        ...result.data,
+                        data: suggestionData,
+                    };
 
                     navigate('AjouterProduitSimple', {
                         serviceId: foundServiceId,
                         mode: 'create',
-                        suggestionIA: {
-                            data: suggestionData,
-                            session_id: result.data.session_id,
-                        },
+                        suggestionIA: fullSuggestionIA,
                         mediaData: {
                             base64_image: input.base64_image || [],
                             video_base64: input.video_base64 || [],
@@ -350,8 +353,10 @@ const HomeScreen: React.FC = () => {
             // Format attendu: { suggestion: { data: {...}, ... }, type: 'creation_service', ... }
             // La réponse de l'API a la structure: { data: { data: {...}, service_data: {...}, ... } }
             if (result && result.data) {
-                // Extraire les données de suggestion depuis la réponse
-                const suggestionData = result.data.data || result.data.service_data?.data || result.data;
+                // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
+                // result.data.data contient seulement les champs de base (titre_service, category, etc.)
+                // result.data.service_data.data contient les données complètes avec produits (nom_produit, etc.)
+                const suggestionData = result.data.service_data?.data || result.data.data || result.data;
 
                 console.log('[HomeScreen] Données suggestion extraites:', JSON.stringify(suggestionData, null, 2));
 
@@ -485,10 +490,9 @@ const HomeScreen: React.FC = () => {
                             }}
                         >
                             <SafeIcon
-                                name="Package"
+                                name="Bike"
                                 size={22}
-                                color="#FFFFFF"
-                                type="lucide"
+                                color="#6B7280"
                             />
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -580,23 +584,34 @@ const HomeScreen: React.FC = () => {
                             onServicePress={(serviceId) => {
                                 hapticPress();
                                 console.log('[HomeScreen] Service pressé:', serviceId);
-                                // Navigation vers les écrans de RECHERCHE uniquement (pas de configuration)
+                                // ✅ CORRIGÉ: Mapping complet des services spécialisés vers leurs écrans spécifiques
                                 const searchRoutes: Record<string, string> = {
-                                    'sante': 'HealthServicesHub', // Hub santé avec choix entre Pharmacie, Hôpital, Laboratoire, Banque de sang
-                                    'etude': 'EtablissementSearch', // Orientation scolaire
+                                    // Services Santé - Navigation directe vers chaque écran spécifique
+                                    'pharmacie': 'PharmacieSearch',
+                                    'hopital': 'HopitalSearch',
+                                    'laboratoire': 'LaboratoireSearch',
+                                    'banque_sang': 'BanqueSangSearch',
+                                    // Services Transport - Navigation directe vers chaque écran spécifique
+                                    'agence_voyage': 'AgenceVoyageSearch',
+                                    'covoiturage': 'CovoiturageSearch',
+                                    'taxi': 'TaxiSearch',
+                                    // Services Éducation
+                                    'orientation_scolaire': 'EtablissementSearch',
+                                    'bourse_livre': 'EtablissementSearch',
+                                    // Services Emploi
+                                    'offres_emploi': 'OffresEmploiHub',
+                                    // Services Vie quotidienne
+                                    'menu_planning': 'MenuPlanningHub',
+                                    'bayamselam': 'BayamSelamSearch',
+                                    // Services Immobilier
                                     'immo': 'ImmobilierSearch',
-                                    'bayamselam': 'BayamSelamSearch', // Comparateur de prix
-                                    'livraison': 'Delivery',
-                                    'voyage': 'AgenceVoyageSearch', // Point d'entrée voyage
-                                    'auto': 'AutoServicesSearch', // Recherche véhicules
-                                    'assurance': 'InsuranceServicesSearch', // Recherche assurance
-                                    'emploi': 'OffresEmploiHub', // Hub offres d'emploi
                                 };
                                 const route = searchRoutes[serviceId] || 'Home';
                                 console.log('[HomeScreen] Navigation vers:', route, 'pour service:', serviceId);
                                 const success = navigate(route);
                                 if (!success) {
                                     console.error('[HomeScreen] Échec navigation vers:', route);
+                                    Alert.alert('Navigation', `L'écran ${route} n'est pas encore disponible.`);
                                 }
                             }}
                         />
@@ -731,19 +746,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     deliveryButton: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: '#10B981', // Vert pour livraison/colis
+        width: 40, // ✅ CORRIGÉ: Même taille que les autres boutons
+        height: 40, // ✅ CORRIGÉ: Même taille que les autres boutons
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6', // ✅ CORRIGÉ: Même fond que les autres boutons (chat/notification)
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 2,
-        borderColor: '#059669',
-        shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 3,
+        // ✅ SUPPRIMÉ: borderWidth, borderColor, shadowColor spécifiques
+    },
+    deliveryButtonIcon: {
+        fontSize: 22, // ✅ Taille de l'emoji coursier
     },
     headerButtonIcon: {
         fontSize: 20,
@@ -777,17 +789,19 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     darkBackgroundContainer: {
-        backgroundColor: '#1E3A8A', // Bleu foncé pour le fond
+        backgroundColor: 'transparent', // ✅ CORRIGÉ: Fond transparent
         marginHorizontal: 16,
         borderRadius: 16,
         padding: 16,
         marginTop: 8,
         marginBottom: 12,
+        borderWidth: 1, // ✅ AJOUTÉ: Bordure pour distinguer les éléments
+        borderColor: '#E5E7EB', // ✅ AJOUTÉ: Bordure gris clair
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 4,
+        shadowOpacity: 0.05, // ✅ RÉDUIT: Ombre plus discrète
+        shadowRadius: 4,
+        elevation: 2,
     },
     inputContainer: {
         marginBottom: 8,
@@ -904,7 +918,7 @@ const styles = StyleSheet.create({
     specializedServicesTitle: {
         fontSize: 15,
         fontWeight: '700',
-        color: '#FFFFFF', // Blanc pour contraste sur fond foncé
+        color: '#111827', // ✅ CORRIGÉ: Couleur sombre pour contraste sur fond blanc
         marginBottom: 8,
     },
 });

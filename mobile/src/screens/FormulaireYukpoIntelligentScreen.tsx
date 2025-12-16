@@ -118,6 +118,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const gpsData = gpsDataParam || {};
   const type = typeParam || '';
   const mode = modeParam || 'create'; // ✅ Par défaut 'create' au lieu de 'edit'
+  
+  // ✅ CORRECTION : Extraire les données complètes avec priorité sur service_data.data
+  // service_data.data contient les données complètes avec produits (nom_produit, categorie_produit, etc.)
+  // data contient seulement les champs de base (titre_service, category, description, is_tarissable)
+  const suggestionData = suggestion?.service_data?.data || suggestion?.data || suggestion || {};
 
   // ✅ CORRECTION CRITIQUE: Si on arrive avec mode='add_product' ou édition de produit, rediriger vers AjouterProduitSimpleScreen
   // Ce formulaire est dédié à la création/modification de service, pas à l'ajout/édition de produit seul
@@ -129,7 +134,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       (navigation as any).replace('AjouterProduitSimple', {
         serviceId: serviceId,
         suggestionIA: {
-          data: suggestion?.data || suggestion || {},
+          ...suggestion,
+          // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
+          data: suggestion?.service_data?.data || suggestion?.data || suggestion || {},
           session_id: suggestion?.session_id,
         },
         mediaData: mediaData || {},
@@ -147,8 +154,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // Trouver l'index du produit si possible (sinon sera null)
       let productIndex: number | null = null;
-      if (suggestion?.data?.produits?.valeur && Array.isArray(suggestion.data.produits.valeur)) {
-        const produitsArray = suggestion.data.produits.valeur;
+      // ✅ CORRECTION : Utiliser suggestionData qui priorise service_data.data
+      const produitsData = suggestionData?.produits || suggestion?.data?.produits;
+      if (produitsData?.valeur && Array.isArray(produitsData.valeur)) {
+        const produitsArray = produitsData.valeur;
         productIndex = produitsArray.findIndex((p: any) =>
           (p.id && p.id.toString() === focusProductId.toString()) ||
           (p.nom && p.nom === editProductData.nom)
@@ -164,7 +173,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         productIndex: productIndex,
         prefill: editProductData,
         suggestionIA: {
-          data: suggestion?.data || suggestion || {},
+          ...suggestion,
+          // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
+          data: suggestion?.service_data?.data || suggestion?.data || suggestion || {},
           session_id: suggestion?.session_id,
         },
         mediaData: mediaData || {},
@@ -437,22 +448,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       hasValues: !!values,
       hasSuggestion: !!suggestion,
       produitsField: values?.produits,
-      suggestionProduits: suggestion?.data?.produits,
+      suggestionProduits: suggestionData?.produits || suggestion?.data?.produits,
       suggestionDataProduits: suggestionData?.produits,
       suggestionDataRoot: suggestionData?.sous_caracteristiques ? 'OUI' : 'NON',
       suggestionDataProductVector: suggestionData?.product_vector ? suggestionData.product_vector.length : 0
     });
 
-    // ✅ CORRIGÉ: Vérifier plusieurs sources pour produitsData
-    const produitsData = values.produits || suggestion?.data?.produits || suggestionData?.produits;
+    // ✅ CORRIGÉ: Vérifier plusieurs sources pour produitsData avec priorité sur suggestionData
+    const produitsData = values.produits || suggestionData?.produits || suggestion?.data?.produits;
 
-    // ✅ NOUVEAU 2025-11-28: PRIORITÉ 0: Vérifier directement dans suggestion.data.produits (seeds depuis backend)
+    // ✅ NOUVEAU 2025-11-28: PRIORITÉ 0: Vérifier directement dans suggestionData.produits (seeds depuis backend)
     // Le backend inclut maintenant les seeds directement dans la réponse IA
-    if (suggestion?.data?.produits?.sous_caracteristiques &&
-      typeof suggestion.data.produits.sous_caracteristiques === 'object' &&
-      Object.keys(suggestion.data.produits.sous_caracteristiques).length > 0) {
+    // ✅ CORRECTION : Prioriser suggestionData qui contient service_data.data
+    const produitsNode = suggestionData?.produits || suggestion?.data?.produits;
+    if (produitsNode?.sous_caracteristiques &&
+      typeof produitsNode.sous_caracteristiques === 'object' &&
+      Object.keys(produitsNode.sous_caracteristiques).length > 0) {
       const sousCaracsObj: Record<string, string[]> = {};
-      Object.entries(suggestion.data.produits.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
+      Object.entries(produitsNode.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
         if (Array.isArray(vals) && vals.length > 0) {
           const allValues = vals
             .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
@@ -464,7 +477,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       });
 
       if (Object.keys(sousCaracsObj).length > 0) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques depuis seeds IA (suggestion.data.produits):', sousCaracsObj);
+        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques depuis seeds IA (suggestionData.produits):', sousCaracsObj);
         return sousCaracsObj;
       }
     }
@@ -571,11 +584,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
     }
 
-    // 3. Fallback: Essayer depuis suggestionData.data.produits
+    // 3. Fallback: Essayer depuis suggestionData.produits
     // ✅ CORRIGÉ: Passer TOUTES les valeurs pour permettre l'affichage du tableau complet
-    if (suggestion?.data?.produits?.sous_caracteristiques && typeof suggestion.data.produits.sous_caracteristiques === 'object') {
+    // ✅ CORRECTION : Prioriser suggestionData qui contient service_data.data
+    const produitsNodeForFallback = suggestionData?.produits || suggestion?.data?.produits;
+    if (produitsNodeForFallback?.sous_caracteristiques && typeof produitsNodeForFallback.sous_caracteristiques === 'object') {
       const sousCaracsObj: Record<string, string[]> = {};
-      Object.entries(suggestion.data.produits.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
+      Object.entries(produitsNodeForFallback.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
         if (Array.isArray(vals) && vals.length > 0) {
           // ✅ CORRIGÉ: Passer TOUTES les valeurs, pas seulement la première
           // Cela permet au tableau de s'afficher correctement dans LinearAutocompleteEditor
@@ -589,7 +604,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       });
 
       if (Object.keys(sousCaracsObj).length > 0) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (TOUTES les valeurs) depuis suggestion.data.produits:', sousCaracsObj);
+        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (TOUTES les valeurs) depuis suggestionData.produits:', sousCaracsObj);
         return sousCaracsObj;
       }
     }
@@ -599,7 +614,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     console.warn('[getSousCaracteristiquesFromIA] ⚠️ PROBLÈME: Aucune combinaison préférée trouvée après vérification de toutes les sources. Vérifier que:');
     console.warn('  - session_id est présent dans suggestion');
     console.warn('  - L\'API /api/combinations/session/{session_id} retourne des données');
-    console.warn('  - suggestion.data.produits contient sous_caracteristiques ou product_vector/product_labels');
+    console.warn('  - suggestionData.produits contient sous_caracteristiques ou product_vector/product_labels');
     console.warn('  - Les données sont bien passées depuis le composant parent');
     return {};
   };
@@ -1600,30 +1615,39 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       console.log('[FormulaireYukpoIntelligentScreen] useEffect - Traitement des données IA au chargement');
       console.log('[FormulaireYukpoIntelligentScreen] Suggestion disponible:', !!suggestion);
       console.log('[FormulaireYukpoIntelligentScreen] Suggestion.data:', suggestion?.data);
+      console.log('[FormulaireYukpoIntelligentScreen] Suggestion.service_data.data:', suggestion?.service_data?.data);
 
-      if (suggestion && suggestion.data && typeof suggestion.data === 'object') {
+      // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
+      const dataToProcess = suggestion?.service_data?.data || suggestion?.data;
+      
+      if (suggestion && dataToProcess && typeof dataToProcess === 'object') {
         console.log('[FormulaireYukpoIntelligentScreen] Données IA disponibles, génération automatique des composants');
 
         // ✅ NOUVEAU 2025-11-04: Log complet du JSON IA pour diagnostic
         try {
-          console.log('[FormulaireYukpoIntelligentScreen] 📋 JSON COMPLET de l\'IA:', JSON.stringify(suggestion.data, null, 2));
+          console.log('[FormulaireYukpoIntelligentScreen] 📋 JSON COMPLET de l\'IA:', JSON.stringify(dataToProcess, null, 2));
         } catch (e) {
-          console.warn('[FormulaireYukpoIntelligentScreen] Impossible de stringify suggestion.data');
+          console.warn('[FormulaireYukpoIntelligentScreen] Impossible de stringify dataToProcess');
         }
 
         console.log('[FormulaireYukpoIntelligentScreen] 🔍 Champs DISTINCTS dans l\'IA:', {
           // Bloc Informations Générales
-          titre_service: suggestion.data.titre_service?.valeur || suggestion.data.titre_service,
-          category: suggestion.data.category?.valeur || suggestion.data.category,
-          description: suggestion.data.description?.valeur || suggestion.data.description,
+          titre_service: dataToProcess.titre_service?.valeur || dataToProcess.titre_service,
+          category: dataToProcess.category?.valeur || dataToProcess.category,
+          description: dataToProcess.description?.valeur || dataToProcess.description,
           // Bloc Produits
-          nom_produit: suggestion.data.nom_produit?.valeur || suggestion.data.nom_produit || '❌ ABSENT',
-          categorie_produit: suggestion.data.categorie_produit?.valeur || suggestion.data.categorie_produit || '❌ ABSENT',
-          description_produit: suggestion.data.description_produit?.valeur || suggestion.data.description_produit || '❌ ABSENT'
+          nom_produit: dataToProcess.nom_produit?.valeur || dataToProcess.nom_produit || '❌ ABSENT',
+          categorie_produit: dataToProcess.categorie_produit?.valeur || dataToProcess.categorie_produit || '❌ ABSENT',
+          description_produit: dataToProcess.description_produit?.valeur || dataToProcess.description_produit || '❌ ABSENT'
         });
 
         // Traiter les suggestions IA comme dans le frontend
-        const components = processIASuggestion(suggestion);
+        // ✅ CORRECTION : Passer les données complètes avec service_data.data
+        const suggestionWithCorrectData = {
+          ...suggestion,
+          data: dataToProcess
+        };
+        const components = processIASuggestion(suggestionWithCorrectData);
 
         if (!Array.isArray(components)) {
           console.error('[FormulaireYukpoIntelligentScreen] ❌ processIASuggestion n\'a pas retourné un array');
@@ -1634,8 +1658,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         // Extraire les valeurs des données IA pour pré-remplir les champs
         const initialValues: Record<string, any> = {};
-        Object.keys(suggestion.data || {}).forEach(fieldName => {
-          const fieldData = suggestion.data[fieldName];
+        Object.keys(dataToProcess || {}).forEach(fieldName => {
+          const fieldData = dataToProcess[fieldName];
 
           // ✅ CORRECTION: Traiter tous les champs produits, y compris produits (autocomplete) et price_variant
           if (fieldData && typeof fieldData === 'object' && 'valeur' in fieldData) {
@@ -1735,10 +1759,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
 
         // CORRECTION: S'assurer que le champ category est bien chargé
-        if (suggestion.data.category) {
-          const categoryValue = typeof suggestion.data.category === 'object' && 'valeur' in suggestion.data.category
-            ? suggestion.data.category.valeur
-            : suggestion.data.category;
+        if (dataToProcess.category) {
+          const categoryValue = typeof dataToProcess.category === 'object' && 'valeur' in dataToProcess.category
+            ? dataToProcess.category.valeur
+            : dataToProcess.category;
           initialValues.category = categoryValue;
           console.log('[FormulaireYukpoIntelligentScreen] Catégorie chargée:', categoryValue);
         }
@@ -1747,52 +1771,52 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // Si l'IA a généré une structure produit (nom_produit OU prix_produit OU produits), on utilise ses valeurs
         // Sinon, on considère que l'IA n'a pas voulu créer de produit et on n'en crée pas non plus
 
-        const hasProductData = suggestion.data.nom_produit || suggestion.data.prix_produit || suggestion.data.produits || suggestion.data.variabilite_prix;
+        const hasProductData = dataToProcess.nom_produit || dataToProcess.prix_produit || dataToProcess.produits || dataToProcess.variabilite_prix;
 
         // Extraire nom_produit avec fallback intelligent
-        if (suggestion.data.nom_produit) {
-          const nomProduitValue = typeof suggestion.data.nom_produit === 'object' && 'valeur' in suggestion.data.nom_produit
-            ? suggestion.data.nom_produit.valeur
-            : suggestion.data.nom_produit;
+        if (dataToProcess.nom_produit) {
+          const nomProduitValue = typeof dataToProcess.nom_produit === 'object' && 'valeur' in dataToProcess.nom_produit
+            ? dataToProcess.nom_produit.valeur
+            : dataToProcess.nom_produit;
           initialValues.nom_produit = nomProduitValue;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ nom_produit chargé depuis IA:', nomProduitValue);
-        } else if (hasProductData && suggestion.data.titre_service) {
+        } else if (hasProductData && dataToProcess.titre_service) {
           // Fallback intelligent: Si l'IA a créé un produit mais sans nom, utiliser le titre du service
-          const fallbackNom = typeof suggestion.data.titre_service === 'object' && 'valeur' in suggestion.data.titre_service
-            ? suggestion.data.titre_service.valeur
-            : suggestion.data.titre_service;
+          const fallbackNom = typeof dataToProcess.titre_service === 'object' && 'valeur' in dataToProcess.titre_service
+            ? dataToProcess.titre_service.valeur
+            : dataToProcess.titre_service;
           initialValues.nom_produit = fallbackNom;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ nom_produit fallback depuis titre_service:', fallbackNom);
         }
 
         // Extraire categorie_produit avec fallback intelligent
-        if (suggestion.data.categorie_produit) {
-          const categorieProduitValue = typeof suggestion.data.categorie_produit === 'object' && 'valeur' in suggestion.data.categorie_produit
-            ? suggestion.data.categorie_produit.valeur
-            : suggestion.data.categorie_produit;
+        if (dataToProcess.categorie_produit) {
+          const categorieProduitValue = typeof dataToProcess.categorie_produit === 'object' && 'valeur' in dataToProcess.categorie_produit
+            ? dataToProcess.categorie_produit.valeur
+            : dataToProcess.categorie_produit;
           initialValues.categorie_produit = categorieProduitValue;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ categorie_produit chargé depuis IA:', categorieProduitValue);
-        } else if (hasProductData && suggestion.data.category) {
+        } else if (hasProductData && dataToProcess.category) {
           // Fallback intelligent: Si l'IA a créé un produit mais sans catégorie, utiliser la catégorie du service
-          const fallbackCategorie = typeof suggestion.data.category === 'object' && 'valeur' in suggestion.data.category
-            ? suggestion.data.category.valeur
-            : suggestion.data.category;
+          const fallbackCategorie = typeof dataToProcess.category === 'object' && 'valeur' in dataToProcess.category
+            ? dataToProcess.category.valeur
+            : dataToProcess.category;
           initialValues.categorie_produit = fallbackCategorie;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ categorie_produit fallback depuis category:', fallbackCategorie);
         }
 
         // Extraire description_produit avec fallback intelligent
-        if (suggestion.data.description_produit) {
-          const descriptionProduitValue = typeof suggestion.data.description_produit === 'object' && 'valeur' in suggestion.data.description_produit
-            ? suggestion.data.description_produit.valeur
-            : suggestion.data.description_produit;
+        if (dataToProcess.description_produit) {
+          const descriptionProduitValue = typeof dataToProcess.description_produit === 'object' && 'valeur' in dataToProcess.description_produit
+            ? dataToProcess.description_produit.valeur
+            : dataToProcess.description_produit;
           initialValues.description_produit = descriptionProduitValue;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ description_produit chargé depuis IA:', descriptionProduitValue);
-        } else if (hasProductData && suggestion.data.description) {
+        } else if (hasProductData && dataToProcess.description) {
           // Fallback intelligent: Si l'IA a créé un produit mais sans description, utiliser la description du service
-          const fallbackDescription = typeof suggestion.data.description === 'object' && 'valeur' in suggestion.data.description
-            ? suggestion.data.description.valeur
-            : suggestion.data.description;
+          const fallbackDescription = typeof dataToProcess.description === 'object' && 'valeur' in dataToProcess.description
+            ? dataToProcess.description.valeur
+            : dataToProcess.description;
           initialValues.description_produit = fallbackDescription;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ description_produit fallback depuis description:', fallbackDescription);
         }
@@ -2029,7 +2053,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         });
 
         // ✅ NOUVEAU: Extraire les variations de prix imbriquées dans le champ produits
-        const iaProduitsNode = suggestion.data.produits;
+        // ✅ CORRECTION : Utiliser suggestionData qui priorise service_data.data
+        const iaProduitsNode = suggestionData?.produits || suggestion?.data?.produits;
 
         // ✅ CORRECTION: S'assurer que produits est chargé même sans variante de prix
         if (iaProduitsNode && !initialValues.produits) {
@@ -4262,16 +4287,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // Les données initiales sont déjà dans suggestion.data (depuis genererSuggestionsService)
                 let finalServiceData: any = {};
 
-                // Utiliser les données de la suggestion initiale si disponibles
-                // Structure : suggestion.data contient les champs structurés (titre_service, category, etc.)
-                if (suggestion?.data && typeof suggestion.data === 'object') {
-                  // Copier la structure de la suggestion initiale (qui vient de l'IA)
-                  finalServiceData = JSON.parse(JSON.stringify(suggestion.data));
-                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Structure initiale depuis suggestion.data:', Object.keys(finalServiceData));
-                } else if (suggestion?.service_data?.data) {
-                  // Fallback : utiliser service_data.data si disponible
+                // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
+                // Structure : suggestion.service_data.data contient les champs structurés complets (titre_service, category, nom_produit, etc.)
+                // suggestion.data contient seulement les champs de base (titre_service, category, description, is_tarissable)
+                if (suggestion?.service_data?.data && typeof suggestion.service_data.data === 'object') {
+                  // Copier la structure complète de service_data.data (qui vient de l'IA avec produits)
                   finalServiceData = JSON.parse(JSON.stringify(suggestion.service_data.data));
-                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Structure depuis suggestion.service_data.data:', Object.keys(finalServiceData));
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Structure initiale depuis suggestion.service_data.data:', Object.keys(finalServiceData));
+                } else if (suggestion?.data && typeof suggestion.data === 'object') {
+                  // Fallback : utiliser data si service_data.data n'est pas disponible
+                  finalServiceData = JSON.parse(JSON.stringify(suggestion.data));
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Structure depuis suggestion.data (fallback):', Object.keys(finalServiceData));
                 } else {
                   // ✅ AMÉLIORATION: Réduire niveau log (comportement normal)
                   console.debug('[FormulaireYukpoIntelligentScreen] Aucune structure initiale trouvée, construction depuis formulaire uniquement');

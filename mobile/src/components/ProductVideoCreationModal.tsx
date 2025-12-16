@@ -1479,11 +1479,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU: Fonction helper pour calculer les styles dynamiquement avec insets
     const getStepContentStyle = useCallback(() => ({
         padding: 20,
-        gap: 20,
         paddingBottom: 100 + insets.bottom, // ✅ Espace pour les boutons fixes + safe area
         flexGrow: 1,
-        // ✅ CORRECTION: Permettre le scroll même si le contenu est plus petit que la hauteur visible
-        minHeight: '100%',
+        // ✅ CORRECTION: Retirer minHeight: '100%' qui cause des problèmes de rendu sur mobile
+        // Le contenu doit pouvoir scroller naturellement
     }), [insets.bottom]);
 
     const getFixedBottomButtonStyle = useCallback(() => ({
@@ -3916,15 +3915,21 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView
-                            ref={(ref) => { mainScrollViewRef.current = ref; }}
-                            style={styles.modalBody}
-                            contentContainerStyle={getStepContentStyle()}
-                            showsVerticalScrollIndicator={activeStep === 1}
-                            nestedScrollEnabled={true}
-                        >
-                            {renderStepContent()}
-                        </ScrollView>
+                        {/* ✅ CORRIGÉ: Utiliser une View wrapper pour garantir la structure flex correcte */}
+                        <View style={{ flex: 1, minHeight: 200 }}>
+                            <ScrollView
+                                ref={(ref) => { mainScrollViewRef.current = ref; }}
+                                style={styles.modalBody}
+                                contentContainerStyle={getStepContentStyle()}
+                                showsVerticalScrollIndicator={true}
+                                nestedScrollEnabled={true}
+                                // ✅ CORRIGÉ: S'assurer que le ScrollView peut scroller correctement
+                                bounces={true}
+                                alwaysBounceVertical={false}
+                            >
+                                {renderStepContent()}
+                            </ScrollView>
+                        </View>
 
                         {/* ✅ NOUVEAU Phase 3.2: Modal AR Video Editor */}
                         <Modal
@@ -4131,8 +4136,11 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         padding: 0,
         maxHeight: '94%',
+        minHeight: '50%', // ✅ CORRIGÉ: S'assurer que le modal a une hauteur minimale
         overflow: 'hidden',
         backgroundColor: '#FFFFFF',
+        // ✅ CORRIGÉ: Utiliser flex pour que le contenu s'adapte correctement
+        flexDirection: 'column',
     },
     modalHeader: {
         paddingHorizontal: 20,
@@ -4163,8 +4171,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     modalBody: {
-        paddingHorizontal: 20,
+        paddingHorizontal: 0, // ✅ CORRIGÉ: Le padding est géré dans contentContainerStyle
         flex: 1, // ✅ Permettre au ScrollView de prendre toute la hauteur disponible
+        // ✅ CORRIGÉ: S'assurer que le ScrollView a une hauteur minimale
+        minHeight: 200,
     },
     sectionCard: {
         marginBottom: 16,

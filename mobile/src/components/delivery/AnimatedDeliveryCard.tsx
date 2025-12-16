@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { Animated, TouchableOpacity } from 'react-native';
+import { Animated, Easing, TouchableOpacity } from 'react-native';
 import { DeliverySummary } from '../../types/delivery';
 import ActiveDeliveryCard from './ActiveDeliveryCard';
 
@@ -26,29 +26,43 @@ const AnimatedDeliveryCard: React.FC<AnimatedDeliveryCardProps> = React.memo(({
 
     useEffect(() => {
         // Animation d'entrée avec délai selon l'index
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 400,
-                delay: index * 100,
-                useNativeDriver: true,
-            }),
-            Animated.timing(slideAnim, {
-                toValue: 0,
-                duration: 400,
-                delay: index * 100,
-                easing: Animated.Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.out() qui peut être undefined
-                useNativeDriver: true,
-            }),
-            Animated.spring(scaleAnim, {
-                toValue: 1,
-                tension: 50,
-                friction: 8,
-                delay: index * 100,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, [index]);
+        try {
+            // ✅ CORRIGÉ: Utiliser Easing importé directement depuis react-native
+            // Vérifier que Easing.bezier existe avant de l'utiliser
+            const easingFunction = Easing && typeof Easing.bezier === 'function'
+                ? Easing.bezier(0.42, 0, 0.58, 1)
+                : undefined;
+
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    delay: index * 100,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: 400,
+                    delay: index * 100,
+                    easing: easingFunction, // ✅ CORRIGÉ: Utiliser Easing.bezier sécurisé
+                    useNativeDriver: true,
+                }),
+                Animated.spring(scaleAnim, {
+                    toValue: 1,
+                    tension: 50,
+                    friction: 8,
+                    delay: index * 100,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        } catch (error) {
+            console.warn('[AnimatedDeliveryCard] Erreur animation:', error);
+            // En cas d'erreur, définir directement les valeurs finales
+            fadeAnim.setValue(1);
+            slideAnim.setValue(0);
+            scaleAnim.setValue(1);
+        }
+    }, [index, fadeAnim, slideAnim, scaleAnim]);
 
     const handlePressIn = () => {
         Animated.spring(pressAnim, {

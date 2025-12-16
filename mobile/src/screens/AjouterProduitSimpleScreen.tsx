@@ -96,8 +96,9 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         return undefined;
     };
 
-    // ✅ Extraire données depuis suggestionIA avec fallbacks intelligents (IDENTIQUE AU GRAND FORMULAIRE)
-    const suggestionData = suggestionIA?.data || suggestionIA || {};
+    // ✅ CORRECTION : Extraire données depuis suggestionIA avec priorité sur service_data.data
+    // La structure peut être : suggestionIA.data OU suggestionIA.service_data.data OU suggestionIA directement
+    const suggestionData = suggestionIA?.service_data?.data || suggestionIA?.data || suggestionIA || {};
 
     const normalizeMediaList = (value: any): any[] => {
         if (!value) {

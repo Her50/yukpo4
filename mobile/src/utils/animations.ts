@@ -189,9 +189,10 @@ export const useScreenEnter = (duration: number = 300) => {
 
     useEffect(() => {
         try {
-            // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.out(Easing.ease)
-            // Easing.bezier(0.42, 0, 0.58, 1) est équivalent à ease-in-out
-            const easingFunction = Easing.bezier(0.42, 0, 0.58, 1);
+            // ✅ CORRIGÉ: Vérifier que Easing et Easing.bezier existent avant utilisation
+            const easingFunction = Easing && typeof Easing.bezier === 'function'
+                ? Easing.bezier(0.42, 0, 0.58, 1)
+                : undefined;
             
             Animated.parallel([
                 Animated.timing(opacity, {

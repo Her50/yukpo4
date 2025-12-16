@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import { SafeIcon } from '../SafeIcon';
 
@@ -24,14 +24,27 @@ const ProgressWizard: React.FC<ProgressWizardProps> = ({ steps, currentStep, sty
     const progressAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        const progress = currentStep / (steps.length - 1);
-        Animated.timing(progressAnim, {
-            toValue: progress,
-            duration: 400,
-            easing: Animated.Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.out() qui peut être undefined
-            useNativeDriver: false,
-        }).start();
-    }, [currentStep, steps.length]);
+        try {
+            const progress = currentStep / (steps.length - 1);
+            // ✅ CORRIGÉ: Utiliser Easing importé directement depuis react-native
+            // Vérifier que Easing.bezier existe avant de l'utiliser
+            const easingFunction = Easing && typeof Easing.bezier === 'function'
+                ? Easing.bezier(0.42, 0, 0.58, 1)
+                : undefined;
+
+            Animated.timing(progressAnim, {
+                toValue: progress,
+                duration: 400,
+                easing: easingFunction, // ✅ CORRIGÉ: Utiliser Easing.bezier sécurisé
+                useNativeDriver: false,
+            }).start();
+        } catch (error) {
+            console.warn('[ProgressWizard] Erreur animation:', error);
+            // En cas d'erreur, définir directement la valeur finale
+            const progress = currentStep / (steps.length - 1);
+            progressAnim.setValue(progress);
+        }
+    }, [currentStep, steps.length, progressAnim]);
 
     const progressWidth = progressAnim.interpolate({
         inputRange: [0, 1],
