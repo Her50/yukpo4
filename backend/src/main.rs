@@ -123,19 +123,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // ✅ CORRIGÉ 2025-12-16: Vérifier connexion après libération pour détecter erreurs TLS tôt
                     Box::pin(async move {
                         // Tester la connexion pour détecter les erreurs TLS avant réutilisation
-                        if let Err(e) = sqlx::query("SELECT 1").execute(&mut *conn).await {
-                            let error_msg = e.to_string();
-                            if error_msg.contains("TLS") 
-                                || error_msg.contains("close_notify")
-                                || error_msg.contains("Connection reset")
-                                || error_msg.contains("peer closed") {
-                                log::debug!(
-                                    "⚠️ Connexion invalide détectée après libération (sera fermée): {}",
-                                    error_msg
-                                );
+                        // Retourner false si la connexion est invalide (sera fermée), true sinon
+                        match sqlx::query("SELECT 1").execute(&mut *conn).await {
+                            Ok(_) => Ok(true), // Connexion valide
+                            Err(e) => {
+                                let error_msg = e.to_string();
+                                if error_msg.contains("TLS") 
+                                    || error_msg.contains("close_notify")
+                                    || error_msg.contains("Connection reset")
+                                    || error_msg.contains("peer closed") {
+                                    log::debug!(
+                                        "⚠️ Connexion invalide détectée après libération (sera fermée): {}",
+                                        error_msg
+                                    );
+                                    Ok(false) // Connexion invalide, sera fermée
+                                } else {
+                                    Ok(true) // Autre erreur, on garde la connexion
+                                }
                             }
                         }
-                        Ok(())
                     })
                 })
                 .after_connect(|conn, _meta| {

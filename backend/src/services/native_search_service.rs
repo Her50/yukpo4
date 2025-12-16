@@ -886,61 +886,6 @@ SELECT DISTINCT
         variants
     }
 
-    /// Créer une requête SQL avec correspondances partielles intelligentes
-    fn create_partial_match_conditions(&self, query: &str) -> String {
-        let words: Vec<&str> = query.split_whitespace().collect();
-        let mut conditions = Vec::new();
-        
-        for word in words {
-            // Correspondances exactes
-            conditions.push(format!(
-                "s.data->'titre_service'->>'valeur' ILIKE '%{}%' OR s.data->'description'->>'valeur' ILIKE '%{}%' OR s.data->'category'->>'valeur' ILIKE '%{}%'",
-                word, word, word
-            ));
-            
-            // Correspondances sans accents (uniquement si le mot a des accents)
-            let without_accents = word
-                .chars()
-                .map(|c| match c {
-                    'à' | 'â' | 'ä' => 'a',
-                    'é' | 'è' | 'ê' | 'ë' => 'e',
-                    'î' | 'ï' => 'i',
-                    'ô' | 'ö' => 'o',
-                    'ù' | 'û' | 'ü' => 'u',
-                    'ÿ' => 'y',
-                    'ç' => 'c',
-                    _ => c,
-                })
-                .collect::<String>();
-            
-            if without_accents != word {
-                conditions.push(format!(
-                    "unaccent(s.data->'titre_service'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'description'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'category'->>'valeur') ILIKE '%{}%'",
-                    without_accents, without_accents, without_accents
-                ));
-            }
-            
-            // Correspondances bidirectionnelles : mot sans accents dans base avec accents
-            conditions.push(format!(
-                "unaccent(s.data->'titre_service'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'description'->>'valeur') ILIKE '%{}%' OR unaccent(s.data->'category'->>'valeur') ILIKE '%{}%'",
-                word, word, word
-            ));
-            
-            // Correspondances partielles pour mots longs (ex: "gestionnaire" -> "gestion")
-            let chars: Vec<char> = word.chars().collect();
-            if chars.len() > 4 {
-                // Prendre seulement les 4 premiers caractères pour éviter trop de correspondances
-                let substring: String = chars[..4].iter().collect();
-                conditions.push(format!(
-                    "s.data->'titre_service'->>'valeur' ILIKE '%{}%' OR s.data->'description'->>'valeur' ILIKE '%{}%' OR s.data->'category'->>'valeur' ILIKE '%{}%'",
-                    substring, substring, substring
-                ));
-            }
-        }
-        
-        conditions.join(" OR ")
-    }
-
     /// Recherche par catégorie spécifique
     pub async fn search_by_category(&self, category: &str) -> AppResult<Vec<SearchResult>> {
                        let sql = r#"
