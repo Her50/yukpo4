@@ -212,3 +212,4 @@ ON services USING GIN (to_tsvector('french', products_text_cache));
 
 
 
+

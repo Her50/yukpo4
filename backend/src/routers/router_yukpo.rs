@@ -803,12 +803,45 @@ Format JSON attendu :
     log::info!("[handle_creation_service_direct] Réponse brute: {}", response);
     log::info!("[handle_creation_service_direct] JSON extrait: {}", json_response);
     
-    // Parser la réponse JSON
-    let data: Value = serde_json::from_str(json_response).map_err(|e| {
-        log::error!("[handle_creation_service_direct] Erreur parsing JSON: {}", e);
-        log::error!("[handle_creation_service_direct] JSON reçu: {}", json_response);
-        format!("Erreur parsing JSON: {}", e)
-    })?;
+    // Parser la réponse JSON - Gérer le cas où la réponse est juste une string (nom de modèle)
+    let data: Value = if json_response.trim().starts_with('{') || json_response.trim().starts_with('[') {
+        // C'est un JSON valide, parser normalement
+        serde_json::from_str(json_response).map_err(|e| {
+            log::error!("[handle_creation_service_direct] Erreur parsing JSON: {}", e);
+            log::error!("[handle_creation_service_direct] JSON reçu: {}", json_response);
+            format!("Erreur parsing JSON: {}", e)
+        })?
+    } else {
+        // C'est probablement juste une string (ex: nom de modèle), créer un JSON wrapper
+        log::warn!("[handle_creation_service_direct] Réponse n'est pas un JSON valide, reçu: {}", json_response);
+        // Retourner un JSON par défaut avec la réponse comme message d'erreur
+        json!({
+            "error": "Réponse IA invalide",
+            "raw_response": json_response,
+            "data": {
+                "titre_service": {
+                    "type_donnee": "string",
+                    "valeur": "",
+                    "origine_champs": "ia"
+                },
+                "category": {
+                    "type_donnee": "string",
+                    "valeur": "",
+                    "origine_champs": "ia"
+                },
+                "description": {
+                    "type_donnee": "string",
+                    "valeur": format!("Réponse IA invalide: {}", json_response),
+                    "origine_champs": "ia"
+                },
+                "is_tarissable": {
+                    "type_donnee": "boolean",
+                    "valeur": false,
+                    "origine_champs": "ia"
+                }
+            }
+        })
+    };
     
     log::info!("[handle_creation_service_direct] JSON parsé avec succès: {}", data);
     

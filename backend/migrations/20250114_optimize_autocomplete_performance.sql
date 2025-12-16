@@ -44,3 +44,4 @@ ANALYZE users;
 -- Note: Les paramètres globaux doivent être configurés au niveau du serveur PostgreSQL
 
 
+

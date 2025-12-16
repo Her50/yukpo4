@@ -2,9 +2,42 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import { apiPost } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
+
+/**
+ * Obtenir le projectId Expo depuis la configuration
+ * @returns Le projectId ou null si non disponible
+ */
+function getExpoProjectId(): string | null {
+    try {
+        // Essayer d'obtenir depuis Constants.expoConfig (recommandé)
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+        if (projectId && typeof projectId === 'string') {
+            return projectId;
+        }
+
+        // Fallback: essayer depuis Constants.manifest2 (nouveau système)
+        const manifestProjectId = (Constants as any).manifest2?.extra?.eas?.projectId;
+        if (manifestProjectId && typeof manifestProjectId === 'string') {
+            return manifestProjectId;
+        }
+
+        // Fallback: essayer depuis Constants.manifest (ancien système)
+        const legacyProjectId = (Constants as any).manifest?.extra?.eas?.projectId;
+        if (legacyProjectId && typeof legacyProjectId === 'string') {
+            return legacyProjectId;
+        }
+
+        console.warn('[useNotifications] ⚠️ ProjectId Expo non trouvé dans la configuration');
+        return null;
+    } catch (error) {
+        console.error('[useNotifications] ❌ Erreur récupération projectId:', error);
+        return null;
+    }
+}
 
 const PUSH_TOKEN_KEY = '@yukpomnang:push_token';
 
@@ -73,12 +106,33 @@ export const useNotifications = (userId?: string) => {
             }
 
             try {
+                // ✅ CORRIGÉ: Utiliser getExpoProjectId() au lieu d'un projectId hardcodé
+                const projectId = getExpoProjectId();
+                if (!projectId) {
+                    console.warn('⚠️ ProjectId Expo non disponible, impossible d\'obtenir le token push');
+                    return null;
+                }
+                
                 token = (await Notifications.getExpoPushTokenAsync({
-                    projectId: '4a66f3c4-f05a-403c-8a88-68ab63e4bb30', // Remplacez par votre projectId Expo
+                    projectId: projectId
                 })).data;
                 console.log('📱 Push token obtenu:', token);
-            } catch (error) {
+            } catch (error: any) {
+                // Gestion spécifique de l'erreur EXPERIENCE_NOT_FOUND
+                const errorMessage = error?.message || '';
+                const errorString = JSON.stringify(error || {});
+                if (
+                    errorMessage.includes('EXPERIENCE_NOT_FOUND') ||
+                    errorString.includes('EXPERIENCE_NOT_FOUND') ||
+                    errorMessage.includes('does not exist') ||
+                    error?.code === 'ERR_NOTIFICATIONS_SERVER_ERROR'
+                ) {
+                    console.warn('⚠️ Expérience Expo non trouvée ou non configurée');
+                    console.warn('💡 Vérifiez que le projectId Expo est correct dans app.json');
+                    return null;
+                }
                 console.error('❌ Erreur obtention token:', error);
+                return null;
             }
         } else {
             console.log('⚠️ Notifications push ne fonctionnent que sur un appareil physique');

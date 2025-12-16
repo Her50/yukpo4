@@ -411,17 +411,31 @@ SELECT DISTINCT
                         SELECT COALESCE(SUM(
                             CASE ac.sous_caracteristique
                                 -- Caractéristiques CRITIQUES (20.0)
-                                WHEN 'marque', 'brand' THEN 20.0
-                                WHEN 'modele', 'model' THEN 18.0
+                                WHEN 'marque' THEN 20.0
+                                WHEN 'brand' THEN 20.0
+                                WHEN 'modele' THEN 18.0
+                                WHEN 'model' THEN 18.0
                                 -- Caractéristiques TRÈS IMPORTANTES (15.0)
-                                WHEN 'type', 'categorie', 'category' THEN 15.0
+                                WHEN 'type' THEN 15.0
+                                WHEN 'categorie' THEN 15.0
+                                WHEN 'category' THEN 15.0
                                 -- Caractéristiques IMPORTANTES (12.0)
-                                WHEN 'couleur', 'color' THEN 12.0
-                                WHEN 'taille', 'size', 'pointure' THEN 12.0
-                                WHEN 'carburant', 'transmission', 'annee', 'kilometrage' THEN 12.0
+                                WHEN 'couleur' THEN 12.0
+                                WHEN 'color' THEN 12.0
+                                WHEN 'taille' THEN 12.0
+                                WHEN 'size' THEN 12.0
+                                WHEN 'pointure' THEN 12.0
+                                WHEN 'carburant' THEN 12.0
+                                WHEN 'transmission' THEN 12.0
+                                WHEN 'annee' THEN 12.0
+                                WHEN 'kilometrage' THEN 12.0
                                 -- Caractéristiques UTILES (10.0)
-                                WHEN 'typeBatiment', 'nombre_chambres', 'surface' THEN 10.0
-                                WHEN 'matiere', 'style', 'etat' THEN 10.0
+                                WHEN 'typeBatiment' THEN 10.0
+                                WHEN 'nombre_chambres' THEN 10.0
+                                WHEN 'surface' THEN 10.0
+                                WHEN 'matiere' THEN 10.0
+                                WHEN 'style' THEN 10.0
+                                WHEN 'etat' THEN 10.0
                                 -- Autres caractéristiques (8.0)
                                 ELSE 8.0
                             END *
