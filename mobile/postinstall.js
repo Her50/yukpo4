@@ -6,13 +6,27 @@ const path = require('path');
 
 console.log('📦 Running postinstall script...\n');
 
-// Détecter si on est sur EAS Build
-const isEASBuild = process.env.EAS_BUILD === 'true' || process.env.CI === 'true';
+// Détecter si on est sur EAS Build (plusieurs variables possibles)
+const isEASBuild = 
+    process.env.EAS_BUILD === 'true' || 
+    process.env.CI === 'true' || 
+    process.env.EXPO_CI === 'true' ||
+    process.env.EAS_BUILD_RUNNER === 'eas-build' ||
+    !!process.env.EAS_BUILD_ID;
+
+// Afficher les variables d'environnement pour debug
+console.log('🔍 Environment detection:');
+console.log(`  EAS_BUILD: ${process.env.EAS_BUILD || 'not set'}`);
+console.log(`  CI: ${process.env.CI || 'not set'}`);
+console.log(`  EXPO_CI: ${process.env.EXPO_CI || 'not set'}`);
+console.log(`  EAS_BUILD_RUNNER: ${process.env.EAS_BUILD_RUNNER || 'not set'}`);
+console.log(`  EAS_BUILD_ID: ${process.env.EAS_BUILD_ID || 'not set'}`);
+console.log(`  Detected as EAS Build: ${isEASBuild}\n`);
 
 if (isEASBuild) {
-    console.log('🏗️  Detected EAS Build environment');
+    console.log('🏗️  Detected EAS Build environment - applying critical fixes...');
 } else {
-    console.log('💻 Detected local environment');
+    console.log('💻 Detected local environment - applying fixes...');
 }
 
 try {
@@ -38,12 +52,28 @@ try {
         execSync('node fix-reanimated-worklets.js', { stdio: 'inherit' });
     }
 
-    // Toujours exécuter le fix Metro
+    // Toujours exécuter le fix Metro (CRITIQUE pour EAS Build)
     if (fs.existsSync(path.join(__dirname, 'fix-metro-exports-comprehensive.js'))) {
-        console.log('🔧 Fixing Metro exports...');
-        execSync('node fix-metro-exports-comprehensive.js', { stdio: 'inherit' });
+        console.log('\n🔧 Fixing Metro exports (CRITICAL for EAS Build)...');
+        try {
+            execSync('node fix-metro-exports-comprehensive.js', { 
+                stdio: 'inherit',
+                env: { ...process.env, NODE_ENV: 'production' }
+            });
+            console.log('✅ Metro exports fixed successfully');
+        } catch (error) {
+            console.error('❌ Metro exports fix failed:', error.message);
+            if (isEASBuild) {
+                // Sur EAS Build, c'est critique, on doit échouer
+                throw error;
+            }
+        }
     } else {
-        console.log('⚠️  Metro fix script not found, skipping...');
+        console.log('⚠️  Metro fix script not found!');
+        if (isEASBuild) {
+            console.error('❌ CRITICAL: Metro fix script missing on EAS Build!');
+            process.exit(1);
+        }
     }
 
     // Créer les liens symboliques (uniquement en local, peut échouer sur certains systèmes)

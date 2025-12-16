@@ -263,7 +263,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let recommendations = recommendation_routes(); // Ne prend pas state
     let token_stats = token_stats_routes(); // Ne prend pas state
                                             // Routes déjà dans router_yukpo mais ajoutées ici pour être explicite
-    let ai_chat = ai_chat_routes(state.clone());
+    // let ai_chat = ai_chat_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     let appliance_models = appliance_model_routes(state.clone());
     let diagnostics = diagnostic_routes(state.clone());
     let health_structure = health_structure_routes(state.clone());
@@ -367,7 +367,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(recommendations)
         .merge(token_stats)
         // Routes déjà dans router_yukpo mais ajoutées ici pour être explicite
-        .merge(ai_chat)
+        // .merge(ai_chat) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
         .merge(appliance_models)
         .merge(diagnostics)
         .merge(health_structure)
