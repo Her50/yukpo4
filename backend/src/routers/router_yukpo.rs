@@ -774,7 +774,8 @@ Format JSON attendu :
     
     // Appeler l'IA avec le prompt de création de service
     // ?? CORRECTION : Utiliser predict_multimodal pour analyser les images
-    let (response, model_name, tokens_consumed) = if has_images {
+    // ✅ CORRECTION CRITIQUE : L'ordre de retour est (model_name, response, tokens)
+    let (model_name, response, tokens_consumed) = if has_images {
         log::info!("[handle_creation_service_direct] Appel multimodal avec {} image(s)", 
             input.base64_image.as_ref().map_or(0, |v| v.len()));
         app_ia.predict_multimodal(&prompt, input.base64_image.clone()).await?
