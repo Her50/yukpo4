@@ -142,15 +142,23 @@ pub async fn search_by_autocomplete_vector(
                 ac.is_real_product = TRUE
                 AND ac.identifiant_base = 'produits'
                 AND s.is_active = TRUE
-                -- ✅ OPTIMISÉ: Utiliser opérateur && pour recherche GIN plus rapide
-                AND ac.full_vector && $1::TEXT[]
-                -- ✅ OPTIMISÉ: Vérifier correspondance après filtrage par index
+                -- ✅ CORRIGÉ 2025-12-16: Utiliser LIKE pour correspondances partielles au lieu de && (correspondance exacte)
+                -- Le problème: && nécessite correspondance exacte d'éléments, alors qu'on veut des correspondances partielles
+                -- Solution: Utiliser LIKE pour trouver "chaussures" dans "Chaussures pour enfants"
                 AND (
-                    -- Au moins UN élément du vecteur recherché doit matcher
+                    -- Au moins UN élément du vecteur recherché doit matcher dans full_vector
                     EXISTS (
                         SELECT 1 FROM unnest($1::TEXT[]) AS search_val
                         WHERE EXISTS (
                             SELECT 1 FROM unnest(ac.full_vector) AS vec_val
+                            WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
+                        )
+                    )
+                    -- OU dans characteristic_vector
+                    OR EXISTS (
+                        SELECT 1 FROM unnest($1::TEXT[]) AS search_val
+                        WHERE EXISTS (
+                            SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
                             WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
                         )
                     )
@@ -232,14 +240,23 @@ pub async fn search_by_autocomplete_vector(
                 ac.is_real_product = TRUE
                 AND ac.identifiant_base = 'produits'
                 AND s.is_active = TRUE
-                -- ✅ OPTIMISÉ: Utiliser opérateur && pour recherche GIN plus rapide
-                AND ac.full_vector && $1::TEXT[]
-                -- ✅ OPTIMISÉ: Vérifier correspondance après filtrage par index
+                -- ✅ CORRIGÉ 2025-12-16: Utiliser LIKE pour correspondances partielles au lieu de && (correspondance exacte)
+                -- Le problème: && nécessite correspondance exacte d'éléments, alors qu'on veut des correspondances partielles
+                -- Solution: Utiliser LIKE pour trouver "chaussures" dans "Chaussures pour enfants"
                 AND (
+                    -- Au moins UN élément du vecteur recherché doit matcher dans full_vector
                     EXISTS (
                         SELECT 1 FROM unnest($1::TEXT[]) AS search_val
                         WHERE EXISTS (
                             SELECT 1 FROM unnest(ac.full_vector) AS vec_val
+                            WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
+                        )
+                    )
+                    -- OU dans characteristic_vector
+                    OR EXISTS (
+                        SELECT 1 FROM unnest($1::TEXT[]) AS search_val
+                        WHERE EXISTS (
+                            SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
                             WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
                         )
                     )

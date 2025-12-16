@@ -9,6 +9,7 @@
  */
 
 import * as ReactNavigation from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useRef, useState } from 'react';
 import {
     Alert,
@@ -445,6 +446,15 @@ const HomeScreen: React.FC = () => {
         }
         setShowGPSModal(false);
     }, []);
+
+    // ✅ NOUVEAU: Remettre automatiquement en mode recherche quand on revient sur l'écran
+    // Cela garantit que après la création d'un service ou produit, le mode repasse en recherche
+    useFocusEffect(
+        useCallback(() => {
+            console.log('[HomeScreen] 🔄 Écran focus - Remise en mode recherche automatique');
+            setIsCreateService(false);
+        }, [])
+    );
 
 
     return (

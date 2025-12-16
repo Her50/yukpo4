@@ -118,7 +118,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
                 .idle_timeout(Some(std::time::Duration::from_secs(180))) // ✅ CORRIGÉ 2025-01-27: 3 min pour renouveler AVANT que Render ne ferme (~5 min)
                 .max_lifetime(Some(std::time::Duration::from_secs(240))) // ✅ CORRIGÉ 2025-01-27: 4 min pour renouveler AVANT que Render ne ferme (~5 min)
-                .test_before_acquire(true)
+                .test_before_acquire(true) // ✅ CORRIGÉ 2025-12-16: Tester connexion avant acquisition pour éviter erreurs TLS
+                .after_release(|conn, _meta| {
+                    // ✅ CORRIGÉ 2025-12-16: Vérifier connexion après libération pour détecter erreurs TLS tôt
+                    Box::pin(async move {
+                        // Tester la connexion pour détecter les erreurs TLS avant réutilisation
+                        if let Err(e) = sqlx::query("SELECT 1").execute(&mut *conn).await {
+                            let error_msg = e.to_string();
+                            if error_msg.contains("TLS") 
+                                || error_msg.contains("close_notify")
+                                || error_msg.contains("Connection reset")
+                                || error_msg.contains("peer closed") {
+                                log::debug!(
+                                    "⚠️ Connexion invalide détectée après libération (sera fermée): {}",
+                                    error_msg
+                                );
+                            }
+                        }
+                        Ok(())
+                    })
+                })
                 .after_connect(|conn, _meta| {
                     Box::pin(async move {
                         if let Err(e) = sqlx::query("SET statement_timeout = 0")

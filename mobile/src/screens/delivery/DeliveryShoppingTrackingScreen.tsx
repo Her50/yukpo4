@@ -443,8 +443,9 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                         <View style={styles.courierActions}>
                             <Text style={styles.courierActionsTitle}>Actions coursier</Text>
                             {/* ✅ NOUVEAU : Bouton navigation */}
-                            <HapticTouchable
-                                hapticType="medium"
+                            <NativeButton
+                                title="🧭 Ouvrir la navigation"
+                                variant="primary"
                                 onPress={async () => {
                                     if (!deliveryId) return;
                                     try {
@@ -477,22 +478,14 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                 style={styles.statusButton}
                             />
                             {getNextStatusOptions().map((option) => (
-                                <HapticTouchable
+                                <NativeButton
                                     key={option.status}
-                                    hapticType="medium"
+                                    title={`${option.icon} ${option.label}`}
+                                    variant="primary"
                                     onPress={() => handleUpdateStatus(option.status)}
                                     disabled={updatingStatus}
-                                >
-                                    <View>
-                                        <NativeButton
-                                            title={`${option.icon} ${option.label}`}
-                                            variant="primary"
-                                            onPress={() => handleUpdateStatus(option.status)}
-                                            disabled={updatingStatus}
-                                            style={styles.statusButton}
-                                        />
-                                    </View>
-                                </HapticTouchable>
+                                    style={styles.statusButton}
+                                />
                             ))}
                         </View>
                     )}

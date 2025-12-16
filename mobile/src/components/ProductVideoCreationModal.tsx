@@ -1477,10 +1477,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     }, []);
 
     // ✅ NOUVEAU: Fonction helper pour calculer les styles dynamiquement avec insets
+    // ✅ AMÉLIORATION: Augmenter significativement les paddings et gaps pour minimiser les scrolls verticaux
     const getStepContentStyle = useCallback(() => ({
-        padding: 20,
-        paddingBottom: 100 + insets.bottom, // ✅ Espace pour les boutons fixes + safe area
+        padding: 28, // ✅ AUGMENTÉ: De 20 à 28 pour plus d'espace
+        paddingBottom: 120 + insets.bottom, // ✅ AUGMENTÉ: De 100 à 120 pour garantir que tout le contenu est visible
         flexGrow: 1,
+        gap: 28, // ✅ AJOUTÉ: Gap entre les sections pour meilleure séparation visuelle
         // ✅ CORRECTION: Retirer minHeight: '100%' qui cause des problèmes de rendu sur mobile
         // Le contenu doit pouvoir scroller naturellement
     }), [insets.bottom]);
@@ -4143,24 +4145,25 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
     },
     modalHeader: {
-        paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 12,
+        paddingHorizontal: 24, // ✅ AUGMENTÉ: De 20 à 24
+        paddingTop: 24, // ✅ AUGMENTÉ: De 20 à 24
+        paddingBottom: 16, // ✅ AUGMENTÉ: De 12 à 16
         flexDirection: 'row',
         alignItems: 'flex-start',
         justifyContent: 'space-between',
-        gap: 16,
+        gap: 20, // ✅ AUGMENTÉ: De 16 à 20
+        minHeight: 80, // ✅ AJOUTÉ: Hauteur minimale
     },
     modalTitle: {
-        fontSize: 20,
+        fontSize: 24, // ✅ AUGMENTÉ: De 20 à 24
         fontWeight: '700',
         color: modernColors.text,
     },
     modalSubtitle: {
-        fontSize: 13,
+        fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15
         color: modernColors.textSecondary,
-        marginTop: 4,
-        lineHeight: 18,
+        marginTop: 8, // ✅ AUGMENTÉ: De 4 à 8
+        lineHeight: 22, // ✅ AUGMENTÉ: De 18 à 22
     },
     closeButton: {
         width: 36,
@@ -4177,31 +4180,34 @@ const styles = StyleSheet.create({
         minHeight: 200,
     },
     sectionCard: {
-        marginBottom: 16,
+        marginBottom: 24, // ✅ AUGMENTÉ: De 16 à 24
         borderWidth: 1,
         borderColor: '#E5E7EB',
         borderRadius: 18,
-        padding: 20,
+        padding: 24, // ✅ AUGMENTÉ: De 20 à 24
         backgroundColor: '#FFFFFF',
+        minHeight: 100, // ✅ AJOUTÉ: Hauteur minimale pour meilleure visibilité
     },
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 12,
-        gap: 8, // ✅ AJOUTÉ: Espacement entre titre et bouton
+        marginBottom: 16, // ✅ AUGMENTÉ: De 12 à 16
+        gap: 12, // ✅ AUGMENTÉ: De 8 à 12
+        paddingVertical: 4, // ✅ AJOUTÉ: Padding vertical
     },
     sectionTitle: {
-        fontSize: 16,
+        fontSize: 22, // ✅ AUGMENTÉ: De 16 à 22 pour meilleure visibilité
         fontWeight: '700',
         color: modernColors.text,
         flexShrink: 1, // ✅ AJOUTÉ: Permet au titre de se rétrécir si nécessaire pour laisser de l'espace au bouton
+        marginBottom: 8, // ✅ AJOUTÉ: Marge en bas pour séparation
     },
     sectionSubtitle: {
-        fontSize: 13,
+        fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15 pour meilleure lisibilité
         color: modernColors.textSecondary,
-        lineHeight: 18,
-        marginBottom: 12,
+        lineHeight: 22, // ✅ AUGMENTÉ: De 18 à 22
+        marginBottom: 16, // ✅ AUGMENTÉ: De 12 à 16
     },
     coachLoading: {
         flexDirection: 'row',
@@ -5158,34 +5164,35 @@ const styles = StyleSheet.create({
     },
     // ✅ NOUVEAU: Styles pour templates narratifs (depuis Wizard)
     templateList: {
-        marginTop: 12,
-        gap: 12,
+        marginTop: 16, // ✅ AUGMENTÉ: De 12 à 16
+        gap: 16, // ✅ AUGMENTÉ: De 12 à 16
     },
     templateCard: {
-        padding: 16,
+        padding: 20, // ✅ AUGMENTÉ: De 16 à 20
         borderRadius: 12,
         borderWidth: 1,
         borderColor: '#E2E8F0',
         backgroundColor: '#F8FAFC',
+        minHeight: 100, // ✅ AJOUTÉ: Hauteur minimale
     },
     templateCardActive: {
         backgroundColor: '#EEF2FF',
         borderColor: modernColors.primary,
     },
     templateTitle: {
-        fontSize: 15,
+        fontSize: 18, // ✅ AUGMENTÉ: De 15 à 18
         fontWeight: '600',
         color: modernColors.text,
-        marginBottom: 4,
+        marginBottom: 8, // ✅ AUGMENTÉ: De 4 à 8
     },
     templateTitleActive: {
         color: modernColors.primary,
     },
     templateDescription: {
-        fontSize: 13,
+        fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15
         color: modernColors.textSecondary,
-        marginBottom: 8,
-        lineHeight: 18,
+        marginBottom: 10, // ✅ AUGMENTÉ: De 8 à 10
+        lineHeight: 22, // ✅ AUGMENTÉ: De 18 à 22
     },
     templateMeta: {
         fontSize: 11,
@@ -5197,11 +5204,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: 16, // ✅ AJOUTÉ: Gap pour espacement
+        paddingVertical: 12, // ✅ AUGMENTÉ: De 8 à 12
+        minHeight: 48, // ✅ AJOUTÉ: Hauteur minimale
         marginTop: 12,
-        paddingVertical: 8,
     },
     inlineLabel: {
-        fontSize: 14,
+        fontSize: 17, // ✅ AUGMENTÉ: De 14 à 17
         fontWeight: '500',
         color: modernColors.text,
     },

@@ -299,10 +299,10 @@ impl NativeSearchService {
             return Ok(search_results);
         }
         
-        // Fallback vers l'ancienne méthode si pas de GPS
-        let partial_conditions = self.create_partial_match_conditions(query);
-        
-        let sql = format!(r#"
+        // ✅ CORRIGÉ 2025-12-16: Optimisation requête SQL - utiliser tsvector au lieu de conditions ILIKE multiples
+        // Le problème: create_partial_match_conditions génère une condition énorme avec beaucoup de ILIKE redondants
+        // Solution: Utiliser tsvector pour recherche full-text (utilise index GIN) + conditions simplifiées
+        let sql = r#"
 SELECT DISTINCT
                 s.id,
                 s.data,
@@ -311,15 +311,13 @@ SELECT DISTINCT
                 s.gps,
                 s.category,
                 (
-                    -- ✅ CORRECTION 2025-11-01: RÉDUIRE priorité SERVICE (total 7.0 au lieu de 13.0)
-                    -- Priorité : PRODUITS > SERVICE pour meilleure pertinence
+                    -- ✅ OPTIMISÉ: Utiliser tsvector pour recherche full-text (index GIN)
                     (
                         ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 3.0 +
                         ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
                         ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0
                     ) +
-                    -- ✅ CORRECTION 2025-11-01: AUGMENTER priorité PRODUITS (10.0 au lieu de 3.0)
-                    -- Les caractéristiques des produits sont maintenant PRIORITAIRES
+                    -- Recherche dans produits avec tsvector
                     (
                         SELECT COALESCE(SUM(
                             ts_rank(to_tsvector('french', extract_all_product_text(product)), plainto_tsquery('french', $1)) * 10.0
@@ -334,63 +332,41 @@ SELECT DISTINCT
                             END
                         ) AS product
                     ) +
-                    -- Score avec unaccent pour gestion des accents
+                    -- ✅ OPTIMISÉ: Recherche dans autocomplete_characteristics (plus rapide que JSON)
                     (
-                        ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'titre_service'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 5.0 +
-                        ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'description'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 2.5 +
-                        ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'category'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 3.5
+                        SELECT COALESCE(SUM(
+                            CASE ac.sous_caracteristique
+                                WHEN 'marque' THEN 20.0
+                                WHEN 'brand' THEN 20.0
+                                WHEN 'modele' THEN 18.0
+                                WHEN 'model' THEN 18.0
+                                WHEN 'type' THEN 15.0
+                                WHEN 'categorie' THEN 15.0
+                                WHEN 'category' THEN 15.0
+                                ELSE 8.0
+                            END *
+                            ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) *
+                            (1.0 + (ac.usage_count::REAL / 10.0))
+                        ), 0.0)
+                        FROM autocomplete_characteristics ac
+                        WHERE ac.service_id = s.id
+                        AND ac.identifiant_base LIKE 'produit%'
+                        AND to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
                     ) +
-                    -- Bonus pour correspondances exactes avec priorité titre
+                    -- Bonus correspondances exactes (simplifié)
                     CASE 
                         WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' THEN 8.0
                         WHEN s.data->'description'->>'valeur' ILIKE '%' || $1 || '%' THEN 4.0
                         WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 5.0
                         ELSE 0.0
                     END +
-                    -- ✅ CORRECTION 2025-11-01: AUGMENTER bonus pour correspondances dans les produits
-                    -- Recherche dans le texte extrait de tous les champs du produit (autocomplete inclus)
+                    -- Bonus produits (simplifié - seulement champs importants)
                     (
                         SELECT COALESCE(SUM(
                             CASE 
-                                -- ✅ Correspondance dans le texte complet extrait (AUGMENTÉ 3.0 → 5.0)
-                                WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 5.0
-                                -- ✅ Bonus pour champs spécifiques importants (AUGMENTÉ 5.0 → 8.0)
                                 WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 8.0
-                                -- ✅ Description produit (AUGMENTÉ 3.0 → 5.0)
                                 WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 5.0
-                                WHEN product->>'type' ILIKE '%' || $1 || '%' THEN 5.0
-                                WHEN product->>'marque' ILIKE '%' || $1 || '%' THEN 5.0
-                                WHEN product->>'modele' ILIKE '%' || $1 || '%' THEN 5.0
-                                WHEN product->>'titre' ILIKE '%' || $1 || '%' THEN 5.0
-                                -- 🎓 FORMATION & ÉDUCATION: Boost spécifique pour typeFormation (+20%)
-                                WHEN product->>'typeFormation' ILIKE '%' || $1 || '%' THEN 6.0
-                                -- 📚 Boost pour matières enseignées (+15%)
-                                WHEN product->>'matieresEnseignees' ILIKE '%' || $1 || '%' THEN 5.5
-                                WHEN product->>'matieres_enseignees' ILIKE '%' || $1 || '%' THEN 5.5
-                                -- 📖 Boost pour niveaux scolaires (+15%)
-                                WHEN product->>'niveauxScolaires' ILIKE '%' || $1 || '%' THEN 5.5
-                                WHEN product->>'niveaux_scolaires' ILIKE '%' || $1 || '%' THEN 5.5
-                                -- 🎯 Boost pour concours cibles (+15%)
-                                WHEN product->>'concoursCibles' ILIKE '%' || $1 || '%' THEN 5.5
-                                WHEN product->>'concours_cibles' ILIKE '%' || $1 || '%' THEN 5.5
-                                -- 💻 Boost pour format de formation
-                                WHEN product->>'formatFormation' ILIKE '%' || $1 || '%' THEN 4.5
-                                WHEN product->>'formats' ILIKE '%' || $1 || '%' THEN 4.5
-                                -- 📖 Boost pour anciens sujets
-                                WHEN product->>'anciensSujetsDisponibles' ILIKE '%' || $1 || '%' THEN 4.5
-                                -- 🏥 CLINIQUE/HÔPITAL: Boost pour prestations médicales
-                                WHEN product->'prestationsMedicales' IS NOT NULL AND EXISTS (
-                                    SELECT 1 FROM jsonb_array_elements_text(product->'prestationsMedicales') prestation
-                                    WHERE prestation ILIKE '%' || $1 || '%'
-                                ) THEN 4.5
-                                WHEN product->>'typeEtablissement' ILIKE '%' || $1 || '%' THEN 4.0
-                                -- 🚚 DÉMÉNAGEMENT: Boost pour type véhicule et services
-                                WHEN product->>'typeDemenagement' ILIKE '%' || $1 || '%' THEN 4.0
-                                WHEN product->>'typeVehicule' ILIKE '%' || $1 || '%' THEN 3.0
-                                WHEN product->>'volumeEstime' ILIKE '%' || $1 || '%' THEN 2.5
-                                -- 📍 Localisation
-                                WHEN product->>'quartier' ILIKE '%' || $1 || '%' THEN 2.5
-                                WHEN product->>'ville' ILIKE '%' || $1 || '%' THEN 2.5
+                                WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 5.0
                                 ELSE 0.0
                             END
                         ), 0.0)
@@ -403,115 +379,37 @@ SELECT DISTINCT
                                 ELSE '[]'::jsonb
                             END
                         ) AS product
-                    ) +
-                    -- ✅ NOUVEAU 2025-11-01: BOOST MAJEUR pour autocomplete_characteristics
-                    -- Recherche dans la table structurée (BEAUCOUP plus précis et rapide que JSON)
-                    -- Score: 8.0-20.0 par caractéristique + boost popularité (usage_count)
-                    (
-                        SELECT COALESCE(SUM(
-                            CASE ac.sous_caracteristique
-                                -- Caractéristiques CRITIQUES (20.0)
-                                WHEN 'marque' THEN 20.0
-                                WHEN 'brand' THEN 20.0
-                                WHEN 'modele' THEN 18.0
-                                WHEN 'model' THEN 18.0
-                                -- Caractéristiques TRÈS IMPORTANTES (15.0)
-                                WHEN 'type' THEN 15.0
-                                WHEN 'categorie' THEN 15.0
-                                WHEN 'category' THEN 15.0
-                                -- Caractéristiques IMPORTANTES (12.0)
-                                WHEN 'couleur' THEN 12.0
-                                WHEN 'color' THEN 12.0
-                                WHEN 'taille' THEN 12.0
-                                WHEN 'size' THEN 12.0
-                                WHEN 'pointure' THEN 12.0
-                                WHEN 'carburant' THEN 12.0
-                                WHEN 'transmission' THEN 12.0
-                                WHEN 'annee' THEN 12.0
-                                WHEN 'kilometrage' THEN 12.0
-                                -- Caractéristiques UTILES (10.0)
-                                WHEN 'typeBatiment' THEN 10.0
-                                WHEN 'nombre_chambres' THEN 10.0
-                                WHEN 'surface' THEN 10.0
-                                WHEN 'matiere' THEN 10.0
-                                WHEN 'style' THEN 10.0
-                                WHEN 'etat' THEN 10.0
-                                -- Autres caractéristiques (8.0)
-                                ELSE 8.0
-                            END *
-                            ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) *
-                            -- BOOST selon popularité (usage_count: 1-10 fois utilisé = 1.1x-2.0x boost)
-                            (1.0 + (ac.usage_count::REAL / 10.0))
-                        ), 0.0)
-                        FROM autocomplete_characteristics ac
-                        WHERE ac.service_id = s.id
-                        AND ac.identifiant_base LIKE 'produit%'
-                        AND to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
-                    ) +
-                    -- Bonus pour correspondances sans accents
-                    CASE 
-                        WHEN unaccent(s.data->'titre_service'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 6.0
-                        WHEN unaccent(s.data->'description'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 3.0
-                        WHEN unaccent(s.data->'category'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 4.0
-                    END +
-                    -- Bonus pour correspondances partielles intelligentes
-                    CASE 
-                        WHEN ({}) THEN 2.0
-                        ELSE 0.0
-                    END +
-                    -- Bonus pour correspondance de mots individuels avec priorité titre
-                    (
-                        SELECT COALESCE(SUM(
-                            CASE 
-                                WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || word || '%' THEN 4.0
-                                WHEN s.data->'description'->>'valeur' ILIKE '%' || word || '%' THEN 2.0
-                                WHEN s.data->'category'->>'valeur' ILIKE '%' || word || '%' THEN 3.0
-                                ELSE 0.0
-                            END
-                        ), 0.0)
-                        FROM unnest(string_to_array($1, ' ')) AS word
-                    ) +
-                    -- Bonus pour correspondances multiples (titre + description)
-                    CASE 
-                        WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' 
-                             AND s.data->'description'->>'valeur' ILIKE '%' || $1 || '%'
-                        THEN 3.0
-                        WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' 
-                             AND s.data->'category'->>'valeur' ILIKE '%' || $1 || '%'
-                        THEN 2.0
-                        ELSE 0.0
-                    END +
-                    -- Bonus pour correspondances dans plusieurs champs (pertinence élevée)
-                    CASE 
-                        WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' 
-                             AND s.data->'description'->>'valeur' ILIKE '%' || $1 || '%'
-                             AND s.data->'category'->>'valeur' ILIKE '%' || $1 || '%'
-                        THEN 5.0
-                        ELSE 0.0
-                    END +
-                    -- Pénalité pour correspondances uniquement dans la description (moins pertinent)
-                    CASE 
-                        WHEN s.data->'titre_service'->>'valeur' NOT ILIKE '%' || $1 || '%' 
-                             AND s.data->'description'->>'valeur' ILIKE '%' || $1 || '%'
-                             AND s.data->'category'->>'valeur' NOT ILIKE '%' || $1 || '%'
-                        THEN -1.0
-                        ELSE 0.0
-                    END +
-                    -- Logique de scoring simplifiée et efficace
-                    CASE 
-                        -- Bonus pour correspondance exacte dans le titre (le plus important)
-                        WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%'
-                        THEN 2.0
-                        ELSE 0.0
-                    END
+                    )
                 )::REAL as fulltext_score
             FROM services s
             WHERE s.is_active = true
-            AND ({})
+            AND (
+                -- ✅ OPTIMISÉ: Utiliser tsvector pour filtrage (utilise index GIN)
+                to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+                OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+                OR to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+                OR EXISTS (
+                    SELECT 1 FROM autocomplete_characteristics ac
+                    WHERE ac.service_id = s.id
+                    AND ac.identifiant_base = 'produits'
+                    AND ac.is_real_product = TRUE
+                    AND (
+                        EXISTS (
+                            SELECT 1 FROM unnest(ac.full_vector) AS vec_val
+                            WHERE to_tsvector('french', vec_val) @@ plainto_tsquery('french', $1)
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
+                            WHERE to_tsvector('french', vec_val) @@ plainto_tsquery('french', $1)
+                        )
+                    )
+                )
+            )
             AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
             AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
             ORDER BY fulltext_score DESC
-        "#, partial_conditions, partial_conditions);
+            LIMIT 100
+        "#;
 
         let results = sqlx::query(&sql)
             .bind(query)

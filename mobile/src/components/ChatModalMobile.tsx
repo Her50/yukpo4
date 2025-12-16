@@ -118,6 +118,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // ✅ CORRIGÉ: Vérifications strictes pour éviter les crashes
     // ✅ NOUVEAU : Utiliser conversationId si conversation privée, sinon service.id
     const parsedConversationId = privateConversationId ? Number(privateConversationId) : NaN;
     const effectiveServiceId = isPrivateConversation && !Number.isNaN(parsedConversationId)
@@ -134,7 +135,20 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         prestataireInfo?.user_id ?? prestataireInfo?.userId ?? 0,
     );
 
-    // Utiliser le hook WebSocket
+    // ✅ CORRIGÉ: Vérifier que les IDs sont valides avant d'utiliser le hook WebSocket
+    // Utiliser des valeurs par défaut sécurisées si les IDs sont invalides
+    const safeServiceId = (effectiveServiceId && typeof effectiveServiceId === 'number' && effectiveServiceId > 0) 
+        ? effectiveServiceId 
+        : 0;
+    const safePrestataireId = (prestataireUserId && typeof prestataireUserId === 'number' && prestataireUserId > 0)
+        ? prestataireUserId
+        : 0;
+    const safeUserId = (user?.id && typeof user.id === 'number' && user.id > 0)
+        ? user.id
+        : 0;
+
+    // Utiliser le hook WebSocket avec des valeurs sécurisées
+    // Le hook gérera les valeurs invalides (0) en ne se connectant pas
     const {
         messages,
         isConnected,
@@ -144,9 +158,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         deleteMessage,
         markAsRead
     } = useWebSocketChat(
-        effectiveServiceId,
-        prestataireUserId,
-        user?.id || 0
+        safeServiceId,
+        safePrestataireId,
+        safeUserId
     );
 
     // Fonction utilitaire pour extraire la valeur d'un champ de service
@@ -332,8 +346,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
     // ✅ NOUVEAU: Charger les participants de la conversation
     const loadParticipants = async () => {
+        // ✅ CORRIGÉ: Vérifier que effectiveServiceId est valide
         const convId = effectiveServiceId;
-        if (!convId) return;
+        if (!convId || typeof convId !== 'number' || convId <= 0) {
+            console.warn('[ChatModalMobile] Impossible de charger les participants - serviceId invalide:', convId);
+            return;
+        }
 
         try {
             const response = await apiGet<Participant[]>(`/api/conversations/${convId}/participants`);

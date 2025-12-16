@@ -75,6 +75,20 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
     }, []);
 
     const connectWebSocket = useCallback(() => {
+        // ✅ CORRIGÉ: Vérifier que les IDs sont valides avant de se connecter
+        if (!serviceId || typeof serviceId !== 'number' || serviceId <= 0) {
+            console.error('❌ [useWebSocketChat] serviceId invalide:', serviceId);
+            return;
+        }
+        if (!prestataireId || typeof prestataireId !== 'number' || prestataireId <= 0) {
+            console.error('❌ [useWebSocketChat] prestataireId invalide:', prestataireId);
+            return;
+        }
+        if (!userId || typeof userId !== 'number' || userId <= 0) {
+            console.error('❌ [useWebSocketChat] userId invalide:', userId);
+            return;
+        }
+
         try {
             console.log('🔌 [useWebSocketChat] Connexion WebSocket...');
 

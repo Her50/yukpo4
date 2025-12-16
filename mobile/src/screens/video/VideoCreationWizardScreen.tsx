@@ -184,12 +184,13 @@ const VideoCreationWizardScreen: React.FC = () => {
     const [dependencies, setDependencies] = useState<VideoDependency[]>([]);
 
     // ✅ CORRECTION: Fonction helper pour calculer les styles dynamiquement avec insets
+    // ✅ AMÉLIORATION: Augmenter significativement les paddings et gaps pour minimiser les scrolls verticaux
     const getStepContentStyle = useCallback(() => ({
-        padding: 20,
-        gap: 20,
+        padding: 28, // ✅ AUGMENTÉ: De 20 à 28 pour plus d'espace
+        gap: 28, // ✅ AUGMENTÉ: De 20 à 28 pour meilleure séparation visuelle
         // ✅ CORRECTION: Calculer dynamiquement le paddingBottom en fonction de la hauteur des boutons + safe area
-        // Hauteur bouton (~60px) + padding top (16px) + padding bottom (20-34px) + safe area bottom + marge (20px)
-        paddingBottom: 100 + insets.bottom, // ✅ Augmenté pour garantir que tout le contenu est visible
+        // Hauteur bouton (~60px) + padding top (16px) + padding bottom (20-34px) + safe area bottom + marge (28px)
+        paddingBottom: 120 + insets.bottom, // ✅ AUGMENTÉ: De 100 à 120 pour garantir que tout le contenu est visible
         // ✅ CORRECTION: Utiliser flexGrow au lieu de minHeight pour permettre le scroll complet
         flexGrow: 1,
     }), [insets.bottom]);
@@ -2397,10 +2398,11 @@ const styles = StyleSheet.create({
     stepHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 24, // ✅ AUGMENTÉ: De 20 à 24
+        paddingVertical: 20, // ✅ AUGMENTÉ: De 16 à 20
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: modernColors.border,
+        minHeight: 70, // ✅ AJOUTÉ: Hauteur minimale
     },
     stepHeaderText: {
         flex: 1,
@@ -2420,7 +2422,7 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
     },
     stepTitle: {
-        fontSize: 16,
+        fontSize: 19, // ✅ AUGMENTÉ: De 16 à 19
         fontWeight: '700',
         color: modernColors.text,
     },
@@ -2452,28 +2454,31 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(148,163,184,0.3)',
         borderRadius: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
+        paddingHorizontal: 18, // ✅ AUGMENTÉ: De 14 à 18
+        paddingVertical: 16, // ✅ AUGMENTÉ: De 12 à 16
         backgroundColor: modernColors.surface,
-        marginTop: 8,
+        marginTop: 12, // ✅ AUGMENTÉ: De 8 à 12
+        minHeight: 56, // ✅ AJOUTÉ: Hauteur minimale pour meilleure visibilité
     },
     pickerButtonText: {
-        fontSize: 15,
+        fontSize: 17, // ✅ AUGMENTÉ: De 15 à 17
         color: modernColors.text,
         flex: 1,
+        fontWeight: '500', // ✅ AJOUTÉ: Poids de police pour meilleure lisibilité
     },
     sectionCard: {
-        gap: 16,
+        gap: 24, // ✅ AUGMENTÉ: De 16 à 24 pour plus d'espace entre les éléments
     },
     sectionSubTitle: {
-        fontSize: 13,
+        fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15 pour meilleure lisibilité
         color: modernColors.textSecondary,
-        marginTop: 4,
+        marginTop: 8, // ✅ AUGMENTÉ: De 4 à 8 pour plus d'espace
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 22, // ✅ AUGMENTÉ: De 18 à 22 pour meilleure visibilité
         fontWeight: '700',
         color: modernColors.text,
+        marginBottom: 4, // ✅ AJOUTÉ: Marge en bas pour séparation
     },
     skeletonStack: {
         gap: 10,
@@ -2485,45 +2490,54 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     summaryTitle: {
-        fontSize: 16,
+        fontSize: 19, // ✅ AUGMENTÉ: De 16 à 19
         fontWeight: '600',
         color: modernColors.text,
+        marginBottom: 6, // ✅ AJOUTÉ: Marge en bas
     },
     summarySubtitle: {
-        fontSize: 14,
+        fontSize: 16, // ✅ AUGMENTÉ: De 14 à 16
         color: modernColors.textSecondary,
+        lineHeight: 22, // ✅ AJOUTÉ: Hauteur de ligne
     },
     textArea: {
-        minHeight: 120,
+        minHeight: 160, // ✅ AUGMENTÉ: De 120 à 160 pour voir plus de texte sans scroll
+        fontSize: 16, // ✅ AJOUTÉ: Taille de police plus grande
+        padding: 16, // ✅ AJOUTÉ: Padding interne pour meilleure lisibilité
     },
     inlineRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 12,
+        gap: 16, // ✅ AUGMENTÉ: De 12 à 16
+        paddingVertical: 8, // ✅ AJOUTÉ: Padding vertical pour plus d'espace
+        minHeight: 48, // ✅ AJOUTÉ: Hauteur minimale
     },
     inlineLabel: {
-        fontSize: 16,
+        fontSize: 17, // ✅ AUGMENTÉ: De 16 à 17
         color: modernColors.text,
         flex: 1,
+        fontWeight: '500', // ✅ AJOUTÉ: Poids de police
     },
     pillContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        marginTop: 8,
-        gap: 8,
+        marginTop: 12, // ✅ AUGMENTÉ: De 8 à 12
+        gap: 12, // ✅ AUGMENTÉ: De 8 à 12
     },
     pill: {
-        paddingVertical: 10,
-        paddingHorizontal: 16,
+        paddingVertical: 14, // ✅ AUGMENTÉ: De 10 à 14
+        paddingHorizontal: 20, // ✅ AUGMENTÉ: De 16 à 20
         borderRadius: 999,
         backgroundColor: modernColors.surface,
+        minHeight: 48, // ✅ AJOUTÉ: Hauteur minimale
     },
     pillSmall: {
-        paddingVertical: 8,
-        paddingHorizontal: 14,
+        paddingVertical: 12, // ✅ AUGMENTÉ: De 8 à 12
+        paddingHorizontal: 18, // ✅ AUGMENTÉ: De 14 à 18
         borderRadius: 999,
         backgroundColor: modernColors.surface,
+        minHeight: 44, // ✅ AJOUTÉ: Hauteur minimale
     },
     pillActive: {
         backgroundColor: modernColors.primary,
@@ -2531,6 +2545,7 @@ const styles = StyleSheet.create({
     pillText: {
         color: modernColors.text,
         fontWeight: '600',
+        fontSize: 15, // ✅ AJOUTÉ: Taille de police explicite
     },
     pillTextActive: {
         color: '#FFF',
@@ -2542,26 +2557,29 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.15)',
         borderRadius: 16,
-        padding: 12,
-        marginBottom: 10,
+        padding: 18, // ✅ AUGMENTÉ: De 12 à 18
+        marginBottom: 14, // ✅ AUGMENTÉ: De 10 à 14
         backgroundColor: 'rgba(10,16,30,0.75)',
+        minHeight: 100, // ✅ AJOUTÉ: Hauteur minimale pour meilleure visibilité
     },
     templateCardActive: {
         borderColor: 'rgba(16,185,129,0.7)',
         backgroundColor: 'rgba(16,185,129,0.12)',
     },
     templateTitle: {
-        fontSize: 15,
+        fontSize: 18, // ✅ AUGMENTÉ: De 15 à 18
         fontWeight: '600',
         color: modernColors.text,
+        marginBottom: 6, // ✅ AJOUTÉ: Marge en bas
     },
     templateTitleActive: {
         color: modernColors.success,
     },
     templateDescription: {
-        marginTop: 4,
-        fontSize: 13,
+        marginTop: 8, // ✅ AUGMENTÉ: De 4 à 8
+        fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15
         color: modernColors.textSecondary,
+        lineHeight: 20, // ✅ AJOUTÉ: Hauteur de ligne pour meilleure lisibilité
     },
     templateMeta: {
         marginTop: 4,
@@ -2574,9 +2592,10 @@ const styles = StyleSheet.create({
     },
     modeCard: {
         flex: 1,
-        padding: 16,
+        padding: 20, // ✅ AUGMENTÉ: De 16 à 20
         borderRadius: 18,
         backgroundColor: modernColors.surface,
+        minHeight: 120, // ✅ AJOUTÉ: Hauteur minimale pour meilleure visibilité
     },
     modeCardActive: {
         backgroundColor: modernColors.surfaceVariant,
@@ -2584,14 +2603,16 @@ const styles = StyleSheet.create({
         borderColor: modernColors.primary,
     },
     modeTitle: {
-        fontSize: 16,
+        fontSize: 18, // ✅ AUGMENTÉ: De 16 à 18
         fontWeight: '700',
         color: modernColors.text,
+        marginBottom: 8, // ✅ AJOUTÉ: Marge en bas
     },
     modeSubTitle: {
-        fontSize: 13,
+        fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15
         color: modernColors.textSecondary,
-        marginTop: 6,
+        marginTop: 8, // ✅ AUGMENTÉ: De 6 à 8
+        lineHeight: 20, // ✅ AJOUTÉ: Hauteur de ligne
     },
     navigationRow: {
         flexDirection: 'row',
@@ -2599,9 +2620,10 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     mediaCard: {
-        padding: 16,
+        padding: 20, // ✅ AUGMENTÉ: De 16 à 20
         borderRadius: 16,
         backgroundColor: modernColors.surface,
+        minHeight: 80, // ✅ AJOUTÉ: Hauteur minimale
     },
     mediaCardSelected: {
         borderWidth: 1,
@@ -2615,14 +2637,15 @@ const styles = StyleSheet.create({
     },
     mediaTitle: {
         flex: 1,
-        fontSize: 15,
+        fontSize: 17, // ✅ AUGMENTÉ: De 15 à 17
         fontWeight: '600',
         color: modernColors.text,
     },
     mediaSubTitle: {
-        marginTop: 8,
-        fontSize: 13,
+        marginTop: 10, // ✅ AUGMENTÉ: De 8 à 10
+        fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15
         color: modernColors.textSecondary,
+        lineHeight: 20, // ✅ AJOUTÉ: Hauteur de ligne
     },
     mediaSeparator: {
         height: 12,

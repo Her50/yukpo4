@@ -1489,7 +1489,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // Ces logs ne sont plus nécessaires et polluent les logs en production
   // Si besoin de debug, utiliser des logs conditionnels avec vérification de valeurs
 
-  const commentServiceId = Number(product._serviceId || product.service_id || service?.id || 0);
+  // ✅ CORRIGÉ: Utiliser serviceId déjà calculé pour commentServiceId
+  // serviceId est calculé plus haut avec plusieurs sources, donc on l'utilise en priorité
+  const commentServiceId = (() => {
+    // Essayer d'abord serviceId qui est déjà calculé avec plusieurs sources
+    if (serviceId && typeof serviceId === 'number' && serviceId > 0) {
+      return Number(serviceId);
+    }
+    // Sinon, essayer les autres sources
+    const fallbackId = product._serviceId ||
+      product.service_id ||
+      product.serviceId ||
+      service?.id ||
+      service?.service_id ||
+      0;
+    return Number(fallbackId);
+  })();
   const serviceTitleForComments =
     product.nom ||
     product.name ||
@@ -1582,7 +1597,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
       onChatPress();
     }
 
-    // Toujours ouvrir le modal - laisser ChatModalMobile gérer les cas manquants
+    // ✅ CORRIGÉ: Vérifications strictes avant d'ouvrir le chat
+    // Essayer de récupérer serviceId de plusieurs sources
+    const resolvedServiceId = 
+      service?.id ||
+      product?.service_id ||
+      product?.serviceId ||
+      serviceId ||
+      null;
+
     // Essayer de récupérer prestataireUserId de plusieurs sources
     const resolvedPrestataireUserId =
       prestataireUserId ||
@@ -1592,10 +1615,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
       service?.data?.user_id ||
       null;
 
-    if (!resolvedPrestataireUserId && !service?.id && !product?.service_id) {
+    // ✅ CORRIGÉ: Vérifier que serviceId est valide (doit être un nombre > 0)
+    if (!resolvedServiceId || typeof resolvedServiceId !== 'number' || resolvedServiceId <= 0) {
       Alert.alert(
         'Information manquante',
-        'Impossible d\'ouvrir le chat : informations du service ou du prestataire manquantes.'
+        'Impossible d\'ouvrir le chat : l\'identifiant du service est invalide.'
+      );
+      return;
+    }
+
+    // ✅ CORRIGÉ: Vérifier que prestataireUserId est valide (doit être un nombre > 0)
+    if (!resolvedPrestataireUserId || typeof resolvedPrestataireUserId !== 'number' || resolvedPrestataireUserId <= 0) {
+      Alert.alert(
+        'Information manquante',
+        'Impossible d\'ouvrir le chat : les informations du prestataire sont manquantes.'
       );
       return;
     }
@@ -1603,13 +1636,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
     // Toujours ouvrir le modal local avec les informations disponibles
     setChatContext({
       type: 'service',
-      targetUserId: resolvedPrestataireUserId ? Number(resolvedPrestataireUserId) : undefined,
-      targetUserName: prestataire.nom || prestataireName || 'Prestataire',
-      targetAvatar: prestataire.avatar_url || prestataireAvatar || null,
+      targetUserId: Number(resolvedPrestataireUserId),
+      targetUserName: prestataire?.nom || prestataireName || 'Prestataire',
+      targetAvatar: prestataire?.avatar_url || prestataireAvatar || null,
     });
     setPrivateConversationId(null);
     setShowChatModal(true);
-  }, [onChatPress, prestataireUserId, prestataire, product, service, prestataireName, prestataireAvatar]);
+  }, [onChatPress, prestataireUserId, prestataire, product, service, prestataireName, prestataireAvatar, serviceId]);
 
   // ✅ NOUVEAU : Handler partage produit avec toast
   const handleShare = async () => {
@@ -2940,6 +2973,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                           )}
 
                           {/* ✅ AMÉLIORÉ: Section commentaires ultra-compacte avec état de chargement visible */}
+                          {/* ✅ CORRIGÉ: Afficher la section même si commentStats est null (pour permettre le chargement) */}
                           {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
                             <View style={styles.commentsCompactSection}>
                               <View style={styles.commentsCompactRow}>
@@ -2982,9 +3016,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                     styles.commentsCompactButton,
                                     loadingComments && styles.commentsCompactButtonDisabled
                                   ]}
-                                  onPress={() => setShowCommentsModal(true)}
-                                  disabled={loadingComments}
-                                  accessibilityState={{ disabled: loadingComments }}
+                                  onPress={() => {
+                                    if (commentServiceId > 0) {
+                                      setShowCommentsModal(true);
+                                    }
+                                  }}
+                                  disabled={loadingComments || commentServiceId <= 0}
+                                  accessibilityState={{ disabled: loadingComments || commentServiceId <= 0 }}
                                   accessibilityLabel="Ouvrir les commentaires"
                                 >
                                   <SafeIcon name="corner-up-right" size={14} color={modernColors.primary} />
@@ -3357,24 +3395,56 @@ const ProductCard: React.FC<ProductCardProps> = ({
       />
 
       {/* ✅ CORRIGÉ: Modal Chat - Toujours rendre le composant, contrôler via visible */}
-      <ChatModalMobile
-        visible={showChatModal}
-        onClose={handleCloseChatModal}
-        service={service || {
-          id: product.service_id || service?.id,
-          data: { titre_service: { valeur: product.nom || service?.data?.titre_service?.valeur || 'Produit' } },
-          user_id: prestataireUserId || service?.user_id,
-        }}
-        prestataireInfo={activeChatPeer || prestataire || {
-          nom: prestataireName || 'Prestataire',
-          nom_complet: prestataireName || 'Prestataire',
-          user_id: prestataireUserId,
-          avatar_url: prestataireAvatar,
-        }}
-        user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
-        conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
-        isPrivateConversation={isPrivateChat}
-      />
+      {/* ✅ CORRIGÉ: Vérifier que serviceId est valide avant de rendre */}
+      {showChatModal && (() => {
+        // ✅ CORRIGÉ: Calculer serviceId de manière sécurisée
+        const resolvedServiceId = 
+          service?.id ||
+          product?.service_id ||
+          product?.serviceId ||
+          serviceId ||
+          null;
+
+        // ✅ CORRIGÉ: Vérifier que serviceId est valide
+        if (!resolvedServiceId || typeof resolvedServiceId !== 'number' || resolvedServiceId <= 0) {
+          return null;
+        }
+
+        // ✅ CORRIGÉ: Calculer prestataireUserId de manière sécurisée
+        const resolvedPrestataireUserId =
+          prestataireUserId ||
+          prestataire?.user_id ||
+          product?.prestataire?.user_id ||
+          service?.user_id ||
+          service?.data?.user_id ||
+          null;
+
+        // ✅ CORRIGÉ: Vérifier que prestataireUserId est valide
+        if (!resolvedPrestataireUserId || typeof resolvedPrestataireUserId !== 'number' || resolvedPrestataireUserId <= 0) {
+          return null;
+        }
+
+        return (
+          <ChatModalMobile
+            visible={showChatModal}
+            onClose={handleCloseChatModal}
+            service={service || {
+              id: resolvedServiceId,
+              data: { titre_service: { valeur: product.nom || service?.data?.titre_service?.valeur || 'Produit' } },
+              user_id: resolvedPrestataireUserId,
+            }}
+            prestataireInfo={activeChatPeer || prestataire || {
+              nom: prestataireName || 'Prestataire',
+              nom_complet: prestataireName || 'Prestataire',
+              user_id: resolvedPrestataireUserId,
+              avatar_url: prestataireAvatar,
+            }}
+            user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
+            conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
+            isPrivateConversation={isPrivateChat}
+          />
+        );
+      })()}
 
       {/* ✅ NOUVEAU : Modal Galerie du prestataire */}
       {showGallery && (
@@ -3392,7 +3462,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
       )}
 
       {/* ✅ Modal commande livraison - Uniquement pour les produits */}
-      {serviceId && isProduct && (
+      {/* ✅ CORRIGÉ: Vérification stricte de serviceId (doit être un nombre valide) */}
+      {serviceId && typeof serviceId === 'number' && serviceId > 0 && isProduct && (
         <OrderDeliveryModal
           visible={showOrderModal}
           onClose={() => setShowOrderModal(false)}

@@ -341,8 +341,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderWidth: 2, // ✅ CORRIGÉ: Bordure plus épaisse pour meilleure séparation visuelle
+        borderColor: '#D1D5DB', // ✅ CORRIGÉ: Bordure plus visible (gris plus foncé)
         borderRadius: 10,
     },
     categoryIconContainer: {

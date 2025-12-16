@@ -21,7 +21,7 @@ import SafeIcon from '../SafeIcon';
 interface OrderDeliveryModalProps {
     visible: boolean;
     onClose: () => void;
-    serviceId: number;
+    serviceId: number | null | undefined; // ✅ CORRIGÉ: Accepter null/undefined pour éviter les crashes
     productIndex?: number;
     productName?: string;
     onSuccess?: (deliveryId: string) => void;
@@ -121,7 +121,8 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
     // Charger GPS utilisateur au montage et récupérer les coûts
     useEffect(() => {
-        if (visible) {
+        // ✅ CORRIGÉ: Vérifier que serviceId est valide avant d'exécuter les fonctions
+        if (visible && serviceId && typeof serviceId === 'number' && serviceId > 0) {
             loadUserGPS(); // Charger le GPS depuis l'API (pour référence)
             loadAvailableProducts();
             if (productIndex !== undefined) {
@@ -130,6 +131,14 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
             // ✅ NOUVEAU : Charger automatiquement la position actuelle de l'utilisateur
             // Cette fonction essaie d'abord la position actuelle, puis utilise le GPS de l'API comme fallback
             loadCurrentLocationAutomatically();
+        } else if (visible && (!serviceId || typeof serviceId !== 'number' || serviceId <= 0)) {
+            // ✅ CORRIGÉ: Afficher une erreur si serviceId est invalide
+            console.error('[OrderDeliveryModal] serviceId invalide:', serviceId);
+            Alert.alert(
+                'Erreur',
+                'Impossible de charger les informations de livraison. Le service est invalide.',
+                [{ text: 'OK', onPress: onClose }]
+            );
         }
     }, [visible, serviceId, productIndex]);
 
@@ -194,6 +203,12 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     // ✅ NOUVEAU : Charger automatiquement la position actuelle
     const loadCurrentLocationAutomatically = async () => {
         try {
+            // ✅ CORRIGÉ: Vérifier que Location est disponible
+            if (!Location || typeof Location.requestForegroundPermissionsAsync !== 'function') {
+                console.warn('[OrderDeliveryModal] Location API non disponible');
+                return;
+            }
+            
             // Vérifier les permissions
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
@@ -216,19 +231,26 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 if (gpsToUse) {
                     // Géocoder le GPS de l'utilisateur depuis l'API
                     try {
-                        const reverseGeocode = await Location.reverseGeocodeAsync(gpsToUse);
-                        if (reverseGeocode.length > 0) {
-                            const addr = reverseGeocode[0];
-                            const formattedAddress = formatAddressWithDistrict(addr);
-                            setDropoffLocation({
-                                ...gpsToUse,
-                                address: formattedAddress || `${gpsToUse.latitude.toFixed(6)}, ${gpsToUse.longitude.toFixed(6)}`,
-                            });
+                        // ✅ CORRIGÉ: Vérifier que reverseGeocodeAsync est disponible
+                        if (Location && typeof Location.reverseGeocodeAsync === 'function') {
+                            const reverseGeocode = await Location.reverseGeocodeAsync(gpsToUse);
+                            if (reverseGeocode && Array.isArray(reverseGeocode) && reverseGeocode.length > 0) {
+                                const addr = reverseGeocode[0];
+                                const formattedAddress = formatAddressWithDistrict(addr);
+                                setDropoffLocation({
+                                    ...gpsToUse,
+                                    address: formattedAddress || `${gpsToUse.latitude.toFixed(6)}, ${gpsToUse.longitude.toFixed(6)}`,
+                                });
+                            } else {
+                                setDropoffLocation(gpsToUse);
+                            }
                         } else {
+                            // Si reverseGeocodeAsync n'est pas disponible, utiliser directement les coordonnées
                             setDropoffLocation(gpsToUse);
                         }
                     } catch (geocodeError) {
                         console.warn('Erreur géocodage GPS utilisateur:', geocodeError);
+                        // ✅ CORRIGÉ: Toujours définir dropoffLocation même en cas d'erreur
                         setDropoffLocation(gpsToUse);
                     }
                 }
@@ -247,20 +269,27 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
             // Géocodage inverse pour obtenir l'adresse avec quartier
             try {
-                const reverseGeocode = await Location.reverseGeocodeAsync(coords);
-                if (reverseGeocode.length > 0) {
-                    const addr = reverseGeocode[0];
-                    const formattedAddress = formatAddressWithDistrict(addr);
+                // ✅ CORRIGÉ: Vérifier que reverseGeocodeAsync est disponible
+                if (Location && typeof Location.reverseGeocodeAsync === 'function') {
+                    const reverseGeocode = await Location.reverseGeocodeAsync(coords);
+                    if (reverseGeocode && Array.isArray(reverseGeocode) && reverseGeocode.length > 0) {
+                        const addr = reverseGeocode[0];
+                        const formattedAddress = formatAddressWithDistrict(addr);
 
-                    setDropoffLocation({
-                        ...coords,
-                        address: formattedAddress || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
-                    });
+                        setDropoffLocation({
+                            ...coords,
+                            address: formattedAddress || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
+                        });
+                    } else {
+                        setDropoffLocation(coords);
+                    }
                 } else {
+                    // Si reverseGeocodeAsync n'est pas disponible, utiliser directement les coordonnées
                     setDropoffLocation(coords);
                 }
             } catch (geocodeError) {
                 console.warn('Erreur géocodage automatique:', geocodeError);
+                // ✅ CORRIGÉ: Toujours définir dropoffLocation même en cas d'erreur
                 setDropoffLocation(coords);
             }
 
@@ -276,19 +305,26 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                     setUserGPS(gpsFromApi);
 
                     try {
-                        const reverseGeocode = await Location.reverseGeocodeAsync(gpsFromApi);
-                        if (reverseGeocode.length > 0) {
-                            const addr = reverseGeocode[0];
-                            const formattedAddress = formatAddressWithDistrict(addr);
-                            setDropoffLocation({
-                                ...gpsFromApi,
-                                address: formattedAddress || `${gpsFromApi.latitude.toFixed(6)}, ${gpsFromApi.longitude.toFixed(6)}`,
-                            });
+                        // ✅ CORRIGÉ: Vérifier que reverseGeocodeAsync est disponible
+                        if (Location && typeof Location.reverseGeocodeAsync === 'function') {
+                            const reverseGeocode = await Location.reverseGeocodeAsync(gpsFromApi);
+                            if (reverseGeocode && Array.isArray(reverseGeocode) && reverseGeocode.length > 0) {
+                                const addr = reverseGeocode[0];
+                                const formattedAddress = formatAddressWithDistrict(addr);
+                                setDropoffLocation({
+                                    ...gpsFromApi,
+                                    address: formattedAddress || `${gpsFromApi.latitude.toFixed(6)}, ${gpsFromApi.longitude.toFixed(6)}`,
+                                });
+                            } else {
+                                setDropoffLocation(gpsFromApi);
+                            }
                         } else {
+                            // Si reverseGeocodeAsync n'est pas disponible, utiliser directement les coordonnées
                             setDropoffLocation(gpsFromApi);
                         }
                     } catch (geocodeError) {
                         console.warn('Erreur géocodage GPS utilisateur (fallback):', geocodeError);
+                        // ✅ CORRIGÉ: Toujours définir dropoffLocation même en cas d'erreur
                         setDropoffLocation(gpsFromApi);
                     }
                 }
@@ -300,7 +336,11 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
     // ✅ Phase 8 - Amélioration 26 : Charger les produits disponibles du service
     const loadAvailableProducts = async () => {
-        if (!serviceId) return;
+        // ✅ CORRIGÉ: Vérification stricte de serviceId
+        if (!serviceId || typeof serviceId !== 'number' || serviceId <= 0) {
+            console.error('[OrderDeliveryModal] serviceId invalide dans loadAvailableProducts:', serviceId);
+            return;
+        }
 
         setLoadingProducts(true);
         try {
@@ -381,7 +421,8 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     // ✅ Phase 7 - Amélioration 23 : Charger les coûts estimés (adapté pour multi-produits)
     // ✅ IMPORTANT : Le coût de livraison est indépendant du nombre de produits
     const loadCosts = async () => {
-        if (!serviceId || selectedProducts.length === 0 || !dropoffLocation) {
+        // ✅ CORRIGÉ: Vérification stricte de serviceId
+        if (!serviceId || typeof serviceId !== 'number' || serviceId <= 0 || selectedProducts.length === 0 || !dropoffLocation) {
             return;
         }
 
@@ -468,20 +509,27 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
             // ✅ AMÉLIORÉ : Géocodage inverse pour obtenir l'adresse avec quartier
             try {
-                const reverseGeocode = await Location.reverseGeocodeAsync(coords);
-                if (reverseGeocode.length > 0) {
-                    const addr = reverseGeocode[0];
-                    const formattedAddress = formatAddressWithDistrict(addr);
+                // ✅ CORRIGÉ: Vérifier que reverseGeocodeAsync est disponible
+                if (Location && typeof Location.reverseGeocodeAsync === 'function') {
+                    const reverseGeocode = await Location.reverseGeocodeAsync(coords);
+                    if (reverseGeocode && Array.isArray(reverseGeocode) && reverseGeocode.length > 0) {
+                        const addr = reverseGeocode[0];
+                        const formattedAddress = formatAddressWithDistrict(addr);
 
-                    setDropoffLocation({
-                        ...coords,
-                        address: formattedAddress || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
-                    });
+                        setDropoffLocation({
+                            ...coords,
+                            address: formattedAddress || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
+                        });
+                    } else {
+                        setDropoffLocation(coords);
+                    }
                 } else {
+                    // Si reverseGeocodeAsync n'est pas disponible, utiliser directement les coordonnées
                     setDropoffLocation(coords);
                 }
             } catch (geocodeError) {
                 console.warn('Erreur géocodage:', geocodeError);
+                // ✅ CORRIGÉ: Toujours définir dropoffLocation même en cas d'erreur
                 setDropoffLocation(coords);
             }
 
@@ -510,21 +558,30 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
             // ✅ AMÉLIORÉ : Géocodage inverse pour obtenir l'adresse avec quartier
             try {
-                const reverseGeocode = await Location.reverseGeocodeAsync({
-                    latitude: lat,
-                    longitude: lng,
-                });
-
-                if (reverseGeocode.length > 0) {
-                    const addr = reverseGeocode[0];
-                    const formattedAddress = formatAddressWithDistrict(addr);
-
-                    setDropoffLocation({
+                // ✅ CORRIGÉ: Vérifier que reverseGeocodeAsync est disponible
+                if (Location && typeof Location.reverseGeocodeAsync === 'function') {
+                    const reverseGeocode = await Location.reverseGeocodeAsync({
                         latitude: lat,
                         longitude: lng,
-                        address: formattedAddress || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
                     });
+
+                    if (reverseGeocode && Array.isArray(reverseGeocode) && reverseGeocode.length > 0) {
+                        const addr = reverseGeocode[0];
+                        const formattedAddress = formatAddressWithDistrict(addr);
+
+                        setDropoffLocation({
+                            latitude: lat,
+                            longitude: lng,
+                            address: formattedAddress || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                        });
+                    } else {
+                        setDropoffLocation({
+                            latitude: lat,
+                            longitude: lng,
+                        });
+                    }
                 } else {
+                    // Si reverseGeocodeAsync n'est pas disponible, utiliser directement les coordonnées
                     setDropoffLocation({
                         latitude: lat,
                         longitude: lng,
@@ -532,6 +589,7 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 }
             } catch (geocodeError) {
                 console.warn('[OrderDeliveryModal] Erreur géocodage:', geocodeError);
+                // ✅ CORRIGÉ: Toujours définir dropoffLocation même en cas d'erreur
                 setDropoffLocation({
                     latitude: lat,
                     longitude: lng,
@@ -545,6 +603,12 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     };
 
     const handleSubmit = async () => {
+        // ✅ CORRIGÉ: Vérifier serviceId avant de soumettre
+        if (!serviceId || typeof serviceId !== 'number' || serviceId <= 0) {
+            Alert.alert('Erreur', 'Service invalide. Impossible de créer la commande.');
+            return;
+        }
+
         if (!dropoffLocation) {
             Alert.alert('Adresse requise', 'Veuillez fournir une adresse de livraison');
             return;
