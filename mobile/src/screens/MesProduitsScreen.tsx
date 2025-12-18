@@ -245,7 +245,6 @@ const MesProduitsScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [filter, setFilter] = useState<'tous' | 'actif' | 'inactif'>('tous');
-    const [categoryFilter, setCategoryFilter] = useState<string>('tous');
     const [filtersVisible, setFiltersVisible] = useState(false);
     const [showTeamManager, setShowTeamManager] = useState(false);
     const [teamManagerServiceId, setTeamManagerServiceId] = useState<string>('');
@@ -1540,45 +1539,22 @@ const MesProduitsScreen: React.FC = () => {
         if (filter === 'actif' && !product.is_active) return false;
         if (filter === 'inactif' && product.is_active) return false;
 
-        // Filtre par catégorie
-        if (categoryFilter !== 'tous' && (product.category_key || 'autre') !== categoryFilter) return false;
-
         return true;
     });
-
-    const categories = useMemo(() => {
-        // ✅ CORRECTION: S'assurer que products est toujours un tableau
-        const productsArray = products || [];
-        const map = new Map<string, string>();
-
-        productsArray.forEach((product) => {
-            const key = product.category_key || 'autre';
-            if (!map.has(key)) {
-                map.set(key, product.category_label || getProductTypeLabel(key));
-            }
-        });
-
-        return [
-            { key: 'tous', label: 'Toutes catégories' },
-            ...Array.from(map.entries()).map(([key, label]) => ({ key, label })),
-        ];
-    }, [products]);
 
     // ✅ CORRECTION: S'assurer que products est toujours un tableau
     const productsArray = products || [];
     const totalProducts = productsArray.length;
     const activeProducts = productsArray.filter((p) => p.is_active).length;
     const inactiveProducts = Math.max(totalProducts - activeProducts, 0);
-    const totalCategories = Math.max((categories || []).length - 1, 0);
 
     const headerSummary = useMemo(() => (
         [
             { label: 'Produits', value: totalProducts, accentColor: '#4F46E5' },
             { label: 'Actifs', value: activeProducts, accentColor: '#10B981' },
             { label: 'En pause', value: inactiveProducts, accentColor: '#F97316' },
-            { label: 'Catégories', value: totalCategories, accentColor: '#6366F1' },
         ]
-    ), [totalProducts, activeProducts, inactiveProducts, totalCategories]);
+    ), [totalProducts, activeProducts, inactiveProducts]);
 
     const buildProductPrefill = (product: ManagedProduct) => {
         // ✅ CORRECTION CRITIQUE: Extraire les valeurs depuis les objets structurés si nécessaire
@@ -2227,6 +2203,28 @@ const MesProduitsScreen: React.FC = () => {
                                     >
                                         <Text style={styles.headerBlackFridayIcon}>🔥</Text>
                                     </TouchableOpacity>
+                                    {/* ✅ NOUVEAU : Bouton Configuration Flash Promo */}
+                                    <TouchableOpacity
+                                        style={[styles.headerIconButton, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.3)' }]}
+                                        onPress={() => {
+                                            if (!products || products.length === 0) {
+                                                Alert.alert('Aucun produit', 'Vous devez d\'abord créer des produits avant de créer un flash promo.');
+                                                return;
+                                            }
+                                            // Prendre le premier produit actif, sinon le premier disponible
+                                            const firstProduct = products.find(p => p.is_active) || products[0];
+                                            if (firstProduct && firstProduct.serviceId) {
+                                                (navigation as any).navigate('CreateFlashPromo', {
+                                                    serviceId: parseInt(String(firstProduct.serviceId), 10),
+                                                    productIndex: firstProduct.product_index ?? 0,
+                                                });
+                                            } else {
+                                                Alert.alert('Erreur', 'Impossible de créer un flash promo : service ID manquant.');
+                                            }
+                                        }}
+                                    >
+                                        <SafeIcon name="zap" size={18} color="#F59E0B" type="lucide" />
+                                    </TouchableOpacity>
                                     {/* ✅ Menu (trois points) à la fin */}
                                     <TouchableOpacity
                                         style={styles.headerMenuButton}
@@ -2283,25 +2281,6 @@ const MesProduitsScreen: React.FC = () => {
                             ))}
                         </ScrollView>
 
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-                            {(categories || []).map(({ key, label }) => (
-                                <TouchableOpacity
-                                    key={key}
-                                    style={[
-                                        styles.categoryChip,
-                                        categoryFilter === key && styles.categoryChipActive
-                                    ]}
-                                    onPress={() => setCategoryFilter(key)}
-                                >
-                                    <Text style={[
-                                        styles.categoryChipText,
-                                        categoryFilter === key && styles.categoryChipTextActive
-                                    ]}>
-                                        {key === 'tous' ? `🏷️ ${label}` : label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
                     </View>
                 </View>
             </Animated.View>
@@ -2323,33 +2302,6 @@ const MesProduitsScreen: React.FC = () => {
                                 ? `Aucun produit ${filter}`
                                 : 'Ajoutez des produits à vos services'}
                         </Text>
-                    </View>
-                ) : categoryFilter === 'tous' ? (
-                    <View style={styles.productsList}>
-                        {(categories || []).slice(1).map(({ key, label }) => {
-                            const categoryProducts = (filteredProducts || []).filter(
-                                (product) => (product?.category_key || 'autre') === key
-                            );
-
-                            if (!categoryProducts || categoryProducts.length === 0) {
-                                return null;
-                            }
-
-                            return (
-                                <View key={key} style={styles.categoryGroup}>
-                                    <View style={styles.categoryHeader}>
-                                        <Text style={styles.categoryTitle}>{label || 'Sans catégorie'}</Text>
-                                        <View style={styles.categoryCountBadge}>
-                                            <Text style={styles.categoryCountText}>
-                                                {categoryProducts.length}
-                                            </Text>
-                                        </View>
-                                    </View>
-
-                                    {(categoryProducts || []).map(renderProductCard)}
-                                </View>
-                            );
-                        })}
                     </View>
                 ) : (
                     <View style={styles.productsList}>

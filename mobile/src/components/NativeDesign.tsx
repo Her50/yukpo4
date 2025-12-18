@@ -89,9 +89,25 @@ export const NativeCard: React.FC<NativeCardProps> = ({
                 const processed = child.map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`)).filter(item => item != null);
                 return processed.length > 0 ? processed : null;
             }
-            // Si c'est un élément React valide, le retourner tel quel
+            // ✅ CRITIQUE: Si c'est un Fragment React, traiter ses enfants
+            if (React.isValidElement(child) && child.type === React.Fragment) {
+                const fragmentChildren = React.Children.toArray(child.props.children);
+                const processed = fragmentChildren
+                    .map((item, itemIndex) => processChild(item, `${idx}-fragment-${itemIndex}`))
+                    .filter(item => item != null);
+                return processed.length > 0 ? processed : null;
+            }
+            
+            // ✅ CRITIQUE: Si c'est un élément React valide, vérifier qu'il n'a pas de chaînes comme enfants directs
             if (React.isValidElement(child)) {
-                return child;
+                // Si l'élément a des enfants, les traiter récursivement
+                if (child.props && child.props.children != null) {
+                    const processedChildren = processChild(child.props.children, `${idx}-children`);
+                    // Cloner l'élément avec les enfants traités
+                    return React.cloneElement(child, { key: idx }, processedChildren);
+                }
+                // Sinon, retourner l'élément tel quel
+                return React.cloneElement(child, { key: idx });
             }
             // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
             return <Text key={idx}>{String(child)}</Text>;
@@ -250,9 +266,25 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
                 const processed = child.map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`)).filter(item => item != null);
                 return processed.length > 0 ? processed : null;
             }
-            // Si c'est un élément React valide, le retourner tel quel
+            // ✅ CRITIQUE: Si c'est un Fragment React, traiter ses enfants
+            if (React.isValidElement(child) && child.type === React.Fragment) {
+                const fragmentChildren = React.Children.toArray(child.props.children);
+                const processed = fragmentChildren
+                    .map((item, itemIndex) => processChild(item, `${idx}-fragment-${itemIndex}`))
+                    .filter(item => item != null);
+                return processed.length > 0 ? processed : null;
+            }
+            
+            // ✅ CRITIQUE: Si c'est un élément React valide, vérifier qu'il n'a pas de chaînes comme enfants directs
             if (React.isValidElement(child)) {
-                return child;
+                // Si l'élément a des enfants, les traiter récursivement
+                if (child.props && child.props.children != null) {
+                    const processedChildren = processChild(child.props.children, `${idx}-children`);
+                    // Cloner l'élément avec les enfants traités
+                    return React.cloneElement(child, { key: idx }, processedChildren);
+                }
+                // Sinon, retourner l'élément tel quel
+                return React.cloneElement(child, { key: idx });
             }
             // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
             return <Text key={idx}>{String(child)}</Text>;

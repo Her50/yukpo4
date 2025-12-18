@@ -1133,7 +1133,7 @@ const MesServicesScreen: React.FC = () => {
                 </TouchableOpacity>
                 {/* ✅ NOUVEAU: Configuration Flash Promo - Visible directement dans le header */}
                 <TouchableOpacity
-                  style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(245, 158, 11, 0.3)' }]}
+                  style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(245, 158, 11, 0.4)', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.6)' }]}
                   onPress={() => {
                     const productsList = prepareProductsForSelector();
                     if (productsList.length === 0) {
@@ -1144,10 +1144,10 @@ const MesServicesScreen: React.FC = () => {
                     setProductSelectorMode('flash-promo');
                     setShowProductSelector(true);
                   }}
-                  accessibilityLabel="Créer Flash Promo"
+                  accessibilityLabel="Configuration Flash Promo"
                   accessibilityRole="button"
                 >
-                  <Text style={{ fontSize: 18, color: '#fff' }}>⚡</Text>
+                  <SafeIcon name="zap" size={20} color="#fff" type="lucide" />
                 </TouchableOpacity>
                 {/* ✅ NOUVEAU: Configuration de livraison dans l'en-tête */}
                 <TouchableOpacity
@@ -1424,13 +1424,12 @@ const MesServicesScreen: React.FC = () => {
                   onPress={() => setFilter('inactif')}
                 />
                 {stats.totalViews > 0 && (
-                    <StatsCard
-                      icon="eye"
-                      value={stats.totalViews.toLocaleString()}
-                      label="Vues totales"
-                      color={modernColors.secondary}
-                    />
-                  )
+                  <StatsCard
+                    icon="eye"
+                    value={stats.totalViews.toLocaleString()}
+                    label="Vues totales"
+                    color={modernColors.secondary}
+                  />
                 )}
               </View>
             </View>

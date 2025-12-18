@@ -1,11 +1,9 @@
-// Migration vers Lucide React Native pour un design moderne
+﻿// Migration vers Lucide React Native pour un design moderne
 import { Download, Image, Images, Play, Share, Video, X } from 'phosphor-react-native';
 import * as React from 'react';
 import { useState } from 'react';
 import { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge, Card, Paragraph, Title } from 'react-native-paper';
-import { ENVIRONMENT } from '../config/environment';
-import { mediaService } from '../services/mediaService';
 import { theme } from '../theme/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -43,13 +41,6 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
         realisations: { images: [], videos: [] }
     });
 
-    // ✅ NOUVEAU 2025-12-03: Initialiser mediaService pour CDN avec fallback
-    React.useEffect(() => {
-        mediaService.initialize(ENVIRONMENT.API_URL).catch(() => {
-            // Ignorer erreurs d'initialisation
-        });
-    }, []);
-
     React.useEffect(() => {
         if (visible && service) {
             loadMedia();
@@ -59,7 +50,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
     const loadMedia = () => {
         if (!service) return;
 
-        // Catégories de médias
+        // Cat├®gories de m├®dias
         const branding: { images: string[], videos: string[] } = { images: [], videos: [] };
         const products: { images: string[], videos: string[], byType: Record<string, { images: string[], videos: string[] }> } = {
             images: [],
@@ -68,26 +59,26 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
         };
         const realisations: { images: string[], videos: string[] } = { images: [], videos: [] };
 
-        // 1. Logo et bannière (Branding/Identité visuelle)
+        // 1. Logo et banni├¿re (Branding/Identit├® visuelle)
         const logo = extractMediaFromField(service.data?.logo);
         const banner = extractMediaFromField(service.data?.banner) || extractMediaFromField(service.data?.banniere);
         if (logo.length > 0) branding.images.push(...logo);
         if (banner.length > 0) branding.images.push(...banner);
 
-        // 2. Réalisations générales du service
+        // 2. R├®alisations g├®n├®rales du service
         const serviceImages = extractMediaFromField(service.data?.images_realisations) || [];
         const serviceVideos = extractMediaFromField(service.data?.videos) || [];
         realisations.images.push(...serviceImages);
         realisations.videos.push(...serviceVideos);
 
-        // 3. Médias des produits (organisés par type de produit)
+        // 3. M├®dias des produits (organis├®s par type de produit)
         const productsList = service.data?.produits || [];
         if (Array.isArray(productsList)) {
             productsList.forEach((product: any) => {
                 const productType = product.type || 'autre';
                 const productTypeLabel = getProductTypeLabel(productType);
 
-                // Initialiser la catégorie si elle n'existe pas
+                // Initialiser la cat├®gorie si elle n'existe pas
                 if (!products.byType[productTypeLabel]) {
                     products.byType[productTypeLabel] = { images: [], videos: [] };
                 }
@@ -98,19 +89,19 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                     products.byType[productTypeLabel].images.push(...product.images);
                 }
 
-                // Vidéos du produit
+                // Vid├®os du produit
                 if (product.videos && Array.isArray(product.videos)) {
                     products.videos.push(...product.videos);
                     products.byType[productTypeLabel].videos.push(...product.videos);
                 }
 
-                // Images de réalisations (pour prestations de service)
+                // Images de r├®alisations (pour prestations de service)
                 if (product.imagesRealisations && Array.isArray(product.imagesRealisations)) {
                     products.images.push(...product.imagesRealisations);
                     products.byType[productTypeLabel].images.push(...product.imagesRealisations);
                 }
 
-                // Vidéos de réalisations (pour prestations de service)
+                // Vid├®os de r├®alisations (pour prestations de service)
                 if (product.videosRealisations && Array.isArray(product.videosRealisations)) {
                     products.videos.push(...product.videosRealisations);
                     products.byType[productTypeLabel].videos.push(...product.videosRealisations);
@@ -118,7 +109,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
             });
         }
 
-        // Combiner toutes les images et vidéos pour l'affichage global
+        // Combiner toutes les images et vid├®os pour l'affichage global
         const allImages = [...branding.images, ...products.images, ...realisations.images];
         const allVideos = [...branding.videos, ...products.videos, ...realisations.videos];
 
@@ -129,30 +120,23 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
 
     const getProductTypeLabel = (type: string): string => {
         const labels: Record<string, string> = {
-            'immobilier_batiment': '🏢 Immobilier Bâtiment',
-            'immobilier_terrain': '🏞️ Immobilier Terrain',
-            'automobile': '🚗 Automobile',
-            'ticket_voyage': '🚌 Tickets de Voyage',
-            'covoiturage': '🚕 Covoiturage',
-            'vetement': '👔 Vêtements',
-            'chaussure': '👟 Chaussures',
-            'electromenager': '📱 Électroménager',
-            'mobilier': '🪑 Mobilier',
-            'aliments': '🍕 Alimentation',
-            'livres_fournitures': '📚 Livres & Fournitures',
-            'quincaillerie': '🔧 Quincaillerie',
-            'bien_etre_spa': '🧘 Bien-être & Spa',
-            'prestation_service': '💼 Prestations de Service',
-            'autre': '📦 Autres Produits'
+            'immobilier_batiment': '­ƒÅó Immobilier B├ótiment',
+            'immobilier_terrain': '­ƒÅ×´©Å Immobilier Terrain',
+            'automobile': '­ƒÜù Automobile',
+            'ticket_voyage': '­ƒÜî Tickets de Voyage',
+            'covoiturage': '­ƒÜò Covoiturage',
+            'vetement': '­ƒæö V├¬tements',
+            'chaussure': '­ƒæƒ Chaussures',
+            'electromenager': '­ƒô▒ ├ëlectrom├®nager',
+            'mobilier': '­ƒ¬æ Mobilier',
+            'aliments': '­ƒìò Alimentation',
+            'livres_fournitures': '­ƒôÜ Livres & Fournitures',
+            'quincaillerie': '­ƒöº Quincaillerie',
+            'bien_etre_spa': '­ƒºÿ Bien-├¬tre & Spa',
+            'prestation_service': '­ƒÆ╝ Prestations de Service',
+            'autre': '­ƒôª Autres Produits'
         };
-        return labels[type] || '📦 Autres Produits';
-    };
-
-    // ✅ NOUVEAU 2025-12-03: Helper pour obtenir URL optimisée via mediaService
-    const getOptimizedMediaUrl = (url: string): string => {
-        if (!url) return '';
-        if (url.startsWith('http')) return url;
-        return mediaService.getImageUrl(url);
+        return labels[type] || '­ƒôª Autres Produits';
     };
 
     const extractMediaFromField = (field: any): string[] => {
@@ -187,21 +171,21 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
 
     const handleVideoPress = (videoUrl: string) => {
         Alert.alert(
-            "Vidéo",
-            "Fonctionnalité de lecture vidéo à implémenter",
+            "Vid├®o",
+            "Fonctionnalit├® de lecture vid├®o ├á impl├®menter",
             [
                 { text: "Annuler", style: "cancel" },
-                { text: "Ouvrir", onPress: () => console.log("Ouvrir vidéo:", videoUrl) }
+                { text: "Ouvrir", onPress: () => console.log("Ouvrir vid├®o:", videoUrl) }
             ]
         );
     };
 
     const handleShare = () => {
-        Alert.alert("Partage", "Fonctionnalité de partage à implémenter");
+        Alert.alert("Partage", "Fonctionnalit├® de partage ├á impl├®menter");
     };
 
     const handleDownload = () => {
-        Alert.alert("Téléchargement", "Fonctionnalité de téléchargement à implémenter");
+        Alert.alert("T├®l├®chargement", "Fonctionnalit├® de t├®l├®chargement ├á impl├®menter");
     };
 
     if (!visible || !service) return null;
@@ -242,19 +226,19 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                 {hasMedia && (
                     <View style={styles.counterContainer}>
                         <Text style={styles.counterText}>
-                            {String(selectedImageIndex + 1)} / {String(allMedia.length)}
+                            {selectedImageIndex + 1} / {allMedia.length}
                         </Text>
                         <View style={styles.mediaTypeContainer}>
                             {images.length > 0 && (
                                 <Badge style={styles.mediaTypeBadge}>
                                     <Image size={12} color="white" />
-                                    <Text style={styles.mediaTypeText}> {String(images.length)}</Text>
+                                    <Text style={styles.mediaTypeText}> {images.length}</Text>
                                 </Badge>
                             )}
                             {videos.length > 0 && (
                                 <Badge style={styles.mediaTypeBadge}>
                                     <Video size={12} color="white" />
-                                    <Text style={styles.mediaTypeText}> {String(videos.length)}</Text>
+                                    <Text style={styles.mediaTypeText}> {videos.length}</Text>
                                 </Badge>
                             )}
                         </View>
@@ -265,9 +249,9 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                 {!hasMedia ? (
                     <View style={styles.emptyContainer}>
                         <Images size={64} color="#9E9E9E" />
-                        <Title style={styles.emptyTitle}>Aucun média disponible</Title>
+                        <Title style={styles.emptyTitle}>Aucun m├®dia disponible</Title>
                         <Paragraph style={styles.emptyText}>
-                            Ce service ne contient pas d'images ou de vidéos pour le moment.
+                            Ce service ne contient pas d'images ou de vid├®os pour le moment.
                         </Paragraph>
                     </View>
                 ) : (
@@ -285,11 +269,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                     }}
                                 >
                                     <Image
-                                        source={{
-                                            uri: allMedia[selectedImageIndex]?.startsWith('http')
-                                                ? allMedia[selectedImageIndex]
-                                                : mediaService.getImageUrl(allMedia[selectedImageIndex] || '')
-                                        }}
+                                        source={{ uri: allMedia[selectedImageIndex] }}
                                         style={styles.mainImage}
                                         resizeMode="cover"
                                     />
@@ -304,14 +284,14 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
 
                         {/* Organized sections */}
                         <View style={styles.sectionsContainer}>
-                            {/* Section: Identité Visuelle */}
+                            {/* Section: Identit├® Visuelle */}
                             {(categorizedMedia.branding.images.length > 0 || categorizedMedia.branding.videos.length > 0) && (
                                 <View style={styles.section}>
                                     <View style={styles.sectionHeader}>
-                                        <Text style={styles.sectionIcon}>🎨</Text>
-                                        <Text style={styles.sectionTitle}>Identité Visuelle</Text>
+                                        <Text style={styles.sectionIcon}>­ƒÄ¿</Text>
+                                        <Text style={styles.sectionTitle}>Identit├® Visuelle</Text>
                                         <Text style={styles.sectionCount}>
-                                            {String(categorizedMedia.branding.images.length + categorizedMedia.branding.videos.length)}
+                                            {categorizedMedia.branding.images.length + categorizedMedia.branding.videos.length}
                                         </Text>
                                     </View>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaThumbnails}>
@@ -321,7 +301,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                 style={styles.thumbnail}
                                                 onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                             >
-                                                <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
                                             </TouchableOpacity>
                                         ))}
                                         {categorizedMedia.branding.videos.map((uri, idx) => (
@@ -330,7 +310,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                 style={styles.thumbnail}
                                                 onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                             >
-                                                <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
                                                 <View style={styles.thumbnailVideoIcon}>
                                                     <Video size={16} color="white" />
                                                 </View>
@@ -344,10 +324,10 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                             {Object.keys(categorizedMedia.products.byType).length > 0 && (
                                 <View style={styles.section}>
                                     <View style={styles.sectionHeader}>
-                                        <Text style={styles.sectionIcon}>📦</Text>
+                                        <Text style={styles.sectionIcon}>­ƒôª</Text>
                                         <Text style={styles.sectionTitle}>Produits</Text>
                                         <Text style={styles.sectionCount}>
-                                            {String(categorizedMedia.products.images.length + categorizedMedia.products.videos.length)}
+                                            {categorizedMedia.products.images.length + categorizedMedia.products.videos.length}
                                         </Text>
                                     </View>
                                     {Object.entries(categorizedMedia.products.byType).map(([typeLabel, media]) => {
@@ -364,7 +344,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                             style={styles.thumbnail}
                                                             onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                                         >
-                                                            <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                            <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
                                                         </TouchableOpacity>
                                                     ))}
                                                     {media.videos.map((uri, idx) => (
@@ -373,7 +353,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                             style={styles.thumbnail}
                                                             onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                                         >
-                                                            <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                            <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
                                                             <View style={styles.thumbnailVideoIcon}>
                                                                 <Video size={16} color="white" />
                                                             </View>
@@ -386,14 +366,14 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                 </View>
                             )}
 
-                            {/* Section: Réalisations */}
+                            {/* Section: R├®alisations */}
                             {(categorizedMedia.realisations.images.length > 0 || categorizedMedia.realisations.videos.length > 0) && (
                                 <View style={styles.section}>
                                     <View style={styles.sectionHeader}>
-                                        <Text style={styles.sectionIcon}>🖼️</Text>
-                                        <Text style={styles.sectionTitle}>Réalisations</Text>
+                                        <Text style={styles.sectionIcon}>­ƒû╝´©Å</Text>
+                                        <Text style={styles.sectionTitle}>R├®alisations</Text>
                                         <Text style={styles.sectionCount}>
-                                            {String(categorizedMedia.realisations.images.length + categorizedMedia.realisations.videos.length)}
+                                            {categorizedMedia.realisations.images.length + categorizedMedia.realisations.videos.length}
                                         </Text>
                                     </View>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaThumbnails}>
@@ -403,7 +383,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                 style={styles.thumbnail}
                                                 onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                             >
-                                                <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
                                             </TouchableOpacity>
                                         ))}
                                         {categorizedMedia.realisations.videos.map((uri, idx) => (
@@ -412,7 +392,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                                 style={styles.thumbnail}
                                                 onPress={() => handleImagePress(allMedia.indexOf(uri))}
                                             >
-                                                <Image source={{ uri: getOptimizedMediaUrl(uri) }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
                                                 <View style={styles.thumbnailVideoIcon}>
                                                     <Video size={16} color="white" />
                                                 </View>
@@ -434,11 +414,11 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                 <View style={styles.mediaStats}>
                                     <View style={styles.statItem}>
                                         <Image size={16} color={theme.colors.primary} />
-                                        <Text style={styles.statText}>{String(images.length)} image{images.length > 1 ? 's' : ''}</Text>
+                                        <Text style={styles.statText}>{images.length} image{images.length > 1 ? 's' : ''}</Text>
                                     </View>
                                     <View style={styles.statItem}>
                                         <Video size={16} color={theme.colors.primary} />
-                                        <Text style={styles.statText}>{String(videos.length)} vidéo{videos.length > 1 ? 's' : ''}</Text>
+                                        <Text style={styles.statText}>{videos.length} vid├®o{videos.length > 1 ? 's' : ''}</Text>
                                     </View>
                                 </View>
                             </Card.Content>

@@ -211,9 +211,61 @@ const FallbackGradient: React.FC<{ colors: string[]; children: React.ReactNode; 
 
 // ✅ Wrapper sécurisé pour NativeCard qui garantit toujours une gestion correcte des enfants
 const SafeNativeCardWrapper: React.FC<any> = (props) => {
+    // ✅ CRITIQUE: Fonction récursive pour traiter les enfants de manière sécurisée
+    // Cette fonction garantit que TOUTES les chaînes sont wrappées dans <Text>
+    const processChild = React.useCallback((child: any, idx: number | string): React.ReactNode => {
+        // Si c'est null ou undefined, retourner null
+        if (child == null) {
+            return null;
+        }
+        
+        // ✅ CRITIQUE: Si c'est une chaîne vide, retourner null
+        if (typeof child === 'string' && child === '') {
+            return null;
+        }
+        
+        // ✅ CRITIQUE: Si c'est une valeur primitive (string, number, boolean), TOUJOURS l'envelopper dans Text
+        if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+            return <Text key={idx}>{String(child)}</Text>;
+        }
+        
+        // ✅ CRITIQUE: Si c'est un tableau, traiter chaque élément récursivement
+        if (Array.isArray(child)) {
+            const processed = child
+                .map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`))
+                .filter(item => item != null);
+            return processed.length > 0 ? processed : null;
+        }
+        
+        // ✅ CRITIQUE: Si c'est un Fragment React, traiter ses enfants
+        if (React.isValidElement(child) && child.type === React.Fragment) {
+            const fragmentChildren = React.Children.toArray(child.props.children);
+            const processed = fragmentChildren
+                .map((item, itemIndex) => processChild(item, `${idx}-fragment-${itemIndex}`))
+                .filter(item => item != null);
+            return processed.length > 0 ? processed : null;
+        }
+        
+        // ✅ CRITIQUE: Si c'est un élément React valide, vérifier qu'il n'a pas de chaînes comme enfants directs
+        if (React.isValidElement(child)) {
+            // Si l'élément a des enfants, les traiter récursivement
+            if (child.props && child.props.children != null) {
+                const processedChildren = processChild(child.props.children, `${idx}-children`);
+                // Cloner l'élément avec les enfants traités
+                return React.cloneElement(child, { key: idx }, processedChildren);
+            }
+            // Sinon, retourner l'élément tel quel
+            return React.cloneElement(child, { key: idx });
+        }
+        
+        // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
+        return <Text key={idx}>{String(child)}</Text>;
+    }, []);
+
     // Toujours utiliser notre logique sécurisée pour les enfants
     const safeChildren = React.useMemo(() => {
         const { children } = props;
+        
         // Si children est null/undefined, retourner null
         if (children == null) {
             return null;
@@ -224,67 +276,14 @@ const SafeNativeCardWrapper: React.FC<any> = (props) => {
             return null;
         }
 
-        // Si children est une primitive (string, number, boolean), l'envelopper dans Text
+        // ✅ CRITIQUE: Si children est une primitive, l'envelopper dans Text
         if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
             return <Text>{String(children)}</Text>;
         }
 
-        // Si children est un tableau, traiter chaque élément
-        if (Array.isArray(children)) {
-            const processed = children.map((child, idx) => {
-                // ✅ CRITIQUE: Gérer les chaînes vides
-                if (typeof child === 'string' && child === '') {
-                    return null;
-                }
-                if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
-                    return <Text key={idx}>{String(child)}</Text>;
-                }
-                if (child == null) {
-                    return null;
-                }
-                if (React.isValidElement(child)) {
-                    return child;
-                }
-                return <Text key={idx}>{String(child)}</Text>;
-            }).filter(child => child != null);
-            return processed.length > 0 ? processed : null;
-        }
-
-        // ✅ CRITIQUE: Fonction récursive pour traiter les enfants de manière sécurisée
-        const processChild = (child: any, idx: number | string): React.ReactNode => {
-            // Si c'est une chaîne vide, retourner null
-            if (typeof child === 'string' && child === '') {
-                return null;
-            }
-            // Si c'est une valeur primitive, l'envelopper dans Text
-            if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
-                return <Text key={idx}>{String(child)}</Text>;
-            }
-            // Si c'est null ou undefined, retourner null
-            if (child == null) {
-                return null;
-            }
-            // Si c'est un tableau, le traiter récursivement
-            if (Array.isArray(child)) {
-                const processed = child.map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`)).filter(item => item != null);
-                return processed.length > 0 ? processed : null;
-            }
-            // Si c'est un élément React valide, le retourner tel quel
-            if (React.isValidElement(child)) {
-                return child;
-            }
-            // Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
-            return <Text key={idx}>{String(child)}</Text>;
-        };
-
-        // Utiliser React.Children.map pour gérer les fragments et autres cas
-        // ✅ CRITIQUE: React.Children.map peut retourner null, un tableau, ou un seul élément
+        // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
+        // React.Children.map garantit que nous traitons tous les enfants, y compris les fragments
         const mapped = React.Children.map(children, (child, idx) => {
-            // Si child est null/undefined, le retourner tel quel (React.Children.map le gère)
-            if (child == null) {
-                return null;
-            }
-            // Traiter l'enfant avec notre fonction récursive
             return processChild(child, idx);
         });
         
@@ -301,7 +300,7 @@ const SafeNativeCardWrapper: React.FC<any> = (props) => {
         
         // Si mapped est un seul élément, le retourner tel quel
         return mapped != null ? mapped : null;
-    }, [props.children]);
+    }, [props.children, processChild]);
 
     // Essayer d'utiliser le composant original avec nos enfants sécurisés
     if (NativeDesignModule) {
@@ -354,13 +353,38 @@ const getComponent = (name: string, fallback: React.ComponentType<any>): React.C
     return fallback;
 };
 
-// ✅ Export des composants sécurisés
-export const NativeButton: React.FC<any> = getComponent('NativeButton', FallbackButton);
-export const NativeBadge: React.FC<any> = getComponent('NativeBadge', FallbackBadge);
-export const NativeCard: React.FC<any> = getComponent('NativeCard', FallbackCard);
-export const NativeInput: React.FC<any> = getComponent('NativeInput', FallbackInput);
-export const NativeDivider: React.FC<any> = getComponent('NativeDivider', FallbackDivider);
-export const NativeGradient: React.FC<any> = getComponent('NativeGradient', FallbackGradient);
+// ✅ CRITIQUE: Wrapper qui garantit toujours un composant React valide
+const createSafeComponent = (name: string, fallback: React.ComponentType<any>): React.ComponentType<any> => {
+    const component = getComponent(name, fallback);
+    
+    // ✅ CRITIQUE: Vérifier une dernière fois que c'est un composant valide
+    if (!isReactComponent(component)) {
+        console.warn(`[SafeNativeDesign] ${name} n'est pas un composant valide, utilisation du fallback`);
+        return fallback;
+    }
+    
+    // ✅ CRITIQUE: Wrapper pour garantir que le composant est toujours valide
+    return React.forwardRef((props: any, ref: any) => {
+        try {
+            // Vérifier que le composant est toujours valide avant de l'utiliser
+            if (!isReactComponent(component)) {
+                return React.createElement(fallback, { ...props, ref });
+            }
+            return React.createElement(component, { ...props, ref });
+        } catch (error) {
+            console.error(`[SafeNativeDesign] Erreur lors du rendu de ${name}:`, error);
+            return React.createElement(fallback, { ...props, ref });
+        }
+    }) as React.ComponentType<any>;
+};
+
+// ✅ Export des composants sécurisés - GARANTIS comme composants React valides
+export const NativeButton: React.FC<any> = createSafeComponent('NativeButton', FallbackButton);
+export const NativeBadge: React.FC<any> = createSafeComponent('NativeBadge', FallbackBadge);
+export const NativeCard: React.FC<any> = createSafeComponent('NativeCard', FallbackCard);
+export const NativeInput: React.FC<any> = createSafeComponent('NativeInput', FallbackInput);
+export const NativeDivider: React.FC<any> = createSafeComponent('NativeDivider', FallbackDivider);
+export const NativeGradient: React.FC<any> = createSafeComponent('NativeGradient', FallbackGradient);
 
 // ✅ Export par défaut pour compatibilité
 export default {
