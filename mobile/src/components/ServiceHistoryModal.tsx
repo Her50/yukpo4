@@ -1,4 +1,4 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import * as React from "react";
 import { useEffect, useState } from 'react';
 import { Text } from 'react-native';

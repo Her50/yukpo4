@@ -16,39 +16,39 @@ const AboutScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <Text style={styles.title}>
-            <YukpoBrand>Yukpomnang</YukpoBrand> — l'écoute qui comprend vraiment
+            <YukpoBrand>Yukpomnang</YukpoBrand> ï¿½ l'ï¿½coute qui comprend vraiment
           </Text>
 
           <Text style={styles.paragraph}>
-            Aussi appelé <YukpoBrand>Yukpo</YukpoBrand>, le nom de la plateforme signifie « l'écoute des gens » en langue Bayangam,
-            parlée au cœur de l'Afrique centrale par un peuple Bamiléké du Cameroun.
+            Aussi appelï¿½ <YukpoBrand>Yukpo</YukpoBrand>, le nom de la plateforme signifie ï¿½ l'ï¿½coute des gens ï¿½ en langue Bayangam,
+            parlï¿½e au cï¿½ur de l'Afrique centrale par un peuple Bamilï¿½kï¿½ du Cameroun.
           </Text>
 
           <Text style={styles.paragraph}>
-            Fidèle à cette racine linguistique et humaine, <YukpoBrand>Yukpomnang</YukpoBrand> est une plateforme de connexion directe
-            entre <Text style={styles.highlightYellow}>les besoins exprimés</Text> et <Text style={styles.highlightOrange}>les solutions concrètes</Text> : services, opportunités, accompagnement.
+            Fidï¿½le ï¿½ cette racine linguistique et humaine, <YukpoBrand>Yukpomnang</YukpoBrand> est une plateforme de connexion directe
+            entre <Text style={styles.highlightYellow}>les besoins exprimï¿½s</Text> et <Text style={styles.highlightOrange}>les solutions concrï¿½tes</Text> : services, opportunitï¿½s, accompagnement.
           </Text>
 
           <Text style={styles.paragraph}>
-            Grâce à son infrastructure multilingue, <YukpoBrand /> comprend et transmet les besoins dans plusieurs langues parlées sur le continent africain :
+            Grï¿½ce ï¿½ son infrastructure multilingue, <YukpoBrand /> comprend et transmet les besoins dans plusieurs langues parlï¿½es sur le continent africain :
             <Text style={styles.highlightBlue}>
-              fulfuldé, lingala, ewé, swahili, wolof, baoulé, mooré, bambara, haoussa, sango
-            </Text>, mais aussi dans les langues internationales comme le français, l'anglais, l'arabe ou le portugais.
+              fulfuldï¿½, lingala, ewï¿½, swahili, wolof, baoulï¿½, moorï¿½, bambara, haoussa, sango
+            </Text>, mais aussi dans les langues internationales comme le franï¿½ais, l'anglais, l'arabe ou le portugais.
           </Text>
 
           <Text style={styles.paragraph}>
-            Que vous vous exprimiez à l'oral ou à l'écrit, même dans votre langue maternelle, <YukpoBrand /> vous comprend et vous répond.
-            La plateforme est conçue pour être accessible même aux personnes <Text style={styles.highlightPink}>aveugles, analphabètes ou en situation de handicap</Text>.
+            Que vous vous exprimiez ï¿½ l'oral ou ï¿½ l'ï¿½crit, mï¿½me dans votre langue maternelle, <YukpoBrand /> vous comprend et vous rï¿½pond.
+            La plateforme est conï¿½ue pour ï¿½tre accessible mï¿½me aux personnes <Text style={styles.highlightPink}>aveugles, analphabï¿½tes ou en situation de handicap</Text>.
           </Text>
 
           <Text style={styles.paragraph}>
             Que vous soyez <Text style={styles.highlightRed}>citoyen, entrepreneur, diaspora ou acteur public</Text>,
-            <YukpoBrand>Yukpomnang</YukpoBrand> vous accompagne à chaque étape : recherche, recommandation, mise en relation.
-            C'est un réseau de confiance, enraciné dans la culture et tourné vers l'avenir.
+            <YukpoBrand>Yukpomnang</YukpoBrand> vous accompagne ï¿½ chaque ï¿½tape : recherche, recommandation, mise en relation.
+            C'est un rï¿½seau de confiance, enracinï¿½ dans la culture et tournï¿½ vers l'avenir.
           </Text>
 
           <Text style={styles.footer}>
-            ?? <YukpoBrand /> — une oreille pour chacun, une réponse pour tous.
+            ?? <YukpoBrand /> ï¿½ une oreille pour chacun, une rï¿½ponse pour tous.
           </Text>
         </View>
       </ScrollView>

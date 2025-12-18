@@ -1,4 +1,4 @@
-﻿// Migration vers Lucide React Native pour un design moderne
+// Migration vers Lucide React Native pour un design moderne
 import { ChevronRight, LogOut, X } from 'lucide-react-native';
 import React from 'react';
 import {

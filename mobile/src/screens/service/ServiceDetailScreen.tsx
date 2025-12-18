@@ -39,7 +39,7 @@ const ServiceDetailScreen: React.FC = () => {
       const response = await serviceService.getServiceById(serviceId);
       setService(response.data as Service);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de charger les détails du service');
+      Alert.alert('Erreur', 'Impossible de charger les dï¿½tails du service');
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -54,7 +54,7 @@ const ServiceDetailScreen: React.FC = () => {
         [
           { text: 'Annuler', style: 'cancel' },
           { text: 'Contacter', onPress: () => {
-            // Ici on pourrait ouvrir l'email ou le téléphone
+            // Ici on pourrait ouvrir l'email ou le tï¿½lï¿½phone
             Alert.alert('Contact', `Contact: ${service.contact}`);
           }},
         ]
@@ -64,12 +64,12 @@ const ServiceDetailScreen: React.FC = () => {
 
   const handleBook = () => {
     Alert.alert(
-      'Réserver le service',
-      'Voulez-vous réserver ce service ?',
+      'Rï¿½server le service',
+      'Voulez-vous rï¿½server ce service ?',
       [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'Réserver', onPress: () => {
-          Alert.alert('Succès', 'Service réservé avec succès !');
+        { text: 'Rï¿½server', onPress: () => {
+          Alert.alert('Succï¿½s', 'Service rï¿½servï¿½ avec succï¿½s !');
         }},
       ]
     );
@@ -86,7 +86,7 @@ const ServiceDetailScreen: React.FC = () => {
   if (!service) {
     return (
       <View style={styles.errorContainer}>
-        <Text>Service non trouvé</Text>
+        <Text>Service non trouvï¿½</Text>
       </View>
     );
   }
@@ -102,7 +102,7 @@ const ServiceDetailScreen: React.FC = () => {
               {service.category}
             </Chip>
             {service.price && (
-              <Text style={styles.price}>{service.price}€</Text>
+              <Text style={styles.price}>{service.price}ï¿½</Text>
             )}
           </Card.Content>
         </Card>
@@ -139,7 +139,7 @@ const ServiceDetailScreen: React.FC = () => {
         {/* Details */}
         <Card style={styles.detailsCard}>
           <Card.Content>
-            <Text style={styles.sectionTitle}>Détails</Text>
+            <Text style={styles.sectionTitle}>Dï¿½tails</Text>
             
             {service.location && (
               <View style={styles.detailItem}>
@@ -172,7 +172,7 @@ const ServiceDetailScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>Avis clients</Text>
             <View style={styles.reviewItem}>
               <Text style={styles.reviewText}>
-                "Excellent service, très professionnel !"
+                "Excellent service, trï¿½s professionnel !"
               </Text>
               <Text style={styles.reviewAuthor}>- Marie L.</Text>
             </View>
@@ -198,7 +198,7 @@ const ServiceDetailScreen: React.FC = () => {
             onPress={handleBook}
             style={styles.bookButton}
           >
-            <Text style={{ color: "#000" }}>Réserver</Text>
+            <Text style={{ color: "#000" }}>Rï¿½server</Text>
           </TouchableOpacity>
         </View>
       </View>

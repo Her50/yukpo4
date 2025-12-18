@@ -1,4 +1,4 @@
-﻿// src/components/MenuAuto.tsx
+// src/components/MenuAuto.tsx
 import React from 'react';
 // @ts-check
 import { ROUTES } from "@/routes/routes";

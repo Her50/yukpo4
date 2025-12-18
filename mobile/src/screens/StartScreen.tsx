@@ -11,7 +11,7 @@ const StartScreen = () => {
     <ScrollView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>
-          ?? Démarrer avec Yukpo
+          ?? Dï¿½marrer avec Yukpo
         </Text>
         <Text style={styles.subtitle}>
           Dites-nous ce que vous cherchez ou proposez : Yukpo vous guide.
@@ -25,7 +25,7 @@ const StartScreen = () => {
                 style={styles.button}
                 onPress={() => navigation.navigate('CreateService' as never)}
               >
-                <Text style={styles.buttonText}>Créer ou gérer mes services</Text>
+                <Text style={styles.buttonText}>Crï¿½er ou gï¿½rer mes services</Text>
               </TouchableOpacity>
             </Card.Content>
           </Card>
@@ -44,7 +44,7 @@ const StartScreen = () => {
           
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
-              <Title style={styles.cardTitle}>?? Accès IA Yukpo</Title>
+              <Title style={styles.cardTitle}>?? Accï¿½s IA Yukpo</Title>
               <TouchableOpacity 
                 style={styles.button}
                 onPress={() => navigation.navigate('AIHub' as never)}

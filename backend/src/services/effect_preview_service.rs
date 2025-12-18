@@ -330,6 +330,24 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
         },
     );
 
+    // ✅ CORRIGÉ 2025-12-18: Ajouter alias "éclat lumineux" (alias de glow)
+    m.insert(
+        "éclat lumineux",
+        EffectDefinition {
+            ffmpeg_filter: "curves=all='0/0 0.5/0.58 1/1',eq=brightness=0.15:saturation=0.2".to_string(),
+            description: "Effet lumineux avec saturation augmentée".to_string(),
+        },
+    );
+
+    // ✅ CORRIGÉ 2025-12-18: Ajouter alias "zoom rapide" (zoom accéléré)
+    m.insert(
+        "zoom rapide",
+        EffectDefinition {
+            ffmpeg_filter: "zoompan=z='if(lte(zoom,1.0),2.0,max(1.001,zoom-0.003))':d=50".to_string(),
+            description: "Zoom rapide pour effet dynamique et percutant".to_string(),
+        },
+    );
+
     // ✅ CORRIGÉ: Ajouter effet "parallax" (mentionné dans timeline_converter)
     m.insert(
         "parallax",

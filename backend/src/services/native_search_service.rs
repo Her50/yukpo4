@@ -460,6 +460,7 @@ LIMIT 100
     }
 
     /// Recherche trigram avec filtrage GPS
+    /// ✅ CORRIGÉ 2025-12-18: Retry avec gestion d'erreur TLS + optimisation N+1
     async fn trigram_search_with_gps(
         &self,
         query: &str,
@@ -474,29 +475,71 @@ LIMIT 100
             
             log_info(&format!("[NativeSearch] Trigram avec GPS optimisé: {} et rayon: {}km", gps_zone, radius));
             
-            // Appeler notre fonction PostgreSQL optimisée
+            // ✅ CORRIGÉ 2025-12-18: Requête optimisée avec JOIN pour éviter N+1
             let sql = r#"
                 SELECT 
-                    service_id,
-                    titre_service,
-                    category,
-                    gps_coords,
-                    distance_km,
-                    relevance_score,
-                    gps_source
-                FROM search_services_gps_final($1, $2, $3, $4)
+                    gps_result.service_id,
+                    gps_result.titre_service,
+                    gps_result.category,
+                    gps_result.gps_coords,
+                    gps_result.distance_km,
+                    gps_result.relevance_score,
+                    gps_result.gps_source,
+                    s.data as service_data
+                FROM search_services_gps_final($1, $2, $3, $4) gps_result
+                LEFT JOIN services s ON s.id = gps_result.service_id
             "#;
             
-            let results = sqlx::query(sql)
-                .bind(query)
-                .bind(gps_zone)
-                .bind(radius)
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| {
-                    log_error(&format!("[NativeSearch] Erreur trigram GPS optimisé: {}", e));
-                    crate::core::types::AppError::Internal(format!("Erreur trigram GPS optimisé: {}", e))
-                })?;
+            // ✅ CORRIGÉ 2025-12-18: Retry avec gestion d'erreur TLS
+            let mut results = None;
+            let max_retries = 3;
+            
+            for attempt in 1..=max_retries {
+                match sqlx::query(sql)
+                    .bind(query)
+                    .bind(gps_zone)
+                    .bind(radius)
+                    .bind(20) // max_results
+                    .fetch_all(&self.pool)
+                    .await
+                {
+                    Ok(rows) => {
+                        results = Some(rows);
+                        break;
+                    }
+                    Err(e) => {
+                        let error_msg = e.to_string();
+                        let is_tls_error = error_msg.contains("TLS")
+                            || error_msg.contains("close_notify")
+                            || error_msg.contains("Connection reset")
+                            || error_msg.contains("peer closed")
+                            || error_msg.contains("communicating with database");
+                        
+                        if is_tls_error && attempt < max_retries {
+                            let delay_ms = 100 * attempt; // Backoff: 100ms, 200ms, 300ms
+                            log::warn!(
+                                "[NativeSearch] Erreur DB détectée (tentative {}/{}), retry dans {}ms: {}",
+                                attempt,
+                                max_retries,
+                                delay_ms,
+                                error_msg
+                            );
+                            tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+                            continue;
+                        } else {
+                            log_error(&format!("[NativeSearch] Erreur trigram GPS optimisé: {}", e));
+                            return Err(crate::core::types::AppError::Internal(format!(
+                                "Erreur trigram GPS optimisé: {}",
+                                e
+                            )));
+                        }
+                    }
+                }
+            }
+
+            let results = results.ok_or_else(|| {
+                crate::core::types::AppError::Internal("Échec après retries".to_string())
+            })?;
 
             let mut search_results = Vec::new();
             for row in results {
@@ -508,13 +551,8 @@ LIMIT 100
                 let relevance_score: f32 = row.get("relevance_score");
                 let _gps_source: Option<String> = row.get("gps_source");
                 
-                // Récupérer les données complètes du service
-                let service_data = sqlx::query("SELECT data FROM services WHERE id = $1")
-                    .bind(service_id)
-                    .fetch_one(&self.pool)
-                    .await
-                    .map(|row| row.get::<Value, _>("data"))
-                    .unwrap_or_else(|_| serde_json::json!({}));
+                // ✅ CORRIGÉ 2025-12-18: Données du service récupérées directement dans la requête (pas de N+1)
+                let service_data: Value = row.get("service_data");
 
                 let gps_from_data = service_data
                     .get("gps_fixe")

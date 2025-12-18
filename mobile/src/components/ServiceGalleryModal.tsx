@@ -1,4 +1,4 @@
-﻿// Migration vers Lucide React Native pour un design moderne
+// Migration vers Lucide React Native pour un design moderne
 import { Download, Image, Images, Play, Share, Video, X } from 'phosphor-react-native';
 import * as React from 'react';
 import { useState } from 'react';

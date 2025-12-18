@@ -1,4 +1,4 @@
-﻿// src/components/MatchSection.tsx
+// src/components/MatchSection.tsx
 import React from 'react';
 import { Text } from 'react-native';
 import styles from './services.module.css';

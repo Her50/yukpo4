@@ -44,49 +44,77 @@ export const uploadToCloud = async (
         // Déterminer le type MIME
         const mimeType = getMimeType(fileType, fileName);
 
-        // Préparer le fichier pour l'upload
-        let base64Data: string;
+        // ✅ CORRECTION CRITIQUE: Pour les gros fichiers (surtout vidéos), utiliser FormData direct
+        // au lieu de charger tout en base64 en mémoire (évite OutOfMemoryError)
+        const formData = new FormData();
 
-        if (fileUri.startsWith('data:')) {
-            // Déjà en base64
-            base64Data = fileUri.split(',')[1];
-        } else if (fileUri.startsWith('file://')) {
-            // Lire le fichier depuis le système de fichiers
-            base64Data = await FileSystem.readAsStringAsync(fileUri, {
-                encoding: FileSystem.EncodingType.Base64
-            });
-        } else {
-            // Assume que c'est déjà du base64 pur
-            base64Data = fileUri;
-        }
+        // Vérifier si c'est un fichier volumineux (vidéo ou fichier > 10MB)
+        let useDirectUpload = false;
+        let fileSize = 0;
 
-        // Calculer la taille approximative
-        const fileSize = Math.ceil((base64Data.length * 3) / 4);
-        console.log('[CloudUpload] Taille fichier:', formatFileSize(fileSize));
-
-        // ✅ CORRECTION: Suppression de la contrainte vidéo (pas de limite)
-        // Vérifier la taille (limite 10MB pour la plupart des fichiers, sauf vidéos)
-        if (fileType !== 'video') {
-            const maxSize = 10 * 1024 * 1024;
-            if (fileSize > maxSize) {
-                return {
-                    success: false,
-                    error: `Fichier trop volumineux (max ${formatFileSize(maxSize)})`
-                };
+        if (fileUri.startsWith('file://')) {
+            // Obtenir la taille du fichier
+            const fileInfo = await FileSystem.getInfoAsync(fileUri);
+            if (fileInfo.exists && 'size' in fileInfo) {
+                fileSize = fileInfo.size;
+                // Pour les vidéos ou fichiers > 10MB, utiliser upload direct
+                useDirectUpload = fileType === 'video' || fileSize > 10 * 1024 * 1024;
             }
         }
 
-        // Préparer les données pour l'upload
-        const formData = new FormData();
+        if (useDirectUpload && fileUri.startsWith('file://')) {
+            // ✅ Upload direct via FormData (React Native compatible)
+            // Pour React Native, on utilise l'URI file:// directement dans FormData
+            console.log('[CloudUpload] 📤 Upload direct (FormData) pour fichier volumineux:', formatFileSize(fileSize));
+            
+            // En React Native, FormData accepte les objets avec uri, type, name
+            formData.append('file', {
+                uri: fileUri,
+                type: mimeType,
+                name: fileName || `file_${Date.now()}.${getExtension(mimeType)}`
+            } as any);
+            formData.append('type', fileType);
+        } else {
+            // ✅ Pour les petits fichiers, utiliser base64 (comportement existant)
+            let base64Data: string;
 
-        // Créer un blob depuis le base64
-        const blob = base64ToBlob(base64Data, mimeType);
-        const file = new File([blob], fileName || `file_${Date.now()}.${getExtension(mimeType)}`, {
-            type: mimeType
-        });
+            if (fileUri.startsWith('data:')) {
+                // Déjà en base64
+                base64Data = fileUri.split(',')[1];
+            } else if (fileUri.startsWith('file://')) {
+                // Lire le fichier depuis le système de fichiers
+                base64Data = await FileSystem.readAsStringAsync(fileUri, {
+                    encoding: FileSystem.EncodingType.Base64
+                });
+            } else {
+                // Assume que c'est déjà du base64 pur
+                base64Data = fileUri;
+            }
 
-        formData.append('file', file);
-        formData.append('type', fileType);
+            // Calculer la taille approximative
+            fileSize = Math.ceil((base64Data.length * 3) / 4);
+            console.log('[CloudUpload] Taille fichier:', formatFileSize(fileSize));
+
+            // Vérifier la taille (limite 10MB pour la plupart des fichiers, sauf vidéos)
+            if (fileType !== 'video') {
+                const maxSize = 10 * 1024 * 1024;
+                if (fileSize > maxSize) {
+                    return {
+                        success: false,
+                        error: `Fichier trop volumineux (max ${formatFileSize(maxSize)})`
+                    };
+                }
+            }
+
+            // Créer un blob depuis le base64
+            const blob = base64ToBlob(base64Data, mimeType);
+            const file = new File([blob], fileName || `file_${Date.now()}.${getExtension(mimeType)}`, {
+                type: mimeType
+            });
+
+            formData.append('file', file);
+            formData.append('type', fileType);
+        }
 
         // Upload vers l'API
         const uploadUrl = `${API_BASE_URL}/api/upload`;

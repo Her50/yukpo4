@@ -1,4 +1,4 @@
-﻿import * as React from 'react';
+import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextProps } from 'react-native';
 import { useTranslation } from '../hooks/useTranslation';

@@ -20,7 +20,6 @@ import {
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
-import OrderDeliveryModal from './delivery/OrderDeliveryModal';
 import { NativeButton, NativeCard } from './NativeDesign';
 import ProductMediaCarousel from './ProductMediaCarousel';
 import SafeIcon from './SafeIcon';
@@ -93,7 +92,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const navigation = useNavigation();
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
-  const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
   // Ô£à NOUVEAU : ├ëtats pour contact priv├®
   const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
@@ -657,26 +655,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
             {/* Actions */}
             <View style={styles.actions}>
-              {/* ✅ NOUVEAU : Bouton "Me livrer" pour les produits */}
-              {(product.service_id || service?.id) && (
-                <TouchableOpacity
-                  style={[styles.actionButtonDelivery, styles.actionButton]}
-                  onPress={() => {
-                    const serviceId = product.service_id || service?.id;
-                    if (!serviceId) {
-                      Alert.alert(
-                        'Information manquante',
-                        'Impossible de commander la livraison : l\'identifiant du service est invalide.'
-                      );
-                      return;
-                    }
-                    setShowOrderModal(true);
-                  }}
-                >
-                  <SafeIcon name="truck" size={16} color="#10B981" />
-                  <Text style={styles.actionButtonTextDelivery}>Me livrer</Text>
-                </TouchableOpacity>
-              )}
               <NativeButton
                 title="­ƒÆ¼ Chat"
                 variant="primary"
@@ -766,21 +744,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
             data: service?.data || {},
           }}
           onClose={() => setShowGallery(false)}
-        />
-      )}
-
-      {/* ✅ NOUVEAU : Modal Commande Livraison */}
-      {showOrderModal && (product.service_id || service?.id) && (
-        <OrderDeliveryModal
-          visible={showOrderModal}
-          onClose={() => setShowOrderModal(false)}
-          serviceId={product.service_id || service?.id}
-          productIndex={product.product_index || 0}
-          productName={product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
-          onSuccess={(deliveryId) => {
-            Alert.alert('Succès', 'Votre commande de livraison a été créée avec succès !');
-            setShowOrderModal(false);
-          }}
         />
       )}
     </>
@@ -1151,23 +1114,6 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-  },
-  actionButtonDelivery: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1.5,
-    borderColor: '#10B981',
-  },
-  actionButtonTextDelivery: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#10B981',
   },
   footer: {
     flexDirection: 'row',

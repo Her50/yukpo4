@@ -1,4 +1,4 @@
-﻿import { useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import ReactNative from 'react-native';
 import { API_ENDPOINTS } from '../config/api.config';

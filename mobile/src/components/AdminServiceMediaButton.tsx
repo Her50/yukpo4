@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import * as React from "react";
 import { TouchableOpacity } from 'react-native';
 import { Button } from "@/components/ui/button";

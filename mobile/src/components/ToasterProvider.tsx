@@ -1,4 +1,4 @@
-﻿import * as React from "react";
+import * as React from "react";
 import { createContext, ReactNode, useContext, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Toast, { ToastType } from './Toast';

@@ -1,4 +1,4 @@
-﻿import * as React from "react";
+import * as React from "react";
 import { useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // Note: useUserContext doit être adapté pour React Native ou utiliser AuthContext

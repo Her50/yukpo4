@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ResultatBesoinScreen v3.0 - Version optimale (2025-11-02)
  * Recherche progressive + Filtrage intelligent + Tri proximité/prix
  * Sauvegarde originale : ResultatBesoinScreen.backup.tsx

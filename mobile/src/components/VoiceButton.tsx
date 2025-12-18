@@ -1,4 +1,4 @@
-﻿// @ts-check
+// @ts-check
 import * as React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // Note: useSpeechRecognition doit être implémenté pour React Native

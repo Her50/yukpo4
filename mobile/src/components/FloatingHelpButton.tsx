@@ -1,4 +1,4 @@
-﻿// src/components/ui/FloatingHelpButton.tsx
+// src/components/ui/FloatingHelpButton.tsx
 import React from 'react';
 
 const FloatingHelpButton: React.FC = () => (

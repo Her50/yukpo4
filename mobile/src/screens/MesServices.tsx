@@ -35,8 +35,8 @@ const MesServicesScreen: React.FC = () => {
       const mockServices: Service[] = [
         {
           id: '1',
-          title: 'Réparation plomberie',
-          description: 'Service de réparation de plomberie à domicile',
+          title: 'Rï¿½paration plomberie',
+          description: 'Service de rï¿½paration de plomberie ï¿½ domicile',
           status: 'active',
           createdAt: '2024-01-15',
           views: 45,
@@ -44,8 +44,8 @@ const MesServicesScreen: React.FC = () => {
         },
         {
           id: '2',
-          title: 'Cours de mathématiques',
-          description: 'Cours particuliers de mathématiques niveau lycée',
+          title: 'Cours de mathï¿½matiques',
+          description: 'Cours particuliers de mathï¿½matiques niveau lycï¿½e',
           status: 'active',
           createdAt: '2024-01-10',
           views: 23,
@@ -109,14 +109,14 @@ const MesServicesScreen: React.FC = () => {
             <Ionicons name="briefcase-outline" size={64} color="#9E9E9E" />
             <Text style={styles.emptyTitle}>Aucun service</Text>
             <Text style={styles.emptyText}>
-              Vous n'avez pas encore créé de service. Créez votre premier service pour commencer.
+              Vous n'avez pas encore crï¿½ï¿½ de service. Crï¿½ez votre premier service pour commencer.
             </Text>
             <TouchableOpacity
               mode="contained"
               onPress={() => navigation.navigate('CreateService' as never)}
               style={styles.createButton}
             >
-              Créer un service
+              Crï¿½er un service
             </TouchableOpacity>
           </View>
         ) : (
@@ -160,7 +160,7 @@ const MesServicesScreen: React.FC = () => {
                   <TouchableOpacity
                     mode="outlined"
                     onPress={() => {
-                      Alert.alert('Édition', 'Fonctionnalité d\'édition à implémenter');
+                      Alert.alert('ï¿½dition', 'Fonctionnalitï¿½ d\'ï¿½dition ï¿½ implï¿½menter');
                     }}
                     style={styles.actionButton}
                   >

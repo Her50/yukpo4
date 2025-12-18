@@ -1,4 +1,4 @@
-﻿import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Menu, X } from "lucide-react-native";
 import * as React from "react";
 import { useState } from "react";

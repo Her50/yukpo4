@@ -1,4 +1,4 @@
-﻿// @ts-check
+// @ts-check
 import * as React from "react";
 import { Link, useLocation } from "@react-navigation/native";
 import { ROUTES } from "@/routes/AppRoutesRegistry";

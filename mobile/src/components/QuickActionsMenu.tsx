@@ -1,4 +1,4 @@
-﻿// Migration vers Lucide React Native pour un design moderne
+// Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
 import { BarChart3, Bell, Briefcase, Camera, ChatCircle, Clock, Document, Heart, Home, PlayCircle, Plus, Search, Settings, Share, Star, User, X } from 'phosphor-react-native';
 import * as React from 'react';

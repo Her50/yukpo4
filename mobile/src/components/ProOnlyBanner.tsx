@@ -1,4 +1,4 @@
-﻿// @ts-check
+// @ts-check
 import * as React from "react";
 
 // Ce composant n'est plus utilisé.

@@ -55,8 +55,12 @@ pub async fn search_by_autocomplete_vector(
         return Ok(vec![]);
     }
 
-    // Recherche dans autocomplete_characteristics avec scoring intelligent
-    let query_result = if let Some((lat, lng)) = user_location {
+    // ✅ CORRIGÉ 2025-12-18: Retry avec gestion d'erreur TLS pour requêtes autocomplete
+    let mut query_result = Err(AppError::Internal("Initial attempt".to_string()));
+    let max_retries = 3;
+    
+    for attempt in 1..=max_retries {
+        query_result = if let Some((lat, lng)) = user_location {
         // Recherche avec distance GPS
         sqlx::query(
             r#"
@@ -269,217 +273,50 @@ pub async fn search_by_autocomplete_vector(
         .bind(limit)
         .fetch_all(pool)
         .await
-    };
+        };
         
-    // ✅ CORRIGÉ 2025-12-18: Retry avec backoff pour erreurs TLS
+        match &query_result {
+            Ok(_) => break, // Succès, sortir de la boucle
+            Err(e) => {
+                let error_msg = e.to_string();
+                let is_tls_error = error_msg.contains("TLS")
+                    || error_msg.contains("close_notify")
+                    || error_msg.contains("Connection reset")
+                    || error_msg.contains("peer closed")
+                    || error_msg.contains("communicating with database");
+                
+                if is_tls_error && attempt < max_retries {
+                    let delay_ms = 100 * attempt; // Backoff: 100ms, 200ms, 300ms
+                    log::warn!(
+                        "[AutocompleteSearchService] ⚠️ Erreur DB détectée (tentative {}/{}), retry dans {}ms: {}",
+                        attempt,
+                        max_retries,
+                        delay_ms,
+                        error_msg
+                    );
+                    tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+                    continue;
+                } else if !is_tls_error {
+                    // Erreur non-TLS, ne pas retry
+                    break;
+                } else {
+                    log::error!(
+                        "[AutocompleteSearchService] ❌ Erreur DB après {} tentatives: {}",
+                        max_retries,
+                        error_msg
+                    );
+                    break;
+                }
+            }
+        }
+    }
+    
     let rows = match query_result {
         Ok(rows) => rows,
         Err(e) => {
-            let error_msg = e.to_string();
-            if error_msg.contains("TLS")
-                || error_msg.contains("close_notify")
-                || error_msg.contains("Connection reset")
-                || error_msg.contains("peer closed")
-                || error_msg.contains("communicating with database")
-            {
-                log::warn!("[AutocompleteSearchService] ⚠️ Erreur DB détectée, retry...");
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                
-                // Retry avec la même query selon le cas (GPS ou non)
-                if let Some((lat, lng)) = user_location {
-                    sqlx::query(
-                        r#"
-                        SELECT DISTINCT ON (s.id)
-                            s.id as service_id,
-                            s.data as service_data,
-                            ac.product_id,
-                            ac.characteristic_vector as product_vector,
-                            ac.product_labels,
-                            ac.location_vector,
-                            ac.full_vector,
-                            ac.chosen_location,
-                            ac.usage_count,
-                            u.id as user_id,
-                            u.email as user_email,
-                            CASE
-                                WHEN (s.data->'produits'->>'prix') ~ '^[0-9]+(\.[0-9]+)?$'
-                                THEN (s.data->'produits'->>'prix')::FLOAT
-                                ELSE NULL
-                            END as prix,
-                            s.data->'produits'->>'devise' as devise,
-                            COALESCE((s.data->'produits'->>'has_variant')::BOOLEAN, FALSE) as has_variant,
-                            s.data->'produits'->>'variant_dimension' as variant_dimension,
-                            (
-                                CASE 
-                                    WHEN s.gps IS NOT NULL 
-                                         AND s.gps != ''
-                                         AND s.gps ~ '^-?[0-9]+(\\.[0-9]+)?,-?[0-9]+(\\.[0-9]+)?$' THEN
-                                        ST_Distance(
-                                            ST_MakePoint($2, $3)::geography,
-                                            ST_MakePoint(
-                                                CAST(SPLIT_PART(s.gps, ',', 1) AS DOUBLE PRECISION),
-                                                CAST(SPLIT_PART(s.gps, ',', 2) AS DOUBLE PRECISION)
-                                            )::geography
-                                        ) / 1000.0
-                                    ELSE NULL
-                                END
-                            ) as distance_km,
-                            (
-                                (
-                                    SELECT COUNT(*)::REAL * 20.0
-                                    FROM unnest($1::TEXT[]) AS search_val
-                                    WHERE EXISTS (
-                                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                                        WHERE LOWER(vec_val) = LOWER(search_val)
-                                    )
-                                ) +
-                                (
-                                    SELECT COUNT(*)::REAL * 10.0
-                                    FROM unnest($1::TEXT[]) AS search_val
-                                    WHERE EXISTS (
-                                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                                        WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
-                                    )
-                                ) +
-                                (ac.usage_count::REAL * 2.0) +
-                                CASE 
-                                    WHEN ac.chosen_location IS NOT NULL AND EXISTS (
-                                        SELECT 1 FROM unnest($1::TEXT[]) AS search_val
-                                        WHERE LOWER(ac.chosen_location) = LOWER(search_val)
-                                    )
-                                    THEN 50.0
-                                    WHEN EXISTS (
-                                        SELECT 1 FROM unnest($1::TEXT[]) AS search_val, unnest(ac.location_vector) AS loc_val
-                                        WHERE LOWER(loc_val) = LOWER(search_val)
-                                    )
-                                    THEN 35.0
-                                    ELSE 0.0
-                                END
-                            ) as relevance_score
-                        FROM autocomplete_characteristics ac
-                        INNER JOIN services s ON s.id = ac.service_id
-                        INNER JOIN users u ON u.id = s.user_id
-                        WHERE 
-                            ac.is_real_product = TRUE
-                            AND ac.identifiant_base = 'produits'
-                            AND s.is_active = TRUE
-                            AND (
-                                EXISTS (
-                                    SELECT 1 FROM unnest($1::TEXT[]) AS search_val
-                                    WHERE EXISTS (
-                                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                                        WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
-                                    )
-                                )
-                                OR EXISTS (
-                                    SELECT 1 FROM unnest($1::TEXT[]) AS search_val
-                                    WHERE EXISTS (
-                                        SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
-                                        WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
-                                    )
-                                )
-                            )
-                        ORDER BY s.id, relevance_score DESC
-                        LIMIT $4
-                        "#
-                    )
-                    .bind(combination_vector)
-                    .bind(lng)
-                    .bind(lat)
-                    .bind(limit)
-                    .fetch_all(pool)
-                    .await?
-                } else {
-                    sqlx::query(
-                        r#"
-                        SELECT DISTINCT ON (s.id)
-                            s.id as service_id,
-                            s.data as service_data,
-                            ac.product_id,
-                            ac.characteristic_vector as product_vector,
-                            ac.product_labels,
-                            ac.location_vector,
-                            ac.full_vector,
-                            ac.chosen_location,
-                            ac.usage_count,
-                            u.id as user_id,
-                            u.email as user_email,
-                            CASE
-                                WHEN (s.data->'produits'->>'prix') ~ '^[0-9]+(\.[0-9]+)?$'
-                                THEN (s.data->'produits'->>'prix')::FLOAT
-                                ELSE NULL
-                            END as prix,
-                            s.data->'produits'->>'devise' as devise,
-                            COALESCE((s.data->'produits'->>'has_variant')::BOOLEAN, FALSE) as has_variant,
-                            s.data->'produits'->>'variant_dimension' as variant_dimension,
-                            NULL::DOUBLE PRECISION as distance_km,
-                            (
-                                (
-                                    SELECT COUNT(*)::REAL * 20.0
-                                    FROM unnest($1::TEXT[]) AS search_val
-                                    WHERE EXISTS (
-                                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                                        WHERE LOWER(vec_val) = LOWER(search_val)
-                                    )
-                                ) +
-                                (
-                                    SELECT COUNT(*)::REAL * 10.0
-                                    FROM unnest($1::TEXT[]) AS search_val
-                                    WHERE EXISTS (
-                                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                                        WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
-                                    )
-                                ) +
-                                (ac.usage_count::REAL * 2.0) +
-                                CASE 
-                                    WHEN ac.chosen_location IS NOT NULL AND EXISTS (
-                                        SELECT 1 FROM unnest($1::TEXT[]) AS search_val
-                                        WHERE LOWER(ac.chosen_location) = LOWER(search_val)
-                                    )
-                                    THEN 50.0
-                                    WHEN EXISTS (
-                                        SELECT 1 FROM unnest($1::TEXT[]) AS search_val, unnest(ac.location_vector) AS loc_val
-                                        WHERE LOWER(loc_val) = LOWER(search_val)
-                                    )
-                                    THEN 35.0
-                                    ELSE 0.0
-                                END
-                            ) as relevance_score
-                        FROM autocomplete_characteristics ac
-                        INNER JOIN services s ON s.id = ac.service_id
-                        INNER JOIN users u ON u.id = s.user_id
-                        WHERE 
-                            ac.is_real_product = TRUE
-                            AND ac.identifiant_base = 'produits'
-                            AND s.is_active = TRUE
-                            AND (
-                                EXISTS (
-                                    SELECT 1 FROM unnest($1::TEXT[]) AS search_val
-                                    WHERE EXISTS (
-                                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                                        WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
-                                    )
-                                )
-                                OR EXISTS (
-                                    SELECT 1 FROM unnest($1::TEXT[]) AS search_val
-                                    WHERE EXISTS (
-                                        SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
-                                        WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
-                                    )
-                                )
-                            )
-                        ORDER BY s.id, relevance_score DESC
-                        LIMIT $2
-                        "#
-                    )
-                    .bind(combination_vector)
-                    .bind(limit)
-                    .fetch_all(pool)
-                    .await?
-                }
-            } else {
-                return Err(AppError::Database(e.to_string()));
-            }
+            let error_msg = format!("Erreur recherche autocomplete: {}", e);
+            log::error!("[AutocompleteSearchService] {}", error_msg);
+            return Err(AppError::Internal(error_msg));
         }
     };
 

@@ -52,7 +52,7 @@ const AIChatScreen: React.FC = () => {
       const response = await aiService.chat(inputText);
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: (response.data as any)?.message || 'Désolé, je n\'ai pas pu traiter votre demande.',
+        text: (response.data as any)?.message || 'Dï¿½solï¿½, je n\'ai pas pu traiter votre demande.',
         isUser: false,
         timestamp: new Date(),
       };
@@ -61,7 +61,7 @@ const AIChatScreen: React.FC = () => {
     } catch (error) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'Désolé, une erreur est survenue. Veuillez réessayer.',
+        text: 'Dï¿½solï¿½, une erreur est survenue. Veuillez rï¿½essayer.',
         isUser: false,
         timestamp: new Date(),
       };

@@ -1,4 +1,4 @@
-﻿import { useRoute } from "@react-navigation/native";
+import { useRoute } from "@react-navigation/native";
 import * as React from "react";
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';

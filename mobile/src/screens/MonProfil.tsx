@@ -23,10 +23,10 @@ const MonProfilScreen: React.FC = () => {
     try {
       await updateUser(formData);
       setEditing(false);
-      Alert.alert('Succès', 'Profil mis à jour avec succès');
+      Alert.alert('Succï¿½s', 'Profil mis ï¿½ jour avec succï¿½s');
     } catch (error) {
-      console.error('Erreur mise à jour profil:', error);
-      Alert.alert('Erreur', 'Impossible de mettre à jour le profil');
+      console.error('Erreur mise ï¿½ jour profil:', error);
+      Alert.alert('Erreur', 'Impossible de mettre ï¿½ jour le profil');
     }
   };
 
@@ -75,7 +75,7 @@ const MonProfilScreen: React.FC = () => {
             <View style={styles.profileInfo}>
               <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
               <Text style={styles.userEmail}>{user?.email}</Text>
-              <Text style={styles.userRole}>Rôle: {user?.role}</Text>
+              <Text style={styles.userRole}>Rï¿½le: {user?.role}</Text>
             </View>
           </Card.Content>
         </Card>
@@ -94,7 +94,7 @@ const MonProfilScreen: React.FC = () => {
                   mode="outlined"
                 />
               ) : (
-                <Text style={styles.inputValue}>{user?.name || 'Non renseigné'}</Text>
+                <Text style={styles.inputValue}>{user?.name || 'Non renseignï¿½'}</Text>
               )}
             </View>
 
@@ -114,7 +114,7 @@ const MonProfilScreen: React.FC = () => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Téléphone</Text>
+              <Text style={styles.inputLabel}>Tï¿½lï¿½phone</Text>
               {editing ? (
                 <TextInput
                   value={formData.phone}
@@ -124,7 +124,7 @@ const MonProfilScreen: React.FC = () => {
                   keyboardType="phone-pad"
                 />
               ) : (
-                <Text style={styles.inputValue}>{user?.phone || 'Non renseigné'}</Text>
+                <Text style={styles.inputValue}>{user?.phone || 'Non renseignï¿½'}</Text>
               )}
             </View>
 
@@ -165,7 +165,7 @@ const MonProfilScreen: React.FC = () => {
               onPress={() => navigation.navigate('Settings' as never)}
             >
               <Ionicons name="settings" size={24} color={theme.colors.primary} />
-              <Text style={styles.actionText}>Paramètres</Text>
+              <Text style={styles.actionText}>Paramï¿½tres</Text>
               <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
             </TouchableOpacity>
 

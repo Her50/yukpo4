@@ -1,4 +1,4 @@
-﻿import * as Clipboard from 'expo-clipboard';
+import * as Clipboard from 'expo-clipboard';
 import { ChatCircle, Copy, Facebook, Link as LinkIcon, Mail, Share2, Twitter, X } from 'lucide-react-native';
 import React from 'react';
 import { Alert, Linking, Modal, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';

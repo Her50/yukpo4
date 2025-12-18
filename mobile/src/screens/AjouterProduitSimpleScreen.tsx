@@ -1157,20 +1157,54 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     productDataKeys: Object.keys(nouveauProduit)
                                 });
 
-                                const response = await apiPost(`/api/services/${serviceId}/products`, {
-                                    user_id: userId,
-                                    product_data: nouveauProduit
-                                });
+                                // ✅ AMÉLIORATION: Retry logic pour les erreurs réseau
+                                let response;
+                                let lastError: any = null;
+                                const maxRetries = 3;
+                                
+                                for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                                    try {
+                                        console.log(`[AjouterProduitSimple] 📤 Tentative ${attempt}/${maxRetries} d'ajout produit...`);
+                                        
+                                        response = await apiPost(`/api/services/${serviceId}/products`, {
+                                            user_id: userId,
+                                            product_data: nouveauProduit
+                                        });
 
-                                console.log('[AjouterProduitSimple] 📥 Réponse API création produit:', {
-                                    success: response.success,
-                                    hasData: !!response.data,
-                                    error: response.error,
-                                    message: response.message
-                                });
+                                        console.log('[AjouterProduitSimple] 📥 Réponse API création produit:', {
+                                            success: response.success,
+                                            hasData: !!response.data,
+                                            error: response.error,
+                                            message: response.message
+                                        });
 
-                                if (!response.success) {
-                                    throw new Error(response.error || response.message || 'Erreur lors de l\'ajout du produit');
+                                        if (!response.success) {
+                                            throw new Error(response.error || response.message || 'Erreur lors de l\'ajout du produit');
+                                        }
+
+                                        // ✅ Succès, sortir de la boucle
+                                        break;
+                                    } catch (error: any) {
+                                        lastError = error;
+                                        const isNetworkError = error?.message?.includes('Network request failed') || 
+                                                             error?.message?.includes('fetch') ||
+                                                             error?.name === 'TypeError';
+                                        
+                                        if (isNetworkError && attempt < maxRetries) {
+                                            // Attendre avant de réessayer (backoff exponentiel)
+                                            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+                                            console.warn(`[AjouterProduitSimple] ⚠️ Erreur réseau, nouvelle tentative dans ${delay}ms...`);
+                                            await new Promise(resolve => setTimeout(resolve, delay));
+                                            continue;
+                                        }
+                                        
+                                        // Si ce n'est pas une erreur réseau ou dernière tentative, propager l'erreur
+                                        throw error;
+                                    }
+                                }
+
+                                if (!response || !response.success) {
+                                    throw lastError || new Error('Erreur lors de l\'ajout du produit');
                                 }
 
                                 console.log('[AjouterProduitSimple] ✅ Produit ajouté avec succès:', response);

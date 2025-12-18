@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use crate::{
     controllers::ia_controller::{
-        analyze_behavior, analyze_text_input, enrichir_contexte_ia, handle_audio_suggestions,
+        analyze_behavior, analyze_media_tags, analyze_text_input, enrichir_contexte_ia, handle_audio_suggestions,
         handle_audio_sync, handle_auto_captions, handle_auto_cut, handle_color_grade,
         handle_effect_preview, handle_quick_preview, handle_timeline_variants, predict_ia,
     },
@@ -29,6 +29,8 @@ pub fn ia_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/ia/status", get(get_ia_status))
         // ?? Analyse de texte pour le frontend (ChatInputPanel)
         .route("/api/ia/analyze", post(analyze_text_input))
+        // ✅ CORRIGÉ 2025-12-18: Analyse média (couleurs dominantes, objets détectés, angles marketing)
+        .route("/api/ia/media-analysis", post(analyze_media_tags))
         // ✅ NOUVEAU: Auto-cut intelligent
         .route("/api/ia/video/auto-cut", post(handle_auto_cut))
         // ✅ NOUVEAU: Synchronisation audio-vidéo

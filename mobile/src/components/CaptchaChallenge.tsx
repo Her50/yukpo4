@@ -1,4 +1,4 @@
-﻿import * as React from "react";
+import * as React from "react";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 

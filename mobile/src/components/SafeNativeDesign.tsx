@@ -354,6 +354,7 @@ const getComponent = (name: string, fallback: React.ComponentType<any>): React.C
 };
 
 // ✅ CRITIQUE: Wrapper qui garantit toujours un composant React valide
+// ✅ CORRIGÉ: Ne pas utiliser forwardRef pour éviter les problèmes d'objet
 const createSafeComponent = (name: string, fallback: React.ComponentType<any>): React.ComponentType<any> => {
     const component = getComponent(name, fallback);
     
@@ -363,19 +364,24 @@ const createSafeComponent = (name: string, fallback: React.ComponentType<any>): 
         return fallback;
     }
     
-    // ✅ CRITIQUE: Wrapper pour garantir que le composant est toujours valide
-    return React.forwardRef((props: any, ref: any) => {
+    // ✅ CRITIQUE: Wrapper simple sans forwardRef pour garantir que c'est toujours une fonction
+    const SafeComponent: React.FC<any> = (props: any) => {
         try {
             // Vérifier que le composant est toujours valide avant de l'utiliser
             if (!isReactComponent(component)) {
-                return React.createElement(fallback, { ...props, ref });
+                return React.createElement(fallback, props);
             }
-            return React.createElement(component, { ...props, ref });
+            return React.createElement(component, props);
         } catch (error) {
             console.error(`[SafeNativeDesign] Erreur lors du rendu de ${name}:`, error);
-            return React.createElement(fallback, { ...props, ref });
+            return React.createElement(fallback, props);
         }
-    }) as React.ComponentType<any>;
+    };
+    
+    // ✅ CRITIQUE: S'assurer que le nom du composant est préservé pour le debugging
+    SafeComponent.displayName = `Safe${name}`;
+    
+    return SafeComponent;
 };
 
 // ✅ Export des composants sécurisés - GARANTIS comme composants React valides

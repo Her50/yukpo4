@@ -13,6 +13,8 @@ import {
     TouchableOpacity,
     View,
     ScrollView,
+    ActivityIndicator,
+    Animated,
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
@@ -40,8 +42,11 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editingLabel, setEditingLabel] = useState('');
     const [editingValue, setEditingValue] = useState('');
+    const [isValidating, setIsValidating] = useState(false);
+    const [isValidated, setIsValidated] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
     const labelInputRef = useRef<TextInput>(null);
+    const scaleAnim = useRef(new Animated.Value(1)).current;
 
     // Initialiser le tableau avec les sous-caractéristiques préférées de l'IA
     useEffect(() => {
@@ -144,7 +149,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     };
 
     // Valider le tableau et convertir en format attendu
-    const validateTable = () => {
+    const validateTable = async () => {
         // Filtrer les lignes vides
         const validRows = rows.filter(row => 
             row.label.trim().length > 0 && row.value.trim().length > 0
@@ -155,8 +160,37 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             return;
         }
 
+        // ✅ FEEDBACK VISUEL: Animation et état de validation
+        setIsValidating(true);
+        
+        // Animation de scale pour le bouton
+        Animated.sequence([
+            Animated.timing(scaleAnim, {
+                toValue: 0.95,
+                duration: 100,
+                useNativeDriver: true,
+            }),
+            Animated.timing(scaleAnim, {
+                toValue: 1,
+                duration: 100,
+                useNativeDriver: true,
+            }),
+        ]).start();
+
+        // Simuler un petit délai pour le feedback visuel (100ms)
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         // Appeler le callback avec les lignes validées
         onValidate(validRows);
+
+        // ✅ FEEDBACK VISUEL: Afficher le succès
+        setIsValidating(false);
+        setIsValidated(true);
+
+        // Réinitialiser l'état de succès après 2 secondes
+        setTimeout(() => {
+            setIsValidated(false);
+        }, 2000);
     };
 
     return (
@@ -269,17 +303,34 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                     <SafeIcon name="plus" size={18} color="#FFFFFF" />
                     <Text style={styles.addButtonText}>Ajouter</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                    style={[
-                        styles.validateButton,
-                        rows.filter(r => r.label.trim() && r.value.trim()).length === 0 && styles.validateButtonDisabled
-                    ]}
-                    onPress={validateTable}
-                    disabled={rows.filter(r => r.label.trim() && r.value.trim()).length === 0}
-                >
-                    <SafeIcon name="check-circle" size={18} color="#FFFFFF" />
-                    <Text style={styles.validateButtonText}>Valider</Text>
-                </TouchableOpacity>
+                <Animated.View style={{ flex: 1, transform: [{ scale: scaleAnim }] }}>
+                    <TouchableOpacity
+                        style={[
+                            styles.validateButton,
+                            rows.filter(r => r.label.trim() && r.value.trim()).length === 0 && styles.validateButtonDisabled,
+                            isValidated && styles.validateButtonSuccess
+                        ]}
+                        onPress={validateTable}
+                        disabled={rows.filter(r => r.label.trim() && r.value.trim()).length === 0 || isValidating}
+                    >
+                        {isValidating ? (
+                            <>
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                                <Text style={styles.validateButtonText}>Validation...</Text>
+                            </>
+                        ) : isValidated ? (
+                            <>
+                                <SafeIcon name="check-circle" size={18} color="#FFFFFF" />
+                                <Text style={styles.validateButtonText}>Validé !</Text>
+                            </>
+                        ) : (
+                            <>
+                                <SafeIcon name="check-circle" size={18} color="#FFFFFF" />
+                                <Text style={styles.validateButtonText}>Valider</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </Animated.View>
             </View>
         </View>
     );
@@ -418,6 +469,9 @@ const styles = StyleSheet.create({
     validateButtonDisabled: {
         backgroundColor: '#9CA3AF',
         opacity: 0.5,
+    },
+    validateButtonSuccess: {
+        backgroundColor: '#10B981', // Vert plus foncé pour le succès
     },
     validateButtonText: {
         fontSize: 14,

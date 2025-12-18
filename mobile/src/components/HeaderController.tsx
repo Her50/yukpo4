@@ -1,4 +1,4 @@
-﻿// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
+// ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';

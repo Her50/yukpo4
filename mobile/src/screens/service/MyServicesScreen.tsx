@@ -33,29 +33,29 @@ const MyServicesScreen: React.FC = () => {
           <View style={styles.infoCard}>
             <Text style={styles.infoIcon}>?</Text>
             <View style={styles.infoText}>
-              <Text style={styles.infoTitle}>Gérez vos services</Text>
+              <Text style={styles.infoTitle}>Gï¿½rez vos services</Text>
               <Text style={styles.infoDescription}>
-                Créez et gérez vos services pour attirer plus de clients
+                Crï¿½ez et gï¿½rez vos services pour attirer plus de clients
               </Text>
             </View>
           </View>
 
-          {/* Bouton de création rapide */}
+          {/* Bouton de crï¿½ation rapide */}
           <TouchableOpacity
             style={styles.createButton}
             onPress={handleCreateService}
           >
             <Text style={styles.createIcon}>+</Text>
-            <Text style={styles.createButtonText}>Créer un nouveau service</Text>
+            <Text style={styles.createButtonText}>Crï¿½er un nouveau service</Text>
           </TouchableOpacity>
 
           {/* Liste des services (vide pour l'instant) */}
           <View style={styles.servicesList}>
             <Text style={styles.emptyText}>
-              Aucun service créé pour le moment
+              Aucun service crï¿½ï¿½ pour le moment
             </Text>
             <Text style={styles.emptySubtext}>
-              Commencez par créer votre premier service
+              Commencez par crï¿½er votre premier service
             </Text>
           </View>
         </View>

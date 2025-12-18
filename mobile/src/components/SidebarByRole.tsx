@@ -1,4 +1,4 @@
-﻿// @ts-check
+// @ts-check
 import * as React from "react";
 import ResponsiveSidebar from "./ResponsiveSidebar";
 import ClientSidebar from "./ClientSidebar";

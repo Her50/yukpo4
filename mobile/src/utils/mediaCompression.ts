@@ -94,23 +94,43 @@ export const compressImages = async (images: string[]): Promise<string[]> => {
 /**
  * Tronquer les vidéos base64 si trop volumineuses
  * Note: Une vraie compression vidéo nécessiterait un traitement backend
+ * ✅ CORRECTION: Ne pas calculer la taille pour les vidéos file:// (évite OutOfMemoryError)
  */
 export const limitVideoSize = (video: string, maxSizeBytes: number = MAX_VIDEO_SIZE): string | null => {
-    // ✅ CORRECTION: Plus de limite pour les vidéos
+    // ✅ CORRECTION CRITIQUE: Si c'est une URI file://, ne pas calculer la taille (évite OutOfMemoryError)
+    if (video.startsWith('file://')) {
+        console.log('[MediaCompression] ✅ Vidéo file:// détectée, pas de calcul de taille (upload direct)');
+        return video; // Retourner l'URI directement pour upload FormData
+    }
+
+    // ✅ CORRECTION: Plus de limite pour les vidéos base64 aussi
     if (maxSizeBytes === Infinity) {
         return video; // Accepter toutes les vidéos sans limite
     }
 
-    const currentSize = getBase64Size(video);
-
-    if (currentSize <= maxSizeBytes) {
+    // ✅ CORRECTION: Ne calculer la taille que si c'est du base64 (évite OutOfMemoryError)
+    // Si la vidéo commence par 'data:', c'est du base64
+    if (!video.startsWith('data:')) {
+        // Si ce n'est ni file:// ni data:, assumer que c'est OK
         return video;
     }
 
-    console.warn('[MediaCompression] ⚠️ Vidéo trop volumineuse:', formatFileSize(currentSize), '>', formatFileSize(maxSizeBytes));
-    console.warn('[MediaCompression] ⚠️ Vidéo ignorée - Veuillez utiliser une vidéo plus courte');
+    try {
+        const currentSize = getBase64Size(video);
 
-    return null; // Ignorer la vidéo si trop grande
+        if (currentSize <= maxSizeBytes) {
+            return video;
+        }
+
+        console.warn('[MediaCompression] ⚠️ Vidéo base64 trop volumineuse:', formatFileSize(currentSize), '>', formatFileSize(maxSizeBytes));
+        console.warn('[MediaCompression] ⚠️ Vidéo ignorée - Veuillez utiliser une vidéo plus courte ou file:// URI');
+
+        return null; // Ignorer la vidéo si trop grande
+    } catch (error) {
+        // ✅ CORRECTION: En cas d'erreur (OutOfMemoryError), retourner null
+        console.error('[MediaCompression] ❌ Erreur calcul taille vidéo (probablement trop volumineuse):', error);
+        return null;
+    }
 };
 
 /**

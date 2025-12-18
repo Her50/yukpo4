@@ -1,4 +1,4 @@
-﻿import * as React from "react";
+import * as React from "react";
 import { useEffect } from 'react';
 import { Text } from 'react-native';
 import { useUserContext } from '../context/UserContext';

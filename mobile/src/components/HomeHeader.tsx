@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from "react";
+import React, { useMemo } from "react";
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { modernColors } from "../theme/modernTheme";
 import { hapticPress } from "../utils/hapticFeedback";

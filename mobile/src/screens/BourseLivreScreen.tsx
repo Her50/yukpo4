@@ -1,4 +1,4 @@
-﻿// ✅ Écran Bourse du Livre avec IA (Mobile)
+// ✅ Écran Bourse du Livre avec IA (Mobile)
 
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';

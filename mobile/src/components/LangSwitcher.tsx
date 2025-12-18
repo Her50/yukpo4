@@ -1,4 +1,4 @@
-﻿// src/components/LangSwitcher.tsx
+// src/components/LangSwitcher.tsx
 // @ts-check
 import { Picker } from '@react-native-picker/picker';
 import * as React from "react";

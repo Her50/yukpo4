@@ -2678,7 +2678,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             )}
                             {distributionPlan.hashtags?.length > 0 && (
                                 <Text style={styles.planHashtags}>
-                                    Hashtags : {(Array.isArray(distributionPlan.hashtags) && distributionPlan.hashtags.length > 0) ? distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : 'Aucun'}
+                                    Hashtags : {Array.isArray(distributionPlan.hashtags) && distributionPlan.hashtags.length > 0 ? distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : 'Aucun'}
                                 </Text>
                             )}
                             {distributionPlan.schedule?.length > 0 && (
@@ -3073,7 +3073,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         </Text>
                     </TouchableOpacity>
                 </View>
-                {(coachLoading && !hasInsights) ? (
+                {coachLoading && !hasInsights ? (
                     <View style={styles.coachLoading}>
                         <ActivityIndicator size="small" color={modernColors.primary} />
                         <Text style={styles.coachLoadingText}>
@@ -3118,12 +3118,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 />
                                 <View style={styles.coachContent}>
                                     <Text style={styles.coachLabel}>Effets recommandés</Text>
-                                    {(Array.isArray(styleSuggestion.effects) && styleSuggestion.effects.length > 0) ? (
+                                    {Array.isArray(styleSuggestion.effects) && styleSuggestion.effects.length > 0 ? (
                                         <Text style={styles.coachText} numberOfLines={2}>
                                             Effets : {styleSuggestion.effects.slice(0, 3).join(', ')}
                                         </Text>
                                     ) : null}
-                                    {(Array.isArray(styleSuggestion.transitions) && styleSuggestion.transitions.length > 0) ? (
+                                    {Array.isArray(styleSuggestion.transitions) && styleSuggestion.transitions.length > 0 ? (
                                         <Text style={styles.coachMeta}>
                                             Transitions : {styleSuggestion.transitions.slice(0, 2).join(', ')}
                                         </Text>
@@ -3646,7 +3646,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     showsVerticalScrollIndicator={true}
                     contentContainerStyle={styles.productSelectionListContent}
                 >
-                    {(Array.isArray(groupedProducts) && groupedProducts.length > 0) ? (
+                    {Array.isArray(groupedProducts) && groupedProducts.length > 0 ? (
                         groupedProducts.map((group) => {
                             // ✅ CORRIGÉ: Vérifier que group et group.items sont définis
                             if (!group || !Array.isArray(group.items)) {
@@ -3741,7 +3741,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     vidéo.
                 </Text>
                 <View style={styles.relatedProductsContainer}>
-                    {(Array.isArray(productsSameService) && productsSameService.length > 0) ? (
+                    {Array.isArray(productsSameService) && productsSameService.length > 0 ? (
                         productsSameService.map((product) => {
                             const index = typeof product.product_index === 'number' ? product.product_index : undefined;
                             const selected = index !== undefined && selectedRelatedProducts.has(index);
@@ -3965,7 +3965,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                         {/* ✅ NOUVEAU: Boutons de navigation par étape */}
                         <View style={getFixedBottomButtonStyle()}>
-                            {activeStep === 1 ? (
+                            {activeStep === 1 && (
                                 <NativeButton
                                     title={selectedProduct ? "Suivant" : "Sélectionnez un produit"}
                                     variant="primary"
@@ -3980,8 +3980,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     }}
                                     disabled={!selectedProduct}
                                 />
-                            ) : null}
-                            {activeStep === 2 ? (
+                            )}
+                            {activeStep === 2 && (
                                 <View style={styles.navigationRow}>
                                     <NativeButton
                                         title="Précédent"
@@ -3994,8 +3994,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         onPress={() => handleStepChange(3)}
                                     />
                                 </View>
-                            ) : null}
-                            {activeStep === 3 ? (
+                            )}
+                            {activeStep === 3 && (
                                 <View style={styles.navigationRow}>
                                     <NativeButton
                                         title="Précédent"
@@ -4010,8 +4010,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
                                     />
                                 </View>
-                            ) : null}
-                            {activeStep === 4 ? (
+                            )}
+                            {activeStep === 4 && (
                                 <View style={styles.navigationRow}>
                                     <NativeButton
                                         title="Précédent"
@@ -4026,8 +4026,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
                                     />
                                 </View>
-                            ) : null}
-                            {activeStep === 5 ? (
+                            )}
+                            {activeStep === 5 && (
                                 <View style={styles.navigationRow}>
                                     <NativeButton
                                         title="Précédent"
@@ -4042,8 +4042,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
                                     />
                                 </View>
-                            ) : null}
-                            {activeStep === 6 ? (
+                            )}
+                            {activeStep === 6 && (
                                 <View style={styles.navigationRow}>
                                     <NativeButton
                                         title="Précédent"
@@ -4057,7 +4057,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         disabled={isSubmitting || !selectedProduct}
                                     />
                                 </View>
-                            ) : null}
+                            )}
                             {/* ✅ SUPPRIMÉ: Doublon de boutons pour l'étape 4 - Les boutons sont déjà gérés au-dessus */}
                         </View>
                     </NativeCard>
@@ -4095,7 +4095,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     </View>
                                     {variant.hashtags?.length > 0 && (
                                         <Text style={styles.variantHashtags}>
-                                            {(Array.isArray(variant.hashtags) && variant.hashtags.length > 0) ? variant.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : 'Aucun'}
+                                            {Array.isArray(variant.hashtags) && variant.hashtags.length > 0 ? variant.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : 'Aucun'}
                                         </Text>
                                     )}
                                 </TouchableOpacity>
@@ -5223,6 +5223,5 @@ const styles = StyleSheet.create({
 });
 
 export default ProductVideoCreationModal;
-
 
 

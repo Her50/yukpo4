@@ -1,4 +1,4 @@
-﻿// 🌍 Fournisseur intelligent de gestion des langues
+// 🌍 Fournisseur intelligent de gestion des langues
 import * as React from "react";
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';

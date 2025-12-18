@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { MenuConfig } from '@/config/MenuConfig';
 import { useUser } from '@/hooks/useUser';

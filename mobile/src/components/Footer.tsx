@@ -1,4 +1,4 @@
-﻿// src/components/Footer.tsx
+// src/components/Footer.tsx
 // @ts-check
 import { useNavigation } from "@react-navigation/native";
 import * as React from "react";

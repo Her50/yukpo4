@@ -1,4 +1,4 @@
-﻿// Remplacement des Ionicons par des emojis pour éviter les crashes
+// Remplacement des Ionicons par des emojis pour éviter les crashes
 import * as React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {

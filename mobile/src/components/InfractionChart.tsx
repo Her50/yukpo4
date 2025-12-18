@@ -1,4 +1,4 @@
-﻿// @ts-check
+// @ts-check
 import * as React from "react";
 import { Text } from 'react-native';
 import { BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";

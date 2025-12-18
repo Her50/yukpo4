@@ -1,4 +1,4 @@
-﻿import * as React from 'react';
+import * as React from 'react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 import { authApi } from '../services/api';

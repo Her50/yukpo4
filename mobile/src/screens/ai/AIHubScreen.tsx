@@ -22,14 +22,14 @@ const AIHubScreen: React.FC = () => {
       onPress: () => navigation.navigate('Search' as never),
     },
     {
-      title: 'Création Assistée',
-      description: 'Créez des services avec l\'aide de l\'IA',
+      title: 'Crï¿½ation Assistï¿½e',
+      description: 'Crï¿½ez des services avec l\'aide de l\'IA',
       icon: '??',
       onPress: () => navigation.navigate('CreateService' as never),
     },
     {
-      title: 'Suggestions Personnalisées',
-      description: 'Recevez des recommandations adaptées',
+      title: 'Suggestions Personnalisï¿½es',
+      description: 'Recevez des recommandations adaptï¿½es',
       icon: '?',
       onPress: () => {},
     },
@@ -38,20 +38,20 @@ const AIHubScreen: React.FC = () => {
   const quickActions = [
     {
       title: 'Rechercher un coiffeur',
-      description: 'Trouvez un coiffeur près de chez vous',
+      description: 'Trouvez un coiffeur prï¿½s de chez vous',
       onPress: () => {
-        // Navigation avec paramètres de recherche
+        // Navigation avec paramï¿½tres de recherche
         navigation.navigate('Search' as never);
       },
     },
     {
-      title: 'Créer un service de nettoyage',
-      description: 'Proposez vos services de ménage',
+      title: 'Crï¿½er un service de nettoyage',
+      description: 'Proposez vos services de mï¿½nage',
       onPress: () => navigation.navigate('CreateService' as never),
     },
     {
       title: 'Demander de l\'aide',
-      description: 'Posez une question à l\'IA',
+      description: 'Posez une question ï¿½ l\'IA',
       onPress: () => navigation.navigate('AIChat' as never),
     },
   ];
@@ -63,13 +63,13 @@ const AIHubScreen: React.FC = () => {
         <View style={styles.header}>
           <Text style={styles.title}>IA Hub</Text>
           <Text style={styles.subtitle}>
-            Découvrez la puissance de l'intelligence artificielle
+            Dï¿½couvrez la puissance de l'intelligence artificielle
           </Text>
         </View>
 
         {/* AI Features */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fonctionnalités IA</Text>
+          <Text style={styles.sectionTitle}>Fonctionnalitï¿½s IA</Text>
           <View style={styles.featuresGrid}>
             {aiFeatures.map((feature, index) => (
               <TouchableOpacity
@@ -107,11 +107,11 @@ const AIHubScreen: React.FC = () => {
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>1,234</Text>
-                <Text style={styles.statLabel}>Requêtes traitées</Text>
+                <Text style={styles.statLabel}>Requï¿½tes traitï¿½es</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>98%</Text>
-                <Text style={styles.statLabel}>Précision</Text>
+                <Text style={styles.statLabel}>Prï¿½cision</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>2.3s</Text>
@@ -126,10 +126,10 @@ const AIHubScreen: React.FC = () => {
           <Card.Content>
             <Text style={styles.sectionTitle}>?? Conseils d'utilisation</Text>
             <View style={styles.tipsList}>
-              <Text style={styles.tipItem}>• Soyez précis dans vos demandes</Text>
-              <Text style={styles.tipItem}>• Utilisez des mots-clés pertinents</Text>
-              <Text style={styles.tipItem}>• L'IA apprend de vos interactions</Text>
-              <Text style={styles.tipItem}>• N'hésitez pas à reformuler si nécessaire</Text>
+              <Text style={styles.tipItem}>ï¿½ Soyez prï¿½cis dans vos demandes</Text>
+              <Text style={styles.tipItem}>ï¿½ Utilisez des mots-clï¿½s pertinents</Text>
+              <Text style={styles.tipItem}>ï¿½ L'IA apprend de vos interactions</Text>
+              <Text style={styles.tipItem}>ï¿½ N'hï¿½sitez pas ï¿½ reformuler si nï¿½cessaire</Text>
             </View>
           </Card.Content>
         </Card>
