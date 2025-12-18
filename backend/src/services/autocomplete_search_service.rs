@@ -177,6 +177,7 @@ pub async fn search_by_autocomplete_vector(
         .bind(limit)
         .fetch_all(pool)
         .await
+        .map_err(Into::into)
     } else {
         // Recherche SANS GPS
         sqlx::query(
@@ -273,6 +274,7 @@ pub async fn search_by_autocomplete_vector(
         .bind(limit)
         .fetch_all(pool)
         .await
+        .map_err(Into::into)
         };
         
         match &query_result {
