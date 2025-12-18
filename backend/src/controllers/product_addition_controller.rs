@@ -38,12 +38,24 @@ pub async fn add_product_to_service(
     
     log_info(&format!("[add_product_to_service] 📦 Ajout d'un produit au service {}", service_id));
     
-    // ✅ Vérification : L'utilisateur est-il le propriétaire du service ?
-    let service_row = sqlx::query(
-        "SELECT user_id, data FROM services WHERE id = $1 AND is_active = true"
+    // ✅ Vérification : L'utilisateur est-il le propriétaire du service ? (avec retry)
+    let pool = state.pg.clone();
+    let service_row = crate::utils::db_retry::retry_query(
+        &pool,
+        || {
+            let service_id_clone = service_id;
+            let pool_clone = pool.clone();
+            Box::pin(async move {
+                sqlx::query(
+                    "SELECT user_id, data FROM services WHERE id = $1 AND is_active = true"
+                )
+                .bind(service_id_clone)
+                .fetch_optional(&pool_clone)
+                .await
+            })
+        },
+        3, // 3 tentatives max
     )
-    .bind(service_id)
-    .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération service: {}", e)))?;
     
@@ -70,11 +82,23 @@ pub async fn add_product_to_service(
     }
     let cout_ajout = service_costs::COST_NEW_PRODUCT_DUPLICATE_XAF;
     
-    // ✅ Vérifier le solde
-    let current_balance_result = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
-        .bind(user.id)
-        .fetch_one(&state.pg)
-        .await;
+    // ✅ Vérifier le solde (avec retry)
+    let pool = state.pg.clone();
+    let current_balance_result = crate::utils::db_retry::retry_query(
+        &pool,
+        || {
+            let user_id_clone = user.id;
+            let pool_clone = pool.clone();
+            Box::pin(async move {
+                sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
+                    .bind(user_id_clone)
+                    .fetch_one(&pool_clone)
+                    .await
+            })
+        },
+        3, // 3 tentatives max
+    )
+    .await;
     
     let current_balance = match current_balance_result {
         Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
@@ -92,13 +116,26 @@ pub async fn add_product_to_service(
         )));
     }
     
-    // ✅ Débiter le solde
-    let debit_result = sqlx::query(
-        "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
+    // ✅ Débiter le solde (avec retry)
+    let pool = state.pg.clone();
+    let debit_result = crate::utils::db_retry::retry_query(
+        &pool,
+        || {
+            let cout_ajout_clone = cout_ajout;
+            let user_id_clone = user.id;
+            let pool_clone = pool.clone();
+            Box::pin(async move {
+                sqlx::query(
+                    "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
+                )
+                .bind(cout_ajout_clone)
+                .bind(user_id_clone)
+                .fetch_one(&pool_clone)
+                .await
+            })
+        },
+        3, // 3 tentatives max
     )
-    .bind(cout_ajout)
-    .bind(user.id)
-    .fetch_one(&state.pg)
     .await;
     
     let new_balance = match debit_result {
@@ -139,13 +176,26 @@ pub async fn add_product_to_service(
         }
     };
     
-    // ✅ Mettre à jour le service en base
-    let update_result = sqlx::query(
-        "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2"
+    // ✅ Mettre à jour le service en base avec retry pour les erreurs de connexion
+    let pool = state.pg.clone();
+    let update_result = crate::utils::db_retry::retry_query(
+        &pool,
+        || {
+            let service_data_clone = service_data.clone();
+            let service_id_clone = service_id;
+            let pool_clone = pool.clone();
+            Box::pin(async move {
+                sqlx::query(
+                    "UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2"
+                )
+                .bind(&service_data_clone)
+                .bind(service_id_clone)
+                .execute(&pool_clone)
+                .await
+            })
+        },
+        3, // 3 tentatives max
     )
-    .bind(&service_data)
-    .bind(service_id)
-    .execute(&state.pg)
     .await;
     
     match update_result {
@@ -178,13 +228,26 @@ pub async fn add_product_to_service(
         Err(e) => {
             log_error(&format!("[add_product_to_service] Erreur mise à jour service: {}", e));
             
-            // ✅ ROLLBACK : Rembourser l'utilisateur en cas d'échec
-            let _ = sqlx::query(
-                "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
+            // ✅ ROLLBACK : Rembourser l'utilisateur en cas d'échec (avec retry)
+            let pool = state.pg.clone();
+            let _ = crate::utils::db_retry::retry_query(
+                &pool,
+                || {
+                    let cout_ajout_clone = cout_ajout;
+                    let user_id_clone = user.id;
+                    let pool_clone = pool.clone();
+                    Box::pin(async move {
+                        sqlx::query(
+                            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
+                        )
+                        .bind(cout_ajout_clone)
+                        .bind(user_id_clone)
+                        .execute(&pool_clone)
+                        .await
+                    })
+                },
+                3, // 3 tentatives max
             )
-            .bind(cout_ajout)
-            .bind(user.id)
-            .execute(&state.pg)
             .await;
             
             Err(AppError::Internal(format!("Erreur mise à jour service: {}", e)))

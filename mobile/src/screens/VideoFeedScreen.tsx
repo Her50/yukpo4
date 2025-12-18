@@ -32,8 +32,13 @@ type FeedItem = {
     savesCount?: number;
 };
 
-const normalizeFeed = (raw: any[]): FeedItem[] =>
-    (raw || [])
+const normalizeFeed = (raw: any[]): FeedItem[] => {
+    // ✅ CORRIGÉ: Vérifier que raw est un tableau avant d'utiliser .map
+    if (!Array.isArray(raw)) {
+        console.warn('[VideoFeedScreen] normalizeFeed: raw n\'est pas un tableau', typeof raw, raw);
+        return [];
+    }
+    return raw
         .map((item, index) => {
             const video =
                 item?.videoUrl ||
@@ -77,7 +82,8 @@ const normalizeFeed = (raw: any[]): FeedItem[] =>
                 ),
             } as FeedItem;
         })
-        .filter(Boolean) as FeedItem[];
+        .filter((item): item is FeedItem => item !== null && item !== undefined) as FeedItem[];
+};
 
 const viewabilityConfig = {
     itemVisiblePercentThreshold: 80,

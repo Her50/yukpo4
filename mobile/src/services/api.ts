@@ -280,14 +280,14 @@ const apiCallInternal = async <T>(
     // 180s (3 min) nécessaire pour :
     // - Upload 60-100 MB en 3G : 96-160s
     // - Traitement backend : 20-50s
-    // 60s pour création-service (appel IA OpenAI peut prendre 15-30s)
+    // ✅ AUGMENTÉ: 90s pour création-service (appel IA OpenAI avec images peut prendre 15-30s + traitement images)
     // ✅ CORRECTION: 90s pour création produit (upload médias peut prendre du temps)
     // ✅ CORRIGÉ: 60s pour timeline-variants (génération IA peut prendre 30-50s)
     // ✅ CORRIGÉ: 30s pour /prestataire/services (peut prendre du temps avec cache Redis)
     const timeoutDuration = endpoint.includes('/services/create')
       ? 180000
       : endpoint.includes('/ia/creation-service')
-        ? 60000
+        ? 90000  // ✅ AUGMENTÉ: 90s pour supporter traitement images + appel IA multimodal
         : endpoint.includes('/ia/video/timeline-variants')
           ? 60000  // ✅ 60s pour timeline-variants (génération de variantes peut prendre du temps)
           : endpoint.includes('/services/') && endpoint.includes('/products')

@@ -8,7 +8,8 @@ use std::time::Instant;
 /// ✅ AUGMENTÉ: 2 secondes au lieu de 1 seconde pour réduire les warnings non critiques
 const SLOW_REQUEST_THRESHOLD_MS: u64 = 2000;
 /// Seuil pour requêtes très lentes (en millisecondes) - seulement celles-ci génèrent un warning
-const VERY_SLOW_REQUEST_THRESHOLD_MS: u64 = 5000;
+/// ✅ AUGMENTÉ: 10 secondes au lieu de 5 secondes pour les endpoints avec images (upload + traitement IA)
+const VERY_SLOW_REQUEST_THRESHOLD_MS: u64 = 10000;
 
 pub async fn monitoring(req: Request<Body>, next: Next) -> Response {
     let method = req.method().clone();
@@ -54,15 +55,32 @@ pub async fn monitoring(req: Request<Body>, next: Next) -> Response {
         );
     }
 
-    // Log error pour requêtes très lentes (>5s)
+    // Log error pour requêtes très lentes (>10s)
+    // ✅ AUGMENTÉ: Seuil augmenté à 10s pour les endpoints avec images (upload + traitement IA)
     if elapsed_ms >= VERY_SLOW_REQUEST_THRESHOLD_MS as u128 {
-        log::error!(
-            "🚨 [VerySlowRequest] {} {} -> {} ({} ms) - Requête très lente, investigation nécessaire",
-            method,
-            path,
-            status.as_u16(),
-            elapsed_ms
-        );
+        // Vérifier si c'est un endpoint avec images pour ajuster le message
+        let is_image_endpoint = path.contains("/ia/creation-service") 
+            || path.contains("/services/create") 
+            || path.contains("/products");
+        
+        if is_image_endpoint && elapsed_ms < 15000 {
+            // Pour les endpoints avec images, 7-15s est acceptable (traitement IA + upload)
+            log::warn!(
+                "⏱️ [SlowImageRequest] {} {} -> {} ({} ms) - Requête avec images (acceptable pour traitement IA)",
+                method,
+                path,
+                status.as_u16(),
+                elapsed_ms
+            );
+        } else {
+            log::error!(
+                "🚨 [VerySlowRequest] {} {} -> {} ({} ms) - Requête très lente, investigation nécessaire",
+                method,
+                path,
+                status.as_u16(),
+                elapsed_ms
+            );
+        }
     }
 
     response

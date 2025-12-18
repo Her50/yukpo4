@@ -77,6 +77,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
     const { hasPermission: hasMicrophonePermission, requestPermission: requestMicrophonePermission } = useMicrophonePermission();
 
     // ✅ NOUVEAU: Device caméra avec react-native-vision-camera
+    // Note: useCameraDevice peut retourner null si aucune caméra n'est disponible
     const device = useCameraDevice('back');
 
     const [trackingState, setTrackingState] = useState<ARTrackingState>('idle');
@@ -175,13 +176,40 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
      * Le plugin créé peut ensuite être utilisé dans le worklet.
      */
     // ✅ Créer le plugin AR selon la plateforme (en dehors du worklet)
-    const arPluginRef = useRef(createARPlugin());
+    // Initialiser avec gestion d'erreur pour éviter les crashes
+    const arPluginRef = useRef<any>(null);
+    
+    useEffect(() => {
+        try {
+            arPluginRef.current = createARPlugin();
+        } catch (error) {
+            console.error('[ARVideoEditor] Erreur création plugin AR:', error);
+            // En cas d'erreur, créer un plugin minimal qui retourne toujours "pas de plan"
+            arPluginRef.current = {
+                detectPlanes: () => ({
+                    hasPlane: false,
+                    planes: [],
+                    trackingQuality: 'none' as const,
+                }),
+            };
+        }
+    }, []);
     
     const frameProcessor = useFrameProcessor((frame: Frame) => {
         'worklet';
         
         try {
             // ✅ Utiliser le plugin AR créé en dehors du worklet
+            if (!arPluginRef.current) {
+                // Plugin non disponible, utiliser résultat par défaut
+                const defaultResult: ARTrackingResult = {
+                    hasPlane: false,
+                    trackingQuality: 'none',
+                };
+                runOnJS(updateTrackingResult)(defaultResult);
+                return;
+            }
+            
             const arPlugin = arPluginRef.current;
             
             // ✅ Détecter les plans AR via le plugin
@@ -379,9 +407,14 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
         return () => {
             if (recordingTimerRef.current) {
                 clearInterval(recordingTimerRef.current);
+                recordingTimerRef.current = null;
             }
-            if (arTrackingIntervalRef.current) {
-                clearInterval(arTrackingIntervalRef.current);
+            // Arrêter l'enregistrement si en cours
+            if (recordingRef.current) {
+                recordingRef.current.stop().catch((error) => {
+                    console.error('[ARVideoEditor] Erreur arrêt enregistrement lors du cleanup:', error);
+                });
+                recordingRef.current = null;
             }
         };
     }, []);
@@ -508,6 +541,30 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
         }
     };
 
+    // ✅ CORRIGÉ: Vérifier que device est disponible avant de rendre la caméra
+    if (!device) {
+        return (
+            <View style={styles.container}>
+                <NativeCard style={styles.permissionCard}>
+                    <SafeIcon name="camera-off" size={64} color={modernColors.primary} />
+                    <Text style={styles.permissionTitle}>Caméra non disponible</Text>
+                    <Text style={styles.permissionText}>
+                        L'éditeur AR nécessite une caméra arrière. Veuillez vérifier que votre appareil dispose d'une caméra.
+                    </Text>
+                    {onClose && (
+                        <NativeButton
+                            title="Fermer"
+                            variant="secondary"
+                            size="medium"
+                            onPress={onClose}
+                            style={styles.cancelButton}
+                        />
+                    )}
+                </NativeCard>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             {/* ✅ NOUVEAU: Vue caméra AR avec react-native-vision-camera + Frame Processor */}
@@ -515,7 +572,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                 ref={cameraRef}
                 style={styles.camera}
                 device={device}
-                isActive={isActive && hasCameraPermission}
+                isActive={isActive && hasCameraPermission && !!device}
                 video={true}
                 audio={hasMicrophonePermission}
                 orientation="portrait"

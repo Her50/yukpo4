@@ -1,8 +1,7 @@
 /**
- * ✅ REFONTE COMPLÈTE - DeliveryShoppingTrackingScreen
+ * ✅ RÉÉCRIT COMPLÈTEMENT - DeliveryShoppingTrackingScreen
  * Écran de suivi des livraisons avec courses
- * ✅ CORRIGÉ: Imports/exports validés pour éviter "Element type is invalid"
- * ✅ SIMPLIFIÉ: Utilisation directe des composants React Native de base
+ * Version simplifiée et sûre sans erreurs d'import/export
  */
 
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -19,20 +18,56 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-// ✅ CORRIGÉ: Supprimer react-native-reanimated pour éviter "Element type is invalid"
-// Utiliser uniquement les composants React Native de base
 
-// ✅ CRITIQUE: Utiliser directement les composants React Native de base
-// Éviter les imports complexes qui peuvent causer "Element type is invalid"
-// Composants inline simples et sûrs
-const SimpleButton: React.FC<{
+// ✅ Imports des composants delivery - vérifier les exports
+import CourierSelectionModal from '../../components/delivery/CourierSelectionModal';
+import EnhancedTrackingMap from '../../components/delivery/EnhancedTrackingMap';
+import HapticTouchable from '../../components/delivery/HapticTouchable';
+import InlineChat from '../../components/delivery/InlineChat';
+import ParcelRejectionModal from '../../components/delivery/ParcelRejectionModal';
+import ProofMediaUpload from '../../components/delivery/ProofMediaUpload';
+import RouteOptimizationIndicator from '../../components/delivery/RouteOptimizationIndicator';
+import ShareTrackingLink from '../../components/delivery/ShareTrackingLink';
+import { SkeletonCard } from '../../components/delivery/SkeletonLoader';
+import StatusIndicator from '../../components/delivery/StatusIndicator';
+import TimelineStepper from '../../components/delivery/TimelineStepper';
+import ToastNotification from '../../components/delivery/ToastNotification';
+
+// ✅ Imports des composants de base
+import SafeIcon from '../../components/SafeIcon';
+import { SafeNativeView } from '../../components/SafeNativeView';
+import { useAuth } from '../../contexts/AuthContext';
+import { useDeliveryContext } from '../../contexts/DeliveryContext';
+import useDeliveryTracking from '../../hooks/useDeliveryTracking';
+import { useToast } from '../../hooks/useToast';
+import { deliveryApi, shoppingApi } from '../../services/api';
+import { modernColors } from '../../theme/modernTheme';
+import { DeliverySummary, ParcelRejectionReason, ShoppingBasketItem } from '../../types/delivery';
+
+type TrackingTab = 'timeline' | 'basket' | 'courier';
+
+interface RouteParams {
+    deliveryId: string;
+}
+
+// ✅ Composants inline simples et sûrs
+interface SimpleButtonProps {
     title: string;
     onPress?: () => void;
     disabled?: boolean;
     variant?: 'primary' | 'secondary';
     size?: 'small' | 'medium' | 'large';
     style?: any;
-}> = ({ title, onPress, disabled = false, variant = 'primary', size = 'medium', style }) => {
+}
+
+const SimpleButton: React.FC<SimpleButtonProps> = ({ 
+    title, 
+    onPress, 
+    disabled = false, 
+    variant = 'primary', 
+    size = 'medium', 
+    style 
+}) => {
     const buttonStyle = {
         paddingHorizontal: size === 'small' ? 12 : size === 'large' ? 20 : 16,
         paddingVertical: size === 'small' ? 8 : size === 'large' ? 16 : 12,
@@ -63,12 +98,19 @@ const SimpleButton: React.FC<{
     );
 };
 
-const SimpleBadge: React.FC<{
+interface SimpleBadgeProps {
     text: string;
     variant?: 'success' | 'warning' | 'error' | 'info' | 'neutral';
     size?: 'small' | 'medium';
     style?: any;
-}> = ({ text, variant = 'neutral', size = 'medium', style }) => {
+}
+
+const SimpleBadge: React.FC<SimpleBadgeProps> = ({ 
+    text, 
+    variant = 'neutral', 
+    size = 'medium', 
+    style 
+}) => {
     const getVariantColor = () => {
         switch (variant) {
             case 'success':
@@ -106,35 +148,7 @@ const SimpleBadge: React.FC<{
         </View>
     );
 };
-import CourierSelectionModal from '../../components/delivery/CourierSelectionModal';
-import EnhancedTrackingMap from '../../components/delivery/EnhancedTrackingMap';
-import HapticTouchable from '../../components/delivery/HapticTouchable';
-import InlineChat from '../../components/delivery/InlineChat';
-import ParcelRejectionModal from '../../components/delivery/ParcelRejectionModal';
-import ProofMediaUpload from '../../components/delivery/ProofMediaUpload';
-import RouteOptimizationIndicator from '../../components/delivery/RouteOptimizationIndicator';
-import ShareTrackingLink from '../../components/delivery/ShareTrackingLink';
-import { SkeletonCard } from '../../components/delivery/SkeletonLoader';
-import StatusIndicator from '../../components/delivery/StatusIndicator';
-import TimelineStepper from '../../components/delivery/TimelineStepper';
-import ToastNotification from '../../components/delivery/ToastNotification';
-import { SafeIcon } from '../../components/SafeIcon';
-import { SafeNativeView } from '../../components/SafeNativeView';
-import { useAuth } from '../../contexts/AuthContext';
-import { useDeliveryContext } from '../../contexts/DeliveryContext';
-import useDeliveryTracking from '../../hooks/useDeliveryTracking';
-import { useToast } from '../../hooks/useToast';
-import { deliveryApi, shoppingApi } from '../../services/api';
-import { modernColors } from '../../theme/modernTheme';
-import { DeliverySummary, ParcelRejectionReason, ShoppingBasketItem } from '../../types/delivery';
 
-type TrackingTab = 'timeline' | 'basket' | 'courier';
-
-interface RouteParams {
-    deliveryId: string;
-}
-
-// ✅ CORRIGÉ: Composant simple sans animations pour éviter les problèmes
 interface SimpleItemCardProps {
     children: React.ReactNode;
     style?: any;
@@ -149,7 +163,7 @@ const SimpleItemCard: React.FC<SimpleItemCardProps> = ({ children, style }) => {
     );
 };
 
-// ✅ Helper function pour les labels de statut
+// ✅ Helper functions
 const statusToLabel = (status: string): string => {
     switch (status) {
         case 'pending':
@@ -177,7 +191,6 @@ const statusToLabel = (status: string): string => {
     }
 };
 
-// ✅ Helper function pour les labels de refus
 function getRejectionReasonLabel(reason: ParcelRejectionReason): string {
     const labels: Record<ParcelRejectionReason, string> = {
         damaged: 'Produit endommagé',
@@ -205,8 +218,6 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
     const [showCourierModal, setShowCourierModal] = useState(false);
     const [rejectingItem, setRejectingItem] = useState<ShoppingBasketItem | null>(null);
     const { toast, showSuccess, showError, showWarning, hideToast } = useToast();
-
-    // ✅ CORRIGÉ: Supprimer les animations pour éviter les problèmes avec react-native-reanimated
 
     // ✅ Vérifications utilisateur
     const isCreator = Boolean(
@@ -612,47 +623,41 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                     </View>
 
                     {/* Contenu Timeline */}
-                    <View
-                        style={[styles.tabContent, { display: activeTab === 'timeline' ? 'flex' : 'none' }]}
-                    >
-                        {activeTab === 'timeline' && (
-                            <>
-                                <View style={styles.card}>
-                                    <View style={styles.cardHeader}>
-                                        <SafeIcon name="clock" size={20} color={modernColors.primary} />
-                                        <Text style={styles.cardTitle}>Historique de la livraison</Text>
-                                    </View>
-                                    <TimelineStepper checkpoints={timeline} currentStatus={delivery?.status ?? 'pending'} />
+                    {activeTab === 'timeline' && (
+                        <View style={styles.tabContent}>
+                            <View style={styles.card}>
+                                <View style={styles.cardHeader}>
+                                    <SafeIcon name="clock" size={20} color={modernColors.primary} />
+                                    <Text style={styles.cardTitle}>Historique de la livraison</Text>
                                 </View>
+                                <TimelineStepper checkpoints={timeline} currentStatus={delivery?.status ?? 'pending'} />
+                            </View>
 
-                                {deliveryId && user?.id && (
-                                    <InlineChat
-                                        deliveryId={deliveryId}
-                                        currentUserId={user.id}
-                                        messages={[]}
-                                        onSendMessage={async (message) => {
-                                            console.log('[DeliveryShoppingTracking] Message envoyé:', message);
-                                        }}
-                                        style={styles.chatContainer}
-                                    />
-                                )}
+                            {deliveryId && user?.id && (
+                                <InlineChat
+                                    deliveryId={deliveryId}
+                                    currentUserId={user.id}
+                                    messages={[]}
+                                    onSendMessage={async (message) => {
+                                        console.log('[DeliveryShoppingTracking] Message envoyé:', message);
+                                    }}
+                                    style={styles.chatContainer}
+                                />
+                            )}
 
-                                {deliveryId && (
-                                    <ShareTrackingLink
-                                        deliveryId={deliveryId}
-                                        deliveryTitle={`Livraison #${deliveryId.slice(-6)}`}
-                                        style={styles.shareContainer}
-                                    />
-                                )}
-                            </>
-                        )}
-                    </View>
+                            {deliveryId && (
+                                <ShareTrackingLink
+                                    deliveryId={deliveryId}
+                                    deliveryTitle={`Livraison #${deliveryId.slice(-6)}`}
+                                    style={styles.shareContainer}
+                                />
+                            )}
+                        </View>
+                    )}
 
                     {/* Contenu Basket */}
-                    <View
-                        style={[styles.tabContent, { display: activeTab === 'basket' ? 'flex' : 'none' }]}
-                    >
-                        {activeTab === 'basket' && (
+                    {activeTab === 'basket' && (
+                        <View style={styles.tabContent}>
                             <View style={styles.card}>
                                 <View style={styles.cardHeader}>
                                     <SafeIcon name="shopping-cart" size={20} color={modernColors.primary} />
@@ -756,14 +761,12 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                     </View>
                                 )}
                             </View>
-                        )}
-                    </View>
+                        </View>
+                    )}
 
                     {/* Contenu Courier */}
-                    <View
-                        style={[styles.tabContent, { display: activeTab === 'courier' ? 'flex' : 'none' }]}
-                    >
-                        {activeTab === 'courier' && (
+                    {activeTab === 'courier' && (
+                        <View style={styles.tabContent}>
                             <View style={styles.card}>
                                 <View style={styles.cardHeader}>
                                     <SafeIcon name="users" size={20} color={modernColors.primary} />
@@ -940,8 +943,8 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                     </>
                                 )}
                             </View>
-                        )}
-                    </View>
+                        </View>
+                    )}
                 </ScrollView>
             </View>
 

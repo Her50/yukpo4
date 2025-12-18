@@ -1,8 +1,11 @@
-// Composant SafeAreaView natif pour remplacer react-native-safe-area-context
+/**
+ * ✅ RÉÉCRIT COMPLÈTEMENT - SafeNativeView
+ * Composant SafeAreaView natif pour remplacer react-native-safe-area-context
+ * Version simplifiée et sûre sans cleanChildren problématique
+ */
+
 import React from 'react';
 import { Dimensions, Platform, StatusBar, StyleSheet, View } from 'react-native';
-// ✅ CORRIGÉ: Utiliser cleanChildren pour éviter les erreurs de rendu
-import { cleanChildren } from '../utils/safeChildren';
 
 const { height, width } = Dimensions.get('window');
 
@@ -23,17 +26,6 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
     testID,
     pointerEvents,
 }) => {
-    // ✅ DEBUG: Logger les children pour identifier les problèmes (uniquement en développement)
-    React.useEffect(() => {
-        if (__DEV__) {
-            try {
-                const { componentDebugger } = require('../utils/componentDebugger');
-                componentDebugger.logComponent('SafeNativeView', { edges, backgroundColor, testID }, children);
-            } catch (e) {
-                // Ignorer si le debugger n'est pas disponible
-            }
-        }
-    }, [children, edges, backgroundColor, testID]);
     const getStatusBarHeight = () => {
         if (Platform.OS === 'android') {
             return StatusBar.currentHeight || 24;
@@ -68,12 +60,11 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
         style,
     ];
 
-    // ✅ CORRIGÉ: Utiliser cleanChildren pour un nettoyage cohérent et éviter les erreurs de rendu
-    const safeChildren = React.useMemo(() => cleanChildren(children, 'SafeNativeView'), [children]);
-
+    // ✅ CRITIQUE: Rendre directement les children sans nettoyage problématique
+    // React Native gère déjà les children invalides
     return (
         <View style={containerStyle} testID={testID} pointerEvents={pointerEvents}>
-            {safeChildren}
+            {children}
         </View>
     );
 };

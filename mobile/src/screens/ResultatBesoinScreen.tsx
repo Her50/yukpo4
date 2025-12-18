@@ -95,6 +95,33 @@ const ResultatBesoinScreen: React.FC = () => {
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, Set<string>>>({});
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
 
+  // ✅ CORRECTION 2025-12-18 : Initialiser les résultats depuis route.params si disponibles
+  useEffect(() => {
+    const params = route.params as any;
+    if (params?.results && Array.isArray(params.results) && params.results.length > 0) {
+      console.log('[ResultatBesoinScreen] ✅ Résultats initialisés depuis route.params:', params.results.length);
+      setResults(params.results as Product[]);
+      // Initialiser aussi la requête de recherche si fournie
+      if (params.searchQuery) {
+        setSearchQuery(params.searchQuery);
+      }
+    } else if (params?.results && typeof params.results === 'object') {
+      // Gérer le cas où results est un objet avec une structure imbriquée
+      let extractedResults: any[] = [];
+      if (Array.isArray(params.results.resultats)) {
+        extractedResults = params.results.resultats;
+      } else if (Array.isArray(params.results.data)) {
+        extractedResults = params.results.data;
+      } else if (Array.isArray(params.results.results)) {
+        extractedResults = params.results.results;
+      }
+      if (extractedResults.length > 0) {
+        console.log('[ResultatBesoinScreen] ✅ Résultats extraits depuis structure imbriquée:', extractedResults.length);
+        setResults(extractedResults as Product[]);
+      }
+    }
+  }, [route.params]);
+
   // ✅ CORRECTION 2025-11-04 : Suggestions depuis autocomplete_characteristics (VRAIS produits)
   useEffect(() => {
     const debounce = setTimeout(async () => {
@@ -276,13 +303,38 @@ const ResultatBesoinScreen: React.FC = () => {
       // ✅ Utiliser la recherche globale (même que HomeScreen)
       const response = await apiPost('/api/search/direct', payload);
 
-      if (response.resultats?.resultats) {
-        setResults(response.resultats.resultats as Product[]);
+      // ✅ CORRECTION 2025-12-18 : Normalisation correcte des résultats
+      // Le backend peut retourner resultats directement comme array ou dans une structure imbriquée
+      let extractedResults: any[] = [];
+      
+      if (Array.isArray(response.resultats)) {
+        // Cas 1: resultats est directement un array
+        extractedResults = response.resultats;
+      } else if (response.resultats && typeof response.resultats === 'object') {
+        // Cas 2: resultats est un objet avec une structure imbriquée
+        if (Array.isArray(response.resultats.resultats)) {
+          extractedResults = response.resultats.resultats;
+        } else if (Array.isArray(response.resultats.data)) {
+          extractedResults = response.resultats.data;
+        } else if (Array.isArray(response.resultats.results)) {
+          extractedResults = response.resultats.results;
+        }
+      } else if (Array.isArray(response.results)) {
+        // Cas 3: results est directement un array
+        extractedResults = response.results;
       } else if (response.data) {
-        setResults(response.data as Product[]);
-      } else {
-        setResults([]);
+        // Cas 4: data contient les résultats
+        if (Array.isArray(response.data)) {
+          extractedResults = response.data;
+        } else if (Array.isArray(response.data.resultats)) {
+          extractedResults = response.data.resultats;
+        } else if (Array.isArray(response.data.results)) {
+          extractedResults = response.data.results;
+        }
       }
+
+      console.log('[ResultatBesoinScreen] Résultats normalisés:', extractedResults.length);
+      setResults(extractedResults as Product[]);
     } catch (error) {
       console.error('[ResultatBesoinScreen] Erreur recherche:', error);
       setResults([]);

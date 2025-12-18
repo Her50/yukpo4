@@ -1485,10 +1485,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU: Fonction helper pour calculer les styles dynamiquement avec insets
     // ✅ AMÉLIORATION: Augmenter significativement les paddings et gaps pour minimiser les scrolls verticaux
     const getStepContentStyle = useCallback(() => ({
-        padding: 32, // ✅ AUGMENTÉ: De 28 à 32 pour encore plus d'espace
-        paddingBottom: 140 + insets.bottom, // ✅ AUGMENTÉ: De 120 à 140 pour garantir que tout le contenu est visible
+        padding: 36, // ✅ AUGMENTÉ: De 32 à 36 pour encore plus d'espace
+        paddingBottom: 160 + insets.bottom, // ✅ AUGMENTÉ: De 140 à 160 pour garantir que tout le contenu est visible
         flexGrow: 1,
-        gap: 32, // ✅ AUGMENTÉ: De 28 à 32 pour meilleure séparation visuelle
+        gap: 36, // ✅ AUGMENTÉ: De 32 à 36 pour meilleure séparation visuelle
         // ✅ CORRECTION: Retirer minHeight: '100%' qui cause des problèmes de rendu sur mobile
         // Le contenu doit pouvoir scroller naturellement
     }), [insets.bottom]);
@@ -2085,7 +2085,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         <Text style={styles.fieldLabel}>Durée cible</Text>
                         <View style={styles.durationInputRow}>
                             <NativeInput
-                                value={duration}
+                                value={String(duration || '')}
                                 onChangeText={setDuration}
                                 keyboardType="numeric"
                                 style={styles.durationInput}
@@ -3560,6 +3560,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 } else if (msg.includes('400') || msg.includes('bad request')) {
                     errorMessage = 'Demande invalide.\n\n' +
                         'Vérifiez que tous les champs sont correctement remplis et réessayez.';
+                } else if (msg.includes('405') || msg.includes('method not allowed')) {
+                    errorMessage = 'Méthode non autorisée.\n\n' +
+                        'L\'endpoint de génération de vidéo n\'est pas disponible. Veuillez contacter le support.';
                 } else if (msg.includes('500') || msg.includes('internal')) {
                     errorMessage = 'Erreur serveur temporaire.\n\n' +
                         'Veuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.';
@@ -3609,11 +3612,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             {(() => {
                                 const prix = getFieldValue(selectedProduct.prix);
                                 const devise = getFieldValue(selectedProduct.devise) || 'XAF';
-                                return prix ? (
+                                if (!prix) return null;
+                                const prixStr = typeof prix === 'number' ? prix.toLocaleString() : String(prix || '');
+                                const deviseStr = String(devise || 'XAF');
+                                return (
                                     <Text style={styles.selectedProductPrice}>
-                                        {prix} {devise}
+                                        {prixStr} {deviseStr}
                                     </Text>
-                                ) : null;
+                                );
                             })()}
                         </View>
                     </View>
@@ -3707,7 +3713,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                         {(() => {
                                                             const prix = getFieldValue(product.prix);
                                                             const devise = getFieldValue(product.devise) || 'XAF';
-                                                            return prix ? ` • ${prix} ${devise}` : null;
+                                                            if (!prix) return null;
+                                                            const prixStr = typeof prix === 'number' ? prix.toLocaleString() : String(prix || '');
+                                                            const deviseStr = String(devise || 'XAF');
+                                                            return ` • ${prixStr} ${deviseStr}`;
                                                         })()}
                                                     </Text>
                                                 </View>
@@ -4143,22 +4152,22 @@ const styles = StyleSheet.create({
     modalCard: {
         borderRadius: 28,
         padding: 0,
-        maxHeight: '96%', // ✅ AUGMENTÉ: De 94% à 96% pour plus d'espace
-        minHeight: '85%', // ✅ AUGMENTÉ SIGNIFICATIVEMENT: De 50% à 85% pour que les étapes soient plus grandes
+        maxHeight: '98%', // ✅ AUGMENTÉ: De 96% à 98% pour maximiser l'espace
+        minHeight: '92%', // ✅ AUGMENTÉ SIGNIFICATIVEMENT: De 85% à 92% pour que les étapes soient beaucoup plus grandes
         overflow: 'hidden',
         backgroundColor: '#FFFFFF',
         // ✅ CORRIGÉ: Utiliser flex pour que le contenu s'adapte correctement
         flexDirection: 'column',
     },
     modalHeader: {
-        paddingHorizontal: 24, // ✅ AUGMENTÉ: De 20 à 24
-        paddingTop: 24, // ✅ AUGMENTÉ: De 20 à 24
-        paddingBottom: 16, // ✅ AUGMENTÉ: De 12 à 16
+        paddingHorizontal: 28, // ✅ AUGMENTÉ: De 24 à 28 pour plus d'espace
+        paddingTop: 28, // ✅ AUGMENTÉ: De 24 à 28 pour plus d'espace
+        paddingBottom: 20, // ✅ AUGMENTÉ: De 16 à 20 pour plus d'espace
         flexDirection: 'row',
         alignItems: 'flex-start',
         justifyContent: 'space-between',
-        gap: 20, // ✅ AUGMENTÉ: De 16 à 20
-        minHeight: 80, // ✅ AJOUTÉ: Hauteur minimale
+        gap: 20,
+        minHeight: 90, // ✅ AUGMENTÉ: De 80 à 90 pour plus de hauteur
     },
     modalTitle: {
         fontSize: 24, // ✅ AUGMENTÉ: De 20 à 24
@@ -4183,37 +4192,37 @@ const styles = StyleSheet.create({
         paddingHorizontal: 0, // ✅ CORRIGÉ: Le padding est géré dans contentContainerStyle
         flex: 1, // ✅ Permettre au ScrollView de prendre toute la hauteur disponible
         // ✅ AUGMENTÉ SIGNIFICATIVEMENT: S'assurer que le ScrollView a une hauteur minimale suffisante
-        minHeight: 500, // ✅ AUGMENTÉ: De 200 à 500 pour que le contenu des étapes soit plus grand
+        minHeight: 700, // ✅ AUGMENTÉ: De 500 à 700 pour que le contenu des étapes soit beaucoup plus grand
     },
     sectionCard: {
-        marginBottom: 24, // ✅ AUGMENTÉ: De 16 à 24
+        marginBottom: 32, // ✅ AUGMENTÉ: De 24 à 32 pour plus d'espace entre les sections
         borderWidth: 1,
         borderColor: '#E5E7EB',
         borderRadius: 18,
-        padding: 24, // ✅ AUGMENTÉ: De 20 à 24
+        padding: 28, // ✅ AUGMENTÉ: De 24 à 28 pour plus d'espace interne
         backgroundColor: '#FFFFFF',
-        minHeight: 100, // ✅ AJOUTÉ: Hauteur minimale pour meilleure visibilité
+        minHeight: 140, // ✅ AUGMENTÉ: De 100 à 140 pour plus de hauteur minimale
     },
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 16, // ✅ AUGMENTÉ: De 12 à 16
-        gap: 12, // ✅ AUGMENTÉ: De 8 à 12
-        paddingVertical: 4, // ✅ AJOUTÉ: Padding vertical
+        marginBottom: 20, // ✅ AUGMENTÉ: De 16 à 20 pour plus d'espace
+        gap: 12,
+        paddingVertical: 6, // ✅ AUGMENTÉ: De 4 à 6 pour plus d'espace vertical
     },
     sectionTitle: {
-        fontSize: 22, // ✅ AUGMENTÉ: De 16 à 22 pour meilleure visibilité
+        fontSize: 24, // ✅ AUGMENTÉ: De 22 à 24 pour meilleure visibilité
         fontWeight: '700',
         color: modernColors.text,
         flexShrink: 1, // ✅ AJOUTÉ: Permet au titre de se rétrécir si nécessaire pour laisser de l'espace au bouton
-        marginBottom: 8, // ✅ AJOUTÉ: Marge en bas pour séparation
+        marginBottom: 10, // ✅ AUGMENTÉ: De 8 à 10 pour plus d'espace
     },
     sectionSubtitle: {
-        fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15 pour meilleure lisibilité
+        fontSize: 16, // ✅ AUGMENTÉ: De 15 à 16 pour meilleure lisibilité
         color: modernColors.textSecondary,
-        lineHeight: 22, // ✅ AUGMENTÉ: De 18 à 22
-        marginBottom: 16, // ✅ AUGMENTÉ: De 12 à 16
+        lineHeight: 24, // ✅ AUGMENTÉ: De 22 à 24 pour plus d'espace entre les lignes
+        marginBottom: 20, // ✅ AUGMENTÉ: De 16 à 20 pour plus d'espace
     },
     coachLoading: {
         flexDirection: 'row',
@@ -4371,31 +4380,29 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     fieldGroup: {
-        marginTop: 12,
+        marginTop: 18, // ✅ AUGMENTÉ: De 12 à 18 pour plus d'espace
     },
     fieldLabel: {
-        fontSize: 13,
+        fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15 pour meilleure lisibilité
         fontWeight: '600',
         color: modernColors.text,
-        marginBottom: 8,
+        marginBottom: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace
     },
     styleRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8, // ✅ CORRIGÉ: Réduit de 12 à 8 pour garantir 2 colonnes
-        marginTop: 12,
-        justifyContent: 'flex-start', // ✅ CORRIGÉ: flex-start au lieu de space-between pour meilleur contrôle
+        gap: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace entre les chips
+        marginTop: 16, // ✅ AUGMENTÉ: De 12 à 16 pour plus d'espace
+        justifyContent: 'flex-start',
     },
     styleChip: {
-        // ✅ CORRIGÉ: 2 colonnes avec taille réduite pour meilleure UX
-        // Calcul: (100% - 8px gap) / 2 = 46% par colonne pour garantir l'affichage
-        width: '46%', // ✅ CORRIGÉ: Réduit de 48% à 46% pour garantir 2 colonnes avec gap
-        minWidth: 0, // ✅ Permet au width de fonctionner correctement
-        borderRadius: 10, // ✅ Réduit de 12 à 10
+        width: '46%', // ✅ Maintenir 2 colonnes mais avec plus d'espace interne
+        minWidth: 0,
+        borderRadius: 12, // ✅ AUGMENTÉ: De 10 à 12 pour coins plus arrondis
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        padding: 8, // ✅ CORRIGÉ: Réduit de 10 à 8 pour plus de compacité
-        gap: 3, // ✅ Réduit de 4 à 3
+        padding: 14, // ✅ AUGMENTÉ: De 8 à 14 pour plus d'espace interne
+        gap: 6, // ✅ AUGMENTÉ: De 3 à 6 pour plus d'espace entre les éléments
         backgroundColor: '#F8FAFC',
     },
     styleChipSelected: {
@@ -4403,7 +4410,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#EEF2FF',
     },
     styleChipLabel: {
-        fontSize: 11, // ✅ CORRIGÉ: Réduit de 12 à 11 pour plus de compacité
+        fontSize: 14, // ✅ AUGMENTÉ: De 11 à 14 pour meilleure lisibilité
         fontWeight: '700',
         color: modernColors.text,
     },
@@ -4411,49 +4418,49 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
     },
     styleChipDescription: {
-        fontSize: 10, // ✅ CORRIGÉ: Réduit de 11 à 10 pour plus de compacité
+        fontSize: 12, // ✅ AUGMENTÉ: De 10 à 12 pour meilleure lisibilité
         color: modernColors.textSecondary,
-        lineHeight: 12, // ✅ CORRIGÉ: Réduit de 14 à 12
+        lineHeight: 16, // ✅ AUGMENTÉ: De 12 à 16 pour plus d'espace entre les lignes
     },
     voiceRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
-        marginTop: 8,
-        marginBottom: 12,
+        gap: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace
+        marginTop: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace
+        marginBottom: 16, // ✅ AUGMENTÉ: De 12 à 16 pour plus d'espace
     },
     audioRow: {
         flexDirection: 'row',
-        gap: 12,
-        paddingVertical: 8,
+        gap: 16, // ✅ AUGMENTÉ: De 12 à 16 pour plus d'espace
+        paddingVertical: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace vertical
     },
     // ✅ CORRIGÉ: Style pour afficher les ambiances musicales en 2 colonnes
     audioRowGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8, // ✅ CORRIGÉ: Réduit de 12 à 8 pour garantir 2 colonnes
-        marginTop: 12,
-        justifyContent: 'flex-start', // ✅ CORRIGÉ: flex-start au lieu de space-between pour meilleur contrôle
+        gap: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace entre les chips
+        marginTop: 16, // ✅ AUGMENTÉ: De 12 à 16 pour plus d'espace
+        justifyContent: 'flex-start',
     },
-    // ✅ CORRIGÉ: Style pour les cartes d'ambiances musicales en 2 colonnes
+    // ✅ Style pour les cartes d'ambiances musicales en 2 colonnes
     audioChipGrid: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6, // ✅ CORRIGÉ: Réduit de 8 à 6
-        paddingHorizontal: 10, // ✅ CORRIGÉ: Réduit de 12 à 10
-        paddingVertical: 8,
-        borderRadius: 10, // ✅ CORRIGÉ: Réduit de 12 à 10
+        gap: 10, // ✅ AUGMENTÉ: De 6 à 10 pour plus d'espace
+        paddingHorizontal: 14, // ✅ AUGMENTÉ: De 10 à 14 pour plus d'espace interne
+        paddingVertical: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace vertical
+        borderRadius: 12, // ✅ AUGMENTÉ: De 10 à 12 pour coins plus arrondis
         borderWidth: 1,
         borderColor: '#E2E8F0',
         backgroundColor: '#F8FAFC',
-        width: '46%', // ✅ CORRIGÉ: Réduit de 48% à 46% pour garantir 2 colonnes avec gap
-        minWidth: 0, // ✅ Permet au width de fonctionner correctement
+        width: '46%',
+        minWidth: 0,
     },
     audioActionsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 12,
-        marginBottom: 8,
+        marginTop: 16, // ✅ AUGMENTÉ: De 12 à 16 pour plus d'espace
+        marginBottom: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace
     },
     audioImportButton: {
         flexDirection: 'row',
@@ -4528,13 +4535,13 @@ const styles = StyleSheet.create({
         lineHeight: 16,
     },
     durationRow: {
-        marginTop: 18,
+        marginTop: 24, // ✅ AUGMENTÉ: De 18 à 24 pour plus d'espace
     },
     durationInputRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        marginTop: 8,
+        gap: 16, // ✅ AUGMENTÉ: De 12 à 16 pour plus d'espace
+        marginTop: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace
     },
     durationInput: {
         flex: 0.4,
@@ -4553,12 +4560,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 10,
-        gap: 12,
+        paddingVertical: 14, // ✅ AUGMENTÉ: De 10 à 14 pour plus d'espace vertical
+        gap: 16, // ✅ AUGMENTÉ: De 12 à 16 pour plus d'espace
     },
     toggleText: {
         flex: 1,
-        gap: 2,
+        gap: 4, // ✅ AUGMENTÉ: De 2 à 4 pour plus d'espace entre les éléments
     },
     toggleLabel: {
         fontSize: 13,

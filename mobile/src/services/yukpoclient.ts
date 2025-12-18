@@ -60,8 +60,9 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
   };
 
   // ✅ CORRECTION: Ajouter un timeout pour éviter les connexions fermées (499)
+  // ✅ AUGMENTÉ: 90s pour supporter traitement images + appel IA multimodal
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s pour appel IA
+  const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s pour appel IA avec images
 
   try {
     console.log('[yukpoclient] Appel /api/ia/creation-service (comme le frontend)...');

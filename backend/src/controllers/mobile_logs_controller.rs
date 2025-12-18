@@ -110,14 +110,26 @@ pub async fn receive_mobile_logs(
 
         match log.level.as_str() {
             "error" => {
-                log::error!("{} {}", log_prefix, log.message);
-                if let Some(data) = &log.data {
-                    if let Ok(data_str) = serde_json::to_string(data) {
-                        log::error!("{} Data: {}", log_prefix, data_str);
+                // ✅ AMÉLIORÉ : Ne pas logger comme erreur critique les erreurs WebSocket normales
+                // "Software caused connection abort" est une erreur normale qui peut se produire
+                // quand le client se met en arrière-plan ou change de réseau
+                let is_websocket_abort = log.message.contains("Software caused connection abort")
+                    || log.message.contains("connection abort")
+                    || (log.message.contains("WebSocket") && log.message.contains("abort"));
+                
+                if is_websocket_abort {
+                    // Logger comme warning au lieu d'error pour ces cas normaux
+                    log::warn!("{} {} (erreur WebSocket normale, ignorée)", log_prefix, log.message);
+                } else {
+                    log::error!("{} {}", log_prefix, log.message);
+                    if let Some(data) = &log.data {
+                        if let Ok(data_str) = serde_json::to_string(data) {
+                            log::error!("{} Data: {}", log_prefix, data_str);
+                        }
                     }
-                }
-                if let Some(stack) = &log.stack {
-                    log::error!("{} Stack: {}", log_prefix, stack);
+                    if let Some(stack) = &log.stack {
+                        log::error!("{} Stack: {}", log_prefix, stack);
+                    }
                 }
             }
             "warn" => {
