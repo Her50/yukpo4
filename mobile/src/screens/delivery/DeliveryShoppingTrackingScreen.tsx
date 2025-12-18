@@ -757,7 +757,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                 )}
                             </View>
                         )}
-                    </Animated.View>
+                    </View>
 
                     {/* Contenu Courier */}
                     <View
