@@ -5,7 +5,7 @@
  * Permet d'ajouter, modifier et supprimer des lignes
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     StyleSheet,
     Text,
@@ -40,6 +40,8 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editingLabel, setEditingLabel] = useState('');
     const [editingValue, setEditingValue] = useState('');
+    const scrollViewRef = useRef<ScrollView>(null);
+    const labelInputRef = useRef<TextInput>(null);
 
     // Initialiser le tableau avec les sous-caractéristiques préférées de l'IA
     useEffect(() => {
@@ -65,6 +67,18 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             setRows(initialRowsFromIA);
         }
     }, [sousCaracteristiques, initialRows]);
+
+    // Focus automatique sur le premier input quand une nouvelle ligne est ajoutée
+    useEffect(() => {
+        if (editingIndex !== null && rows[editingIndex]?.label === '' && rows[editingIndex]?.value === '') {
+            // Nouvelle ligne vide, focus sur le label input
+            setTimeout(() => {
+                if (labelInputRef.current) {
+                    labelInputRef.current.focus();
+                }
+            }, 300);
+        }
+    }, [editingIndex, rows]);
 
     // Modifier une ligne
     const startEditing = (index: number) => {
@@ -107,11 +121,26 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     // Ajouter une nouvelle ligne
     const addRow = () => {
         const newRows = [...rows, { label: '', value: '' }];
+        const newIndex = newRows.length - 1;
         setRows(newRows);
         // Démarrer l'édition de la nouvelle ligne
-        setEditingIndex(newRows.length - 1);
+        setEditingIndex(newIndex);
         setEditingLabel('');
         setEditingValue('');
+        
+        // Scroller vers la nouvelle ligne après un court délai pour permettre le rendu
+        setTimeout(() => {
+            if (scrollViewRef.current) {
+                // Calculer la position approximative de la nouvelle ligne
+                // Chaque ligne fait environ 60px de hauteur (padding + contenu)
+                const lineHeight = 60;
+                const scrollToY = newIndex * lineHeight;
+                scrollViewRef.current.scrollTo({
+                    y: scrollToY,
+                    animated: true,
+                });
+            }
+        }, 100);
     };
 
     // Valider le tableau et convertir en format attendu
@@ -140,7 +169,11 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             </View>
 
             {/* Corps du tableau */}
-            <ScrollView style={styles.tableBody} nestedScrollEnabled>
+            <ScrollView 
+                ref={scrollViewRef}
+                style={styles.tableBody} 
+                nestedScrollEnabled
+            >
                 {rows.length === 0 ? (
                     <View style={styles.emptyState}>
                         <SafeIcon name="info" size={24} color={modernColors.textSecondary} />
@@ -159,6 +192,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                                 <>
                                     <View style={styles.editingCell}>
                                         <TextInput
+                                            ref={editingIndex === index ? labelInputRef : undefined}
                                             style={styles.editingInput}
                                             placeholder="Label"
                                             placeholderTextColor="#9CA3AF"

@@ -2331,8 +2331,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     {/* ✅ NOUVEAU: Panel de suggestions audio contextuelles IA */}
                                     {selectedProduct && (
                                         <AudioSuggestionPanel
-                                            productName={selectedProduct.name || 'Produit'}
-                                            productType={selectedProduct.category}
+                                            productName={normalizeProductName(selectedProduct)}
+                                            productType={selectedProduct.category || undefined}
                                             tone={'energetic'}
                                             channel={Array.from(selectedChannels)[0] || 'tiktok'}
                                             durationSeconds={Number.parseFloat(duration) || 30}

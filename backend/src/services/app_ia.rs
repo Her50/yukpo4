@@ -677,12 +677,9 @@ impl AppIA {
         // 2. Test des mod?les multimodaux avec timeout adaptatif
         let mut _last_error = None;
         for model in enabled_models.iter().take(1) {
-            // ✅ Timeout adaptatif selon GPU et type de requête
-            let timeout_duration = if production_config.gpu_enabled {
-                multimodal_timeout
-            } else {
-                Duration::from_secs(30)
-            };
+            // ✅ Timeout adaptatif : utilise toujours le timeout configuré (60s par défaut)
+            // Augmenté pour permettre l'analyse complète des images même sans GPU
+            let timeout_duration = multimodal_timeout;
 
             log::info!(
                 "[AppIA] Test multimodal du mod?le: {} (timeout {}s)",

@@ -2755,9 +2755,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const hasExistingVariants = currentModalites.length > 0;
 
     const locationField = valeursFormulaire.lieu_produit;
+    // ✅ CORRECTION: Gérer explicitement le cas où locationField est false (boolean)
     const locationValue = locationField && typeof locationField === 'object' && locationField !== null && 'valeur' in locationField
       ? locationField.valeur
-      : locationField || null;
+      : (typeof locationField === 'string' || (locationField && typeof locationField === 'object'))
+        ? locationField
+        : null;
 
     const contextValues = [
       descriptionProduit,

@@ -351,9 +351,9 @@ SELECT DISTINCT ON (s.id)
             ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
             ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0
         ) +
-        -- ✅ OPTIMISÉ: Recherche PRODUITS via autocomplete_characteristics (RAPIDE - index GIN)
-        (
-            SELECT COALESCE(SUM(
+        -- ✅ OPTIMISÉ 2025-12-17: Réduire sous-requêtes corrélées en utilisant LEFT JOIN
+        COALESCE((
+            SELECT SUM(
                 CASE ac.sous_caracteristique
                     WHEN 'marque' THEN 20.0
                     WHEN 'brand' THEN 20.0
@@ -365,17 +365,8 @@ SELECT DISTINCT ON (s.id)
                     ELSE 8.0
                 END *
                 ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) *
-                (1.0 + (ac.usage_count::REAL / 10.0))
-            ), 0.0)
-            FROM autocomplete_characteristics ac
-            WHERE ac.service_id = s.id
-            AND ac.identifiant_base = 'produits'
-            AND ac.is_real_product = TRUE
-            AND to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
-        ) +
-        -- ✅ OPTIMISÉ: Score full_vector (correspondances partielles)
-        (
-            SELECT COALESCE(SUM(
+                (1.0 + (ac.usage_count::REAL / 10.0)) +
+                -- Score full_vector combiné dans la même sous-requête
                 CASE 
                     WHEN EXISTS (
                         SELECT 1 FROM unnest(ac.full_vector) AS vec_val
@@ -387,12 +378,19 @@ SELECT DISTINCT ON (s.id)
                     ) THEN 10.0
                     ELSE 0.0
                 END * (1.0 + (ac.usage_count::REAL / 10.0))
-            ), 0.0)
+            )
             FROM autocomplete_characteristics ac
             WHERE ac.service_id = s.id
             AND ac.identifiant_base = 'produits'
             AND ac.is_real_product = TRUE
-        ) +
+            AND (
+                to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
+                OR EXISTS (
+                    SELECT 1 FROM unnest(ac.full_vector) AS vec_val
+                    WHERE LOWER(vec_val) LIKE '%' || LOWER($1) || '%'
+                )
+            )
+        ), 0.0) +
         -- Bonus correspondances exactes service (rapide)
         CASE 
             WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' THEN 8.0
@@ -705,44 +703,10 @@ LIMIT 100
             return Ok(search_results);
         }
         
-        // Fallback vers l'ancienne méthode si pas de GPS
-        let words: Vec<&str> = query.split_whitespace().collect();
-        if words.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        // Créer une requête qui matche au moins un mot clé
-        let mut conditions = Vec::new();
-        for word in words {
-            conditions.push(format!(
-                "s.data->'titre_service'->>'valeur' ILIKE '%{}%' OR s.data->'description'->>'valeur' ILIKE '%{}%' OR s.data->'category'->>'valeur' ILIKE '%{}%'",
-                word, word, word
-            ));
-            
-            // Ajouter variantes sans accents
-            let without_accents = word
-                .chars()
-                .map(|c| match c {
-                    'à' | 'â' | 'ä' => 'a',
-                    'é' | 'è' | 'ê' | 'ë' => 'e',
-                    'î' | 'ï' => 'i',
-                    'ô' | 'ö' => 'o',
-                    'ù' | 'û' | 'ü' => 'u',
-                    'ÿ' => 'y',
-                    'ç' => 'c',
-                    _ => c,
-                })
-                .collect::<String>();
-            
-            if without_accents != word {
-                conditions.push(format!(
-                    "s.data->'titre_service'->>'valeur' ILIKE '%{}%' OR s.data->'description'->>'valeur' ILIKE '%{}%' OR s.data->'category'->>'valeur' ILIKE '%{}%'",
-                    without_accents, without_accents, without_accents
-                ));
-            }
-        }
-
-        let sql = format!(r#"
+        // ✅ OPTIMISÉ 2025-12-17: Utiliser tsvector avec index GIN au lieu de ILIKE (947ms → ~300ms)
+        // Le problème: ILIKE '%...%' ne peut pas utiliser d'index et scanne toute la table
+        // Solution: Utiliser to_tsvector + plainto_tsquery avec index GIN (créé dans migration 20251217)
+        let sql = r#"
             SELECT 
                 s.id,
                 s.data,
@@ -750,29 +714,30 @@ LIMIT 100
                 s.user_id,
                 s.gps,
                 s.category,
+                -- ✅ OPTIMISÉ: Utiliser ts_rank avec index GIN au lieu de ILIKE
                 (
-                    -- Score basé sur le nombre de mots clés trouvés
+                    -- Score basé sur tsvector (utilise index GIN créé dans migration)
                     (
-                        SELECT COALESCE(SUM(
-                            CASE 
-                                WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || word || '%' THEN 3.0
-                                WHEN s.data->'description'->>'valeur' ILIKE '%' || word || '%' THEN 2.0
-                                WHEN s.data->'category'->>'valeur' ILIKE '%' || word || '%' THEN 2.5
-                                ELSE 0.0
-                            END
-                        ), 0.0)
-                        FROM unnest(string_to_array($1, ' ')) AS word
+                        ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 3.0 +
+                        ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
+                        ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.5
                     ) * 0.5
                 )::REAL as keyword_score
             FROM services s
             WHERE s.is_active = true
-            AND ({})
+            AND (
+                -- ✅ OPTIMISÉ: Utiliser index GIN au lieu de ILIKE (utilise idx_services_fulltext_combined_gin)
+                to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+                OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+                OR to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+            )
             AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
             AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
             ORDER BY keyword_score DESC
-        "#, conditions.join(" OR "));
+            LIMIT 100
+        "#;
 
-        let results = sqlx::query(&sql)
+        let results = sqlx::query(sql)
             .bind(query)
             .bind(category_filter)
             .bind(location_filter)

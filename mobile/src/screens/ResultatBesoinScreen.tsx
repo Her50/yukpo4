@@ -4552,10 +4552,39 @@ const ResultatBesoinScreen: React.FC = () => {
                     const serviceProduits = service.data?.produits?.valeur || service.data?.produits || [];
                     if (Array.isArray(serviceProduits)) {
                         serviceProduits.forEach((product: any, productIndex: number) => {
-                            // GPS prioritaire : produit > service gps_fixe > service gps
-                            const productGPS = product.gps || product.gpsFixe;
-                            const serviceGPSFixe = service.data?.gps_fixe?.valeur || service.data?.gps_fixe;
-                            const serviceGPSRealtime = service.gps;
+                            // ✅ CORRIGÉ: GPS prioritaire avec fallback complet
+                            // Priorité 1: GPS direct du produit
+                            // Priorité 2: GPS fixe du service (gps_fixe peut être objet {valeur: "..."} ou string directe)
+                            // Priorité 3: GPS courant du service (position actuelle du vendeur)
+                            
+                            let productGPS: string | null | undefined = null;
+                            if (product.gps && typeof product.gps === 'string' && product.gps.trim() !== '' && product.gps !== 'false') {
+                                productGPS = product.gps;
+                            } else if (product.gpsFixe && typeof product.gpsFixe === 'string' && product.gpsFixe.trim() !== '' && product.gpsFixe !== 'false') {
+                                productGPS = product.gpsFixe;
+                            }
+                            
+                            let serviceGPSFixe: string | null | undefined = null;
+                            if (service.data?.gps_fixe) {
+                                const gpsFixe = service.data.gps_fixe;
+                                // Cas 1: Objet avec structure {valeur: "...", type_donnee: "..."}
+                                if (typeof gpsFixe === 'object' && gpsFixe !== null && 'valeur' in gpsFixe) {
+                                    const valeur = gpsFixe.valeur;
+                                    if (valeur && typeof valeur === 'string' && valeur.trim() !== '' && valeur !== 'false') {
+                                        serviceGPSFixe = valeur;
+                                    }
+                                }
+                                // Cas 2: String directe
+                                else if (typeof gpsFixe === 'string' && gpsFixe.trim() !== '' && gpsFixe !== 'false') {
+                                    serviceGPSFixe = gpsFixe;
+                                }
+                            }
+                            
+                            let serviceGPSRealtime: string | null | undefined = null;
+                            if (service.gps && typeof service.gps === 'string' && service.gps.trim() !== '' && service.gps !== 'false') {
+                                serviceGPSRealtime = service.gps;
+                            }
+                            
                             const bestGPS = productGPS || serviceGPSFixe || serviceGPSRealtime;
 
                             // Calculer la distance si GPS disponible

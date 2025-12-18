@@ -120,32 +120,64 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
     // ✅ CORRIGÉ: Vérifications strictes pour éviter les crashes
     // ✅ NOUVEAU : Utiliser conversationId si conversation privée, sinon service.id
-    const parsedConversationId = privateConversationId ? Number(privateConversationId) : NaN;
+    let parsedConversationId = NaN;
+    if (privateConversationId) {
+        if (typeof privateConversationId === 'string') {
+            // Si c'est un UUID, ne pas convertir en nombre
+            if (privateConversationId.includes('-')) {
+                parsedConversationId = NaN; // Garder NaN pour UUID
+            } else {
+                parsedConversationId = parseInt(privateConversationId, 10);
+            }
+        } else if (typeof privateConversationId === 'number') {
+            parsedConversationId = privateConversationId;
+        }
+    }
+    
+    // ✅ CORRIGÉ: Extraire service.id de manière sécurisée
+    const rawServiceId = service?.id;
+    const numericServiceId = rawServiceId !== null && rawServiceId !== undefined
+        ? (typeof rawServiceId === 'number' ? rawServiceId : (typeof rawServiceId === 'string' ? parseInt(rawServiceId, 10) : 0))
+        : 0;
+    
     const effectiveServiceId = isPrivateConversation && !Number.isNaN(parsedConversationId)
         ? parsedConversationId
-        : (service?.id || 0);
+        : numericServiceId;
 
     // ✅ CORRIGÉ : ID réel de la conversation pour les prix négociés
     // Si conversation privée, utiliser l'UUID (string), sinon utiliser service.id (number converti en string)
     const realConversationId = isPrivateConversation && privateConversationId
         ? privateConversationId // UUID string pour conversations privées
-        : String(service?.id || 0); // String pour conversations de service
+        : String(numericServiceId || 0); // String pour conversations de service
 
-    const prestataireUserId = Number(
-        prestataireInfo?.user_id ?? prestataireInfo?.userId ?? 0,
-    );
+    // ✅ CORRIGÉ: Extraire prestataireUserId de manière sécurisée
+    const rawPrestataireUserId = prestataireInfo?.user_id ?? prestataireInfo?.userId ?? 0;
+    const prestataireUserId = rawPrestataireUserId !== null && rawPrestataireUserId !== undefined
+        ? (typeof rawPrestataireUserId === 'number' ? rawPrestataireUserId : (typeof rawPrestataireUserId === 'string' ? parseInt(rawPrestataireUserId, 10) : 0))
+        : 0;
 
     // ✅ CORRIGÉ: Vérifier que les IDs sont valides avant d'utiliser le hook WebSocket
     // Utiliser des valeurs par défaut sécurisées si les IDs sont invalides
-    const safeServiceId = (effectiveServiceId && typeof effectiveServiceId === 'number' && effectiveServiceId > 0) 
+    const safeServiceId = (effectiveServiceId && typeof effectiveServiceId === 'number' && !isNaN(effectiveServiceId) && effectiveServiceId > 0) 
         ? effectiveServiceId 
         : 0;
-    const safePrestataireId = (prestataireUserId && typeof prestataireUserId === 'number' && prestataireUserId > 0)
+    const safePrestataireId = (prestataireUserId && typeof prestataireUserId === 'number' && !isNaN(prestataireUserId) && prestataireUserId > 0)
         ? prestataireUserId
         : 0;
-    const safeUserId = (user?.id && typeof user.id === 'number' && user.id > 0)
-        ? user.id
+    
+    // ✅ CORRIGÉ: Extraire userId de manière sécurisée
+    const rawUserId = user?.id;
+    const numericUserId = rawUserId !== null && rawUserId !== undefined
+        ? (typeof rawUserId === 'number' ? rawUserId : (typeof rawUserId === 'string' ? parseInt(rawUserId, 10) : 0))
         : 0;
+    
+    const safeUserId = (numericUserId && typeof numericUserId === 'number' && !isNaN(numericUserId) && numericUserId > 0)
+        ? numericUserId
+        : 0;
+
+    // ✅ CORRIGÉ: Vérifier que les IDs sont valides avant d'utiliser le hook WebSocket
+    // Si les IDs sont invalides, ne pas utiliser le hook (éviter les crashes)
+    const shouldUseWebSocket = safeServiceId > 0 && safePrestataireId > 0 && safeUserId > 0;
 
     // Utiliser le hook WebSocket avec des valeurs sécurisées
     // Le hook gérera les valeurs invalides (0) en ne se connectant pas
@@ -158,9 +190,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         deleteMessage,
         markAsRead
     } = useWebSocketChat(
-        safeServiceId,
-        safePrestataireId,
-        safeUserId
+        shouldUseWebSocket ? safeServiceId : 0,
+        shouldUseWebSocket ? safePrestataireId : 0,
+        shouldUseWebSocket ? safeUserId : 0
     );
 
     // Fonction utilitaire pour extraire la valeur d'un champ de service
@@ -1036,6 +1068,43 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             }
         };
     }, [audioSound]);
+
+    // ✅ CORRIGÉ: Vérifier que les IDs sont valides avant de rendre le composant
+    if (!visible) {
+        return null;
+    }
+
+    // ✅ CORRIGÉ: Afficher un message d'erreur si les IDs sont invalides
+    if (!shouldUseWebSocket) {
+        return (
+            <Modal
+                visible={visible}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={onClose}
+            >
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#FFFFFF' }}>
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' }}>
+                        Erreur
+                    </Text>
+                    <Text style={{ fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' }}>
+                        Impossible d'ouvrir le chat : les informations du service ou du prestataire sont manquantes ou invalides.
+                    </Text>
+                    <TouchableOpacity
+                        onPress={onClose}
+                        style={{
+                            backgroundColor: modernColors.primary,
+                            paddingVertical: 12,
+                            paddingHorizontal: 24,
+                            borderRadius: 8,
+                        }}
+                    >
+                        <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Fermer</Text>
+                    </TouchableOpacity>
+                </View>
+            </Modal>
+        );
+    }
 
     return (
         <Modal

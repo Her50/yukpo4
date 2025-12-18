@@ -1356,7 +1356,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
 // ✅ NOUVEAU: Fonction pour créer les styles avec support thème
 const createStyles = (colors: any) => StyleSheet.create({
     container: {
-        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc
+        backgroundColor: '#F3F4F6', // ✅ Appliqué: Même couleur que les cartes des services spécialisés
         borderRadius: 12,
         padding: 10,
         marginHorizontal: 0,
@@ -1368,7 +1368,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         borderRadius: 8,
         borderWidth: 1,
         borderColor: '#E5E7EB', // ✅ CORRIGÉ: Bordure plus claire
-        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc
+        backgroundColor: '#FFFFFF', // ✅ Fond blanc pour le TextInput
         marginBottom: 8,
         minHeight: 55,
     },
@@ -1696,14 +1696,14 @@ const createStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#6366F1', // ✅ CORRIGÉ: Même couleur que les boutons Rechercher/Créer service actifs
+        backgroundColor: '#4B5563', // ✅ Changé: Couleur neutre moins foncée en harmonie avec #F3F4F6
         paddingVertical: 14,
         paddingHorizontal: 28,
         borderRadius: 12,
         gap: 8,
         borderWidth: 1.5,
-        borderColor: '#6366F1', // ✅ CORRIGÉ: Bordure de la même couleur
-        shadowColor: '#6366F1',
+        borderColor: '#4B5563', // ✅ Changé: Bordure de la même couleur neutre
+        shadowColor: '#4B5563',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 8,

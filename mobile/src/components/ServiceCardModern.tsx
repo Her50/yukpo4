@@ -246,17 +246,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
 
                 {/* ✅ Seconde rangée d'actions - Bouton vidéo déplacé dans le menu global */}
                 <View style={styles.actionsRow}>
-                    {/* Promouvoir (publicité) */}
-                    {onPromotion && (
-                        <TouchableOpacity
-                            style={[styles.actionButton, styles.actionPromo]}
-                            onPress={() => onPromotion(service)}
-                            activeOpacity={0.7}
-                        >
-                            <SafeIcon name="megaphone" size={18} color="#F59E0B" />
-                            <Text style={[styles.actionLabel, { color: '#F59E0B' }]}>Promouvoir</Text>
-                        </TouchableOpacity>
-                    )}
+                    {/* Promouvoir (publicité) - Retiré car maintenant dans le menu global */}
 
                     {/* Activer/Désactiver */}
                     <TouchableOpacity
@@ -465,6 +455,24 @@ const styles = StyleSheet.create({
     actionPromo: {
         backgroundColor: '#FEF3C7',
         borderColor: '#FDE68A',
+    },
+    actionFlashPromo: {
+        backgroundColor: '#FEF3C7',
+        borderColor: '#F59E0B',
+        borderWidth: 2,
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    flashIcon: {
+        fontSize: 20,
+        marginRight: 4,
+    },
+    flashPromoLabel: {
+        color: '#F59E0B',
+        fontWeight: '700',
     },
     actionActivate: {
         backgroundColor: '#D1FAE5',

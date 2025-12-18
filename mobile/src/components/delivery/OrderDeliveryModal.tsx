@@ -123,14 +123,31 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
     useEffect(() => {
         // ✅ CORRIGÉ: Vérifier que serviceId est valide avant d'exécuter les fonctions
         if (visible && serviceId && typeof serviceId === 'number' && serviceId > 0) {
-            loadUserGPS(); // Charger le GPS depuis l'API (pour référence)
-            loadAvailableProducts();
-            if (productIndex !== undefined) {
-                setSelectedProducts([productIndex]);
-            }
-            // ✅ NOUVEAU : Charger automatiquement la position actuelle de l'utilisateur
-            // Cette fonction essaie d'abord la position actuelle, puis utilise le GPS de l'API comme fallback
-            loadCurrentLocationAutomatically();
+            // ✅ CORRIGÉ: Wrapper toutes les fonctions dans try-catch pour éviter les crashes
+            const loadData = async () => {
+                try {
+                    await Promise.all([
+                        loadUserGPS().catch(err => console.warn('[OrderDeliveryModal] Erreur loadUserGPS:', err)),
+                        loadAvailableProducts().catch(err => console.warn('[OrderDeliveryModal] Erreur loadAvailableProducts:', err)),
+                    ]);
+                    
+                    if (productIndex !== undefined) {
+                        setSelectedProducts([productIndex]);
+                    }
+                    
+                    // ✅ NOUVEAU : Charger automatiquement la position actuelle de l'utilisateur
+                    // Cette fonction essaie d'abord la position actuelle, puis utilise le GPS de l'API comme fallback
+                    loadCurrentLocationAutomatically().catch(err => {
+                        console.warn('[OrderDeliveryModal] Erreur loadCurrentLocationAutomatically:', err);
+                        // Ne pas bloquer l'utilisateur si la localisation échoue
+                    });
+                } catch (error) {
+                    console.error('[OrderDeliveryModal] Erreur lors du chargement des données:', error);
+                    // Ne pas afficher d'alerte pour éviter de bloquer l'utilisateur
+                }
+            };
+            
+            loadData();
         } else if (visible && (!serviceId || typeof serviceId !== 'number' || serviceId <= 0)) {
             // ✅ CORRIGÉ: Afficher une erreur si serviceId est invalide
             console.error('[OrderDeliveryModal] serviceId invalide:', serviceId);
@@ -189,23 +206,38 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
             // ✅ CORRIGÉ: Utiliser GET au lieu de POST pour récupérer les infos utilisateur
             const response = await apiGet('/api/user/me') as ApiResponse<UserMeResponse>;
             if (response.success && response.data?.gps) {
-                const [lng, lat] = response.data.gps.split(',').map(parseFloat);
-                const location = { latitude: lat, longitude: lng };
-                setUserGPS(location);
-                // Ne pas définir dropoffLocation ici, on laisse loadCurrentLocationAutomatically le faire
-                // Mais si loadCurrentLocationAutomatically échoue, on pourra utiliser ce GPS comme fallback
+                const gpsString = response.data.gps;
+                // ✅ CORRIGÉ: Vérifier que gps est une string valide avant de split
+                if (typeof gpsString === 'string' && gpsString.includes(',')) {
+                    const parts = gpsString.split(',').map(parseFloat);
+                    if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                        const [lng, lat] = parts;
+                        const location = { latitude: lat, longitude: lng };
+                        setUserGPS(location);
+                        // Ne pas définir dropoffLocation ici, on laisse loadCurrentLocationAutomatically le faire
+                        // Mais si loadCurrentLocationAutomatically échoue, on pourra utiliser ce GPS comme fallback
+                    }
+                }
             }
         } catch (error) {
             console.error('Erreur chargement GPS utilisateur:', error);
+            // Ne pas propager l'erreur pour éviter les crashes
         }
     };
 
     // ✅ NOUVEAU : Charger automatiquement la position actuelle
     const loadCurrentLocationAutomatically = async () => {
         try {
-            // ✅ CORRIGÉ: Vérifier que Location est disponible
-            if (!Location || typeof Location.requestForegroundPermissionsAsync !== 'function') {
+            // ✅ CORRIGÉ: Vérifier que Location est disponible et importé correctement
+            if (!Location || typeof Location !== 'object' || typeof Location.requestForegroundPermissionsAsync !== 'function') {
                 console.warn('[OrderDeliveryModal] Location API non disponible');
+                // Fallback : utiliser le GPS de l'utilisateur depuis l'API si disponible
+                if (!userGPS) {
+                    await loadUserGPS();
+                }
+                if (userGPS) {
+                    setDropoffLocation(userGPS);
+                }
                 return;
             }
             

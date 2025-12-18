@@ -67,7 +67,7 @@ const MesServicesScreen: React.FC = () => {
   const [showTeamManager, setShowTeamManager] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [showProductSelector, setShowProductSelector] = useState(false);
-  const [productSelectorMode, setProductSelectorMode] = useState<'team' | 'delivery' | null>(null); // Mode du sélecteur
+  const [productSelectorMode, setProductSelectorMode] = useState<'team' | 'delivery' | 'flash-promo' | null>(null); // Mode du sélecteur
   const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
   // ✅ État pour le menu global (remplacé par Sidebar)
   const [showGlobalMenu, setShowGlobalMenu] = useState(false);
@@ -1262,6 +1262,43 @@ const MesServicesScreen: React.FC = () => {
                 <Text style={dynamicStyles.menuItemText}>Dashboard Publicités</Text>
               </TouchableOpacity>
 
+              {/* ✅ NOUVEAU: Créer Flash Promo - Sélection multiple de produits */}
+              <TouchableOpacity
+                style={[dynamicStyles.menuItem, { backgroundColor: '#FEF3C7', borderWidth: 2, borderColor: '#F59E0B' }]}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  // Préparer la liste des produits et ouvrir le sélecteur
+                  const productsList = prepareProductsForSelector();
+                  if (productsList.length === 0) {
+                    toaster.warning('Vous devez d\'abord créer des produits avant de créer un flash promo.');
+                    return;
+                  }
+                  setProductsForSelection(productsList);
+                  setProductSelectorMode('flash-promo');
+                  setShowProductSelector(true);
+                }}
+              >
+                <Text style={{ fontSize: 18, marginRight: 8 }}>⚡</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: '#F59E0B', fontWeight: '700' }]}>Créer Flash Promo</Text>
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU: Voir Flash Promotionnels actifs */}
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  try {
+                    (navigation as any).navigate('FlashPromosActive');
+                  } catch (error) {
+                    logger.error('Erreur navigation FlashPromosActive:', error);
+                    toaster.error('Impossible d\'ouvrir les Flash Promotionnels');
+                  }
+                }}
+              >
+                <SafeIcon name="zap" size={18} color="#F59E0B" />
+                <Text style={dynamicStyles.menuItemText}>Voir Flash Actifs</Text>
+              </TouchableOpacity>
+
               {/* ✅ NOUVEAU: Mes Vidéos - Créées */}
               <TouchableOpacity
                 style={[dynamicStyles.menuItem, { backgroundColor: colors.surfaceVariant }]}
@@ -1681,6 +1718,59 @@ const MesServicesScreen: React.FC = () => {
               // ✅ Stocker les produits sélectionnés normalisés et ouvrir le modal de configuration livraison
               setSelectedProductsForDelivery(normalizedProducts);
               setShowGlobalDeliveryConfig(true);
+            } else if (productSelectorMode === 'flash-promo') {
+              // ✅ NOUVEAU: Mode Flash Promo - Créer un flash promo pour plusieurs produits
+              if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
+                toaster.warning('Veuillez sélectionner au moins un produit pour créer un flash promo.');
+                setShowProductSelector(false);
+                setProductSelectorMode(null);
+                return;
+              }
+              
+              // Normaliser les produits sélectionnés
+              const validProducts = selectedProducts.filter(p => p && p.serviceId != null && p.serviceId > 0);
+              
+              if (validProducts.length === 0) {
+                toaster.warning('Aucun produit valide sélectionné.');
+                setShowProductSelector(false);
+                setProductSelectorMode(null);
+                return;
+              }
+              
+              // Si un seul produit, naviguer directement
+              if (validProducts.length === 1) {
+                const product = validProducts[0];
+                try {
+                  (navigation as any).navigate('CreateFlashPromo', {
+                    serviceId: product.serviceId,
+                    productIndex: product.productIndex,
+                  });
+                } catch (error) {
+                  logger.error('Erreur navigation CreateFlashPromo:', error);
+                  toaster.error('Impossible d\'ouvrir la création de flash promo');
+                }
+              } else {
+                // Plusieurs produits : naviguer avec la liste des produits sélectionnés
+                // Le CreateFlashPromo devra gérer la création multiple
+                try {
+                  (navigation as any).navigate('CreateFlashPromo', {
+                    products: validProducts.map(p => ({
+                      serviceId: p.serviceId,
+                      productIndex: p.productIndex,
+                      productName: p.productName,
+                      serviceName: p.serviceName,
+                    })),
+                    multiple: true,
+                  });
+                } catch (error) {
+                  logger.error('Erreur navigation CreateFlashPromo (multiple):', error);
+                  toaster.error('Impossible d\'ouvrir la création de flash promo');
+                }
+              }
+              
+              setShowProductSelector(false);
+              setProductsForSelection([]);
+              setProductSelectorMode(null);
             } else if (productSelectorMode === 'team') {
               // ✅ CORRECTION: Vérifier que selectedProducts est un tableau valide
               if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
@@ -1865,31 +1955,15 @@ const MesServicesScreen: React.FC = () => {
               section: 'Promotions',
               color: '#F59E0B',
               onPress: () => {
-                // Préparer la liste des produits pour sélection
+                // Préparer la liste des produits et ouvrir le sélecteur en mode multiple
                 const productsList = prepareProductsForSelector();
                 if (productsList.length === 0) {
                   toaster.warning('Vous devez d\'abord créer des produits avant de créer un flash promo.');
                   return;
                 }
-                // Si un seul produit, naviguer directement
-                if (productsList.length === 1) {
-                  const product = productsList[0];
-                  (navigation as any).navigate('CreateFlashPromo', {
-                    serviceId: product.serviceId,
-                    productIndex: product.productIndex,
-                  });
-                } else {
-                  // Plusieurs produits : ouvrir un sélecteur ou naviguer vers l'écran avec sélection
-                  // Pour l'instant, on prend le premier service
-                  const firstServiceId = productsList[0]?.serviceId;
-                  if (firstServiceId) {
-                    (navigation as any).navigate('CreateFlashPromo', {
-                      serviceId: firstServiceId,
-                    });
-                  } else {
-                    toaster.warning('Aucun produit disponible pour créer un flash promo.');
-                  }
-                }
+                setProductsForSelection(productsList);
+                setProductSelectorMode('flash-promo');
+                setShowProductSelector(true);
               },
             },
             {

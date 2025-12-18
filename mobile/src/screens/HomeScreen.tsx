@@ -589,7 +589,6 @@ const HomeScreen: React.FC = () => {
 
                     {/* Services spécialisés Yukpo - Accès recherche uniquement */}
                     <View style={styles.specializedServicesContainer}>
-                        <Text style={styles.specializedServicesTitle}>Services spécialisés</Text>
                         <YukpoServicesQuickAccess
                             onServicePress={(serviceId) => {
                                 hapticPress();
@@ -628,14 +627,6 @@ const HomeScreen: React.FC = () => {
                     </View>
                 </View>
 
-                {/* Zone de contenu vide pour l'instant */}
-                <View style={styles.contentArea}>
-                    <Text style={styles.contentText}>
-                        {isCreateService
-                            ? 'Créez votre service en remplissant le formulaire ci-dessus'
-                            : 'Recherchez des services en remplissant le formulaire ci-dessus'}
-                    </Text>
-                </View>
             </ScrollView>
 
             {/* Modal GPS */}
@@ -788,7 +779,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     modeButtonActive: {
-        backgroundColor: modernColors.primary,
+        backgroundColor: '#4B5563', // ✅ Changé: Couleur neutre moins foncée en harmonie avec #F3F4F6
     },
     modeButtonText: {
         fontSize: 14,
@@ -810,16 +801,6 @@ const styles = StyleSheet.create({
     inputContainer: {
         marginBottom: 8,
     },
-    contentArea: {
-        paddingHorizontal: 16,
-        paddingVertical: 40,
-        alignItems: 'center',
-    },
-    contentText: {
-        fontSize: 16,
-        color: '#6B7280',
-        textAlign: 'center',
-    },
     carouselErrorContainer: {
         padding: 20,
         marginHorizontal: 16,
@@ -838,7 +819,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 0, // Pas de marge horizontale car déjà dans le conteneur foncé
     },
     promotionsMainButton: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F3F4F6', // ✅ Appliqué: Même couleur que les cartes des services spécialisés
         borderRadius: 10,
         padding: 10,
         borderWidth: 1,

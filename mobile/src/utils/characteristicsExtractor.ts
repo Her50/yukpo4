@@ -175,13 +175,54 @@ export function filterProductsByProximity(
 
     return products
         .map(product => {
-            // Récupérer le GPS du produit (plusieurs sources possibles)
-            const gps =
-                product._service?.gps ||
-                product.service?.gps ||
-                product.gps ||
-                product._service?.data?.gps_fixe?.valeur ||
-                product.service?.data?.gps_fixe?.valeur;
+            // ✅ CORRIGÉ: Récupérer le GPS avec priorité et fallback complet
+            // Priorité 1: GPS direct du produit
+            // Priorité 2: GPS fixe du service (gps_fixe peut être objet {valeur: "..."} ou string directe)
+            // Priorité 3: GPS courant du service (position actuelle du vendeur)
+            // Priorité 4: GPS de l'utilisateur créateur (fallback ultime)
+            
+            let gps: string | null | undefined = null;
+            
+            // 1. GPS direct du produit
+            if (product.gps && typeof product.gps === 'string' && product.gps.trim() !== '') {
+                gps = product.gps;
+            }
+            
+            // 2. GPS fixe du service (priorité sur GPS courant)
+            if (!gps) {
+                const service = product._service || product.service;
+                if (service?.data?.gps_fixe) {
+                    const gpsFixe = service.data.gps_fixe;
+                    // Cas 1: Objet avec structure {valeur: "...", type_donnee: "..."}
+                    if (typeof gpsFixe === 'object' && gpsFixe !== null && 'valeur' in gpsFixe) {
+                        const valeur = gpsFixe.valeur;
+                        if (valeur && typeof valeur === 'string' && valeur.trim() !== '' && valeur !== 'false') {
+                            gps = valeur;
+                        }
+                    }
+                    // Cas 2: String directe
+                    else if (typeof gpsFixe === 'string' && gpsFixe.trim() !== '' && gpsFixe !== 'false') {
+                        gps = gpsFixe;
+                    }
+                }
+            }
+            
+            // 3. GPS courant du service (position actuelle du vendeur)
+            if (!gps) {
+                const service = product._service || product.service;
+                if (service?.gps && typeof service.gps === 'string' && service.gps.trim() !== '' && service.gps !== 'false') {
+                    gps = service.gps;
+                }
+            }
+            
+            // 4. GPS de l'utilisateur créateur (fallback ultime)
+            if (!gps) {
+                const service = product._service || product.service;
+                const prestataire = product._prestataire || product.prestataire;
+                if (prestataire?.gps && typeof prestataire.gps === 'string' && prestataire.gps.trim() !== '' && prestataire.gps !== 'false') {
+                    gps = prestataire.gps;
+                }
+            }
 
             if (!gps) {
                 // Pas de GPS : garder le produit mais avec distance infinie
@@ -206,8 +247,14 @@ export function filterProductsByProximity(
                 return true;
             }
 
-            // Sinon, filtrer par rayon
-            return product.distance !== undefined && product.distance <= radiusKm;
+            // ✅ CORRIGÉ: Garder les produits sans GPS (distance Infinity) pour ne pas les exclure
+            // Sinon, filtrer par rayon uniquement pour les produits avec GPS valide
+            if (product.distance === Infinity || product.distance === undefined) {
+                return true; // Garder les produits sans GPS
+            }
+
+            // Filtrer par rayon uniquement pour les produits avec GPS valide
+            return product.distance <= radiusKm;
         });
 }
 

@@ -14,6 +14,7 @@ import {
     View
 } from 'react-native';
 import Animated, {
+    SharedValue,
     useAnimatedStyle,
     useSharedValue,
     withSpring,
@@ -33,14 +34,32 @@ import StatusIndicator from '../../components/delivery/StatusIndicator';
 import TimelineStepper from '../../components/delivery/TimelineStepper';
 import ToastNotification from '../../components/delivery/ToastNotification';
 // ✅ CORRIGÉ: Import explicite pour éviter les problèmes d'export default
-import { NativeBadge, NativeButton } from '../../components/NativeDesign';
+// Import direct des composants individuels pour éviter les problèmes d'export/import
+import { NativeBadge as NativeBadgeImport, NativeButton as NativeButtonImport } from '../../components/NativeDesign';
 
-// ✅ CORRIGÉ: Vérifier que les composants sont bien des composants React valides
-if (typeof NativeButton !== 'function' && typeof NativeButton !== 'object') {
-    console.error('[DeliveryShoppingTrackingScreen] NativeButton is not a valid React component:', typeof NativeButton);
+// ✅ CRITIQUE: Créer des composants de fallback sécurisés
+const FallbackButton: React.FC<{ title: string; onPress: () => void; [key: string]: any }> = ({ title, onPress, ...props }) => (
+    <TouchableOpacity onPress={onPress} style={{ padding: 12, backgroundColor: modernColors.primary, borderRadius: 8 }} {...props}>
+        <Text style={{ color: '#FFF', fontWeight: '600', textAlign: 'center' }}>{title}</Text>
+    </TouchableOpacity>
+);
+
+const FallbackBadge: React.FC<{ text: string; [key: string]: any }> = ({ text, ...props }) => (
+    <View style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: modernColors.textSecondary + '20', borderRadius: 12, alignSelf: 'flex-start' }} {...props}>
+        <Text style={{ fontSize: 12, fontWeight: '600', color: modernColors.textSecondary }}>{text}</Text>
+    </View>
+);
+
+// ✅ CRITIQUE: Utiliser les composants importés ou les fallbacks
+const NativeButton = (typeof NativeButtonImport === 'function' ? NativeButtonImport : FallbackButton) as React.FC<any>;
+const NativeBadge = (typeof NativeBadgeImport === 'function' ? NativeBadgeImport : FallbackBadge) as React.FC<any>;
+
+// ✅ CRITIQUE: Vérifier que les composants sont bien des composants React valides au runtime
+if (typeof NativeButtonImport !== 'function') {
+    console.error('[DeliveryShoppingTrackingScreen] ❌ NativeButton is not a valid React component, using fallback:', typeof NativeButtonImport);
 }
-if (typeof NativeBadge !== 'function' && typeof NativeBadge !== 'object') {
-    console.error('[DeliveryShoppingTrackingScreen] NativeBadge is not a valid React component:', typeof NativeBadge);
+if (typeof NativeBadgeImport !== 'function') {
+    console.error('[DeliveryShoppingTrackingScreen] ❌ NativeBadge is not a valid React component, using fallback:', typeof NativeBadgeImport);
 }
 import { SafeIcon } from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
@@ -77,27 +96,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         courier: useSharedValue(activeTab === 'courier' ? 1 : 0),
     };
 
-    // ✅ CORRIGÉ: Définir AnimatedItemCard à l'intérieur du composant pour éviter les problèmes de hooks
-    // Cela évite l'erreur "Element type is invalid: expected a string... but got: object"
-    const AnimatedItemCard: React.FC<{
-        children: React.ReactNode;
-        style?: any;
-        animationValue: ReturnType<typeof useSharedValue<number>>;
-        index: number;
-    }> = ({ children, style, animationValue, index }) => {
-        const animatedStyle = useAnimatedStyle(() => ({
-            opacity: animationValue.value,
-            transform: [{
-                translateX: (1 - animationValue.value) * 20 * (index + 1),
-            }],
-        }));
-
-        return (
-            <Animated.View style={[style, animatedStyle]}>
-                {children}
-            </Animated.View>
-        );
-    };
+    // ✅ CORRIGÉ: AnimatedItemCard est maintenant défini en dehors du composant pour éviter les problèmes de re-render
 
     // Animation d'entrée de la page
     const fadeAnim = useSharedValue(0);
@@ -967,6 +966,30 @@ function getRejectionReasonLabel(reason: ParcelRejectionReason): string {
     };
     return labels[reason] || reason;
 }
+
+// ✅ CORRIGÉ: AnimatedItemCard défini en dehors du composant pour éviter les problèmes de re-render
+// Cela évite l'erreur "Element type is invalid: expected a string... but got: object"
+interface AnimatedItemCardProps {
+    children: React.ReactNode;
+    style?: any;
+    animationValue: SharedValue<number>;
+    index: number;
+}
+
+const AnimatedItemCard: React.FC<AnimatedItemCardProps> = ({ children, style, animationValue, index }) => {
+    const animatedStyle = useAnimatedStyle(() => ({
+        opacity: animationValue.value,
+        transform: [{
+            translateX: (1 - animationValue.value) * 20 * (index + 1),
+        }],
+    }));
+
+    return (
+        <Animated.View style={[style, animatedStyle]}>
+            {children}
+        </Animated.View>
+    );
+};
 
 // ✅ MIGRÉ: renderTabButton simplifié (les animations sont gérées par les styles animés)
 const renderTabButton = (
