@@ -15,7 +15,7 @@ import {
     View
 } from 'react-native';
 import ModernGPSModal from '../components/ModernGPSModal';
-import { NativeButton } from '../components/NativeDesign';
+import { NativeButton } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import SavedSearches from '../components/SavedSearches';
 import SearchFilters, { SearchFilters as SearchFiltersType } from '../components/SearchFilters';

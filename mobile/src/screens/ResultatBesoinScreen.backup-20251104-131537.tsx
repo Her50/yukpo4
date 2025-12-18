@@ -16,7 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { NativeCard } from '../components/NativeDesign';
+import { NativeCard } from '../components/SafeNativeDesign';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
 import { useLocation } from '../contexts/LocationContext';

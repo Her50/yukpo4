@@ -2,7 +2,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface ScheduleOptions {

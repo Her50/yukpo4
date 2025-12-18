@@ -5,7 +5,7 @@ import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import useGlobalPromos from '../../hooks/useGlobalPromos';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeButton, NativeCard } from '../NativeDesign';
+import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
 
 const getSnapshotImage = (snapshot: any): string | undefined => {

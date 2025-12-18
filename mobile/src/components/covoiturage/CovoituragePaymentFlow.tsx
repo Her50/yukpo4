@@ -13,7 +13,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeButton, NativeCard } from '../NativeDesign';
+import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
 
 interface CovoituragePaymentFlowProps {

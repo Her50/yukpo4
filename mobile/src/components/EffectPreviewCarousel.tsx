@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { EffectPreviewResponse, effectPreviewService } from '../services/effectPreviewService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface EffectPreviewCarouselProps {

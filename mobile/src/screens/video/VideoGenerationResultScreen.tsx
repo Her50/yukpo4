@@ -1,7 +1,7 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useMemo } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { modernColors } from '../../theme/modernTheme';

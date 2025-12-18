@@ -10,7 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { modernColors } from '../../theme/modernTheme';
 
 const OffreSearchScreen: React.FC = () => {

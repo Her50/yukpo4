@@ -13,7 +13,7 @@ import {
     View
 } from 'react-native';
 import ChatModalMobile from '../../components/ChatModalMobile';
-import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';

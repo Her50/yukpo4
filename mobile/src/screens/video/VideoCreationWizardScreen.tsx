@@ -17,7 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CreatorStudioCard } from '../../components/CreatorStudioCard';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { StudioAudioPanel } from '../../components/StudioAudioPanel';

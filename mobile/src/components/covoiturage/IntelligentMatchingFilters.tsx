@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
-import { NativeButton } from '../NativeDesign';
+import { NativeButton } from '../SafeNativeDesign';
 
 interface IntelligentMatchingFiltersProps {
     onApply: (filters: MatchingFilters) => void;

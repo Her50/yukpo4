@@ -15,7 +15,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard } from './NativeDesign';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 export type GenerationStep =

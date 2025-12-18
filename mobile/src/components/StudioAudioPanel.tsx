@@ -14,7 +14,7 @@ import {
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
 
-import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 import { mediaApi } from '../services/api';

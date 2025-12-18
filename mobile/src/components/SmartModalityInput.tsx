@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
-import { NativeInput } from './NativeDesign';
+import { NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 
 const modernColors = {

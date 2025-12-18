@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { NotificationPreferences, pushNotificationService } from '../services/push_notifications';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton } from './NativeDesign';
+import { NativeButton } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface NotificationPreferencesModalProps {

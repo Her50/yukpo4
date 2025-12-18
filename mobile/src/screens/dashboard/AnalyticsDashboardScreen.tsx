@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   RefreshControl
 } from 'react-native';
-import { NativeCard, NativeButton } from '../../components/NativeDesign';
+import { NativeCard, NativeButton } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { modernColors } from '../../theme/modernTheme';
 import { apiCall } from '../../services/api';

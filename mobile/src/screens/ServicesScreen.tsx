@@ -17,7 +17,7 @@ import {
   View
 } from 'react-native';
 
-import { NativeButton, NativeCard } from '../components/NativeDesign';
+import { NativeButton, NativeCard } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import ServiceCardModern from '../components/ServiceCardModern';
 import { useAuth } from '../contexts/AuthContext';

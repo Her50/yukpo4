@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Effect } from '../services/effectLibraryService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 // Note: Pour le slider, on utilisera un composant natif ou une alternative
 // Slider peut être remplacé par un composant personnalisé si nécessaire

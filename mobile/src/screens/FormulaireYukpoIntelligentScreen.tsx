@@ -26,7 +26,7 @@ import ModernGPSModal from '../components/ModernGPSModal';
 // Code corrigé (remplace @ts-ignore)
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 // Code corrigé (remplace @ts-ignore)
-import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/NativeDesign';
+import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 // ✅ SUPPRIMÉ: ProductManagerMobile intégré directement dans le formulaire
 import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';

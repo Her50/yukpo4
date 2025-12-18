@@ -13,7 +13,7 @@ import {
 import { QuickPreviewResponse, quickPreviewService } from '../services/quickPreviewService';
 import { modernColors } from '../theme/modernTheme';
 import { VideoTimeline } from '../types/VideoGeneration';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface QuickPreviewProps {

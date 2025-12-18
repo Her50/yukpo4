@@ -23,7 +23,7 @@ import { commentsApi } from '../services/api';
 import { mediaService } from '../services/mediaService';
 import { modernColors } from '../theme/modernTheme';
 import { triggerHaptic } from '../utils/hapticFeedback';
-import { NativeButton, NativeCard } from './NativeDesign';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
 
@@ -1431,7 +1431,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     <View>
                         <Text style={styles.sectionTitle}>Commentaires clients</Text>
                         <Text style={styles.sectionSubtitle}>
-                            {stats.total_comments} avis • {stats.average_rating.toFixed(1)}/5
+                            {stats.total_comments > 0 ? `${stats.total_comments} ${stats.total_comments === 1 ? 'avis' : 'avis'}` : 'Aucun avis'} • {stats.rating_count > 0 ? `⭐ ${stats.average_rating.toFixed(1)}/5` : 'Pas encore noté'}
                         </Text>
                     </View>
                     <TouchableOpacity

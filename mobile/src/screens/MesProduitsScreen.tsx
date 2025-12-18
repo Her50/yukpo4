@@ -22,7 +22,7 @@ import Animated, {
     useSharedValue,
 } from 'react-native-reanimated';
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
-import { NativeCard } from '../components/NativeDesign';
+import { NativeCard } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';

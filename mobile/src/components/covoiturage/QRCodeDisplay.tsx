@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { apiGet } from '../../services/api';
-import { NativeButton, NativeCard } from '../NativeDesign';
+import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
 
 interface QRCodeDisplayProps {

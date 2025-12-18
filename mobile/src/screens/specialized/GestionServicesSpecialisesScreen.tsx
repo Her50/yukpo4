@@ -12,7 +12,7 @@ import {
     View,
 } from 'react-native';
 import ConflictResolutionModal, { ConflictInfo } from '../../components/ConflictResolutionModal';
-import { NativeCard } from '../../components/NativeDesign';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import NotificationPreferencesModal from '../../components/NotificationPreferencesModal';
 import SafeIcon from '../../components/SafeIcon';
 import ServiceCard from '../../components/ServiceCard';

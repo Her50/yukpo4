@@ -12,7 +12,7 @@ import {
     View
 } from 'react-native';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { InsuranceSelector } from '../../components/covoiturage/InsuranceSelector';
 import { QRCodeDisplay } from '../../components/covoiturage/QRCodeDisplay';

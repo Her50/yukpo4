@@ -12,7 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import PaymentMethodSelector from '../../components/PaymentMethodSelector';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';

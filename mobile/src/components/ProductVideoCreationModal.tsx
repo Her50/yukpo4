@@ -26,7 +26,7 @@ import { extractDescription, extractServiceName } from '../utils/displayHelpers'
 import { getFieldValue } from '../utils/productNormalizer';
 import { apiCallWithRetry } from '../utils/retryWithBackoff';
 import { clearVideoDraft, loadVideoDraft, saveVideoDraft, type VideoDraft } from '../utils/videoDraftStorage';
-import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import { TimelineEditor } from './TimelineEditor';
 import { TimelinePreview, VideoTimeline as VideoTimelineType } from './TimelinePreview';

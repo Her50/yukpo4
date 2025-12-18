@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import AdvancedAnalyticsChart from '../components/AdvancedAnalyticsChart';
 import { ExportButton } from '../components/ExportButton';
-import { NativeCard } from '../components/NativeDesign';
+import { NativeCard } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import OptimizationSuggestions from '../components/OptimizationSuggestions';
 import PubliciteVersionHistory from '../components/PubliciteVersionHistory';

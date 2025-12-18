@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { apiGet, apiPost, deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeButton } from '../NativeDesign';
+import { NativeButton } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
 
 interface ProductDeliveryConfigModalProps {

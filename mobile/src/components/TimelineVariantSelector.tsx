@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { TimelineVariant, timelineVariantService } from '../services/timelineVariantService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface TimelineVariantSelectorProps {

@@ -13,7 +13,7 @@ import {
 import { deliveryApi } from '../../services/api';
 import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeButton } from '../NativeDesign';
+import { NativeButton } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
 
 interface CourierSelectionModalProps {

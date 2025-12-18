@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { NativeBadge, NativeButton, NativeCard } from '../components/NativeDesign';
+import { NativeBadge, NativeButton, NativeCard } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { AnalyticsCard } from '../components/ux/AnalyticsCard';
 import { useAuth } from '../contexts/AuthContext';

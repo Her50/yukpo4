@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary } from '../../types/delivery';
-import { NativeBadge, NativeButton, NativeCard } from '../NativeDesign';
+import { NativeBadge, NativeButton, NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
 
 interface ActiveDeliveryCardProps {

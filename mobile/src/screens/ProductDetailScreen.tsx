@@ -10,7 +10,7 @@ import {
     Text,
     View
 } from 'react-native';
-import { NativeButton } from '../components/NativeDesign';
+import { NativeButton } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';

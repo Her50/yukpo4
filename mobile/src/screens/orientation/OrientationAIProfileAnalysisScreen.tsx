@@ -10,7 +10,7 @@ import {
     Text,
     View
 } from 'react-native';
-import { NativeBadge, NativeButton, NativeCard } from '../../components/NativeDesign';
+import { NativeBadge, NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { orientationScolaireApi } from '../../services/orientationScolaireApi';

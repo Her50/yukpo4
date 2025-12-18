@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 // ✅ SUPPRIMÉ : WeekScheduleSelector (planning hebdomadaire supprimé)
 import { useAuth } from '../../contexts/AuthContext';

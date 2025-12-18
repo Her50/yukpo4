@@ -134,7 +134,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/services/{service_id}/delete", delete(supprimer_service))
         // ✅ NOUVEAU: Route pour modifier un produit spécifique (avec historique)
         .route("/api/products/{product_id}/update", patch(update_product))
-        // ✅ NOUVEAU 2025-11-01: Route pour ajouter un produit incrémental (coût fixe 3000 FCFA)
+        // ✅ NOUVEAU 2025-11-01: Route pour ajouter un produit incrémental (coût fixe 2000 FCFA)
         .route("/api/services/{service_id}/products", post(add_product_to_service))
         // ✅ NOUVEAU 2025-11-01: Routes pour cycle de vie produits (désactivation/réactivation)
         .route("/api/services/{service_id}/products/{product_index}/deactivate", post(deactivate_product))

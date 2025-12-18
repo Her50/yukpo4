@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface AutoOptimizationSettings {

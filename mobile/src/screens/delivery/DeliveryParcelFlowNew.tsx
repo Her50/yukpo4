@@ -20,7 +20,7 @@ import HapticTouchable from '../../components/delivery/HapticTouchable';
 import StepWizardForm from '../../components/delivery/StepWizardForm';
 import MediaUploadManager from '../../components/MediaUploadManager';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useLocation } from '../../contexts/LocationContext';
 import { CreateDeliveryRequestPayload, deliveryApi } from '../../services/api';

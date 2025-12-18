@@ -19,7 +19,7 @@ import {
     Storyboard,
 } from '../services/generativeVideoService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeInput } from './NativeDesign';
+import { NativeButton, NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 
 interface GenerativeVideoWizardProps {

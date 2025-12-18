@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { networkDiagnostics } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard } from './NativeDesign';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface NetworkDiagnosticsProps {

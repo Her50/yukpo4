@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
 import { Alert, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeCard } from '../NativeDesign';
+import { NativeCard } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
 
 interface ShareTrackingLinkProps {

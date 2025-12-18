@@ -18,7 +18,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import ModernCard from '../components/ModernCard';
-import { NativeGradient } from '../components/NativeDesign';
+import { NativeGradient } from '../components/SafeNativeDesign';
 import { SafeIcon } from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { modernColors, modernStyles } from '../theme/modernTheme';

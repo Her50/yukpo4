@@ -25,7 +25,7 @@ import {
 } from 'react-native';
 import { intelligentProductAutocomplete } from '../services/intelligentProductAutocomplete';
 import { modernColors } from '../theme/modernTheme';
-import { NativeInput } from './NativeDesign';
+import { NativeInput } from './SafeNativeDesign';
 
 interface IntelligentProductFieldProps {
     label: string;

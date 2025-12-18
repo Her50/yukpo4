@@ -1,0 +1,344 @@
+/**
+ * ✅ WRAPPER SÉCURISÉ pour les composants NativeDesign
+ * Garantit que les composants sont toujours des fonctions React valides
+ * avec fallback automatique en cas d'échec d'import
+ */
+
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { modernColors } from '../theme/modernTheme';
+
+// ✅ Import avec gestion d'erreur
+let NativeDesignModule: any;
+try {
+    NativeDesignModule = require('./NativeDesign');
+} catch (error) {
+    console.error('[SafeNativeDesign] Erreur import NativeDesign:', error);
+    NativeDesignModule = null;
+}
+
+// ✅ Vérification qu'un composant est valide
+const isReactComponent = (comp: any): comp is React.ComponentType<any> => {
+    return typeof comp === 'function' && comp !== null && comp !== undefined;
+};
+
+// ✅ Fallback pour NativeButton
+const FallbackButton: React.FC<{ title: string; onPress: () => void; [key: string]: any }> = ({ title, onPress, ...props }) => (
+    <TouchableOpacity onPress={onPress} style={[fallbackStyles.button, props.style]} {...props}>
+        <Text style={fallbackStyles.buttonText}>{title}</Text>
+    </TouchableOpacity>
+);
+
+// ✅ Fallback pour NativeBadge
+const FallbackBadge: React.FC<{ text: string; [key: string]: any }> = ({ text, ...props }) => (
+    <View style={[fallbackStyles.badge, props.style]} {...props}>
+        <Text style={fallbackStyles.badgeText}>{text}</Text>
+    </View>
+);
+
+// ✅ Fallback pour NativeCard avec gestion sécurisée des enfants
+const FallbackCard: React.FC<{ children: React.ReactNode; [key: string]: any }> = ({ children, ...props }) => {
+    // ✅ CRITIQUE: Gérer les enfants de manière sécurisée
+    // Éviter de rendre des valeurs primitives directement
+    const safeChildren = React.useMemo(() => {
+        // Si children est null/undefined, retourner null
+        if (children == null) {
+            return null;
+        }
+
+        // Si children est une primitive (string, number, boolean), l'envelopper dans Text
+        if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
+            return <Text>{String(children)}</Text>;
+        }
+
+        // Si children est un tableau, traiter chaque élément
+        if (Array.isArray(children)) {
+            return children.map((child, idx) => {
+                if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                    return <Text key={idx}>{String(child)}</Text>;
+                }
+                if (child == null) {
+                    return null;
+                }
+                if (React.isValidElement(child)) {
+                    return child;
+                }
+                return <Text key={idx}>{String(child)}</Text>;
+            }).filter(child => child != null);
+        }
+
+        // Utiliser React.Children.map pour gérer les fragments et autres cas
+        return React.Children.map(children, (child, idx) => {
+            // Si c'est une valeur primitive, l'envelopper dans Text
+            if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                return <Text key={idx}>{String(child)}</Text>;
+            }
+            // Si c'est null ou undefined, retourner null
+            if (child == null) {
+                return null;
+            }
+            // Si c'est un tableau, le traiter récursivement
+            if (Array.isArray(child)) {
+                return child.map((item, itemIndex) => {
+                    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                        return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
+                    }
+                    if (item == null) {
+                        return null;
+                    }
+                    if (React.isValidElement(item)) {
+                        return item;
+                    }
+                    return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
+                });
+            }
+            // Si c'est un élément React valide, le retourner tel quel
+            if (React.isValidElement(child)) {
+                return child;
+            }
+            // Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
+            return <Text key={idx}>{String(child)}</Text>;
+        });
+    }, [children]);
+
+    return (
+        <View style={[fallbackStyles.card, props.style]} {...props}>
+            {safeChildren}
+        </View>
+    );
+};
+
+// ✅ Fallback pour NativeInput
+const FallbackInput: React.FC<any> = (props) => {
+    const { TextInput } = require('react-native');
+    return <TextInput style={[fallbackStyles.input, props.style]} {...props} />;
+};
+
+// ✅ Fallback pour NativeDivider
+const FallbackDivider: React.FC<{ style?: any }> = ({ style }) => (
+    <View style={[fallbackStyles.divider, style]} />
+);
+
+// ✅ Fallback pour NativeGradient
+const FallbackGradient: React.FC<{ colors: string[]; children: React.ReactNode; style?: any }> = ({ colors, children, style }) => {
+    const backgroundColor = colors?.[0] || modernColors.primary;
+    
+    // Gérer les enfants de manière sécurisée
+    const safeChildren = React.useMemo(() => {
+        if (children == null) return null;
+        if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
+            return <Text>{String(children)}</Text>;
+        }
+        if (Array.isArray(children)) {
+            return children.map((child, idx) => {
+                if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                    return <Text key={idx}>{String(child)}</Text>;
+                }
+                if (child == null) return null;
+                if (React.isValidElement(child)) return child;
+                return <Text key={idx}>{String(child)}</Text>;
+            }).filter(child => child != null);
+        }
+        return React.Children.map(children, (child, idx) => {
+            if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                return <Text key={idx}>{String(child)}</Text>;
+            }
+            if (child == null) return null;
+            if (Array.isArray(child)) {
+                return child.map((item, itemIndex) => {
+                    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                        return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
+                    }
+                    if (item == null) return null;
+                    if (React.isValidElement(item)) return item;
+                    return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
+                });
+            }
+            if (React.isValidElement(child)) return child;
+            return <Text key={idx}>{String(child)}</Text>;
+        });
+    }, [children]);
+    
+    return (
+        <View style={[{ backgroundColor }, style]}>
+            {safeChildren}
+        </View>
+    );
+};
+
+// ✅ Wrapper sécurisé pour NativeCard qui garantit toujours une gestion correcte des enfants
+const SafeNativeCardWrapper: React.FC<any> = (props) => {
+    // Toujours utiliser notre logique sécurisée pour les enfants
+    const safeChildren = React.useMemo(() => {
+        const { children } = props;
+        // Si children est null/undefined, retourner null
+        if (children == null) {
+            return null;
+        }
+
+        // Si children est une primitive (string, number, boolean), l'envelopper dans Text
+        if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
+            return <Text>{String(children)}</Text>;
+        }
+
+        // Si children est un tableau, traiter chaque élément
+        if (Array.isArray(children)) {
+            return children.map((child, idx) => {
+                if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                    return <Text key={idx}>{String(child)}</Text>;
+                }
+                if (child == null) {
+                    return null;
+                }
+                if (React.isValidElement(child)) {
+                    return child;
+                }
+                return <Text key={idx}>{String(child)}</Text>;
+            }).filter(child => child != null);
+        }
+
+        // Utiliser React.Children.map pour gérer les fragments et autres cas
+        return React.Children.map(children, (child, idx) => {
+            // Si c'est une valeur primitive, l'envelopper dans Text
+            if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
+                return <Text key={idx}>{String(child)}</Text>;
+            }
+            // Si c'est null ou undefined, retourner null
+            if (child == null) {
+                return null;
+            }
+            // Si c'est un tableau, le traiter récursivement
+            if (Array.isArray(child)) {
+                return child.map((item, itemIndex) => {
+                    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                        return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
+                    }
+                    if (item == null) {
+                        return null;
+                    }
+                    if (React.isValidElement(item)) {
+                        return item;
+                    }
+                    return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
+                });
+            }
+            // Si c'est un élément React valide, le retourner tel quel
+            if (React.isValidElement(child)) {
+                return child;
+            }
+            // Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
+            return <Text key={idx}>{String(child)}</Text>;
+        });
+    }, [props.children]);
+
+    // Essayer d'utiliser le composant original avec nos enfants sécurisés
+    if (NativeDesignModule) {
+        let OriginalCard = NativeDesignModule.NativeCard;
+        if (!OriginalCard && NativeDesignModule.default && typeof NativeDesignModule.default === 'object') {
+            OriginalCard = NativeDesignModule.default.NativeCard;
+        }
+        if (isReactComponent(OriginalCard)) {
+            // Utiliser le composant original mais avec nos enfants sécurisés
+            return React.createElement(OriginalCard, { ...props, children: safeChildren });
+        }
+    }
+
+    // Sinon utiliser le fallback
+    return <FallbackCard {...props}>{safeChildren}</FallbackCard>;
+};
+
+// ✅ Extraction sécurisée des composants
+const getComponent = (name: string, fallback: React.ComponentType<any>): React.ComponentType<any> => {
+    // Pour NativeCard, toujours utiliser notre wrapper sécurisé
+    if (name === 'NativeCard') {
+        return SafeNativeCardWrapper;
+    }
+    
+    if (!NativeDesignModule) {
+        return fallback;
+    }
+    
+    // Essayer l'export nommé
+    let component = NativeDesignModule[name];
+    
+    // Si pas trouvé, essayer l'export par défaut
+    if (!component && NativeDesignModule.default && typeof NativeDesignModule.default === 'object') {
+        component = NativeDesignModule.default[name];
+    }
+    
+    // Vérifier que c'est un composant React valide
+    if (isReactComponent(component)) {
+        return component;
+    }
+    
+    return fallback;
+};
+
+// ✅ Export des composants sécurisés
+export const NativeButton: React.FC<any> = getComponent('NativeButton', FallbackButton);
+export const NativeBadge: React.FC<any> = getComponent('NativeBadge', FallbackBadge);
+export const NativeCard: React.FC<any> = getComponent('NativeCard', FallbackCard);
+export const NativeInput: React.FC<any> = getComponent('NativeInput', FallbackInput);
+export const NativeDivider: React.FC<any> = getComponent('NativeDivider', FallbackDivider);
+export const NativeGradient: React.FC<any> = getComponent('NativeGradient', FallbackGradient);
+
+// ✅ Export par défaut pour compatibilité
+export default {
+    NativeButton,
+    NativeBadge,
+    NativeCard,
+    NativeInput,
+    NativeDivider,
+    NativeGradient,
+};
+
+// ✅ Styles pour les fallbacks
+const fallbackStyles = StyleSheet.create({
+    button: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: modernColors.primary,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    buttonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    badge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: modernColors.textSecondary + '20',
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+    },
+    badgeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+    },
+    card: {
+        backgroundColor: modernColors.surface,
+        borderRadius: 16,
+        padding: 16,
+        marginVertical: 4,
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        backgroundColor: modernColors.surface,
+        fontSize: 16,
+        color: modernColors.text,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: modernColors.border,
+        marginVertical: 8,
+    },
+});
+

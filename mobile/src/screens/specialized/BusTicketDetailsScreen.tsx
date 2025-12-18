@@ -10,7 +10,7 @@ import {
     View
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { NativeButton } from '../../components/NativeDesign';
+import { NativeButton } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import SkeletonCard from '../../components/SkeletonCard';
 import TripMap from '../../components/TripMap';

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import { ParcelRejectionReason } from '../../types/delivery';
-import { NativeButton, NativeCard } from '../NativeDesign';
+import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
 
 interface ParcelRejectionModalProps {

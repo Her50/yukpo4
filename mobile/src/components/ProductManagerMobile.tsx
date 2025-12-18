@@ -28,7 +28,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 // Code corrigé (remplace @ts-ignore)
 import { modernColors } from '../theme/modernTheme';
 import BusSeatSelector from './BusSeatSelector';
-import { NativeButton, NativeInput } from './NativeDesign';
+import { NativeButton, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import SmartApplianceInput from './SmartApplianceInput';
 import SmartPhoneModelInput from './SmartPhoneModelInput';

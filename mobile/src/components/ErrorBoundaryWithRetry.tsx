@@ -7,7 +7,7 @@ import React, { Component, ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import * as Sentry from 'sentry-expo';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton } from './NativeDesign';
+import { NativeButton } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface Props {

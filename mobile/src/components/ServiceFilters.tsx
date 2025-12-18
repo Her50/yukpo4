@@ -12,7 +12,7 @@ import {
     View,
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton } from './NativeDesign';
+import { NativeButton } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 export interface ServiceFilters {

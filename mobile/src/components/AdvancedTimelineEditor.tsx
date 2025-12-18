@@ -15,7 +15,7 @@ import { TrackHeader } from './TrackHeader';
 import { ClipComponent } from './ClipComponent';
 import { KeyframeEditor } from './KeyframeEditor';
 import { CurveEditor } from './CurveEditor';
-import { NativeButton } from './NativeDesign';
+import { NativeButton } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 import { modernColors } from '../theme/modernTheme';
 

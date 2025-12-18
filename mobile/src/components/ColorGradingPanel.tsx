@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { ColorGradingResponse, colorGradingService } from '../services/colorGradingService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 
 interface ColorGradingPanelProps {
     mediaUrl: string;

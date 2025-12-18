@@ -1368,7 +1368,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         borderRadius: 8,
         borderWidth: 1,
         borderColor: '#E5E7EB', // ✅ CORRIGÉ: Bordure plus claire
-        backgroundColor: '#FFFFFF', // ✅ Fond blanc pour le TextInput
+        backgroundColor: '#F0F9FF', // ✅ AMÉLIORÉ: Fond bleu clair plus gai (#F0F9FF = sky-50)
         marginBottom: 8,
         minHeight: 55,
     },
@@ -1696,14 +1696,14 @@ const createStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#4B5563', // ✅ Changé: Couleur neutre moins foncée en harmonie avec #F3F4F6
+        backgroundColor: '#6366F1', // ✅ AMÉLIORÉ: Couleur indigo harmonieuse pour le bouton Envoyer
         paddingVertical: 14,
         paddingHorizontal: 28,
         borderRadius: 12,
         gap: 8,
         borderWidth: 1.5,
-        borderColor: '#4B5563', // ✅ Changé: Bordure de la même couleur neutre
-        shadowColor: '#4B5563',
+        borderColor: '#6366F1', // ✅ AMÉLIORÉ: Bordure indigo harmonieuse
+        shadowColor: '#6366F1',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 8,

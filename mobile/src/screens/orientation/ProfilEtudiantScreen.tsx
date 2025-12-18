@@ -11,7 +11,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { CreateOrUpdateStudentProfileRequest, orientationScolaireApi } from '../../services/orientationScolaireApi';
 import { modernColors, modernStyles } from '../../theme/modernTheme';

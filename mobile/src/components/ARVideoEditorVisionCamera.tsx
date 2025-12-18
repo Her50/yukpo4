@@ -20,7 +20,7 @@ import { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } fro
 import { Camera, Frame, useCameraDevice, useCameraPermission, useFrameProcessor } from 'react-native-vision-camera';
 import { createARPlugin } from '../native/ARPlugin';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard } from './NativeDesign';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');

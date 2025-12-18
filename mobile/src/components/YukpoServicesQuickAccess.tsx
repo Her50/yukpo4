@@ -206,8 +206,8 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                 activeOpacity={0.8}
                             >
                                 <View style={styles.categoryContent}>
-                                    <View style={styles.categoryIconContainer}>
-                                        <SafeIcon name={category.icon} size={12} color="#6B7280" />
+                                    <View style={[styles.categoryIconContainer, { backgroundColor: `${category.gradient[0]}15` }]}>
+                                        <SafeIcon name={category.icon} size={14} color={category.gradient[0]} />
                                     </View>
                                     <Text style={styles.categoryTitle} numberOfLines={2}>
                                         {category.title}
@@ -345,10 +345,10 @@ const styles = StyleSheet.create({
         borderRadius: 10,
     },
     categoryIconContainer: {
-        width: 24, // ✅ AUGMENTÉ: De 20 à 24 pour meilleure visibilité
-        height: 24, // ✅ AUGMENTÉ: De 20 à 24 pour meilleure visibilité
-        borderRadius: 12, // ✅ AUGMENTÉ: De 10 à 12 pour correspondre à la taille
-        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc pour contraster avec le fond #F3F4F6
+        width: 28, // ✅ AMÉLIORÉ: Augmenté pour mieux voir les couleurs
+        height: 28, // ✅ AMÉLIORÉ: Augmenté pour mieux voir les couleurs
+        borderRadius: 14, // ✅ AMÉLIORÉ: Augmenté pour correspondre à la taille
+        backgroundColor: '#FFFFFF', // ✅ Fond blanc par défaut, sera surchargé avec la couleur de la catégorie
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 6, // ✅ AUGMENTÉ: De 4 à 6 pour plus d'espace

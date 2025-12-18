@@ -14,7 +14,7 @@ import {
     View
 } from 'react-native';
 import CityAutocomplete from '../../components/CityAutocomplete';
-import { NativeButton, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import SearchFiltersComponent, { SearchFilters } from '../../components/SearchFilters';

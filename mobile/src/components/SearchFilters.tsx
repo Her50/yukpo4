@@ -13,7 +13,7 @@ import {
     View
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeInput } from './NativeDesign';
+import { NativeButton, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 export interface SearchFilters {

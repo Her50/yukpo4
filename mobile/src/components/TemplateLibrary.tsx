@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { VideoTemplate, templateService } from '../services/templateService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeInput } from './NativeDesign';
+import { NativeButton, NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 
 export type TemplateIndustry = 'ecommerce' | 'services' | 'creators' | 'business' | 'social_media' | 'all';

@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';
 import LinearAutocompleteEditor from '../LinearAutocompleteEditor';
-import { NativeButton, NativeCard, NativeInput } from '../NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
 
 const DEFAULT_SOUS_CARACS: Record<string, string[]> = {

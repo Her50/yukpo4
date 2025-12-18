@@ -5,7 +5,7 @@
 
 import * as Haptics from 'expo-haptics';
 import React from 'react';
-import { NativeButton } from '../NativeDesign';
+import { NativeButton } from '../SafeNativeDesign';
 
 interface HapticFeedbackButtonProps {
     title: string;

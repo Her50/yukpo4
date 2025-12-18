@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTripReminders } from '../../hooks/useTripReminders';
 import PushNotificationService from '../../services/pushNotificationService';
-import { NativeButton } from '../NativeDesign';
+import { NativeButton } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
 
 interface TripReminderSetupProps {

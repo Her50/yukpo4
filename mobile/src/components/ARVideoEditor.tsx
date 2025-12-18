@@ -35,7 +35,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { createARPlugin } from '../native/ARPlugin';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard } from './NativeDesign';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');

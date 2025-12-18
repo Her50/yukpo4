@@ -14,7 +14,7 @@ import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { formatCardNumber, validateCardExpiry, validateCardNumber, validatePhoneNumber } from '../utils/paymentValidation';
 import AlerteSecurite from './AlerteSecurite';
-import { NativeInput } from './NativeDesign';
+import { NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface PaiementEnLigneModalProps {

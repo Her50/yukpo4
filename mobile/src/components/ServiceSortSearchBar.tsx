@@ -11,7 +11,7 @@ import {
     View,
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 export type SortOption = 'name' | 'date' | 'status' | 'created_at' | 'updated_at';

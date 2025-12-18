@@ -9,7 +9,7 @@ import {
     Text,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';

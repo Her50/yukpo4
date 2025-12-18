@@ -13,7 +13,7 @@ import {
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { modernColors } from '../theme/modernTheme';
 import { BezierCurve, Keyframe } from '../types/AdvancedTimeline';
-import { NativeButton } from './NativeDesign';
+import { NativeButton } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

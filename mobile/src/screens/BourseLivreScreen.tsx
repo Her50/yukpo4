@@ -17,7 +17,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeBadge, NativeButton } from '../components/NativeDesign';
+import { NativeBadge, NativeButton } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { apiGet } from '../services/api';
 import { BookRecommendationRequest, bourseLivreApi, PriceSuggestionRequest } from '../services/bourseLivreApi';

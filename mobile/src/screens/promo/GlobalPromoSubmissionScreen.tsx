@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import useMyGlobalPromos from '../../hooks/useMyGlobalPromos';
 import { modernColors } from '../../theme/modernTheme';

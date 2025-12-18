@@ -23,7 +23,7 @@ import {
     ServiceTeamMember,
     ServiceTeamRole
 } from '../types/serviceTeam';
-import { NativeButton, NativeCard } from './NativeDesign';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
 

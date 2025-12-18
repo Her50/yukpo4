@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Effect, effectLibraryService } from '../services/effectLibraryService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeInput } from './NativeDesign';
+import { NativeButton, NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 
 export type EffectCategory = 'transitions' | 'visual_effects' | 'animations' | 'special' | 'all';

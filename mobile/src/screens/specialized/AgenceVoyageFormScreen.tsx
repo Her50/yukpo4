@@ -13,7 +13,7 @@ import BusModelForm, { BusModel } from '../../components/bus/BusModelForm';
 import CompanySelector, { Company } from '../../components/CompanySelector';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import WeekDaysSelector from '../../components/WeekDaysSelector';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';

@@ -4,7 +4,7 @@
 import React from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 
 interface ServiceSkeletonProps {
     mode?: 'card' | 'list';

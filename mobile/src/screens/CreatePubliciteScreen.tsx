@@ -30,7 +30,7 @@ import { BidStrategySelector, BidStrategyType } from '../components/BidStrategyS
 import { BudgetSlider } from '../components/BudgetSlider';
 import { CampaignScheduler } from '../components/CampaignScheduler';
 import { CustomAudienceManager } from '../components/CustomAudienceManager';
-import { NativeButton, NativeCard, NativeInput } from '../components/NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import { PlacementSelector, PlacementType } from '../components/PlacementSelector';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';

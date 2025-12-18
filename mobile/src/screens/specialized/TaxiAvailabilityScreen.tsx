@@ -12,7 +12,7 @@ import {
     View
 } from 'react-native';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from '../../contexts/LocationContext';

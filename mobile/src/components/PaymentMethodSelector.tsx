@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { formatCardNumber, validateCardExpiry, validateCardNumber, validatePhoneNumber } from '../utils/paymentValidation';
-import { NativeInput } from './NativeDesign';
+import { NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface PaymentMethod {

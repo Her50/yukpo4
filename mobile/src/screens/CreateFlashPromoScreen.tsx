@@ -10,9 +10,9 @@ import {
   TouchableOpacity,
   FlatList,
 } from 'react-native';
-import { NativeButton } from '../components/NativeDesign';
-import { NativeInput } from '../components/NativeDesign';
-import { NativeCard } from '../components/NativeDesign';
+import { NativeButton } from '../components/SafeNativeDesign';
+import { NativeInput } from '../components/SafeNativeDesign';
+import { NativeCard } from '../components/SafeNativeDesign';
 import { apiPost, apiGet } from '../services/api';
 import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';

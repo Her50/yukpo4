@@ -13,7 +13,7 @@ import {
 import CovoituragePaymentFlow from '../../components/covoiturage/CovoituragePaymentFlow';
 import { InsuranceSelector } from '../../components/covoiturage/InsuranceSelector';
 import { QRCodeDisplay } from '../../components/covoiturage/QRCodeDisplay';
-import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWalletBalance } from '../../hooks/useWalletBalance';

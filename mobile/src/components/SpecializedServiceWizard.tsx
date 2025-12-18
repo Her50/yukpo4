@@ -15,7 +15,7 @@ import {
     View,
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard } from './NativeDesign';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 const { width } = Dimensions.get('window');

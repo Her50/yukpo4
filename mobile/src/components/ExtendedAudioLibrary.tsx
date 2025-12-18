@@ -18,7 +18,7 @@ import {
     extendedAudioLibraryService,
 } from '../services/extendedAudioLibraryService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeInput } from './NativeDesign';
+import { NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 
 interface ExtendedAudioLibraryProps {

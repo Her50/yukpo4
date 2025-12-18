@@ -19,7 +19,7 @@ import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliveryProofMedia } from '../../types/delivery';
 import SafeStorage from '../../utils/safeStorage';
-import { NativeCard } from '../NativeDesign';
+import { NativeCard } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
 import DeliveryProofVideoRecorder from './DeliveryProofVideoRecorder';
 

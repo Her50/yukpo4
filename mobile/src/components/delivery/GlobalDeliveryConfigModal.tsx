@@ -13,7 +13,7 @@ import {
 import * as Location from 'expo-location';
 import { apiGet, apiPost, deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeButton, NativeCard } from '../NativeDesign';
+import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import ModernGPSModal from '../ModernGPSModal';
 import SafeIcon from '../SafeIcon';
 

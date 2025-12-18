@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { captionsService, Subtitle } from '../services/captionsService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface AutoCaptionsPanelProps {

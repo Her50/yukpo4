@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeButton } from '../NativeDesign';
+import { NativeButton } from '../SafeNativeDesign';
 import ProgressWizard from './ProgressWizard';
 
 interface Step {

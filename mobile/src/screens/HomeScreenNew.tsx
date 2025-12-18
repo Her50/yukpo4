@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
-import { NativeGradient } from '../components/NativeDesign';
+import { NativeGradient } from '../components/SafeNativeDesign';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import { SafeIcon } from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';

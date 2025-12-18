@@ -12,7 +12,7 @@ import {
     View
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 const { width, height } = Dimensions.get('window');

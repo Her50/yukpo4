@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginHorizontal: 16,
         marginTop: 12,
-        marginBottom: 16,
+        marginBottom: 8, // ✅ AMÉLIORÉ: Réduit l'écart entre modeSelector et ChatInputMobile
         backgroundColor: '#F8FAFC',
         borderRadius: 12,
         padding: 4,
@@ -779,7 +779,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     modeButtonActive: {
-        backgroundColor: '#4B5563', // ✅ Changé: Couleur neutre moins foncée en harmonie avec #F3F4F6
+        backgroundColor: '#6366F1', // ✅ AMÉLIORÉ: Couleur indigo harmonieuse pour les boutons actifs
     },
     modeButtonText: {
         fontSize: 14,
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         borderRadius: 16,
         padding: 16,
-        marginTop: 8,
+        marginTop: 4, // ✅ AMÉLIORÉ: Réduit l'écart entre modeSelector et ChatInputMobile
         marginBottom: 12,
         // ✅ SUPPRIMÉ: Bordure pour un look plus propre
     },
@@ -897,7 +897,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     specializedServicesContainer: {
-        marginTop: 4,
+        marginTop: 20, // ✅ AMÉLIORÉ: Écart augmenté entre Promotions et Services spécialisés
         marginBottom: 0, // Réduit car déjà dans le conteneur foncé
     },
     specializedServicesTitle: {

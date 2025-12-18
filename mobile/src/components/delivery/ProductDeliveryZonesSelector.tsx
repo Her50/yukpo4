@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeButton } from '../NativeDesign';
+import { NativeButton } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
 // ✅ CORRIGÉ: Utiliser SafeStorage au lieu d'AsyncStorage directement
 import SafeStorage from '../../utils/safeStorage';

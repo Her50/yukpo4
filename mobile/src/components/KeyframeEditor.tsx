@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { EasingType, Keyframe } from '../types/AdvancedTimeline';
-import { NativeButton } from './NativeDesign';
+import { NativeButton } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

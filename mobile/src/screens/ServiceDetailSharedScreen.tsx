@@ -15,7 +15,7 @@ import {
   Text,
   View
 } from 'react-native';
-import { NativeButton } from '../components/NativeDesign';
+import { NativeButton } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';

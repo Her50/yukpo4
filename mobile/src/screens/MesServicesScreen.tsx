@@ -10,7 +10,7 @@ import { BreadcrumbItem, Breadcrumbs } from '../components/Breadcrumbs';
 import { BulkActionsBar } from '../components/BulkActionsBar';
 import GlobalDeliveryConfigModal from '../components/delivery/GlobalDeliveryConfigModal';
 import { ErrorBoundaryWithRetry } from '../components/ErrorBoundaryWithRetry';
-import { NativeButton } from '../components/NativeDesign';
+import { NativeButton } from '../components/SafeNativeDesign';
 import ProductGalleryModal from '../components/ProductGalleryModal';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';

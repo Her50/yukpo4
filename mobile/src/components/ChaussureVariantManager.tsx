@@ -2,7 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import React from 'react';
 import { Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
-import { NativeInput } from './NativeDesign';
+import { NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 import SelectModalitySelector from './SelectModalitySelector';
 

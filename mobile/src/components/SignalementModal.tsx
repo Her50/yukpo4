@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeInput } from './NativeDesign';
+import { NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface SignalementModalProps {

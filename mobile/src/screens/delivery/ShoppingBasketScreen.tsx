@@ -6,7 +6,7 @@ import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble
 import ShoppingBasketCard from '../../components/delivery/ShoppingBasketCard';
 import ShoppingProductPicker from '../../components/delivery/ShoppingProductPicker';
 import WalletAlertBanner from '../../components/delivery/WalletAlertBanner';
-import { NativeButton } from '../../components/NativeDesign';
+import { NativeButton } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';

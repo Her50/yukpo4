@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { audioSyncService, Beat, SyncPoint } from '../services/audioSyncService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface AudioSyncPanelProps {

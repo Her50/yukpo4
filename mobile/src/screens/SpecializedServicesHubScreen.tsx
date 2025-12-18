@@ -13,7 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../components/NativeDesign';
+import { NativeButton, NativeCard } from '../components/SafeNativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import ServicesStatistics from '../components/ServicesStatistics';
 import { useAuth } from '../contexts/AuthContext';

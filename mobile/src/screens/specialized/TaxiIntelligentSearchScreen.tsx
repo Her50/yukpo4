@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { CompatibilityScoreBadge } from '../../components/covoiturage/CompatibilityScoreBadge';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useLocation } from '../../contexts/LocationContext';
 import { apiPost } from '../../services/api';

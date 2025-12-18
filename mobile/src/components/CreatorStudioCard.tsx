@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 import ModernGPSModal from './ModernGPSModal';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 import { useCreatorStudio } from '../hooks/useCreatorStudio';

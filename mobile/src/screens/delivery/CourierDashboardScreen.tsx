@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import CourierStatsChart from '../../components/delivery/CourierStatsChart';
 import SkeletonDeliveryCard from '../../components/delivery/SkeletonDeliveryCard';
-import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';

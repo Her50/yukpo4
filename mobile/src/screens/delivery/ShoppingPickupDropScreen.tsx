@@ -4,7 +4,7 @@ import { Alert, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-na
 
 import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
 import ModernGPSModal from '../../components/ModernGPSModal';
-import { NativeButton, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';
 import { modernColors } from '../../theme/modernTheme';

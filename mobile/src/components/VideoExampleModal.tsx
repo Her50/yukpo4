@@ -4,7 +4,7 @@ import { ActivityIndicator, Dimensions, FlatList, Image, Modal, StyleSheet, Text
 import { API_BASE_URL } from '../config/api.config';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import { NativeButton, NativeCard } from './NativeDesign';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

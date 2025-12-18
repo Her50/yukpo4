@@ -1,6 +1,6 @@
 // ✅ NOUVEAU 2025-11-01 : Contrôleur pour l'ajout incrémental de produits
 // Ce contrôleur permet d'ajouter un nouveau produit à un service existant
-// sans réenvoyer tout le service, avec un coût fixe de 3000 FCFA
+// sans réenvoyer tout le service, avec un coût fixe de 2000 FCFA
 
 use crate::core::types::{AppError, AppResult};
 use crate::state::AppState;
@@ -64,9 +64,9 @@ pub async fn add_product_to_service(
         return Err(AppError::Unauthorized("Vous n'êtes pas le propriétaire de ce service".to_string()));
     }
     
-    // ✅ Coût fixe : 3000 FCFA pour ajouter un produit dupliqué
+    // ✅ Coût fixe : 2000 FCFA pour ajouter un produit (cohérent avec creer_service.rs)
     mod service_costs {
-        pub const COST_NEW_PRODUCT_DUPLICATE_XAF: i64 = 3000;
+        pub const COST_NEW_PRODUCT_DUPLICATE_XAF: i64 = 2000;
     }
     let cout_ajout = service_costs::COST_NEW_PRODUCT_DUPLICATE_XAF;
     

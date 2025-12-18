@@ -4,7 +4,7 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { NativeButton, NativeCard, NativeInput } from '../../components/NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { CompatibilityScoreBadge } from '../../components/covoiturage/CompatibilityScoreBadge';
 import { IntelligentMatchingFilters, MatchingFilters } from '../../components/covoiturage/IntelligentMatchingFilters';
 import { apiPost } from '../../services/api';

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import ChatModalMobile from '../../components/ChatModalMobile';
 import CovoiturageDriverProfile from '../../components/covoiturage/CovoiturageDriverProfile';
-import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../services/api';

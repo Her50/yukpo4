@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Highlight, SceneCut, videoAnalysisService } from '../services/videoAnalysisService';
 import { modernColors } from '../theme/modernTheme';
-import { NativeCard } from './NativeDesign';
+import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
 interface AutoCutPanelProps {

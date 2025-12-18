@@ -20,7 +20,7 @@ import {
 import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
 import LocationSelector from '../components/LocationSelector';
 import MediaUploadManager from '../components/MediaUploadManager';
-import { NativeButton, NativeCard, NativeInput } from '../components/NativeDesign';
+import { NativeButton, NativeCard, NativeInput } from '../components/SafeNativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import PriceVariantSelector from '../components/PriceVariantSelector';
 import SafeIcon from '../components/SafeIcon';

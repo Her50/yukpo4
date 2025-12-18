@@ -6,7 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
-import { NativeCard } from '../NativeDesign';
+import { NativeCard } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
 
 interface SuggestedProduct {

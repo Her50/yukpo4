@@ -33,34 +33,6 @@ import { SkeletonCard } from '../../components/delivery/SkeletonLoader';
 import StatusIndicator from '../../components/delivery/StatusIndicator';
 import TimelineStepper from '../../components/delivery/TimelineStepper';
 import ToastNotification from '../../components/delivery/ToastNotification';
-// ✅ CORRIGÉ: Import explicite pour éviter les problèmes d'export default
-// Import direct des composants individuels pour éviter les problèmes d'export/import
-import { NativeBadge as NativeBadgeImport, NativeButton as NativeButtonImport } from '../../components/NativeDesign';
-
-// ✅ CRITIQUE: Créer des composants de fallback sécurisés
-const FallbackButton: React.FC<{ title: string; onPress: () => void; [key: string]: any }> = ({ title, onPress, ...props }) => (
-    <TouchableOpacity onPress={onPress} style={{ padding: 12, backgroundColor: modernColors.primary, borderRadius: 8 }} {...props}>
-        <Text style={{ color: '#FFF', fontWeight: '600', textAlign: 'center' }}>{title}</Text>
-    </TouchableOpacity>
-);
-
-const FallbackBadge: React.FC<{ text: string; [key: string]: any }> = ({ text, ...props }) => (
-    <View style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: modernColors.textSecondary + '20', borderRadius: 12, alignSelf: 'flex-start' }} {...props}>
-        <Text style={{ fontSize: 12, fontWeight: '600', color: modernColors.textSecondary }}>{text}</Text>
-    </View>
-);
-
-// ✅ CRITIQUE: Utiliser les composants importés ou les fallbacks
-const NativeButton = (typeof NativeButtonImport === 'function' ? NativeButtonImport : FallbackButton) as React.FC<any>;
-const NativeBadge = (typeof NativeBadgeImport === 'function' ? NativeBadgeImport : FallbackBadge) as React.FC<any>;
-
-// ✅ CRITIQUE: Vérifier que les composants sont bien des composants React valides au runtime
-if (typeof NativeButtonImport !== 'function') {
-    console.error('[DeliveryShoppingTrackingScreen] ❌ NativeButton is not a valid React component, using fallback:', typeof NativeButtonImport);
-}
-if (typeof NativeBadgeImport !== 'function') {
-    console.error('[DeliveryShoppingTrackingScreen] ❌ NativeBadge is not a valid React component, using fallback:', typeof NativeBadgeImport);
-}
 import { SafeIcon } from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
@@ -70,6 +42,9 @@ import { useToast } from '../../hooks/useToast';
 import { deliveryApi, shoppingApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary, ParcelRejectionReason, ShoppingBasketItem } from '../../types/delivery';
+
+// ✅ CORRIGÉ: Utiliser SafeNativeDesign pour garantir des composants valides
+import { NativeButton, NativeBadge } from '../../components/SafeNativeDesign';
 
 type TrackingTab = 'timeline' | 'basket' | 'courier';
 

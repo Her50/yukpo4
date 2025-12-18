@@ -4,7 +4,7 @@ import { Alert, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-na
 
 import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
 import ShoppingBasketCard from '../../components/delivery/ShoppingBasketCard';
-import { NativeButton } from '../../components/NativeDesign';
+import { NativeButton } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';

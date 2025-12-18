@@ -19,7 +19,7 @@ import {
     ExportSettings,
     FORMAT_CODECS,
 } from '../types/ExportSettings';
-import { NativeButton } from './NativeDesign';
+import { NativeButton } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 
 interface ExportSettingsPanelProps {

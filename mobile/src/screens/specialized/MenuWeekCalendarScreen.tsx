@@ -11,7 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeCard } from '../../components/NativeDesign';
+import { NativeCard } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { DailyMeal, WeeklyMenu } from '../../services/menuPlanningService';
 import { modernColors } from '../../theme/modernTheme';
