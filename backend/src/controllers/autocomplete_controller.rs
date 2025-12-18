@@ -494,14 +494,53 @@ pub async fn search_product_suggestions(
     }
 
     // ✅ UTILISER LE SERVICE AVANCÉ (priorité chosen_location + GPS)
-    match autocomplete_search_service::search_by_autocomplete_vector(
-        pool,
-        &combination_vector,
-        user_location,
-        limit,
-    )
-    .await
-    {
+    // ✅ CORRIGÉ 2025-12-18: Retry avec backoff exponentiel pour gérer les erreurs TLS
+    let mut suggestions_result = Err(crate::core::types::AppError::Internal("Initial attempt".to_string()));
+    let max_retries = 3;
+    
+    for attempt in 1..=max_retries {
+        suggestions_result = autocomplete_search_service::search_by_autocomplete_vector(
+            pool,
+            &combination_vector,
+            user_location,
+            limit,
+        )
+        .await;
+        
+        match &suggestions_result {
+            Ok(_) => break, // Succès, sortir de la boucle
+            Err(e) => {
+                let error_msg = e.to_string();
+                // Vérifier si c'est une erreur TLS/DB qui mérite un retry
+                if error_msg.contains("TLS")
+                    || error_msg.contains("close_notify")
+                    || error_msg.contains("Connection reset")
+                    || error_msg.contains("peer closed")
+                    || error_msg.contains("communicating with database")
+                {
+                    if attempt < max_retries {
+                        let delay_ms = 100 * attempt; // Backoff exponentiel: 100ms, 200ms, 300ms
+                        log::warn!(
+                            "⚠️ Erreur DB détectée (tentative {}/{}), retry dans {}ms: {}",
+                            attempt,
+                            max_retries,
+                            delay_ms,
+                            error_msg
+                        );
+                        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+                        continue;
+                    } else {
+                        log::error!("❌ Erreur DB après {} tentatives: {}", max_retries, error_msg);
+                    }
+                } else {
+                    // Erreur non-TLS, ne pas retry
+                    break;
+                }
+            }
+        }
+    }
+    
+    match suggestions_result {
         Ok(suggestions) => {
             info!(
                 "✅ {} suggestions avec priorité chosen_location + GPS",
@@ -519,10 +558,11 @@ pub async fn search_product_suggestions(
             })))
         }
         Err(e) => {
-            eprintln!("❌ Erreur suggestions CLIENT: {:?}", e);
+            let error_msg = format!("Erreur recherche autocomplete: {}", e);
+            eprintln!("❌ Erreur suggestions CLIENT: {}", error_msg);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Erreur suggestions: {}", e),
+                error_msg,
             ))
         }
     }

@@ -36,6 +36,11 @@ export const NativeCard: React.FC<NativeCardProps> = ({
             return null;
         }
 
+        // ✅ CRITIQUE: Gérer les chaînes vides explicitement
+        if (typeof children === 'string' && children === '') {
+            return null;
+        }
+
         // ✅ CRITIQUE: Si children est une primitive, la wrapper directement
         if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
             return <Text>{String(children)}</Text>;
@@ -45,6 +50,10 @@ export const NativeCard: React.FC<NativeCardProps> = ({
         if (Array.isArray(children)) {
             const safeArray = children
                 .map((child, idx) => {
+                    // ✅ CRITIQUE: Gérer les chaînes vides
+                    if (typeof child === 'string' && child === '') {
+                        return null;
+                    }
                     if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
                         return <Text key={idx}>{String(child)}</Text>;
                     }
@@ -61,8 +70,12 @@ export const NativeCard: React.FC<NativeCardProps> = ({
             return safeArray.length > 0 ? safeArray : null;
         }
 
-        // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
-        const mapped = React.Children.map(children, (child, idx) => {
+        // ✅ CRITIQUE: Fonction récursive pour traiter les enfants de manière sécurisée
+        const processChild = (child: any, idx: number | string): React.ReactNode => {
+            // Si c'est une chaîne vide, retourner null
+            if (typeof child === 'string' && child === '') {
+                return null;
+            }
             // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
             if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
                 return <Text key={idx}>{String(child)}</Text>;
@@ -73,18 +86,8 @@ export const NativeCard: React.FC<NativeCardProps> = ({
             }
             // Si c'est un tableau, le traiter récursivement
             if (Array.isArray(child)) {
-                return child.map((item, itemIndex) => {
-                    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
-                        return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                    }
-                    if (item == null) {
-                        return null;
-                    }
-                    if (React.isValidElement(item)) {
-                        return item;
-                    }
-                    return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                });
+                const processed = child.map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`)).filter(item => item != null);
+                return processed.length > 0 ? processed : null;
             }
             // Si c'est un élément React valide, le retourner tel quel
             if (React.isValidElement(child)) {
@@ -92,19 +95,18 @@ export const NativeCard: React.FC<NativeCardProps> = ({
             }
             // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
             return <Text key={idx}>{String(child)}</Text>;
-        });
+        };
+
+        // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
+        const mapped = React.Children.map(children, (child, idx) => processChild(child, idx));
 
         // ✅ CRITIQUE: Filtrer les null/undefined du résultat
         if (mapped == null) {
             return null;
         }
 
-        if (Array.isArray(mapped)) {
-            const filtered = mapped.filter(child => child != null);
-            return filtered.length > 0 ? filtered : null;
-        }
-
-        return mapped;
+        const filtered = Array.isArray(mapped) ? mapped.filter(child => child != null) : (mapped != null ? [mapped] : []);
+        return filtered.length > 0 ? filtered : null;
     })();
 
     return (
@@ -195,6 +197,11 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
             return null;
         }
 
+        // ✅ CRITIQUE: Gérer les chaînes vides explicitement
+        if (typeof children === 'string' && children === '') {
+            return null;
+        }
+
         // ✅ CRITIQUE: Si children est une primitive, la wrapper directement
         if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
             return <Text>{String(children)}</Text>;
@@ -204,6 +211,10 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
         if (Array.isArray(children)) {
             const safeArray = children
                 .map((child, idx) => {
+                    // ✅ CRITIQUE: Gérer les chaînes vides
+                    if (typeof child === 'string' && child === '') {
+                        return null;
+                    }
                     if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
                         return <Text key={idx}>{String(child)}</Text>;
                     }
@@ -220,8 +231,12 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
             return safeArray.length > 0 ? safeArray : null;
         }
 
-        // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
-        const mapped = React.Children.map(children, (child, idx) => {
+        // ✅ CRITIQUE: Fonction récursive pour traiter les enfants de manière sécurisée
+        const processChild = (child: any, idx: number | string): React.ReactNode => {
+            // Si c'est une chaîne vide, retourner null
+            if (typeof child === 'string' && child === '') {
+                return null;
+            }
             // Si c'est une valeur primitive (string, number, boolean), l'envelopper dans un Text
             if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
                 return <Text key={idx}>{String(child)}</Text>;
@@ -232,18 +247,8 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
             }
             // Si c'est un tableau, le traiter récursivement
             if (Array.isArray(child)) {
-                return child.map((item, itemIndex) => {
-                    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
-                        return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                    }
-                    if (item == null) {
-                        return null;
-                    }
-                    if (React.isValidElement(item)) {
-                        return item;
-                    }
-                    return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                });
+                const processed = child.map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`)).filter(item => item != null);
+                return processed.length > 0 ? processed : null;
             }
             // Si c'est un élément React valide, le retourner tel quel
             if (React.isValidElement(child)) {
@@ -251,19 +256,18 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
             }
             // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
             return <Text key={idx}>{String(child)}</Text>;
-        });
+        };
+
+        // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
+        const mapped = React.Children.map(children, (child, idx) => processChild(child, idx));
 
         // ✅ CRITIQUE: Filtrer les null/undefined du résultat
         if (mapped == null) {
             return null;
         }
 
-        if (Array.isArray(mapped)) {
-            const filtered = mapped.filter(child => child != null);
-            return filtered.length > 0 ? filtered : null;
-        }
-
-        return mapped;
+        const filtered = Array.isArray(mapped) ? mapped.filter(child => child != null) : (mapped != null ? [mapped] : []);
+        return filtered.length > 0 ? filtered : null;
     })();
 
     return (

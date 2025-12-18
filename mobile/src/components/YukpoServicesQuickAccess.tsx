@@ -50,7 +50,7 @@ const SERVICES_DATA: Service[] = [
     { id: 'pharmacie', title: 'Pharmacie', icon: 'pill', gradient: ['#10B981', '#34D399'], description: 'Pharmacies de garde', comingSoon: false },
     { id: 'hopital', title: 'Hôpital', icon: 'hospital', gradient: ['#EF4444', '#F87171'], description: 'Hôpitaux, cliniques', comingSoon: false },
     { id: 'laboratoire', title: 'Laboratoire', icon: 'microscope', gradient: ['#3B82F6', '#60A5FA'], description: 'Analyses médicales', comingSoon: false },
-    { id: 'banque_sang', title: 'Banque de Sang', icon: 'droplet', gradient: ['#DC2626', '#F87171'], description: 'Don de sang', comingSoon: false },
+    { id: 'banque_sang', title: 'Transfusion', icon: 'droplet', gradient: ['#DC2626', '#F87171'], description: 'Don de sang', comingSoon: false },
     // Transport
     { id: 'agence_voyage', title: 'Agence Voyage', icon: 'bus', gradient: ['#F59E0B', '#FBBF24'], description: 'Billets, réservations', comingSoon: false },
     { id: 'covoiturage', title: 'Covoiturage', icon: 'users', gradient: ['#8B5CF6', '#A78BFA'], description: 'Partage de trajet', comingSoon: false },
@@ -175,7 +175,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                                 disabled={service.comingSoon}
                             >
                                 <View style={[styles.serviceMiniIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
-                                    <SafeIcon name={service.icon} size={18} color={service.gradient[0]} />
+                                    <SafeIcon name={service.icon} size={14} color={service.gradient[0]} />
                                     {service.comingSoon && (
                                         <View style={styles.badgeMini}>
                                             <Text style={styles.badgeMiniText}>Bientôt</Text>
@@ -538,36 +538,37 @@ const styles = StyleSheet.create({
         zIndex: 10, // ✅ Au-dessus de la grille
     },
     servicesBarContent: {
-        paddingHorizontal: 8,
-        gap: 8,
+        paddingHorizontal: 6, // ✅ RÉDUIT: De 8 à 6 pour optimiser l'espace
+        gap: 6, // ✅ RÉDUIT: De 8 à 6 pour moins d'espace entre les cartes
     },
     serviceMiniCard: {
         alignItems: 'center',
         justifyContent: 'center',
-        minWidth: 70,
-        maxWidth: 90,
-        paddingVertical: 8,
-        paddingHorizontal: 10,
+        minWidth: 60, // ✅ RÉDUIT: De 70 à 60 pour afficher 4 services sans scroll
+        maxWidth: 75, // ✅ RÉDUIT: De 90 à 75
+        paddingVertical: 6, // ✅ RÉDUIT: De 8 à 6
+        paddingHorizontal: 8, // ✅ RÉDUIT: De 10 à 8
         backgroundColor: '#F9FAFB',
-        borderRadius: 10,
+        borderRadius: 8, // ✅ RÉDUIT: De 10 à 8
         borderWidth: 1,
         borderColor: '#E5E7EB',
-        marginRight: 8,
+        marginRight: 6, // ✅ RÉDUIT: De 8 à 6 pour moins d'espace entre les cartes
     },
     serviceMiniIconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 32, // ✅ RÉDUIT: De 40 à 32 pour miniaturiser
+        height: 32, // ✅ RÉDUIT: De 40 à 32
+        borderRadius: 16, // ✅ RÉDUIT: De 20 à 16
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 6,
+        marginBottom: 4, // ✅ RÉDUIT: De 6 à 4
         position: 'relative',
     },
     serviceMiniTitle: {
-        fontSize: 10,
+        fontSize: 9, // ✅ RÉDUIT: De 10 à 9 pour que le texte soit visible
         fontWeight: '600',
         color: '#111827',
         textAlign: 'center',
+        lineHeight: 11, // ✅ AJOUTÉ: Hauteur de ligne pour éviter le débordement
     },
     badgeMini: {
         position: 'absolute',

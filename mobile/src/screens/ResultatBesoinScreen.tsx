@@ -5274,7 +5274,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // Composant ServiceResultCard amélioré
     // Composant de rendu pour chaque produit
     // ✅ RÉÉCRITURE COMPLÈTE 2025-11-01 : Composant de rendu de carte produit
-    // Simplifié et sécurisé pour éliminer toute erreur silencieuse
+    // ✅ OPTIMISATION SCROLL: Simplifié et sécurisé pour éliminer toute erreur silencieuse
     const ProductCardComponent = React.memo(({ product }: { product: any }) => {
         // ✅ CORRIGÉ: Validation plus permissive - accepter si _serviceId existe même sans _service
         if (!product) {
@@ -5395,7 +5395,75 @@ const ResultatBesoinScreen: React.FC = () => {
                 )}
             </View>
         );
+    }, (prevProps, nextProps) => {
+        // ✅ OPTIMISATION: Comparaison personnalisée pour éviter les re-renders inutiles
+        return prevProps.product?.id === nextProps.product?.id &&
+               prevProps.product?._serviceId === nextProps.product?._serviceId;
     });
+
+    // ✅ OPTIMISATION SCROLL: keyExtractor mémorisé pour éviter les recalculs
+    const keyExtractorMemo = useCallback((item: any, index: number) => {
+        // ✅ Éviter normalizeProduct si possible - utiliser directement les propriétés
+        const productId = item?.id || item?._id || item?.product_id;
+        const productNom = item?.nom || item?.name || 'unnamed';
+        return `product-${productId || index}-${productNom}-${index}`;
+    }, []);
+
+    // ✅ OPTIMISATION SCROLL: renderItem mémorisé pour éviter les re-renders
+    const renderItemMemo = useCallback(({ item, index }: { item: any; index: number }) => {
+        try {
+            const product = normalizeProduct(item);
+
+            // ✅ CORRIGÉ: Validation plus permissive - accepter si _serviceId existe même sans _service
+            if (!product) {
+                console.warn(`[ResultatBesoin] Produit ${index} est null/undefined, ignoré`);
+                return null;
+            }
+
+            // ✅ CORRIGÉ: Accepter le produit s'il a au moins _serviceId ou _service
+            if (!product._service && !product._serviceId) {
+                console.warn(`[ResultatBesoin] Produit ${index} n'a ni _service ni _serviceId, ignoré:`, {
+                    productId: product.id,
+                    productNom: product.nom,
+                    hasService: !!product._service,
+                    hasServiceId: !!product._serviceId
+                });
+                return null;
+            }
+
+            return (
+                <View style={styles.productCardWrapper}>
+                    <ProductCardErrorBoundary
+                        productId={product.id || `product-${index}`}
+                        onError={(error) => {
+                            console.error(`[ProductCard] Erreur pour produit ${product.id || index}:`, error);
+                        }}
+                    >
+                        <ProductCardComponent product={product} />
+                    </ProductCardErrorBoundary>
+                </View>
+            );
+        } catch (error) {
+            console.error(`[ResultatBesoin] Erreur renderItem index ${index}:`, error);
+            return null;
+        }
+    }, [ProductCardComponent]);
+
+    // ✅ OPTIMISATION SCROLL: getItemLayout pour un scroll plus fluide
+    // Estimation de la hauteur d'une carte produit (ajuster selon votre design)
+    const ESTIMATED_ITEM_HEIGHT = 400; // Hauteur approximative d'une ProductCard
+    const ITEM_SEPARATOR_HEIGHT = 12; // Hauteur du séparateur
+    
+    const getItemLayoutMemo = useCallback((data: any, index: number) => {
+        return {
+            length: ESTIMATED_ITEM_HEIGHT + ITEM_SEPARATOR_HEIGHT,
+            offset: (ESTIMATED_ITEM_HEIGHT + ITEM_SEPARATOR_HEIGHT) * index,
+            index,
+        };
+    }, []);
+
+    // ✅ OPTIMISATION SCROLL: ItemSeparatorComponent mémorisé
+    const ItemSeparatorMemo = useCallback(() => <View style={{ height: ITEM_SEPARATOR_HEIGHT }} />, []);
 
     // Composant de rendu pour chaque service
     const ServiceCardComponent = ({ service }: { service: Service }) => {
@@ -5859,56 +5927,17 @@ const ResultatBesoinScreen: React.FC = () => {
                         return (
                             <FlatList
                                 data={filteredProducts}
-                                keyExtractor={(item, index) => {
-                                    const product = normalizeProduct(item);
-                                    return `product-${product.id || index}-${product.nom || 'unnamed'}-${index}`;
-                                }}
-                                renderItem={({ item, index }) => {
-                                    try {
-                                        const product = normalizeProduct(item);
-
-                                        // ✅ CORRIGÉ: Validation plus permissive - accepter si _serviceId existe même sans _service
-                                        // Certains produits peuvent avoir _serviceId mais pas _service (si le service n'a pas été chargé)
-                                        if (!product) {
-                                            console.warn(`[ResultatBesoin] Produit ${index} est null/undefined, ignoré`);
-                                            return null;
-                                        }
-
-                                        // ✅ CORRIGÉ: Accepter le produit s'il a au moins _serviceId ou _service
-                                        // Si _service manque mais _serviceId existe, ProductCardComponent peut le récupérer
-                                        if (!product._service && !product._serviceId) {
-                                            console.warn(`[ResultatBesoin] Produit ${index} n'a ni _service ni _serviceId, ignoré:`, {
-                                                productId: product.id,
-                                                productNom: product.nom,
-                                                hasService: !!product._service,
-                                                hasServiceId: !!product._serviceId
-                                            });
-                                            return null;
-                                        }
-
-                                        return (
-                                            <View style={styles.productCardWrapper}>
-                                                <ProductCardErrorBoundary
-                                                    productId={product.id || `product-${index}`}
-                                                    onError={(error) => {
-                                                        console.error(`[ProductCard] Erreur pour produit ${product.id || index}:`, error);
-                                                    }}
-                                                >
-                                                    <ProductCardComponent product={product} />
-                                                </ProductCardErrorBoundary>
-                                            </View>
-                                        );
-                                    } catch (error) {
-                                        console.error(`[ResultatBesoin] Erreur renderItem index ${index}:`, error);
-                                        return null;
-                                    }
-                                }}
-                                // ✅ Optimisations performance
-                                windowSize={5}
-                                maxToRenderPerBatch={10}
-                                initialNumToRender={5}
+                                keyExtractor={keyExtractorMemo}
+                                renderItem={renderItemMemo}
+                                // ✅ OPTIMISATIONS PERFORMANCE: Améliorations pour scroll fluide
+                                windowSize={10} // ✅ Augmenté pour meilleure fluidité
+                                maxToRenderPerBatch={8} // ✅ Réduit pour moins de charge initiale
+                                initialNumToRender={8} // ✅ Augmenté pour meilleure UX initiale
                                 removeClippedSubviews={true}
-                                updateCellsBatchingPeriod={50}
+                                updateCellsBatchingPeriod={100} // ✅ Augmenté pour moins de re-renders
+                                getItemLayout={getItemLayoutMemo} // ✅ NOUVEAU: Optimise le scroll
+                                maintainVisibleContentPosition={null} // ✅ Évite les sauts pendant le scroll
+                                legacyImplementation={false} // ✅ Utilise la nouvelle implémentation optimisée
                                 // ✅ Pull to refresh
                                 refreshControl={
                                     <RefreshControl
@@ -5918,38 +5947,8 @@ const ResultatBesoinScreen: React.FC = () => {
                                         tintColor={categoryStyle.primaryColor || '#6366F1'}
                                     />
                                 }
-                                // ✅ Séparateur entre cartes (pas de marginBottom dans productCardWrapper)
-                                ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-                                // ✅ Footer
-                                ListFooterComponent={
-                                    <View style={styles.footerContainer}>
-                                        <View style={styles.footerCard}>
-                                            <View style={styles.cardContent}>
-                                                <Text style={styles.footerTitle}>Comment procéder ?</Text>
-                                                <View style={styles.stepsContainer}>
-                                                    <View style={styles.stepItem}>
-                                                        <View style={styles.stepNumber}>
-                                                            <Text style={styles.stepNumberText}>1</Text>
-                                                        </View>
-                                                        <Text style={styles.stepText}>Choisissez le service qui vous convient</Text>
-                                                    </View>
-                                                    <View style={styles.stepItem}>
-                                                        <View style={styles.stepNumber}>
-                                                            <Text style={styles.stepNumberText}>2</Text>
-                                                        </View>
-                                                        <Text style={styles.stepText}>Contactez le prestataire via le bouton</Text>
-                                                    </View>
-                                                    <View style={styles.stepItem}>
-                                                        <View style={styles.stepNumber}>
-                                                            <Text style={styles.stepNumberText}>3</Text>
-                                                        </View>
-                                                        <Text style={styles.stepText}>Échangez et finalisez votre projet</Text>
-                                                    </View>
-                                                </View>
-                                            </View>
-                                        </View>
-                                    </View>
-                                }
+                                // ✅ OPTIMISATION SCROLL: Séparateur mémorisé
+                                ItemSeparatorComponent={ItemSeparatorMemo}
                                 contentContainerStyle={styles.flatListContent}
                                 showsVerticalScrollIndicator={false}
                             />
@@ -6568,48 +6567,6 @@ const styles = StyleSheet.create({
     },
     actionButtonLabel: {
         fontSize: 12,
-    },
-    footerContainer: {
-        padding: 16,
-    },
-    footerCard: {
-        backgroundColor: '#E3F2FD',
-        borderColor: theme.colors.primary,
-        borderWidth: 1,
-    },
-    footerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 16,
-        color: theme.colors.primary,
-    },
-    stepsContainer: {
-        flexDirection: 'column',
-    },
-    stepItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    stepNumber: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: theme.colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-    },
-    stepNumberText: {
-        color: 'white',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    stepText: {
-        flex: 1,
-        fontSize: 14,
-        color: theme.colors.primary,
     },
     // Styles pour les filtres
     filtersContainer: {

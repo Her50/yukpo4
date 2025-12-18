@@ -1610,69 +1610,33 @@ const ProductCard: React.FC<ProductCardProps> = ({
     ]).start();
   }, [pressAnim]);
 
-  // ✅ CORRIGÉ: Toujours ouvrir le modal - amélioration robuste
+  // ✅ RECONSTRUIT: Fonction simplifiée et robuste pour ouvrir le chat
   const handleChatPress = useCallback(() => {
+    // ✅ Protection: Vérifier que le composant est monté
+    if (!isMountedRef.current) {
+      console.warn('[ProductCard] Composant démonté, ignore handleChatPress');
+      return;
+    }
+
     try {
-      // ✅ PREMIUM: Haptic feedback avec gestion d'erreur
+      // ✅ Haptic feedback avec gestion d'erreur
       try {
         triggerHaptic('medium');
       } catch (hapticError) {
         console.warn('[ProductCard] Erreur triggerHaptic:', hapticError);
-        // Continuer même si haptic échoue
       }
 
-      // Appeler onChatPress si fourni (pour compatibilité)
-      if (onChatPress) {
+      // ✅ Appeler onChatPress si fourni (pour compatibilité)
+      if (typeof onChatPress === 'function') {
         try {
           onChatPress();
         } catch (onChatError) {
           console.warn('[ProductCard] Erreur onChatPress:', onChatError);
-          // Continuer même si onChatPress échoue
         }
       }
 
-      // ✅ CORRIGÉ: Vérifications strictes avant d'ouvrir le chat
-      // Utiliser serviceId déjà calculé et validé, sinon essayer les autres sources
-      const resolvedServiceId = isValidServiceId && serviceId
-        ? serviceId
-        : (service?.id ||
-          product?.service_id ||
-          product?.serviceId ||
-          null);
-
-      // ✅ CORRIGÉ: Convertir en nombre si nécessaire avec validation stricte
-      let numericServiceId: number | null = null;
-      if (resolvedServiceId !== null && resolvedServiceId !== undefined) {
-        if (typeof resolvedServiceId === 'number') {
-          numericServiceId = isNaN(resolvedServiceId) || resolvedServiceId <= 0 ? null : resolvedServiceId;
-        } else if (typeof resolvedServiceId === 'string') {
-          const parsed = parseInt(resolvedServiceId, 10);
-          numericServiceId = isNaN(parsed) || parsed <= 0 ? null : parsed;
-        }
-      }
-
-      // Essayer de récupérer prestataireUserId de plusieurs sources
-      const resolvedPrestataireUserId =
-        prestataireUserId ||
-        prestataire?.user_id ||
-        product?.prestataire?.user_id ||
-        service?.user_id ||
-        service?.data?.user_id ||
-        null;
-
-      // ✅ CORRIGÉ: Convertir en nombre si nécessaire avec validation stricte
-      let numericPrestataireUserId: number | null = null;
-      if (resolvedPrestataireUserId !== null && resolvedPrestataireUserId !== undefined) {
-        if (typeof resolvedPrestataireUserId === 'number') {
-          numericPrestataireUserId = isNaN(resolvedPrestataireUserId) || resolvedPrestataireUserId <= 0 ? null : resolvedPrestataireUserId;
-        } else if (typeof resolvedPrestataireUserId === 'string') {
-          const parsed = parseInt(resolvedPrestataireUserId, 10);
-          numericPrestataireUserId = isNaN(parsed) || parsed <= 0 ? null : parsed;
-        }
-      }
-
-      // ✅ CORRIGÉ: Vérifier que serviceId est valide (doit être un nombre > 0)
-      if (!numericServiceId || numericServiceId <= 0) {
+      // ✅ Utiliser serviceId déjà calculé et validé
+      if (!isValidServiceId || !serviceId || serviceId <= 0) {
         Alert.alert(
           'Information manquante',
           'Impossible d\'ouvrir le chat : l\'identifiant du service est invalide.'
@@ -1680,7 +1644,26 @@ const ProductCard: React.FC<ProductCardProps> = ({
         return;
       }
 
-      // ✅ CORRIGÉ: Vérifier que prestataireUserId est valide (doit être un nombre > 0)
+      // ✅ Récupérer prestataireUserId de manière sécurisée
+      const resolvedPrestataireUserId = prestataireUserId ||
+        prestataire?.user_id ||
+        product?.prestataire?.user_id ||
+        service?.user_id ||
+        service?.data?.user_id ||
+        null;
+
+      // ✅ Convertir en nombre avec validation stricte
+      let numericPrestataireUserId: number | null = null;
+      if (resolvedPrestataireUserId !== null && resolvedPrestataireUserId !== undefined) {
+        if (typeof resolvedPrestataireUserId === 'number') {
+          numericPrestataireUserId = (isNaN(resolvedPrestataireUserId) || resolvedPrestataireUserId <= 0) ? null : resolvedPrestataireUserId;
+        } else if (typeof resolvedPrestataireUserId === 'string') {
+          const parsed = parseInt(resolvedPrestataireUserId, 10);
+          numericPrestataireUserId = (isNaN(parsed) || parsed <= 0) ? null : parsed;
+        }
+      }
+
+      // ✅ Vérifier que prestataireUserId est valide
       if (!numericPrestataireUserId || numericPrestataireUserId <= 0) {
         Alert.alert(
           'Information manquante',
@@ -1689,7 +1672,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         return;
       }
 
-      // ✅ CORRIGÉ: Vérifier que les setters sont disponibles avant de les appeler
+      // ✅ Vérifier que les setters sont disponibles
       if (typeof setChatContext !== 'function' || typeof setShowChatModal !== 'function') {
         console.error('[ProductCard] Setters non disponibles');
         Alert.alert(
@@ -1699,7 +1682,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         return;
       }
 
-      // Toujours ouvrir le modal local avec les informations disponibles
+      // ✅ Ouvrir le modal avec les informations validées
       setChatContext({
         type: 'service',
         targetUserId: numericPrestataireUserId,
@@ -1710,7 +1693,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
       setShowChatModal(true);
     } catch (error) {
       console.error('[ProductCard] Erreur handleChatPress:', error);
-      // ✅ CORRIGÉ: Afficher un message d'erreur plus informatif
       const errorMessage = error instanceof Error ? error.message : String(error);
       Alert.alert(
         'Erreur',
@@ -1970,10 +1952,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
-  // ✅ NOUVEAU : Handler pour contacter un utilisateur en privé
+  // ✅ RECONSTRUIT: Handler robuste pour contacter un utilisateur en privé
   const handleContactUser = async (userId: number, userName: string, userAvatar?: string | null) => {
+    // ✅ Vérifier que le composant est monté
+    if (!isMountedRef.current) {
+      console.warn('[ProductCard] Composant démonté, ignore handleContactUser');
+      return;
+    }
+
+    // ✅ Valider les paramètres
+    if (!userId || userId <= 0 || !userName || typeof userName !== 'string') {
+      Alert.alert('Erreur', 'Informations utilisateur invalides');
+      return;
+    }
+
     try {
-      // Vérifier si une conversation existe déjà
+      // ✅ Vérifier si une conversation existe déjà
       const checkResponse = await apiGet(`/api/conversations/private/${userId}`);
 
       let conversationId: string | null = null;
@@ -1984,7 +1978,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       }
 
       if (!conversationId) {
-        // Créer une nouvelle conversation privée
+        // ✅ Créer une nouvelle conversation privée
         const createResponse = await apiPost('/api/conversations/create-private', {
           target_user_id: userId,
           context: 'product_review',
@@ -1996,6 +1990,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
         } else if (!createResponse.success) {
           throw new Error(createResponse.error || "Impossible de créer la conversation privée");
         }
+      }
+
+      // ✅ Vérifier que le composant est toujours monté avant de mettre à jour l'état
+      if (!isMountedRef.current) {
+        console.warn('[ProductCard] Composant démonté pendant handleContactUser');
+        return;
+      }
+
+      // ✅ Vérifier que les setters sont disponibles
+      if (typeof setChatContext !== 'function' || typeof setShowChatModal !== 'function' || typeof setPrivateConversationId !== 'function') {
+        console.error('[ProductCard] Setters non disponibles dans handleContactUser');
+        Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+        return;
       }
 
       if (conversationId) {
@@ -2011,7 +2018,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         Alert.alert('Information', "Impossible de créer une conversation privée pour le moment");
       }
     } catch (error) {
-      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      // ✅ Afficher l'erreur de manière sécurisée
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       console.error('[ProductCard] Erreur création conversation privée:', {
@@ -2025,13 +2032,123 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
-  const handleCloseChatModal = () => {
-    setShowChatModal(false);
-    if (chatContext?.type === 'private') {
-      setChatContext(null);
-      setPrivateConversationId(null);
+  // ✅ RECONSTRUIT: Fonction simplifiée pour fermer le modal chat
+  const handleCloseChatModal = useCallback(() => {
+    try {
+      // ✅ Vérifier que le composant est monté
+      if (!isMountedRef.current) {
+        console.warn('[ProductCard] Composant démonté, ignore handleCloseChatModal');
+        return;
+      }
+
+      // ✅ Fermer le modal
+      if (typeof setShowChatModal === 'function') {
+        setShowChatModal(false);
+      }
+
+      // ✅ Nettoyer le contexte si c'est une conversation privée
+      if (chatContext?.type === 'private') {
+        if (typeof setChatContext === 'function') {
+          setChatContext(null);
+        }
+        if (typeof setPrivateConversationId === 'function') {
+          setPrivateConversationId(null);
+        }
+      }
+    } catch (error) {
+      console.error('[ProductCard] Erreur handleCloseChatModal:', error);
+      // ✅ Essayer quand même de fermer le modal en cas d'erreur
+      try {
+        if (typeof setShowChatModal === 'function') {
+          setShowChatModal(false);
+        }
+      } catch (fallbackError) {
+        console.error('[ProductCard] Erreur fallback handleCloseChatModal:', fallbackError);
+      }
     }
-  };
+  }, [chatContext]);
+
+  // ✅ RECONSTRUIT: Fonction simplifiée et robuste pour ouvrir le modal de livraison
+  const handleDeliveryPress = useCallback(() => {
+    // ✅ Protection: Vérifier que le composant est monté
+    if (!isMountedRef.current) {
+      console.warn('[ProductCard] Composant démonté, ignore handleDeliveryPress');
+      return;
+    }
+
+    try {
+      // ✅ Haptic feedback avec gestion d'erreur
+      try {
+        triggerHaptic('medium');
+      } catch (hapticError) {
+        console.warn('[ProductCard] Erreur triggerHaptic:', hapticError);
+      }
+
+      // ✅ Vérifier que c'est un produit (pas une prestation de service)
+      if (!isProduct) {
+        Alert.alert(
+          'Information',
+          'La livraison n\'est disponible que pour les produits.'
+        );
+        return;
+      }
+
+      // ✅ Vérifier que serviceId est valide
+      if (!isValidServiceId || !serviceId || serviceId <= 0) {
+        Alert.alert(
+          'Information manquante',
+          'Impossible de commander la livraison : l\'identifiant du service est invalide.'
+        );
+        return;
+      }
+
+      // ✅ Vérifier que le setter est disponible
+      if (typeof setShowOrderModal !== 'function') {
+        console.error('[ProductCard] setShowOrderModal non disponible');
+        Alert.alert(
+          'Erreur',
+          'Une erreur est survenue lors de l\'ouverture du formulaire de livraison.'
+        );
+        return;
+      }
+
+      // ✅ Ouvrir le modal
+      setShowOrderModal(true);
+    } catch (error) {
+      console.error('[ProductCard] Erreur handleDeliveryPress:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      Alert.alert(
+        'Erreur',
+        `Une erreur est survenue lors de l'ouverture du formulaire de livraison: ${errorMessage}.`
+      );
+    }
+  }, [isProduct, isValidServiceId, serviceId]);
+
+  // ✅ RECONSTRUIT: Fonction simplifiée pour fermer le modal de livraison
+  const handleCloseOrderModal = useCallback(() => {
+    try {
+      // ✅ Vérifier que le composant est monté
+      if (!isMountedRef.current) {
+        console.warn('[ProductCard] Composant démonté, ignore handleCloseOrderModal');
+        return;
+      }
+
+      // ✅ Fermer le modal
+      if (typeof setShowOrderModal === 'function') {
+        setShowOrderModal(false);
+      }
+    } catch (error) {
+      console.error('[ProductCard] Erreur handleCloseOrderModal:', error);
+      // ✅ Essayer quand même de fermer le modal en cas d'erreur
+      try {
+        if (typeof setShowOrderModal === 'function') {
+          setShowOrderModal(false);
+        }
+      } catch (fallbackError) {
+        console.error('[ProductCard] Erreur fallback handleCloseOrderModal:', fallbackError);
+      }
+    }
+  }, []);
 
   const totalReactions = Object.values(reactions).reduce((sum, reaction) => {
     return sum + (reaction?.count || 0);
@@ -2167,24 +2284,47 @@ const ProductCard: React.FC<ProductCardProps> = ({
       <>
         {/* Stats */}
         <View style={styles.topStatsRow}>
-          {compactTopStats.map((stat) => (
-            <View
-              key={stat.key}
-              style={[
-                styles.topStatPillCompact,
-                { backgroundColor: `${stat.tint}08` },
-                { borderColor: `${stat.tint}30` },
-              ]}
-            >
-              <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
-              <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
-                {formatCompactNumber(stat.value ?? 0)}
-              </Text>
-              <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
-                {stat.label}
-              </Text>
-            </View>
-          ))}
+          {compactTopStats.map((stat) => {
+            // ✅ NOUVEAU: Rendre les avis/commentaires cliquables
+            const isReviewsStat = stat.key === 'reviews';
+            const handleStatPress = isReviewsStat && commentServiceId > 0
+              ? () => {
+                  try {
+                    triggerHaptic('light');
+                    setShowCommentsModal(true);
+                  } catch (error) {
+                    console.error('[ProductCard] Erreur ouverture modal commentaires:', error);
+                  }
+                }
+              : undefined;
+
+            const StatComponent = handleStatPress ? TouchableOpacity : View;
+
+            return (
+              <StatComponent
+                key={stat.key}
+                onPress={handleStatPress}
+                activeOpacity={handleStatPress ? 0.7 : 1}
+                style={[
+                  styles.topStatPillCompact,
+                  { backgroundColor: `${stat.tint}08` },
+                  { borderColor: `${stat.tint}30` },
+                  isReviewsStat && handleStatPress && styles.topStatPillClickable,
+                ]}
+              >
+                <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
+                <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
+                  {formatCompactNumber(stat.value ?? 0)}
+                </Text>
+                <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
+                  {stat.label}
+                </Text>
+                {isReviewsStat && handleStatPress && (
+                  <SafeIcon name="chevron-right" size={12} color={stat.tint} style={{ marginLeft: 4 }} />
+                )}
+              </StatComponent>
+            );
+          })}
         </View>
 
         {/* Nom produit */}
@@ -2308,37 +2448,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
               style={[styles.actionButtonModern, styles.actionButtonDelivery]}
               onPress={() => {
                 try {
-                  // ✅ CORRIGÉ: Haptic feedback avec gestion d'erreur
-                  try {
-                    triggerHaptic('medium');
-                  } catch (hapticError) {
-                    console.warn('[ProductCard] Erreur triggerHaptic:', hapticError);
-                    // Continuer même si haptic échoue
-                  }
-                  // ✅ CORRIGÉ: Vérifier que serviceId est valide avant d'ouvrir le modal
-                  if (!isValidServiceId || !serviceId || (typeof serviceId !== 'number' && typeof serviceId !== 'string')) {
-                    Alert.alert(
-                      'Information manquante',
-                      'Impossible de commander la livraison : l\'identifiant du service est invalide.'
-                    );
-                    return;
-                  }
-                  // ✅ CORRIGÉ: Vérifier que le setter est disponible
-                  if (typeof setShowOrderModal !== 'function') {
-                    console.error('[ProductCard] setShowOrderModal non disponible');
-                    Alert.alert(
-                      'Erreur',
-                      'Une erreur est survenue lors de l\'ouverture du formulaire de livraison.'
-                    );
-                    return;
-                  }
-                  setShowOrderModal(true);
+                  handleDeliveryPress();
                 } catch (error) {
-                  console.error('[ProductCard] Erreur handleDeliveryPress:', error);
-                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  console.error('[ProductCard] Erreur onPress Me livrer:', error);
                   Alert.alert(
                     'Erreur',
-                    `Une erreur est survenue lors de l'ouverture du formulaire de livraison: ${errorMessage}.`
+                    'Une erreur est survenue lors de l\'ouverture du formulaire de livraison. Veuillez réessayer.'
                   );
                 }
               }}
@@ -2602,24 +2717,47 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         >
                           {/* ✅ CORRIGÉ: Toujours afficher les statistiques principales avec icônes */}
                           <View style={styles.topStatsRow}>
-                            {compactTopStats.map((stat) => (
-                              <View
-                                key={stat.key}
-                                style={[
-                                  styles.topStatPillCompact,
-                                  { backgroundColor: `${stat.tint}08` },
-                                  { borderColor: `${stat.tint}30` },
-                                ]}
-                              >
-                                <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
-                                <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
-                                  {formatCompactNumber(stat.value ?? 0)}
-                                </Text>
-                                <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
-                                  {stat.label}
-                                </Text>
-                              </View>
-                            ))}
+                            {compactTopStats.map((stat) => {
+                              // ✅ NOUVEAU: Rendre les avis/commentaires cliquables
+                              const isReviewsStat = stat.key === 'reviews';
+                              const handleStatPress = isReviewsStat && commentServiceId > 0
+                                ? () => {
+                                    try {
+                                      triggerHaptic('light');
+                                      setShowCommentsModal(true);
+                                    } catch (error) {
+                                      console.error('[ProductCard] Erreur ouverture modal commentaires:', error);
+                                    }
+                                  }
+                                : undefined;
+
+                              const StatComponent = handleStatPress ? TouchableOpacity : View;
+
+                              return (
+                                <StatComponent
+                                  key={stat.key}
+                                  onPress={handleStatPress}
+                                  activeOpacity={handleStatPress ? 0.7 : 1}
+                                  style={[
+                                    styles.topStatPillCompact,
+                                    { backgroundColor: `${stat.tint}08` },
+                                    { borderColor: `${stat.tint}30` },
+                                    isReviewsStat && handleStatPress && styles.topStatPillClickable,
+                                  ]}
+                                >
+                                  <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
+                                  <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
+                                    {formatCompactNumber(stat.value ?? 0)}
+                                  </Text>
+                                  <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
+                                    {stat.label}
+                                  </Text>
+                                  {isReviewsStat && handleStatPress && (
+                                    <SafeIcon name="chevron-right" size={12} color={stat.tint} style={{ marginLeft: 4 }} />
+                                  )}
+                                </StatComponent>
+                              );
+                            })}
                           </View>
 
                           {/* Nom produit */}
@@ -2965,43 +3103,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
                           {/* Actions - Design moderne et subtil */}
                           <View style={styles.actions}>
-                            {/* ✅ AMÉLIORÉ: Bouton "Me livrer" - Style outline subtil */}
+                            {/* ✅ RECONSTRUIT: Bouton "Me livrer" - Utilise handleDeliveryPress */}
                             {serviceId && isProduct && (
                               <TouchableOpacity
                                 style={[styles.actionButtonModern, styles.actionButtonDelivery]}
                                 onPress={() => {
                                   try {
-                                    // ✅ CORRIGÉ: Haptic feedback avec gestion d'erreur
-                                    try {
-                                      triggerHaptic('medium');
-                                    } catch (hapticError) {
-                                      console.warn('[ProductCard] Erreur triggerHaptic:', hapticError);
-                                      // Continuer même si haptic échoue
-                                    }
-                                    // ✅ CORRIGÉ: Vérifier que serviceId est valide avant d'ouvrir le modal
-                                    if (!isValidServiceId || !serviceId || (typeof serviceId !== 'number' && typeof serviceId !== 'string')) {
-                                      Alert.alert(
-                                        'Information manquante',
-                                        'Impossible de commander la livraison : l\'identifiant du service est invalide.'
-                                      );
-                                      return;
-                                    }
-                                    // ✅ CORRIGÉ: Vérifier que le setter est disponible
-                                    if (typeof setShowOrderModal !== 'function') {
-                                      console.error('[ProductCard] setShowOrderModal non disponible');
-                                      Alert.alert(
-                                        'Erreur',
-                                        'Une erreur est survenue lors de l\'ouverture du formulaire de livraison.'
-                                      );
-                                      return;
-                                    }
-                                    setShowOrderModal(true);
+                                    handleDeliveryPress();
                                   } catch (error) {
-                                    console.error('[ProductCard] Erreur handleDeliveryPress:', error);
-                                    const errorMessage = error instanceof Error ? error.message : String(error);
+                                    console.error('[ProductCard] Erreur onPress Me livrer:', error);
                                     Alert.alert(
                                       'Erreur',
-                                      `Une erreur est survenue lors de l'ouverture du formulaire de livraison: ${errorMessage}.`
+                                      'Une erreur est survenue lors de l\'ouverture du formulaire de livraison. Veuillez réessayer.'
                                     );
                                   }
                                 }}
@@ -3163,24 +3276,47 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         <View style={[styles.content, !hasMedia && styles.contentCompact]}>
                           {/* ✅ CORRIGÉ: Toujours afficher les statistiques principales avec icônes */}
                           <View style={styles.topStatsRow}>
-                            {compactTopStats.map((stat) => (
-                              <View
-                                key={stat.key}
-                                style={[
-                                  styles.topStatPillCompact,
-                                  { backgroundColor: `${stat.tint}08` },
-                                  { borderColor: `${stat.tint}30` },
-                                ]}
-                              >
-                                <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
-                                <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
-                                  {formatCompactNumber(stat.value ?? 0)}
-                                </Text>
-                                <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
-                                  {stat.label}
-                                </Text>
-                              </View>
-                            ))}
+                            {compactTopStats.map((stat) => {
+                              // ✅ NOUVEAU: Rendre les avis/commentaires cliquables
+                              const isReviewsStat = stat.key === 'reviews';
+                              const handleStatPress = isReviewsStat && commentServiceId > 0
+                                ? () => {
+                                    try {
+                                      triggerHaptic('light');
+                                      setShowCommentsModal(true);
+                                    } catch (error) {
+                                      console.error('[ProductCard] Erreur ouverture modal commentaires:', error);
+                                    }
+                                  }
+                                : undefined;
+
+                              const StatComponent = handleStatPress ? TouchableOpacity : View;
+
+                              return (
+                                <StatComponent
+                                  key={stat.key}
+                                  onPress={handleStatPress}
+                                  activeOpacity={handleStatPress ? 0.7 : 1}
+                                  style={[
+                                    styles.topStatPillCompact,
+                                    { backgroundColor: `${stat.tint}08` },
+                                    { borderColor: `${stat.tint}30` },
+                                    isReviewsStat && handleStatPress && styles.topStatPillClickable,
+                                  ]}
+                                >
+                                  <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
+                                  <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
+                                    {formatCompactNumber(stat.value ?? 0)}
+                                  </Text>
+                                  <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
+                                    {stat.label}
+                                  </Text>
+                                  {isReviewsStat && handleStatPress && (
+                                    <SafeIcon name="chevron-right" size={12} color={stat.tint} style={{ marginLeft: 4 }} />
+                                  )}
+                                </StatComponent>
+                              );
+                            })}
                           </View>
 
                           {/* Nom produit avec toggle expand/collapse */}
@@ -3360,37 +3496,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 style={[styles.actionButtonModern, styles.actionButtonDelivery]}
                                 onPress={() => {
                                   try {
-                                    // ✅ CORRIGÉ: Haptic feedback avec gestion d'erreur
-                                    try {
-                                      triggerHaptic('medium');
-                                    } catch (hapticError) {
-                                      console.warn('[ProductCard] Erreur triggerHaptic:', hapticError);
-                                      // Continuer même si haptic échoue
-                                    }
-                                    // ✅ CORRIGÉ: Vérifier que serviceId est valide avant d'ouvrir le modal
-                                    if (!isValidServiceId || !serviceId || (typeof serviceId !== 'number' && typeof serviceId !== 'string')) {
-                                      Alert.alert(
-                                        'Information manquante',
-                                        'Impossible de commander la livraison : l\'identifiant du service est invalide.'
-                                      );
-                                      return;
-                                    }
-                                    // ✅ CORRIGÉ: Vérifier que le setter est disponible
-                                    if (typeof setShowOrderModal !== 'function') {
-                                      console.error('[ProductCard] setShowOrderModal non disponible');
-                                      Alert.alert(
-                                        'Erreur',
-                                        'Une erreur est survenue lors de l\'ouverture du formulaire de livraison.'
-                                      );
-                                      return;
-                                    }
-                                    setShowOrderModal(true);
+                                    handleDeliveryPress();
                                   } catch (error) {
-                                    console.error('[ProductCard] Erreur handleDeliveryPress:', error);
-                                    const errorMessage = error instanceof Error ? error.message : String(error);
+                                    console.error('[ProductCard] Erreur onPress Me livrer:', error);
                                     Alert.alert(
                                       'Erreur',
-                                      `Une erreur est survenue lors de l'ouverture du formulaire de livraison: ${errorMessage}.`
+                                      'Une erreur est survenue lors de l\'ouverture du formulaire de livraison. Veuillez réessayer.'
                                     );
                                   }
                                 }}
@@ -3519,87 +3630,66 @@ const ProductCard: React.FC<ProductCardProps> = ({
         title={product.nom || 'Options'}
       />
 
-      {/* ✅ CORRIGÉ: Modal Chat - Toujours rendre le composant, contrôler via visible */}
-      {/* ✅ CORRIGÉ: Vérifier que serviceId est valide avant de rendre */}
-      {showChatModal && (() => {
-        try {
-          // ✅ CORRIGÉ: Calculer serviceId de manière sécurisée
-          const resolvedServiceId = isValidServiceId && serviceId
-            ? serviceId
-            : (service?.id ||
-              product?.service_id ||
-              product?.serviceId ||
-              null);
+      {/* ✅ RECONSTRUIT: Modal Chat - Rendu simplifié et robuste */}
+      {showChatModal && isValidServiceId && serviceId && serviceId > 0 && (() => {
+        // ✅ Calculer prestataireUserId de manière sécurisée
+        const resolvedPrestataireUserId = prestataireUserId ||
+          prestataire?.user_id ||
+          product?.prestataire?.user_id ||
+          service?.user_id ||
+          service?.data?.user_id ||
+          null;
 
-          // ✅ CORRIGÉ: Convertir en nombre si nécessaire
-          const numericServiceId = resolvedServiceId !== null && resolvedServiceId !== undefined
-            ? (typeof resolvedServiceId === 'number' ? resolvedServiceId : (typeof resolvedServiceId === 'string' ? parseInt(resolvedServiceId, 10) : null))
-            : null;
-
-          // ✅ CORRIGÉ: Vérifier que serviceId est valide
-          if (!numericServiceId || isNaN(numericServiceId) || numericServiceId <= 0) {
-            console.warn('[ProductCard] serviceId invalide pour ChatModalMobile:', resolvedServiceId);
-            return null;
+        // ✅ Convertir en nombre avec validation
+        let numericPrestataireUserId: number | null = null;
+        if (resolvedPrestataireUserId !== null && resolvedPrestataireUserId !== undefined) {
+          if (typeof resolvedPrestataireUserId === 'number') {
+            numericPrestataireUserId = (isNaN(resolvedPrestataireUserId) || resolvedPrestataireUserId <= 0) ? null : resolvedPrestataireUserId;
+          } else if (typeof resolvedPrestataireUserId === 'string') {
+            const parsed = parseInt(resolvedPrestataireUserId, 10);
+            numericPrestataireUserId = (isNaN(parsed) || parsed <= 0) ? null : parsed;
           }
+        }
 
-          // ✅ CORRIGÉ: Calculer prestataireUserId de manière sécurisée
-          const resolvedPrestataireUserId =
-            prestataireUserId ||
-            prestataire?.user_id ||
-            product?.prestataire?.user_id ||
-            service?.user_id ||
-            service?.data?.user_id ||
-            null;
-
-          // ✅ CORRIGÉ: Convertir en nombre si nécessaire
-          const numericPrestataireUserId = resolvedPrestataireUserId !== null && resolvedPrestataireUserId !== undefined
-            ? (typeof resolvedPrestataireUserId === 'number' ? resolvedPrestataireUserId : (typeof resolvedPrestataireUserId === 'string' ? parseInt(resolvedPrestataireUserId, 10) : null))
-            : null;
-
-          // ✅ CORRIGÉ: Vérifier que prestataireUserId est valide
-          if (!numericPrestataireUserId || isNaN(numericPrestataireUserId) || numericPrestataireUserId <= 0) {
-            console.warn('[ProductCard] prestataireUserId invalide pour ChatModalMobile:', resolvedPrestataireUserId);
-            return null;
-          }
-
-          // ✅ CORRIGÉ: Construire un service valide avec toutes les propriétés nécessaires
-          const validService = service && typeof service === 'object' && service.id
-            ? service
-            : {
-                id: numericServiceId,
-                data: {
-                  titre_service: {
-                    valeur: product.nom || product.name || service?.data?.titre_service?.valeur || 'Produit'
-                  }
-                },
-                user_id: numericPrestataireUserId,
-              };
-
-          // ✅ CORRIGÉ: Construire un prestataireInfo valide
-          const validPrestataireInfo = activeChatPeer || (prestataire && typeof prestataire === 'object')
-            ? (activeChatPeer || prestataire)
-            : {
-                nom: prestataireName || 'Prestataire',
-                nom_complet: prestataireName || 'Prestataire',
-                user_id: numericPrestataireUserId,
-                avatar_url: prestataireAvatar || null,
-              };
-
-          return (
-            <ChatModalMobile
-              visible={showChatModal}
-              onClose={handleCloseChatModal}
-              service={validService}
-              prestataireInfo={validPrestataireInfo}
-              user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
-              conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
-              isPrivateConversation={isPrivateChat}
-            />
-          );
-        } catch (error) {
-          console.error('[ProductCard] Erreur rendu ChatModalMobile:', error);
+        // ✅ Si prestataireUserId invalide, ne pas rendre le modal
+        if (!numericPrestataireUserId || numericPrestataireUserId <= 0) {
+          console.warn('[ProductCard] prestataireUserId invalide pour ChatModalMobile:', resolvedPrestataireUserId);
           return null;
         }
+
+        // ✅ Construire un service valide
+        const validService = (service && typeof service === 'object' && service.id) ? service : {
+          id: serviceId,
+          data: {
+            titre_service: {
+              valeur: product.nom || product.name || service?.data?.titre_service?.valeur || 'Produit'
+            }
+          },
+          user_id: numericPrestataireUserId,
+        };
+
+        // ✅ Construire un prestataireInfo valide
+        const validPrestataireInfo = activeChatPeer || (prestataire && typeof prestataire === 'object')
+          ? (activeChatPeer || prestataire)
+          : {
+              nom: prestataireName || 'Prestataire',
+              nom_complet: prestataireName || 'Prestataire',
+              user_id: numericPrestataireUserId,
+              avatar_url: prestataireAvatar || null,
+            };
+
+        // ✅ Rendre le modal avec les données validées
+        return (
+          <ChatModalMobile
+            visible={showChatModal}
+            onClose={handleCloseChatModal}
+            service={validService}
+            prestataireInfo={validPrestataireInfo}
+            user={null}
+            conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
+            isPrivateConversation={isPrivateChat}
+          />
+        );
       })()}
 
       {/* ✅ NOUVEAU : Modal Galerie du prestataire */}
@@ -3617,22 +3707,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
         />
       )}
 
-      {/* ✅ Modal commande livraison - Uniquement pour les produits */}
-      {/* ✅ CORRIGÉ: Vérification stricte de serviceId (doit être un nombre valide) */}
-      {isValidServiceId && isProduct && (
+      {/* ✅ RECONSTRUIT: Modal commande livraison - Rendu simplifié et robuste */}
+      {isValidServiceId && isProduct && serviceId && serviceId > 0 && (
         <OrderDeliveryModal
           visible={showOrderModal}
-          onClose={() => setShowOrderModal(false)}
-          serviceId={(() => {
-            // ✅ CORRIGÉ: Convertir serviceId de manière sécurisée
-            if (!isValidServiceId || !serviceId) return null;
-            if (typeof serviceId === 'number') return serviceId;
-            if (typeof serviceId === 'string') {
-              const parsed = parseInt(serviceId, 10);
-              return isNaN(parsed) || parsed <= 0 ? null : parsed;
-            }
-            return null;
-          })()}
+          onClose={handleCloseOrderModal}
+          serviceId={serviceId}
           productIndex={productIndex}
           productName={product.nom || product.name || 'Produit'}
           onSuccess={(deliveryId) => {
@@ -3911,6 +3991,12 @@ const styles = StyleSheet.create({
     borderRadius: 10, // ✅ AMÉLIORÉ: 8 → 10
     borderWidth: 1.5, // ✅ AMÉLIORÉ: 1 → 1.5 pour meilleure visibilité
     gap: 3, // ✅ AMÉLIORÉ: 2 → 3
+  },
+  // ✅ NOUVEAU: Style pour stat cliquable (avis/commentaires)
+  topStatPillClickable: {
+    cursor: 'pointer',
+    // Effet visuel pour indiquer que c'est cliquable
+    opacity: 1,
   },
   topStatValue: {
     fontSize: 12,

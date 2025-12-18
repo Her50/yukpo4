@@ -1,4 +1,4 @@
-import * as DocumentPicker from 'expo-document-picker';
+﻿import * as DocumentPicker from 'expo-document-picker';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -2678,7 +2678,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             )}
                             {distributionPlan.hashtags?.length > 0 && (
                                 <Text style={styles.planHashtags}>
-                                    Hashtags : {Array.isArray(distributionPlan.hashtags) ? distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}
+                                    Hashtags : {Array.isArray(distributionPlan.hashtags) && distributionPlan.hashtags.length > 0 ? distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : 'Aucun'}
                                 </Text>
                             )}
                             {distributionPlan.schedule?.length > 0 && (
@@ -3707,7 +3707,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                         {(() => {
                                                             const prix = getFieldValue(product.prix);
                                                             const devise = getFieldValue(product.devise) || 'XAF';
-                                                            return prix ? ` • ${prix} ${devise}` : '';
+                                                            return prix ? ` • ${prix} ${devise}` : null;
                                                         })()}
                                                     </Text>
                                                 </View>
@@ -4095,7 +4095,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     </View>
                                     {variant.hashtags?.length > 0 && (
                                         <Text style={styles.variantHashtags}>
-                                            {Array.isArray(variant.hashtags) ? variant.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}
+                                            {Array.isArray(variant.hashtags) && variant.hashtags.length > 0 ? variant.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : 'Aucun'}
                                         </Text>
                                     )}
                                 </TouchableOpacity>
@@ -5223,5 +5223,6 @@ const styles = StyleSheet.create({
 });
 
 export default ProductVideoCreationModal;
+
 
 

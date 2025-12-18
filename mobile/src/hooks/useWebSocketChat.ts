@@ -101,13 +101,22 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                 setIsConnected(true);
 
                 // Envoyer un message d'authentification
+                // ✅ CORRIGÉ 2025-12-18: Vérifier l'état avant envoi auth
                 if (wsRef.current) {
-                    wsRef.current.send(JSON.stringify({
-                        type: 'auth',
-                        userId,
-                        serviceId,
-                        prestataireId
-                    }));
+                    try {
+                        if (wsRef.current.readyState === WebSocket.OPEN) {
+                            wsRef.current.send(JSON.stringify({
+                                type: 'auth',
+                                userId,
+                                serviceId,
+                                prestataireId
+                            }));
+                        } else {
+                            console.warn(`⚠️ [useWebSocketChat] WebSocket non ouvert pour auth (état: ${wsRef.current.readyState})`);
+                        }
+                    } catch (error: any) {
+                        console.error('❌ [useWebSocketChat] Erreur envoi auth:', error);
+                    }
                 }
 
                 // Démarrer le heartbeat
@@ -206,8 +215,29 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
 
     const startHeartbeat = useCallback(() => {
         heartbeatIntervalRef.current = setInterval(() => {
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                wsRef.current.send(JSON.stringify({ type: 'ping' }));
+            if (wsRef.current) {
+                try {
+                    // ✅ CORRIGÉ 2025-12-18: Vérifier l'état avant ping pour éviter INVALID_STATE_ERR
+                    if (wsRef.current.readyState === WebSocket.OPEN) {
+                        wsRef.current.send(JSON.stringify({ type: 'ping' }));
+                    } else {
+                        console.warn(`⚠️ [useWebSocketChat] WebSocket non ouvert pour ping (état: ${wsRef.current.readyState})`);
+                    }
+                } catch (error: any) {
+                    console.error('❌ [useWebSocketChat] Erreur ping WebSocket:', error);
+                    // Si erreur INVALID_STATE, forcer reconnexion
+                    if (error?.message?.includes('INVALID_STATE') || error?.name === 'InvalidStateError') {
+                        if (wsRef.current) {
+                            try {
+                                wsRef.current.close();
+                            } catch (e) {
+                                // Ignorer
+                            }
+                            wsRef.current = null;
+                            connectWebSocket();
+                        }
+                    }
+                }
             }
         }, 30000); // Ping toutes les 30 secondes
     }, []);
@@ -296,25 +326,52 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
 
         // Envoyer chaque message via WebSocket ou REST
         for (const msg of messagesToSend) {
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                wsRef.current.send(JSON.stringify({
-                    type: 'message',
-                    id: msg.id,
-                    content: msg.content,
-                    messageType: msg.type,
-                    from: userId,
-                    to: prestataireId,
-                    serviceId,
-                    timestamp: msg.timestamp.toISOString(),
-                    // ✅ NOUVEAU: Inclure les URLs des médias
-                    audioUrl: msg.audioUrl,
-                    imageUrl: msg.imageUrl,
-                    fileUrl: msg.fileUrl,
-                    // ✅ NOUVEAU: Inclure les mentions et réponses
-                    mentioned_users: mediaData?.mentioned_users,
-                    reply_to_id: mediaData?.reply_to_id
-                }));
-            } else {
+            // ✅ CORRIGÉ 2025-12-18: Vérifier l'état WebSocket de manière robuste avec try-catch
+            let wsSendSuccess = false;
+            if (wsRef.current) {
+                try {
+                    // Vérifier l'état juste avant l'envoi pour éviter INVALID_STATE_ERR
+                    if (wsRef.current.readyState === WebSocket.OPEN) {
+                        wsRef.current.send(JSON.stringify({
+                            type: 'message',
+                            id: msg.id,
+                            content: msg.content,
+                            messageType: msg.type,
+                            from: userId,
+                            to: prestataireId,
+                            serviceId,
+                            timestamp: msg.timestamp.toISOString(),
+                            // ✅ NOUVEAU: Inclure les URLs des médias
+                            audioUrl: msg.audioUrl,
+                            imageUrl: msg.imageUrl,
+                            fileUrl: msg.fileUrl,
+                            // ✅ NOUVEAU: Inclure les mentions et réponses
+                            mentioned_users: mediaData?.mentioned_users,
+                            reply_to_id: mediaData?.reply_to_id
+                        }));
+                        wsSendSuccess = true;
+                    } else {
+                        console.warn(`⚠️ [useWebSocketChat] WebSocket état invalide: ${wsRef.current.readyState} (OPEN=${WebSocket.OPEN})`);
+                    }
+                } catch (error: any) {
+                    console.error('❌ [useWebSocketChat] Erreur envoi WebSocket:', error);
+                    // Si erreur INVALID_STATE_ERR, forcer reconnexion
+                    if (error?.message?.includes('INVALID_STATE') || error?.name === 'InvalidStateError') {
+                        console.warn('🔄 [useWebSocketChat] INVALID_STATE_ERR détecté, reconnexion...');
+                        if (wsRef.current) {
+                            try {
+                                wsRef.current.close();
+                            } catch (e) {
+                                // Ignorer erreur de fermeture
+                            }
+                            wsRef.current = null;
+                            connectWebSocket();
+                        }
+                    }
+                }
+            }
+            
+            if (!wsSendSuccess) {
                 console.warn('⚠️ [useWebSocketChat] WebSocket non connecté, envoi via API REST');
 
                 // ✅ CORRIGÉ: Fallback via API REST avec apiPost
@@ -378,15 +435,26 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
         ));
 
         // Envoyer la modification via WebSocket
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({
-                type: 'edit_message',
-                messageId,
-                newContent,
-                from: userId,
-                timestamp: new Date().toISOString()
-            }));
-        } else {
+        // ✅ CORRIGÉ 2025-12-18: Protection try-catch pour éviter INVALID_STATE_ERR
+        let wsEditSuccess = false;
+        if (wsRef.current) {
+            try {
+                if (wsRef.current.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({
+                        type: 'edit_message',
+                        messageId,
+                        newContent,
+                        from: userId,
+                        timestamp: new Date().toISOString()
+                    }));
+                    wsEditSuccess = true;
+                }
+            } catch (error: any) {
+                console.error('❌ [useWebSocketChat] Erreur envoi édition WebSocket:', error);
+            }
+        }
+        
+        if (!wsEditSuccess) {
             // ✅ CORRIGÉ: Fallback REST avec apiPut
             try {
                 await apiPut(`/api/chat/messages/${messageId}/edit`, { newContent });
@@ -401,14 +469,25 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
         setMessages(prev => prev.filter(msg => msg.id !== messageId));
 
         // Envoyer la suppression via WebSocket
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({
-                type: 'delete_message',
-                messageId,
-                from: userId,
-                timestamp: new Date().toISOString()
-            }));
-        } else {
+        // ✅ CORRIGÉ 2025-12-18: Protection try-catch pour éviter INVALID_STATE_ERR
+        let wsDeleteSuccess = false;
+        if (wsRef.current) {
+            try {
+                if (wsRef.current.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({
+                        type: 'delete_message',
+                        messageId,
+                        from: userId,
+                        timestamp: new Date().toISOString()
+                    }));
+                    wsDeleteSuccess = true;
+                }
+            } catch (error: any) {
+                console.error('❌ [useWebSocketChat] Erreur envoi suppression WebSocket:', error);
+            }
+        }
+        
+        if (!wsDeleteSuccess) {
             // ✅ CORRIGÉ: Fallback REST avec apiDelete
             try {
                 await apiDelete(`/api/chat/messages/${messageId}`);
@@ -425,12 +504,19 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
         ));
 
         // Envoyer la confirmation de lecture via WebSocket
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({
-                type: 'mark_read',
-                from: userId,
-                timestamp: new Date().toISOString()
-            }));
+        // ✅ CORRIGÉ 2025-12-18: Protection try-catch pour éviter INVALID_STATE_ERR
+        if (wsRef.current) {
+            try {
+                if (wsRef.current.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({
+                        type: 'mark_read',
+                        from: userId,
+                        timestamp: new Date().toISOString()
+                    }));
+                }
+            } catch (error: any) {
+                console.error('❌ [useWebSocketChat] Erreur envoi mark_read WebSocket:', error);
+            }
         }
     }, [userId]);
 

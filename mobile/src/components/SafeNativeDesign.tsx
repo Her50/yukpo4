@@ -18,8 +18,22 @@ try {
 }
 
 // ✅ Vérification qu'un composant est valide
+// CRITIQUE: Vérifier que c'est vraiment un composant React, pas un objet ou autre chose
 const isReactComponent = (comp: any): comp is React.ComponentType<any> => {
-    return typeof comp === 'function' && comp !== null && comp !== undefined;
+    if (comp == null || comp === undefined) {
+        return false;
+    }
+    // Un composant React doit être une fonction
+    if (typeof comp !== 'function') {
+        return false;
+    }
+    // Vérifier que ce n'est pas un objet qui se comporte comme une fonction (rare mais possible)
+    if (typeof comp === 'object' && comp !== null) {
+        return false;
+    }
+    // Vérifier que la fonction a les propriétés attendues d'un composant React
+    // (optionnel mais recommandé pour plus de sécurité)
+    return true;
 };
 
 // ✅ Fallback pour NativeButton
@@ -46,6 +60,11 @@ const FallbackCard: React.FC<{ children: React.ReactNode; [key: string]: any }> 
             return null;
         }
 
+        // ✅ CRITIQUE: Gérer les chaînes vides explicitement
+        if (typeof children === 'string' && children === '') {
+            return null;
+        }
+
         // Si children est une primitive (string, number, boolean), l'envelopper dans Text
         if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
             return <Text>{String(children)}</Text>;
@@ -53,7 +72,11 @@ const FallbackCard: React.FC<{ children: React.ReactNode; [key: string]: any }> 
 
         // Si children est un tableau, traiter chaque élément
         if (Array.isArray(children)) {
-            return children.map((child, idx) => {
+            const processed = children.map((child, idx) => {
+                // ✅ CRITIQUE: Gérer les chaînes vides
+                if (typeof child === 'string' && child === '') {
+                    return null;
+                }
                 if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
                     return <Text key={idx}>{String(child)}</Text>;
                 }
@@ -65,10 +88,15 @@ const FallbackCard: React.FC<{ children: React.ReactNode; [key: string]: any }> 
                 }
                 return <Text key={idx}>{String(child)}</Text>;
             }).filter(child => child != null);
+            return processed.length > 0 ? processed : null;
         }
 
-        // Utiliser React.Children.map pour gérer les fragments et autres cas
-        return React.Children.map(children, (child, idx) => {
+        // ✅ CRITIQUE: Fonction récursive pour traiter les enfants de manière sécurisée
+        const processChild = (child: any, idx: number | string): React.ReactNode => {
+            // Si c'est une chaîne vide, retourner null
+            if (typeof child === 'string' && child === '') {
+                return null;
+            }
             // Si c'est une valeur primitive, l'envelopper dans Text
             if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
                 return <Text key={idx}>{String(child)}</Text>;
@@ -79,18 +107,8 @@ const FallbackCard: React.FC<{ children: React.ReactNode; [key: string]: any }> 
             }
             // Si c'est un tableau, le traiter récursivement
             if (Array.isArray(child)) {
-                return child.map((item, itemIndex) => {
-                    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
-                        return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                    }
-                    if (item == null) {
-                        return null;
-                    }
-                    if (React.isValidElement(item)) {
-                        return item;
-                    }
-                    return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                });
+                const processed = child.map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`)).filter(item => item != null);
+                return processed.length > 0 ? processed : null;
             }
             // Si c'est un élément React valide, le retourner tel quel
             if (React.isValidElement(child)) {
@@ -98,7 +116,32 @@ const FallbackCard: React.FC<{ children: React.ReactNode; [key: string]: any }> 
             }
             // Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
             return <Text key={idx}>{String(child)}</Text>;
+        };
+
+        // Utiliser React.Children.map pour gérer les fragments et autres cas
+        // ✅ CRITIQUE: React.Children.map peut retourner null, un tableau, ou un seul élément
+        const mapped = React.Children.map(children, (child, idx) => {
+            // Si child est null/undefined, le retourner tel quel (React.Children.map le gère)
+            if (child == null) {
+                return null;
+            }
+            // Traiter l'enfant avec notre fonction récursive
+            return processChild(child, idx);
         });
+        
+        // ✅ CRITIQUE: Filtrer les null/undefined et gérer le cas où tout est null
+        if (mapped == null) {
+            return null;
+        }
+        
+        // Si mapped est un tableau, filtrer les null/undefined
+        if (Array.isArray(mapped)) {
+            const filtered = mapped.filter(child => child != null);
+            return filtered.length > 0 ? filtered : null;
+        }
+        
+        // Si mapped est un seul élément, le retourner tel quel
+        return mapped != null ? mapped : null;
     }, [children]);
 
     return (
@@ -176,6 +219,11 @@ const SafeNativeCardWrapper: React.FC<any> = (props) => {
             return null;
         }
 
+        // ✅ CRITIQUE: Gérer les chaînes vides explicitement
+        if (typeof children === 'string' && children === '') {
+            return null;
+        }
+
         // Si children est une primitive (string, number, boolean), l'envelopper dans Text
         if (typeof children === 'string' || typeof children === 'number' || typeof children === 'boolean') {
             return <Text>{String(children)}</Text>;
@@ -183,7 +231,11 @@ const SafeNativeCardWrapper: React.FC<any> = (props) => {
 
         // Si children est un tableau, traiter chaque élément
         if (Array.isArray(children)) {
-            return children.map((child, idx) => {
+            const processed = children.map((child, idx) => {
+                // ✅ CRITIQUE: Gérer les chaînes vides
+                if (typeof child === 'string' && child === '') {
+                    return null;
+                }
                 if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
                     return <Text key={idx}>{String(child)}</Text>;
                 }
@@ -195,10 +247,15 @@ const SafeNativeCardWrapper: React.FC<any> = (props) => {
                 }
                 return <Text key={idx}>{String(child)}</Text>;
             }).filter(child => child != null);
+            return processed.length > 0 ? processed : null;
         }
 
-        // Utiliser React.Children.map pour gérer les fragments et autres cas
-        return React.Children.map(children, (child, idx) => {
+        // ✅ CRITIQUE: Fonction récursive pour traiter les enfants de manière sécurisée
+        const processChild = (child: any, idx: number | string): React.ReactNode => {
+            // Si c'est une chaîne vide, retourner null
+            if (typeof child === 'string' && child === '') {
+                return null;
+            }
             // Si c'est une valeur primitive, l'envelopper dans Text
             if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
                 return <Text key={idx}>{String(child)}</Text>;
@@ -209,18 +266,8 @@ const SafeNativeCardWrapper: React.FC<any> = (props) => {
             }
             // Si c'est un tableau, le traiter récursivement
             if (Array.isArray(child)) {
-                return child.map((item, itemIndex) => {
-                    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
-                        return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                    }
-                    if (item == null) {
-                        return null;
-                    }
-                    if (React.isValidElement(item)) {
-                        return item;
-                    }
-                    return <Text key={`${idx}-${itemIndex}`}>{String(item)}</Text>;
-                });
+                const processed = child.map((item, itemIndex) => processChild(item, `${idx}-${itemIndex}`)).filter(item => item != null);
+                return processed.length > 0 ? processed : null;
             }
             // Si c'est un élément React valide, le retourner tel quel
             if (React.isValidElement(child)) {
@@ -228,7 +275,32 @@ const SafeNativeCardWrapper: React.FC<any> = (props) => {
             }
             // Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
             return <Text key={idx}>{String(child)}</Text>;
+        };
+
+        // Utiliser React.Children.map pour gérer les fragments et autres cas
+        // ✅ CRITIQUE: React.Children.map peut retourner null, un tableau, ou un seul élément
+        const mapped = React.Children.map(children, (child, idx) => {
+            // Si child est null/undefined, le retourner tel quel (React.Children.map le gère)
+            if (child == null) {
+                return null;
+            }
+            // Traiter l'enfant avec notre fonction récursive
+            return processChild(child, idx);
         });
+        
+        // ✅ CRITIQUE: Filtrer les null/undefined et gérer le cas où tout est null
+        if (mapped == null) {
+            return null;
+        }
+        
+        // Si mapped est un tableau, filtrer les null/undefined
+        if (Array.isArray(mapped)) {
+            const filtered = mapped.filter(child => child != null);
+            return filtered.length > 0 ? filtered : null;
+        }
+        
+        // Si mapped est un seul élément, le retourner tel quel
+        return mapped != null ? mapped : null;
     }, [props.children]);
 
     // Essayer d'utiliser le composant original avec nos enfants sécurisés
@@ -237,9 +309,17 @@ const SafeNativeCardWrapper: React.FC<any> = (props) => {
         if (!OriginalCard && NativeDesignModule.default && typeof NativeDesignModule.default === 'object') {
             OriginalCard = NativeDesignModule.default.NativeCard;
         }
+        // ✅ CRITIQUE: Vérifier que OriginalCard est vraiment un composant React valide
+        // et non un objet ou autre chose
         if (isReactComponent(OriginalCard)) {
-            // Utiliser le composant original mais avec nos enfants sécurisés
-            return React.createElement(OriginalCard, { ...props, children: safeChildren });
+            try {
+                // Utiliser le composant original mais avec nos enfants sécurisés
+                return React.createElement(OriginalCard, { ...props, children: safeChildren });
+            } catch (error) {
+                // Si React.createElement échoue, utiliser le fallback
+                console.warn('[SafeNativeCardWrapper] Erreur lors de la création du composant original, utilisation du fallback:', error);
+                return <FallbackCard {...props}>{safeChildren}</FallbackCard>;
+            }
         }
     }
 

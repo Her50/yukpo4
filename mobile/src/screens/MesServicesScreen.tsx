@@ -1038,18 +1038,12 @@ const MesServicesScreen: React.FC = () => {
     const totalProducts = services.length;
     const activeProducts = services.filter(s => s && s.status === 'active').length;
     const inactiveProducts = services.filter(s => s && s.status === 'inactive').length;
-    const categories = new Set<string>();
-    services.forEach(s => {
-      const cat = s.data?.category?.valeur || s.data?.categorie?.valeur || s.data?.type || null;
-      if (cat) categories.add(cat);
-    });
     const totalViews = services.reduce((sum, s) => sum + (s.views || 0), 0);
 
     return {
       totalProducts,
       activeProducts,
       inactiveProducts,
-      categoriesCount: categories.size,
       totalViews,
     };
   }, [services]);
@@ -1119,7 +1113,7 @@ const MesServicesScreen: React.FC = () => {
                   <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Mes Produits</Text>
                 </View>
               </View>
-              {/* ✅ AMÉLIORÉ: Bouton Sidebar + Bulk Mode + Création Vidéo + Configuration Livraison */}
+              {/* ✅ AMÉLIORÉ: Bouton Sidebar + Bulk Mode + Création Vidéo + Configuration Livraison + Flash Promo */}
               <View style={dynamicStyles.headerActions}>
                 {/* ✅ NOUVEAU: Bouton création vidéo */}
                 <TouchableOpacity
@@ -1136,6 +1130,24 @@ const MesServicesScreen: React.FC = () => {
                   accessibilityRole="button"
                 >
                   <SafeIcon name="plus" size={20} color="#fff" type="lucide" />
+                </TouchableOpacity>
+                {/* ✅ NOUVEAU: Configuration Flash Promo - Visible directement dans le header */}
+                <TouchableOpacity
+                  style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(245, 158, 11, 0.3)' }]}
+                  onPress={() => {
+                    const productsList = prepareProductsForSelector();
+                    if (productsList.length === 0) {
+                      toaster.warning('Vous devez d\'abord créer des produits avant de créer un flash promo.');
+                      return;
+                    }
+                    setProductsForSelection(productsList);
+                    setProductSelectorMode('flash-promo');
+                    setShowProductSelector(true);
+                  }}
+                  accessibilityLabel="Créer Flash Promo"
+                  accessibilityRole="button"
+                >
+                  <Text style={{ fontSize: 18, color: '#fff' }}>⚡</Text>
                 </TouchableOpacity>
                 {/* ✅ NOUVEAU: Configuration de livraison dans l'en-tête */}
                 <TouchableOpacity
@@ -1411,15 +1423,7 @@ const MesServicesScreen: React.FC = () => {
                   color={modernColors.warning}
                   onPress={() => setFilter('inactif')}
                 />
-                {stats.categoriesCount > 0 ? (
-                  <StatsCard
-                    icon="tag"
-                    value={stats.categoriesCount}
-                    label="Catégories"
-                    color={modernColors.info}
-                  />
-                ) : (
-                  stats.totalViews > 0 && (
+                {stats.totalViews > 0 && (
                     <StatsCard
                       icon="eye"
                       value={stats.totalViews.toLocaleString()}
@@ -1458,14 +1462,6 @@ const MesServicesScreen: React.FC = () => {
                 color={modernColors.warning}
                 onPress={() => setFilter('inactif')}
               />
-              {stats.categoriesCount > 0 && (
-                <StatsCard
-                  icon="tag"
-                  value={stats.categoriesCount}
-                  label="Catégories"
-                  color={modernColors.info}
-                />
-              )}
               {stats.totalViews > 0 && (
                 <StatsCard
                   icon="eye"

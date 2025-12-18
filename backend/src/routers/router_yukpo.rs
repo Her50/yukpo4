@@ -411,8 +411,24 @@ async fn handle_direct_search(
     log_info(&format!("[DIRECT_SEARCH] Paramètres GPS extraits: zone={:?}, rayon={:?}km", 
         gps_zone, search_radius_km));
     
-    // Recherche directe sans détection d'intention, avec filtrage GPS
-    let (mut result, tokens_consumed) = rechercher_besoin_direct(
+    // ✅ OPTIMISÉ 2025-12-18: Cache pour recherche textuelle (TTL: 2 minutes)
+    let cache_key = format!(
+        "direct_search:{}:{}:{}",
+        user.id,
+        user_text.trim(),
+        gps_zone.unwrap_or("")
+    );
+    
+    // Vérifier le cache
+    if let Ok(cached) = _state.cache_service.get::<serde_json::Value>(&cache_key).await {
+        if let Some(cached_data) = cached {
+            log_info("[DIRECT_SEARCH] ✅ Résultats depuis cache");
+            return Ok(Json(cached_data));
+        }
+    }
+    
+    // ✅ OPTIMISÉ 2025-12-18: Timeout de 10 secondes pour éviter les requêtes trop lentes
+    let search_future = rechercher_besoin_direct(
         &_state.pg,
         Some(_state.cache_service.clone()),
         _state.geographic_matching.clone(),
@@ -423,8 +439,30 @@ async fn handle_direct_search(
         gps_zone,
         search_radius_km,
         None,
-    )
-    .await?;
+    );
+    
+    let (mut result, tokens_consumed) = match tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        search_future
+    ).await {
+        Ok(Ok(res)) => res,
+        Ok(Err(e)) => {
+            log_error(&format!("[DIRECT_SEARCH] Erreur recherche: {}", e));
+            return Err(AppError::Internal(format!("Erreur recherche: {}", e)).into());
+        }
+        Err(_) => {
+            log_error("[DIRECT_SEARCH] ⏱️ Timeout recherche (10s) - Retour résultats partiels");
+            // Retourner résultats partiels depuis cache ou vide
+            return Ok(Json(serde_json::json!({
+                "status": "partial",
+                "intention": "recherche_besoin",
+                "resultats": [],
+                "tokens_consumed": 0,
+                "message": "Recherche timeout - Veuillez réessayer avec des termes plus spécifiques",
+                "search_method": "timeout_fallback"
+            })));
+        }
+    };
     
     // ✅ ENRICHIR avec données de publicité et booster scores
     if let Some(resultats) = result.get_mut("resultats").and_then(|r| r.as_array_mut()) {
@@ -472,6 +510,13 @@ async fn handle_direct_search(
         "gps_filtered": gps_zone.is_some(),
         "search_radius_km": search_radius_km
     });
+    
+    // ✅ OPTIMISÉ 2025-12-18: Mettre en cache les résultats (TTL: 2 minutes)
+    let _ = _state.cache_service.set_with_ttl(
+        &cache_key,
+        &response,
+        std::time::Duration::from_secs(120)
+    ).await;
     
     Ok(Json(response))
 }
