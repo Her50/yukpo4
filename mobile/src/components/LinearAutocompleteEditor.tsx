@@ -352,12 +352,20 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
             {/* ✅ NOUVEAU: Tableau des sous-caractéristiques (affichage préféré) */}
             {showTable && (
-                <SubCharacteristicsTable
-                    sousCaracteristiques={sousCaracteristiques}
-                    separateur={separateur}
-                    onValidate={handleTableValidate}
-                    initialRows={tableRows.length > 0 ? tableRows : undefined}
-                />
+                <>
+                    {/* ✅ DEBUG: Logger les props passées au tableau */}
+                    {console.log('[LinearAutocompleteEditor] 🔍 Props passées à SubCharacteristicsTable:', {
+                        sousCaracteristiques: JSON.stringify(sousCaracteristiques, null, 2),
+                        separateur,
+                        hasInitialRows: tableRows.length > 0
+                    })}
+                    <SubCharacteristicsTable
+                        sousCaracteristiques={sousCaracteristiques}
+                        separateur={separateur}
+                        onValidate={handleTableValidate}
+                        initialRows={tableRows.length > 0 ? tableRows : undefined}
+                    />
+                </>
             )}
 
             {/* Barre de recherche (affichée seulement si le tableau n'est pas affiché) */}

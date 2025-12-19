@@ -31,8 +31,6 @@ interface ChatModalMobileProps {
     service: any;
     prestataireInfo: any;
     user: any;
-    conversationId?: string;  // Ô£à NOUVEAU : Pour conversations priv├®es (format UUID)
-    isPrivateConversation?: boolean;  // Ô£à NOUVEAU : Flag pour conversation priv├®e
 }
 
 interface Participant {
@@ -51,9 +49,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     onClose,
     service,
     prestataireInfo,
-    user,
-    conversationId: privateConversationId,
-    isPrivateConversation = false
+    user
 }) => {
     const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -61,7 +57,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [editingContent, setEditingContent] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-    // Ô£à NOUVEAU: ├ëtats pour @mention
+    // ✅ NOUVEAU: États pour @mention
     const [showMentionPicker, setShowMentionPicker] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
     const [cursorPosition, setCursorPosition] = useState(0);
@@ -69,7 +65,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [showParticipantsList, setShowParticipantsList] = useState(false);
 
-    // ├ëtats pour les m├®dias
+    // États pour les médias
     const [selectedImages, setSelectedImages] = useState<string[]>([]);
     const [selectedAudio, setSelectedAudio] = useState<string | null>(null);
     const [selectedAudioUri, setSelectedAudioUri] = useState<string | null>(null);
@@ -81,20 +77,15 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [isPlayingAudio, setIsPlayingAudio] = useState(false);
     const [audioSound, setAudioSound] = useState<Audio.Sound | null>(null);
 
-    // Ô£à NOUVEAU: ├ëtats pour le syst├¿me de r├®ponse/citation
+    // ✅ NOUVEAU: États pour le système de réponse/citation
     const [replyingTo, setReplyingTo] = useState<any | null>(null);
 
-    // ├ëtats pour les appels internes
+    // États pour les appels internes
     const [showCallModal, setShowCallModal] = useState(false);
     const [callType, setCallType] = useState<'audio' | 'video'>('audio');
 
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    // Ô£à NOUVEAU : Utiliser conversationId si conversation priv├®e, sinon service.id
-    const effectiveServiceId = isPrivateConversation && privateConversationId
-        ? parseInt(privateConversationId, 10)
-        : (service?.id || 0);
 
     // Utiliser le hook WebSocket
     const {
@@ -106,14 +97,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         deleteMessage,
         markAsRead
     } = useWebSocketChat(
-        effectiveServiceId,
+        service?.id || 0,
         prestataireInfo?.userId || 0,
         user?.id || 0
     );
 
     // Fonction utilitaire pour extraire la valeur d'un champ de service
     const getServiceFieldValue = (field: any): string => {
-        if (!field) return 'Non sp├®cifi├®';
+        if (!field) return 'Non spécifié';
         if (typeof field === 'string') return field;
         if (field && typeof field === 'object') {
             if (field.valeur !== undefined) {
@@ -125,7 +116,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 return String(value);
             }
         }
-        return 'Non sp├®cifi├®';
+        return 'Non spécifié';
     };
 
     const nomPrestataire = prestataireInfo?.nom_complet || prestataireInfo?.nom || `Prestataire #${service?.user_id}`;
@@ -149,23 +140,22 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         }
     }, [visible, markAsRead]);
 
-    // Ô£à NOUVEAU: Charger les participants de la conversation
+    // ✅ NOUVEAU: Charger les participants de la conversation
     const loadParticipants = async () => {
-        const convId = effectiveServiceId;
-        if (!convId) return;
+        if (!service?.id) return;
 
         try {
-            const response = await apiGet<Participant[]>(`/api/conversations/${convId}/participants`);
+            const response = await apiGet<Participant[]>(`/api/conversations/${service.id}/participants`);
             if (response.success && response.data) {
                 setParticipants(response.data);
-                console.log('[ChatModalMobile] Participants charg├®s:', response.data);
+                console.log('[ChatModalMobile] Participants chargés:', response.data);
             }
         } catch (error) {
             console.error('[ChatModalMobile] Erreur chargement participants:', error);
         }
     };
 
-    // Ô£à NOUVEAU: Inviter un utilisateur dans la conversation
+    // ✅ NOUVEAU: Inviter un utilisateur dans la conversation
     const inviteUser = async (userId: number, context?: string) => {
         if (!service?.id) return;
 
@@ -177,8 +167,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
             if (response.success) {
                 Alert.alert(
-                    'Utilisateur invit├®',
-                    'L\'utilisateur a ├®t├® ajout├® ├á la conversation et peut maintenant voir les nouveaux messages.',
+                    'Utilisateur invité',
+                    'L\'utilisateur a été ajouté à la conversation et peut maintenant voir les nouveaux messages.',
                     [{ text: 'OK' }]
                 );
                 loadParticipants(); // Recharger la liste
@@ -189,13 +179,13 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         }
     };
 
-    // Ô£à NOUVEAU: Retirer un participant
+    // ✅ NOUVEAU: Retirer un participant
     const removeParticipant = async (userId: number) => {
         if (!service?.id) return;
 
         Alert.alert(
             'Retirer le participant',
-            '├ètes-vous s├╗r de vouloir retirer cette personne de la conversation ?',
+            'Êtes-vous sûr de vouloir retirer cette personne de la conversation ?',
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -205,7 +195,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         try {
                             await apiPost(`/api/conversations/${service.id}/participants/${userId}`, {});
                             loadParticipants();
-                            Alert.alert('Succ├¿s', 'Participant retir├® de la conversation');
+                            Alert.alert('Succès', 'Participant retiré de la conversation');
                         } catch (error) {
                             console.error('[ChatModalMobile] Erreur retrait participant:', error);
                             Alert.alert('Erreur', 'Impossible de retirer ce participant');
@@ -219,7 +209,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const handleSendMessage = async () => {
         if (!newMessage.trim()) return;
 
-        // Ô£à NOUVEAU: Envoyer avec les IDs des utilisateurs mentionn├®s et le message cit├®
+        // ✅ NOUVEAU: Envoyer avec les IDs des utilisateurs mentionnés et le message cité
         await sendMessage(newMessage.trim(), 'text', {
             mentioned_users: mentionedUsers.length > 0 ? mentionedUsers : undefined,
             reply_to_id: replyingTo?.id || undefined,
@@ -236,8 +226,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
         setNewMessage('');
         setShowEmojiPicker(false);
-        setMentionedUsers([]); // R├®initialiser les mentions
-        setReplyingTo(null); // Ô£à R├®initialiser la r├®ponse APR├êS l'envoi
+        setMentionedUsers([]); // Réinitialiser les mentions
+        setReplyingTo(null); // ✅ Réinitialiser la réponse APRÈS l'envoi
     };
 
     const handleEditMessage = async () => {
@@ -248,19 +238,19 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         setEditingContent('');
     };
 
-    // Ô£à NOUVEAU: Handler pour envoyer des m├®dias s├®lectionn├®s de la galerie
+    // ✅ NOUVEAU: Handler pour envoyer des médias sélectionnés de la galerie
     const handleSelectGalleryMedia = (selectedUrls: string[]) => {
         if (selectedUrls.length === 0) return;
 
-        // Ajouter les URLs s├®lectionn├®es aux images
+        // Ajouter les URLs sélectionnées aux images
         setSelectedImages([...selectedImages, ...selectedUrls]);
-        console.log('[ChatModal] M├®dias de la galerie ajout├®s:', selectedUrls.length);
+        console.log('[ChatModal] Médias de la galerie ajoutés:', selectedUrls.length);
     };
 
     const handleDeleteMessage = async (messageId: string) => {
         Alert.alert(
             'Supprimer le message',
-            '├ètes-vous s├╗r de vouloir supprimer ce message ?',
+            'Êtes-vous sûr de vouloir supprimer ce message ?',
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -286,7 +276,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         const phoneNumber = getServiceFieldValue(service?.data?.telephone) ||
             getServiceFieldValue(service?.data?.whatsapp);
 
-        if (phoneNumber && phoneNumber !== 'Non sp├®cifi├®') {
+        if (phoneNumber && phoneNumber !== 'Non spécifié') {
             const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
             Alert.alert(
                 'Appeler le prestataire',
@@ -296,14 +286,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     {
                         text: 'Appeler',
                         onPress: () => {
-                            // Ici vous pouvez impl├®menter l'appel t├®l├®phonique
+                            // Ici vous pouvez implémenter l'appel téléphonique
                             Alert.alert('Appel', `Appel vers ${cleanPhone}`);
                         }
                     }
                 ]
             );
         } else {
-            Alert.alert('Contact', 'Aucun num├®ro de t├®l├®phone disponible pour ce prestataire');
+            Alert.alert('Contact', 'Aucun numéro de téléphone disponible pour ce prestataire');
         }
     };
 
@@ -311,17 +301,17 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         setNewMessage(text);
         if (cursorPos !== undefined) setCursorPosition(cursorPos);
 
-        // Ô£à NOUVEAU: D├®tecter le @ pour ouvrir le mention picker
+        // ✅ NOUVEAU: Détecter le @ pour ouvrir le mention picker
         const lastAtIndex = text.lastIndexOf('@');
         if (lastAtIndex !== -1 && (cursorPos === undefined || cursorPos > lastAtIndex)) {
-            // Extraire le texte apr├¿s le @
+            // Extraire le texte après le @
             const query = text.substring(lastAtIndex + 1, cursorPos || text.length);
 
-            // Si pas d'espace apr├¿s le @, c'est une mention en cours
+            // Si pas d'espace après le @, c'est une mention en cours
             if (!query.includes(' ')) {
                 setMentionQuery(query);
                 setShowMentionPicker(true);
-                console.log('[ChatModalMobile] @ d├®tect├®, query:', query);
+                console.log('[ChatModalMobile] @ détecté, query:', query);
             } else {
                 setShowMentionPicker(false);
             }
@@ -344,7 +334,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         }
     };
 
-    // Ô£à NOUVEAU: Ins├®rer une mention dans le message
+    // ✅ NOUVEAU: Insérer une mention dans le message
     const insertMention = (user: any) => {
         const lastAtIndex = newMessage.lastIndexOf('@');
         if (lastAtIndex === -1) return;
@@ -357,7 +347,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         const newText = before + mention + after;
         setNewMessage(newText);
 
-        // Ajouter l'ID ├á la liste des mentions
+        // Ajouter l'ID à la liste des mentions
         if (!mentionedUsers.includes(user.id)) {
             setMentionedUsers([...mentionedUsers, user.id]);
         }
@@ -389,7 +379,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         }
     };
 
-    const popularEmojis = ['­ƒÿè', '­ƒÿé', 'ÔØñ´©Å', '­ƒæì', '­ƒæÄ', '­ƒÿì', '­ƒñö', '­ƒÿó', '­ƒÿ«', '­ƒöÑ', '­ƒÆ»', '­ƒÄë', '­ƒæÅ', '­ƒÖÅ', '­ƒÆ¬'];
+    const popularEmojis = ['😊', '😂', '❤️', '👍', '👎', '😍', '🤔', '😢', '😮', '🔥', '💯', '🎉', '👏', '🙏', '💪'];
 
     // Fonction pour convertir fichier en base64 (React Native compatible)
     const convertFileToBase64 = async (uri: string): Promise<string> => {
@@ -399,7 +389,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 encoding: FileSystem.EncodingType.Base64,
             });
 
-            // D├®terminer le type MIME bas├® sur l'extension
+            // Déterminer le type MIME basé sur l'extension
             const extension = uri.split('.').pop()?.toLowerCase();
             let mimeType = 'application/octet-stream';
 
@@ -458,7 +448,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 setSelectedImages([...selectedImages, ...images64]);
             }
         } catch (error) {
-            console.error('Erreur s├®lection images:', error);
+            console.error('Erreur sélection images:', error);
             Alert.alert('Erreur', 'Impossible de charger les images');
         }
     };
@@ -482,7 +472,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const file = result.assets[0];
 
-                // V├®rifier la taille du fichier (max 10MB)
+                // Vérifier la taille du fichier (max 10MB)
                 if (file.size && file.size > 10 * 1024 * 1024) {
                     Alert.alert('Fichier trop volumineux', 'La taille maximale est de 10MB');
                     return;
@@ -490,10 +480,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
                 const base64 = await convertFileToBase64(file.uri);
                 setSelectedDocuments([...selectedDocuments, { base64, name: file.name || 'document', size: file.size }]);
-                console.log('[ChatModal] Fichier s├®lectionn├®:', file.name, `(${(file.size / 1024).toFixed(2)} KB)`);
+                console.log('[ChatModal] Fichier sélectionné:', file.name, `(${(file.size / 1024).toFixed(2)} KB)`);
             }
         } catch (error) {
-            console.error('Erreur s├®lection fichier:', error);
+            console.error('Erreur sélection fichier:', error);
             Alert.alert('Erreur', 'Impossible de charger le fichier');
         }
     };
@@ -503,7 +493,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         try {
             const permission = await Audio.requestPermissionsAsync();
             if (permission.status !== 'granted') {
-                Alert.alert('Permission requise', 'Permission microphone n├®cessaire');
+                Alert.alert('Permission requise', 'Permission microphone nécessaire');
                 return;
             }
 
@@ -546,7 +536,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             setRecordingDuration(0);
         } catch (error) {
             console.error('Erreur enregistrement audio:', error);
-            Alert.alert('Erreur', 'Impossible de d├®marrer l\'enregistrement audio');
+            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement audio');
             setIsRecording(false);
         }
     };
@@ -570,22 +560,22 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             }
             setRecording(null);
         } catch (error) {
-            console.error('Erreur arr├¬t audio:', error);
+            console.error('Erreur arrêt audio:', error);
             setRecording(null);
         }
     };
 
-    // Fonction pour jouer/arr├¬ter l'audio enregistr├®
+    // Fonction pour jouer/arrêter l'audio enregistré
     const togglePlayAudio = async () => {
         try {
             if (isPlayingAudio && audioSound) {
-                // Arr├¬ter la lecture
+                // Arrêter la lecture
                 await audioSound.stopAsync();
                 await audioSound.unloadAsync();
                 setAudioSound(null);
                 setIsPlayingAudio(false);
             } else if (selectedAudioUri) {
-                // D├®marrer la lecture
+                // Démarrer la lecture
                 const { sound } = await Audio.Sound.createAsync(
                     { uri: selectedAudioUri },
                     { shouldPlay: true }
@@ -593,7 +583,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 setAudioSound(sound);
                 setIsPlayingAudio(true);
 
-                // Arr├¬ter automatiquement quand la lecture est termin├®e
+                // Arrêter automatiquement quand la lecture est terminée
                 sound.setOnPlaybackStatusUpdate((status) => {
                     if (status.isLoaded && status.didJustFinish) {
                         setIsPlayingAudio(false);
@@ -620,10 +610,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         setIsPlayingAudio(false);
     };
 
-    // Envoyer message avec m├®dias
+    // Envoyer message avec médias
     const handleSendWithMedia = async () => {
         if (!newMessage.trim() && selectedImages.length === 0 && !selectedAudio && selectedDocuments.length === 0) {
-            Alert.alert('Message vide', '├ëcrivez un message ou ajoutez un m├®dia');
+            Alert.alert('Message vide', 'Écrivez un message ou ajoutez un média');
             return;
         }
 
@@ -645,28 +635,28 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             } : undefined
         };
 
-        // Ô£à CORRIG├ë: D├®tecter automatiquement le type de message
+        // ✅ CORRIGÉ: Détecter automatiquement le type de message
         const messageType = selectedImages.length > 0 ? 'image' :
             selectedAudio ? 'audio' :
                 selectedDocuments.length > 0 ? 'file' : 'text';
 
         await sendMessage(newMessage.trim() || '', messageType, messageData);
 
-        // Nettoyer l'audio si pr├®sent
+        // Nettoyer l'audio si présent
         if (audioSound) {
             await audioSound.unloadAsync();
             setAudioSound(null);
         }
 
-        // R├®initialiser
+        // Réinitialiser
         setNewMessage('');
         setSelectedImages([]);
         setSelectedAudio(null);
         setSelectedAudioUri(null);
         setSelectedDocuments([]);
         setIsPlayingAudio(false);
-        setMentionedUsers([]); // Ô£à R├®initialiser les mentions
-        setReplyingTo(null); // Ô£à R├®initialiser la r├®ponse
+        setMentionedUsers([]); // ✅ Réinitialiser les mentions
+        setReplyingTo(null); // ✅ Réinitialiser la réponse
     };
 
     // Nettoyer l'audio quand le modal se ferme
@@ -691,7 +681,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    {/* Premi├¿re ligne : Bouton retour + Nom + Actions */}
+                    {/* Première ligne : Bouton retour + Nom + Actions */}
                     <View style={styles.headerTop}>
                         <View style={styles.headerLeft}>
                             <TouchableOpacity style={styles.backButton} onPress={onClose}>
@@ -715,7 +705,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         </View>
 
                         <View style={styles.headerActions}>
-                            {/* Ô£à NOUVEAU: Bouton WhatsApp (prioritaire si disponible) */}
+                            {/* ✅ NOUVEAU: Bouton WhatsApp (prioritaire si disponible) */}
                             {(prestataireInfo?.whatsapp || service?.data?.whatsapp?.valeur || service?.data?.whatsapp || prestataireInfo?.telephone) && (
                                 <TouchableOpacity
                                     style={[styles.actionButton, styles.whatsappButton]}
@@ -726,7 +716,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             prestataireInfo?.telephone;
 
                                         if (!whatsappNumber) {
-                                            Alert.alert('WhatsApp', 'Num├®ro WhatsApp non disponible');
+                                            Alert.alert('WhatsApp', 'Numéro WhatsApp non disponible');
                                             return;
                                         }
 
@@ -740,7 +730,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             if (canOpen) {
                                                 await Linking.openURL(whatsappUrl);
                                             } else {
-                                                Alert.alert('WhatsApp', 'WhatsApp n\'est pas install├® sur cet appareil');
+                                                Alert.alert('WhatsApp', 'WhatsApp n\'est pas installé sur cet appareil');
                                             }
                                         } catch (error) {
                                             console.error('Erreur ouverture WhatsApp:', error);
@@ -750,7 +740,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 >
                                     {/* Logo WhatsApp officiel */}
                                     <View style={styles.whatsappIconContainer}>
-                                        <Text style={styles.whatsappIcon}>­ƒô▒</Text>
+                                        <Text style={styles.whatsappIcon}>📱</Text>
                                     </View>
                                     <View style={styles.whatsappBadge}>
                                         <Text style={styles.whatsappBadgeText}>WA</Text>
@@ -758,7 +748,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 </TouchableOpacity>
                             )}
 
-                            {/* Ô£à Bouton liste des participants */}
+                            {/* ✅ Bouton liste des participants */}
                             <TouchableOpacity
                                 style={[styles.actionButton, participants.length > 2 && styles.actionButtonHighlight]}
                                 onPress={() => setShowParticipantsList(true)}
@@ -793,7 +783,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         </View>
                     </View>
 
-                    {/* Deuxi├¿me ligne : Titre du service (toujours visible) */}
+                    {/* Deuxième ligne : Titre du service (toujours visible) */}
                     <View style={styles.headerBottom}>
                         <Text style={styles.serviceInfo} numberOfLines={1}>{titreService || 'Service'}</Text>
                     </View>
@@ -844,7 +834,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     </View>
                                 ) : (
                                     <>
-                                        {/* Ô£à NOUVEAU: Afficher l'image si pr├®sente */}
+                                        {/* ✅ NOUVEAU: Afficher l'image si présente */}
                                         {message.type === 'image' && message.imageUrl && (
                                             <Image
                                                 source={{ uri: message.imageUrl }}
@@ -853,7 +843,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             />
                                         )}
 
-                                        {/* Ô£à NOUVEAU: Afficher l'audio si pr├®sent */}
+                                        {/* ✅ NOUVEAU: Afficher l'audio si présent */}
                                         {message.type === 'audio' && message.audioUrl && (
                                             <View style={styles.audioContainer}>
                                                 <SafeIcon name="mic" size={20} color={message.from === 'client' ? '#FFFFFF' : modernColors.primary} />
@@ -866,7 +856,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             </View>
                                         )}
 
-                                        {/* Ô£à NOUVEAU: Afficher le fichier si pr├®sent */}
+                                        {/* ✅ NOUVEAU: Afficher le fichier si présent */}
                                         {message.type === 'file' && message.fileUrl && (
                                             <View style={styles.fileContainer}>
                                                 <SafeIcon name="file" size={20} color={message.from === 'client' ? '#FFFFFF' : modernColors.primary} />
@@ -879,7 +869,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             </View>
                                         )}
 
-                                        {/* Ô£à NOUVEAU: Afficher le message cit├® si pr├®sent */}
+                                        {/* ✅ NOUVEAU: Afficher le message cité si présent */}
                                         {message.reply_to && (
                                             <View style={styles.quotedMessage}>
                                                 <View style={styles.quotedMessageBar} />
@@ -889,17 +879,17 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     </Text>
                                                     <Text style={styles.quotedMessageText} numberOfLines={2}>
                                                         {message.reply_to.content_type === 'text' && message.reply_to.content}
-                                                        {message.reply_to.content_type === 'audio' && '­ƒÄñ Message audio'}
-                                                        {message.reply_to.content_type === 'image' && '­ƒû╝´©Å Image'}
-                                                        {message.reply_to.content_type === 'file' && '­ƒôä Fichier'}
-                                                        {message.reply_to.content_type === 'video' && '­ƒÄÑ Vid├®o'}
+                                                        {message.reply_to.content_type === 'audio' && '🎤 Message audio'}
+                                                        {message.reply_to.content_type === 'image' && '🖼️ Image'}
+                                                        {message.reply_to.content_type === 'file' && '📄 Fichier'}
+                                                        {message.reply_to.content_type === 'video' && '🎥 Vidéo'}
                                                     </Text>
                                                 </View>
                                             </View>
                                         )}
 
                                         {/* Afficher le texte pour les messages texte ou avec le texte */}
-                                        {(message.type === 'text' || (message.content && !message.content.match(/^[­ƒôÀ­ƒÄñ­ƒôÄ]/))) && (
+                                        {(message.type === 'text' || (message.content && !message.content.match(/^[📷🎤📎]/))) && (
                                             <Text style={[
                                                 styles.messageText,
                                                 message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
@@ -916,11 +906,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                 ]}>
                                                     {formatMessageTime(message.timestamp)}
                                                     {message.edited && (
-                                                        <Text style={styles.editedIndicator}> (modifi├®)</Text>
+                                                        <Text style={styles.editedIndicator}> (modifié)</Text>
                                                     )}
                                                 </Text>
 
-                                                {/* Ô£à NOUVEAU: Bouton R├®pondre (toujours visible) */}
+                                                {/* ✅ NOUVEAU: Bouton Répondre (toujours visible) */}
                                                 <TouchableOpacity
                                                     style={styles.replyButton}
                                                     onPress={() => setReplyingTo({
@@ -934,7 +924,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     })}
                                                 >
                                                     <SafeIcon name="corner-down-left" size={14} color={modernColors.textSecondary} />
-                                                    <Text style={styles.replyButtonText}>R├®pondre</Text>
+                                                    <Text style={styles.replyButtonText}>Répondre</Text>
                                                 </TouchableOpacity>
                                             </View>
 
@@ -969,7 +959,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     <View style={styles.typingDot} />
                                     <View style={styles.typingDot} />
                                 </View>
-                                <Text style={styles.typingText}>En train d'├®crire...</Text>
+                                <Text style={styles.typingText}>En train d'écrire...</Text>
                             </View>
                         </View>
                     )}
@@ -996,7 +986,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
                 {/* Input */}
                 <View style={styles.inputContainer}>
-                    {/* Preview des m├®dias s├®lectionn├®s */}
+                    {/* Preview des médias sélectionnés */}
                     {(selectedImages.length > 0 || selectedAudio || selectedDocuments.length > 0) && (
                         <ScrollView horizontal style={styles.mediaPreviewContainer} showsHorizontalScrollIndicator={false}>
                             {/* Images */}
@@ -1007,7 +997,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         style={styles.removeMediaButton}
                                         onPress={() => setSelectedImages(selectedImages.filter((_, i) => i !== idx))}
                                     >
-                                        <Text style={styles.removeMediaText}>├ù</Text>
+                                        <Text style={styles.removeMediaText}>×</Text>
                                     </TouchableOpacity>
                                 </View>
                             ))}
@@ -1029,7 +1019,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         <View style={styles.audioInfo}>
                                             <SafeIcon name="mic" size={16} color="#FFFFFF" />
                                             <Text style={styles.audioPreviewText}>
-                                                {isPlayingAudio ? 'En lecture...' : 'Audio enregistr├®'}
+                                                {isPlayingAudio ? 'En lecture...' : 'Audio enregistré'}
                                             </Text>
                                         </View>
                                     </View>
@@ -1056,14 +1046,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         style={styles.removeMediaButton}
                                         onPress={() => setSelectedDocuments(selectedDocuments.filter((_, i) => i !== idx))}
                                     >
-                                        <Text style={styles.removeMediaText}>├ù</Text>
+                                        <Text style={styles.removeMediaText}>×</Text>
                                     </TouchableOpacity>
                                 </View>
                             ))}
                         </ScrollView>
                     )}
 
-                    {/* Boutons d'actions m├®dia */}
+                    {/* Boutons d'actions média */}
                     <View style={styles.mediaActionsRow}>
                         <TouchableOpacity style={styles.mediaButton} onPress={pickImage}>
                             <SafeIcon name="image" size={22} color={modernColors.primary} />
@@ -1080,7 +1070,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="file-text" size={22} color={modernColors.primary} />
                         </TouchableOpacity>
 
-                        {/* Ô£à Bouton galerie de produits/service */}
+                        {/* ✅ Bouton galerie de produits/service */}
                         <TouchableOpacity
                             style={styles.mediaButton}
                             onPress={() => setShowProductGalleryPicker(true)}
@@ -1089,22 +1079,22 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         </TouchableOpacity>
                     </View>
 
-                    {/* Ô£à NOUVEAU: Bandeau de citation quand on r├®pond ├á un message */}
+                    {/* ✅ NOUVEAU: Bandeau de citation quand on répond à un message */}
                     {replyingTo && (
                         <View style={styles.replyBanner}>
                             <View style={styles.replyContent}>
                                 <View style={styles.replyHeader}>
                                     <SafeIcon name="corner-down-right" size={16} color={modernColors.primary} />
                                     <Text style={styles.replyLabel}>
-                                        R├®ponse ├á {replyingTo.sender_name || 'Message'}
+                                        Réponse à {replyingTo.sender_name || 'Message'}
                                     </Text>
                                 </View>
                                 <Text style={styles.replyText} numberOfLines={2}>
                                     {replyingTo.content_type === 'text' && replyingTo.content}
-                                    {replyingTo.content_type === 'audio' && '­ƒÄñ Message audio'}
-                                    {replyingTo.content_type === 'image' && '­ƒû╝´©Å Image'}
-                                    {replyingTo.content_type === 'file' && '­ƒôä Fichier'}
-                                    {replyingTo.content_type === 'video' && '­ƒÄÑ Vid├®o'}
+                                    {replyingTo.content_type === 'audio' && '🎤 Message audio'}
+                                    {replyingTo.content_type === 'image' && '🖼️ Image'}
+                                    {replyingTo.content_type === 'file' && '📄 Fichier'}
+                                    {replyingTo.content_type === 'video' && '🎥 Vidéo'}
                                 </Text>
                             </View>
                             <TouchableOpacity
@@ -1133,7 +1123,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 setCursorPosition(position);
                                 handleTyping(newMessage, position);
                             }}
-                            placeholder={replyingTo ? "Tapez votre r├®ponse..." : "Tapez votre message... (@ pour mentionner)"}
+                            placeholder={replyingTo ? "Tapez votre réponse..." : "Tapez votre message... (@ pour mentionner)"}
                             placeholderTextColor={modernColors.textSecondary}
                             multiline
                             maxLength={500}
@@ -1158,14 +1148,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 { backgroundColor: isConnected ? modernColors.success : modernColors.textSecondary }
                             ]} />
                             <Text style={styles.connectionText}>
-                                {isConnected ? 'Connexion s├®curis├®e' : 'Mode hors ligne'}
+                                {isConnected ? 'Connexion sécurisée' : 'Mode hors ligne'}
                             </Text>
                         </View>
                     </View>
                 </View>
             </KeyboardAvoidingView>
 
-            {/* Ô£à Modal de s├®lection de m├®dias de la galerie produit */}
+            {/* ✅ Modal de sélection de médias de la galerie produit */}
             <ProductGalleryPickerModal
                 visible={showProductGalleryPicker}
                 onClose={() => setShowProductGalleryPicker(false)}
@@ -1173,7 +1163,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 onSelectMedia={handleSelectGalleryMedia}
             />
 
-            {/* Modal d'appel interne (audio/vid├®o) */}
+            {/* Modal d'appel interne (audio/vidéo) */}
             <InAppCallModal
                 visible={showCallModal}
                 onClose={() => setShowCallModal(false)}
@@ -1184,7 +1174,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 serviceId={service?.id}
             />
 
-            {/* Ô£à NOUVEAU: Modal pour @mention */}
+            {/* ✅ NOUVEAU: Modal pour @mention */}
             <UserMentionPicker
                 visible={showMentionPicker}
                 onClose={() => setShowMentionPicker(false)}
@@ -1192,7 +1182,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 currentQuery={mentionQuery}
             />
 
-            {/* Ô£à NOUVEAU: Modal liste des participants */}
+            {/* ✅ NOUVEAU: Modal liste des participants */}
             <Modal
                 visible={showParticipantsList}
                 animationType="slide"
@@ -1203,7 +1193,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     <View style={styles.participantsContainer}>
                         <View style={styles.participantsHeader}>
                             <Text style={styles.participantsTitle}>
-                                ­ƒæÑ Participants ({participants.length})
+                                👥 Participants ({participants.length})
                             </Text>
                             <TouchableOpacity onPress={() => setShowParticipantsList(false)}>
                                 <SafeIcon name="x" size={24} color={modernColors.text} />
@@ -1236,8 +1226,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         <View style={styles.participantDetails}>
                                             <Text style={styles.participantName}>{participant.user_name}</Text>
                                             <Text style={styles.participantRole}>
-                                                {participant.role === 'owner' ? '­ƒææ Propri├®taire' :
-                                                    participant.invited_by ? '­ƒæñ Invit├®' : '­ƒæÑ Participant'}
+                                                {participant.role === 'owner' ? '👑 Propriétaire' :
+                                                    participant.invited_by ? '👤 Invité' : '👥 Participant'}
                                             </Text>
                                         </View>
                                     </View>
@@ -1297,8 +1287,8 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     headerBottom: {
-        paddingLeft: 48, // Align├® avec le nom (apr├¿s le bouton retour)
-        paddingRight: 40, // Espace pour ne pas ├¬tre cach├® par les boutons
+        paddingLeft: 48, // Aligné avec le nom (après le bouton retour)
+        paddingRight: 40, // Espace pour ne pas être caché par les boutons
     },
     headerLeft: {
         flexDirection: 'row',
@@ -1555,7 +1545,7 @@ const styles = StyleSheet.create({
         height: 6,
         borderRadius: 3,
         backgroundColor: modernColors.textSecondary,
-        // Animation sera ajout├®e via Animated API si n├®cessaire
+        // Animation sera ajoutée via Animated API si nécessaire
     },
     typingText: {
         fontSize: 12,
@@ -1747,7 +1737,7 @@ const styles = StyleSheet.create({
         color: '#EF4444',
         fontWeight: 'bold',
     },
-    // Ô£à NOUVEAU: Styles pour les m├®dias dans les messages
+    // ✅ NOUVEAU: Styles pour les médias dans les messages
     messageImage: {
         width: 200,
         height: 150,
@@ -1774,7 +1764,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
     },
-    // Ô£à NOUVEAU: Styles pour la liste des participants
+    // ✅ NOUVEAU: Styles pour la liste des participants
     participantsOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1895,7 +1885,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#FFFFFF',
     },
-    // Ô£à NOUVEAU: Styles pour le syst├¿me de r├®ponse/citation
+    // ✅ NOUVEAU: Styles pour le système de réponse/citation
     replyBanner: {
         flexDirection: 'row',
         alignItems: 'center',

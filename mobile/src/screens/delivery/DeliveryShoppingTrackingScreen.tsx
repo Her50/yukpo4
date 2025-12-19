@@ -1,9 +1,3 @@
-/**
- * ✅ RÉÉCRIT COMPLÈTEMENT - DeliveryShoppingTrackingScreen
- * Écran de suivi des livraisons avec courses
- * Version simplifiée et sûre sans erreurs d'import/export
- */
-
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -19,10 +13,8 @@ import {
     View
 } from 'react-native';
 
-// ✅ Imports des composants delivery - vérifier les exports
 import CourierSelectionModal from '../../components/delivery/CourierSelectionModal';
 import EnhancedTrackingMap from '../../components/delivery/EnhancedTrackingMap';
-import HapticTouchable from '../../components/delivery/HapticTouchable';
 import InlineChat from '../../components/delivery/InlineChat';
 import ParcelRejectionModal from '../../components/delivery/ParcelRejectionModal';
 import ProofMediaUpload from '../../components/delivery/ProofMediaUpload';
@@ -33,7 +25,6 @@ import StatusIndicator from '../../components/delivery/StatusIndicator';
 import TimelineStepper from '../../components/delivery/TimelineStepper';
 import ToastNotification from '../../components/delivery/ToastNotification';
 
-// ✅ Imports des composants de base
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
@@ -44,233 +35,55 @@ import { deliveryApi, shoppingApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary, ParcelRejectionReason, ShoppingBasketItem } from '../../types/delivery';
 
-type TrackingTab = 'timeline' | 'basket' | 'courier';
+type TabType = 'timeline' | 'basket' | 'courier';
 
 interface RouteParams {
     deliveryId: string;
 }
 
-// ✅ Composants inline simples et sûrs
-interface SimpleButtonProps {
-    title: string;
-    onPress?: () => void;
-    disabled?: boolean;
-    variant?: 'primary' | 'secondary';
-    size?: 'small' | 'medium' | 'large';
-    style?: any;
-}
-
-const SimpleButton: React.FC<SimpleButtonProps> = ({ 
-    title, 
-    onPress, 
-    disabled = false, 
-    variant = 'primary', 
-    size = 'medium', 
-    style 
-}) => {
-    const buttonStyle = {
-        paddingHorizontal: size === 'small' ? 12 : size === 'large' ? 20 : 16,
-        paddingVertical: size === 'small' ? 8 : size === 'large' ? 16 : 12,
-        backgroundColor: variant === 'primary' ? modernColors.primary : modernColors.surface,
-        borderRadius: 8,
-        alignItems: 'center' as const,
-        justifyContent: 'center' as const,
-        opacity: disabled ? 0.5 : 1,
-        borderWidth: variant === 'secondary' ? 1 : 0,
-        borderColor: variant === 'secondary' ? modernColors.border : undefined,
-    };
-
-    const textStyle = {
-        color: variant === 'primary' ? '#FFFFFF' : modernColors.text,
-        fontSize: size === 'small' ? 14 : size === 'large' ? 18 : 16,
-        fontWeight: '600' as const,
-    };
-
-    return (
-        <TouchableOpacity
-            style={[buttonStyle, style]}
-            onPress={onPress}
-            disabled={disabled}
-            activeOpacity={0.8}
-        >
-            <Text style={textStyle}>{title}</Text>
-        </TouchableOpacity>
-    );
-};
-
-interface SimpleBadgeProps {
-    text: string;
-    variant?: 'success' | 'warning' | 'error' | 'info' | 'neutral';
-    size?: 'small' | 'medium';
-    style?: any;
-}
-
-const SimpleBadge: React.FC<SimpleBadgeProps> = ({ 
-    text, 
-    variant = 'neutral', 
-    size = 'medium', 
-    style 
-}) => {
-    const getVariantColor = () => {
-        switch (variant) {
-            case 'success':
-                return modernColors.success;
-            case 'warning':
-                return modernColors.warning;
-            case 'error':
-                return modernColors.error;
-            case 'info':
-                return modernColors.info;
-            default:
-                return modernColors.textSecondary;
-        }
-    };
-
-    const badgeStyle = {
-        paddingHorizontal: size === 'small' ? 6 : 8,
-        paddingVertical: size === 'small' ? 2 : 4,
-        backgroundColor: getVariantColor() + '20',
-        borderRadius: 12,
-        alignSelf: 'flex-start' as const,
-        borderWidth: 1,
-        borderColor: getVariantColor() + '40',
-    };
-
-    const textStyle = {
-        fontSize: size === 'small' ? 10 : 12,
-        fontWeight: '600' as const,
-        color: getVariantColor(),
-    };
-
-    return (
-        <View style={[badgeStyle, style]}>
-            <Text style={textStyle}>{text}</Text>
-        </View>
-    );
-};
-
-interface SimpleItemCardProps {
-    children: React.ReactNode;
-    style?: any;
-    index: number;
-}
-
-const SimpleItemCard: React.FC<SimpleItemCardProps> = ({ children, style }) => {
-    return (
-        <View style={style}>
-            {children}
-        </View>
-    );
-};
-
-// ✅ Helper functions
-const statusToLabel = (status: string): string => {
-    switch (status) {
-        case 'pending':
-            return 'En attente';
-        case 'awaiting_courier':
-            return 'Recherche coursier';
-        case 'assigned':
-            return 'Coursier assigné';
-        case 'en_route_pickup':
-            return 'En route vers le marché';
-        case 'shopping_pending':
-            return 'Arrivé au marché';
-        case 'shopping_in_progress':
-            return 'Courses en cours';
-        case 'shopping_completed':
-            return 'Panier validé';
-        case 'en_route_delivery':
-            return 'En route vers le client';
-        case 'delivered':
-            return 'Livré';
-        case 'cancelled':
-            return 'Annulé';
-        default:
-            return status;
-    }
-};
-
-function getRejectionReasonLabel(reason: ParcelRejectionReason): string {
-    const labels: Record<ParcelRejectionReason, string> = {
-        damaged: 'Produit endommagé',
-        wrong_item: 'Mauvais produit',
-        expired: 'Produit périmé',
-        wrong_quantity: 'Mauvaise quantité',
-        wrong_size: 'Mauvaise taille',
-        wrong_color: 'Mauvaise couleur',
-        quality_issue: 'Problème de qualité',
-        not_ordered: 'Non commandé',
-        duplicate: 'Doublon',
-        other: 'Autre raison',
-    };
-    return labels[reason] || reason;
-}
-
 const DeliveryShoppingTrackingScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { deliveryId } = (route.params as RouteParams) ?? { deliveryId: null };
-    const [activeTab, setActiveTab] = useState<TrackingTab>('timeline');
-    const { delivery, timeline, refresh, loading } = useDeliveryTracking(deliveryId || null);
-    const { refreshDelivery, updateRecipientLocation, setActiveDeliveryId } = useDeliveryContext();
-    const { user } = useAuth();
+    const params = route.params as RouteParams | undefined;
+    const deliveryId = params?.deliveryId || null;
+
+    const [activeTab, setActiveTab] = useState<TabType>('timeline');
     const [showCourierModal, setShowCourierModal] = useState(false);
     const [rejectingItem, setRejectingItem] = useState<ShoppingBasketItem | null>(null);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
+
+    const { delivery, timeline, refresh, loading } = useDeliveryTracking(deliveryId);
+    const { refreshDelivery, updateRecipientLocation, setActiveDeliveryId } = useDeliveryContext();
+    const { user } = useAuth();
     const { toast, showSuccess, showError, showWarning, hideToast } = useToast();
 
-    // ✅ Vérifications utilisateur
-    const isCreator = Boolean(
-        user?.id &&
-        delivery?.creator_id &&
-        String(delivery.creator_id) === String(user.id)
-    );
-    const canAssignCourier = isCreator && !delivery?.courier && (delivery?.status === 'pending' || delivery?.status === 'awaiting_courier');
-
-    const isCurrentUserCourier = useMemo(() => {
-        if (!user?.id || !delivery?.courier?.id) {
-            return false;
-        }
-        return String(delivery.courier.id) === String(user.id);
-    }, [user?.id, delivery?.courier?.id]);
-
-    const canAddPickupMedia = isCurrentUserCourier && (
-        delivery?.status === 'en_route_pickup' ||
-        delivery?.status === 'shopping_completed' ||
-        delivery?.status === 'en_route_delivery' ||
-        delivery?.status === 'delivered'
-    );
-
-    const canAddDeliveryMedia = isCurrentUserCourier && (
-        delivery?.status === 'en_route_delivery' ||
-        delivery?.status === 'delivered'
-    );
-
-    // ✅ Effects
     useEffect(() => {
         if (!deliveryId) return;
-        refreshDelivery(deliveryId, { force: true }).catch(err =>
-            console.error('[DeliveryShoppingTracking] initial refresh error', err)
-        );
+        refreshDelivery(deliveryId, { force: true }).catch(console.error);
         setActiveDeliveryId(deliveryId);
-        return () => {
-            setActiveDeliveryId(null);
-        };
+        return () => setActiveDeliveryId(null);
     }, [deliveryId, refreshDelivery, setActiveDeliveryId]);
 
     useEffect(() => {
-        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        const handler = BackHandler.addEventListener('hardwareBackPress', () => {
             if (navigation.canGoBack()) {
                 navigation.goBack();
                 return true;
             }
             return false;
         });
-        return () => backHandler.remove();
+        return () => handler.remove();
     }, [navigation]);
 
-    // ✅ Computed values
-    const shoppingItems = useMemo(() => delivery?.shopping?.items ?? [], [delivery?.shopping?.items]);
+    const isCreator = useMemo(() => {
+        return user?.id && delivery?.creator_id && String(delivery.creator_id) === String(user.id);
+    }, [user?.id, delivery?.creator_id]);
+
+    const isCourier = useMemo(() => {
+        return user?.id && delivery?.courier?.id && String(delivery.courier.id) === String(user.id);
+    }, [user?.id, delivery?.courier?.id]);
+
+    const shoppingItems = useMemo(() => delivery?.shopping?.items || [], [delivery?.shopping?.items]);
 
     const courierInfo = useMemo(() => {
         const summary = delivery as DeliverySummary | undefined;
@@ -281,71 +94,39 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         };
     }, [delivery]);
 
-    const statusColor = useMemo(() => {
-        const status = delivery?.status ?? 'pending';
-        switch (status) {
-            case 'delivered':
-                return modernColors.success;
-            case 'cancelled':
-                return modernColors.error;
-            case 'en_route_delivery':
-            case 'shopping_completed':
-                return modernColors.primary;
-            case 'shopping_in_progress':
-            case 'en_route_pickup':
-                return modernColors.info;
-            case 'awaiting_courier':
-            case 'pending':
-                return modernColors.warning;
-            default:
-                return modernColors.textSecondary;
-        }
-    }, [delivery?.status]);
+    const distance = useMemo(() => {
+        const pickup = delivery?.pickup?.location;
+        const dropoff = delivery?.dropoff?.location;
+        if (!pickup || !dropoff) return null;
 
-    const estimatedDistance = useMemo(() => {
-        if (!delivery?.pickup?.location || !delivery?.dropoff?.location) return null;
-        const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        };
-        return calculateDistance(
-            delivery.pickup.location.lat,
-            delivery.pickup.location.lng,
-            delivery.dropoff.location.lat,
-            delivery.dropoff.location.lng
-        );
+        const R = 6371;
+        const dLat = ((dropoff.lat - pickup.lat) * Math.PI) / 180;
+        const dLon = ((dropoff.lng - pickup.lng) * Math.PI) / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos((pickup.lat * Math.PI) / 180) *
+            Math.cos((dropoff.lat * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }, [delivery?.pickup?.location, delivery?.dropoff?.location]);
 
-    // ✅ Handlers
     const handleRefresh = async () => {
         if (!deliveryId) return;
         try {
             await refresh({ force: true });
-            showSuccess('Informations mises à jour');
-        } catch (error) {
-            showError('Erreur lors de la mise à jour');
+            showSuccess('Mise à jour réussie');
+        } catch {
+            showError('Erreur de mise à jour');
         }
     };
 
-    const canShareLocation =
-        !!deliveryId &&
-        !!delivery?.recipient?.canShareLocation &&
-        (!!delivery?.recipient?.id
-            ? String(delivery.recipient.id) === String(user?.id)
-            : true);
-
-    const shareRecipientLocation = async () => {
+    const handleShareLocation = async () => {
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission requise', 'Autorise la localisation pour partager ta position.');
+                Alert.alert('Permission requise', 'Autorisez la localisation');
                 return;
             }
 
@@ -353,7 +134,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                 accuracy: Location.Accuracy.Balanced,
             });
 
-            const result = await updateRecipientLocation(deliveryId!, {
+            await updateRecipientLocation(deliveryId!, {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
                 accuracy: position.coords.accuracy ?? undefined,
@@ -362,65 +143,9 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                 source: 'recipient',
             });
 
-            if (result?.queued) {
-                showWarning('Position en attente - synchronisation automatique à la reconnexion');
-            } else {
-                showSuccess('Position partagée avec le coursier');
-            }
+            showSuccess('Position partagée');
         } catch (error: any) {
-            console.error('[DeliveryShoppingTracking] shareRecipientLocation error', error);
-            Alert.alert('Erreur', error?.message ?? 'Impossible de partager la position.');
-        }
-    };
-
-    const handleChat = () => {
-        navigation.navigate('MesInteractions', {
-            focusDeliveryId: deliveryId,
-        });
-    };
-
-    const [updatingStatus, setUpdatingStatus] = useState(false);
-
-    const handleUpdateStatus = async (newStatus: string) => {
-        if (!deliveryId || updatingStatus) return;
-
-        setUpdatingStatus(true);
-        try {
-            const response = await deliveryApi.updateStatus(deliveryId, newStatus);
-            if (response.success) {
-                showSuccess('Statut mis à jour avec succès');
-                await refresh({ force: true });
-            } else {
-                showError(response.error ?? 'Impossible de mettre à jour le statut');
-            }
-        } catch (error: any) {
-            console.error('[DeliveryShoppingTracking] Erreur mise à jour statut:', error);
-            showError(error?.message ?? 'Impossible de mettre à jour le statut');
-        } finally {
-            setUpdatingStatus(false);
-        }
-    };
-
-    const getNextStatusOptions = (): Array<{ label: string; status: string; icon: string }> => {
-        const currentStatus = delivery?.status;
-        if (!currentStatus) return [];
-
-        switch (currentStatus) {
-            case 'assigned':
-            case 'awaiting_courier':
-                return [{ label: 'Je pars vers le point de départ', status: 'en_route_pickup', icon: '🚚' }];
-            case 'en_route_pickup':
-                return [{ label: 'Je suis arrivé au point de départ', status: 'shopping_pending', icon: '📍' }];
-            case 'shopping_pending':
-                return [{ label: 'Courses en cours', status: 'shopping_in_progress', icon: '🛒' }];
-            case 'shopping_in_progress':
-                return [{ label: 'Courses terminées', status: 'shopping_completed', icon: '✅' }];
-            case 'shopping_completed':
-                return [{ label: 'Colis récupéré, en route', status: 'en_route_delivery', icon: '🚚' }];
-            case 'en_route_delivery':
-                return [{ label: 'Livré', status: 'delivered', icon: '✅' }];
-            default:
-                return [];
+            showError(error?.message || 'Erreur');
         }
     };
 
@@ -428,364 +153,323 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         if (!deliveryId) return;
         try {
             const response = await deliveryApi.getCourierNavigation(deliveryId);
-            const responseData = (response as any)?.data || response;
+            const data = (response as any)?.data || response;
 
-            if (!responseData?.origin || !responseData?.destination) {
-                Alert.alert('Erreur', 'Données de navigation incomplètes');
+            if (!data?.origin || !data?.destination) {
+                Alert.alert('Erreur', 'Données incomplètes');
                 return;
             }
 
-            const origin = `${responseData.origin.latitude},${responseData.origin.longitude}`;
-            const destination = `${responseData.destination.latitude},${responseData.destination.longitude}`;
-            const googleMapsUrl = `https://www.google.com/maps/dir/${origin}/${destination}`;
-
-            const canOpen = await Linking.canOpenURL(googleMapsUrl);
+            const url = `https://www.google.com/maps/dir/${data.origin.latitude},${data.origin.longitude}/${data.destination.latitude},${data.destination.longitude}`;
+            const canOpen = await Linking.canOpenURL(url);
             if (canOpen) {
-                await Linking.openURL(googleMapsUrl);
+                await Linking.openURL(url);
                 showSuccess('Navigation ouverte');
             } else {
-                showError('Impossible d\'ouvrir Google Maps');
+                showError('Impossible d\'ouvrir');
             }
         } catch (error: any) {
-            console.error('[DeliveryShoppingTrackingScreen] Erreur navigation:', error);
-            showError('Impossible d\'ouvrir la navigation');
+            showError('Erreur navigation');
         }
     };
 
-    // ✅ Loading state
+    const handleUpdateStatus = async (status: string) => {
+        if (!deliveryId || updatingStatus) return;
+        setUpdatingStatus(true);
+        try {
+            const response = await deliveryApi.updateStatus(deliveryId, status);
+            if (response.success) {
+                showSuccess('Statut mis à jour');
+                await refresh({ force: true });
+            } else {
+                showError(response.error || 'Erreur');
+            }
+        } catch (error: any) {
+            showError('Erreur');
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
+
+    const getStatusOptions = () => {
+        const status = delivery?.status;
+        if (!status) return [];
+        switch (status) {
+            case 'assigned':
+            case 'awaiting_courier':
+                return [{ label: 'En route vers départ', status: 'en_route_pickup', icon: '🚚' }];
+            case 'en_route_pickup':
+                return [{ label: 'Arrivé au départ', status: 'shopping_pending', icon: '📍' }];
+            case 'shopping_pending':
+                return [{ label: 'Courses en cours', status: 'shopping_in_progress', icon: '🛒' }];
+            case 'shopping_in_progress':
+                return [{ label: 'Courses terminées', status: 'shopping_completed', icon: '✅' }];
+            case 'shopping_completed':
+                return [{ label: 'En route livraison', status: 'en_route_delivery', icon: '🚚' }];
+            case 'en_route_delivery':
+                return [{ label: 'Livré', status: 'delivered', icon: '✅' }];
+            default:
+                return [];
+        }
+    };
+
+    const statusLabel = (status: string) => {
+        const labels: Record<string, string> = {
+            pending: 'En attente',
+            awaiting_courier: 'Recherche coursier',
+            assigned: 'Coursier assigné',
+            en_route_pickup: 'En route départ',
+            shopping_pending: 'Arrivé marché',
+            shopping_in_progress: 'Courses en cours',
+            shopping_completed: 'Panier validé',
+            en_route_delivery: 'En route livraison',
+            delivered: 'Livré',
+            cancelled: 'Annulé',
+        };
+        return labels[status] || status;
+    };
+
     if (loading && !delivery) {
         return (
-            <SafeNativeView style={styles.container} backgroundColor={modernColors.background}>
-                <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-                    <SkeletonCard style={styles.skeletonMargin} />
-                    <SkeletonCard style={styles.skeletonMargin} />
+            <SafeNativeView style={styles.container}>
+                <ScrollView style={styles.scroll}>
+                    <SkeletonCard style={styles.skeleton} />
+                    <SkeletonCard style={styles.skeleton} />
                     <SkeletonCard />
                 </ScrollView>
             </SafeNativeView>
         );
     }
 
-    // ✅ Tab labels
-    const tabLabels: Record<TrackingTab, string> = {
-        timeline: 'Timeline',
-        basket: 'Panier',
-        courier: 'Coursier',
-    };
-
     return (
-        <SafeNativeView style={styles.container} backgroundColor={modernColors.background}>
+        <SafeNativeView style={styles.container}>
             <ToastNotification
                 visible={toast.visible}
                 message={toast.message}
                 type={toast.type}
                 onClose={hideToast}
             />
-            <View style={styles.animatedContainer}>
-                <ScrollView
-                    style={styles.scroll}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={loading}
-                            onRefresh={handleRefresh}
-                            tintColor={modernColors.primary}
-                            colors={[modernColors.primary]}
-                        />
-                    }
-                    showsVerticalScrollIndicator={false}
-                >
-                    {/* Header */}
-                    <View style={styles.header}>
-                        <View style={styles.headerContent}>
-                            <View style={styles.headerTop}>
-                                <Text style={styles.headerLabel}>Livraison</Text>
-                                <SimpleBadge
-                                    text={`#${delivery?.id?.slice(-6) ?? '...'}`}
-                                    variant="neutral"
-                                    size="small"
-                                />
-                            </View>
-                            <View style={styles.statusRow}>
-                                <StatusIndicator
-                                    status={delivery?.status ?? 'pending'}
-                                    size={10}
-                                    showPulse={delivery?.status !== 'delivered' && delivery?.status !== 'cancelled'}
-                                />
-                                <Text style={styles.statusText}>
-                                    {statusToLabel(delivery?.status ?? 'pending')}
-                                </Text>
-                            </View>
-                        </View>
-                        <View style={styles.headerActions}>
-                            {canShareLocation ? (
-                                <HapticTouchable
-                                    hapticType="light"
-                                    style={styles.headerActionButton}
-                                    onPress={shareRecipientLocation}
-                                    activeOpacity={0.7}
-                                >
-                                    <SafeIcon name="location" size={18} color={modernColors.primary} />
-                                </HapticTouchable>
-                            ) : null}
-                            <HapticTouchable
-                                hapticType="light"
-                                style={styles.headerActionButton}
-                                onPress={handleChat}
-                                activeOpacity={0.7}
-                            >
-                                <SafeIcon name="message-circle" size={18} color={modernColors.primary} />
-                            </HapticTouchable>
-                        </View>
-                    </View>
-
-                    {/* Actions coursier */}
-                    {isCurrentUserCourier && (
-                        <View style={styles.courierActions}>
-                            <Text style={styles.courierActionsTitle}>Actions coursier</Text>
-                            <SimpleButton
-                                title="🧭 Ouvrir la navigation"
-                                variant="primary"
-                                onPress={handleNavigation}
-                                style={styles.statusButton}
+            <ScrollView
+                style={styles.scroll}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={loading}
+                        onRefresh={handleRefresh}
+                        tintColor={modernColors.primary}
+                    />
+                }
+            >
+                <View style={styles.header}>
+                    <View style={styles.headerLeft}>
+                        <Text style={styles.title}>Livraison #{delivery?.id?.slice(-6) || '...'}</Text>
+                        <View style={styles.statusRow}>
+                            <StatusIndicator
+                                status={delivery?.status || 'pending'}
+                                size={10}
+                                showPulse={delivery?.status !== 'delivered' && delivery?.status !== 'cancelled'}
                             />
-                            {getNextStatusOptions()
-                                .filter((option) => option && typeof option === 'object' && option.status && option.label)
-                                .map((option) => (
-                                    <SimpleButton
-                                        key={option.status}
-                                        title={`${option.icon || ''} ${option.label}`}
-                                        variant="primary"
-                                        onPress={() => handleUpdateStatus(option.status)}
-                                        disabled={updatingStatus}
-                                        style={styles.statusButton}
-                                    />
-                                ))}
+                            <Text style={styles.statusText}>{statusLabel(delivery?.status || 'pending')}</Text>
                         </View>
-                    )}
-
-                    {/* Carte */}
-                    <View style={styles.mapContainer}>
-                        <EnhancedTrackingMap
-                            pickup={
-                                delivery?.pickup?.location
-                                    ? {
-                                        lat: delivery.pickup.location.lat,
-                                        lng: delivery.pickup.location.lng,
-                                        label: delivery.pickup.label,
-                                    }
-                                    : null
-                            }
-                            dropoff={
-                                delivery?.dropoff?.location
-                                    ? {
-                                        lat: delivery.dropoff.location.lat,
-                                        lng: delivery.dropoff.location.lng,
-                                        label: delivery.dropoff.label,
-                                    }
-                                    : null
-                            }
-                            courierLocation={delivery?.metadata?.last_location ?? null}
-                            recipientLocation={delivery?.recipient?.currentLocation ?? null}
-                            waypoints={delivery?.metadata?.route_points ?? []}
-                            showNavigationButton={!!(delivery?.pickup?.location && delivery?.dropoff?.location)}
-                            onNavigationPress={handleNavigation}
-                        />
                     </View>
-
-                    {/* Indicateur de route */}
-                    {estimatedDistance !== null && (
-                        <RouteOptimizationIndicator
-                            distance={estimatedDistance}
-                            estimatedTime={delivery?.metadata?.estimated_duration_minutes ?? Math.round(estimatedDistance * 3)}
-                            isOptimized={!!delivery?.metadata?.route_optimized}
-                            trafficDelay={delivery?.metadata?.traffic_delay_minutes ?? 0}
-                            style={styles.routeIndicator}
-                        />
-                    )}
-
-                    {/* Tabs */}
-                    <View style={styles.tabs}>
-                        {(['timeline', 'basket', 'courier'] as TrackingTab[]).map((tab, index) => {
-                            const isActive = tab === activeTab;
-                            return (
-                                <HapticTouchable
-                                    key={`tab-${tab}-${index}`}
-                                    hapticType="light"
-                                    style={[styles.tabButton, isActive && styles.tabButtonActive]}
-                                    onPress={() => setActiveTab(tab)}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
-                                        {tabLabels[tab]}
-                                    </Text>
-                                </HapticTouchable>
-                            );
-                        })}
+                    <View style={styles.headerActions}>
+                        {delivery?.recipient?.canShareLocation && (
+                            <TouchableOpacity style={styles.iconButton} onPress={handleShareLocation}>
+                                <SafeIcon name="location" size={20} color={modernColors.primary} />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                            style={styles.iconButton}
+                            onPress={() => navigation.navigate('MesInteractions', { focusDeliveryId: deliveryId })}
+                        >
+                            <SafeIcon name="message-circle" size={20} color={modernColors.primary} />
+                        </TouchableOpacity>
                     </View>
+                </View>
 
-                    {/* Contenu Timeline */}
-                    {activeTab === 'timeline' && (
-                        <View style={styles.tabContent}>
-                            <View style={styles.card}>
-                                <View style={styles.cardHeader}>
-                                    <SafeIcon name="clock" size={20} color={modernColors.primary} />
-                                    <Text style={styles.cardTitle}>Historique de la livraison</Text>
-                                </View>
-                                <TimelineStepper checkpoints={timeline} currentStatus={delivery?.status ?? 'pending'} />
+                {isCourier && (
+                    <View style={styles.courierSection}>
+                        <Text style={styles.sectionTitle}>Actions coursier</Text>
+                        <TouchableOpacity style={styles.button} onPress={handleNavigation}>
+                            <Text style={styles.buttonText}>🧭 Ouvrir navigation</Text>
+                        </TouchableOpacity>
+                        {getStatusOptions().map((opt) => (
+                            <TouchableOpacity
+                                key={opt.status}
+                                style={[styles.button, updatingStatus && styles.buttonDisabled]}
+                                onPress={() => handleUpdateStatus(opt.status)}
+                                disabled={updatingStatus}
+                            >
+                                <Text style={styles.buttonText}>
+                                    {opt.icon} {opt.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+
+                <View style={styles.mapWrapper}>
+                    <EnhancedTrackingMap
+                        pickup={
+                            delivery?.pickup?.location
+                                ? {
+                                    lat: delivery.pickup.location.lat,
+                                    lng: delivery.pickup.location.lng,
+                                    label: delivery.pickup.label,
+                                }
+                                : null
+                        }
+                        dropoff={
+                            delivery?.dropoff?.location
+                                ? {
+                                    lat: delivery.dropoff.location.lat,
+                                    lng: delivery.dropoff.location.lng,
+                                    label: delivery.dropoff.label,
+                                }
+                                : null
+                        }
+                        courierLocation={delivery?.metadata?.last_location || null}
+                        recipientLocation={delivery?.recipient?.currentLocation || null}
+                        waypoints={delivery?.metadata?.route_points || []}
+                        showNavigationButton={!!(delivery?.pickup?.location && delivery?.dropoff?.location)}
+                        onNavigationPress={handleNavigation}
+                    />
+                </View>
+
+                {distance !== null && (
+                    <RouteOptimizationIndicator
+                        distance={distance}
+                        estimatedTime={delivery?.metadata?.estimated_duration_minutes || Math.round(distance * 3)}
+                        isOptimized={!!delivery?.metadata?.route_optimized}
+                        trafficDelay={delivery?.metadata?.traffic_delay_minutes || 0}
+                        style={styles.routeIndicator}
+                    />
+                )}
+
+                <View style={styles.tabs}>
+                    {(['timeline', 'basket', 'courier'] as TabType[]).map((tab) => (
+                        <TouchableOpacity
+                            key={tab}
+                            style={[styles.tab, activeTab === tab && styles.tabActive]}
+                            onPress={() => setActiveTab(tab)}
+                        >
+                            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                                {tab === 'timeline' ? 'Timeline' : tab === 'basket' ? 'Panier' : 'Coursier'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                {activeTab === 'timeline' && (
+                    <View style={styles.tabContent}>
+                        <View style={styles.card}>
+                            <View style={styles.cardHeader}>
+                                <SafeIcon name="clock" size={20} color={modernColors.primary} />
+                                <Text style={styles.cardTitle}>Historique</Text>
                             </View>
-
-                            {deliveryId && user?.id && (
-                                <InlineChat
-                                    deliveryId={deliveryId}
-                                    currentUserId={user.id}
-                                    messages={[]}
-                                    onSendMessage={async (message) => {
-                                        console.log('[DeliveryShoppingTracking] Message envoyé:', message);
-                                    }}
-                                    style={styles.chatContainer}
-                                />
-                            )}
-
-                            {deliveryId && (
-                                <ShareTrackingLink
-                                    deliveryId={deliveryId}
-                                    deliveryTitle={`Livraison #${deliveryId.slice(-6)}`}
-                                    style={styles.shareContainer}
-                                />
-                            )}
+                            <TimelineStepper checkpoints={timeline} currentStatus={delivery?.status || 'pending'} />
                         </View>
-                    )}
+                        {deliveryId && user?.id && (
+                            <InlineChat
+                                deliveryId={deliveryId}
+                                currentUserId={user.id}
+                                messages={[]}
+                                onSendMessage={async () => { }}
+                                style={styles.chat}
+                            />
+                        )}
+                        {deliveryId && (
+                            <ShareTrackingLink
+                                deliveryId={deliveryId}
+                                deliveryTitle={`Livraison #${deliveryId.slice(-6)}`}
+                                style={styles.share}
+                            />
+                        )}
+                    </View>
+                )}
 
-                    {/* Contenu Basket */}
-                    {activeTab === 'basket' && (
-                        <View style={styles.tabContent}>
-                            <View style={styles.card}>
-                                <View style={styles.cardHeader}>
-                                    <SafeIcon name="shopping-cart" size={20} color={modernColors.primary} />
-                                    <Text style={styles.cardTitle}>Panier de courses</Text>
-                                    {shoppingItems.length > 0 && (
-                                        <SimpleBadge
-                                            text={`${shoppingItems.length} article${shoppingItems.length > 1 ? 's' : ''}`}
-                                            variant="info"
-                                            size="small"
-                                        />
-                                    )}
+                {activeTab === 'basket' && (
+                    <View style={styles.tabContent}>
+                        <View style={styles.card}>
+                            <View style={styles.cardHeader}>
+                                <SafeIcon name="shopping-cart" size={20} color={modernColors.primary} />
+                                <Text style={styles.cardTitle}>Panier ({shoppingItems.length})</Text>
+                            </View>
+                            {shoppingItems.length === 0 ? (
+                                <View style={styles.empty}>
+                                    <Text style={styles.emptyText}>Aucun article</Text>
                                 </View>
-                                {shoppingItems.length === 0 ? (
-                                    <View style={styles.emptyBasket}>
-                                        <SafeIcon name="shopping-cart" size={48} color={modernColors.textSecondary} />
-                                        <Text style={styles.emptyBasketText}>Aucun article dans le panier</Text>
-                                    </View>
-                                ) : (
-                                    <View style={styles.itemsList}>
-                                        {shoppingItems
-                                            .filter((item) => item && typeof item === 'object' && item.id)
-                                            .map((item, index) => {
-                                                const isRejected = item.status === 'rejected';
-                                                const canReject = !isRejected &&
-                                                    (delivery?.status === 'shopping_completed' ||
-                                                        delivery?.status === 'en_route_delivery' ||
-                                                        delivery?.status === 'delivered');
+                            ) : (
+                                <View style={styles.items}>
+                                    {shoppingItems.map((item, idx) => {
+                                        const rejected = item.status === 'rejected';
+                                        const canReject =
+                                            !rejected &&
+                                            (delivery?.status === 'shopping_completed' ||
+                                                delivery?.status === 'en_route_delivery' ||
+                                                delivery?.status === 'delivered');
 
-                                                return (
-                                                    <SimpleItemCard
-                                                        key={item.id || `item-${index}`}
-                                                        style={[styles.itemCard, isRejected && styles.itemCardRejected]}
-                                                        index={index}
-                                                    >
-                                                        <View style={styles.itemContent}>
-                                                            <View style={styles.itemHeader}>
-                                                                <Text style={styles.itemLabel}>{item.label}</Text>
-                                                                {isRejected ? (
-                                                                    <SimpleBadge
-                                                                        text="Refusé"
-                                                                        variant="error"
-                                                                        size="small"
-                                                                    />
-                                                                ) : item.status === 'accepted' ? (
-                                                                    <SimpleBadge
-                                                                        text="Accepté"
-                                                                        variant="success"
-                                                                        size="small"
-                                                                    />
-                                                                ) : null}
-                                                            </View>
-                                                            <View style={styles.itemDetails}>
-                                                                <View style={styles.itemDetailRow}>
-                                                                    <SafeIcon name="package" size={14} color={modernColors.textSecondary} />
-                                                                    <Text style={styles.itemMeta}>
-                                                                        {item.quantity} {item.unit || 'unités'}
-                                                                    </Text>
-                                                                </View>
-                                                                {(item.actualTotal || item.estimatedTotal) && (
-                                                                    <View style={styles.itemDetailRow}>
-                                                                        <SafeIcon name="dollar-sign" size={14} color={modernColors.textSecondary} />
-                                                                        <Text style={styles.itemPrice}>
-                                                                            {item.actualTotal
-                                                                                ? `${item.actualTotal.toFixed(0)} ${delivery?.pricing?.currency ?? 'XAF'}`
-                                                                                : `~${item.estimatedTotal?.toFixed(0) ?? 0} ${delivery?.pricing?.currency ?? 'XAF'}`}
-                                                                        </Text>
-                                                                    </View>
-                                                                )}
-                                                            </View>
-                                                            {isRejected && item.rejection_reason && (
-                                                                <View style={styles.rejectionBox}>
-                                                                    <SafeIcon name="alert-circle" size={14} color={modernColors.error} />
-                                                                    <Text style={styles.rejectionReason}>
-                                                                        {getRejectionReasonLabel(item.rejection_reason)}
-                                                                    </Text>
-                                                                </View>
-                                                            )}
-                                                            {item.note && (
-                                                                <View style={styles.itemNoteBox}>
-                                                                    <SafeIcon name="info" size={14} color={modernColors.accent} />
-                                                                    <Text style={styles.itemNote}>{item.note}</Text>
-                                                                </View>
-                                                            )}
-                                                        </View>
-                                                        {canReject && (
-                                                            <SimpleButton
-                                                                title="Refuser"
-                                                                variant="secondary"
-                                                                size="small"
-                                                                onPress={() => {
-                                                                    if (item && typeof item === 'object') {
-                                                                        setRejectingItem(item);
-                                                                    }
-                                                                }}
-                                                                style={styles.rejectButton}
-                                                            />
+                                        return (
+                                            <View key={item.id || idx} style={[styles.item, rejected && styles.itemRejected]}>
+                                                <View style={styles.itemContent}>
+                                                    <Text style={styles.itemLabel}>{item.label}</Text>
+                                                    {rejected && item.rejection_reason && (
+                                                        <Text style={styles.rejectionText}>
+                                                            Refusé: {item.rejection_reason}
+                                                        </Text>
+                                                    )}
+                                                    <View style={styles.itemMeta}>
+                                                        <Text style={styles.itemMetaText}>
+                                                            {item.quantity} {item.unit || 'unités'}
+                                                        </Text>
+                                                        {(item.actualTotal || item.estimatedTotal) && (
+                                                            <Text style={styles.itemPrice}>
+                                                                {item.actualTotal
+                                                                    ? `${item.actualTotal.toFixed(0)} ${delivery?.pricing?.currency || 'XAF'}`
+                                                                    : `~${item.estimatedTotal?.toFixed(0) || 0} ${delivery?.pricing?.currency || 'XAF'}`}
+                                                            </Text>
                                                         )}
-                                                    </SimpleItemCard>
-                                                );
-                                            })}
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                    )}
-
-                    {/* Contenu Courier */}
-                    {activeTab === 'courier' && (
-                        <View style={styles.tabContent}>
-                            <View style={styles.card}>
-                                <View style={styles.cardHeader}>
-                                    <SafeIcon name="users" size={20} color={modernColors.primary} />
-                                    <Text style={styles.cardTitle}>Informations coursier</Text>
+                                                    </View>
+                                                </View>
+                                                {canReject && (
+                                                    <TouchableOpacity
+                                                        style={styles.rejectButton}
+                                                        onPress={() => setRejectingItem(item)}
+                                                    >
+                                                        <Text style={styles.rejectButtonText}>Refuser</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
+                                        );
+                                    })}
                                 </View>
+                            )}
+                        </View>
+                    </View>
+                )}
 
-                                {canAssignCourier && (
-                                    <View style={styles.assignCourierSection}>
-                                        <SimpleButton
-                                            title="Choisir un livreur"
-                                            variant="primary"
-                                            onPress={() => setShowCourierModal(true)}
-                                        />
-                                    </View>
-                                )}
+                {activeTab === 'courier' && (
+                    <View style={styles.tabContent}>
+                        <View style={styles.card}>
+                            <View style={styles.cardHeader}>
+                                <SafeIcon name="users" size={20} color={modernColors.primary} />
+                                <Text style={styles.cardTitle}>Informations</Text>
+                            </View>
 
-                                {isCurrentUserCourier && (canAddPickupMedia || canAddDeliveryMedia) && (
-                                    <View style={{ marginTop: 16, gap: 16 }}>
-                                        {canAddPickupMedia && (
+                            {isCreator && !delivery?.courier && (
+                                <TouchableOpacity
+                                    style={styles.button}
+                                    onPress={() => setShowCourierModal(true)}
+                                >
+                                    <Text style={styles.buttonText}>Choisir un livreur</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {isCourier && (
+                                <View style={styles.mediaSection}>
+                                    {(delivery?.status === 'en_route_pickup' ||
+                                        delivery?.status === 'shopping_completed' ||
+                                        delivery?.status === 'en_route_delivery' ||
+                                        delivery?.status === 'delivered') && (
                                             <ProofMediaUpload
                                                 deliveryId={deliveryId!}
                                                 proofType="pickup"
@@ -793,7 +477,8 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                                 onMediaUpdated={() => refresh({ force: true })}
                                             />
                                         )}
-                                        {canAddDeliveryMedia && (
+                                    {(delivery?.status === 'en_route_delivery' ||
+                                        delivery?.status === 'delivered') && (
                                             <ProofMediaUpload
                                                 deliveryId={deliveryId!}
                                                 proofType="delivery"
@@ -801,162 +486,83 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                                 onMediaUpdated={() => refresh({ force: true })}
                                             />
                                         )}
-                                    </View>
-                                )}
-
-                                {!isCurrentUserCourier && deliveryId && (
-                                    <View style={{ marginTop: 16, gap: 16 }}>
-                                        <ProofMediaUpload
-                                            deliveryId={deliveryId}
-                                            proofType="pickup"
-                                            isCourier={false}
-                                            onMediaUpdated={() => refresh({ force: true })}
-                                        />
-                                        <ProofMediaUpload
-                                            deliveryId={deliveryId}
-                                            proofType="delivery"
-                                            isCourier={false}
-                                            onMediaUpdated={() => refresh({ force: true })}
-                                        />
-                                    </View>
-                                )}
-
-                                {delivery?.metadata?.dropoff_pending === true && (
-                                    <View style={styles.pendingAddressSection}>
-                                        <View style={styles.pendingBadge}>
-                                            <SafeIcon name="alert-circle" size={16} color={modernColors.warning} />
-                                            <Text style={styles.pendingBadgeText}>Adresse à confirmer</Text>
-                                        </View>
-                                        <SimpleButton
-                                            title="Modifier l'adresse"
-                                            variant="secondary"
-                                            onPress={shareRecipientLocation}
-                                            style={styles.modifyAddressButton}
-                                        />
-                                    </View>
-                                )}
-
-                                <View style={styles.infoSection}>
-                                    <View style={styles.infoRow}>
-                                        <View style={styles.infoLabelContainer}>
-                                            <SafeIcon name="user" size={16} color={modernColors.textSecondary} />
-                                            <Text style={styles.detailLabel}>Coursier</Text>
-                                        </View>
-                                        <Text style={styles.detailValue}>
-                                            {courierInfo.courier?.name ?? "En cours d'assignation"}
-                                        </Text>
-                                    </View>
-                                    {courierInfo.courier?.phone && (
-                                        <View style={styles.infoRow}>
-                                            <View style={styles.infoLabelContainer}>
-                                                <SafeIcon name="phone" size={16} color={modernColors.textSecondary} />
-                                                <Text style={styles.detailLabel}>Téléphone</Text>
-                                            </View>
-                                            <TouchableOpacity
-                                                onPress={() => {
-                                                    if (courierInfo.courier?.phone) {
-                                                        Linking.openURL(`tel:${courierInfo.courier.phone}`);
-                                                    }
-                                                }}
-                                                activeOpacity={0.7}
-                                            >
-                                                <Text style={[styles.detailValue, styles.phoneLink]}>
-                                                    {courierInfo.courier.phone}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
-                                    {courierInfo.courier?.etaMinutes && (
-                                        <View style={styles.infoRow}>
-                                            <View style={styles.infoLabelContainer}>
-                                                <SafeIcon name="clock" size={16} color={modernColors.textSecondary} />
-                                                <Text style={styles.detailLabel}>Temps estimé</Text>
-                                            </View>
-                                            <View style={styles.etaContainer}>
-                                                <Text style={styles.etaValue}>
-                                                    {courierInfo.courier.etaMinutes} min
-                                                </Text>
-                                            </View>
-                                        </View>
-                                    )}
                                 </View>
+                            )}
 
-                                <View style={styles.separator} />
-
-                                <View style={styles.infoSection}>
-                                    <View style={styles.infoRow}>
-                                        <View style={styles.infoLabelContainer}>
-                                            <SafeIcon name="user" size={16} color={modernColors.textSecondary} />
-                                            <Text style={styles.detailLabel}>Destinataire</Text>
-                                        </View>
-                                        <Text style={styles.detailValue}>
-                                            {courierInfo.recipient?.name ?? 'Invité'}
-                                        </Text>
-                                    </View>
-                                    {courierInfo.recipient?.phone && (
-                                        <View style={styles.infoRow}>
-                                            <View style={styles.infoLabelContainer}>
-                                                <SafeIcon name="phone" size={16} color={modernColors.textSecondary} />
-                                                <Text style={styles.detailLabel}>Téléphone</Text>
-                                            </View>
-                                            <TouchableOpacity
-                                                onPress={() => {
-                                                    if (courierInfo.recipient?.phone) {
-                                                        Linking.openURL(`tel:${courierInfo.recipient.phone}`);
-                                                    }
-                                                }}
-                                                activeOpacity={0.7}
-                                            >
-                                                <Text style={[styles.detailValue, styles.phoneLink]}>
-                                                    {courierInfo.recipient.phone}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
+                            {!isCourier && deliveryId && (
+                                <View style={styles.mediaSection}>
+                                    <ProofMediaUpload
+                                        deliveryId={deliveryId}
+                                        proofType="pickup"
+                                        isCourier={false}
+                                        onMediaUpdated={() => refresh({ force: true })}
+                                    />
+                                    <ProofMediaUpload
+                                        deliveryId={deliveryId}
+                                        proofType="delivery"
+                                        isCourier={false}
+                                        onMediaUpdated={() => refresh({ force: true })}
+                                    />
                                 </View>
+                            )}
 
+                            <View style={styles.info}>
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.infoLabel}>Coursier:</Text>
+                                    <Text style={styles.infoValue}>
+                                        {courierInfo.courier?.name || 'En attente'}
+                                    </Text>
+                                </View>
+                                {courierInfo.courier?.phone && (
+                                    <View style={styles.infoRow}>
+                                        <Text style={styles.infoLabel}>Téléphone:</Text>
+                                        <TouchableOpacity
+                                            onPress={() => Linking.openURL(`tel:${courierInfo.courier.phone}`)}
+                                        >
+                                            <Text style={styles.infoLink}>{courierInfo.courier.phone}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.infoLabel}>Destinataire:</Text>
+                                    <Text style={styles.infoValue}>
+                                        {courierInfo.recipient?.name || 'Invité'}
+                                    </Text>
+                                </View>
+                                {courierInfo.recipient?.phone && (
+                                    <View style={styles.infoRow}>
+                                        <Text style={styles.infoLabel}>Téléphone:</Text>
+                                        <TouchableOpacity
+                                            onPress={() => Linking.openURL(`tel:${courierInfo.recipient.phone}`)}
+                                        >
+                                            <Text style={styles.infoLink}>{courierInfo.recipient.phone}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                                 {courierInfo.pricing && (
                                     <>
                                         <View style={styles.separator} />
-                                        <View style={styles.pricingSection}>
-                                            <View style={styles.pricingHeader}>
-                                                <SafeIcon name="dollar-sign" size={18} color={modernColors.primary} />
-                                                <Text style={styles.pricingTitle}>Tarification</Text>
-                                            </View>
-                                            {courierInfo.pricing.estimated && (
-                                                <View style={styles.pricingRow}>
-                                                    <Text style={styles.pricingLabel}>Montant estimé</Text>
-                                                    <Text style={styles.pricingValue}>
-                                                        {courierInfo.pricing.estimated} {courierInfo.pricing.currency}
-                                                    </Text>
-                                                </View>
-                                            )}
-                                            {courierInfo.pricing.finalTotal && (
-                                                <View style={[styles.pricingRow, styles.pricingRowFinal]}>
-                                                    <Text style={styles.pricingLabelFinal}>Total final</Text>
-                                                    <Text style={styles.pricingValueFinal}>
-                                                        {courierInfo.pricing.finalTotal} {courierInfo.pricing.currency}
-                                                    </Text>
-                                                </View>
-                                            )}
+                                        <View style={styles.infoRow}>
+                                            <Text style={styles.infoLabel}>Total:</Text>
+                                            <Text style={styles.infoValueBold}>
+                                                {courierInfo.pricing.finalTotal || courierInfo.pricing.estimated}{' '}
+                                                {courierInfo.pricing.currency}
+                                            </Text>
                                         </View>
                                     </>
                                 )}
                             </View>
                         </View>
-                    )}
-                </ScrollView>
-            </View>
+                    </View>
+                )}
+            </ScrollView>
 
-            {/* Modals */}
             {deliveryId && (
                 <CourierSelectionModal
                     visible={showCourierModal}
                     onClose={() => setShowCourierModal(false)}
                     deliveryId={deliveryId}
-                    onSuccess={() => {
-                        refresh({ force: true }).catch(console.error);
-                    }}
+                    onSuccess={() => refresh({ force: true }).catch(console.error)}
                 />
             )}
 
@@ -979,369 +585,246 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: modernColors.background,
     },
     scroll: {
         flex: 1,
-        padding: 20,
+        padding: 16,
     },
-    routeIndicator: {
-        marginTop: 16,
-        marginBottom: 8,
-    },
-    chatContainer: {
-        marginTop: 16,
-        marginBottom: 8,
-    },
-    shareContainer: {
-        marginTop: 16,
-        marginBottom: 8,
+    skeleton: {
+        marginBottom: 16,
     },
     header: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
         justifyContent: 'space-between',
-        marginBottom: 24,
+        alignItems: 'flex-start',
+        marginBottom: 20,
         paddingBottom: 16,
         borderBottomWidth: 1,
-        borderBottomColor: modernColors.borderLight,
+        borderBottomColor: modernColors.border,
     },
-    headerContent: {
+    headerLeft: {
         flex: 1,
-        gap: 8,
     },
-    headerTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    headerLabel: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.textSecondary,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+    title: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 8,
     },
     statusRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
     },
-    animatedContainer: {
-        flex: 1,
-    },
-    skeletonMargin: {
-        marginBottom: 16,
-    },
     statusText: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 16,
+        fontWeight: '600',
         color: modernColors.text,
     },
     headerActions: {
         flexDirection: 'row',
         gap: 8,
     },
-    headerActionButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+    iconButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: modernColors.surface,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: modernColors.borderLight,
+        borderColor: modernColors.border,
     },
-    mapContainer: {
-        position: 'relative',
+    courierSection: {
+        backgroundColor: modernColors.surface,
+        borderRadius: 12,
+        padding: 16,
         marginBottom: 20,
+        gap: 12,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    button: {
+        backgroundColor: modernColors.primary,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    buttonDisabled: {
+        opacity: 0.5,
+    },
+    buttonText: {
+        color: '#FFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    mapWrapper: {
+        height: 250,
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginBottom: 16,
+    },
+    routeIndicator: {
+        marginBottom: 16,
     },
     tabs: {
         flexDirection: 'row',
         backgroundColor: modernColors.surfaceVariant,
-        borderRadius: 999,
+        borderRadius: 8,
         padding: 4,
-        marginVertical: 20,
+        marginBottom: 16,
     },
-    tabButton: {
+    tab: {
         flex: 1,
         paddingVertical: 10,
-        borderRadius: 999,
+        borderRadius: 6,
         alignItems: 'center',
     },
-    tabButtonActive: {
+    tabActive: {
         backgroundColor: modernColors.surface,
-        shadowColor: modernColors.shadow,
-        shadowOpacity: 0.1,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 4,
-        elevation: 3,
     },
-    tabLabel: {
-        fontSize: 13,
+    tabText: {
+        fontSize: 14,
         fontWeight: '600',
         color: modernColors.textSecondary,
     },
-    tabLabelActive: {
+    tabTextActive: {
         color: modernColors.primary,
+    },
+    tabContent: {
+        gap: 16,
     },
     card: {
         backgroundColor: modernColors.surface,
-        borderRadius: 16,
-        padding: 20,
+        borderRadius: 12,
+        padding: 16,
         gap: 16,
-        marginBottom: 16,
-        shadowColor: modernColors.shadow,
-        shadowOpacity: 0.05,
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 10,
-        elevation: 3,
     },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        marginBottom: 4,
     },
     cardTitle: {
         fontSize: 18,
         fontWeight: '700',
         color: modernColors.text,
-        flex: 1,
     },
-    tabContent: {
-        marginBottom: 16,
+    chat: {
+        marginTop: 0,
     },
-    itemsList: {
+    share: {
+        marginTop: 0,
+    },
+    empty: {
+        paddingVertical: 40,
+        alignItems: 'center',
+    },
+    emptyText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+    },
+    items: {
         gap: 12,
     },
-    itemCard: {
+    item: {
         backgroundColor: modernColors.surfaceVariant,
-        borderRadius: 12,
-        padding: 16,
+        borderRadius: 8,
+        padding: 12,
         borderWidth: 1,
-        borderColor: modernColors.borderLight,
+        borderColor: modernColors.border,
     },
-    itemCardRejected: {
+    itemRejected: {
         backgroundColor: modernColors.error + '10',
         borderLeftWidth: 4,
         borderLeftColor: modernColors.error,
-        borderColor: modernColors.error + '30',
-    },
-    emptyBasket: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 48,
-        gap: 12,
-    },
-    emptyBasketText: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        textAlign: 'center',
     },
     itemContent: {
         flex: 1,
         gap: 8,
     },
-    itemHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
-        marginBottom: 4,
-    },
     itemLabel: {
         fontSize: 16,
         fontWeight: '600',
         color: modernColors.text,
-        flex: 1,
     },
-    itemDetails: {
-        flexDirection: 'row',
-        gap: 16,
-        flexWrap: 'wrap',
+    rejectionText: {
+        fontSize: 12,
+        color: modernColors.error,
     },
-    itemDetailRow: {
+    itemMeta: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 6,
+    },
+    itemMetaText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
     },
     itemPrice: {
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.primary,
     },
-    rejectionBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        backgroundColor: modernColors.error + '15',
-        padding: 10,
-        borderRadius: 8,
-        marginTop: 4,
-    },
-    rejectionReason: {
-        fontSize: 13,
-        color: modernColors.error,
-        flex: 1,
-        fontWeight: '500',
-    },
-    itemNoteBox: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 6,
-        backgroundColor: modernColors.accent + '15',
-        padding: 10,
-        borderRadius: 8,
-        marginTop: 4,
-    },
     rejectButton: {
-        marginLeft: 12,
-        minWidth: 80,
+        marginTop: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: modernColors.error,
+        borderRadius: 6,
+        alignSelf: 'flex-start',
     },
-    itemMeta: {
+    rejectButtonText: {
+        color: '#FFF',
         fontSize: 12,
-        color: modernColors.textSecondary,
+        fontWeight: '600',
     },
-    itemNote: {
-        fontSize: 12,
-        color: modernColors.accent,
+    mediaSection: {
+        gap: 16,
+        marginTop: 16,
     },
-    infoSection: {
+    info: {
         gap: 12,
+        marginTop: 16,
     },
     infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 12,
     },
-    infoLabelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        flex: 1,
-    },
-    detailLabel: {
+    infoLabel: {
         fontSize: 14,
         color: modernColors.textSecondary,
         fontWeight: '500',
     },
-    detailValue: {
+    infoValue: {
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.text,
-        textAlign: 'right',
-        flex: 1,
     },
-    phoneLink: {
+    infoValueBold: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    infoLink: {
+        fontSize: 14,
+        fontWeight: '600',
         color: modernColors.primary,
         textDecorationLine: 'underline',
     },
-    etaContainer: {
-        backgroundColor: modernColors.primary + '15',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-    },
-    etaValue: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: modernColors.primary,
-    },
-    pricingSection: {
-        gap: 12,
-    },
-    pricingHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 4,
-    },
-    pricingTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: modernColors.text,
-    },
-    pricingRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 8,
-    },
-    pricingRowFinal: {
-        borderTopWidth: 1,
-        borderTopColor: modernColors.borderLight,
-        paddingTop: 12,
-        marginTop: 4,
-    },
-    pricingLabel: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-    },
-    pricingValue: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    pricingLabelFinal: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    pricingValueFinal: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: modernColors.primary,
-    },
     separator: {
         height: 1,
-        backgroundColor: modernColors.borderLight,
-    },
-    courierActions: {
-        backgroundColor: modernColors.surface,
-        borderRadius: 16,
-        padding: 16,
-        marginTop: 16,
-        gap: 12,
-        borderWidth: 2,
-        borderColor: modernColors.primary,
-    },
-    assignCourierSection: {
-        marginBottom: 16,
-        paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: modernColors.borderLight,
-    },
-    pendingAddressSection: {
-        marginBottom: 16,
-        padding: 12,
-        backgroundColor: modernColors.warning + '10',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: modernColors.warning + '30',
-    },
-    pendingBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 8,
-    },
-    pendingBadgeText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.warning,
-    },
-    modifyAddressButton: {
-        marginTop: 4,
-    },
-    courierActionsTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: modernColors.text,
-        marginBottom: 8,
-    },
-    statusButton: {
-        marginTop: 4,
+        backgroundColor: modernColors.border,
+        marginVertical: 8,
     },
 });
 

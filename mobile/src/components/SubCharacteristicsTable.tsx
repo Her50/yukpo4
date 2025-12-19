@@ -57,18 +57,40 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             // Sinon, construire depuis les sous-caractéristiques préférées de l'IA
             // Les valeurs préférées sont les premières valeurs de chaque tableau
             const initialRowsFromIA: SubCharacteristicRow[] = [];
-            Object.entries(sousCaracteristiques).forEach(([label, values]) => {
+            
+            // ✅ DEBUG: Logger les données reçues pour diagnostiquer le problème
+            console.log('[SubCharacteristicsTable] 🔍 sousCaracteristiques reçues:', JSON.stringify(sousCaracteristiques, null, 2));
+            
+            // ✅ CORRECTION: Utiliser Object.keys() puis accéder directement aux valeurs pour garantir le bon mapping
+            Object.keys(sousCaracteristiques).forEach((label) => {
+                const values = sousCaracteristiques[label];
+                
+                // ✅ DEBUG: Logger chaque label et ses valeurs
+                console.log(`[SubCharacteristicsTable] 🔍 Label: "${label}", Type valeurs:`, typeof values, 'Est array:', Array.isArray(values), 'Valeurs:', values);
+                
                 if (Array.isArray(values) && values.length > 0) {
-                    // Prendre la première valeur (préférée par l'IA)
+                    // ✅ CRITIQUE: Prendre la première valeur (préférée par l'IA) de ce label spécifique
+                    // Ne pas utiliser d'index global, mais directement values[0] pour ce label
                     const preferredValue = values[0];
+                    console.log(`[SubCharacteristicsTable] 🔍 Label "${label}" - Première valeur extraite: "${preferredValue}"`);
+                    
                     if (preferredValue && typeof preferredValue === 'string' && preferredValue.trim().length > 0) {
-                        initialRowsFromIA.push({
+                        const row = {
                             label: label.trim(),
                             value: preferredValue.trim(),
-                        });
+                        };
+                        console.log(`[SubCharacteristicsTable] ✅ Ligne créée: ${row.label} = ${row.value}`);
+                        initialRowsFromIA.push(row);
+                    } else {
+                        console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" - Première valeur invalide:`, preferredValue);
                     }
+                } else {
+                    console.warn(`[SubCharacteristicsTable] ⚠️ Label "${label}" - Valeurs non valides ou vides:`, values);
                 }
             });
+            
+            console.log('[SubCharacteristicsTable] ✅ Tableau final initialisé avec', initialRowsFromIA.length, 'lignes:', 
+                initialRowsFromIA.map(r => `${r.label}: ${r.value}`).join(', '));
             setRows(initialRowsFromIA);
         }
     }, [sousCaracteristiques, initialRows]);

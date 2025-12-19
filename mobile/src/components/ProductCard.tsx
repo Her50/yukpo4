@@ -1,1349 +1,1596 @@
-/**
- * ProductCard v3.0 - Version optimale moderne (2025-11-02)
- * Toutes fonctionnalit├®s : vecteurs, variations, chat, distance, drapeau pays
- * Sauvegarde : ProductCard.backup.tsx
- */
-
-import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  Dimensions,
-  Image,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { apiGet, apiPost } from '../services/api';
-import { modernColors } from '../theme/modernTheme';
-import ChatModalMobile from './ChatModalMobile';
-import OrderDeliveryModal from './delivery/OrderDeliveryModal';
-import { NativeButton, NativeCard } from './NativeDesign';
-import ProductMediaCarousel from './ProductMediaCarousel';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState } from 'react';
+import { Alert, Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import SafeIcon from './SafeIcon';
-import ServiceGalleryModal from './ServiceGalleryModal';
-import { ServiceRating } from './ServiceRating';
 
 const { width } = Dimensions.get('window');
 
 interface ProductCardProps {
-  product: any;
-  service: any;
-  prestataire?: any; // Ô£à NOUVEAU: Prestataire d├®j├á fourni depuis MixedContentCarousel
-  userLocation?: { latitude: number; longitude: number } | null;
-  onPress?: () => void;
-  onChatPress?: () => void; // Ô£à NOUVEAU: Handler chat personnalis├®
+    product: any;
+    service: any;
+    prestataire?: any;
+    onPress?: () => void;
+    onChatPress?: () => void;
+    onGalleryPress?: () => void;
+    onWhatsAppPress?: () => void;
 }
 
-// Ô£à NOUVEAU : Constantes pour r├®actions
-const REACTIONS = [
-  { type: 'love', emoji: 'ÔØñ´©Å', label: 'J\'adore' },
-  { type: 'like', emoji: '­ƒæì', label: 'J\'aime' },
-  { type: 'wow', emoji: '­ƒÿ«', label: 'Impressionnant' },
-  { type: 'interested', emoji: '­ƒÄ»', label: 'Int├®ressant' },
-  { type: 'thinking', emoji: '­ƒñö', label: '├Ç r├®fl├®chir' },
-  { type: 'disappointed', emoji: '­ƒÿò', label: 'D├®├ºu' },
-];
-
-// Mapper codes pays ÔåÆ drapeaux emoji
-const getCountryFlag = (country?: string): string => {
-  const countryMap: Record<string, string> = {
-    'Cameroun': '­ƒç¿­ƒç▓',
-    'Cameroon': '­ƒç¿­ƒç▓',
-    'Gabon': '­ƒç¼­ƒçª',
-    'Congo': '­ƒç¿­ƒç¼',
-    'RDC': '­ƒç¿­ƒç®',
-    'S├®n├®gal': '­ƒç©­ƒç│',
-    'Senegal': '­ƒç©­ƒç│',
-    'C├┤te d\'Ivoire': '­ƒç¿­ƒç«',
-    'Mali': '­ƒç▓­ƒç▒',
-    'Burkina': '­ƒçº­ƒç½',
-    'Niger': '­ƒç│­ƒç¬',
-    'Tchad': '­ƒç╣­ƒç®',
-    'Togo': '­ƒç╣­ƒç¼',
-    'B├®nin': '­ƒçº­ƒç»',
-    'Guin├®e': '­ƒç¼­ƒç│',
-    'Madagascar': '­ƒç▓­ƒç¼',
-    'France': '­ƒç½­ƒçÀ',
-    'USA': '­ƒç║­ƒç©',
-  };
-
-  if (!country) return '­ƒîì';
-
-  for (const [key, flag] of Object.entries(countryMap)) {
-    if (country.toLowerCase().includes(key.toLowerCase())) {
-      return flag;
-    }
-  }
-
-  return '­ƒîì';
-};
-
 const ProductCard: React.FC<ProductCardProps> = ({
-  product,
-  service,
-  prestataire: prestataireFromProps,
-  userLocation = null,
-  onPress,
-  onChatPress,
+    product,
+    service,
+    prestataire,
+    onPress,
+    onChatPress,
+    onGalleryPress,
+    onWhatsAppPress
 }) => {
-  const navigation = useNavigation();
-  const [imageError, setImageError] = useState(false);
-  const [showChatModal, setShowChatModal] = useState(false);
-  const [showOrderModal, setShowOrderModal] = useState(false);
-  const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
-  // Ô£à NOUVEAU : ├ëtats pour contact priv├®
-  const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
-  // Ô£à NOUVEAU : ├ëtats pour avis/ratings et galerie
-  const [showGallery, setShowGallery] = useState(false);
-  const [serviceReviews, setServiceReviews] = useState<any[]>([]);
-  const [serviceRating, setServiceRating] = useState<{ avg: number; count: number } | null>(null);
-  // Ô£à NOUVEAU : ├ëtats pour r├®actions
-  const [reactions, setReactions] = useState<Record<string, { count: number; hasReacted: boolean }>>({});
+    const [showAllImages, setShowAllImages] = useState(false);
 
-  // Donn├®es produit
-  const productVector = product.product_vector || product.characteristic_vector || [];
-  const locationVector = product.location_vector || [];
+    // Récupérer la configuration intelligente de la catégorie
+    const categoryConfig = getCategoryConfig(product.type || 'default');
+    const categoryStyle = getCategoryStyle(product.type || 'default');
+    const terminology = getCategoryTerminology(product.type || 'default');
 
-  // Ô£à AM├ëLIORATION: Afficher quartier en priorit├®, puis ville, puis r├®gion
-  const chosenLocation = product.chosen_location ||
-    locationVector[0] || // Premier ├®l├®ment = lieu exact choisi par prestataire
-    '';
+    // Extraire les images et vidéos
+    const images = product.images || product.imagesRealisations || [];
+    const videos = product.videos || product.videosRealisations || [];
+    const mainImage = images[0] || null;
+    const hasVideo = videos.length > 0;
 
-  const hasVariant = product.has_variant || false;
-  const variants = product.variants || [];
-  const prestataire = prestataireFromProps || product.prestataire || service?.prestataire || {
-    nom: service?.data?.nom_prestataire || 'Prestataire',
-    user_id: service?.user_id,
-  };
+    // GPS prioritaire : produit > service gps_fixe > service gps
+    const productGPS = product.gps || product.gpsFixe;
+    const serviceGPS = service.data?.gps_fixe?.valeur || service.data?.gps_fixe || service.gps;
+    const displayGPS = productGPS || serviceGPS;
 
-  // Ô£à NOUVEAU : Popularit├® (usage_count de autocomplete_characteristics)
-  const usageCount = product.usage_count || 0;
-  const isPopular = usageCount >= 5;  // Populaire si recherch├® 5+ fois
-  const isTrending = usageCount >= 10; // Tendance si recherch├® 10+ fois
-
-  // Images et vid├®os
-  const images = product.images || service?.images || [];
-  const videos = product.videos || service?.videos || [];
-
-  // Image de la variation s├®lectionn├®e (si existe)
-  const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
-    ? variants[selectedVariantIndex]
-    : null;
-  const variantImage = selectedVariant?.image || selectedVariant?.images?.[0];
-
-  // Prix
-  const displayPrice = hasVariant && variants.length > 0
-    ? Math.min(...variants.map((v: any) => v.prix || 0))
-    : product.prix || 0;
-
-  const devise = product.devise || variants[0]?.devise || 'XAF';
-
-  // Distance
-  const distanceKm = product.distance_km;
-
-  // Pays (pour drapeau)
-  const pays = locationVector[locationVector.length - 1] ||
-    product.pays ||
-    service?.data?.pays?.valeur;
-
-  const countryFlag = getCountryFlag(pays);
-
-  // Ô£à AM├ëLIORATION: Utiliser onChatPress si fourni, sinon modal local
-  const handleChatPress = () => {
-    if (onChatPress) {
-      onChatPress(); // Utiliser le handler externe (depuis MixedContentCarousel)
-    } else {
-      setShowChatModal(true); // Sinon, modal local
-    }
-  };
-
-  // Ô£à NOUVEAU : Handler partage produit
-  const handleShare = async () => {
-    try {
-      const productName = product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
-      const productDesc = product.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur || '';
-      const price = displayPrice > 0 ? `${displayPrice.toLocaleString()} ${devise}` : '';
-      const location = chosenLocation || '';
-
-      const shareUrl = process.env.EXPO_PUBLIC_SHARE_URL
-        ? `${process.env.EXPO_PUBLIC_SHARE_URL}/service/${product.service_id || service?.id}`
-        : `https://yukpomnang.com/service/${product.service_id || service?.id}`;
-
-      const shareMessage = `­ƒøì´©Å ${productName}\n\n${productDesc ? `${productDesc}\n\n` : ''}${price ? `­ƒÆ░ Prix: ${price}\n` : ''}${location ? `­ƒôì ${location}\n\n` : '\n'}­ƒöù Voir ce produit:\n${shareUrl}`;
-
-      const result = await Share.share({
-        message: shareMessage,
-        title: productName,
-      });
-
-      if (result.action === Share.sharedAction) {
-        console.log('[ProductCard] Produit partag├® avec succ├¿s');
-      }
-    } catch (error) {
-      console.error('[ProductCard] Erreur partage:', error);
-      Alert.alert('Erreur', 'Impossible de partager le produit');
-    }
-  };
-
-  // Ô£à NOUVEAU : Charger avis/ratings du service
-  useEffect(() => {
-    const loadReviews = async () => {
-      const serviceId = product.service_id || service?.id;
-      if (!serviceId) return;
-
-      try {
-        const response = await apiGet(`/api/services/${serviceId}/reviews`);
-        if (response.success && response.data) {
-          const data = response.data as any;
-          setServiceReviews(data.reviews || []);
-          setServiceRating({
-            avg: data.average_rating || 0,
-            count: data.total_reviews || 0,
-          });
-        }
-      } catch (error) {
-        console.error('[ProductCard] Erreur chargement avis:', error);
-      }
+    // Formater le prix
+    const formatPrice = () => {
+        if (!product.prix) return null;
+        const devise = product.devise || 'FCFA';
+        return `${parseFloat(product.prix).toLocaleString()} ${devise}`;
     };
 
-    loadReviews();
-  }, [product.service_id, service?.id]);
-
-  // Ô£à NOUVEAU : Charger r├®actions du produit
-  useEffect(() => {
-    const loadReactions = async () => {
-      const serviceId = product.service_id || service?.id;
-      if (!serviceId) return;
-
-      const productId = `${serviceId}_${product.product_index || 0}`;
-
-      try {
-        const response = await apiGet(`/api/products/${serviceId}/${productId}/reactions`);
-        if (response.success && response.data) {
-          const reactionsMap: Record<string, { count: number; hasReacted: boolean }> = {};
-          const reactionsArray = response.data as any[];
-          reactionsArray.forEach((r: any) => {
-            reactionsMap[r.reaction_type] = {
-              count: r.count,
-              hasReacted: r.has_reacted
-            };
-          });
-          setReactions(reactionsMap);
-        }
-      } catch (error) {
-        console.error('[ProductCard] Erreur chargement r├®actions:', error);
-      }
+    // Obtenir l'icône et la couleur par type
+    const getTypeStyle = () => {
+        const styles = {
+            immobilier_batiment: { icon: 'home', color: '#3B82F6', bg: '#EFF6FF', label: 'Immobilier' },
+            immobilier_terrain: { icon: 'map', color: '#10B981', bg: '#D1FAE5', label: 'Terrain' },
+            hotellerie: { icon: 'building', color: '#EC4899', bg: '#FCE7F3', label: 'Hôtel' },
+            automobile: { icon: 'car', color: '#F59E0B', bg: '#FEF3C7', label: 'Auto' },
+            ticket_voyage: { icon: 'bus', color: '#8B5CF6', bg: '#F3E8FF', label: 'Voyage' },
+            covoiturage: { icon: 'users', color: '#EC4899', bg: '#FCE7F3', label: 'Covoiturage' },
+            vetement: { icon: 'shopping-bag', color: '#EF4444', bg: '#FEE2E2', label: 'Vêtement' },
+            chaussure: { icon: 'shoe-prints', color: '#F97316', bg: '#FFEDD5', label: 'Chaussure' },
+            electromenager: { icon: 'zap', color: '#14B8A6', bg: '#CCFBF1', label: 'Électro' },
+            image_son: { icon: 'tv', color: '#9C27B0', bg: '#F3E5F5', label: 'Image/Son' },
+            telephone: { icon: 'smartphone', color: '#FF9800', bg: '#FFF3E0', label: 'Téléphone' },
+            ordinateur: { icon: 'monitor', color: '#00BCD4', bg: '#E0F7FA', label: 'Ordinateur' },
+            mobilier: { icon: 'box', color: '#F97316', bg: '#FFEDD5', label: 'Mobilier' },
+            decoration: { icon: 'image', color: '#E91E63', bg: '#FCE4EC', label: 'Déco' },
+            ustensiles_cuisine: { icon: 'coffee', color: '#FF5722', bg: '#FFEBEE', label: 'Ustensiles' },
+            aliments: { icon: 'pizza', color: '#84CC16', bg: '#ECFCCB', label: 'Aliment' },
+            assurance: { icon: 'shield', color: '#14B8A6', bg: '#CCFBF1', label: 'Assurance' },
+            livres_fournitures: { icon: 'book', color: '#6366F1', bg: '#E0E7FF', label: 'Livre' },
+            quincaillerie: { icon: 'tool', color: '#64748B', bg: '#F1F5F9', label: 'Quincaillerie' },
+            pharmacie: { icon: 'activity', color: '#059669', bg: '#D1FAE5', label: 'Pharmacie' },
+            hopital_clinique: { icon: 'heart', color: '#DC2626', bg: '#FEE2E2', label: 'Hôpital' },
+            prestation_service: { icon: 'briefcase', color: '#8B5CF6', bg: '#F3E8FF', label: 'Service' },
+            cosmetique_parfum: { icon: 'sparkle', color: '#EC4899', bg: '#FCE7F3', label: 'Cosmétique' },
+            bijoux: { icon: 'gem', color: '#F59E0B', bg: '#FEF3C7', label: 'Bijoux' },
+            coiffure_beaute: { icon: 'scissors', color: '#E91E63', bg: '#FCE4EC', label: 'Coiffure' },
+            autre: { icon: 'package', color: '#6B7280', bg: '#F3F4F6', label: 'Produit' }
+        };
+        return styles[product.type] || styles.autre;
     };
 
-    loadReactions();
-  }, [product.service_id, product.product_index, service?.id]);
+    const typeStyle = getTypeStyle();
 
-  // Ô£à NOUVEAU : Handler pour r├®agir
-  const handleReaction = async (reactionType: string) => {
-    const serviceId = product.service_id || service?.id;
-    if (!serviceId) return;
-
-    const productId = `${serviceId}_${product.product_index || 0}`;
-
-    try {
-      const response = await apiPost(`/api/products/${serviceId}/${productId}/react`, {
-        reaction_type: reactionType
-      });
-
-      if (response.success) {
-        setReactions(prev => {
-          const current = prev[reactionType] || { count: 0, hasReacted: false };
-          const data = response.data as { action: string };
-          const action = data.action;
-
-          return {
-            ...prev,
-            [reactionType]: {
-              count: action === 'added' ? current.count + 1 : Math.max(0, current.count - 1),
-              hasReacted: action === 'added'
-            }
-          };
-        });
-      }
-    } catch (error) {
-      console.error('[ProductCard] Erreur r├®action:', error);
-    }
-  };
-
-  // Ô£à NOUVEAU : Handler pour contacter un utilisateur en priv├®
-  const handleContactUser = async (userId: number, userName: string) => {
-    try {
-      // V├®rifier si une conversation existe d├®j├á
-      const checkResponse = await apiGet(`/api/conversations/private/${userId}`);
-
-      let conversationId: string | null = null;
-
-      if (checkResponse.success && checkResponse.data) {
-        const data = checkResponse.data as { conversation_id?: string };
-        conversationId = data.conversation_id || null;
-      }
-
-      if (!conversationId) {
-        // Cr├®er une nouvelle conversation priv├®e
-        const createResponse = await apiPost('/api/conversations/create-private', {
-          target_user_id: userId,
-          context: 'product_review'
-        });
-
-        if (createResponse.success && createResponse.data) {
-          const data = createResponse.data as { conversation_id?: string };
-          conversationId = data.conversation_id || null;
-        }
-      }
-
-      if (conversationId) {
-        setPrivateConversationId(conversationId);
-        setShowChatModal(true);
-        Alert.alert(
-          'Conversation priv├®e',
-          `Vous pouvez maintenant discuter en priv├® avec ${userName}`,
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert('Erreur', 'Impossible de cr├®er la conversation priv├®e');
-      }
-    } catch (error) {
-      console.error('[ProductCard] Erreur cr├®ation conversation priv├®e:', error);
-      Alert.alert('Erreur', 'Impossible de contacter cet utilisateur');
-    }
-  };
-
-  return (
-    <>
-      <NativeCard>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
-        >
-          {/* Carousel d'images/vid├®os avec support variation */}
-          <View style={styles.imageContainer}>
-            <ProductMediaCarousel
-              images={images}
-              videos={videos}
-              variantImage={variantImage}
-              onImagePress={(index) => {
-                // Ô£à NOUVEAU : Ouvrir galerie compl├¿te du prestataire
-                setShowGallery(true);
-              }}
-            />
-
-            {/* Badge pays (coin sup├®rieur droit) */}
-            {countryFlag && (
-              <View style={styles.countryBadge}>
-                <Text style={styles.countryFlag}>{countryFlag}</Text>
-              </View>
-            )}
-
-            {/* Badge distance (coin sup├®rieur gauche) */}
-            {distanceKm !== undefined && distanceKm !== null && (
-              <View style={styles.distanceBadge}>
-                <SafeIcon name="navigation" size={12} color="#FFF" />
-                <Text style={styles.distanceText}>
-                  {distanceKm < 1
-                    ? `${Math.round(distanceKm * 1000)}m`
-                    : `${distanceKm.toFixed(1)}km`}
-                </Text>
-              </View>
-            )}
-
-            {/* Ô£à NOUVEAU : Badge popularit├® (coin inf├®rieur gauche) */}
-            {isTrending && (
-              <View style={styles.trendingBadge}>
-                <Text style={styles.trendingEmoji}>­ƒöÑ­ƒöÑ</Text>
-                <Text style={styles.trendingText}>Tendance</Text>
-                <Text style={styles.trendingCount}>{usageCount}├ù</Text>
-              </View>
-            )}
-            {!isTrending && isPopular && (
-              <View style={styles.popularBadge}>
-                <Text style={styles.popularEmoji}>­ƒöÑ</Text>
-                <Text style={styles.popularText}>Populaire</Text>
-                <Text style={styles.popularCount}>{usageCount}├ù</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.content}>
-            {/* Nom produit */}
-            <Text style={styles.productName} numberOfLines={2}>
-              {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
-            </Text>
-
-            {/* Prestataire cliquable */}
-            {prestataire.nom && (
-              <TouchableOpacity
-                style={styles.prestataireRow}
-                onPress={() => {
-                  if (prestataire.user_id) {
-                    navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
-                  }
-                }}
-              >
-                {prestataire.avatar_url ? (
-                  <Image
-                    source={{ uri: prestataire.avatar_url }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <SafeIcon name="user" size={14} color="#FFF" />
-                  </View>
-                )}
-                <Text style={styles.prestataireName} numberOfLines={1}>
-                  {prestataire.nom}
-                </Text>
-                <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
-
-            {/* Ô£à AM├ëLIORATION: Localisation hi├®rarchique d├®taill├®e */}
-            {chosenLocation && (
-              <View style={styles.locationSection}>
-                <View style={styles.locationRow}>
-                  <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
-                  <Text style={styles.locationTextPrimary} numberOfLines={1}>
-                    {chosenLocation}
-                  </Text>
-                  {countryFlag && (
-                    <Text style={styles.locationFlag}>{countryFlag}</Text>
-                  )}
-                </View>
-                {/* Hi├®rarchie compl├¿te (ville > r├®gion > pays) */}
-                {locationVector.length > 1 && (
-                  <View style={styles.locationHierarchy}>
-                    <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
-                    <Text style={styles.locationTextSecondary} numberOfLines={1}>
-                      {locationVector.slice(1).join(' ÔÇ║ ')}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* Ô£à NOUVEAU : Notation moyenne du produit (visible pour tous) */}
-            {serviceRating && serviceRating.count > 0 && (
-              <View style={styles.productRatingBadge}>
-                <View style={styles.ratingStars}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <SafeIcon
-                      key={star}
-                      name={star <= Math.round(serviceRating.avg) ? 'star' : 'star-outline'}
-                      size={16}
-                      color="#FFD700"
-                    />
-                  ))}
-                </View>
-                <Text style={styles.ratingValue}>
-                  {serviceRating.avg.toFixed(1)} ({serviceRating.count} avis)
-                </Text>
-              </View>
-            )}
-
-            {/* Ô£à NOUVEAU : Section avis/ratings/commentaires (TOUS les utilisateurs) */}
-            <View style={styles.ratingSection}>
-              <View style={styles.ratingHeader}>
-                <SafeIcon name="message-circle" size={18} color={modernColors.primary} />
-                <Text style={styles.ratingSectionTitle}>
-                  Avis et Commentaires
-                </Text>
-                {serviceRating && serviceRating.count > 0 && (
-                  <Text style={styles.ratingCount}>
-                    {serviceRating.count}
-                  </Text>
-                )}
-              </View>
-
-              <ServiceRating
-                service={{
-                  id: String(product.service_id || service?.id),
-                  data: service?.data || {},
-                  reviews: serviceReviews,
-                  user_rating: serviceRating?.avg || 0,
-                }}
-                onContactUser={handleContactUser}  // Ô£à NOUVEAU : Contact priv├®
-                onRatingSubmit={async (rating, comment) => {
-                  try {
-                    const response = await fetch(`/api/services/${product.service_id || service?.id}/reviews`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({ rating, comment }),
-                    });
-                    if (response.ok) {
-                      Alert.alert('Succ├¿s', 'Votre avis a ├®t├® publi├® avec succ├¿s !');
-                      // Recharger les avis
-                      const reviewsResp = await apiGet(`/api/services/${product.service_id || service?.id}/reviews`);
-                      if (reviewsResp.success && reviewsResp.data) {
-                        const data = reviewsResp.data as any;
-                        setServiceReviews(data.reviews || []);
-                        setServiceRating({
-                          avg: data.average_rating || 0,
-                          count: data.total_reviews || 0,
-                        });
-                      }
-                    } else {
-                      Alert.alert('Erreur', 'Impossible de publier votre avis');
-                    }
-                  } catch (error) {
-                    console.error('[ProductCard] Erreur envoi avis:', error);
-                    Alert.alert('Erreur', 'Une erreur est survenue lors de la publication');
-                  }
-                }}
-                onReviewHelpful={async (reviewId) => {
-                  try {
-                    await fetch(`/api/reviews/${reviewId}/helpful`, {
-                      method: 'POST',
-                    });
-                  } catch (error) {
-                    console.error('[ProductCard] Erreur marquer utile:', error);
-                  }
-                }}
-                showReviewForm={true}
-              />
-
-              {/* Ô£à NOUVEAU : Section R├®actions rapides */}
-              <View style={styles.reactionsSubsection}>
-                <View style={styles.reactionsSectionHeader}>
-                  <Text style={styles.reactionsSectionTitle}>­ƒÄ¡ R├®actions</Text>
-                </View>
-
-                <View style={styles.reactionsBar}>
-                  {REACTIONS.map((reaction) => {
-                    const count = reactions[reaction.type]?.count || 0;
-                    const hasReacted = reactions[reaction.type]?.hasReacted || false;
-
-                    return (
-                      <TouchableOpacity
-                        key={reaction.type}
-                        style={[
-                          styles.reactionButton,
-                          hasReacted && styles.reactionButtonActive
-                        ]}
-                        onPress={() => handleReaction(reaction.type)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
-                        {count > 0 && (
-                          <Text style={[
-                            styles.reactionCount,
-                            hasReacted && styles.reactionCountActive
-                          ]}>
-                            {count}
-                          </Text>
+    // Rendu spécialisé par type de produit
+    const renderProductDetails = () => {
+        switch (product.type) {
+            case 'immobilier_batiment':
+            case 'immobilier_terrain':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.typeImmobilier && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏠 {product.typeImmobilier}</Text>
+                            </View>
                         )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            </View>
-
-            {/* Caract├®ristiques (vecteur produit) en chips */}
-            {productVector.length > 0 && (
-              <View style={styles.characteristicsSection}>
-                <View style={styles.sectionHeader}>
-                  <SafeIcon name="tag" size={14} color="#6B7280" />
-                  <Text style={styles.sectionTitle}>Caract├®ristiques</Text>
-                </View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.chipsScroll}
-                >
-                  {productVector.map((carac: string, i: number) => (
-                    <View key={i} style={styles.chip}>
-                      <Text style={styles.chipText}>{carac}</Text>
+                        {product.statutImmobilier && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>📋 {product.statutImmobilier}</Text>
+                            </View>
+                        )}
+                        {product.superficie && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="maximize-2" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.superficie} m²</Text>
+                            </View>
+                        )}
+                        {product.nbChambres && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="grid" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.nbChambres} ch.</Text>
+                            </View>
+                        )}
+                        {product.ameublement && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🛋️ {product.ameublement}</Text>
+                            </View>
+                        )}
+                        {product.quartier && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="map-pin" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.quartier}</Text>
+                            </View>
+                        )}
                     </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
+                );
 
-            {/* Prix avec variations */}
-            {hasVariant && variants.length > 0 ? (
-              <View style={styles.priceVariations}>
-                <View style={styles.sectionHeader}>
-                  <SafeIcon name="dollar-sign" size={14} color="#6B7280" />
-                  <Text style={styles.sectionTitle}>
-                    Prix selon {product.variant_dimension || 'variante'}
-                  </Text>
-                </View>
-
-                <View style={styles.priceTable}>
-                  <View style={styles.priceTableHeader}>
-                    <Text style={styles.tableHeaderText}>Variante</Text>
-                    <Text style={styles.tableHeaderText}>Prix</Text>
-                    <Text style={styles.tableHeaderText}>Stock</Text>
-                  </View>
-
-                  {variants.slice(0, 5).map((variant: any, i: number) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={[
-                        styles.priceRow,
-                        selectedVariantIndex === i && styles.priceRowSelected
-                      ]}
-                      onPress={() => {
-                        // S├®lectionner la variation pour afficher son image
-                        setSelectedVariantIndex(selectedVariantIndex === i ? null : i);
-                      }}
-                    >
-                      <View style={styles.cellVariant}>
-                        {/* Image de la variation si existe */}
-                        {variant.image && (
-                          <Image
-                            source={{ uri: variant.image.startsWith('data:') ? variant.image : `data:image/jpeg;base64,${variant.image}` }}
-                            style={styles.variantImageThumb}
-                            resizeMode="cover"
-                          />
+            case 'automobile':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.marque && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏷️ {product.marque}</Text>
+                            </View>
                         )}
-                        <Text style={styles.variantValue}>{variant.value || variant.valeur}</Text>
-                      </View>
-                      <View style={styles.cellPrice}>
-                        <Text style={styles.variantPrice}>
-                          {variant.prix?.toLocaleString()}
-                        </Text>
-                        <Text style={styles.variantDevise}>{variant.devise || devise}</Text>
-                      </View>
-                      <View style={styles.cellStock}>
-                        <View style={[
-                          styles.stockBadge,
-                          (variant.stock || 0) > 5 ? styles.stockOK :
-                            (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
-                        ]}>
-                          <Text style={styles.stockText}>
-                            {(variant.stock || 0) > 0 ? `${variant.stock}` : '0'}
-                          </Text>
+                        {product.modele && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🚗 {product.modele}</Text>
+                            </View>
+                        )}
+                        {product.etatVehicule && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>{product.etatVehicule === 'Neuf' ? '✨' : '🔧'} {product.etatVehicule}</Text>
+                            </View>
+                        )}
+                        {product.annee && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="calendar" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.annee}</Text>
+                            </View>
+                        )}
+                        {product.kilometrage && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="activity" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.kilometrage} km</Text>
+                            </View>
+                        )}
+                        {product.typeCarburant && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>⛽ {product.typeCarburant}</Text>
+                            </View>
+                        )}
+                        {product.transmission && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>⚙️ {product.transmission}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'hotellerie':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.typeHebergement && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏨 {product.typeHebergement}</Text>
+                            </View>
+                        )}
+                        {product.categorieHotel && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>⭐ {product.categorieHotel}</Text>
+                            </View>
+                        )}
+                        {product.prixParNuit && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>💰 {product.prixParNuit} FCFA/nuit</Text>
+                            </View>
+                        )}
+                        {product.nbChambresHotel && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="grid" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.nbChambresHotel} chambres</Text>
+                            </View>
+                        )}
+                        {product.equipementsHotel && product.equipementsHotel.length > 0 && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="check-circle" size={14} color="#10B981" />
+                                <Text style={styles.detailText}>{product.equipementsHotel.length} équipements</Text>
+                            </View>
+                        )}
+                        {product.villeHotel && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="map-pin" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.villeHotel}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'ticket_voyage':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.compagnie && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>✈️ {product.compagnie}</Text>
+                            </View>
+                        )}
+                        {product.typeVehiculeTransport && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🚌 {product.typeVehiculeTransport}</Text>
+                            </View>
+                        )}
+                        {product.classeVoyage && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>💺 {product.classeVoyage}</Text>
+                            </View>
+                        )}
+                        {product.depart && product.destination && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="navigation" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.depart} → {product.destination}</Text>
+                            </View>
+                        )}
+                        {product.dateDepart && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="calendar" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.dateDepart}</Text>
+                            </View>
+                        )}
+                        {product.numeroPlace && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🎫 Place {product.numeroPlace}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'vetement':
+            case 'chaussure':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.taille && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="maximize" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>Taille {product.taille}</Text>
+                            </View>
+                        )}
+                        {product.couleur && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="droplet" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.couleur}</Text>
+                            </View>
+                        )}
+                        {product.marque && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏷️ {product.marque}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'electromenager':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.marque && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏷️ {product.marque}</Text>
+                            </View>
+                        )}
+                        {product.modele && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>📱 {product.modele}</Text>
+                            </View>
+                        )}
+                        {product.etatProduit && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="check-circle" size={14} color="#10B981" />
+                                <Text style={styles.detailText}>{product.etatProduit}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'pharmacie':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.typePharmacie && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="shield" size={14} color="#059669" />
+                                <Text style={styles.detailText}>{product.typePharmacie}</Text>
+                            </View>
+                        )}
+                        {product.joursGarde && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="clock" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>Garde: {product.joursGarde}</Text>
+                            </View>
+                        )}
+                        {product.telephoneUrgence && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="phone" size={14} color="#DC2626" />
+                                <Text style={styles.detailText}>{product.telephoneUrgence}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'hopital_clinique':
+                return (
+                    <View style={styles.detailsSection}>
+                        {/* Type d'établissement */}
+                        {product.typeEtablissement && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="building" size={14} color="#DC2626" />
+                                <Text style={styles.detailText}>{product.typeEtablissement}</Text>
+                            </View>
+                        )}
+
+                        {/* Banque de sang */}
+                        {product.banqueSang && (
+                            <View style={[styles.detailChip, styles.highlightChip]}>
+                                <Text style={styles.detailText}>🩸 Banque de sang</Text>
+                            </View>
+                        )}
+
+                        {/* Prestations médicales */}
+                        {product.prestationsMedicales && product.prestationsMedicales.length > 0 && (
+                            <View style={styles.prestationsContainer}>
+                                <Text style={styles.prestationLabel}>Prestations disponibles:</Text>
+                                <View style={styles.tagsContainer}>
+                                    {product.prestationsMedicales.slice(0, 4).map((prestation: string, idx: number) => (
+                                        <View key={idx} style={styles.tag}>
+                                            <Text style={styles.tagText}>{prestation}</Text>
+                                        </View>
+                                    ))}
+                                    {product.prestationsMedicales.length > 4 && (
+                                        <View style={styles.tag}>
+                                            <Text style={styles.tagText}>+{product.prestationsMedicales.length - 4}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Planning simplifié */}
+                        {product.planningHebdomadaire && Object.keys(product.planningHebdomadaire).length > 0 && (
+                            <View style={styles.planningPreview}>
+                                <SafeIcon name="clock" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>
+                                    Horaires: {(Object.values(product.planningHebdomadaire)[0] as any)?.permanent
+                                        ? '24h/24'
+                                        : `${(Object.values(product.planningHebdomadaire)[0] as any)?.debut || '08:00'}-${(Object.values(product.planningHebdomadaire)[0] as any)?.fin || '18:00'}`}
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* RDV en ligne */}
+                        {product.rdvEnLigne && (
+                            <View style={[styles.detailChip, styles.successChip]}>
+                                <SafeIcon name="calendar" size={14} color="#10B981" />
+                                <Text style={[styles.detailText, styles.successText]}>RDV en ligne</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'ticket_voyage':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.depart && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="map-pin" size={14} color="#8B5CF6" />
+                                <Text style={styles.detailText}>De: {product.depart}</Text>
+                            </View>
+                        )}
+                        {product.destination && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="flag" size={14} color="#8B5CF6" />
+                                <Text style={styles.detailText}>À: {product.destination}</Text>
+                            </View>
+                        )}
+                        {product.dateDepart && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="calendar" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.dateDepart}</Text>
+                            </View>
+                        )}
+                        {product.heureDepart && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="clock" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.heureDepart}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'covoiturage':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.pointDepart && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="map-pin" size={14} color="#EC4899" />
+                                <Text style={styles.detailText}>De: {product.pointDepart}</Text>
+                            </View>
+                        )}
+                        {product.pointArrivee && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="flag" size={14} color="#EC4899" />
+                                <Text style={styles.detailText}>À: {product.pointArrivee}</Text>
+                            </View>
+                        )}
+                        {product.nbPlacesDisponibles && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="users" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.nbPlacesDisponibles} places</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'mobilier':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.typeMobilier && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🪑 {product.typeMobilier}</Text>
+                            </View>
+                        )}
+                        {product.materiau && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>📦 {product.materiau}</Text>
+                            </View>
+                        )}
+                        {product.dimensions && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="maximize-2" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.dimensions}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'aliments':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.categorieAliment && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🍕 {product.categorieAliment}</Text>
+                            </View>
+                        )}
+                        {product.origine && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="globe" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.origine}</Text>
+                            </View>
+                        )}
+                        {product.certification && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="award" size={14} color="#10B981" />
+                                <Text style={styles.detailText}>{product.certification}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'livres_fournitures':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.categorieLivre && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>📚 {product.categorieLivre}</Text>
+                            </View>
+                        )}
+                        {product.niveau && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="book-open" size={14} color="#6366F1" />
+                                <Text style={styles.detailText}>{product.niveau}</Text>
+                            </View>
+                        )}
+                        {product.matiereScolaire && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="file-text" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.matiereScolaire}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'quincaillerie':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.categorieQuincaillerie && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🔧 {product.categorieQuincaillerie}</Text>
+                            </View>
+                        )}
+                        {product.marqueQuincaillerie && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="tag" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.marqueQuincaillerie}</Text>
+                            </View>
+                        )}
+                        {product.unite && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="package" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>Unité: {product.unite}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'image_son':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.marqueImageSon && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏷️ {product.marqueImageSon}</Text>
+                            </View>
+                        )}
+                        {product.typeImageSon && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>📺 {product.typeImageSon}</Text>
+                            </View>
+                        )}
+                        {product.diagonaleEcran && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="maximize-2" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.diagonaleEcran}"</Text>
+                            </View>
+                        )}
+                        {product.resolution && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🎬 {product.resolution}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'telephone':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.marqueTelephone && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏷️ {product.marqueTelephone}</Text>
+                            </View>
+                        )}
+                        {product.modeleTelephone && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>📱 {product.modeleTelephone}</Text>
+                            </View>
+                        )}
+                        {product.stockage && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="hard-drive" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.stockage}</Text>
+                            </View>
+                        )}
+                        {product.ram && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="cpu" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>RAM: {product.ram}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'ordinateur':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.marqueOrdinateur && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏷️ {product.marqueOrdinateur}</Text>
+                            </View>
+                        )}
+                        {product.processeur && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="cpu" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.processeur}</Text>
+                            </View>
+                        )}
+                        {product.ramOrdinateur && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>RAM: {product.ramOrdinateur}</Text>
+                            </View>
+                        )}
+                        {product.stockageOrdinateur && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="hard-drive" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.stockageOrdinateur}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'decoration':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.typeDecoration && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🖼️ {product.typeDecoration}</Text>
+                            </View>
+                        )}
+                        {product.style && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>✨ {product.style}</Text>
+                            </View>
+                        )}
+                        {product.couleurDecoration && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="droplet" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.couleurDecoration}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'ustensiles_cuisine':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.typeUstensile && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🍴 {product.typeUstensile}</Text>
+                            </View>
+                        )}
+                        {product.materiauUstensile && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>📦 {product.materiauUstensile}</Text>
+                            </View>
+                        )}
+                        {product.marqueUstensile && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="tag" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.marqueUstensile}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'assurance':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.typeAssurance && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="shield" size={14} color="#14B8A6" />
+                                <Text style={styles.detailText}>{product.typeAssurance}</Text>
+                            </View>
+                        )}
+                        {product.compagnie && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="briefcase" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.compagnie}</Text>
+                            </View>
+                        )}
+                        {product.couverture && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="check-circle" size={14} color="#10B981" />
+                                <Text style={styles.detailText}>{product.couverture}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'prestation_service':
+                return (
+                    <View style={styles.prestationsContainer}>
+                        {product.prestations && product.prestations.length > 0 ? (
+                            <>
+                                <Text style={styles.prestationsSectionTitle}>🎯 Offres de service :</Text>
+                                {product.prestations.map((prestation, index) => (
+                                    <View key={index} style={styles.prestationItem}>
+                                        <View style={styles.prestationHeader}>
+                                            <SafeIcon name="check-circle" size={16} color="#8B5CF6" />
+                                            <Text style={styles.prestationName}>{prestation.nom}</Text>
+                                        </View>
+                                        {prestation.prixAPartirDe && (
+                                            <Text style={styles.prestationPrice}>
+                                                Montant minimum : {parseFloat(prestation.prixAPartirDe).toLocaleString()} FCFA
+                                            </Text>
+                                        )}
+                                        {prestation.description && (
+                                            <Text style={styles.prestationDescription} numberOfLines={2}>
+                                                {prestation.description}
+                                            </Text>
+                                        )}
+                                    </View>
+                                ))}
+                            </>
+                        ) : (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="briefcase" size={14} color="#8B5CF6" />
+                                <Text style={styles.detailText}>Prestation de service</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'demenagement':
+                return (
+                    <View style={styles.detailsSection}>
+                        {/* Type de déménagement */}
+                        {product.typeDemenagement && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="truck" size={14} color="#F97316" />
+                                <Text style={styles.detailText}>{product.typeDemenagement}</Text>
+                            </View>
+                        )}
+
+                        <View style={styles.detailsGrid}>
+                            {/* Volume */}
+                            {product.volumeEstime && (
+                                <View style={styles.detailChip}>
+                                    <SafeIcon name="package" size={14} color="#6B7280" />
+                                    <Text style={styles.detailText}>{product.volumeEstime} m³</Text>
+                                </View>
+                            )}
+
+                            {/* Véhicule */}
+                            {product.typeVehicule && (
+                                <View style={styles.detailChip}>
+                                    <Text style={styles.detailText}>🚚 {product.typeVehicule}</Text>
+                                </View>
+                            )}
+
+                            {/* Déménageurs */}
+                            {product.nbDemenageurs && (
+                                <View style={styles.detailChip}>
+                                    <SafeIcon name="users" size={14} color="#6B7280" />
+                                    <Text style={styles.detailText}>{product.nbDemenageurs} personnes</Text>
+                                </View>
+                            )}
+
+                            {/* Distance */}
+                            {product.distanceKm && (
+                                <View style={styles.detailChip}>
+                                    <SafeIcon name="map" size={14} color="#6B7280" />
+                                    <Text style={styles.detailText}>Max {product.distanceKm} km</Text>
+                                </View>
+                            )}
                         </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
 
-                  {variants.length > 5 && (
-                    <Text style={styles.moreVariantsText}>
-                      +{variants.length - 5} autres variantes
+                        {/* Services inclus */}
+                        {(product.assuranceMarchandise || product.serviceManutention || product.montageDemontage ||
+                            product.emballageCartons || product.gardeMeuble || product.debarras) && (
+                                <View style={styles.servicesInclus}>
+                                    <Text style={styles.prestationLabel}>Services inclus:</Text>
+                                    <View style={styles.servicesGrid}>
+                                        {product.assuranceMarchandise && (
+                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Assurance</Text></View>
+                                        )}
+                                        {product.serviceManutention && (
+                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Manutention</Text></View>
+                                        )}
+                                        {product.montageDemontage && (
+                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Montage</Text></View>
+                                        )}
+                                        {product.emballageCartons && (
+                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Emballage</Text></View>
+                                        )}
+                                        {product.gardeMeuble && (
+                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Garde-meuble</Text></View>
+                                        )}
+                                        {product.debarras && (
+                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Débarras</Text></View>
+                                        )}
+                                    </View>
+                                </View>
+                            )}
+                    </View>
+                );
+
+            case 'cosmetique_parfum':
+                return (
+                    <View style={styles.detailsSection}>
+                        {/* Type de cosmétique */}
+                        {product.typeCosmetique && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="sparkle" size={14} color="#EC4899" />
+                                <Text style={styles.detailText}>{product.typeCosmetique}</Text>
+                            </View>
+                        )}
+
+                        <View style={styles.detailsGrid}>
+                            {/* Marque */}
+                            {product.marqueCosmetique && (
+                                <View style={styles.detailChip}>
+                                    <Text style={styles.detailText}>🏷️ {product.marqueCosmetique}</Text>
+                                </View>
+                            )}
+
+                            {/* Volume */}
+                            {product.volumeCosmetique && product.uniteCosmetique && (
+                                <View style={styles.detailChip}>
+                                    <SafeIcon name="droplet" size={14} color="#6B7280" />
+                                    <Text style={styles.detailText}>{product.volumeCosmetique} {product.uniteCosmetique}</Text>
+                                </View>
+                            )}
+
+                            {/* Type de peau */}
+                            {product.typePeau && (
+                                <View style={styles.detailChip}>
+                                    <SafeIcon name="user" size={14} color="#6B7280" />
+                                    <Text style={styles.detailText}>Peau: {product.typePeau}</Text>
+                                </View>
+                            )}
+
+                            {/* Âge recommandé */}
+                            {product.ageRecommandé && (
+                                <View style={styles.detailChip}>
+                                    <SafeIcon name="calendar" size={14} color="#6B7280" />
+                                    <Text style={styles.detailText}>Âge: {product.ageRecommandé}</Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Origine */}
+                        {product.origineCosmetique && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="globe" size={14} color="#10B981" />
+                                <Text style={styles.detailText}>Origine: {product.origineCosmetique}</Text>
+                            </View>
+                        )}
+
+                        {/* Ingrédients */}
+                        {product.ingredientsCosmetique && (
+                            <View style={styles.ingredientsContainer}>
+                                <Text style={styles.prestationLabel}>Ingrédients:</Text>
+                                <Text style={styles.ingredientsText} numberOfLines={2}>
+                                    {product.ingredientsCosmetique}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'bijoux':
+                return (
+                    <View style={styles.detailsSection}>
+                        {/* Type de bijou */}
+                        {product.typeBijou && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="gem" size={14} color="#F59E0B" />
+                                <Text style={styles.detailText}>{product.typeBijou}</Text>
+                            </View>
+                        )}
+
+                        <View style={styles.detailsGrid}>
+                            {/* Matière */}
+                            {product.matiereBijou && (
+                                <View style={styles.detailChip}>
+                                    <Text style={styles.detailText}>💎 {product.matiereBijou}</Text>
+                                </View>
+                            )}
+
+                            {/* Poids */}
+                            {product.poidsBijou && product.unitePoids && (
+                                <View style={styles.detailChip}>
+                                    <SafeIcon name="scale" size={14} color="#6B7280" />
+                                    <Text style={styles.detailText}>{product.poidsBijou} {product.unitePoids}</Text>
+                                </View>
+                            )}
+
+                            {/* Taille */}
+                            {product.tailleBijou && (
+                                <View style={styles.detailChip}>
+                                    <SafeIcon name="maximize" size={14} color="#6B7280" />
+                                    <Text style={styles.detailText}>Taille: {product.tailleBijou}</Text>
+                                </View>
+                            )}
+
+                            {/* Style */}
+                            {product.styleBijou && (
+                                <View style={styles.detailChip}>
+                                    <Text style={styles.detailText}>✨ {product.styleBijou}</Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Origine */}
+                        {product.origineBijou && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="globe" size={14} color="#10B981" />
+                                <Text style={styles.detailText}>Origine: {product.origineBijou}</Text>
+                            </View>
+                        )}
+
+                        {/* Certificat */}
+                        {product.certificatBijou && (
+                            <View style={[styles.detailChip, styles.certificateChip]}>
+                                <SafeIcon name="award" size={14} color="#10B981" />
+                                <Text style={[styles.detailText, styles.certificateText]}>
+                                    Certifié: {product.certificatBijou}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'coiffure_beaute':
+                return (
+                    <View style={styles.detailsSection}>
+                        {/* Type de coiffure */}
+                        {product.typeCoiffure && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>💇‍♀️ {product.typeCoiffure}</Text>
+                            </View>
+                        )}
+
+                        <View style={styles.detailsGrid}>
+                            {/* Longueur */}
+                            {product.longueurMech && (
+                                <View style={styles.detailChip}>
+                                    <SafeIcon name="ruler" size={14} color="#6B7280" />
+                                    <Text style={styles.detailText}>{product.longueurMech}</Text>
+                                </View>
+                            )}
+
+                            {/* Texture */}
+                            {product.textureMech && (
+                                <View style={styles.detailChip}>
+                                    <Text style={styles.detailText}>✨ {product.textureMech}</Text>
+                                </View>
+                            )}
+
+                            {/* Couleur */}
+                            {product.couleurMech && (
+                                <View style={styles.detailChip}>
+                                    <SafeIcon name="droplet" size={14} color="#6B7280" />
+                                    <Text style={styles.detailText}>{product.couleurMech}</Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Type de cheveux */}
+                        {product.typeCheveux && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="check-circle" size={14} color="#10B981" />
+                                <Text style={styles.detailText}>{product.typeCheveux}</Text>
+                            </View>
+                        )}
+
+                        {/* Origine */}
+                        {product.origineMech && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="globe" size={14} color="#10B981" />
+                                <Text style={styles.detailText}>Origine: {product.origineMech}</Text>
+                            </View>
+                        )}
+
+                        {/* Marque */}
+                        {product.marqueCoiffure && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="tag" size={14} color="#EC4899" />
+                                <Text style={styles.detailText}>{product.marqueCoiffure}</Text>
+                            </View>
+                        )}
+
+                        {/* Durée de vie */}
+                        {product.dureeVie && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="clock" size={14} color="#8B5CF6" />
+                                <Text style={styles.detailText}>Durée: {product.dureeVie}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            default:
+                return null;
+        }
+    };
+
+    return (
+        <TouchableOpacity
+            style={styles.card}
+            onPress={onPress}
+            activeOpacity={0.95}
+        >
+            <View style={styles.cardContent}>
+                {/* Image principale avec vidéo overlay */}
+                <View style={styles.imageContainer}>
+                    {mainImage ? (
+                        <Image source={{ uri: mainImage }} style={styles.mainImage} resizeMode="cover" />
+                    ) : (
+                        <View style={[styles.mainImage, styles.noImageContainer]}>
+                            <SafeIcon name="package" size={48} color="#D1D5DB" />
+                        </View>
+                    )}
+
+                    {/* Badge type de produit */}
+                    <View style={[styles.typeBadge, { backgroundColor: typeStyle.bg }]}>
+                        <SafeIcon name={typeStyle.icon} size={14} color={typeStyle.color} />
+                        <Text style={[styles.typeText, { color: typeStyle.color }]}>{typeStyle.label}</Text>
+                    </View>
+
+                    {/* ✅ Badge PROMOTION si produit en promotion */}
+                    {(product.en_promotion || product.promotion_active) && (
+                        <View style={styles.promoBadge}>
+                            <LinearGradient
+                                colors={['#F59E0B', '#EF4444']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.promoBadgeGradient}
+                            >
+                                <SafeIcon name="zap" size={12} color="#FFFFFF" />
+                                <Text style={styles.promoText}>PROMO</Text>
+                            </LinearGradient>
+                        </View>
+                    )}
+
+                    {/* Indicateur vidéo si présente */}
+                    {hasVideo && (
+                        <View style={styles.videoIndicator}>
+                            <SafeIcon name="play-circle" size={20} color="#FFFFFF" />
+                        </View>
+                    )}
+
+                    {/* Galerie miniature si plusieurs images - Clickable */}
+                    {images.length > 1 && (
+                        <TouchableOpacity
+                            style={styles.imageCountBadge}
+                            onPress={onGalleryPress}
+                            activeOpacity={0.8}
+                        >
+                            <SafeIcon name="image" size={12} color="#FFFFFF" />
+                            <Text style={styles.imageCountText}>{images.length}</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {/* Informations du produit */}
+                <View style={styles.infoContainer}>
+                    {/* Nom du produit */}
+                    <Text style={styles.productName} numberOfLines={2}>
+                        {product.nom || product.name || product.titre || 'Produit'}
                     </Text>
-                  )}
-                </View>
 
-                <View style={styles.priceFromContainer}>
-                  <Text style={styles.priceFromLabel}>├Ç partir de</Text>
-                  <Text style={styles.priceFromValue}>
-                    {displayPrice.toLocaleString()} {devise}
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.priceUniqueContainer}>
-                <Text style={styles.priceLabel}>Prix</Text>
-                <View style={styles.priceRow}>
-                  <Text style={styles.price}>
-                    {displayPrice.toLocaleString()}
-                  </Text>
-                  <Text style={styles.priceDevise}>{devise}</Text>
-                </View>
-              </View>
-            )}
+                    {/* Description courte */}
+                    {product.description && (
+                        <Text style={styles.productDescription} numberOfLines={2}>
+                            {product.description}
+                        </Text>
+                    )}
 
-            {/* Actions */}
-            <View style={styles.actions}>
-              {/* ✅ NOUVEAU : Bouton "Me livrer" pour les produits */}
-              {(product.service_id || service?.id) && (
-                <TouchableOpacity
-                  style={[styles.actionButtonDelivery, styles.actionButton]}
-                  onPress={() => {
-                    const serviceId = product.service_id || service?.id;
-                    if (!serviceId) {
-                      Alert.alert(
-                        'Information manquante',
-                        'Impossible de commander la livraison : l\'identifiant du service est invalide.'
-                      );
-                      return;
-                    }
-                    setShowOrderModal(true);
-                  }}
-                >
-                  <SafeIcon name="truck" size={16} color="#10B981" />
-                  <Text style={styles.actionButtonTextDelivery}>Me livrer</Text>
-                </TouchableOpacity>
-              )}
-              <NativeButton
-                title="­ƒÆ¼ Chat"
-                variant="primary"
-                onPress={handleChatPress}
-                style={styles.actionButton}
-              />
-              <NativeButton
-                title="­ƒæü´©Å Voir"
-                variant="secondary"
-                onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
-                style={styles.actionButton}
-              />
+                    {/* Détails spécifiques par type */}
+                    {renderProductDetails()}
+
+                    {/* Prix */}
+                    {formatPrice() && (
+                        <View style={styles.priceContainer}>
+                            <LinearGradient
+                                colors={['#3B82F6', '#1D4ED8']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.priceGradient}
+                            >
+                                <SafeIcon name="tag" size={16} color="#FFFFFF" />
+                                <Text style={styles.priceText}>{formatPrice()}</Text>
+                            </LinearGradient>
+                        </View>
+                    )}
+
+                    {/* GPS et distance */}
+                    {displayGPS && (
+                        <View style={styles.locationContainer}>
+                            <SafeIcon name="map-pin" size={14} color="#EF4444" />
+                            <Text style={styles.locationText} numberOfLines={1}>
+                                {product.quartier || product.ville || 'Localisation disponible'}
+                            </Text>
+                            {product.distance && (
+                                <Text style={styles.distanceText}>• {product.distance.toFixed(1)} km</Text>
+                            )}
+                        </View>
+                    )}
+
+                    {/* Statistiques */}
+                    <View style={styles.statsContainer}>
+                        <View style={styles.statItem}>
+                            <SafeIcon name="eye" size={12} color="#6B7280" />
+                            <Text style={styles.statText}>{product.views || service.views || 0}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                            <SafeIcon name="share-2" size={12} color="#6B7280" />
+                            <Text style={styles.statText}>{product.shares || 0}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                            <SafeIcon name="star" size={12} color="#F59E0B" />
+                            <Text style={styles.statText}>{product.rating || service.rating || '—'}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                            <SafeIcon name="message-square" size={12} color="#6B7280" />
+                            <Text style={styles.statText}>{product.reviews || 0}</Text>
+                        </View>
+                    </View>
+
+                    {/* Informations prestataire */}
+                    {prestataire && (
+                        <View style={styles.prestataireInfo}>
+                            <View style={styles.prestataireAvatar}>
+                                {prestataire.avatar ? (
+                                    <Image source={{ uri: prestataire.avatar }} style={styles.avatarImage} />
+                                ) : (
+                                    <SafeIcon name="user" size={16} color="#6B7280" />
+                                )}
+                            </View>
+                            <Text style={styles.prestataireName} numberOfLines={1}>
+                                {prestataire.name || 'Prestataire'}
+                            </Text>
+                            {prestataire.isOnline && (
+                                <View style={styles.onlineIndicator} />
+                            )}
+                        </View>
+                    )}
+
+                    {/* Actions */}
+                    <View style={styles.actions}>
+                        {/* Bouton Chat principal - TOUJOURS PRIORITAIRE */}
+                        <TouchableOpacity
+                            style={[styles.chatButton, { backgroundColor: categoryStyle.primaryColor }]}
+                            onPress={onChatPress}
+                        >
+                            <SafeIcon name="message-square" size={18} color="#FFFFFF" />
+                            <Text style={styles.chatButtonText}>Discuter</Text>
+                        </TouchableOpacity>
+
+                        <View style={styles.secondaryActions}>
+                            {/* Bouton Galerie */}
+                            {(images.length > 0 || videos.length > 0) && (
+                                <TouchableOpacity
+                                    style={styles.actionIconButton}
+                                    onPress={onGalleryPress}
+                                >
+                                    <SafeIcon name="image" size={16} color="#8B5CF6" />
+                                </TouchableOpacity>
+                            )}
+
+                            {/* Bouton Téléphone */}
+                            {prestataire?.telephone && (
+                                <TouchableOpacity
+                                    style={styles.actionIconButton}
+                                    onPress={async () => {
+                                        const phoneNumber = prestataire?.telephone;
+                                        if (phoneNumber) {
+                                            try {
+                                                const telUrl = `tel:${phoneNumber.replace(/\s+/g, '')}`;
+                                                const canOpen = await Linking.canOpenURL(telUrl);
+                                                if (canOpen) {
+                                                    await Linking.openURL(telUrl);
+                                                } else {
+                                                    Alert.alert('Erreur', 'Impossible de passer l\'appel');
+                                                }
+                                            } catch (error) {
+                                                Alert.alert('Erreur', 'Impossible d\'ouvrir l\'application téléphone');
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <SafeIcon name="phone" size={16} color="#10B981" />
+                                </TouchableOpacity>
+                            )}
+
+                            <TouchableOpacity
+                                style={styles.actionIconButton}
+                                onPress={() => {
+                                    // TODO: Implémenter partage
+                                }}
+                            >
+                                <SafeIcon name="share-2" size={16} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
             </View>
-
-            {/* Ô£à NOUVEAU : Actions secondaires (Galerie, Partage) */}
-            <View style={styles.secondaryActions}>
-              <TouchableOpacity
-                style={styles.secondaryActionButton}
-                onPress={() => setShowGallery(true)}
-              >
-                <SafeIcon name="image" size={18} color={modernColors.primary} />
-                <Text style={styles.secondaryActionText}>Galerie</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.secondaryActionButton}
-                onPress={handleShare}
-              >
-                <SafeIcon name="share" size={18} color={modernColors.primary} />
-                <Text style={styles.secondaryActionText}>Partager</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Footer info */}
-            <View style={styles.footer}>
-              {distanceKm !== undefined && distanceKm !== null && (
-                <View style={styles.footerItem}>
-                  <SafeIcon name="map-pin" size={12} color="#9CA3AF" />
-                  <Text style={styles.footerText}>
-                    {distanceKm < 1 ? 'Tr├¿s proche' : distanceKm < 5 ? '├Ç proximit├®' : `${distanceKm.toFixed(0)}km`}
-                  </Text>
-                </View>
-              )}
-              {product.usage_count && (
-                <View style={styles.footerItem}>
-                  <SafeIcon name="eye" size={12} color="#9CA3AF" />
-                  <Text style={styles.footerText}>
-                    {product.usage_count} vues
-                  </Text>
-                </View>
-              )}
-              {product.created_at && (
-                <View style={styles.footerItem}>
-                  <SafeIcon name="clock" size={12} color="#9CA3AF" />
-                  <Text style={styles.footerText}>
-                    {formatDate(product.created_at)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
         </TouchableOpacity>
-      </NativeCard>
-
-      {/* Ô£à CORRIG├ë: Modal Chat avec props correctes */}
-      {showChatModal && !onChatPress && prestataire.user_id && (
-        <ChatModalMobile
-          visible={showChatModal}
-          onClose={() => setShowChatModal(false)}
-          service={service || {
-            id: product.service_id,
-            data: { titre_service: { valeur: product.nom } }
-          }}
-          prestataireInfo={prestataire}
-          user={null} // L'utilisateur sera r├®cup├®r├® depuis AuthContext dans ChatModalMobile
-        />
-      )}
-
-      {/* Ô£à NOUVEAU : Modal Galerie du prestataire */}
-      {showGallery && (
-        <ServiceGalleryModal
-          visible={showGallery}
-          service={service || {
-            id: String(product.service_id || service?.id),
-            titre: product.nom || service?.data?.titre_service?.valeur || 'Produit',
-            description: product.description || service?.data?.description?.valeur || '',
-            user_id: String(prestataire.user_id || service?.user_id || ''),
-            data: service?.data || {},
-          }}
-          onClose={() => setShowGallery(false)}
-        />
-      )}
-
-      {/* ✅ NOUVEAU : Modal Commande Livraison */}
-      {showOrderModal && (product.service_id || service?.id) && (
-        <OrderDeliveryModal
-          visible={showOrderModal}
-          onClose={() => setShowOrderModal(false)}
-          serviceId={product.service_id || service?.id}
-          productIndex={product.product_index || 0}
-          productName={product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
-          onSuccess={(deliveryId) => {
-            Alert.alert('Succès', 'Votre commande de livraison a été créée avec succès !');
-            setShowOrderModal(false);
-          }}
-        />
-      )}
-    </>
-  );
-};
-
-// Helper formatage date
-const formatDate = (dateStr: string): string => {
-  try {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return "Aujourd'hui";
-    if (diffDays === 1) return 'Hier';
-    if (diffDays < 7) return `Il y a ${diffDays}j`;
-    if (diffDays < 30) return `Il y a ${Math.floor(diffDays / 7)}sem`;
-    return `Il y a ${Math.floor(diffDays / 30)}mois`;
-  } catch {
-    return '';
-  }
+    );
 };
 
 const styles = StyleSheet.create({
-  imageContainer: {
-    position: 'relative',
-    width: '100%',
-    height: 220,
-  },
-  countryBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#FFF',
-  },
-  countryFlag: {
-    fontSize: 20,
-  },
-  distanceBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(99, 102, 241, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  distanceText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  trendingBadge: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    backgroundColor: 'rgba(239, 68, 68, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  trendingEmoji: {
-    fontSize: 14,
-  },
-  trendingText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  trendingCount: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#FFF',
-    opacity: 0.9,
-  },
-  popularBadge: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    backgroundColor: 'rgba(251, 146, 60, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  popularEmoji: {
-    fontSize: 13,
-  },
-  popularText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  popularCount: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#FFF',
-    opacity: 0.9,
-  },
-  imageCountBadge: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  imageCountText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  content: {
-    padding: 16,
-    gap: 14,
-  },
-  productName: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#1F2937',
-    lineHeight: 26,
-  },
-  prestataireRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#FFF',
-  },
-  avatarPlaceholder: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: modernColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  prestataireName: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '600',
-    flex: 1,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-  },
-  locationText: {
-    fontSize: 14,
-    color: '#6B7280',
-    flex: 1,
-  },
-  hierarchyHint: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  characteristicsSection: {
-    gap: 8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  chipsScroll: {
-    gap: 6,
-    paddingVertical: 2,
-  },
-  chip: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: modernColors.primary,
-  },
-  chipText: {
-    fontSize: 13,
-    color: modernColors.primary,
-    fontWeight: '600',
-  },
-  priceVariations: {
-    gap: 12,
-    backgroundColor: '#F9FAFB',
-    padding: 12,
-    borderRadius: 10,
-  },
-  priceTable: {
-    gap: 6,
-  },
-  priceTableHeader: {
-    flexDirection: 'row',
-    paddingBottom: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: '#E5E7EB',
-  },
-  tableHeaderText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6B7280',
-    flex: 1,
-    textAlign: 'center',
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    borderRadius: 6,
-  },
-  priceRowSelected: {
-    backgroundColor: '#EEF2FF',
-    borderWidth: 2,
-    borderColor: modernColors.primary,
-  },
-  cellVariant: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  variantImageThumb: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  cellPrice: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  cellStock: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
-  variantValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  variantPrice: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: modernColors.primary,
-  },
-  variantDevise: {
-    fontSize: 11,
-    color: '#6B7280',
-  },
-  stockBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    minWidth: 50,
-    alignItems: 'center',
-  },
-  stockOK: {
-    backgroundColor: '#D1FAE5',
-  },
-  stockLow: {
-    backgroundColor: '#FEF3C7',
-  },
-  stockOut: {
-    backgroundColor: '#FEE2E2',
-  },
-  stockText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#374151',
-  },
-  moreVariantsText: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-    paddingTop: 6,
-    fontStyle: 'italic',
-  },
-  priceFromContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  priceFromLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  priceFromValue: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: modernColors.primary,
-  },
-  priceUniqueContainer: {
-    gap: 6,
-  },
-  priceLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  price: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: modernColors.primary,
-  },
-  priceDevise: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-  },
-  actionButtonDelivery: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1.5,
-    borderColor: '#10B981',
-  },
-  actionButtonTextDelivery: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#10B981',
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  footerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  footerText: {
-    fontSize: 11,
-    color: '#9CA3AF',
-  },
-  // Ô£à NOUVEAU : Styles pour avis/ratings et actions secondaires
-  productRatingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#FFFBEB',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  ratingStars: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  ratingValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#92400E',
-  },
-  ratingSection: {
-    marginTop: 12,
-    paddingTop: 16,
-    borderTopWidth: 2,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FAFAFA',
-    padding: 12,
-    borderRadius: 10,
-  },
-  ratingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  ratingSectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1F2937',
-    flex: 1,
-  },
-  ratingCount: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: modernColors.primary,
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  locationSection: {
-    gap: 6,
-    backgroundColor: '#F9FAFB',
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  locationTextPrimary: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1F2937',
-    flex: 1,
-  },
-  locationFlag: {
-    fontSize: 16,
-  },
-  locationHierarchy: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingLeft: 20,
-  },
-  locationTextSecondary: {
-    fontSize: 12,
-    color: '#6B7280',
-    flex: 1,
-    fontStyle: 'italic',
-  },
-  secondaryActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  secondaryActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  secondaryActionText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: modernColors.primary,
-  },
-  // Ô£à NOUVEAU : Styles pour r├®actions
-  reactionsSubsection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  reactionsSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  reactionsSectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  reactionsBar: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  reactionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-    gap: 4,
-  },
-  reactionButtonActive: {
-    borderColor: modernColors.primary,
-    backgroundColor: modernColors.primary + '10',
-    borderWidth: 2,
-  },
-  reactionEmoji: {
-    fontSize: 18,
-  },
-  reactionCount: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#6B7280',
-    minWidth: 20,
-    textAlign: 'center',
-  },
-  reactionCountActive: {
-    color: modernColors.primary,
-  },
+    card: {
+        marginHorizontal: 16,
+        marginVertical: 8,
+        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 5,
+        overflow: 'hidden',
+    },
+    cardContent: {
+        flexDirection: 'row',
+    },
+    imageContainer: {
+        width: width * 0.4,
+        height: 180,
+        position: 'relative',
+    },
+    mainImage: {
+        width: '100%',
+        height: '100%',
+    },
+    noImageContainer: {
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    typeBadge: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    typeText: {
+        fontSize: 10,
+        fontWeight: '600',
+    },
+    promoBadge: {
+        position: 'absolute',
+        top: 42,
+        left: 8,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    promoBadgeGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
+    promoText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    videoIndicator: {
+        position: 'absolute',
+        bottom: 8,
+        right: 8,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        borderRadius: 20,
+        padding: 6,
+    },
+    imageCountBadge: {
+        position: 'absolute',
+        bottom: 8,
+        left: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    imageCountText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    infoContainer: {
+        flex: 1,
+        padding: 12,
+        justifyContent: 'space-between',
+    },
+    productName: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#1F2937',
+        marginBottom: 4,
+    },
+    productDescription: {
+        fontSize: 12,
+        color: '#6B7280',
+        lineHeight: 16,
+        marginBottom: 8,
+    },
+    detailsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginBottom: 8,
+    },
+    detailChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#F3F4F6',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    detailText: {
+        fontSize: 11,
+        color: '#4B5563',
+        fontWeight: '500',
+    },
+    priceContainer: {
+        marginBottom: 8,
+    },
+    priceGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        alignSelf: 'flex-start',
+    },
+    priceText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    locationContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 8,
+    },
+    locationText: {
+        fontSize: 11,
+        color: '#EF4444',
+        fontWeight: '500',
+        flex: 1,
+    },
+    distanceText: {
+        fontSize: 11,
+        color: '#6B7280',
+        fontWeight: '600',
+    },
+    prestataireInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    prestataireAvatar: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+    },
+    prestataireName: {
+        fontSize: 11,
+        color: '#4B5563',
+        fontWeight: '500',
+        flex: 1,
+    },
+    onlineIndicator: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#10B981',
+    },
+    statsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        paddingVertical: 8,
+        marginBottom: 8,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+    },
+    statItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+    },
+    statText: {
+        fontSize: 11,
+        color: '#6B7280',
+        fontWeight: '600',
+    },
+    actions: {
+        flexDirection: 'column',
+        gap: 8,
+    },
+    chatButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        backgroundColor: '#3B82F6',
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    chatButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    secondaryActions: {
+        flexDirection: 'row',
+        gap: 8,
+        justifyContent: 'space-between',
+    },
+    actionIconButton: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    // Styles pour les prestations de service
+    prestationsContainer: {
+        gap: 8,
+    },
+    prestationsSectionTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    prestationItem: {
+        backgroundColor: '#F9FAFB',
+        padding: 10,
+        borderRadius: 8,
+        borderLeftWidth: 3,
+        borderLeftColor: '#8B5CF6',
+        marginBottom: 6,
+    },
+    prestationHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 4,
+    },
+    prestationName: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#1F2937',
+        flex: 1,
+    },
+    prestationPrice: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#8B5CF6',
+        marginBottom: 3,
+    },
+    prestationDescription: {
+        fontSize: 11,
+        color: '#6B7280',
+        lineHeight: 15,
+    },
+    // Styles pour logo et bannière
+    bannerContainer: {
+        width: '100%',
+        height: 80,
+        marginBottom: 8,
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    bannerImage: {
+        width: '100%',
+        height: '100%',
+    },
+    logoOverlay: {
+        position: 'absolute',
+        bottom: 8,
+        left: 8,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    logoImage: {
+        width: '100%',
+        height: '100%',
+    },
+    // ✅ NOUVEAU: Styles pour prestations médicales et déménagement
+    detailsSection: {
+        marginTop: 12,
+    },
+    prestationLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 6,
+    },
+    tagsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    tag: {
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    tagText: {
+        fontSize: 11,
+        color: '#3B82F6',
+        fontWeight: '500',
+    },
+    planningPreview: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 6,
+    },
+    highlightChip: {
+        backgroundColor: '#FEF2F2',
+        borderColor: '#FCA5A5',
+    },
+    successChip: {
+        backgroundColor: '#F0FDF4',
+        borderColor: '#86EFAC',
+    },
+    successText: {
+        color: '#10B981',
+    },
+    // Styles pour déménagement
+    servicesInclus: {
+        marginTop: 8,
+    },
+    servicesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    serviceTag: {
+        backgroundColor: '#F0FDF4',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+    },
+    serviceTagText: {
+        fontSize: 11,
+        color: '#15803D',
+        fontWeight: '500',
+    },
+    // Styles pour cosmétique & bijoux
+    ingredientsContainer: {
+        marginTop: 8,
+    },
+    ingredientsText: {
+        fontSize: 11,
+        color: '#6B7280',
+        lineHeight: 15,
+        fontStyle: 'italic',
+    },
+    certificateChip: {
+        backgroundColor: '#F0FDF4',
+        borderColor: '#BBF7D0',
+    },
+    certificateText: {
+        color: '#15803D',
+        fontWeight: '600',
+    },
 });
 
 export default ProductCard;
+

@@ -530,27 +530,41 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       productVector.length > 0 && productVector.length === productLabels.length) {
 
       const sousCaracsFromPreferred: Record<string, string[]> = {};
+      
+      // ✅ DEBUG: Logger les données d'entrée pour diagnostiquer
+      console.log('[getSousCaracteristiquesFromIA] 🔍 Construction depuis product_vector/product_labels:', {
+        product_vector: productVector,
+        product_labels: productLabels,
+        length_vector: productVector.length,
+        length_labels: productLabels.length
+      });
+      
       productVector.forEach((value: string, index: number) => {
         const label = productLabels[index];
+        console.log(`[getSousCaracteristiquesFromIA] 🔍 Index ${index}: label="${label}", value="${value}"`);
+        
         if (label && typeof label === 'string' && value && typeof value === 'string') {
-          // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position
-          // Si le label n'existe pas encore, créer un tableau avec la valeur préférée en premier
+          // ✅ CRITIQUE: Chaque valeur doit être associée à son label correspondant par index
+          // Si le label existe déjà, on ajoute la valeur (cas où même label apparaît plusieurs fois)
           if (!sousCaracsFromPreferred[label]) {
             sousCaracsFromPreferred[label] = [value];
+            console.log(`[getSousCaracteristiquesFromIA] ✅ Nouveau label créé: "${label}" = ["${value}"]`);
           } else {
-            // Si le label existe déjà, s'assurer que la valeur préférée est en première position
+            // Si le label existe déjà, ajouter la valeur (pour gérer les labels dupliqués)
             const existingValues = sousCaracsFromPreferred[label];
             if (!existingValues.includes(value)) {
-              // Insérer la valeur préférée en première position
               sousCaracsFromPreferred[label] = [value, ...existingValues];
+              console.log(`[getSousCaracteristiquesFromIA] ✅ Label existant mis à jour: "${label}" = ["${value}", ...]`);
             } else {
-              // Si la valeur existe déjà mais n'est pas en première position, la déplacer
-              const filtered = existingValues.filter(v => v !== value);
-              sousCaracsFromPreferred[label] = [value, ...filtered];
+              console.log(`[getSousCaracteristiquesFromIA] ⚠️ Valeur déjà présente pour "${label}": "${value}"`);
             }
           }
+        } else {
+          console.warn(`[getSousCaracteristiquesFromIA] ⚠️ Index ${index}: label ou value invalide`, { label, value });
         }
       });
+      
+      console.log('[getSousCaracteristiquesFromIA] ✅ Résultat construction depuis product_vector/product_labels:', sousCaracsFromPreferred);
 
       if (Object.keys(sousCaracsFromPreferred).length > 0) {
         console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques depuis combinaison préférée (product_vector/product_labels):', sousCaracsFromPreferred);
