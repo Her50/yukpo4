@@ -2724,7 +2724,7 @@ async fn list_available_couriers(
         .or(Some(10.0)); // 10km par défaut
 
     // ✅ NOUVEAU: Si pickup/delivery sont fournis, utiliser la recherche géographique optimisée
-    let couriers = if pickup_lat.is_some() && pickup_lng.is_some() {
+    let couriers: Vec<Value> = if pickup_lat.is_some() && pickup_lng.is_some() {
         // Recherche géographique avec distance et temps estimé
         let max_distance_meters = (max_distance_km.unwrap_or(10.0) * 1000.0) as i32;
         
