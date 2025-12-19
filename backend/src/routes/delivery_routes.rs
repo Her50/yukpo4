@@ -2721,7 +2721,7 @@ async fn list_available_couriers(
     let max_distance_km: Option<f64> = params
         .get("max_distance_km")
         .and_then(|v| v.as_f64())
-        .unwrap_or(Some(10.0)); // 10km par défaut
+        .or(Some(10.0)); // 10km par défaut
 
     // ✅ NOUVEAU: Si pickup/delivery sont fournis, utiliser la recherche géographique optimisée
     let couriers = if pickup_lat.is_some() && pickup_lng.is_some() {
