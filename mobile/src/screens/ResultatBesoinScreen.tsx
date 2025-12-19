@@ -13,10 +13,11 @@ import {
     View
 } from 'react-native';
 import CategoryFilters from '../components/CategoryFilters';
+import ChatInputMobile from '../components/ChatInputMobile';
 import ChatModalMobile from '../components/ChatModalMobile';
+import ModernGPSModal from '../components/ModernGPSModal';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
-import SearchBar from '../components/SearchBar';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import UltraModernServiceCard from '../components/UltraModernServiceCard';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
@@ -78,9 +79,11 @@ const ResultatBesoinScreen: React.FC = () => {
     const [prestatairesLoaded, setPrestatairesLoaded] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
     const [showGalleryModal, setShowGalleryModal] = useState(false);
+    const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     const [selectedPrestataire, setSelectedPrestataire] = useState<Prestataire | null>(null);
+    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
 
     // États pour le filtre par prix
     const [priceFilter, setPriceFilter] = useState<{
@@ -886,7 +889,7 @@ const ResultatBesoinScreen: React.FC = () => {
         setRefreshing(false);
     }, [initialResults]);
 
-    // Fonction de recherche (identique à HomeScreen)
+    // Fonction de recherche (identique à HomeScreen) - Support multimédia complet
     const handleSearch = async (input: any) => {
         try {
             // Vérifier l'authentification
@@ -896,21 +899,47 @@ const ResultatBesoinScreen: React.FC = () => {
             }
 
             setLoading(true);
-            console.log('[ResultatBesoinScreen] Recherche avec:', input);
+            console.log('[ResultatBesoinScreen] Recherche avec:', {
+                texte: input.texte || input.text || '',
+                hasImages: (input.base64_image || []).length > 0,
+                hasAudio: (input.audio_base64 || []).length > 0,
+                hasGPS: !!input.gps_mobile
+            });
 
-            // Utiliser yukpoclient (comme le frontend)
-            let rechercherServices;
-            try {
-                const yukpoclientModule = await import('../lib/yukpoclient');
-                rechercherServices = yukpoclientModule.rechercherServices;
-            } catch (error) {
-                console.error('[ResultatBesoinScreen] Erreur import yukpoclient:', error);
-                Alert.alert('Erreur', 'Service de recherche temporairement indisponible');
-                setLoading(false);
-                return;
+            // ✅ CORRIGÉ: Utiliser le service de recherche directement (comme HomeScreen)
+            const { rechercherServices } = await import('../services/yukpoclient');
+            
+            // ✅ CORRIGÉ: Préparer le payload complet avec support multimédia
+            const searchPayload: any = {
+                texte: input.texte || input.text || input.description || '',
+            };
+
+            // Ajouter les médias si présents
+            if (input.base64_image && input.base64_image.length > 0) {
+                searchPayload.base64_image = input.base64_image;
+            }
+            
+            if (input.audio_base64 && input.audio_base64.length > 0) {
+                searchPayload.audio_base64 = input.audio_base64;
+            }
+            
+            if (input.video_base64 && input.video_base64.length > 0) {
+                searchPayload.video_base64 = input.video_base64;
             }
 
-            const result = await rechercherServices(input);
+            // Ajouter GPS si présent
+            if (input.gps_mobile) {
+                searchPayload.gps_mobile = input.gps_mobile;
+            } else if (selectedLocation) {
+                searchPayload.gps_mobile = `${selectedLocation.lat},${selectedLocation.lng}`;
+            }
+
+            // Ajouter user_id
+            if (user?.id) {
+                searchPayload.user_id = user.id.toString();
+            }
+
+            const result = await rechercherServices(searchPayload);
             console.log('[ResultatBesoinScreen] Résultat API brut:', result);
 
             // Parser les résultats (même logique que HomeScreen)
@@ -1105,18 +1134,46 @@ const ResultatBesoinScreen: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
-            {/* 🔍 Barre de recherche simple et horizontale */}
+            {/* 🔍 Barre de recherche avec support multimédia (comme HomeScreen) */}
             <View style={styles.searchContainer}>
-                <SearchBar
+                <ChatInputMobile
+                    onSubmit={handleSearch}
+                    loading={loading}
                     placeholder="Affiner votre recherche..."
-                    onSubmit={async (query) => {
-                        // Convertir la chaîne en objet comme HomeScreen
-                        const input = { texte: query };
-                        await handleSearch(input);
-                    }}
+                    onGPSPress={() => setShowGPSModal(true)}
                     showSendButton={true}
+                    showAutocomplete={true}
+                    isSearchMode={true}
+                    isCreateService={false}
                 />
             </View>
+
+            {/* Modal GPS */}
+            {showGPSModal && (
+                <ModernGPSModal
+                    visible={true}
+                    onClose={() => setShowGPSModal(false)}
+                    onSelect={(coordinatesString) => {
+                        try {
+                            const firstPoint = coordinatesString.split('|')[0].split(',');
+                            if (firstPoint.length === 2) {
+                                const lat = parseFloat(firstPoint[0]);
+                                const lng = parseFloat(firstPoint[1]);
+                                if (!isNaN(lat) && !isNaN(lng)) {
+                                    setSelectedLocation({ lat, lng });
+                                    console.log('[ResultatBesoinScreen] Localisation GPS définie:', { lat, lng });
+                                }
+                            }
+                        } catch (error) {
+                            console.error('[ResultatBesoinScreen] Erreur parsing GPS:', error);
+                        }
+                        setShowGPSModal(false);
+                    }}
+                    currentLocation={selectedLocation}
+                    title="Sélectionner votre localisation"
+                    allowZoneSelection={true}
+                />
+            )}
 
             {/* Avertissement GPS en temps réel */}
             {services.some(service => !service.data?.gps_fixe && service.gps) && (

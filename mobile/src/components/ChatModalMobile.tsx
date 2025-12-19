@@ -127,7 +127,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         return 'Non spécifié';
     };
 
-    const nomPrestataire = prestataireInfo?.nom_complet || prestataireInfo?.nom || `Prestataire #${service?.user_id}`;
+    // ✅ CORRIGÉ: Extraire le nom réel du prestataire (nom_complet en priorité, puis name, puis nom)
+    const nomPrestataire = prestataireInfo?.nom_complet || prestataireInfo?.name || prestataireInfo?.nom || `Prestataire #${service?.user_id || ''}`;
     const titreService = getServiceFieldValue(service?.data?.titre_service);
     const categorieService = getServiceFieldValue(service?.data?.category);
 

@@ -2,10 +2,12 @@
 // Service de gestion des uploads préalables (avant création de service)
 
 use crate::core::types::{AppError, AppResult};
+use crate::services::media_storage_service::MediaStorageService;
 use axum::extract::Multipart;
 use log::{info, warn};
 use sqlx::PgPool;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
@@ -19,12 +21,14 @@ pub struct UploadedFileResponse {
 }
 
 /// Stocke un fichier uploadé et retourne son URL
+/// ✅ CORRIGÉ: Upload vers S3/Wasabi via MediaStorageService
 pub async fn store_uploaded_file(
     _pool: &PgPool,
     user_id: i32,
     field_name: &str,
     filename: &str,
     bytes: &[u8],
+    media_storage: Arc<MediaStorageService>,
 ) -> AppResult<UploadedFileResponse> {
     // Déterminer le type de média
     let media_type = infer_media_type(field_name, filename);
@@ -53,17 +57,48 @@ pub async fn store_uploaded_file(
     let unique_name = format!("{}.{}", Uuid::new_v4(), ext);
     let file_path = temp_dir.join(&unique_name);
 
-    // Écrire le fichier
-    let mut file = File::create(&file_path).await?;
-    file.write_all(bytes).await?;
-    file.sync_all().await?;
+    // Déterminer le content_type
+    let content_type = match ext.as_str() {
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "png" => Some("image/png"),
+        "gif" => Some("image/gif"),
+        "webp" => Some("image/webp"),
+        "mp4" => Some("video/mp4"),
+        "mp3" => Some("audio/mpeg"),
+        "pdf" => Some("application/pdf"),
+        _ => None,
+    };
 
-    // Créer l'URL relative (sera servie par le serveur)
-    let relative_path = format!("uploads/temp/{}/{}", user_id, unique_name);
-    let url = format!(
-        "/api/media/temp/{}",
-        relative_path.replace("uploads/temp/", "")
-    );
+    // ✅ NOUVEAU: Upload vers S3/Wasabi via MediaStorageService
+    let storage_key = format!("temp/{}/{}", user_id, unique_name);
+    let final_path = match media_storage.store_bytes(bytes, &storage_key, content_type).await {
+        Ok(location) => {
+            info!(
+                "[upload_service] ✅ Fichier uploadé vers S3: {} ({} bytes, type: {})",
+                location.storage_path,
+                bytes.len(),
+                media_type
+            );
+            // Utiliser l'URL publique S3/Wasabi
+            location.public_url
+        }
+        Err(e) => {
+            warn!(
+                "[upload_service] ⚠️ Erreur upload S3: {}, fallback local",
+                e
+            );
+            // Fallback: sauvegarder localement
+            let mut file = File::create(&file_path).await?;
+            file.write_all(bytes).await?;
+            file.sync_all().await?;
+            
+            let relative_path = format!("uploads/temp/{}/{}", user_id, unique_name);
+            format!(
+                "/api/media/temp/{}",
+                relative_path.replace("uploads/temp/", "")
+            )
+        }
+    };
 
     // ✅ CORRIGÉ: Ne pas enregistrer en DB si service_id est NULL
     // La table media requiert service_id NOT NULL, donc on skip l'insertion pour les fichiers temporaires
@@ -72,15 +107,8 @@ pub async fn store_uploaded_file(
 
     info!("[upload_service] Fichier temporaire uploadé (sera associé à un service lors de la création)");
 
-    info!(
-        "[upload_service] ✅ Fichier uploadé: {} ({} bytes, type: {})",
-        url,
-        bytes.len(),
-        media_type
-    );
-
     Ok(UploadedFileResponse {
-        url,
+        url: final_path,
         media_type,
         size_bytes: bytes.len(),
         media_id,
@@ -88,10 +116,12 @@ pub async fn store_uploaded_file(
 }
 
 /// Traite un multipart et upload tous les fichiers
+/// ✅ CORRIGÉ: Accepte MediaStorageService pour upload vers S3
 pub async fn handle_multipart_upload(
     pool: &PgPool,
     user_id: i32,
     mut multipart: Multipart,
+    media_storage: Arc<MediaStorageService>,
 ) -> AppResult<Vec<UploadedFileResponse>> {
     let mut uploaded_files = Vec::new();
 
@@ -105,7 +135,7 @@ pub async fn handle_multipart_upload(
             continue;
         }
 
-        let result = store_uploaded_file(pool, user_id, &field_name, &filename, &bytes).await;
+        let result = store_uploaded_file(pool, user_id, &field_name, &filename, &bytes, media_storage.clone()).await;
         match result {
             Ok(file_response) => uploaded_files.push(file_response),
             Err(e) => {

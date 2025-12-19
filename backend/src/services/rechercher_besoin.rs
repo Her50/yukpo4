@@ -405,6 +405,7 @@ pub async fn rechercher_besoin_direct(
     >, // ✅ CORRIGÉ: Réutiliser le matching géographique
     search_metrics: Option<Arc<crate::services::search_metrics::SearchMetricsService>>, // ✅ NOUVEAU 2025-12-01: Service de métriques (singleton)
     scalability_service: Option<Arc<crate::services::scalability_service::ScalabilityService>>, // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour cache optimisé
+    media_storage: Option<Arc<crate::services::media_storage_service::MediaStorageService>>, // ✅ NOUVEAU: Pour transformer chemins en URLs CDN
     user_id: Option<i32>,
     user_text: &str,
     gps_zone: Option<&str>,         // Nouveau paramètre GPS
@@ -1027,13 +1028,37 @@ pub async fn rechercher_besoin_direct(
             enriched_result["distance_km"] = json!(distance);
         }
 
-        // ✅ NOUVEAU: Ajouter les images et vidéos si disponibles
+        // ✅ NOUVEAU: Ajouter les images et vidéos si disponibles (avec transformation CDN)
         if let Some((images, videos)) = media_info {
-            if !images.is_empty() {
-                enriched_result["images"] = json!(images);
+            // ✅ OPTIMISÉ: Transformer les chemins en URLs CDN
+            let images_cdn: Vec<String> = images.iter().map(|img| {
+                if let Some(ref storage) = media_storage {
+                    if !img.starts_with("http://") && !img.starts_with("https://") {
+                        storage.build_public_url(img)
+                    } else {
+                        img.clone()
+                    }
+                } else {
+                    img.clone()
+                }
+            }).collect();
+            let videos_cdn: Vec<String> = videos.iter().map(|vid| {
+                if let Some(ref storage) = media_storage {
+                    if !vid.starts_with("http://") && !vid.starts_with("https://") {
+                        storage.build_public_url(vid)
+                    } else {
+                        vid.clone()
+                    }
+                } else {
+                    vid.clone()
+                }
+            }).collect();
+            
+            if !images_cdn.is_empty() {
+                enriched_result["images"] = json!(images_cdn);
             }
-            if !videos.is_empty() {
-                enriched_result["videos"] = json!(videos);
+            if !videos_cdn.is_empty() {
+                enriched_result["videos"] = json!(videos_cdn);
             }
         }
 
@@ -1072,7 +1097,17 @@ pub async fn rechercher_besoin_direct(
                                                 .unwrap_or_else(Vec::new);
                                         let mut merged = existing_images;
                                         for img in images_vec {
-                                            let img_json = json!(img);
+                                            // ✅ OPTIMISÉ: Transformer le chemin en URL CDN si media_storage disponible
+                                            let img_url = if let Some(ref storage) = media_storage {
+                                                if !img.starts_with("http://") && !img.starts_with("https://") {
+                                                    storage.build_public_url(&img)
+                                                } else {
+                                                    img.clone()
+                                                }
+                                            } else {
+                                                img.clone()
+                                            };
+                                            let img_json = json!(img_url);
                                             if !merged.contains(&img_json) {
                                                 merged.push(img_json);
                                             }
@@ -1099,7 +1134,17 @@ pub async fn rechercher_besoin_direct(
                                                 .unwrap_or_else(Vec::new);
                                         let mut merged = existing_videos;
                                         for vid in videos_vec {
-                                            let vid_json = json!(vid);
+                                            // ✅ OPTIMISÉ: Transformer le chemin en URL CDN si media_storage disponible
+                                            let vid_url = if let Some(ref storage) = media_storage {
+                                                if !vid.starts_with("http://") && !vid.starts_with("https://") {
+                                                    storage.build_public_url(&vid)
+                                                } else {
+                                                    vid.clone()
+                                                }
+                                            } else {
+                                                vid.clone()
+                                            };
+                                            let vid_json = json!(vid_url);
                                             if !merged.contains(&vid_json) {
                                                 merged.push(vid_json);
                                             }

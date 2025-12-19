@@ -12,6 +12,8 @@ pub struct ImageSearchResult {
     pub service_id: i32,
     pub media_id: i32,
     pub media_path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>, // URL CDN publique (ajoutée par le contrôleur)
     pub similarity_score: f32,
     pub service_data: serde_json::Value,
     pub image_metadata: Option<serde_json::Value>,
@@ -92,6 +94,7 @@ impl ImageSearchService {
                 service_id,
                 media_id,
                 media_path,
+                url: None, // Sera rempli par le contrôleur avec l'URL CDN
                 similarity_score,
                 service_data,
                 image_metadata,
@@ -154,6 +157,7 @@ impl ImageSearchService {
                 service_id,
                 media_id,
                 media_path,
+                url: None, // Sera rempli par le contrôleur avec l'URL CDN
                 similarity_score,
                 service_data,
                 image_metadata,
@@ -247,6 +251,7 @@ impl ImageSearchService {
                 service_id,
                 media_id,
                 media_path,
+                url: None, // Sera rempli par le contrôleur avec l'URL CDN
                 similarity_score,
                 service_data,
                 image_metadata,

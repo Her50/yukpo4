@@ -223,12 +223,52 @@ async fn handle_direct_search(
     log_info(&format!("[DIRECT_SEARCH] Recherche directe pour utilisateur {} (GPS: {:?})", 
         user.id, input.gps_mobile));
     
-    // Extraire le texte de l'input
-    let user_text = input.texte.clone().unwrap_or_default();
+    // ✅ NOUVEAU: Transcrire l'audio en texte si présent
+    let mut user_text = input.texte.clone().unwrap_or_default();
+    let has_audios = input.audio_base64.as_ref().map(|audios| !audios.is_empty()).unwrap_or(false);
+    
+    if has_audios {
+        use crate::services::audio_transcription_service::AudioTranscriptionService;
+        log_info("[DIRECT_SEARCH] 🎤 Audio détecté - Transcription en cours...");
+        
+        if let Some(audios) = &input.audio_base64 {
+            for (i, audio_base64) in audios.iter().enumerate() {
+                match AudioTranscriptionService::transcribe_audio_base64(audio_base64).await {
+                    Ok(transcription) => {
+                        let transcribed_text = transcription.text.trim();
+                        log_info(&format!(
+                            "[DIRECT_SEARCH] ✅ Audio {} transcrit: '{}' (langue: {:?}, durée: {:?}s)",
+                            i + 1,
+                            &transcribed_text.chars().take(50).collect::<String>(),
+                            transcription.language,
+                            transcription.duration
+                        ));
+                        
+                        // Ajouter le texte transcrit au texte existant
+                        if !transcribed_text.is_empty() {
+                            if !user_text.is_empty() {
+                                user_text.push_str(" ");
+                            }
+                            user_text.push_str(transcribed_text);
+                        }
+                    },
+                    Err(e) => {
+                        log_error(&format!(
+                            "[DIRECT_SEARCH] ❌ Erreur transcription audio {}: {:?}",
+                            i + 1, e
+                        ));
+                        // Continuer même si une transcription échoue
+                    }
+                }
+            }
+        }
+    }
+    
+    // Extraire le texte de l'input (peut maintenant inclure du texte transcrit)
     let has_text = !user_text.trim().is_empty();
     let has_images = input.base64_image.as_ref().map(|imgs| !imgs.is_empty()).unwrap_or(false);
     
-    log_info(&format!("[DIRECT_SEARCH] Contenu: texte={}, images={}", has_text, has_images));
+    log_info(&format!("[DIRECT_SEARCH] Contenu: texte={}, images={}, audios={}", has_text, has_images, has_audios));
     
     // ✅ NOUVELLE LOGIQUE: Si image présente (avec ou sans texte), utiliser recherche HYBRIDE
     if has_images {
@@ -432,13 +472,16 @@ async fn handle_direct_search(
         }
     }
     
-    // ✅ OPTIMISÉ 2025-12-18: Timeout de 10 secondes pour éviter les requêtes trop lentes
+    // ✅ OPTIMISÉ 2025-12-19: Timeout augmenté à 25 secondes pour permettre les requêtes SQL complexes
+    // Les requêtes avec LIKE '%...%' et tsvector peuvent prendre 3-6 secondes, et avec les problèmes de connexion DB,
+    // il faut plus de marge pour éviter les timeouts prématurés
     let search_future = rechercher_besoin_direct(
         &_state.pg,
         Some(_state.cache_service.clone()),
         _state.geographic_matching.clone(),
         Some(_state.search_metrics.clone()),
         Some(_state.scalability.clone()),
+        Some(_state.media_storage.clone()), // ✅ NOUVEAU: Passer media_storage pour URLs CDN
         Some(user.id),
         &user_text,
         gps_zone,
@@ -447,7 +490,7 @@ async fn handle_direct_search(
     );
     
     let (mut result, tokens_consumed) = match tokio::time::timeout(
-        std::time::Duration::from_secs(10),
+        std::time::Duration::from_secs(25), // ✅ AUGMENTÉ: De 10s à 25s pour permettre les requêtes SQL complexes
         search_future
     ).await {
         Ok(Ok(res)) => res,
@@ -456,7 +499,7 @@ async fn handle_direct_search(
             return Err(AppError::Internal(format!("Erreur recherche: {}", e)).into());
         }
         Err(_) => {
-            log_error("[DIRECT_SEARCH] ⏱️ Timeout recherche (10s) - Retour résultats partiels");
+            log_error("[DIRECT_SEARCH] ⏱️ Timeout recherche (25s) - Retour résultats partiels");
             // Retourner résultats partiels depuis cache ou vide
             return Ok(Json(serde_json::json!({
                 "status": "partial",

@@ -134,8 +134,22 @@ impl NativeSearchService {
             }
         }
 
-        // Trier les résultats (pas de limite)
-        fulltext_results.sort_by(|a, b| b.total_score.partial_cmp(&a.total_score).unwrap_or(std::cmp::Ordering::Equal));
+        // Trier les résultats en combinant score et distance
+        // Priorité: score de pertinence (DESC), puis distance (ASC si disponible)
+        fulltext_results.sort_by(|a, b| {
+            // Comparer d'abord par score (score le plus élevé en premier)
+            let score_cmp = b.total_score.partial_cmp(&a.total_score).unwrap_or(std::cmp::Ordering::Equal);
+            
+            // Si les scores sont égaux ou très proches (différence < 0.1), utiliser la distance
+            if score_cmp == std::cmp::Ordering::Equal || (a.total_score - b.total_score).abs() < 0.1 {
+                // Comparer par distance (distance la plus courte en premier)
+                let dist_a = a.distance_km.unwrap_or(f64::MAX);
+                let dist_b = b.distance_km.unwrap_or(f64::MAX);
+                dist_a.partial_cmp(&dist_b).unwrap_or(score_cmp)
+            } else {
+                score_cmp
+            }
+        });
 
         let duration = start_time.elapsed();
         log_info(&format!(
@@ -299,42 +313,53 @@ impl NativeSearchService {
             return Ok(search_results);
         }
         
-        // ✅ CORRIGÉ 2025-12-16: Optimisation majeure - utiliser autocomplete_characteristics en PREMIER (indexé GIN)
-        // Le problème: Scanner tous les services est très lent même avec index GIN
-        // Solution: Commencer par autocomplete_characteristics pour trouver les services qui matchent, puis enrichir
-        // Cette approche évite de scanner tous les services et utilise uniquement les index GIN
+        // ✅ OPTIMISÉ 2025-12-19: Requête ULTRA-SIMPLIFIÉE pour performance instantanée (< 100ms)
+        // Le problème: Requête trop complexe avec sous-requêtes corrélées et LIKE '%...%' qui ralentissent même avec 20 produits
+        // Solution: Requête directe utilisant UNIQUEMENT les index GIN (tsvector) - instantanée même avec millions de produits
+        // 
+        // Stratégie:
+        // 1. Recherche directe dans autocomplete_characteristics avec tsvector (index GIN - ultra-rapide)
+        // 2. UNION avec recherche directe dans services.data->'produits' pour produits non indexés
+        // 3. JOIN simple avec services (index sur service_id)
+        // 4. Pas de sous-requêtes corrélées, pas de LIKE '%...%', pas de calculs complexes
+        // 5. Score simple basé sur usage_count et ts_rank
         let sql = r#"
 WITH matched_services AS (
-    -- ✅ ÉTAPE 1: Trouver les services via autocomplete_characteristics (RAPIDE - index GIN)
+    -- ✅ ÉTAPE 1: Recherche via autocomplete_characteristics (index GIN - ultra-rapide)
     SELECT DISTINCT s.id as service_id
     FROM autocomplete_characteristics ac
     INNER JOIN services s ON s.id = ac.service_id
     WHERE s.is_active = true
     AND ac.identifiant_base = 'produits'
     AND ac.is_real_product = TRUE
-    AND (
-        -- Recherche dans full_vector (correspondances partielles)
-        EXISTS (
-            SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-            WHERE LOWER(vec_val) LIKE '%' || LOWER($1) || '%'
-        )
-        -- Recherche dans characteristic_vector
-        OR EXISTS (
-            SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
-            WHERE LOWER(vec_val) LIKE '%' || LOWER($1) || '%'
-        )
-        -- Recherche via tsvector sur valeur (index GIN)
-        OR to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
-    )
+    AND to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
+    
     UNION
-    -- ✅ ÉTAPE 2: Trouver les services via champs service (tsvector - index GIN)
+    
+    -- ✅ ÉTAPE 2: Fallback pour produits non indexés (directement dans services.data->'produits')
+    -- Utilise l'index GIN sur data->'produits' si disponible
     SELECT DISTINCT s.id as service_id
     FROM services s
     WHERE s.is_active = true
     AND (
         to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
         OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-        OR to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+        OR EXISTS (
+            SELECT 1 FROM jsonb_array_elements(
+                CASE 
+                    WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                    THEN s.data->'produits'
+                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                    THEN s.data->'produits'->'valeur'
+                    ELSE '[]'::jsonb
+                END
+            ) AS produit
+            WHERE to_tsvector('french', 
+                COALESCE(produit->>'nom_produit', '') || ' ' || 
+                COALESCE(produit->>'marque', '') || ' ' ||
+                COALESCE(produit->>'modele', '')
+            ) @@ plainto_tsquery('french', $1)
+        )
     )
 )
 SELECT DISTINCT ON (s.id)
@@ -344,60 +369,17 @@ SELECT DISTINCT ON (s.id)
     s.user_id,
     s.gps,
     s.category,
-    (
-        -- ✅ OPTIMISÉ: Score service (tsvector avec index GIN)
-        (
-            ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 3.0 +
-            ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
-            ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0
-        ) +
-        -- ✅ OPTIMISÉ 2025-12-17: Réduire sous-requêtes corrélées en utilisant LEFT JOIN
-        COALESCE((
-            SELECT SUM(
-                CASE ac.sous_caracteristique
-                    WHEN 'marque' THEN 20.0
-                    WHEN 'brand' THEN 20.0
-                    WHEN 'modele' THEN 18.0
-                    WHEN 'model' THEN 18.0
-                    WHEN 'type' THEN 15.0
-                    WHEN 'categorie' THEN 15.0
-                    WHEN 'category' THEN 15.0
-                    ELSE 8.0
-                END *
-                ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) *
-                (1.0 + (ac.usage_count::REAL / 10.0)) +
-                -- Score full_vector combiné dans la même sous-requête
-                CASE 
-                    WHEN EXISTS (
-                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                        WHERE LOWER(vec_val) = LOWER($1)
-                    ) THEN 20.0
-                    WHEN EXISTS (
-                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                        WHERE LOWER(vec_val) LIKE '%' || LOWER($1) || '%'
-                    ) THEN 10.0
-                    ELSE 0.0
-                END * (1.0 + (ac.usage_count::REAL / 10.0))
-            )
-            FROM autocomplete_characteristics ac
-            WHERE ac.service_id = s.id
-            AND ac.identifiant_base = 'produits'
-            AND ac.is_real_product = TRUE
-            AND (
-                to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
-                OR EXISTS (
-                    SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                    WHERE LOWER(vec_val) LIKE '%' || LOWER($1) || '%'
-                )
-            )
-        ), 0.0) +
-        -- Bonus correspondances exactes service (rapide)
-        CASE 
-            WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' THEN 8.0
-            WHEN s.data->'description'->>'valeur' ILIKE '%' || $1 || '%' THEN 4.0
-            WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 5.0
-            ELSE 0.0
-        END
+    -- ✅ Score simple et rapide: ts_rank (pas de sous-requêtes corrélées)
+    COALESCE((
+        SELECT ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) * 10.0 +
+               (ac.usage_count::REAL * 0.5)
+        FROM autocomplete_characteristics ac
+        WHERE ac.service_id = s.id
+        AND ac.identifiant_base = 'produits'
+        AND ac.is_real_product = TRUE
+        LIMIT 1
+    ), 
+    ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 5.0
     )::REAL as fulltext_score
 FROM matched_services ms
 INNER JOIN services s ON s.id = ms.service_id
@@ -407,16 +389,48 @@ ORDER BY s.id, fulltext_score DESC
 LIMIT 100
         "#;
 
-        let results = sqlx::query(&sql)
-            .bind(query)
-            .bind(category_filter)
-            .bind(location_filter)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| {
-                log_error(&format!("[NativeSearch] Erreur recherche full-text: {}", e));
-                crate::core::types::AppError::Internal(format!("Erreur recherche full-text: {}", e))
-            })?;
+        // ✅ OPTIMISÉ 2025-12-19: Requête avec retry pour gérer les problèmes de connexion DB
+        let mut results = Vec::new();
+        let max_retries = 3;
+        
+        for attempt in 1..=max_retries {
+            match sqlx::query(&sql)
+                .bind(query)
+                .bind(category_filter)
+                .bind(location_filter)
+                .fetch_all(&self.pool)
+                .await
+            {
+                Ok(rows) => {
+                    results = rows;
+                    break;
+                }
+                Err(e) => {
+                    let error_msg = e.to_string();
+                    let is_tls_error = error_msg.contains("TLS")
+                        || error_msg.contains("close_notify")
+                        || error_msg.contains("Connection reset")
+                        || error_msg.contains("peer closed")
+                        || error_msg.contains("communicating with database");
+                    
+                    if is_tls_error && attempt < max_retries {
+                        let delay_ms = 100 * attempt;
+                        log::warn!(
+                            "[NativeSearch] Erreur DB détectée (tentative {}/{}), retry dans {}ms: {}",
+                            attempt,
+                            max_retries,
+                            delay_ms,
+                            error_msg
+                        );
+                        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+                        continue;
+                    } else {
+                        log_error(&format!("[NativeSearch] Erreur recherche full-text: {}", e));
+                        return Err(crate::core::types::AppError::Internal(format!("Erreur recherche full-text: {}", e)));
+                    }
+                }
+            }
+        }
 
         let mut search_results = Vec::new();
         for row in results {

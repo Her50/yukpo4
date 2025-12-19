@@ -145,21 +145,49 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
 
         setLoadingCouriers(true);
         try {
-            // Récupérer le temps de préparation depuis la configuration du produit
+            // ✅ Récupérer le temps de préparation depuis la configuration du produit
+            // Le temps de préparation est utilisé pour calculer le timing optimal du matching de coursier
             let preparationTimeMinutes: number | undefined;
             try {
-                if (service?.id && (product?.index !== undefined || product?._serviceId)) {
-                    const productIndex = product?.index ?? 0; // Utiliser l'index du produit ou 0 par défaut
-                    const configResponse = await deliveryApi.getProductDeliveryConfig(service.id, productIndex);
+                if (service?.id) {
+                    // Essayer de récupérer l'index du produit depuis différentes sources
+                    let productIndex: number | undefined = 
+                        product?.index ?? 
+                        product?.product_index ?? 
+                        product?._productIndex;
+                    
+                    // Si l'index n'est pas disponible, essayer de le calculer depuis le service
+                    if (productIndex === undefined && service?.data?.produits && Array.isArray(service.data.produits)) {
+                        // Trouver l'index du produit dans le tableau des produits du service
+                        const produitIndex = service.data.produits.findIndex((p: any) => 
+                            p.nom === product?.nom || 
+                            p.id === product?.id ||
+                            JSON.stringify(p) === JSON.stringify(product)
+                        );
+                        if (produitIndex >= 0) {
+                            productIndex = produitIndex;
+                        }
+                    }
+                    
+                    // Utiliser l'index trouvé ou 0 par défaut
+                    const finalProductIndex = productIndex ?? 0;
+                    
+                    console.log('[FindCourierModal] Récupération config livraison - Service:', service.id, 'Index:', finalProductIndex);
+                    
+                    const configResponse = await deliveryApi.getProductDeliveryConfig(service.id, finalProductIndex);
                     // L'API retourne { config: { ... } } ou directement les données
-                    const config = (configResponse as any)?.config || configResponse;
-                    if (config?.preparation_time_minutes) {
-                        preparationTimeMinutes = config.preparation_time_minutes;
+                    const configData = (configResponse as any)?.config || configResponse?.data || configResponse;
+                    
+                    if (configData?.preparation_time_minutes !== undefined && configData.preparation_time_minutes !== null) {
+                        preparationTimeMinutes = Number(configData.preparation_time_minutes);
+                        console.log('[FindCourierModal] ✅ Temps de préparation trouvé:', preparationTimeMinutes, 'minutes');
+                    } else {
+                        console.log('[FindCourierModal] ℹ️ Aucun temps de préparation configuré pour ce produit');
                     }
                 }
-            } catch (error) {
-                console.warn('[FindCourierModal] Impossible de récupérer le temps de préparation:', error);
-                // Continuer sans temps de préparation si l'API échoue
+            } catch (error: any) {
+                console.warn('[FindCourierModal] Impossible de récupérer le temps de préparation:', error?.message || error);
+                // Continuer sans temps de préparation si l'API échoue - le backend utilisera une valeur par défaut
             }
 
             // Appel API amélioré avec tous les paramètres
@@ -211,10 +239,25 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
 
         setLoading(true);
         try {
-            // Créer la demande de livraison
+            // ✅ Extraire l'index du produit pour la création de la demande de livraison
+            let productIndex: number = product?.index ?? product?.product_index ?? product?._productIndex ?? 0;
+            
+            // Si l'index n'est pas disponible, essayer de le calculer depuis le service
+            if (productIndex === 0 && service?.data?.produits && Array.isArray(service.data.produits)) {
+                const produitIndex = service.data.produits.findIndex((p: any) => 
+                    p.nom === product?.nom || 
+                    p.id === product?.id ||
+                    JSON.stringify(p) === JSON.stringify(product)
+                );
+                if (produitIndex >= 0) {
+                    productIndex = produitIndex;
+                }
+            }
+            
+            // Créer la demande de livraison avec toutes les informations nécessaires
             const deliveryData = {
                 service_id: service?.id,
-                product_index: product?.index || 0,
+                product_index: productIndex,
                 pickup_latitude: pickupLocation.latitude,
                 pickup_longitude: pickupLocation.longitude,
                 pickup_address: pickupLocation.address || '',

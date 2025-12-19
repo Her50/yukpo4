@@ -1977,6 +1977,7 @@ async fn router_metier_ultra_optimise(
                     _state.geographic_matching.clone(), // ✅ CORRIGÉ: Réutiliser le matching géographique (déjà Option)
                     Some(_state.search_metrics.clone()), // ✅ NOUVEAU 2025-12-01: Service de métriques singleton
                     Some(_state.scalability.clone()), // ✅ NOUVEAU 2025-12-01: Service de scalabilité pour cache optimisé
+                    Some(_state.media_storage.clone()), // ✅ NOUVEAU: Passer media_storage pour URLs CDN
                     _user_id,
                     user_text,
                     None, // Pas de zone GPS pour cette recherche

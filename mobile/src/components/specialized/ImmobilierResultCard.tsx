@@ -9,6 +9,7 @@ import {
     View,
 } from 'react-native';
 import { RealEstateProperty } from '../../services/immobilierService';
+import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 
@@ -47,7 +48,7 @@ const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, o
             {/* Photo principale */}
             {property.photos && property.photos.length > 0 && (
                 <Image
-                    source={{ uri: property.photos[0] }}
+                    source={{ uri: mediaService.getImageUrl(property.photos[0]) }}
                     style={styles.image}
                     resizeMode="cover"
                 />

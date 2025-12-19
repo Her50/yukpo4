@@ -6,6 +6,7 @@ use crate::core::types::{AppError, AppResult};
 use crate::services::image_compression_service::{
     compress_image, CompressionConfig, CompressionFormat,
 };
+use crate::services::media_storage_service::MediaStorageService;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;
 use futures::stream::{FuturesUnordered, StreamExt};
@@ -63,6 +64,7 @@ pub struct OptimizedMediaProcessor {
     config: OptimizedMediaProcessorConfig,
     pool: Arc<PgPool>,
     storage_root: PathBuf,
+    media_storage: Arc<MediaStorageService>, // ✅ NOUVEAU: MediaStorageService pour upload S3/Wasabi
     semaphore: Arc<Semaphore>,
     signature_cache: Arc<tokio::sync::RwLock<HashMap<String, (Value, String, Value)>>>, // hash -> (signature, hash, metadata)
 }
@@ -71,6 +73,7 @@ impl OptimizedMediaProcessor {
     pub fn new(
         pool: impl Into<Arc<PgPool>>,
         storage_root: impl AsRef<Path>,
+        media_storage: Arc<MediaStorageService>, // ✅ NOUVEAU: MediaStorageService pour upload S3/Wasabi
         config: OptimizedMediaProcessorConfig,
     ) -> Self {
         let pool = pool.into();
@@ -79,6 +82,7 @@ impl OptimizedMediaProcessor {
             config,
             pool,
             storage_root: storage_root.as_ref().to_path_buf(),
+            media_storage, // ✅ NOUVEAU
             semaphore,
             signature_cache: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
         }
@@ -425,33 +429,60 @@ impl OptimizedMediaProcessor {
         );
         let disk_path = service_dir.join(&file_name);
 
-        // Décoder et sauvegarder
-        if data.starts_with("data:") {
+        // Déterminer le content_type
+        let content_type = match extension {
+            "jpg" | "jpeg" => Some("image/jpeg"),
+            "png" => Some("image/png"),
+            "gif" => Some("image/gif"),
+            "webp" => Some("image/webp"),
+            "mp4" => Some("video/mp4"),
+            "mp3" => Some("audio/mpeg"),
+            _ => None,
+        };
+
+        // Décoder les données
+        let decoded_bytes = if data.starts_with("data:") {
             // Base64 avec préfixe
             let payload = data.split(',').nth(1).unwrap_or(data);
-            let decoded = STANDARD
+            STANDARD
                 .decode(payload)
-                .map_err(|e| AppError::BadRequest(format!("Erreur décodage base64: {}", e)))?;
-            tokio::fs::write(&disk_path, decoded).await?;
+                .map_err(|e| AppError::BadRequest(format!("Erreur décodage base64: {}", e)))?
         } else if data.starts_with("http://") || data.starts_with("https://") {
             // URL - télécharger
             let response = reqwest::get(data).await?;
-            let bytes = response.bytes().await?;
-            tokio::fs::write(&disk_path, bytes).await?;
+            response.bytes().await?.to_vec()
         } else {
             // Base64 pur
-            let decoded = STANDARD
+            STANDARD
                 .decode(data)
-                .map_err(|e| AppError::BadRequest(format!("Erreur décodage base64: {}", e)))?;
-            tokio::fs::write(&disk_path, decoded).await?;
-        }
+                .map_err(|e| AppError::BadRequest(format!("Erreur décodage base64: {}", e)))?
+        };
 
-        let relative_path = Path::new("uploads")
-            .join("services")
-            .join(service_id.to_string())
-            .join(subdir)
-            .join(&file_name);
-        Ok(relative_path.to_string_lossy().replace('\\', "/"))
+        // ✅ NOUVEAU: Upload vers S3/Wasabi via MediaStorageService
+        let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
+        match self.media_storage.store_bytes(&decoded_bytes, &storage_key, content_type).await {
+            Ok(location) => {
+                log::debug!(
+                    "[OptimizedMediaProcessor] ✅ Fichier uploadé vers S3: {}",
+                    location.storage_path
+                );
+                Ok(location.storage_path)
+            }
+            Err(e) => {
+                log::warn!(
+                    "[OptimizedMediaProcessor] ⚠️ Erreur upload S3: {}, fallback local",
+                    e
+                );
+                // Fallback: sauvegarder localement
+                tokio::fs::write(&disk_path, decoded_bytes).await?;
+                let relative_path = Path::new("uploads")
+                    .join("services")
+                    .join(service_id.to_string())
+                    .join(subdir)
+                    .join(&file_name);
+                Ok(relative_path.to_string_lossy().replace('\\', "/"))
+            }
+        }
     }
 
     /// Clone pour utilisation dans les tasks async
@@ -460,6 +491,7 @@ impl OptimizedMediaProcessor {
             config: self.config.clone(),
             pool: self.pool.clone(),
             storage_root: self.storage_root.clone(),
+            media_storage: self.media_storage.clone(), // ✅ NOUVEAU: Inclure media_storage dans le clone
             semaphore: self.semaphore.clone(),
             signature_cache: self.signature_cache.clone(),
         }

@@ -323,6 +323,7 @@ async fn route_to_existing_business_logic(
                 &state.pg,
                 user_id.expect("User ID requis"),
                 &data,
+                state.media_storage.clone(), // ✅ NOUVEAU: Passer MediaStorageService pour upload S3
                 &state.redis_client,
                 Some(state.scalability.clone()),
             )

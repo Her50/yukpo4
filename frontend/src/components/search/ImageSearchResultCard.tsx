@@ -74,7 +74,7 @@ const ImageSearchResultCard: React.FC<ImageSearchResultCardProps> = ({
         <div className="mb-4">
           <div className="relative w-full h-48 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
             <img
-              src={result.path}
+              src={result.url || result.path}
               alt={`Image similaire - ${serviceTitle}`}
               className="w-full h-full object-cover"
               onError={(e) => {

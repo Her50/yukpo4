@@ -2,6 +2,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::services::google_places_service::GooglePlacesService;
+use crate::services::media_storage_service::MediaStorageService;
 use crate::utils::currency::{auto_fill_currencies, extract_country};
 use crate::utils::embedding_client::AddEmbeddingPineconeRequest;
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -9,6 +10,7 @@ use chrono::Utc;
 use log::{info, warn};
 use reqwest::Client;
 use sqlx::{FromRow, PgPool, Row};
+use std::sync::Arc;
 
 #[derive(FromRow)]
 struct UserGpsRow {
@@ -148,6 +150,7 @@ async fn process_single_image_for_product(
     product_index: usize,
     image_index: usize,
     image_data: &str,
+    media_storage: Arc<MediaStorageService>,
 ) -> AppResult<Option<ProcessedImageResult>> {
     if image_data.is_empty() {
         return Ok(None);
@@ -172,6 +175,7 @@ async fn process_single_image_for_product(
             "images",
             image_data,
             "jpg",
+            media_storage,
         )
         .await
     } else {
@@ -320,6 +324,7 @@ fn produits_array_mut(data_obj: &mut serde_json::Value) -> Option<&mut Vec<serde
 
 /// ✅ OPTIMISÉ 2025-12-01: Sauvegarde streaming pour médias volumineux
 /// Utilise un buffer chunked pour éviter de charger tout en mémoire
+/// ✅ CORRIGÉ 2025-01-XX: Upload vers S3/Wasabi via MediaStorageService
 #[allow(dead_code)]
 async fn persist_base64_media(
     storage_root: &Path,
@@ -327,6 +332,7 @@ async fn persist_base64_media(
     subdir: &str,
     base64_data: &str,
     default_ext: &str,
+    media_storage: Arc<MediaStorageService>,
 ) -> AppResult<StoredMedia> {
     let payload = strip_base64_prefix(base64_data);
     let cleaned_payload: String = payload.chars().filter(|c| !c.is_whitespace()).collect();
@@ -350,14 +356,27 @@ async fn persist_base64_media(
     );
     let disk_path = service_dir.join(&file_name);
 
-    let bytes = if estimated_size > LARGE_FILE_THRESHOLD {
+    // Déterminer le content_type
+    let content_type = match extension.as_str() {
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "png" => Some("image/png"),
+        "gif" => Some("image/gif"),
+        "webp" => Some("image/webp"),
+        "mp4" => Some("video/mp4"),
+        "mp3" => Some("audio/mpeg"),
+        "pdf" => Some("application/pdf"),
+        "xlsx" => Some("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        _ => None,
+    };
+
+    let (bytes, final_path) = if estimated_size > LARGE_FILE_THRESHOLD {
         // ✅ Streaming pour fichiers volumineux - NE PAS garder tous les bytes en mémoire
         log::info!(
             "[persist_base64_media] 📦 Fichier volumineux détecté (~{} MB), utilisation streaming (sans chargement mémoire complet)",
             estimated_size / 1024 / 1024
         );
 
-        // Décoder par chunks et écrire directement sur disque
+        // Décoder par chunks et écrire directement sur disque temporaire
         let mut file = tokio::fs::File::create(&disk_path).await?;
         use tokio::io::AsyncWriteExt;
 
@@ -385,33 +404,94 @@ async fn persist_base64_media(
 
         file.flush().await?;
 
-        // ✅ OPTIMISATION: Pour fichiers volumineux, ne pas charger en mémoire
-        // Retourner un vecteur vide (les bytes ne sont pas nécessaires pour les signatures d'images volumineuses)
         log::info!(
-            "[persist_base64_media] ✅ Fichier volumineux écrit sur disque ({} bytes), pas de chargement mémoire",
+            "[persist_base64_media] ✅ Fichier volumineux écrit sur disque local ({} bytes)",
             total_written
         );
-        Vec::new() // Ne pas charger en mémoire pour économiser la RAM
+
+        // ✅ OPTIMISÉ: Construire le chemin relatif local (retourné immédiatement)
+        let relative_path = Path::new("uploads")
+            .join("services")
+            .join(service_id.to_string())
+            .join(subdir)
+            .join(&file_name);
+        let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
+
+        // ✅ OPTIMISÉ: Upload S3 en arrière-plan (non-bloquant)
+        if media_storage.is_remote() {
+            let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
+            let disk_path_for_upload = disk_path.clone();
+            let media_storage_clone = media_storage.clone();
+            let content_type_clone = content_type.map(|s| s.to_string());
+            
+            tokio::spawn(async move {
+                match media_storage_clone.store_file(&disk_path_for_upload, &storage_key, content_type_clone.as_deref()).await {
+                    Ok(location) => {
+                        log::info!(
+                            "[persist_base64_media] ✅ Upload S3 asynchrone réussi pour fichier volumineux: {}",
+                            location.storage_path
+                        );
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "[persist_base64_media] ⚠️ Erreur upload S3 asynchrone pour fichier volumineux: {} (le fichier reste disponible localement)",
+                            e
+                        );
+                    }
+                }
+            });
+        }
+
+        // Retourner immédiatement le chemin local (S3 upload en arrière-plan)
+        (Vec::new(), relative_path_str)
     } else {
         // ✅ Méthode standard pour petits fichiers (< 5 MB)
         let decoded = STANDARD
             .decode(cleaned_payload.as_bytes())
             .map_err(|e| AppError::BadRequest(format!("Décodage base64 invalide: {}", e)))?;
 
-        // Écrire en une fois (plus rapide pour petits fichiers)
+        // ✅ Sauvegarder localement d'abord (rapide)
         fs::write(&disk_path, &decoded).await?;
-        decoded
+        
+        // ✅ Construire le chemin relatif local (retourné immédiatement)
+        let relative_path = Path::new("uploads")
+            .join("services")
+            .join(service_id.to_string())
+            .join(subdir)
+            .join(&file_name);
+        let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
+
+        // ✅ OPTIMISÉ: Upload S3 en arrière-plan (non-bloquant)
+        if media_storage.is_remote() {
+            let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
+            let decoded_for_upload = decoded.clone();
+            let media_storage_clone = media_storage.clone();
+            let content_type_clone = content_type.map(|s| s.to_string());
+            
+            tokio::spawn(async move {
+                match media_storage_clone.store_bytes(&decoded_for_upload, &storage_key, content_type_clone.as_deref()).await {
+                    Ok(location) => {
+                        log::debug!(
+                            "[persist_base64_media] ✅ Upload S3 asynchrone réussi: {}",
+                            location.storage_path
+                        );
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "[persist_base64_media] ⚠️ Erreur upload S3 asynchrone: {} (le fichier reste disponible localement)",
+                            e
+                        );
+                    }
+                }
+            });
+        }
+
+        // Retourner immédiatement le chemin local (S3 upload en arrière-plan)
+        (decoded, relative_path_str)
     };
 
-    let relative_path = Path::new("uploads")
-        .join("services")
-        .join(service_id.to_string())
-        .join(subdir)
-        .join(&file_name);
-    let path_str = relative_path.to_string_lossy().replace('\\', "/");
-
     Ok(StoredMedia {
-        path: path_str,
+        path: final_path,
         bytes,
     })
 }
@@ -1539,6 +1619,7 @@ pub async fn creer_service(
     pool: &PgPool,
     user_id: i32,
     data: &serde_json::Value,
+    media_storage: Arc<MediaStorageService>, // ✅ NOUVEAU: MediaStorageService pour upload S3/Wasabi
     _redis_client: &redis::Client, // Ajout de Redis pour le caching (désactivé)
     _scalability_service: Option<
         std::sync::Arc<crate::services::scalability_service::ScalabilityService>,
@@ -2207,6 +2288,7 @@ pub async fn creer_service(
                     "images",
                     logo_str,
                     "png",
+                    media_storage.clone(),
                 )
                 .await
                 {
@@ -2284,6 +2366,7 @@ pub async fn creer_service(
                         "images",
                         first_logo,
                         "png",
+                        media_storage.clone(),
                     )
                     .await
                     {
@@ -2376,6 +2459,7 @@ pub async fn creer_service(
                     "images",
                     banner_str,
                     "jpg",
+                    media_storage.clone(),
                 )
                 .await
                 {
@@ -2453,6 +2537,7 @@ pub async fn creer_service(
                         "images",
                         first_banner,
                         "jpg",
+                        media_storage.clone(),
                     )
                     .await
                     {
@@ -2777,8 +2862,12 @@ pub async fn creer_service(
                     use_signature_cache: true,
                 };
 
-                let processor =
-                    OptimizedMediaProcessor::new(pool.clone(), storage_root.clone(), config);
+                let processor = OptimizedMediaProcessor::new(
+                    pool.clone(),
+                    storage_root.clone(),
+                    media_storage.clone(), // ✅ NOUVEAU: Passer MediaStorageService pour upload S3
+                    config,
+                );
 
                 // Convertir les images en MediaItem
                 let mut media_items: Vec<MediaItem> = Vec::new();
@@ -3118,6 +3207,7 @@ pub async fn creer_service(
                             "videos",
                             video_data,
                             "mp4",
+                            media_storage.clone(),
                         )
                         .await
                         {
@@ -3328,6 +3418,7 @@ pub async fn creer_service(
                         "images",
                         image_data,
                         "jpg",
+                        media_storage.clone(),
                     )
                     .await
                     {
@@ -3495,6 +3586,7 @@ pub async fn creer_service(
                     "audio",
                     audio_data,
                     "mp3",
+                    media_storage.clone(),
                 )
                 .await
             } else {
@@ -3588,6 +3680,7 @@ pub async fn creer_service(
                     "videos",
                     video_data,
                     "mp4",
+                    media_storage.clone(),
                 )
                 .await
             } else {
@@ -3682,6 +3775,7 @@ pub async fn creer_service(
                     "documents",
                     doc_data,
                     "pdf",
+                    media_storage.clone(),
                 )
                 .await
             } else {
@@ -3759,6 +3853,7 @@ pub async fn creer_service(
                     "excel",
                     excel_data,
                     "xlsx",
+                    media_storage.clone(),
                 )
                 .await
                 {
@@ -4882,7 +4977,9 @@ async fn save_ia_combinations_to_db(
 
 /// ✅ OPTIMISATION : Extraire directement product_vector depuis un objet JSON (sans passer par chaîne)
 /// Cette fonction génère directement un Vec<String> au lieu d'une chaîne concaténée
-fn extract_product_vector_from_object(
+/// ✅ CORRIGÉ 2025-12-19: Fonction publique pour extraction vecteur produit
+/// Gère les formats simple ET structuré (avec "valeur")
+pub fn extract_product_vector_from_object(
     obj: &serde_json::Map<String, serde_json::Value>,
 ) -> Vec<String> {
     // 1. Si characteristic_vector existe, l'utiliser directement
@@ -4910,7 +5007,39 @@ fn extract_product_vector_from_object(
     }
 
     // 3. Extraire depuis les champs structurés (format recommandé)
+    // ✅ CORRIGÉ 2025-12-19: Gérer les deux formats (simple et structuré avec "valeur")
     let mut parts: Vec<String> = Vec::new();
+
+    // Helper pour extraire une valeur (gère format simple ET structuré) - fonction récursive
+    fn extract_value(value: &serde_json::Value) -> Option<String> {
+        match value {
+            serde_json::Value::String(s) => {
+                let trimmed = s.trim();
+                if !trimmed.is_empty() {
+                    Some(trimmed.to_string())
+                } else {
+                    None
+                }
+            }
+            serde_json::Value::Number(num) => Some(num.to_string()),
+            serde_json::Value::Object(map) => {
+                // ✅ Format structuré: { valeur: "Toyota" } ou { raw: "Toyota" }
+                if let Some(valeur) = map.get("valeur") {
+                    extract_value(valeur)
+                } else if let Some(raw) = map.get("raw").and_then(|v| v.as_str()) {
+                    let trimmed = raw.trim();
+                    if !trimmed.is_empty() {
+                        Some(trimmed.to_string())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
 
     // Champs prioritaires (format structuré)
     let priority_keys = [
@@ -4924,20 +5053,10 @@ fn extract_product_vector_from_object(
 
     for key in priority_keys.iter() {
         if let Some(value) = obj.get(*key) {
-            match value {
-                serde_json::Value::String(s) => {
-                    let trimmed = s.trim();
-                    if !trimmed.is_empty() && !parts.contains(&trimmed.to_string()) {
-                        parts.push(trimmed.to_string());
-                    }
+            if let Some(extracted) = extract_value(value) {
+                if !parts.contains(&extracted) {
+                    parts.push(extracted);
                 }
-                serde_json::Value::Number(num) => {
-                    let num_str = num.to_string();
-                    if !parts.contains(&num_str) {
-                        parts.push(num_str);
-                    }
-                }
-                _ => {}
             }
         }
     }
@@ -4947,35 +5066,24 @@ fn extract_product_vector_from_object(
 
     for key in optional_keys.iter() {
         if let Some(value) = obj.get(*key) {
-            if let Some(s) = value.as_str() {
-                let trimmed = s.trim();
-                if !trimmed.is_empty() && !parts.contains(&trimmed.to_string()) {
-                    parts.push(trimmed.to_string());
+            if let Some(extracted) = extract_value(value) {
+                if !parts.contains(&extracted) {
+                    parts.push(extracted);
                 }
             }
         }
     }
 
-    // Prix et devise
+    // Prix et devise (gère format simple ET structuré)
     if let Some(prix_val) = obj.get("prix").or_else(|| obj.get("prix_produit")) {
-        match prix_val {
-            serde_json::Value::String(s) => {
-                let trimmed = s.trim();
-                if !trimmed.is_empty() {
-                    parts.push(trimmed.to_string());
-                }
-            }
-            serde_json::Value::Number(num) => parts.push(num.to_string()),
-            _ => {}
+        if let Some(extracted) = extract_value(prix_val) {
+            parts.push(extracted);
         }
     }
 
     if let Some(devise_val) = obj.get("devise").or_else(|| obj.get("devise_produit")) {
-        if let Some(devise_str) = devise_val.as_str() {
-            let trimmed = devise_str.trim();
-            if !trimmed.is_empty() {
-                parts.push(trimmed.to_string());
-            }
+        if let Some(extracted) = extract_value(devise_val) {
+            parts.push(extracted);
         }
     }
 

@@ -13,7 +13,8 @@ export interface ImageSearchResponse {
 export interface ImageSearchResult {
   media_id: number;
   service_id: number;
-  path: string;
+  path: string; // Chemin original (pour compatibilité)
+  url?: string; // URL CDN publique (prioritaire)
   similarity_score: number;
   image_metadata: ImageMetadata;
   service_data?: any;

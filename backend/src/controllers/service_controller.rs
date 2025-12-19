@@ -40,6 +40,7 @@ pub async fn creer_service(
         &state.pg,
         payload.user_id,
         &payload.data,
+        state.media_storage.clone(), // ✅ NOUVEAU: Passer MediaStorageService pour upload S3
         &state.redis_client,
         None,
     )

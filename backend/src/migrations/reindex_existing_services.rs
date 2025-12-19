@@ -26,26 +26,51 @@ pub async fn reindex_all_services(pool: &PgPool) -> Result<usize, sqlx::Error> {
 
     for (service_id, data_obj) in services {
         // Extraire vecteur produit
+        // ✅ CORRIGÉ 2025-12-19: Utiliser la même logique que save_autocomplete_combination
+        // pour gérer tous les formats (simple, structuré, listeproduit)
         let produits_field = match data_obj.get("produits") {
             Some(p) => p,
             None => continue,
         };
 
-        let product_vector: Vec<String> = if let Some(valeur) = produits_field.get("valeur") {
-            if let Some(valeur_array) = valeur.as_array() {
-                valeur_array
-                    .iter()
-                    .filter_map(|v| v.as_str())
-                    .map(|s| s.to_string())
-                    .collect()
-            } else {
-                continue;
+        let type_donnee = produits_field
+            .get("type_donnee")
+            .and_then(|v| v.as_str())
+            .unwrap_or("autocomplete");
+
+        let mut product_vector: Vec<String> = Vec::new();
+
+        // ✅ Gérer le format listeproduit (objets JSON structurés)
+        if type_donnee == "listeproduit" {
+            if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
+                if let Some(first) = valeur_array.first() {
+                    if let Some(obj) = first.as_object() {
+                        // Utiliser la fonction extract_product_vector_from_object (même logique que creer_service.rs)
+                        product_vector = crate::services::creer_service::extract_product_vector_from_object(obj);
+                    }
+                }
             }
         } else {
-            continue;
-        };
+            // ✅ Format simple (chaîne ou array de chaînes)
+            if let Some(valeur_str) = produits_field.get("valeur").and_then(|v| v.as_str()) {
+                product_vector = valeur_str
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+            } else if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
+                if let Some(first_str) = valeur_array.iter().filter_map(|v| v.as_str()).next() {
+                    product_vector = first_str
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                }
+            }
+        }
 
         if product_vector.is_empty() {
+            error!("⚠️ Service {} : Vecteur produit vide après extraction (format non reconnu)", service_id);
             continue;
         }
 

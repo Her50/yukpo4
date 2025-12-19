@@ -4,6 +4,7 @@ import { Alert, Dimensions, FlatList, Image, Linking, Modal, ScrollView, StyleSh
 import { Video, ResizeMode } from 'expo-av';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { apiPost } from '../services/api';
+import { mediaService } from '../services/mediaService';
 import FindCourierModal from './delivery/FindCourierModal';
 import ProductCommentsSection from './ProductCommentsSection';
 import SafeIcon from './SafeIcon';
@@ -46,8 +47,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
     const terminology = getCategoryTerminology(product.type || 'default');
 
     // Extraire les images et vidéos - Vidéos en premier
-    const images = product.images || product.imagesRealisations || [];
-    const videos = product.videos || product.videosRealisations || [];
+    // ✅ CORRIGÉ: Transformer les chemins en URLs CDN via mediaService
+    const rawImages = product.images || product.imagesRealisations || [];
+    const rawVideos = product.videos || product.videosRealisations || [];
+    const images = rawImages.map((img: string) => mediaService.getImageUrl(img));
+    const videos = rawVideos.map((vid: string) => mediaService.getVideoUrl(vid));
     const allMedia = [
         ...videos.map((v: string) => ({ type: 'video', uri: v })),
         ...images.map((i: string) => ({ type: 'image', uri: i }))
@@ -374,14 +378,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     {prestataire && (
                         <View style={styles.prestataireInfo}>
                             <View style={styles.prestataireAvatar}>
-                                {prestataire.avatar ? (
-                                    <Image source={{ uri: prestataire.avatar }} style={styles.avatarImage} />
+                                {(prestataire.avatar || (prestataire as any).avatar_url || (prestataire as any).photo_profil) ? (
+                                    <Image 
+                                        source={{ uri: prestataire.avatar || (prestataire as any).avatar_url || (prestataire as any).photo_profil }} 
+                                        style={styles.avatarImage} 
+                                    />
                                 ) : (
                                     <SafeIcon name="user" size={16} color="#6B7280" />
                                 )}
                             </View>
                             <Text style={styles.prestataireName} numberOfLines={1}>
-                                {prestataire.name || 'Prestataire'}
+                                {/* ✅ CORRIGÉ: Extraire le nom réel du prestataire (nom_complet en priorité) */}
+                                {(prestataire as any).nom_complet || prestataire.name || (prestataire as any).nom || `Prestataire ${(prestataire as any).id || ''}`}
                             </Text>
                             {prestataire.isOnline && (
                                 <View style={styles.onlineIndicator} />
@@ -400,14 +408,26 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <Text style={styles.chatButtonText}>Discuter</Text>
                         </TouchableOpacity>
 
-                        {/* Bouton Me livrer */}
-                        <TouchableOpacity
-                            style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
-                            onPress={() => setShowFindCourierModal(true)}
-                        >
-                            <SafeIcon name="truck" size={18} color="#FFFFFF" />
-                            <Text style={styles.deliveryButtonText}>Me livrer</Text>
-                        </TouchableOpacity>
+                        {/* ✅ Bouton Me livrer - Affiché uniquement pour les produits (pas pour les services/prestations) */}
+                        {/* Ce bouton permet à l'utilisateur de préciser le lieu de livraison et lancer le matching de coursier */}
+                        {/* Le FindCourierModal gère automatiquement la configuration de livraison du produit et le délai de préparation */}
+                        {product.type !== 'prestation_service' && (
+                            <TouchableOpacity
+                                style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
+                                onPress={() => {
+                                    // Appeler onDeliveryPress si fourni (pour compatibilité)
+                                    if (onDeliveryPress) {
+                                        onDeliveryPress();
+                                    }
+                                    // Ouvrir le modal de recherche de coursier
+                                    setShowFindCourierModal(true);
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <SafeIcon name="truck" size={18} color="#FFFFFF" />
+                                <Text style={styles.deliveryButtonText}>Me livrer</Text>
+                            </TouchableOpacity>
+                        )}
 
                         <View style={styles.secondaryActions}>
                             {/* Bouton Galerie */}

@@ -11,6 +11,7 @@ import {
     View,
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
+import { mediaService } from '../../services/mediaService';
 import SafeIcon from '../SafeIcon';
 
 interface PropertyPhotoGalleryProps {
@@ -36,12 +37,13 @@ const PropertyPhotoGallery: React.FC<PropertyPhotoGalleryProps> = ({
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [showFullScreen, setShowFullScreen] = useState(false);
 
+    // ✅ CORRIGÉ: Transformer les chemins en URLs CDN via mediaService
     const allMedia = [
-        ...photos.map((url, index) => ({ type: 'photo', url, index })),
+        ...photos.map((url, index) => ({ type: 'photo', url: mediaService.getImageUrl(url), index })),
         ...virtualTours.map((tour) => ({
             type: 'virtual_tour',
-            url: tour.media_url,
-            thumbnail: tour.thumbnail_url,
+            url: mediaService.getVideoUrl(tour.media_url),
+            thumbnail: tour.thumbnail_url ? mediaService.getImageUrl(tour.thumbnail_url) : undefined,
             tourType: tour.tour_type,
             index: photos.length + tour.id,
         })),

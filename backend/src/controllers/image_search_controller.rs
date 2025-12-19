@@ -122,13 +122,36 @@ pub async fn search_by_image(
                 "[ImageSearchController] Trouvé {} résultats",
                 results.len()
             ));
+            // ✅ CORRIGÉ: Transformer media_path en URL CDN publique
+            let results_with_urls: Vec<_> = results
+                .into_iter()
+                .map(|mut result| {
+                    // Si media_path n'est pas déjà une URL complète
+                    if !result.media_path.starts_with("http://") && !result.media_path.starts_with("https://") {
+                        // Si S3/Wasabi configuré, utiliser URL publique
+                        if state.media_storage.is_remote() {
+                            result.url = Some(state.media_storage.build_public_url(&result.media_path));
+                        } else {
+                            // Fallback pour anciens médias locaux
+                            let api_base_url = std::env::var("PUBLIC_BASE_URL")
+                                .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+                                .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
+                            let clean_path = result.media_path.trim_start_matches('/');
+                            result.url = Some(format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path));
+                        }
+                    } else {
+                        result.url = Some(result.media_path.clone());
+                    }
+                    result
+                })
+                .collect();
             (
                 StatusCode::OK,
                 Json(ImageSearchResponse {
                     success: true,
-                    count: results.len(),
-                    message: format!("Trouvé {} résultats similaires", results.len()),
-                    results,
+                    count: results_with_urls.len(),
+                    message: format!("Trouvé {} résultats similaires", results_with_urls.len()),
+                    results: results_with_urls,
                 }),
             )
                 .into_response()
@@ -224,13 +247,36 @@ pub async fn search_product_images(
                 "[ImageSearchController] Trouvé {} produits",
                 results.len()
             ));
+            // ✅ CORRIGÉ: Transformer media_path en URL CDN publique
+            let results_with_urls: Vec<_> = results
+                .into_iter()
+                .map(|mut result| {
+                    // Si media_path n'est pas déjà une URL complète
+                    if !result.media_path.starts_with("http://") && !result.media_path.starts_with("https://") {
+                        // Si S3/Wasabi configuré, utiliser URL publique
+                        if state.media_storage.is_remote() {
+                            result.url = Some(state.media_storage.build_public_url(&result.media_path));
+                        } else {
+                            // Fallback pour anciens médias locaux
+                            let api_base_url = std::env::var("PUBLIC_BASE_URL")
+                                .or_else(|_| std::env::var("UPLOAD_BASE_URL"))
+                                .unwrap_or_else(|_| "https://yukpomnang.onrender.com".to_string());
+                            let clean_path = result.media_path.trim_start_matches('/');
+                            result.url = Some(format!("{}/api/media/files/{}", api_base_url.trim_end_matches('/'), clean_path));
+                        }
+                    } else {
+                        result.url = Some(result.media_path.clone());
+                    }
+                    result
+                })
+                .collect();
             (
                 StatusCode::OK,
                 Json(ImageSearchResponse {
                     success: true,
-                    count: results.len(),
-                    message: format!("Trouvé {} produits similaires", results.len()),
-                    results,
+                    count: results_with_urls.len(),
+                    message: format!("Trouvé {} produits similaires", results_with_urls.len()),
+                    results: results_with_urls,
                 }),
             )
                 .into_response()
