@@ -326,13 +326,11 @@ const SafeNativeCardWrapper: React.FC<any> = (props) => {
     return <FallbackCard {...props}>{safeChildren}</FallbackCard>;
 };
 
+// ✅ CRITIQUE: S'assurer que le nom du composant est préservé pour le debugging
+SafeNativeCardWrapper.displayName = 'SafeNativeCard';
+
 // ✅ Extraction sécurisée des composants
 const getComponent = (name: string, fallback: React.ComponentType<any>): React.ComponentType<any> => {
-    // Pour NativeCard, toujours utiliser notre wrapper sécurisé
-    if (name === 'NativeCard') {
-        return SafeNativeCardWrapper;
-    }
-    
     if (!NativeDesignModule) {
         return fallback;
     }
@@ -385,9 +383,10 @@ const createSafeComponent = (name: string, fallback: React.ComponentType<any>): 
 };
 
 // ✅ Export des composants sécurisés - GARANTIS comme composants React valides
+// ✅ CRITIQUE: NativeCard utilise directement SafeNativeCardWrapper pour éviter les problèmes d'enveloppement
+export const NativeCard: React.FC<any> = SafeNativeCardWrapper;
 export const NativeButton: React.FC<any> = createSafeComponent('NativeButton', FallbackButton);
 export const NativeBadge: React.FC<any> = createSafeComponent('NativeBadge', FallbackBadge);
-export const NativeCard: React.FC<any> = createSafeComponent('NativeCard', FallbackCard);
 export const NativeInput: React.FC<any> = createSafeComponent('NativeInput', FallbackInput);
 export const NativeDivider: React.FC<any> = createSafeComponent('NativeDivider', FallbackDivider);
 export const NativeGradient: React.FC<any> = createSafeComponent('NativeGradient', FallbackGradient);

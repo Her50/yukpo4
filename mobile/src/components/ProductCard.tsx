@@ -1,7 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
-import { Alert, Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
+import { apiPost } from '../services/api';
+import FindCourierModal from './delivery/FindCourierModal';
+import ProductCommentsSection from './ProductCommentsSection';
 import SafeIcon from './SafeIcon';
 
 const { width } = Dimensions.get('window');
@@ -14,6 +17,7 @@ interface ProductCardProps {
     onChatPress?: () => void;
     onGalleryPress?: () => void;
     onWhatsAppPress?: () => void;
+    onDeliveryPress?: () => void;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -23,9 +27,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
     onPress,
     onChatPress,
     onGalleryPress,
-    onWhatsAppPress
+    onWhatsAppPress,
+    onDeliveryPress,
 }) => {
     const [showAllImages, setShowAllImages] = useState(false);
+    const [showFindCourierModal, setShowFindCourierModal] = useState(false);
+    const [showRatingModal, setShowRatingModal] = useState(false);
 
     // Récupérer la configuration intelligente de la catégorie
     const categoryConfig = getCategoryConfig(product.type || 'default');
@@ -1095,13 +1102,23 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <SafeIcon name="share-2" size={12} color="#6B7280" />
                             <Text style={styles.statText}>{product.shares || 0}</Text>
                         </View>
-                        <View style={styles.statItem}>
+                        <TouchableOpacity
+                            style={styles.statItem}
+                            onPress={() => setShowRatingModal(true)}
+                        >
                             <SafeIcon name="star" size={12} color="#F59E0B" />
-                            <Text style={styles.statText}>{product.rating || service.rating || '—'}</Text>
-                        </View>
+                            <Text style={[styles.statText, styles.ratingText]}>
+                                {product.rating || service.rating || '—'}
+                            </Text>
+                            {(product.reviews || product.reviews_count || 0) > 0 && (
+                                <Text style={styles.reviewsCountText}>
+                                    ({product.reviews || product.reviews_count || 0})
+                                </Text>
+                            )}
+                        </TouchableOpacity>
                         <View style={styles.statItem}>
                             <SafeIcon name="message-square" size={12} color="#6B7280" />
-                            <Text style={styles.statText}>{product.reviews || 0}</Text>
+                            <Text style={styles.statText}>{product.reviews || product.reviews_count || 0}</Text>
                         </View>
                     </View>
 
@@ -1133,6 +1150,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         >
                             <SafeIcon name="message-square" size={18} color="#FFFFFF" />
                             <Text style={styles.chatButtonText}>Discuter</Text>
+                        </TouchableOpacity>
+
+                        {/* Bouton Me livrer */}
+                        <TouchableOpacity
+                            style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
+                            onPress={() => setShowFindCourierModal(true)}
+                        >
+                            <SafeIcon name="truck" size={18} color="#FFFFFF" />
+                            <Text style={styles.deliveryButtonText}>Me livrer</Text>
                         </TouchableOpacity>
 
                         <View style={styles.secondaryActions}>
@@ -1179,10 +1205,59 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             >
                                 <SafeIcon name="share-2" size={16} color="#6B7280" />
                             </TouchableOpacity>
+
+                            {/* ✅ NOUVEAU: Bouton Avis */}
+                            <TouchableOpacity
+                                style={styles.actionIconButton}
+                                onPress={() => setShowRatingModal(true)}
+                            >
+                                <SafeIcon name="star" size={16} color="#F59E0B" />
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </View>
             </View>
+
+            {/* Modal de recherche de coursier */}
+            <FindCourierModal
+                visible={showFindCourierModal}
+                onClose={() => setShowFindCourierModal(false)}
+                product={product}
+                service={service}
+                onSuccess={(deliveryId) => {
+                    Alert.alert('✅ Livraison créée', 'Votre demande de livraison a été créée avec succès');
+                    setShowFindCourierModal(false);
+                }}
+            />
+
+            {/* ✅ NOUVEAU: Modal d'avis et commentaires avec échanges modernes */}
+            <Modal
+                visible={showRatingModal}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setShowRatingModal(false)}
+            >
+                <View style={styles.ratingModalContainer}>
+                    <View style={styles.ratingModalHeader}>
+                        <Text style={styles.ratingModalTitle}>Avis et commentaires</Text>
+                        <TouchableOpacity
+                            style={styles.ratingModalCloseButton}
+                            onPress={() => setShowRatingModal(false)}
+                        >
+                            <SafeIcon name="x" size={24} color="#1F2937" />
+                        </TouchableOpacity>
+                    </View>
+                    <ProductCommentsSection
+                        serviceId={service?.id || product?.service_id || 0}
+                        serviceTitle={product?.nom || service?.titre || 'Produit'}
+                        mode="full"
+                        onOpenChat={(userId, userName, userAvatar) => {
+                            // Optionnel: Ouvrir un chat privé avec l'utilisateur
+                            Alert.alert('Chat', `Ouvrir une conversation avec ${userName} ?`);
+                        }}
+                    />
+                </View>
+            </Modal>
         </TouchableOpacity>
     );
 };
@@ -1400,6 +1475,15 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         fontWeight: '600',
     },
+    ratingText: {
+        color: '#F59E0B',
+        fontWeight: '700',
+    },
+    reviewsCountText: {
+        fontSize: 10,
+        color: '#9CA3AF',
+        marginLeft: 2,
+    },
     actions: {
         flexDirection: 'column',
         gap: 8,
@@ -1414,6 +1498,21 @@ const styles = StyleSheet.create({
         borderRadius: 10,
     },
     chatButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    deliveryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        backgroundColor: '#10B981',
+        paddingVertical: 10,
+        borderRadius: 10,
+        marginTop: 8,
+    },
+    deliveryButtonText: {
         fontSize: 13,
         fontWeight: '600',
         color: '#FFFFFF',
@@ -1532,6 +1631,32 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#3B82F6',
         fontWeight: '500',
+    },
+    // ✅ NOUVEAU: Styles pour le modal d'avis
+    ratingModalContainer: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    ratingModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    ratingModalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1F2937',
+    },
+    ratingModalCloseButton: {
+        padding: 8,
+    },
+    ratingModalContent: {
+        flex: 1,
+        padding: 16,
     },
     planningPreview: {
         flexDirection: 'row',

@@ -1,1 +1,3165 @@
-﻿import * as DocumentPicker from 'expo-document-picker';import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';import {    ActivityIndicator,    Alert,    Image,    Modal,    Platform,    ScrollView,    StyleSheet,    Switch,    Text,    TouchableOpacity,    View} from 'react-native';import { useSafeAreaInsets } from 'react-native-safe-area-context';import { config } from '../config/environment';import { iaApi, mediaApi } from '../services/api';import { uploadToCloud } from '../services/cloudUpload';import { studioService, type VideoDependency } from '../services/studioService';import { trackUxEvent } from '../services/uxMetrics';import { modernColors } from '../theme/modernTheme';import { ManagedProduct } from '../types/ManagedProduct';import { AIDistributionPlan, AIVideoBriefVariant, AIVideoStyleSuggestion, GeneratedVideoResponse, VideoCostEstimateResponse, VideoCostEstimation, VideoGenerationPayload } from '../types/VideoGeneration';import { extractDescription, extractServiceName } from '../utils/displayHelpers';import { getFieldValue } from '../utils/productNormalizer';import { apiCallWithRetry } from '../utils/retryWithBackoff';import { clearVideoDraft, loadVideoDraft, saveVideoDraft, type VideoDraft } from '../utils/videoDraftStorage';import { NativeButton, NativeCard, NativeInput } from './NativeDesign';import SafeIcon from './SafeIcon';import { TimelineEditor } from './TimelineEditor';import { TimelinePreview, VideoTimeline as VideoTimelineType } from './TimelinePreview';// Ô£à NOUVEAU: Composants IA avanc├®simport { AudioSuggestionPanel } from './AudioSuggestionPanel';import { AudioSyncPanel } from './AudioSyncPanel';import { AutoCaptionsPanel } from './AutoCaptionsPanel';import { AutoCutPanel } from './AutoCutPanel';import { ColorGradingPanel } from './ColorGradingPanel';import { CreatorStudioCard } from './CreatorStudioCard';import { EffectPreviewCarousel } from './EffectPreviewCarousel';import { QuickPreview } from './QuickPreview';import { TimelineVariantSelector } from './TimelineVariantSelector';// Ô£à NOUVEAU Phase 3.2: ├ëditeur AR immersifimport ARVideoEditor from './ARVideoEditor';type VideoStylePreset = 'tiktok' | 'story' | 'cinematic' | 'carousel';type MusicMode = 'pulse' | 'lofi' | 'ambient' | 'cinematic' | 'none';interface MediaLibraryItem {    id: number;    path: string;    type?: string | null;    media_type?: string | null;    product_index?: number | null;    ai_description?: string | null;}interface CuratedAudioLoop {    id: string;    title: string;    genre: string;    mood: string;    bpm: number;    url: string;    license: string;}interface GroupedProducts {    serviceId: string;    serviceTitre: string;    items: ManagedProduct[];}interface ProductVideoCreationModalProps {    visible: boolean;    primaryProduct: ManagedProduct | null;    products: ManagedProduct[];    onClose: () => void;    onSuccess: (result: GeneratedVideoResponse) => void | Promise<void>;}const VIDEO_STYLE_OPTIONS: Array<{ key: VideoStylePreset; label: string; description: string }> = [    { key: 'tiktok', label: 'TikTok Boost', description: 'Transitions rapides, texte dynamique, format vertical 9:16' },    { key: 'story', label: 'Story Produit', description: 'Narration douce, highlight des atouts, superpositions ├®l├®gantes' },    { key: 'cinematic', label: 'Cin├® Premium', description: 'Animations lentes, focus sur d├®tails, ambiance immersive' },    { key: 'carousel', label: 'Carousel Flash', description: 'Slides punchy, CTA r├®p├®t├®s, id├®al publicit├®s express' },];const MUSIC_MODE_OPTIONS: Array<{ key: MusicMode; label: string; description: string }> = [    { key: 'pulse', label: 'Pulse', description: "Beat ├®nergique parfait pour capter l'attention" },    { key: 'lofi', label: 'Lofi', description: 'Ambiance douce et premium' },    { key: 'ambient', label: 'Ambient', description: 'Atmosph├¿re a├®rienne et relaxante' },    { key: 'cinematic', label: 'Cin├®', description: 'Mont├®e orchestrale immersive' },    { key: 'none', label: 'Aucun', description: 'Sans musique automatique' },];const VOICE_LANG_OPTIONS = [    { value: 'fr', label: 'Fran├ºais (FR)' },    { value: 'fr-fr', label: 'Fran├ºais Premium' },    { value: 'en', label: 'English (US)' },    { value: 'en-gb', label: 'English (UK)' },    { value: 'pt-br', label: 'Portugu├¬s (BR)' },    { value: 'es', label: 'Espa├▒ol' },];const DISTRIBUTION_OPTIONS = [    { key: 'chat', label: 'Chat Commerce' },    { key: 'product', label: 'Carte Produit' },    { key: 'shorts', label: 'Shorts / Reels' },    { key: 'instagram', label: 'Instagram Feed' },    { key: 'youtube', label: 'YouTube' },];// Ô£à CORRIG├ë 2025-11-30: Utiliser l'endpoint /api/media/files pour les chemins uploads/const buildMediaUrl = (path: string | undefined | null): string => {    if (!path) {        return '';    }    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:image')) {        return path;    }    // Ô£à CORRIG├ë: Utiliser /api/media/files pour les chemins uploads/    if (path.startsWith('uploads/') || path.startsWith('/uploads/')) {        const cleanPath = path.startsWith('/') ? path.slice(1) : path;        const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');        return base ? `${base}/api/media/files/${cleanPath}` : cleanPath;    }    // Pour les autres chemins, utiliser aussi /api/media/files    const cleanPath = path.replace(/^\//, '');    const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');    return base ? `${base}/api/media/files/${cleanPath}` : cleanPath;};const normalizeProductName = (product?: ManagedProduct | null): string => {    if (!product) {        return 'Votre produit';    }    // Ô£à CORRIG├ë: Utiliser extractProductName qui g├¿re tous les cas    const { extractProductName } = require('../utils/displayHelpers');    return extractProductName(product, 'Votre produit');};const ensureNumber = (value: any, fallback: number): number => {    const parsed = Number(value);    if (Number.isFinite(parsed)) {        return parsed;    }    return fallback;};const computePriceLabel = (product: ManagedProduct | null | undefined): string | undefined => {    if (!product) {        return undefined;    }    // Ô£à CORRIG├ë: Extraire la valeur du prix en utilisant getFieldValue    const prix = getFieldValue(product.prix);    const devise = getFieldValue(product.devise) || 'XAF';    if (prix === undefined || prix === null || prix === '') {        return undefined;    }    const value =        typeof prix === 'number'            ? prix.toLocaleString()            : String(prix).trim();    if (!value) {        return undefined;    }    return `${value} ${devise}`;};const computePromotionLabel = (product: ManagedProduct | null | undefined): string | undefined => {    if (!product) {        return undefined;    }    const candidate =        (product as any)?.promotion_label ||        (product as any)?.promotion ||        ((product as any)?.promotionActive ? 'Promotion active' : undefined);    return candidate ? String(candidate) : undefined;};const collectProductHighlights = (product: ManagedProduct | null | undefined): string[] => {    if (!product) {        return [];    }    const highlights: string[] = [];    if (product.type) {        highlights.push(`Type: ${product.type}`);    }    if (product.category_label) {        highlights.push(`Cat├®gorie: ${product.category_label}`);    }    const priceLabel = computePriceLabel(product);    if (priceLabel) {        highlights.push(`Prix courant: ${priceLabel}`);    }    if ((product as any)?.city) {        highlights.push(`Localisation: ${(product as any).city}`);    }    if (Array.isArray((product as any)?.tags)) {        (product as any).tags.forEach((tag: string) => {            if (tag) {                highlights.push(`#${tag}`);            }        });    }    return highlights;};const buildDefaultVoiceover = (    productName: string,    headline: string,    callToAction: string,    storyboardLines: string[],) => {    const lines: string[] = [];    if (headline) {        lines.push(headline.replace(/[­ƒÜÇ­ƒÄ»­ƒöÑÔ£àÔ¡É´©Å#]+/g, '').trim());    } else {        lines.push(`D├®couvrez ${productName} sur Yukpomnang.`);    }    storyboardLines.slice(0, 3).forEach((line) => {        if (line.trim().length > 0) {            lines.push(line.replace(/[­ƒÜÇ­ƒÄ»­ƒöÑÔ£àÔ¡É´©Å#]+/g, '').trim());        }    });    if (callToAction) {        lines.push(callToAction.replace(/[­ƒÜÇ­ƒÄ»­ƒöÑÔ£àÔ¡É´©Å#]+/g, '').trim());    } else {        lines.push('Contactez-nous d├¿s maintenant via Yukpomnang.');    }    return lines.join('\n');};const applyBriefVariant = (    variant: AIVideoBriefVariant,    setHeadline: (headline: string) => void,    setCallToAction: (callToAction: string) => void,    setScriptNotes: (scriptNotes: string) => void,    setVoiceoverScript: (voiceoverScript: string) => void,    setVariantPickerVisible: (visible: boolean) => void,) => {    if (variant.headline) {        setHeadline(variant.headline);    }    if (variant.call_to_action) {        setCallToAction(variant.call_to_action);    }    if (Array.isArray(variant.script_outline) && variant.script_outline.length > 0) {        setScriptNotes(variant.script_outline.join('\n'));    }    if (variant.voiceover) {        setVoiceoverScript(variant.voiceover);    }    setVariantPickerVisible(false);    Alert.alert('Brief appliqu├®', 'La variante s├®lectionn├®e a ├®t├® appliqu├®e.');};type ModalStep = 1 | 2 | 3 | 4 | 5 | 6;const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({    visible,    primaryProduct,    products,    onClose,    onSuccess,}) => {    const insets = useSafeAreaInsets();    const [activeStep, setActiveStep] = useState<ModalStep>(1);    const [selectedProduct, setSelectedProduct] = useState<ManagedProduct | null>(primaryProduct);    const [selectedRelatedProducts, setSelectedRelatedProducts] = useState<Set<number>>(new Set());    const [selectedMediaIds, setSelectedMediaIds] = useState<Set<number>>(new Set());    const [productMedia, setProductMedia] = useState<MediaLibraryItem[]>([]);    const [serviceMedia, setServiceMedia] = useState<MediaLibraryItem[]>([]);    const [mediaLoading, setMediaLoading] = useState(false);    const [stylePreset, setStylePreset] = useState<VideoStylePreset>('tiktok');    const [duration, setDuration] = useState<string>('28');    const [headline, setHeadline] = useState<string>('');    const [callToAction, setCallToAction] = useState<string>('Commandez maintenant sur Yukpomnang Ô£à');    const [scriptNotes, setScriptNotes] = useState<string>('');    const [includePrice, setIncludePrice] = useState<boolean>(true);    const [includePromotion, setIncludePromotion] = useState<boolean>(false);    const [includeContact, setIncludeContact] = useState<boolean>(true);    const [useProductGallery, setUseProductGallery] = useState<boolean>(true);    const [useMediatechLibrary, setUseMediatechLibrary] = useState<boolean>(true);    const [includePubliciteAssets, setIncludePubliciteAssets] = useState<boolean>(true);    const [publishToChat, setPublishToChat] = useState<boolean>(true);    const [publishToProductCard, setPublishToProductCard] = useState<boolean>(true);    const [musicMode, setMusicMode] = useState<MusicMode>('pulse');    const [musicVolume, setMusicVolume] = useState<string>('0.28');    const [voiceoverEnabled, setVoiceoverEnabled] = useState<boolean>(false);    const [voiceoverScript, setVoiceoverScript] = useState<string>('');    const [voiceoverLang, setVoiceoverLang] = useState<string>('fr');    const [generateSquareVariant, setGenerateSquareVariant] = useState<boolean>(true);    const [generateLandscapeVariant, setGenerateLandscapeVariant] = useState<boolean>(false);    const [subtitleLang, setSubtitleLang] = useState<string>('fr');    const [availableAudioTracks, setAvailableAudioTracks] = useState<MediaLibraryItem[]>([]);    const [selectedMusicTrackId, setSelectedMusicTrackId] = useState<number | null>(null);    const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set(['chat', 'product']));    const [audioLibrary, setAudioLibrary] = useState<CuratedAudioLoop[]>([]);    const [loadingLibrary, setLoadingLibrary] = useState<boolean>(false);    const [attachingLoopId, setAttachingLoopId] = useState<string | null>(null);    const [isUploadingAudio, setIsUploadingAudio] = useState<boolean>(false);    const [isGeneratingBrief, setIsGeneratingBrief] = useState<boolean>(false);    const [briefVariants, setBriefVariants] = useState<AIVideoBriefVariant[]>([]);    const [variantPickerVisible, setVariantPickerVisible] = useState<boolean>(false);    const [styleSuggestion, setStyleSuggestion] = useState<AIVideoStyleSuggestion | null>(null);    const [isGeneratingStyle, setIsGeneratingStyle] = useState<boolean>(false);    const [selectedEffects, setSelectedEffects] = useState<Set<string>>(new Set());    const [selectedTransitions, setSelectedTransitions] = useState<Set<string>>(new Set());    const [selectedOverlayTips, setSelectedOverlayTips] = useState<Set<string>>(new Set());    const [colorPalette, setColorPalette] = useState<string>('');    const [styleMusicHint, setStyleMusicHint] = useState<string>('');    const [mediaAnalysis, setMediaAnalysis] = useState<{ dominantColors?: string[]; detectedObjects?: string[]; ambiance?: string | null; marketingAngle?: string | null }>({});    const [isAnalyzingMedia, setIsAnalyzingMedia] = useState<boolean>(false);    const [distributionPlan, setDistributionPlan] = useState<AIDistributionPlan | null>(null);    const [isGeneratingDistribution, setIsGeneratingDistribution] = useState<boolean>(false);    const [coachLoading, setCoachLoading] = useState<boolean>(false);    const coachPrefetchDoneRef = useRef(false);    // Ô£à NOUVEAU: ├ëtat pour la timeline g├®n├®r├®e    const [generatedTimeline, setGeneratedTimeline] = useState<VideoTimelineType | null>(null);    const [isGeneratingTimeline, setIsGeneratingTimeline] = useState<boolean>(false);    const [isEditingTimeline, setIsEditingTimeline] = useState<boolean>(false);    // Ô£à NOUVEAU: ├ëtats pour les fonctionnalit├®s migr├®es du wizard    const [costEstimation, setCostEstimation] = useState<VideoCostEstimation | null>(null);    const [costLoading, setCostLoading] = useState<boolean>(false);    const [showCostEstimation, setShowCostEstimation] = useState<boolean>(false);    const [availableSessions, setAvailableSessions] = useState<Array<{ id: string; title?: string }>>([]);    const [selectedLinkedSessions, setSelectedLinkedSessions] = useState<string[]>([]);    const [dependencies, setDependencies] = useState<VideoDependency[]>([]);    const [showVideoChaining, setShowVideoChaining] = useState<boolean>(false);    const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);    // Ô£à NOUVEAU: Studio Sessions (depuis Wizard)    const [studioSessionId, setStudioSessionId] = useState<string | undefined>();    const [storyboard, setStoryboard] = useState<import('../services/studioService').Storyboard | null>(null);    const [storyboardLoading, setStoryboardLoading] = useState<boolean>(false);    const [shortPreviewUrl, setShortPreviewUrl] = useState<string | null>(null);    const [shortPreviewLoading, setShortPreviewLoading] = useState<boolean>(false);    const [prewarmedShortPreviewUrl, setPrewarmedShortPreviewUrl] = useState<string | undefined>();    // Ô£à NOUVEAU: Auto-Storyboard Toggle (depuis Wizard)    const [autoStoryboard, setAutoStoryboard] = useState<boolean>(true);    // Ô£à NOUVEAU: Completed Steps Tracking (depuis Wizard)    const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());    // Ô£à NOUVEAU: Story Templates Serveur (depuis Wizard)    const [storyTemplates, setStoryTemplates] = useState<import('../types/VideoGeneration').StoryTemplateSpec[]>([]);    const [storyTemplatesLoading, setStoryTemplatesLoading] = useState<boolean>(false);    const [storyTemplateId, setStoryTemplateId] = useState<string>('blog');    // Ô£à NOUVEAU Phase 3.2: ├ëtat pour l'├®diteur AR    const [showAREditor, setShowAREditor] = useState<boolean>(false);    const [isUploadingARVideo, setIsUploadingARVideo] = useState<boolean>(false);    const [isSubmitting, setIsSubmitting] = useState<boolean>(false);    // Ô£à NOUVEAU Phase 3.2: G├®rer la vid├®o AR captur├®e    const handleARVideoCaptured = useCallback(async (videoUri: string) => {        if (!selectedProduct || typeof selectedProduct.product_index !== 'number') {            Alert.alert('Erreur', 'Produit non s├®lectionn├®');            setShowAREditor(false);            return;        }        setIsUploadingARVideo(true);        try {            const serviceId = Number(selectedProduct.serviceId);            const productIndex = selectedProduct.product_index;            // Upload vers le cloud            const uploadResult = await uploadToCloud(                videoUri,                'video',                `ar_video_${Date.now()}.mp4`            );            if (!uploadResult.success || !uploadResult.url) {                throw new Error(uploadResult.error || 'Erreur lors de l\'upload');            }            // Cr├®er un item m├®dia temporaire (l'API backend g├®rera l'enregistrement)            const newMediaItem: MediaLibraryItem = {                id: Date.now(), // ID temporaire                path: uploadResult.url,                type: 'video',                media_type: 'video',                product_index: productIndex,                ai_description: 'Vid├®o AR immersive',            };            // Ajouter ├á la m├®diath├¿que produit imm├®diatement            setProductMedia((prev) => [...prev, newMediaItem]);            // S├®lectionner automatiquement            setSelectedMediaIds((prev) => new Set([...prev, newMediaItem.id]));            Alert.alert('Succ├¿s', 'Vid├®o AR ajout├®e ├á votre m├®diath├¿que');            setShowAREditor(false);            // Rafra├«chir les m├®dias pour obtenir l'ID r├®el depuis le serveur            await refreshMedia(selectedProduct);            console.log('[ProductVideoCreationModal] M├®dias rafra├«chis apr├¿s upload AR');        } catch (error: any) {            console.error('[ProductVideoCreationModal] Erreur upload vid├®o AR:', error);            Alert.alert(                'Erreur',                error?.message || 'Impossible d\'ajouter la vid├®o AR. R├®essayez plus tard.'            );        } finally {            setIsUploadingARVideo(false);        }    }, [selectedProduct]);    const refreshMedia = useCallback(        async (product?: ManagedProduct | null): Promise<MediaLibraryItem[]> => {            if (!product || typeof product.product_index !== 'number') {                setProductMedia([]);                setServiceMedia([]);                setAvailableAudioTracks([]);                setSelectedMusicTrackId(null);                return [];            }            setMediaLoading(true);            try {                const [productMediaResponse, serviceMediaResponse] = await Promise.all([                    mediaApi.getProductMedia(product.serviceId, product.product_index),                    mediaApi.getServiceMediaDetailed(product.serviceId),                ]);                if (!productMediaResponse.success) {                    throw new Error(                        productMediaResponse.error || 'Impossible de r├®cup├®rer les m├®dias du produit.'                    );                }                if (!serviceMediaResponse.success) {                    throw new Error(                        serviceMediaResponse.error || 'Impossible de r├®cup├®rer la m├®diath├¿que du prestataire.'                    );                }                const productMediaItems: MediaLibraryItem[] = Array.isArray((productMediaResponse.data as any)?.data)                    ? (productMediaResponse.data as any).data                        .map((item: any) => ({                            id: ensureNumber(item.id, -1),                            path: item.path,                            type: item.media_type ?? item.type ?? 'image',                            media_type: item.media_type ?? item.type ?? 'image',                            product_index: item.product_index ?? null,                            ai_description: item.ai_description ?? null,                        }))                        .filter((item: MediaLibraryItem) => item.id > 0)                    : [];                const serviceMediaItems: MediaLibraryItem[] = Array.isArray(serviceMediaResponse.data)                    ? serviceMediaResponse.data                        .map((item: any) => ({                            id: ensureNumber(item.id, -1),                            path: item.path,                            type: item.media_type ?? item.type ?? 'image',                            media_type: item.media_type ?? item.type ?? 'image',                            product_index: item.product_index ?? null,                            ai_description: item.ai_description ?? null,                        }))                        .filter((item: MediaLibraryItem) => item.id > 0)                    : [];                setProductMedia(productMediaItems);                setServiceMedia(serviceMediaItems);                const audioTracks = [...serviceMediaItems, ...productMediaItems].filter((item) => {                    const kind = (item.media_type || item.type || '').toLowerCase();                    return kind.includes('audio');                });                setAvailableAudioTracks(audioTracks);                const defaultIds = new Set<number>();                productMediaItems.slice(0, 4).forEach((item) => defaultIds.add(item.id));                setSelectedMediaIds(defaultIds);                return audioTracks;            } catch (error) {                console.error('[ProductVideoCreationModal] Erreur chargement m├®dias:', error);                Alert.alert(                    'Erreur r├®cup├®ration m├®dias',                    'Impossible de r├®cup├®rer vos images et vid├®os pour le moment. R├®essayez plus tard.'                );                return [];            } finally {                setMediaLoading(false);            }        },        []    );    // Ô£à AM├ëLIORATION: Fonction helper pour retry avec exponential backoff    const fetchWithRetry = useCallback(async <T,>(        fetchFn: () => Promise<T>,        maxRetries: number = 3,        type: string = 'unknown'    ): Promise<T | null> => {        let retryCount = 0;        while (retryCount < maxRetries) {            try {                const result = await fetchFn();                return result;            } catch (error: any) {                retryCount++;                const errorMsg = error?.message || String(error);                const isTimeout = errorMsg.toLowerCase().includes('timeout') || errorMsg.toLowerCase().includes('timed out');                const isNetworkError = errorMsg.toLowerCase().includes('network') || errorMsg.toLowerCase().includes('fetch');                if (retryCount >= maxRetries) {                    console.warn(`[ProductVideoCreationModal] Coach IA: ${type} indisponible apr├¿s ${maxRetries} tentatives`, error);                    // Ô£à AM├ëLIORATION: Logger plus de d├®tails pour debugging                    console.warn(`[ProductVideoCreationModal] Derni├¿re erreur pour ${type}:`, {                        message: errorMsg,                        isTimeout,                        isNetworkError,                        stack: error?.stack                    });                    return null;                }                // Ô£à AM├ëLIORATION: Log des retries pour debugging                console.log(`[ProductVideoCreationModal] Coach IA ${type}: Tentative ${retryCount + 1}/${maxRetries} (erreur: ${errorMsg.substring(0, 50)})`);                // Exponential backoff: 1s, 2s, 4s                const delay = Math.pow(2, retryCount) * 1000;                await new Promise(resolve => setTimeout(resolve, delay));            }        }        return null;    }, []);    // Ô£à AM├ëLIORATION: Valeurs par d├®faut pour Coach IA    const getDefaultCoachData = useCallback((type: 'brief' | 'style' | 'plan'): any => {        if (!selectedProduct) return null;        const productName = normalizeProductName(selectedProduct);        switch (type) {            case 'brief':                return {                    variants: [{                        headline: productName,                        call_to_action: 'D├®couvrez maintenant',                        script_outline: ['Introduction', 'Caract├®ristiques', 'Appel ├á l\'action'],                        tone: stylePreset                    }]                };            case 'style':                return {                    suggestion: {                        preset: stylePreset || 'story',                        transitions: 'smooth',                        effects: [],                        overlay_tips: []                    }                };            case 'plan':                return {                    plan: {                        distribution: Array.from(selectedChannels.values()).length > 0                            ? Array.from(selectedChannels.values())                            : ['product', 'chat'],                        duration: 15,                        hashtags: [],                        schedule: []                    }                };            default:                return null;        }    }, [selectedProduct, stylePreset, selectedChannels]);    const prefetchCoachInsights = useCallback(async () => {        if (!selectedProduct || coachLoading) {            return;        }        if (coachPrefetchDoneRef.current && (briefVariants.length > 0 || styleSuggestion || distributionPlan)) {            return;        }        coachPrefetchDoneRef.current = true;        setCoachLoading(true);        const priceLabel = computePriceLabel(selectedProduct);        const promotionValue = computePromotionLabel(selectedProduct);        const highlights = collectProductHighlights(selectedProduct);        const channelsArray = Array.from(selectedChannels.values());        const lang = subtitleLang || voiceoverLang;        try {            // Ô£à AM├ëLIORATION: Brief avec retry + valeurs par d├®faut            if (briefVariants.length === 0) {                const briefResult = await fetchWithRetry(                    async () => {                        const response = await mediaApi.generateVideoBrief({                            product_name: normalizeProductName(selectedProduct),                            description: extractDescription(selectedProduct.description, ''),                            price: priceLabel,                            promotion: promotionValue,                            highlights,                            target_audience: channelsArray.join(', '),                            tone: stylePreset,                            lang,                            variant_count: 3,                        });                        if (response.success && Array.isArray((response.data as any)?.variants) && (response.data as any).variants.length > 0) {                            return (response.data as any).variants;                        }                        throw new Error('Aucun variant retourn├®');                    },                    3,                    'brief'                );                if (briefResult) {                    setBriefVariants(briefResult);                } else {                    // Ô£à CORRECTION: Utiliser valeurs par d├®faut avec notification silencieuse                    const defaultBrief = getDefaultCoachData('brief');                    if (defaultBrief?.variants) {                        console.log('[ProductVideoCreationModal] Coach IA: Utilisation valeurs par d├®faut pour brief');                        setBriefVariants(defaultBrief.variants);                    } else {                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de g├®n├®rer brief, m├¬me avec valeurs par d├®faut');                    }                }            }            // Ô£à AM├ëLIORATION: Style avec retry + valeurs par d├®faut            if (!styleSuggestion) {                const styleResult = await fetchWithRetry(                    async () => {                        const channelPriority = ['shorts', 'instagram', 'youtube', 'chat', 'product'];                        const preferredChannel = channelPriority.find((key) => selectedChannels.has(key)) || 'shorts';                        const response = await mediaApi.generateVideoStyle({                            channel: preferredChannel,                            product_type: getFieldValue(selectedProduct.type) || getFieldValue(selectedProduct.category_label) || '',                            tone: stylePreset,                            promotion: promotionValue,                            highlights,                            lang,                        });                        if (response.success && (response.data as any)?.suggestion) {                            return (response.data as any).suggestion;                        }                        throw new Error('Aucune suggestion retourn├®e');                    },                    3,                    'style'                );                if (styleResult) {                    setStyleSuggestion(styleResult);                } else {                    // Ô£à CORRECTION: Utiliser valeurs par d├®faut avec notification silencieuse                    const defaultStyle = getDefaultCoachData('style');                    if (defaultStyle?.suggestion) {                        console.log('[ProductVideoCreationModal] Coach IA: Utilisation valeurs par d├®faut pour style');                        setStyleSuggestion(defaultStyle.suggestion);                    } else {                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de g├®n├®rer style, m├¬me avec valeurs par d├®faut');                    }                }            }            // Ô£à NOUVEAU: G├®n├®ration de timeline apr├¿s le style            if (!generatedTimeline && briefVariants.length > 0 && styleSuggestion) {                const selectedBrief = briefVariants[0]; // Utiliser le premier brief                setIsGeneratingTimeline(true);                try {                    // Pr├®parer les m├®dias disponibles                    const availableMedia = [                        ...productMedia.map(m => ({                            id: m.id.toString(),                            url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,                            media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',                        })),                        ...serviceMedia.map(m => ({                            id: m.id.toString(),                            url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,                            media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',                        })),                    ];                    const timelineResponse = await mediaApi.generateVideoTimeline({                        brief: {                            script_outline: selectedBrief.script_outline || [],                            headline: selectedBrief.headline,                            call_to_action: selectedBrief.call_to_action,                        },                        style: {                            effects: styleSuggestion.effects || [],                            transitions: styleSuggestion.transitions || [],                            color_palette: styleSuggestion.color_palette || undefined,                        },                        available_media: availableMedia,                        duration_seconds: ensureNumber(duration, 28),                        voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,                        music_track_id: selectedMusicTrackId ?? undefined,                        lang: subtitleLang || voiceoverLang || 'fr',                    });                    if (timelineResponse.success && timelineResponse.data) {                        const responseData = timelineResponse.data as { success?: boolean; timeline?: VideoTimelineType };                        if (responseData.timeline) {                            console.log('[ProductVideoCreationModal] Ô£à Timeline g├®n├®r├®e:', responseData.timeline);                            setGeneratedTimeline(responseData.timeline);                            // Ô£à NOUVEAU: Mettre ├á jour scriptNotes avec le texte des sc├¿nes si vide                            if (!scriptNotes.trim() && responseData.timeline.scenes.length > 0) {                                const scriptFromTimeline = responseData.timeline.scenes                                    .map(s => s.text)                                    .filter((t): t is string => t !== undefined && t.trim().length > 0)                                    .join('\n');                                if (scriptFromTimeline) {                                    setScriptNotes(scriptFromTimeline);                                }                            }                        } else {                            console.warn('[ProductVideoCreationModal] ÔÜá´©Å Timeline non g├®n├®r├®e, utilisation storyboard texte');                        }                    } else {                        console.warn('[ProductVideoCreationModal] ÔÜá´©Å Timeline non g├®n├®r├®e, utilisation storyboard texte');                    }                } catch (error) {                    console.error('[ProductVideoCreationModal] Erreur g├®n├®ration timeline:', error);                    // Continuer sans timeline, utiliser storyboard texte                } finally {                    setIsGeneratingTimeline(false);                }            }            // Ô£à AM├ëLIORATION: Plan avec retry + valeurs par d├®faut            if (!distributionPlan) {                const planResult = await fetchWithRetry(                    async () => {                        const response = await mediaApi.generateDistributionPlan({                            product_name: normalizeProductName(selectedProduct),                            channels: channelsArray,                            target_audience: channelsArray.join(', '),                            marketing_angle: mediaAnalysis.marketingAngle || undefined,                            lang,                        });                        if (response.success && (response.data as any)?.plan) {                            return (response.data as any).plan;                        }                        throw new Error('Aucun plan retourn├®');                    },                    3,                    'plan'                );                if (planResult) {                    setDistributionPlan(planResult);                } else {                    // Ô£à CORRECTION: Utiliser valeurs par d├®faut avec notification silencieuse                    const defaultPlan = getDefaultCoachData('plan');                    if (defaultPlan?.plan) {                        console.log('[ProductVideoCreationModal] Coach IA: Utilisation valeurs par d├®faut pour plan');                        setDistributionPlan(defaultPlan.plan);                    } else {                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de g├®n├®rer plan, m├¬me avec valeurs par d├®faut');                    }                }            }        } finally {            setCoachLoading(false);        }    }, [        briefVariants.length,        distributionPlan,        mediaAnalysis.marketingAngle,        selectedChannels,        selectedProduct,        coachLoading,        stylePreset,        styleSuggestion,        subtitleLang,        voiceoverLang,        fetchWithRetry,        getDefaultCoachData,    ]);    const handleRefreshCoach = useCallback(() => {        coachPrefetchDoneRef.current = false;        prefetchCoachInsights().catch((error) =>            console.warn('[ProductVideoCreationModal] Coach IA: rafra├«chissement impossible', error)        );    }, [prefetchCoachInsights]);    // Ô£à NOUVEAU: Fonction pour estimer le co├╗t de g├®n├®ration    const handleEstimateCost = useCallback(async () => {        if (!selectedProduct || typeof selectedProduct.product_index !== 'number') {            Alert.alert('Produit requis', 'S├®lectionnez d\'abord un produit.');            return;        }        const serviceId = Number(selectedProduct.serviceId);        if (Number.isNaN(serviceId)) {            Alert.alert('Service invalide', 'Impossible d\'estimer le co├╗t.');            return;        }        try {            setCostLoading(true);            const payload: VideoGenerationPayload = {                style: stylePreset,                headline: headline.trim(),                call_to_action: callToAction.trim(),                duration_seconds: ensureNumber(duration, 28),                storyboard: scriptNotes                    .split(/\r?\n/)                    .map((line) => line.trim())                    .filter((line) => line.length > 0),                music_mode: musicMode !== 'none' ? musicMode : undefined,                music_volume: musicMode !== 'none' ? Number.parseFloat(musicVolume) : undefined,                voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,                voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,                selected_media_ids: Array.from(selectedMediaIds),                use_service_mediatech: useMediatechLibrary,                include_publicite_assets: includePubliciteAssets,                generate_square_variant: generateSquareVariant,                generate_landscape_variant: generateLandscapeVariant,                distribute_channels: Array.from(selectedChannels.values()),            };            const response = await apiCallWithRetry(() =>                iaApi.estimateVideoCost(serviceId, selectedProduct.product_index, payload)            );            const estimationResponse = response.data as VideoCostEstimateResponse | VideoCostEstimation | undefined;            const estimation =                estimationResponse && 'data' in estimationResponse                    ? estimationResponse.data                    : (estimationResponse as VideoCostEstimation | undefined);            if (estimation) {                setCostEstimation(estimation);                setShowCostEstimation(true);            } else {                Alert.alert('Estimation impossible', 'Impossible d\'estimer le co├╗t pour le moment. R├®essayez plus tard.');            }        } catch (error: any) {            console.error('[ProductVideoCreationModal] Erreur estimation co├╗t:', error);            let message = error?.message || 'Erreur serveur.';            if (error?.message?.includes('network') || error?.message?.includes('fetch')) {                message = 'Erreur de connexion. V├®rifiez votre acc├¿s Internet.';            } else if (error?.message?.includes('timeout')) {                message = 'Le d├®lai d\'attente a expir├®. R├®essayez.';            }            Alert.alert('Erreur d\'estimation', message);        } finally {            setCostLoading(false);        }    }, [        selectedProduct,        stylePreset,        headline,        callToAction,        duration,        scriptNotes,        musicMode,        musicVolume,        voiceoverEnabled,        voiceoverScript,        voiceoverLang,        selectedMediaIds,        useMediatechLibrary,        includePubliciteAssets,        generateSquareVariant,        generateLandscapeVariant,        selectedChannels,    ]);    // Ô£à NOUVEAU: Charger le brouillon au d├®marrage    useEffect(() => {        if (!visible || !selectedProduct) return;        const loadDraft = async () => {            try {                const draft = await loadVideoDraft();                if (draft &&                    draft.serviceId === Number(selectedProduct.serviceId) &&                    draft.productIndex === selectedProduct.product_index) {                    Alert.alert(                        'Brouillon trouv├®',                        'Un brouillon non termin├® a ├®t├® trouv├®. Voulez-vous le reprendre ?',                        [                            {                                text: 'Non, recommencer',                                onPress: async () => {                                    await clearVideoDraft();                                },                                style: 'cancel',                            },                            {                                text: 'Oui, reprendre',                                onPress: () => {                                    // Restaurer les valeurs du brouillon                                    if (draft.headline) setHeadline(draft.headline);                                    if (draft.callToAction) setCallToAction(draft.callToAction);                                    if (draft.brief) setScriptNotes(draft.brief);                                    if (draft.selectedMediaIds && draft.selectedMediaIds.length > 0) {                                        setSelectedMediaIds(new Set(draft.selectedMediaIds));                                    }                                    if (draft.musicMode) setMusicMode(draft.musicMode as MusicMode);                                    if (draft.voiceoverEnabled !== undefined) setVoiceoverEnabled(draft.voiceoverEnabled);                                    if (draft.voiceoverLang) setVoiceoverLang(draft.voiceoverLang);                                    if (draft.publishChat !== undefined) setPublishToChat(draft.publishChat);                                    if (draft.publishCard !== undefined) setPublishToProductCard(draft.publishCard);                                },                            },                        ]                    );                }            } catch (error) {                console.error('[ProductVideoCreationModal] Erreur chargement brouillon:', error);            }        };        loadDraft();    }, [visible, selectedProduct]);    // Ô£à NOUVEAU: Sauvegarde automatique du brouillon avec debounce    useEffect(() => {        if (!visible || !selectedProduct) return;        const draft: Partial<VideoDraft> = {            serviceId: Number(selectedProduct.serviceId),            productIndex: selectedProduct.product_index || 0,            productName: normalizeProductName(selectedProduct),            serviceName: selectedProduct.serviceTitre || '',            brief: scriptNotes,            headline,            callToAction,            selectedMediaIds: Array.from(selectedMediaIds),            musicMode,            voiceoverEnabled,            voiceoverLang: voiceoverLang as 'fr' | 'en',            publishChat: publishToChat,            publishCard: publishToProductCard,            publishSocial: selectedChannels.has('shorts') || selectedChannels.has('instagram') || selectedChannels.has('youtube'),        };        saveVideoDraft(draft);    }, [        visible,        selectedProduct,        scriptNotes,        headline,        callToAction,        selectedMediaIds,        musicMode,        voiceoverEnabled,        voiceoverLang,        publishToChat,        publishToProductCard,        selectedChannels,    ]);    // Ô£à NOUVEAU: Charger les sessions disponibles pour le cha├«nage    useEffect(() => {        if (!visible || !showVideoChaining) return;        const loadAvailableSessions = async () => {            try {                const sessions = await studioService.listSessions();                setAvailableSessions(sessions.map((s) => ({                    id: s.id,                    title: (typeof s.brief === 'object' && s.brief !== null && 'title' in s.brief)                        ? String(s.brief.title)                        : undefined                })));            } catch (error) {                console.error('[ProductVideoCreationModal] Erreur chargement sessions:', error);            }        };        loadAvailableSessions();    }, [visible, showVideoChaining]);    useEffect(() => {        if (!visible) {            coachPrefetchDoneRef.current = false;            setCoachLoading(false);            // Ô£à CORRECTION: R├®initialiser l'├®tape quand le modal se ferme            setActiveStep(1);            // Ô£à NOUVEAU: R├®initialiser les ├®tats des fonctionnalit├®s migr├®es            setCostEstimation(null);            setShowCostEstimation(false);            setShowVideoChaining(false);            setSelectedLinkedSessions([]);            setCompletedSteps(new Set());        } else {            // Ô£à NOUVEAU: Tracking UX (depuis Wizard)            trackUxEvent('wizard_open', {                device: 'mobile',                serviceId: selectedProduct?.serviceId ? Number(selectedProduct.serviceId) : undefined,                productIndex: selectedProduct?.product_index,                step: activeStep,            });        }    }, [visible, selectedProduct, activeStep]);    useEffect(() => {        coachPrefetchDoneRef.current = false;        setCoachLoading(false);    }, [selectedProduct?.id]);    useEffect(() => {        if (visible && selectedProduct) {            prefetchCoachInsights().catch((error) =>                console.warn('[ProductVideoCreationModal] Coach IA: pr├®-chargement impossible', error)            );        }    }, [visible, selectedProduct, prefetchCoachInsights]);    const handleAttachAudioLoop = useCallback(        async (loopId: string) => {            if (!selectedProduct) {                return;            }            const numericServiceId = Number(selectedProduct.serviceId);            if (Number.isNaN(numericServiceId)) {                Alert.alert('Service introuvable', "Impossible d'attacher cette piste audio.");                return;            }            setAttachingLoopId(loopId);            try {                const response = await mediaApi.attachAudioLoop(loopId, numericServiceId);                if (!response.success) {                    throw new Error(response.error || 'Attache impossible');                }                await refreshMedia(selectedProduct);                Alert.alert('­ƒÄÁ Audio ajout├®', 'La boucle a ├®t├® ajout├®e ├á votre m├®diath├¿que.');            } catch (error) {                console.error("[ProductVideoCreationModal] Impossible d'attacher la boucle audio: ", error);                Alert.alert('Erreur', "Ajout de la boucle audio impossible pour le moment.");            } finally {                setAttachingLoopId(null);            }        },        [refreshMedia, selectedProduct]    );    const handleImportAudioTrack = useCallback(async () => {        if (!selectedProduct) {            Alert.alert('Produit requis', "S├®lectionnez un produit principal avant d'importer un audio.");            return;        }        try {            const result = await DocumentPicker.getDocumentAsync({                type: ['audio/*'],                multiple: false,                copyToCacheDirectory: true,            });            if (!result || (result as any).canceled || (result as any).type === 'cancel') {                return;            }            const asset: any = (result as any).assets?.[0] || result;            if (!asset?.uri) {                Alert.alert('Import audio', 'Impossible de lire ce fichier audio.');                return;            }            setIsUploadingAudio(true);            const uploaded = await mediaApi.uploadServiceAudio(selectedProduct.serviceId, {                uri: asset.uri,                name: asset.name || asset.originalName,                type: asset.mimeType || asset.type || 'audio/mpeg',            });            const audioTracks = await refreshMedia(selectedProduct);            if (uploaded?.id) {                setSelectedMusicTrackId(uploaded.id);            } else if (audioTracks.length > 0) {                const latest = [...audioTracks].sort((a, b) => (b.id || 0) - (a.id || 0))[0];                setSelectedMusicTrackId(latest?.id ?? null);            }            Alert.alert('Audio import├®', 'Votre piste a ├®t├® ajout├®e ├á la m├®diath├¿que.');        } catch (error) {            console.error('[ProductVideoCreationModal] Import audio ├®chou├®:', error);            Alert.alert(                'Erreur import audio',                error instanceof Error ? error.message : "Impossible d'importer ce fichier audio pour le moment."            );        } finally {            setIsUploadingAudio(false);        }    }, [refreshMedia, selectedProduct]);    const handleGenerateBrief = useCallback(async () => {        if (!selectedProduct) {            Alert.alert('Produit requis', 'S├®lectionnez un produit avant de g├®n├®rer un brief.');            return;        }        setIsGeneratingBrief(true);        try {            const priceLabel = computePriceLabel(selectedProduct);            const promotionValue = computePromotionLabel(selectedProduct);            const highlights = collectProductHighlights(selectedProduct);            const response = await mediaApi.generateVideoBrief({                product_name: normalizeProductName(selectedProduct),                description: extractDescription(selectedProduct.description, ''),                price: priceLabel,                promotion: promotionValue,                highlights,                target_audience: Array.from(selectedChannels.values()).join(', '),                tone: stylePreset,                lang: subtitleLang || voiceoverLang,                variant_count: 3,            });            if (!response.success || !(response.data as any)?.variants) {                throw new Error(response.error || 'G├®n├®ration IA impossible');            }            const variants: AIVideoBriefVariant[] = (response.data as any).variants;            setBriefVariants(variants);            if (variants.length === 0) {                throw new Error('Aucune variante g├®n├®r├®e');            } else if (variants.length === 1) {                applyBriefVariant(variants[0], setHeadline, setCallToAction, setScriptNotes, setVoiceoverScript, setVariantPickerVisible);                Alert.alert('Brief g├®n├®r├®', 'Le script et le CTA ont ├®t├® optimis├®s par Yukpomnang IA.');            } else {                setVariantPickerVisible(true);            }        } catch (error) {            console.error('[ProductVideoCreationModal] Brief IA impossible:', error);            Alert.alert(                'Erreur IA',                error instanceof Error ? error.message : 'Impossible de g├®n├®rer le brief IA pour le moment.'            );        } finally {            setIsGeneratingBrief(false);        }    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang]); // Ô£à CORRIG├ë: applyBriefVariant est une fonction utilitaire stable, pas besoin de d├®pendance    const applyStyleSuggestion = useCallback((suggestion: AIVideoStyleSuggestion) => {        setStyleSuggestion(suggestion);        setSelectedEffects(new Set(suggestion.effects || []));        setSelectedTransitions(new Set(suggestion.transitions || []));        setSelectedOverlayTips(new Set(suggestion.overlay_tips || []));        setColorPalette(suggestion.color_palette || '');        setStyleMusicHint(suggestion.music_hint || '');    }, []);    const handleGenerateStyleSuggestion = useCallback(async () => {        if (!selectedProduct) {            Alert.alert('Produit requis', 'S├®lectionnez un produit avant de g├®n├®rer des effets IA.');            return;        }        setIsGeneratingStyle(true);        try {            const highlights = collectProductHighlights(selectedProduct);            const channelPriority = ['shorts', 'instagram', 'youtube', 'chat', 'product'];            const selectedChannel = channelPriority.find((key) => selectedChannels.has(key)) || 'shorts';            const response = await mediaApi.generateVideoStyle({                channel: selectedChannel,                product_type: selectedProduct.type || selectedProduct.category_label,                tone: stylePreset,                promotion: computePromotionLabel(selectedProduct),                highlights,                lang: subtitleLang || voiceoverLang,            });            if (!response.success || !(response.data as any)?.suggestion) {                throw new Error(response.error || 'Impossible de r├®cup├®rer les suggestions IA');            }            applyStyleSuggestion((response.data as any).suggestion);            Alert.alert('Effets IA g├®n├®r├®s', 'Les effets et transitions recommand├®s ont ├®t├® ajout├®s. Vous pouvez les ajuster.');        } catch (error) {            console.error('[ProductVideoCreationModal] Style IA impossible:', error);            Alert.alert(                'Erreur IA',                error instanceof Error ? error.message : 'Impossible de g├®n├®rer les suggestions visuelles pour le moment.'            );        } finally {            setIsGeneratingStyle(false);        }    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang, applyStyleSuggestion]);    const handleAnalyzeMedia = useCallback(async () => {        if (!selectedProduct) {            Alert.alert('Produit requis', "S├®lectionnez un produit avant d'analyser vos m├®dias.");            return;        }        setIsAnalyzingMedia(true);        try {            const tags: string[] = [];            productMedia.forEach((item) => {                if (item.ai_description) {                    tags.push(item.ai_description);                }            });            serviceMedia.forEach((item) => {                if (item.ai_description) {                    tags.push(item.ai_description);                }            });            // Ô£à CORRECTION: Utiliser iaApi.analyzeMedia() au lieu de mediaApi.analyzeMedia()            // L'endpoint correct est /api/ia/media-analysis, pas /api/media/analyze            const response = await iaApi.analyzeMedia({                product_name: normalizeProductName(selectedProduct),                media_tags: tags,                description: extractDescription(selectedProduct.description, ''),                lang: subtitleLang || voiceoverLang,            });            if (!response.success || !(response.data as any)?.analysis) {                throw new Error(response.error || 'Analyse IA indisponible');            }            const analysis = (response.data as any).analysis;            setMediaAnalysis({                dominantColors: analysis.dominant_colors,                detectedObjects: analysis.detected_objects,                ambiance: analysis.ambiance,                marketingAngle: analysis.marketing_angle,            });            Alert.alert('Analyse IA termin├®e', 'Couleurs dominantes et angles marketing mis ├á jour.');        } catch (error) {            console.error('[ProductVideoCreationModal] Analyse m├®dia impossible:', error);            Alert.alert(                'Erreur IA',                error instanceof Error ? error.message : "Impossible d'analyser vos m├®dias pour le moment."            );        } finally {            setIsAnalyzingMedia(false);        }    }, [productMedia, serviceMedia, selectedProduct, subtitleLang, voiceoverLang]);    useEffect(() => {        if (!visible) {            setSelectedProduct(primaryProduct);            setSelectedRelatedProducts(new Set());            setSelectedMediaIds(new Set());            setStylePreset('tiktok');            setDuration('28');            setScriptNotes('');            setIncludePrice(true);            setIncludeContact(true);            setUseProductGallery(true);            setUseMediatechLibrary(true);            setIncludePubliciteAssets(true);            setPublishToChat(true);            setPublishToProductCard(true);            setMusicMode('pulse');            setMusicVolume('0.28');            setVoiceoverEnabled(false);            setVoiceoverScript('');            setVoiceoverLang('fr');            setSubtitleLang('fr');            setGenerateSquareVariant(true);            setGenerateLandscapeVariant(false);            setSelectedMusicTrackId(null);            setAvailableAudioTracks([]);            setSelectedChannels(new Set(['chat', 'product']));            setBriefVariants([]);            setVariantPickerVisible(false);            setStyleSuggestion(null);            setSelectedEffects(new Set());            setSelectedTransitions(new Set());            setSelectedOverlayTips(new Set());            setColorPalette('');            setStyleMusicHint('');            setMediaAnalysis({});            setDistributionPlan(null);            return;        }        setSelectedProduct(primaryProduct);        setSelectedRelatedProducts(new Set());        setSelectedMediaIds(new Set());        setStylePreset('tiktok');        setDuration('28');        setScriptNotes('');        setIncludePrice(true);        setIncludeContact(true);        setUseProductGallery(true);        setUseMediatechLibrary(true);        setIncludePubliciteAssets(true);        setPublishToChat(true);        setPublishToProductCard(true);        setMusicMode('pulse');        setMusicVolume('0.28');        setVoiceoverEnabled(false);        setVoiceoverScript('');        setVoiceoverLang('fr');        setSubtitleLang('fr');        setGenerateSquareVariant(true);        setGenerateLandscapeVariant(false);        setSelectedMusicTrackId(null);        setAvailableAudioTracks([]);        setSelectedChannels(new Set(['chat', 'product']));    }, [visible, primaryProduct]);    useEffect(() => {        if (!visible) {            return;        }        if (!selectedProduct) {            setHeadline('');            setCallToAction('Commandez maintenant sur Yukpomnang Ô£à');            setIncludePromotion(false);            setSelectedRelatedProducts(new Set());            setProductMedia([]);            setServiceMedia([]);            setAvailableAudioTracks([]);            setSelectedMusicTrackId(null);            setSubtitleLang('fr');            refreshMedia(null);            return;        }        const productName = normalizeProductName(selectedProduct);        const defaultHeadline = `­ƒÄ» ${productName} en ${getFieldValue(selectedProduct.city) || 'promo'}`;        const defaultCTA = `­ƒô▓ Contactez ${extractServiceName(selectedProduct, 'nous')} sur Yukpomnang`;        setHeadline(defaultHeadline);        setCallToAction(defaultCTA);        setIncludePromotion(Boolean(selectedProduct.promotionActive));        setSelectedRelatedProducts(new Set());        setVoiceoverScript(            buildDefaultVoiceover(productName, defaultHeadline, defaultCTA, [])        );        void refreshMedia(selectedProduct);    }, [visible, selectedProduct, refreshMedia]);    useEffect(() => {        if (!visible) {            return;        }        setLoadingLibrary(true);        mediaApi.getAudioLibrary()            .then((response) => {                if (response.success && Array.isArray((response.data as any)?.loops)) {                    setAudioLibrary((response.data as any).loops);                }            })            .catch((error) => {                console.warn('[ProductVideoCreationModal] Impossible de charger la biblioth├¿que audio:', error);            })            .finally(() => setLoadingLibrary(false));    }, [visible]);    const groupedProducts: GroupedProducts[] = useMemo(() => {        const groups = new Map<string, GroupedProducts>();        console.log('[ProductVideoCreationModal] ­ƒôª Traitement produits:', products.length);        products.forEach((product) => {            const serviceId = product.serviceId || 'service';            const existing = groups.get(serviceId);            const item: ManagedProduct = product;            if (existing) {                existing.items.push(item);            } else {                groups.set(serviceId, {                    serviceId,                    serviceTitre: extractServiceName(product, 'Service'),                    items: [item],                });            }        });        const result = Array.from(groups.values());        console.log('[ProductVideoCreationModal] ­ƒôª Groupes cr├®├®s:', result.length, 'services');        return result;    }, [products]);    const productsSameService = useMemo(() => {        if (!selectedProduct) {            return [];        }        // Ô£à CORRIG├ë: V├®rifier que products est un tableau avant d'appeler .filter()        if (!Array.isArray(products)) {            return [];        }        return products            .filter(                (product) =>                    product &&                    product.serviceId === selectedProduct.serviceId &&                    product.product_index !== selectedProduct.product_index            )            .sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));    }, [products, selectedProduct]);    const toggleRelatedProduct = (productIndex?: number) => {        if (typeof productIndex !== 'number') {            return;        }        setSelectedRelatedProducts((prev) => {            const next = new Set(prev);            if (next.has(productIndex)) {                next.delete(productIndex);            } else {                next.add(productIndex);            }            return next;        });    };    const toggleMediaSelection = (mediaId: number) => {        setSelectedMediaIds((prev) => {            const next = new Set(prev);            if (next.has(mediaId)) {                next.delete(mediaId);            } else {                next.add(mediaId);            }            return next;        });    };    const toggleSelection = useCallback((value: string, setter: React.Dispatch<React.SetStateAction<Set<string>>>) => {        setter((prev) => {            const next = new Set(prev);            if (next.has(value)) {                next.delete(value);            } else {                next.add(value);            }            return next;        });    }, []);    // Ô£à NOUVEAU: Fonction helper pour calculer les styles dynamiquement avec insets    const getStepContentStyle = useCallback(() => ({        padding: 20,        gap: 20,        paddingBottom: 100 + insets.bottom, // Ô£à Espace pour les boutons fixes + safe area        flexGrow: 1,    }), [insets.bottom]);    const getFixedBottomButtonStyle = useCallback(() => ({        position: 'absolute' as const,        bottom: 0,        left: 0,        right: 0,        paddingHorizontal: 20,        paddingTop: 16,        paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 16),        backgroundColor: modernColors.background,        borderTopWidth: StyleSheet.hairlineWidth,        borderTopColor: modernColors.border,        shadowColor: '#000',        shadowOffset: { width: 0, height: -2 },        shadowOpacity: 0.1,        shadowRadius: 4,        elevation: 5,        zIndex: 1000,        minHeight: 80 + insets.bottom,    }), [insets.bottom]);    // Ô£à NOUVEAU: Fonctions de rendu par ├®tape - R├®organis├®es en 6 ├®tapes courtes    // Ô£à NOUVEAU: Charger Templates Narratifs Serveur (depuis Wizard)    useEffect(() => {        const loadTemplates = async () => {            setStoryTemplatesLoading(true);            try {                const templates = await studioService.listTemplates();                if (Array.isArray(templates)) {                    setStoryTemplates(templates);                    if (templates.length > 0 && !templates.some((spec) => spec.id === storyTemplateId)) {                        setStoryTemplateId(templates[0].id);                    }                }            } catch (error) {                console.warn('[ProductVideoCreationModal] Templates indisponibles', error);            } finally {                setStoryTemplatesLoading(false);            }        };        if (visible && selectedProduct) {            loadTemplates();        }    }, [visible, selectedProduct, storyTemplateId]);    // Ô£à NOUVEAU: Marquer ├®tape compl├®t├®e (depuis Wizard)    const markStepCompleted = useCallback((stepNum: number) => {        setCompletedSteps((prev) => new Set([...prev, stepNum]));    }, []);    // Ô£à NOUVEAU: Ensure Studio Session (depuis Wizard)    const ensureStudioSession = useCallback(async (): Promise<string | undefined> => {        if (studioSessionId) {            return studioSessionId;        }        if (!selectedProduct || typeof selectedProduct.serviceId === 'undefined') {            return undefined;        }        try {            const existing = await studioService.listSessions();            if (existing.length > 0) {                setStudioSessionId(existing[0].id);                return existing[0].id;            }            const payload: import('../services/studioService').CreateStudioSessionPayload = {                service_id: Number(selectedProduct.serviceId),                brief: { raw: scriptNotes || headline || normalizeProductName(selectedProduct) },                metadata: {                    product_name: normalizeProductName(selectedProduct),                },                distribution_plan: [],            };            const aggregate = await studioService.createSession(payload);            setStudioSessionId(aggregate.session.id);            return aggregate.session.id;        } catch (error) {            console.warn('[ProductVideoCreationModal] session Studio indisponible', error);            return undefined;        }    }, [selectedProduct, scriptNotes, headline, studioSessionId]);    // Ô£à NOUVEAU: Generate Storyboard via Studio (depuis Wizard)    const handleGenerateStoryboard = useCallback(async () => {        if (!selectedProduct) {            Alert.alert('Produit requis', 'S├®lectionnez un produit avant de g├®n├®rer un storyboard.');            return;        }        const startedAt = Date.now();        trackUxEvent('storyboard_generate_click', {            device: 'mobile',            serviceId: Number(selectedProduct.serviceId),            productIndex: selectedProduct.product_index,            sessionId: studioSessionId,            step: activeStep,        });        const sessionId = await ensureStudioSession();        if (!sessionId) {            Alert.alert('Erreur', 'Impossible de cr├®er une session Studio. V├®rifiez votre connexion.');            return;        }        setStoryboardLoading(true);        try {            const request: import('../services/studioService').StoryboardRequest = {                script_outline: scriptNotes                    .split(/\r?\n/)                    .map((line) => line.trim())                    .filter((line) => line.length > 0)                    .slice(0, 6),                product_name: normalizeProductName(selectedProduct),                headline: headline || undefined,                call_to_action: callToAction || undefined,                style: stylePreset,                duration_seconds: ensureNumber(duration, 28),                template_id: storyTemplateId !== 'blog' ? storyTemplateId : undefined,                business_context: undefined,                ai_hints: [],            };            const result = await studioService.generateStoryboard(sessionId, request);            setStoryboard(result);            const durationMs = Date.now() - startedAt;            trackUxEvent('storyboard_generate_completed', {                device: 'mobile',                serviceId: Number(selectedProduct.serviceId),                productIndex: selectedProduct.product_index,                sessionId,                step: activeStep,                durationMs,                extra: { scenes: result.scenes.length },            });            Alert.alert('Storyboard g├®n├®r├®', `${result.scenes.length} sc├¿nes cr├®├®es.`);        } catch (error: any) {            console.error('[ProductVideoCreationModal] Erreur g├®n├®ration storyboard:', error);            const durationMs = Date.now() - startedAt;            trackUxEvent('storyboard_generate_failed', {                device: 'mobile',                serviceId: Number(selectedProduct.serviceId),                productIndex: selectedProduct.product_index,                sessionId: studioSessionId,                step: activeStep,                durationMs,                extra: { error: error?.message ?? 'unknown' },            });            Alert.alert('Erreur', error?.message || 'Impossible de g├®n├®rer le storyboard.');        } finally {            setStoryboardLoading(false);        }    }, [selectedProduct, ensureStudioSession, scriptNotes, headline, callToAction, stylePreset, duration, storyTemplateId, studioSessionId, activeStep]);    // Ô£à NOUVEAU: Request Short Preview (depuis Wizard)    const handleShortPreview = useCallback(async () => {        if (!studioSessionId) {            Alert.alert('Session requise', 'G├®n├®rez d\'abord un storyboard pour cr├®er une session Studio.');            return;        }        const startedAt = Date.now();        trackUxEvent('preview_short_click', {            device: 'mobile',            serviceId: selectedProduct ? Number(selectedProduct.serviceId) : undefined,            productIndex: selectedProduct?.product_index,            sessionId: studioSessionId,            step: activeStep,        });        setShortPreviewLoading(true);        try {            // Ô£à NOUVEAU: Utiliser prewarmed preview si disponible (depuis Wizard)            if (prewarmedShortPreviewUrl) {                const { Linking } = require('react-native');                Linking.openURL(prewarmedShortPreviewUrl);                const durationMs = Date.now() - startedAt;                trackUxEvent('preview_short_completed', {                    device: 'mobile',                    serviceId: selectedProduct ? Number(selectedProduct.serviceId) : undefined,                    productIndex: selectedProduct?.product_index,                    sessionId: studioSessionId,                    step: activeStep,                    durationMs,                    prewarmed: true,                });                return;            }            const response = await studioService.requestShortPreview(studioSessionId);            if (response.preview_url) {                setShortPreviewUrl(response.preview_url);                setPrewarmedShortPreviewUrl(response.preview_url);                // Ouvrir dans le lecteur natif                const { Linking } = require('react-native');                Linking.openURL(response.preview_url);                const durationMs = Date.now() - startedAt;                trackUxEvent('preview_short_completed', {                    device: 'mobile',                    serviceId: selectedProduct ? Number(selectedProduct.serviceId) : undefined,                    productIndex: selectedProduct?.product_index,                    sessionId: studioSessionId,                    step: activeStep,                    durationMs,                    prewarmed: false,                });                Alert.alert('Preview ouverte', 'La pr├®visualisation s\'ouvre dans votre lecteur vid├®o.');            } else {                throw new Error('Aucune URL de preview retourn├®e');            }        } catch (error: any) {            console.error('[ProductVideoCreationModal] Erreur short preview:', error);            const durationMs = Date.now() - startedAt;            trackUxEvent('preview_short_failed', {                device: 'mobile',                serviceId: selectedProduct ? Number(selectedProduct.serviceId) : undefined,                productIndex: selectedProduct?.product_index,                sessionId: studioSessionId,                step: activeStep,                durationMs,                extra: { error: error?.message ?? 'unknown' },            });            Alert.alert('Erreur', error?.message || 'Impossible de g├®n├®rer la pr├®visualisation.');        } finally {            setShortPreviewLoading(false);        }    }, [studioSessionId, prewarmedShortPreviewUrl, selectedProduct, activeStep]);    const renderStep1 = () => {        // ├ëtape 1 : S├®lection produit uniquement        return (            <>                {renderProductSelection()}                {/* Ô£à NOUVEAU: CreatorStudioCard (depuis Wizard) */}                {selectedProduct && (                    <CreatorStudioCard                        serviceName={`Service #${selectedProduct.serviceId}`}                        productName={normalizeProductName(selectedProduct)}                    />                )}                {/* Ô£à NOUVEAU: Templates Narratifs Serveur (depuis Wizard) */}                {selectedProduct && storyTemplates.length > 0 && (                    <NativeCard style={styles.sectionCard}>                        <View style={styles.sectionHeader}>                            <Text style={styles.sectionTitle}>­ƒôÜ Templates narratifs</Text>                            {storyTemplatesLoading && (                                <ActivityIndicator size="small" color={modernColors.primary} />                            )}                        </View>                        <Text style={styles.sectionSubtitle}>                            Choisissez un template pour structurer votre vid├®o.                        </Text>                        <View style={styles.templateList}>                            {storyTemplates.slice(0, 4).map((spec) => {                                const active = spec.id === storyTemplateId;                                return (                                    <TouchableOpacity                                        key={spec.id}                                        style={[styles.templateCard, active && styles.templateCardActive]}                                        onPress={() => setStoryTemplateId(spec.id)}                                    >                                        <Text style={[styles.templateTitle, active && styles.templateTitleActive]}>                                            {spec.label}                                        </Text>                                        <Text style={styles.templateDescription} numberOfLines={2}>                                            {spec.description}                                        </Text>                                        <Text style={styles.templateMeta}>                                            {spec.suggestedScenes} sc├¿nes ┬À ~{spec.defaultDurationSeconds}s                                        </Text>                                    </TouchableOpacity>                                );                            })}                        </View>                    </NativeCard>                )}                {/* Ô£à NOUVEAU: Storyboard IA via Studio (depuis Wizard) */}                {selectedProduct && (                    <NativeCard style={styles.sectionCard}>                        <View style={styles.sectionHeader}>                            <Text style={styles.sectionTitle}>­ƒÄ¼ Storyboard IA</Text>                            <TouchableOpacity                                style={styles.linkButton}                                onPress={handleGenerateStoryboard}                                disabled={storyboardLoading}                            >                                {storyboardLoading ? (                                    <ActivityIndicator size="small" color={modernColors.primary} />                                ) : (                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />                                )}                                <Text style={styles.linkButtonText}>                                    {storyboardLoading ? 'G├®n├®rationÔÇª' : 'G├®n├®rer storyboard'}                                </Text>                            </TouchableOpacity>                        </View>                        <Text style={styles.sectionSubtitle}>                            G├®n├¿re une proposition de sc├¿nes (intro, b├®n├®fices, preuves, CTA) ├á partir de ton brief.                        </Text>                        {/* Ô£à NOUVEAU: Auto-Storyboard Toggle (depuis Wizard) */}                        <View style={styles.inlineRow}>                            <Text style={styles.inlineLabel}>Storyboard automatique</Text>                            <Switch                                value={autoStoryboard}                                onValueChange={setAutoStoryboard}                                trackColor={{ true: modernColors.primary }}                            />                        </View>                        {storyboard && storyboard.scenes.length > 0 && (                            <View style={styles.storyboardList}>                                {storyboard.scenes.slice(0, 4).map((scene) => (                                    <View key={scene.index} style={styles.storyboardItem}>                                        <Text style={styles.storyboardSceneType}>                                            {scene.sceneType}                                        </Text>                                        <Text style={styles.storyboardSceneText} numberOfLines={2}>                                            {scene.headline || scene.body || 'Sc├¿ne g├®n├®r├®e'}                                        </Text>                                    </View>                                ))}                            </View>                        )}                    </NativeCard>                )}                {coachPanel}                {selectedProduct && renderRelatedProducts()}            </>        );    };    const renderStep2 = () => {        // ├ëtape 2 : S├®lection m├®dias uniquement        if (!selectedProduct) {            return (                <NativeCard style={styles.sectionCard}>                    <Text style={styles.sectionTitle}>S├®lectionnez d'abord un produit</Text>                    <Text style={styles.sectionSubtitle}>                        Retournez ├á l'├®tape 1 pour s├®lectionner un produit.                    </Text>                </NativeCard>            );        }        return (            <NativeCard style={styles.sectionCard}>                <View style={styles.sectionHeader}>                    <Text style={styles.sectionTitle}>­ƒô© S├®lection des m├®dias</Text>                    <TouchableOpacity                        style={styles.linkButton}                        onPress={handleAnalyzeMedia}                        disabled={isAnalyzingMedia}                    >                        {isAnalyzingMedia ? (                            <ActivityIndicator size="small" color={modernColors.primary} />                        ) : (                            <SafeIcon name="scan" size={16} color={modernColors.primary} />                        )}                        <Text style={styles.linkButtonText}>                            {isAnalyzingMedia ? 'AnalyseÔÇª' : 'Analyse IA'}                        </Text>                    </TouchableOpacity>                </View>                <Text style={styles.sectionSubtitle}>                    Choisissez les images/vid├®os ├á utiliser dans votre vid├®o, ou cr├®ez une vid├®o AR immersive.                </Text>                {/* Ô£à NOUVEAU Phase 3.2: Bouton pour cr├®er vid├®o AR */}                <View style={styles.arButtonContainer}>                    <NativeButton                        title="­ƒÄ¼ Cr├®er vid├®o AR immersive"                        variant="primary"                        size="medium"                        onPress={() => setShowAREditor(true)}                        style={styles.arButton}                    />                    <Text style={styles.arButtonHint}>                        Capturez votre produit en r├®alit├® augment├®e avec effets 3D                    </Text>                </View>                {Array.isArray(mediaAnalysis.dominantColors) && mediaAnalysis.dominantColors.length > 0 && (                    <View style={styles.mediaInsightsBox}>                        <Text style={styles.mediaInsightsTitle}>Palette dominante</Text>                        <View style={styles.colorRow}>                            {mediaAnalysis.dominantColors.map((color, idx) => (                                <View                                    key={`color_${idx}`}                                    style={[styles.colorSwatch, { backgroundColor: color }]}                                >                                    <Text style={styles.colorLabel}>{color}</Text>                                </View>                            ))}                        </View>                        {mediaAnalysis.detectedObjects && mediaAnalysis.detectedObjects.length > 0 && (                            <Text style={styles.mediaInsightsText}>                                Objets rep├®r├®s : {mediaAnalysis.detectedObjects.join(', ')}                            </Text>                        )}                    </View>                )}                <View style={styles.toggleRow}>                    <View style={styles.toggleText}>                        <Text style={styles.toggleLabel}>Galerie produit</Text>                        <Text style={styles.toggleDescription}>                            Utiliser les images de la fiche produit.                        </Text>                    </View>                    <Switch                        value={useProductGallery}                        onValueChange={setUseProductGallery}                        trackColor={{ true: '#6366F1' }}                    />                </View>                <View style={styles.toggleRow}>                    <View style={styles.toggleText}>                        <Text style={styles.toggleLabel}>M├®diath├¿que service</Text>                        <Text style={styles.toggleDescription}>                            Ajouter vos assets g├®n├®raux (logos, publicit├®s).                        </Text>                    </View>                    <Switch                        value={useMediatechLibrary}                        onValueChange={setUseMediatechLibrary}                        trackColor={{ true: '#6366F1' }}                    />                </View>                <View style={styles.toggleRow}>                    <View style={styles.toggleText}>                        <Text style={styles.toggleLabel}>Visuels publicitaires</Text>                        <Text style={styles.toggleDescription}>                            Inclure les banni├¿res de vos campagnes.                        </Text>                    </View>                    <Switch                        value={includePubliciteAssets}                        onValueChange={setIncludePubliciteAssets}                        trackColor={{ true: '#6366F1' }}                    />                </View>                {renderMediaGrid(                    productMedia,                    'Images et vid├®os du produit',                    'Ajoutez des m├®dias ├á cette fiche pour dynamiser la vid├®o.',                    '#6366F1',                )}                {renderMediaGrid(                    serviceMedia,                    'M├®diath├¿que prestataire',                    'Aucun m├®dia global enregistr├® pour ce service pour le moment.',                    '#8B5CF6',                )}            </NativeCard>        );    };    const renderStep3 = () => {        // ├ëtape 3 : Style et effets uniquement        if (!selectedProduct) {            return (                <NativeCard style={styles.sectionCard}>                    <Text style={styles.sectionTitle}>S├®lectionnez d'abord un produit</Text>                    <Text style={styles.sectionSubtitle}>                        Retournez ├á l'├®tape 1 pour s├®lectionner un produit.                    </Text>                </NativeCard>            );        }        return (            <NativeCard style={styles.sectionCard}>                <View style={styles.sectionHeader}>                    <Text style={styles.sectionTitle}>­ƒÄ¿ Style et effets</Text>                    <TouchableOpacity                        style={styles.linkButton}                        onPress={handleGenerateStyleSuggestion}                        disabled={isGeneratingStyle}                    >                        {isGeneratingStyle ? (                            <ActivityIndicator size="small" color={modernColors.primary} />                        ) : (                            <SafeIcon name="sparkles" size={16} color={modernColors.primary} />                        )}                        <Text style={styles.linkButtonText}>                            {isGeneratingStyle ? 'AnalyseÔÇª' : 'Effets IA'}                        </Text>                    </TouchableOpacity>                </View>                <Text style={styles.sectionSubtitle}>                    Choisissez le style visuel et les effets pour votre vid├®o.                </Text>                <View style={styles.styleRow}>                    {VIDEO_STYLE_OPTIONS.map((option) => {                        const selected = stylePreset === option.key;                        return (                            <TouchableOpacity                                key={option.key}                                style={[                                    styles.styleChip,                                    selected && styles.styleChipSelected,                                ]}                                onPress={() => setStylePreset(option.key)}                            >                                <Text                                    style={[                                        styles.styleChipLabel,                                        selected && styles.styleChipLabelSelected,                                    ]}                                >                                    {option.label}                                </Text>                                <Text style={styles.styleChipDescription} numberOfLines={1}>                                    {option.description}                                </Text>                            </TouchableOpacity>                        );                    })}                </View>                {styleSuggestion && (                    <View style={styles.suggestionSection}>                        <Text style={styles.suggestionTitle}>Effets recommand├®s</Text>                        <View style={styles.suggestionRow}>                            {Array.isArray(styleSuggestion.effects) ? styleSuggestion.effects.map((effect) => {                                const active = selectedEffects.has(effect);                                return (                                    <TouchableOpacity                                        key={`effect_${effect}`}                                        style={[                                            styles.suggestionChip,                                            active && styles.suggestionChipSelected,                                        ]}                                        onPress={() => toggleSelection(effect, setSelectedEffects)}                                    >                                        <Text                                            style={[                                                styles.suggestionChipText,                                                active && styles.suggestionChipTextSelected,                                            ]}                                        >                                            {effect}                                        </Text>                                    </TouchableOpacity>                                );                            }) : null}                        </View>                        <Text style={styles.suggestionTitle}>Transitions</Text>                        <View style={styles.suggestionRow}>                            {Array.isArray(styleSuggestion.transitions) ? styleSuggestion.transitions.map((transition) => {                                const active = selectedTransitions.has(transition);                                return (                                    <TouchableOpacity                                        key={`transition_${transition}`}                                        style={[                                            styles.suggestionChip,                                            active && styles.suggestionChipSelected,                                        ]}                                        onPress={() => toggleSelection(transition, setSelectedTransitions)}                                    >                                        <Text                                            style={[                                                styles.suggestionChipText,                                                active && styles.suggestionChipTextSelected,                                            ]}                                        >                                            {transition}                                        </Text>                                    </TouchableOpacity>                                );                            }) : null}                        </View>                        <Text style={styles.suggestionTitle}>Overlays & tips</Text>                        <View style={styles.suggestionRow}>                            {Array.isArray(styleSuggestion.overlay_tips) ? styleSuggestion.overlay_tips.map((tip) => {                                const active = selectedOverlayTips.has(tip);                                return (                                    <TouchableOpacity                                        key={`tip_${tip}`}                                        style={[                                            styles.suggestionChip,                                            active && styles.suggestionChipSelected,                                        ]}                                        onPress={() => toggleSelection(tip, setSelectedOverlayTips)}                                    >                                        <Text                                            style={[                                                styles.suggestionChipText,                                                active && styles.suggestionChipTextSelected,                                            ]}                                        >                                            {tip}                                        </Text>                                    </TouchableOpacity>                                );                            }) : null}                        </View>                        <Text style={styles.suggestionTitle}>Palette de couleurs</Text>                        <NativeInput                            value={colorPalette}                            onChangeText={setColorPalette}                            placeholder={styleSuggestion.color_palette || '#6366F1 / #0EA5E9'}                        />                        <Text style={styles.suggestionTitle}>Ambiance musicale recommand├®e</Text>                        <NativeInput                            value={styleMusicHint}                            onChangeText={setStyleMusicHint}                            placeholder={styleSuggestion.music_hint || 'Ex: Beat afro-pop ├®nergique'}                        />                    </View>                )}            </NativeCard>        );    };    const renderStep4 = () => {        // ├ëtape 4 : Script et timeline uniquement        if (!selectedProduct) {            return (                <NativeCard style={styles.sectionCard}>                    <Text style={styles.sectionTitle}>S├®lectionnez d'abord un produit</Text>                    <Text style={styles.sectionSubtitle}>                        Retournez ├á l'├®tape 1 pour s├®lectionner un produit.                    </Text>                </NativeCard>            );        }        return (            <>                <NativeCard style={styles.sectionCard}>                    <View style={styles.sectionHeader}>                        <Text style={styles.sectionTitle}>­ƒôØ Script de montage</Text>                        <TouchableOpacity                            style={styles.linkButton}                            onPress={handleGenerateBrief}                            disabled={isGeneratingBrief}                        >                            {isGeneratingBrief ? (                                <ActivityIndicator size="small" color={modernColors.primary} />                            ) : (                                <SafeIcon name="sparkles" size={16} color={modernColors.primary} />                            )}                            <Text style={styles.linkButtonText}>                                {isGeneratingBrief ? 'G├®n├®rationÔÇª' : 'Brief IA'}                            </Text>                        </TouchableOpacity>                    </View>                    <View style={styles.fieldGroup}>                        <Text style={styles.fieldLabel}>Titre percutant</Text>                        <NativeInput                            value={headline}                            onChangeText={setHeadline}                            placeholder="Ex: ­ƒÜÇ Promotion sp├®ciale sur nos m├¿ches premium !"                            multiline                            minLines={2}                        />                    </View>                    <View style={styles.fieldGroup}>                        <Text style={styles.fieldLabel}>Call-to-action</Text>                        <NativeInput                            value={callToAction}                            onChangeText={setCallToAction}                            placeholder="Ex: R├®servez en ligne et profitez de la livraison express !"                            multiline                            minLines={2}                        />                    </View>                    <View style={styles.fieldGroup}>                        <View style={styles.fieldLabelRow}>                            <Text style={styles.fieldLabel}>­ƒôØ Script de montage</Text>                            <Text style={styles.fieldRequired}>*</Text>                        </View>                        <Text style={styles.fieldHint}>                            D├®crivez les messages cl├®s, avantages, garanties. Une ligne = une sc├¿ne.                        </Text>                        <NativeInput                            value={scriptNotes}                            onChangeText={setScriptNotes}                            placeholder={`Exemple:\nD├®couvrez notre nouveau produit\nQualit├® premium garantie\nPrix sp├®cial limit├®\nLivraison express disponible`}                            multiline                            minLines={4}                            style={scriptNotes.trim().length === 0 ? styles.scriptInputRequired : undefined}                        />                        {scriptNotes.trim().length === 0 && (                            <Text style={styles.fieldError}>                                ÔÜá´©Å Le script est requis pour g├®n├®rer la vid├®o                            </Text>                        )}                    </View>                    <View style={styles.durationRow}>                        <Text style={styles.fieldLabel}>Dur├®e cible</Text>                        <View style={styles.durationInputRow}>                            <NativeInput                                value={duration}                                onChangeText={setDuration}                                keyboardType="numeric"                                style={styles.durationInput}                            />                            <Text style={styles.durationUnit}>secondes</Text>                        </View>                        <Text style={styles.durationHint}>                            Astuce : 25-35s performe mieux sur les r├®seaux sociaux.                        </Text>                    </View>                </NativeCard>                {/* Ô£à NOUVEAU: S├®lecteur de variantes de timeline */}                {!generatedTimeline && !isEditingTimeline && scriptNotes.trim().length > 0 && (                    <TimelineVariantSelector                        timelineRequest={{                            brief: {                                script_outline: scriptNotes.split('\n').filter(l => l.trim().length > 0),                                headline,                                call_to_action: callToAction,                            },                            style: {                                effects: Array.from(selectedEffects),                                transitions: Array.from(selectedTransitions),                                color_palette: styleSuggestion?.color_palette || undefined,                            },                            available_media: Array.from(selectedMediaIds).map(id => ({                                id: id.toString(),                                media_type: 'image',                            })),                            duration_seconds: Number.parseFloat(duration) || 30,                            voiceover_script: voiceoverEnabled ? voiceoverScript : undefined,                            music_track_id: selectedMusicTrackId?.toString(),                            lang: voiceoverLang || subtitleLang || 'fr',                            variant_count: 3,                        }}                        onVariantSelected={(variant) => {                            console.log('[ProductVideoCreationModal] Variante s├®lectionn├®e:', variant.variant_name);                            setGeneratedTimeline(variant.timeline);                        }}                    />                )}                {/* Pr├®visualisation de la timeline g├®n├®r├®e */}                {generatedTimeline && !isEditingTimeline && (                    <>                        <NativeCard style={styles.sectionCard}>                            <TimelinePreview                                timeline={generatedTimeline}                                onEdit={() => setIsEditingTimeline(true)}                                onScenePress={(sceneIndex) => {                                    console.log('[ProductVideoCreationModal] Sc├¿ne press├®e:', sceneIndex);                                }}                            />                        </NativeCard>                        {/* Ô£à NOUVEAU: Preview rapide */}                        <QuickPreview                            timeline={generatedTimeline}                            onPreviewReady={(preview) => {                                console.log('[ProductVideoCreationModal] Preview pr├¬t:', preview.preview_url);                            }}                        />                        {/* Ô£à NOUVEAU: Short Preview via Studio (depuis Wizard) */}                        {studioSessionId && (                            <View style={styles.shortPreviewContainer}>                                <NativeButton                                    title={shortPreviewLoading ? "G├®n├®ration previewÔÇª" : "­ƒÄ¼ Preview courte (Studio)"}                                    variant="outline"                                    size="medium"                                    onPress={handleShortPreview}                                    disabled={shortPreviewLoading}                                    style={styles.shortPreviewButton}                                />                                <Text style={styles.shortPreviewHint}>                                    G├®n├¿re une pr├®visualisation courte avant la g├®n├®ration finale                                </Text>                            </View>                        )}                    </>                )}                {/* ├ëditeur de timeline */}                {isEditingTimeline && generatedTimeline && (                    <NativeCard style={styles.sectionCard}>                        <TimelineEditor                            timeline={generatedTimeline}                            onSave={(editedTimeline) => {                                setGeneratedTimeline(editedTimeline);                                setIsEditingTimeline(false);                            }}                            onCancel={() => setIsEditingTimeline(false)}                        />                    </NativeCard>                )}                {/* Ô£à NOUVEAU: Auto-cut intelligent */}                {generatedTimeline && !isEditingTimeline && generatedTimeline.scenes.length > 0 && (                    <AutoCutPanel                        videoUrl={generatedTimeline.scenes[0]?.media_url || ''}                        videoId={undefined}                        onScenesSelected={(scenes) => {                            console.log('[ProductVideoCreationModal] Sc├¿nes s├®lectionn├®es:', scenes);                            // Appliquer les sc├¿nes s├®lectionn├®es ├á la timeline                            if (scenes.length > 0 && generatedTimeline) {                                const updatedScenes = generatedTimeline.scenes.map((originalScene, idx) => {                                    const matchingScene = scenes.find(s =>                                        Math.abs(s.start_time - originalScene.start_time) < 0.5                                    );                                    if (matchingScene) {                                        return {                                            ...originalScene,                                            start_time: matchingScene.start_time,                                            duration: matchingScene.duration,                                        };                                    }                                    return originalScene;                                });                                setGeneratedTimeline({                                    ...generatedTimeline,                                    scenes: updatedScenes,                                    total_duration: scenes.reduce((sum, s) => sum + s.duration, 0),                                });                            }                        }}                    />                )}                {/* Ô£à NOUVEAU: Color grading automatique */}                {selectedMediaIds.size > 0 && Array.from(selectedMediaIds).length > 0 && (                    <ColorGradingPanel                        mediaUrl={Array.from(selectedMediaIds)[0]?.toString() || ''}                        onGradingComplete={(gradedUrl) => {                            console.log('[ProductVideoCreationModal] Color grading appliqu├®:', gradedUrl);                        }}                    />                )}                {/* Ô£à NOUVEAU: Carousel de previews d'effets */}                {styleSuggestion && styleSuggestion.effects && styleSuggestion.effects.length > 0 && selectedMediaIds.size > 0 && (                    <EffectPreviewCarousel                        effectNames={styleSuggestion.effects}                        sampleMediaUrl={Array.from(selectedMediaIds)[0]?.toString() || ''}                        onEffectSelected={(effectName, preview) => {                            console.log('[ProductVideoCreationModal] Effet s├®lectionn├®:', effectName, preview.preview_url);                            // Ajouter l'effet s├®lectionn├®                            setSelectedEffects(prev => new Set(prev).add(effectName));                        }}                    />                )}                {/* Ô£à NOUVEAU: Sous-titres automatiques */}                {generatedTimeline && !isEditingTimeline && (                    <AutoCaptionsPanel                        videoUrl={generatedTimeline.scenes[0]?.media_url || ''}                        lang={voiceoverLang || 'fr'}                        onCaptionsGenerated={(subtitles, subtitleFileUrl) => {                            console.log('[ProductVideoCreationModal] Sous-titres g├®n├®r├®s:', subtitles.length);                        }}                    />                )}            </>        );    };    const renderStep5 = () => {        // ├ëtape 5 : Audio uniquement (musique + voiceover)        if (!selectedProduct) {            return (                <NativeCard style={styles.sectionCard}>                    <Text style={styles.sectionTitle}>S├®lectionnez d'abord un produit</Text>                    <Text style={styles.sectionSubtitle}>                        Retournez ├á l'├®tape 1 pour s├®lectionner un produit.                    </Text>                </NativeCard>            );        }        return (            <>                <NativeCard style={styles.sectionCard}>                    <Text style={styles.sectionTitle}>­ƒÄÁ Ambiance musicale</Text>                    <Text style={styles.sectionSubtitle}>                        Choisissez une ambiance g├®n├®r├®e automatiquement ou importez votre propre piste.                    </Text>                    <View style={styles.styleRow}>                        {MUSIC_MODE_OPTIONS.map((option) => {                            const selected = musicMode === option.key;                            return (                                <TouchableOpacity                                    key={option.key}                                    style={[                                        styles.styleChip,                                        selected && styles.styleChipSelected,                                    ]}                                    onPress={() => setMusicMode(option.key)}                                >                                    <Text                                        style={[                                            styles.styleChipLabel,                                            selected && styles.styleChipLabelSelected,                                        ]}                                    >                                        {option.label}                                    </Text>                                    <Text style={styles.styleChipDescription} numberOfLines={1}>                                        {option.description}                                    </Text>                                </TouchableOpacity>                            );                        })}                    </View>                    {musicMode !== 'none' && (                        <View style={styles.fieldGroup}>                            <Text style={styles.fieldLabel}>Volume musique (0.10 - 0.60)</Text>                            <NativeInput                                value={musicVolume}                                onChangeText={setMusicVolume}                                keyboardType="decimal-pad"                            />                            <View style={styles.audioActionsRow}>                                <TouchableOpacity                                    style={styles.audioImportButton}                                    onPress={handleImportAudioTrack}                                    disabled={isUploadingAudio}                                >                                    {isUploadingAudio ? (                                        <ActivityIndicator size="small" color={modernColors.primary} />                                    ) : (                                        <SafeIcon name="plus" size={16} color={modernColors.primary} />                                    )}                                    <Text style={styles.audioImportText}>                                        {isUploadingAudio ? 'Import en coursÔÇª' : "Importer une piste depuis l'appareil"}                                    </Text>                                </TouchableOpacity>                            </View>                            {availableAudioTracks.length > 0 && (                                <>                                    <Text style={[styles.fieldLabel, { marginTop: 12 }]}>                                        S├®lectionner une piste audio existante                                    </Text>                                    {/* Ô£à NOUVEAU: Panel de suggestions audio contextuelles IA */}                                    {selectedProduct && (                                        <AudioSuggestionPanel                                            productName={selectedProduct.name || 'Produit'}                                            productType={selectedProduct.category}                                            tone={'energetic'}                                            channel={Array.from(selectedChannels)[0] || 'tiktok'}                                            durationSeconds={Number.parseFloat(duration) || 30}                                            onTrackSelected={(track) => {                                                console.log('[ProductVideoCreationModal] Piste audio s├®lectionn├®e:', track.track_id);                                                // TODO: Int├®grer la piste s├®lectionn├®e                                                setSelectedMusicTrackId(Number.parseInt(track.track_id) || null);                                            }}                                        />                                    )}                                    {/* Ô£à CORRIG├ë: Affichage en 2 colonnes au lieu d'un scroll horizontal */}                                    <View style={styles.audioRowGrid}>                                        {availableAudioTracks.map((track) => {                                            const selected = selectedMusicTrackId === track.id;                                            return (                                                <TouchableOpacity                                                    key={`audio_${track.id}`}                                                    style={[                                                        styles.audioChipGrid,                                                        selected && styles.audioChipSelected,                                                    ]}                                                    onPress={() => setSelectedMusicTrackId(selected ? null : track.id)}                                                >                                                    <SafeIcon                                                        name={selected ? 'music' : 'headphones'}                                                        size={16}                                                        color={selected ? '#0EA5E9' : modernColors.primary}                                                    />                                                    <Text                                                        style={[                                                            styles.audioChipText,                                                            selected && styles.audioChipTextSelected,                                                        ]}                                                        numberOfLines={2}                                                    >                                                        {track.ai_description || `Piste ${track.id}`}                                                    </Text>                                                </TouchableOpacity>                                            );                                        })}                                    </View>                                </>                            )}                            {audioLibrary.length > 0 && (                                <>                                    <Text style={[styles.fieldLabel, { marginTop: 16 }]}>                                        Biblioth├¿que audio Yukpo                                    </Text>                                    {loadingLibrary ? (                                        <View style={styles.audioRowGrid}>                                            <ActivityIndicator size="small" color={modernColors.primary} />                                        </View>                                    ) : (                                        <View style={styles.audioRowGrid}>                                            {audioLibrary.map((loop) => {                                                const isAttaching = attachingLoopId === loop.id;                                                return (                                                    <TouchableOpacity                                                        key={loop.id}                                                        style={[                                                            styles.audioChipGrid,                                                            isAttaching && styles.audioChipSelected,                                                        ]}                                                        onPress={() => handleAttachAudioLoop(loop.id)}                                                        disabled={isAttaching}                                                    >                                                        {isAttaching ? (                                                            <ActivityIndicator size="small" color={modernColors.primary} />                                                        ) : (                                                            <SafeIcon name="music" size={18} color={modernColors.primary} />                                                        )}                                                        <View style={{ flex: 1 }}>                                                            <Text style={styles.audioChipText} numberOfLines={2}>                                                                {loop.title}                                                            </Text>                                                            <Text style={styles.audioChipSubtitle} numberOfLines={1}>                                                                {loop.genre} ÔÇó {loop.bpm} BPM                                                            </Text>                                                        </View>                                                    </TouchableOpacity>                                                );                                            })}                                        </View>                                    )}                                </>                            )}                        </View>                    )}                </NativeCard>                <NativeCard style={styles.sectionCard}>                    <View style={styles.sectionHeader}>                        <Text style={styles.sectionTitle}>­ƒÄñ Narration vocale IA</Text>                        <Switch                            value={voiceoverEnabled}                            onValueChange={(value) => {                                setVoiceoverEnabled(value);                                if (value && voiceoverScript.trim().length === 0) {                                    const storyboardLines = scriptNotes                                        .split(/\r?\n/)                                        .map((line) => line.trim())                                        .filter((line) => line.length > 0);                                    setVoiceoverScript(                                        buildDefaultVoiceover(                                            normalizeProductName(selectedProduct),                                            headline,                                            callToAction,                                            storyboardLines,                                        ),                                    );                                }                            }}                            trackColor={{ true: '#6366F1' }}                        />                    </View>                    <Text style={styles.sectionSubtitle}>                        G├®n├¿re une voix off automatique. Vous pouvez ajuster le script avant synth├¿se.                    </Text>                    {voiceoverEnabled && (                        <>                            <View style={styles.voiceRow}>                                {VOICE_LANG_OPTIONS.map((option) => {                                    const selected = voiceoverLang === option.value;                                    return (                                        <TouchableOpacity                                            key={option.value}                                            style={[                                                styles.voiceChip,                                                selected && styles.voiceChipSelected,                                            ]}                                            onPress={() => setVoiceoverLang(option.value)}                                        >                                            <Text                                                style={[                                                    styles.voiceChipText,                                                    selected && styles.voiceChipTextSelected,                                                ]}                                            >                                                {option.label}                                            </Text>                                        </TouchableOpacity>                                    );                                })}                            </View>                            <NativeInput                                value={voiceoverScript}                                onChangeText={setVoiceoverScript}                                placeholder="Texte de narration..."                                multiline                                minLines={3}                            />                        </>                    )}                </NativeCard>            </>        );    };    const renderStep6 = () => {        // ├ëtape 6 : Publication et distribution        if (!selectedProduct) {            return (                <NativeCard style={styles.sectionCard}>                    <Text style={styles.sectionTitle}>S├®lectionnez d'abord un produit</Text>                    <Text style={styles.sectionSubtitle}>                        Retournez ├á l'├®tape 1 pour s├®lectionner un produit.                    </Text>                </NativeCard>            );        }        return (            <>                {/* Ô£à ESSENTIEL: Options de publication principales */}                <NativeCard style={styles.sectionCard}>                    <View style={styles.sectionHeader}>                        <Text style={styles.sectionTitle}>­ƒôñ Publication</Text>                    </View>                    <Text style={styles.sectionSubtitle}>                        Choisissez o├╣ votre vid├®o sera automatiquement publi├®e apr├¿s sa g├®n├®ration.                    </Text>                    <View style={styles.toggleRow}>                        <View style={styles.toggleText}>                            <Text style={styles.toggleLabel}>Envoyer dans le Chat Commerce</Text>                            <Text style={styles.toggleDescription}>                                Permet ├á vos prospects de visionner la vid├®o directement dans la conversation.                            </Text>                        </View>                        <Switch                            value={publishToChat}                            onValueChange={setPublishToChat}                            trackColor={{ true: '#6366F1' }}                        />                    </View>                    <View style={styles.toggleRow}>                        <View style={styles.toggleText}>                            <Text style={styles.toggleLabel}>Afficher sur la carte produit</Text>                            <Text style={styles.toggleDescription}>                                Ajoute la vid├®o dans la galerie principale du produit (mobile & web).                            </Text>                        </View>                        <Switch                            value={publishToProductCard}                            onValueChange={setPublishToProductCard}                            trackColor={{ true: '#6366F1' }}                        />                    </View>                </NativeCard>                {/* Ô£à CORRIG├ë 2025-11-30: Pr├®visualisation de la timeline g├®n├®r├®e ├á l'├®tape 6 */}                {!generatedTimeline && !isGeneratingTimeline && (                    <NativeCard style={styles.sectionCard}>                        <View style={styles.sectionHeader}>                            <Text style={styles.sectionTitle}>­ƒÄ¼ Structure de la vid├®o</Text>                            <TouchableOpacity                                style={styles.linkButton}                                onPress={async () => {                                    // G├®n├®rer la timeline si elle n'existe pas                                    if (!selectedProduct || !briefVariants.length || !styleSuggestion) {                                        Alert.alert('Pr├®requis manquants', 'G├®n├®rez d\'abord le brief et le style pour cr├®er la timeline.');                                        return;                                    }                                    setIsGeneratingTimeline(true);                                    try {                                        const availableMedia = [                                            ...productMedia.map(m => ({                                                id: m.id.toString(),                                                url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,                                                media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',                                            })),                                            ...serviceMedia.map(m => ({                                                id: m.id.toString(),                                                url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,                                                media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',                                            })),                                        ];                                        const selectedBrief = briefVariants[0];                                        const timelineResponse = await mediaApi.generateVideoTimeline({                                            brief: {                                                script_outline: selectedBrief.script_outline || [],                                                headline: selectedBrief.headline,                                                call_to_action: selectedBrief.call_to_action,                                            },                                            style: {                                                effects: styleSuggestion.effects || [],                                                transitions: styleSuggestion.transitions || [],                                                color_palette: styleSuggestion.color_palette || undefined,                                            },                                            available_media: availableMedia,                                            duration_seconds: ensureNumber(duration, 28),                                            voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,                                            music_track_id: selectedMusicTrackId ?? undefined,                                            lang: subtitleLang || voiceoverLang || 'fr',                                        });                                        if (timelineResponse.success && timelineResponse.data) {                                            const responseData = timelineResponse.data as { success?: boolean; timeline?: VideoTimelineType };                                            if (responseData.timeline) {                                                setGeneratedTimeline(responseData.timeline);                                            }                                        }                                    } catch (error) {                                        console.error('[ProductVideoCreationModal] Erreur g├®n├®ration timeline:', error);                                        Alert.alert('Erreur', 'Impossible de g├®n├®rer la timeline. La vid├®o sera cr├®├®e avec le script texte.');                                    } finally {                                        setIsGeneratingTimeline(false);                                    }                                }}                            >                                {isGeneratingTimeline ? (                                    <ActivityIndicator size="small" color={modernColors.primary} />                                ) : (                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />                                )}                                <Text style={styles.linkButtonText}>                                    {isGeneratingTimeline ? 'G├®n├®rationÔÇª' : 'G├®n├®rer la timeline'}                                </Text>                            </TouchableOpacity>                        </View>                        <Text style={styles.sectionSubtitle}>                            La timeline permet de visualiser la structure de votre vid├®o avant la g├®n├®ration finale.                        </Text>                    </NativeCard>                )}                {generatedTimeline && !isEditingTimeline && (                    <NativeCard style={styles.sectionCard}>                        <View style={styles.sectionHeader}>                            <Text style={styles.sectionTitle}>­ƒÄ¼ Structure de la vid├®o</Text>                        </View>                        <Text style={styles.sectionSubtitle}>                            Visualisez la structure de votre vid├®o avant la g├®n├®ration finale.                        </Text>                        <TimelinePreview                            timeline={generatedTimeline}                            onEdit={() => setIsEditingTimeline(true)}                            onScenePress={(sceneIndex) => {                                console.log('[ProductVideoCreationModal] Sc├¿ne press├®e:', sceneIndex);                            }}                        />                    </NativeCard>                )}                {/* Ô£à AJOUT├ë: ├ëditeur de timeline ├á l'├®tape 6 */}                {isEditingTimeline && generatedTimeline && (                    <NativeCard style={styles.sectionCard}>                        <TimelineEditor                            timeline={generatedTimeline}                            onSave={(editedTimeline) => {                                setGeneratedTimeline(editedTimeline);                                setIsEditingTimeline(false);                            }}                            onCancel={() => setIsEditingTimeline(false)}                        />                    </NativeCard>                )}                {/* Ô£à Distribution automatique avec plan IA */}                <NativeCard style={styles.sectionCard}>                    <View style={styles.sectionHeader}>                        <Text style={styles.sectionTitle}>Diffusion automatique</Text>                        <TouchableOpacity                            style={styles.linkButton}                            onPress={handleGenerateDistribution}                            disabled={isGeneratingDistribution}                        >                            {isGeneratingDistribution ? (                                <ActivityIndicator size="small" color={modernColors.primary} />                            ) : (                                <SafeIcon name="send" size={16} color={modernColors.primary} />                            )}                            <Text style={styles.linkButtonText}>                                {isGeneratingDistribution ? 'PlanificationÔÇª' : 'Plan IA'}                            </Text>                        </TouchableOpacity>                    </View>                    <Text style={styles.sectionSubtitle}>                        Contr├┤lez o├╣ la vid├®o sera mise en avant imm├®diatement apr├¿s sa g├®n├®ration.                    </Text>                    {distributionPlan && (                        <View style={styles.planBox}>                            {distributionPlan.summary && (                                <Text style={styles.planSummary}>{distributionPlan.summary}</Text>                            )}                            {distributionPlan.hashtags?.length > 0 && (                                <Text style={styles.planHashtags}>                                    Hashtags : {Array.isArray(distributionPlan.hashtags) ? distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}                                </Text>                            )}                            {distributionPlan.schedule?.length > 0 && (                                <View style={styles.planSchedule}>                                    {Array.isArray(distributionPlan.schedule) ? distributionPlan.schedule.map((item, idx) => (                                        <View key={`schedule_${idx}`} style={styles.planScheduleRow}>                                            <Text style={styles.planScheduleChannel}>{item.channel}</Text>                                            <Text style={styles.planScheduleTime}>{item.best_time}</Text>                                            {item.call_to_action && (                                                <Text style={styles.planScheduleCTA}>{item.call_to_action}</Text>                                            )}                                        </View>                                    )) : null}                                </View>                            )}                        </View>                    )}                    <View style={styles.toggleRow}>                        <View style={styles.toggleText}>                            <Text style={styles.toggleLabel}>Envoyer dans le Chat Commerce</Text>                            <Text style={styles.toggleDescription}>                                Permet ├á vos prospects de visionner la vid├®o directement dans la                                conversation.                            </Text>                        </View>                        <Switch                            value={publishToChat}                            onValueChange={setPublishToChat}                            trackColor={{ true: '#6366F1' }}                        />                    </View>                    <View style={styles.toggleRow}>                        <View style={styles.toggleText}>                            <Text style={styles.toggleLabel}>Afficher sur la carte produit</Text>                            <Text style={styles.toggleDescription}>                                Ajoute la vid├®o dans la galerie principale du produit (mobile & web).                            </Text>                        </View>                        <Switch                            value={publishToProductCard}                            onValueChange={setPublishToProductCard}                            trackColor={{ true: '#6366F1' }}                        />                    </View>                    <Text style={[styles.sectionSubtitle, { marginTop: 8 }]}>                        Ciblez aussi des canaux externes ├á planifier (export automatique disponible) :                    </Text>                    <View style={styles.voiceRow}>                        {DISTRIBUTION_OPTIONS.map((option) => {                            const selected = selectedChannels.has(option.key);                            return (                                <TouchableOpacity                                    key={option.key}                                    style={[                                        styles.voiceChip,                                        selected && styles.voiceChipSelected,                                    ]}                                    onPress={() =>                                        setSelectedChannels((prev) => {                                            const next = new Set(prev);                                            if (next.has(option.key)) {                                                next.delete(option.key);                                            } else {                                                next.add(option.key);                                            }                                            return next;                                        })                                    }                                >                                    <Text                                        style={[                                            styles.voiceChipText,                                            selected && styles.voiceChipTextSelected,                                        ]}                                    >                                        {option.label}                                    </Text>                                </TouchableOpacity>                            );                        })}                    </View>                    <Text style={styles.distributionHint}>                        Les canaux externes seront export├®s au format adapt├® (carr├® ou paysage) pour faciliter vos publications.                    </Text>                </NativeCard>                {/* Ô£à OPTIONNEL: Options avanc├®es (pliable) */}                <NativeCard style={styles.sectionCard}>                    <TouchableOpacity                        style={styles.advancedOptionsHeader}                        onPress={() => setShowAdvancedOptions(!showAdvancedOptions)}                        activeOpacity={0.7}                    >                        <View style={styles.advancedOptionsTitleRow}>                            <Text style={styles.sectionTitle}>ÔÜÖ´©Å Options avanc├®es</Text>                            <View style={styles.optionalBadge}>                                <Text style={styles.optionalBadgeText}>Optionnel</Text>                            </View>                        </View>                        <SafeIcon                            name={showAdvancedOptions ? 'chevron-up' : 'chevron-down'}                            size={20}                            color={modernColors.textSecondary}                        />                    </TouchableOpacity>                    {showAdvancedOptions && (                        <View style={styles.advancedOptionsContent}>                            {/* Ô£à SUPPRIM├ë 2025-11-30: Estimation de co├╗t retir├®e des options - Affich├®e dans un toast au clic sur "G├®n├®rer la vid├®o" */}                            {/* Cha├«nage de vid├®os */}                            <View style={styles.advancedSection}>                                <View style={styles.sectionHeader}>                                    <Text style={styles.advancedSectionTitle}>­ƒöù Cha├«nage de vid├®os</Text>                                    <Switch                                        value={showVideoChaining}                                        onValueChange={setShowVideoChaining}                                        trackColor={{ true: '#6366F1' }}                                    />                                </View>                                {showVideoChaining && (                                    <View style={styles.videoChainingContainer}>                                        <Text style={styles.sectionSubtitle}>                                            Liez cette vid├®o ├á des vid├®os pr├®c├®dentes pour cr├®er une s├®quence.                                        </Text>                                        {availableSessions.length > 0 ? (                                            <View style={styles.sessionsList}>                                                {availableSessions.map((session) => {                                                    const isSelected = selectedLinkedSessions.includes(session.id);                                                    return (                                                        <TouchableOpacity                                                            key={session.id}                                                            style={[                                                                styles.sessionChip,                                                                isSelected && styles.sessionChipSelected,                                                            ]}                                                            onPress={() => {                                                                if (isSelected) {                                                                    setSelectedLinkedSessions(                                                                        selectedLinkedSessions.filter((id) => id !== session.id)                                                                    );                                                                } else {                                                                    setSelectedLinkedSessions([                                                                        ...selectedLinkedSessions,                                                                        session.id,                                                                    ]);                                                                }                                                            }}                                                        >                                                            <SafeIcon                                                                name={isSelected ? 'check-circle' : 'circle'}                                                                size={16}                                                                color={isSelected ? '#10B981' : modernColors.primary}                                                            />                                                            <Text                                                                style={[                                                                    styles.sessionChipText,                                                                    isSelected && styles.sessionChipTextSelected,                                                                ]}                                                                numberOfLines={1}                                                            >                                                                {session.title || `Session ${session.id.substring(0, 8)}`}                                                            </Text>                                                        </TouchableOpacity>                                                    );                                                })}                                            </View>                                        ) : (                                            <Text style={styles.emptyStateText}>                                                Aucune session pr├®c├®dente disponible                                            </Text>                                        )}                                    </View>                                )}                            </View>                            {/* Formats de sortie */}                            <View style={styles.advancedSection}>                                <Text style={styles.advancedSectionTitle}>­ƒôÉ Formats de sortie</Text>                                <Text style={styles.sectionSubtitle}>                                    G├®n├®rer des variantes dans d'autres formats pour une diffusion multi-plateformes.                                </Text>                                <View style={styles.toggleRow}>                                    <View style={styles.toggleText}>                                        <Text style={styles.toggleLabel}>Format carr├® (1080x1080)</Text>                                        <Text style={styles.toggleDescription}>                                            Id├®al pour Instagram, WhatsApp et fiches produits.                                        </Text>                                    </View>                                    <Switch                                        value={generateSquareVariant}                                        onValueChange={setGenerateSquareVariant}                                        trackColor={{ true: '#6366F1' }}                                    />                                </View>                                <View style={styles.toggleRow}>                                    <View style={styles.toggleText}>                                        <Text style={styles.toggleLabel}>Format paysage (1920x1080)</Text>                                        <Text style={styles.toggleDescription}>                                            Parfait pour ├®crans larges et pr├®sentations.                                        </Text>                                    </View>                                    <Switch                                        value={generateLandscapeVariant}                                        onValueChange={setGenerateLandscapeVariant}                                        trackColor={{ true: '#6366F1' }}                                    />                                </View>                            </View>                        </View>                    )}                </NativeCard>                {/* Informations ├á int├®grer automatiquement */}                <NativeCard style={styles.sectionCard}>                    <Text style={styles.sectionTitle}>Ôä╣´©Å Informations automatiques</Text>                    <Text style={styles.sectionSubtitle}>                        Choisissez quelles informations du produit seront int├®gr├®es automatiquement dans la vid├®o.                    </Text>                    <View style={styles.toggleRow}>                        <View style={styles.toggleText}>                            <Text style={styles.toggleLabel}>Prix & devise</Text>                            <Text style={styles.toggleDescription}>                                Affiche automatiquement le prix actuel du produit.                            </Text>                        </View>                        <Switch                            value={includePrice}                            onValueChange={setIncludePrice}                            trackColor={{ true: '#6366F1' }}                        />                    </View>                    <View style={styles.toggleRow}>                        <View style={styles.toggleText}>                            <Text style={styles.toggleLabel}>Promotions actives</Text>                            <Text style={styles.toggleDescription}>                                Ajoute badges et messages promo d├®tect├®s dans votre fiche produit.                            </Text>                        </View>                        <Switch                            value={includePromotion}                            onValueChange={setIncludePromotion}                            trackColor={{ true: '#6366F1' }}                        />                    </View>                    <View style={styles.toggleRow}>                        <View style={styles.toggleText}>                            <Text style={styles.toggleLabel}>Coordonn├®es & CTA</Text>                            <Text style={styles.toggleDescription}>                                Ajoute votre CTA + boutons vers le chat Yukpomnang.                            </Text>                        </View>                        <Switch                            value={includeContact}                            onValueChange={setIncludeContact}                            trackColor={{ true: '#6366F1' }}                        />                    </View>                </NativeCard>                {/* Ô£à NOUVEAU: Synchronisation audio-vid├®o */}                {musicMode !== 'none' && generatedTimeline && generatedTimeline.scenes.length > 0 && (                    <AudioSyncPanel                        videoUrl={generatedTimeline.scenes[0]?.media_url || ''}                        musicTrackId={selectedMusicTrackId || undefined}                        videoTransitions={generatedTimeline.scenes.map((s) => s.start_time)}                        onSyncComplete={(syncedAudioUrl, beats) => {                            console.log('[ProductVideoCreationModal] Audio synchronis├®:', syncedAudioUrl, beats.length);                            // Mettre ├á jour la timeline avec les points de synchronisation                            if (generatedTimeline && beats.length > 0) {                                const updatedScenes = generatedTimeline.scenes.map((scene, idx) => {                                    // Trouver le beat le plus proche pour cette sc├¿ne                                    const closestBeat = beats.reduce((closest, beat) => {                                        const sceneDist = Math.abs(beat.time - scene.start_time);                                        const closestDist = Math.abs(closest.time - scene.start_time);                                        return sceneDist < closestDist ? beat : closest;                                    }, beats[0]);                                    // Ajuster le timing de la sc├¿ne pour s'aligner sur le beat                                    if (Math.abs(closestBeat.time - scene.start_time) < 0.5) {                                        return {                                            ...scene,                                            start_time: closestBeat.time,                                            audio_cue: closestBeat.time,                                        };                                    }                                    return scene;                                });                                setGeneratedTimeline({                                    ...generatedTimeline,                                    scenes: updatedScenes,                                });                            }                        }}                    />                )}            </>        );    };    // Ô£à NOUVEAU: Fonction pour rendre le contenu de l'├®tape active    const renderStepContent = () => {        switch (activeStep) {            case 1:                return renderStep1();            case 2:                return renderStep2();            case 3:                return renderStep3();            case 4:                return renderStep4();            case 5:                return renderStep5();            case 6:                return renderStep6();            default:                return renderStep1();        }    };    // Ô£à NOUVEAU: Fonction pour g├®rer la navigation entre les ├®tapes    const handleStepChange = (newStep: ModalStep) => {        // Validation basique : on ne peut pas avancer si aucun produit n'est s├®lectionn├® (sauf ├®tape 1)        if (newStep > 1 && !selectedProduct) {            Alert.alert(                'Produit requis',                'Veuillez d\'abord s├®lectionner un produit ├á l\'├®tape 1.',                [{ text: 'OK' }]            );            return;        }        setActiveStep(newStep);    };    // Ô£à CORRIG├ë: Fonction wrapper pour applyBriefVariant avec les setters du composant    // Ô£à CORRIG├ë 2025-11-28: Retir├® les setters des d├®pendances car ils sont stables    const handleApplyBriefVariant = useCallback((variant: AIVideoBriefVariant) => {        applyBriefVariant(            variant,            setHeadline,            setCallToAction,            setScriptNotes,            setVoiceoverScript,            setVariantPickerVisible        );    }, []); // Setters useState sont stables, pas besoin de d├®pendances    const coachPanel = useMemo(() => {        if (!selectedProduct) {            return null;        }        const hasInsights = briefVariants.length > 0 || styleSuggestion || distributionPlan;        if (!hasInsights && !coachLoading) {            return null;        }        const topVariant = briefVariants[0];        const scriptPreview =            topVariant?.headline ||            topVariant?.script_outline?.[0] ||            topVariant?.call_to_action ||            '';        // Ô£à CORRIG├ë: V├®rifier que hashtags est un tableau avant d'appeler .slice() et .map()        const limitedHashtags =            (Array.isArray(distributionPlan?.hashtags)                ? distributionPlan.hashtags.slice(0, 3).map((tag) => `#${String(tag || '').replace(/^#/, '')}`)                : []) || [];        const nextSchedule = distributionPlan?.schedule?.[0];        return (            <NativeCard style={styles.sectionCard}>                <View style={styles.sectionHeader}>                    <Text style={styles.sectionTitle}>Coach IA Yukpo</Text>                    <TouchableOpacity style={styles.linkButton} onPress={handleRefreshCoach}>                        {coachLoading ? (                            <ActivityIndicator size="small" color={modernColors.primary} />                        ) : (                            <SafeIcon name="refresh-cw" size={16} color={modernColors.primary} />                        )}                        <Text style={styles.linkButtonText}>                            {coachLoading ? 'AnalyseÔÇª' : 'Actualiser'}                        </Text>                    </TouchableOpacity>                </View>                {coachLoading && !hasInsights ? (                    <View style={styles.coachLoading}>                        <ActivityIndicator size="small" color={modernColors.primary} />                        <Text style={styles.coachLoadingText}>                            Le coach pr├®pare vos recommandations personnalis├®esÔÇª                        </Text>                    </View>                ) : (                    <>                        {topVariant && (                            <View style={styles.coachRow}>                                <SafeIcon                                    name="align-left"                                    size={18}                                    color={modernColors.primary}                                />                                <View style={styles.coachContent}>                                    <Text style={styles.coachLabel}>Script IA</Text>                                    {scriptPreview ? (                                        <Text style={styles.coachText} numberOfLines={2}>                                            {scriptPreview}                                        </Text>                                    ) : null}                                    <TouchableOpacity                                        style={styles.coachAction}                                        onPress={() => setVariantPickerVisible(true)}                                    >                                        <SafeIcon name="sparkles" size={14} color={modernColors.primary} />                                        <Text style={styles.coachActionText}>                                            Voir les {briefVariants.length} variantes                                        </Text>                                    </TouchableOpacity>                                </View>                            </View>                        )}                        {styleSuggestion && (                            <View style={styles.coachRow}>                                <SafeIcon                                    name="film"                                    size={18}                                    color={modernColors.primary}                                />                                <View style={styles.coachContent}>                                    <Text style={styles.coachLabel}>Effets recommand├®s</Text>                                    {Array.isArray(styleSuggestion.effects) && styleSuggestion.effects.length > 0 ? (                                        <Text style={styles.coachText} numberOfLines={2}>                                            Effets : {styleSuggestion.effects.slice(0, 3).join(', ')}                                        </Text>                                    ) : null}                                    {Array.isArray(styleSuggestion.transitions) && styleSuggestion.transitions.length > 0 ? (                                        <Text style={styles.coachMeta}>                                            Transitions : {styleSuggestion.transitions.slice(0, 2).join(', ')}                                        </Text>                                    ) : null}                                    <TouchableOpacity                                        style={styles.coachAction}                                        onPress={() => applyStyleSuggestion(styleSuggestion)}                                    >                                        <SafeIcon name="plus-circle" size={14} color={modernColors.primary} />                                        <Text style={styles.coachActionText}>Appliquer les effets</Text>                                    </TouchableOpacity>                                </View>                            </View>                        )}                        {distributionPlan && (                            <View style={styles.coachRow}>                                <SafeIcon                                    name="send"                                    size={18}                                    color={modernColors.primary}                                />                                <View style={styles.coachContent}>                                    <Text style={styles.coachLabel}>Plan de diffusion</Text>                                    {distributionPlan.summary ? (                                        <Text style={styles.coachText} numberOfLines={2}>                                            {distributionPlan.summary}                                        </Text>                                    ) : null}                                    {limitedHashtags.length > 0 ? (                                        <Text style={styles.coachMeta}>                                            Hashtags : {limitedHashtags.join(' ')}                                        </Text>                                    ) : null}                                    {nextSchedule ? (                                        <Text style={styles.coachMeta}>                                            Prochaine diffusion : {nextSchedule.channel} ÔÇó {nextSchedule.best_time}                                        </Text>                                    ) : null}                                </View>                            </View>                        )}                    </>                )}            </NativeCard>        );    }, [        applyStyleSuggestion,        briefVariants,        coachLoading,        distributionPlan,        handleRefreshCoach,        selectedProduct,        // Ô£à CORRIG├ë: setVariantPickerVisible retir├® des d├®pendances car c'est un setter useState stable        styleSuggestion,    ]);    const handleSubmit = async () => {        if (!selectedProduct) {            Alert.alert('Produit requis', "S├®lectionnez d'abord le produit principal ├á mettre en avant.");            return;        }        if (typeof selectedProduct.product_index !== 'number') {            Alert.alert('Produit incomplet', "Ce produit ne poss├¿de pas d'index. Rechargez la page et r├®essayez.");            return;        }        if (!headline.trim()) {            Alert.alert('Titre manquant', 'Ajoutez un titre accrocheur pour votre vid├®o.');            return;        }        // Ô£à NOUVEAU: V├®rifier que le script est rempli        if (!scriptNotes.trim()) {            Alert.alert(                'Script requis',                'Le script de montage vid├®o est requis. D├®crivez les messages cl├®s, avantages, garanties, etc. Une ligne = une sc├¿ne.'            );            return;        }        const durationSeconds = ensureNumber(duration, 28);        if (durationSeconds < 10 || durationSeconds > 90) {            Alert.alert('Dur├®e invalide', 'Choisissez une dur├®e comprise entre 10 et 90 secondes.');            return;        }        if (voiceoverEnabled) {            if (voiceoverScript.trim().length < 10) {                Alert.alert('Narration insuffisante', 'Le texte de la voix off doit contenir au moins 10 caract├¿res.');                return;            }        }        const parsedMusicVolume = Number.parseFloat(musicVolume);        const safeMusicVolume = Number.isFinite(parsedMusicVolume)            ? Math.min(Math.max(parsedMusicVolume, 0.05), 0.7)            : 0.28;        // Ô£à NOUVEAU 2025-11-30: Estimer le co├╗t et afficher dans un toast avant de g├®n├®rer        try {            setCostLoading(true);            const serviceId = selectedProduct.serviceId;            if (!serviceId) {                Alert.alert('Service invalide', 'Impossible d\'estimer le co├╗t.');                return;            }            const payloadForEstimation: VideoGenerationPayload = {                style: stylePreset,                duration_seconds: durationSeconds,                headline: headline.trim(),                call_to_action: callToAction.trim(),                include_price: includePrice,                include_promotion: includePromotion,                include_contact: includeContact,                selected_media_ids: Array.from(selectedMediaIds.values()),                related_product_indices: Array.from(selectedRelatedProducts.values()),                use_product_gallery: useProductGallery,                use_service_mediatech: useMediatechLibrary,                include_publicite_assets: includePubliciteAssets,                publish_to_chat: publishToChat,                publish_to_product_card: publishToProductCard,                timeline: generatedTimeline ? {                    total_duration: generatedTimeline.total_duration,                    scenes: generatedTimeline.scenes.map(s => ({                        scene_index: s.scene_index,                        start_time: s.start_time,                        duration: s.duration,                        media_id: s.media_id,                        media_url: s.media_url,                        text: s.text,                        text_position: s.text_position,                        transition: s.transition,                        effects: s.effects,                        audio_cue: s.audio_cue,                    }))                } : undefined,                auto_storyboard: autoStoryboard,                storyboard: generatedTimeline                    ? undefined                    : scriptNotes                        .split(/\r?\n/)                        .map((line) => line.trim())                        .filter((line) => line.length > 0),                music_mode: musicMode,                music_volume: musicMode === 'none' ? undefined : safeMusicVolume,                music_track_id: selectedMusicTrackId ?? undefined,                voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,                voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,                voiceover_voice: voiceoverEnabled ? voiceoverLang : undefined,                subtitle_lang: subtitleLang,                generate_square_variant: generateSquareVariant,                generate_landscape_variant: generateLandscapeVariant,                distribute_channels: Array.from(selectedChannels.values()),                style_effects: selectedEffects.size > 0 ? Array.from(selectedEffects) : undefined,                style_transitions: selectedTransitions.size > 0 ? Array.from(selectedTransitions) : undefined,                style_overlay_tips: selectedOverlayTips.size > 0 ? Array.from(selectedOverlayTips) : undefined,                style_color_palette: colorPalette.trim().length > 0 ? colorPalette.trim() : undefined,                style_music_hint: styleMusicHint.trim().length > 0 ? styleMusicHint.trim() : undefined,                // Ô£à NOTE: linked_session_ids retir├® car non support├® dans VideoGenerationPayload            };            const response = await iaApi.estimateVideoCost(serviceId, selectedProduct.product_index, payloadForEstimation);            const estimationResponse = response.data as VideoCostEstimateResponse | VideoCostEstimation | undefined;            const estimation =                estimationResponse && 'data' in estimationResponse                    ? estimationResponse.data                    : (estimationResponse as VideoCostEstimation | undefined);            setCostLoading(false);            if (!estimation) {                Alert.alert('Estimation impossible', 'Impossible d\'estimer le co├╗t pour le moment. R├®essayez plus tard.');                return;            }            // Construire le message d'estimation            const totalCost = estimation.total_cost_fcfa || estimation.required_fcfa || 0;            const currentBalance = estimation.current_balance_fcfa || 0;            const isAffordable = estimation.affordable !== false;            let costMessage = `­ƒÆ░ Estimation du co├╗t de g├®n├®ration\n\n`;            costMessage += `Co├╗t total : ${totalCost.toLocaleString('fr-FR')} FCFA\n`;            if (estimation.breakdown) {                costMessage += `\nD├®tail :\n`;                costMessage += `ÔÇó Tokens IA : ${estimation.breakdown.tokens_cost_usd.toFixed(2)} USD\n`;                if (estimation.breakdown.audio_mastering_usd > 0) {                    costMessage += `ÔÇó Mastering audio : ${estimation.breakdown.audio_mastering_usd.toFixed(2)} USD\n`;                }                if (estimation.breakdown.broll_generation_usd > 0) {                    costMessage += `ÔÇó G├®n├®ration B-roll : ${estimation.breakdown.broll_generation_usd.toFixed(2)} USD\n`;                }            }            costMessage += `\nSolde actuel : ${currentBalance.toLocaleString('fr-FR')} FCFA\n`;            if (!isAffordable) {                costMessage += `\nÔÜá´©Å Solde insuffisant !`;            }            // Afficher l'Alert avec confirmation            Alert.alert(                'Estimation du co├╗t',                costMessage,                [                    {                        text: 'Annuler',                        style: 'cancel',                    },                    {                        text: isAffordable ? 'Confirmer et g├®n├®rer' : 'Recharger des tokens',                        onPress: async () => {                            if (!isAffordable) {                                // Rediriger vers la page de recharge                                Alert.alert('Solde insuffisant', 'Veuillez recharger vos tokens avant de g├®n├®rer la vid├®o.');                                return;                            }                            // Continuer avec la g├®n├®ration                            await proceedWithVideoGeneration(payloadForEstimation);                        },                    },                ],                { cancelable: true }            );        } catch (error: any) {            setCostLoading(false);            console.error('[ProductVideoCreationModal] Erreur estimation co├╗t:', error);            const message = error?.message || 'Erreur lors de l\'estimation du co├╗t';            Alert.alert('Erreur d\'estimation', message);        }    };    // Ô£à NOUVEAU 2025-11-30: Fonction s├®par├®e pour la g├®n├®ration effective de la vid├®o    const proceedWithVideoGeneration = async (payload: VideoGenerationPayload) => {        if (!selectedProduct) {            return;        }        setIsSubmitting(true);        try {            const response = await mediaApi.generateProductVideo(                selectedProduct.serviceId,                selectedProduct.product_index,                payload            );            if (!response.success || !response.data) {                throw new Error(response.error || 'G├®n├®ration impossible');            }            const result = response.data as GeneratedVideoResponse;            await onSuccess(result);        } catch (error: any) {            console.error('[ProductVideoCreationModal] Erreur g├®n├®ration vid├®o:', error);            // Ô£à CORRECTION: Am├®liorer les messages d'erreur avec des d├®tails sp├®cifiques            let errorMessage = 'Nous ne parvenons pas ├á g├®n├®rer la vid├®o.';            if (error?.message) {                const msg = error.message.toLowerCase();                if (msg.includes('aucune image') || msg.includes('image trouv├®e')) {                    errorMessage = 'Aucune image disponible pour g├®n├®rer la vid├®o.\n\n' +                        'Solutions :\n' +                        'ÔÇó Ajoutez des images dans la m├®diath├¿que du service\n' +                        'ÔÇó Ajoutez des images au produit\n' +                        'ÔÇó La g├®n├®ration automatique d\'images IA sera activ├®e lors de la prochaine tentative';                } else if (msg.includes('400') || msg.includes('bad request')) {                    errorMessage = 'Demande invalide.\n\n' +                        'V├®rifiez que tous les champs sont correctement remplis et r├®essayez.';                } else if (msg.includes('500') || msg.includes('internal')) {                    errorMessage = 'Erreur serveur temporaire.\n\n' +                        'Veuillez r├®essayer dans quelques instants. Si le probl├¿me persiste, contactez le support.';                } else if (msg.includes('timeout') || msg.includes('timed out')) {                    errorMessage = 'La g├®n├®ration prend plus de temps que pr├®vu.\n\n' +                        'La vid├®o est peut-├¬tre en cours de cr├®ation. V├®rifiez vos vid├®os dans quelques instants.';                } else {                    errorMessage = error.message;                }            }            Alert.alert(                'G├®n├®ration impossible',                errorMessage + '\n\nV├®rifiez votre connexion et r├®essayez.'            );        } finally {            setIsSubmitting(false);        }    };    const renderProductSelection = () => {        if (selectedProduct) {            const imagePreview = (selectedProduct.images && selectedProduct.images[0]) || null;            return (                <NativeCard style={styles.sectionCard}>                    <View style={styles.sectionHeader}>                        <Text style={styles.sectionTitle}>Produit principal</Text>                        <TouchableOpacity onPress={() => setSelectedProduct(null)} style={styles.linkButton}>                            <SafeIcon name="refresh-ccw" size={16} color={modernColors.primary} />                            <Text style={styles.linkButtonText}>Changer</Text>                        </TouchableOpacity>                    </View>                    <View style={styles.selectedProductContainer}>                        {imagePreview ? (                            <Image source={{ uri: imagePreview }} style={styles.selectedProductImage} />                        ) : (                            <View style={styles.selectedProductPlaceholder}>                                <SafeIcon name="image" size={28} color={modernColors.primary} />                            </View>                        )}                        <View style={styles.selectedProductInfo}>                            <Text style={styles.selectedProductName} numberOfLines={2}>                                {normalizeProductName(selectedProduct)}                            </Text>                            <Text style={styles.selectedProductService} numberOfLines={1}>                                {extractServiceName(selectedProduct, 'Service')}                            </Text>                            {(() => {                                const prix = getFieldValue(selectedProduct.prix);                                const devise = getFieldValue(selectedProduct.devise) || 'XAF';                                return prix ? (                                    <Text style={styles.selectedProductPrice}>                                        {prix} {devise}                                    </Text>                                ) : null;                            })()}                        </View>                    </View>                </NativeCard>            );        }        // Ô£à V├®rifier si des produits sont disponibles        if (!groupedProducts || groupedProducts.length === 0) {            return (                <NativeCard style={styles.sectionCard}>                    <Text style={styles.sectionTitle}>S├®lectionnez le produit ├á mettre en avant</Text>                    <Text style={styles.sectionSubtitle}>                        Aucun produit disponible. Cr├®ez d'abord un produit dans vos services.                    </Text>                </NativeCard>            );        }        return (            <NativeCard style={styles.sectionCard}>                <Text style={styles.sectionTitle}>S├®lectionnez le produit ├á mettre en avant</Text>                <Text style={styles.sectionSubtitle}>                    Choisissez un service puis un produit pour lancer la cr├®ation automatique de votre vid├®o verticale.                </Text>                {/* Ô£à CORRECTION: Remplacer ScrollView imbriqu├® par View pour ├®viter les probl├¿mes de toucher */}                <View style={styles.productSelectionList}>                    {Array.isArray(groupedProducts) && groupedProducts.length > 0 ? (                        groupedProducts.map((group) => {                            // Ô£à CORRIG├ë: V├®rifier que group et group.items sont d├®finis                            if (!group || !Array.isArray(group.items)) {                                return null;                            }                            return (                                <View key={group.serviceId || 'unknown'} style={styles.productGroup}>                                    <Text style={styles.productGroupTitle}>                                        {extractServiceName(group, 'Service sans nom')}                                    </Text>                                    {group.items.map((product, idx) => {                                        // Ô£à CORRIG├ë: V├®rifier que product est d├®fini                                        if (!product) return null;                                        return (                                            <TouchableOpacity                                                key={`${group.serviceId}_${product.product_index ?? product.id ?? idx}`}                                                style={styles.productSelectItem}                                                onPress={() => {                                                    console.log('[ProductVideoCreationModal] Produit s├®lectionn├®:', product);                                                    // Ô£à CORRIG├ë: V├®rifier que le produit est valide                                                    if (!product) {                                                        console.error('[ProductVideoCreationModal] Produit null/undefined');                                                        return;                                                    }                                                    // Ô£à CORRIG├ë: Normaliser le produit en extrayant les valeurs des wrappers                                                    const normalizedProduct: ManagedProduct = {                                                        ...product,                                                        nom: getFieldValue(product.nom) ||                                                            getFieldValue((product as any).nom_produit) ||                                                            'Produit sans nom',                                                        nom_produit: getFieldValue((product as any).nom_produit) ||                                                            getFieldValue(product.nom) ||                                                            'Produit sans nom',                                                        // Normaliser aussi les autres champs qui pourraient avoir des wrappers                                                        prix: getFieldValue(product.prix),                                                        devise: getFieldValue(product.devise),                                                        description: getFieldValue(product.description),                                                    };                                                    setSelectedProduct(normalizedProduct);                                                    console.log('[ProductVideoCreationModal] Produit normalis├®:', normalizedProduct);                                                }}                                                activeOpacity={0.7}                                            >                                                <View style={styles.productSelectIcon}>                                                    <SafeIcon name="package" size={18} color={modernColors.primary} />                                                </View>                                                <View style={{ flex: 1 }}>                                                    <Text style={styles.productSelectName} numberOfLines={2}>                                                        {normalizeProductName(product)}                                                    </Text>                                                    <Text style={styles.productSelectMeta} numberOfLines={1}>                                                        {getFieldValue(product.type) || 'produit'}                                                        {(() => {                                                            const prix = getFieldValue(product.prix);                                                            const devise = getFieldValue(product.devise) || 'XAF';                                                            return prix ? ` ÔÇó ${prix} ${devise}` : '';                                                        })()}                                                    </Text>                                                </View>                                                <SafeIcon name="chevron-right" size={18} color={modernColors.textSecondary} />                                            </TouchableOpacity>                                        );                                    })}                                </View>                            );                        })                    ) : (                        <View style={styles.emptyState}>                            <Text style={styles.emptyStateText}>Aucun produit disponible</Text>                        </View>                    )}                </View>            </NativeCard>        );    };    const renderRelatedProducts = () => {        if (!selectedProduct || productsSameService.length === 0) {            return null;        }        return (            <NativeCard style={styles.sectionCard}>                <Text style={styles.sectionTitle}>Associer d'autres produits</Text>                <Text style={styles.sectionSubtitle}>                    Ajoutez des produits compl├®mentaires pour g├®n├®rer des tags et liens cliquables directement depuis la                    vid├®o.                </Text>                <View style={styles.relatedProductsContainer}>                    {Array.isArray(productsSameService) && productsSameService.length > 0 ? (                        productsSameService.map((product) => {                            const index = typeof product.product_index === 'number' ? product.product_index : undefined;                            const selected = index !== undefined && selectedRelatedProducts.has(index);                            return (                                <TouchableOpacity                                    key={`related_${product.id}_${product.product_index}`}                                    style={[                                        styles.relatedProductChip,                                        selected && styles.relatedProductChipSelected,                                    ]}                                    onPress={() => toggleRelatedProduct(index)}                                >                                    <SafeIcon                                        name={selected ? 'check-circle' : 'circle'}                                        size={16}                                        color={selected ? '#10B981' : modernColors.primary}                                    />                                    <Text                                        style={[                                            styles.relatedProductText,                                            selected && styles.relatedProductTextSelected,                                        ]}                                        numberOfLines={1}                                    >                                        {normalizeProductName(product)}                                    </Text>                                </TouchableOpacity>                            );                        })                    ) : (                        <Text style={styles.emptyStateText}>Aucun produit compl├®mentaire disponible</Text>                    )}                </View>            </NativeCard>        );    };    const renderMediaGrid = (        items: MediaLibraryItem[],        title: string,        emptyMessage: string,        accentColor: string,    ) => (        <View style={styles.mediaSection}>            <View style={styles.sectionHeader}>                <Text style={styles.sectionTitle}>{title}</Text>                <View style={[styles.mediaBadge, { backgroundColor: accentColor }]}>                    <Text style={styles.mediaBadgeText}>{items.length}</Text>                </View>            </View>            {mediaLoading ? (                <View style={styles.mediaLoading}>                    <ActivityIndicator size="small" color={modernColors.primary} />                    <Text style={styles.mediaLoadingText}>R├®cup├®ration de vos m├®diasÔÇª</Text>                </View>            ) : items.length === 0 ? (                <View style={styles.emptyMediaState}>                    <SafeIcon name="image-off" size={24} color={modernColors.textSecondary} />                    <Text style={styles.emptyMediaText}>{emptyMessage}</Text>                </View>            ) : (                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mediaList}>                    {items.map((item) => {                        const uri = buildMediaUrl(item.path);                        const isSelected = selectedMediaIds.has(item.id);                        const iconName =                            (item.type || item.media_type)?.toLowerCase().includes('video') ? 'video' : 'image';                        return (                            <TouchableOpacity                                key={`media_${item.id}`}                                style={[styles.mediaItem, isSelected && styles.mediaItemSelected]}                                onPress={() => toggleMediaSelection(item.id)}                                activeOpacity={0.85}                            >                                {uri ? (                                    <Image source={{ uri }} style={styles.mediaThumbnail} resizeMode="cover" />                                ) : (                                    <View style={styles.mediaThumbnailFallback}>                                        <SafeIcon name={iconName as any} size={28} color={modernColors.primary} />                                    </View>                                )}                                <View style={styles.mediaOverlay}>                                    <SafeIcon name={iconName as any} size={14} color="#FFFFFF" />                                    {item.ai_description ? (                                        <Text style={styles.mediaCaption} numberOfLines={2}>                                            {item.ai_description}                                        </Text>                                    ) : null}                                </View>                                {isSelected && (                                    <View style={styles.mediaSelectedBadge}>                                        <SafeIcon name="check" size={16} color="#FFFFFF" />                                    </View>                                )}                            </TouchableOpacity>                        );                    })}                </ScrollView>            )}        </View>    );    const handleGenerateDistribution = useCallback(async () => {        if (!selectedProduct) {            Alert.alert('Produit requis', 'S├®lectionnez un produit avant de g├®n├®rer un plan de diffusion.');            return;        }        setIsGeneratingDistribution(true);        try {            const response = await mediaApi.generateDistributionPlan({                product_name: normalizeProductName(selectedProduct),                channels: Array.from(selectedChannels.values()),                target_audience: Array.from(selectedChannels.values()).join(', '),                marketing_angle: mediaAnalysis.marketingAngle || undefined,                lang: subtitleLang || voiceoverLang,            });            if (!response.success || !(response.data as any)?.plan) {                throw new Error(response.error || 'Plan IA indisponible');            }            setDistributionPlan((response.data as any).plan);            Alert.alert('Plan IA g├®n├®r├®', 'Le plan de diffusion et hashtags ont ├®t├® ajout├®s.');        } catch (error) {            console.error('[ProductVideoCreationModal] Plan IA impossible:', error);            Alert.alert(                'Erreur IA',                error instanceof Error ? error.message : 'Impossible de g├®n├®rer le plan de diffusion pour le moment.'            );        } finally {            setIsGeneratingDistribution(false);        }    }, [selectedProduct, selectedChannels, mediaAnalysis, subtitleLang, voiceoverLang]);    return (        <>            <Modal                visible={visible}                animationType="slide"                transparent                onRequestClose={() => {                    if (!isSubmitting) {                        onClose();                    }                }}            >                <View style={styles.overlay}>                    <NativeCard style={styles.modalCard}>                        <View style={styles.modalHeader}>                            <View style={{ flex: 1 }}>                                <Text style={styles.modalTitle}>Studio vid├®o produit</Text>                                <Text style={styles.modalSubtitle}>                                    Assemblez en 30 secondes une vid├®o verticale pr├¬te pour TikTok, Reels et votre fiche                                    produit.                                </Text>                                {/* Ô£à NOUVEAU: Indicateur d'├®tapes */}                                <View style={styles.stepIndicator}>                                    {[1, 2, 3, 4, 5, 6].map((step) => (                                        <View                                            key={step}                                            style={[                                                styles.stepDot,                                                activeStep === step && styles.stepDotActive,                                                activeStep > step && styles.stepDotCompleted,                                            ]}                                        />                                    ))}                                    <Text style={styles.stepText}>                                        ├ëtape {activeStep} sur 6                                    </Text>                                </View>                            </View>                            <TouchableOpacity onPress={onClose} disabled={isSubmitting} style={styles.closeButton}>                                <SafeIcon name="x" size={20} color={modernColors.textSecondary} />                            </TouchableOpacity>                        </View>                        <ScrollView                            style={styles.modalBody}                            contentContainerStyle={getStepContentStyle()}                            showsVerticalScrollIndicator={false}                        >                            {renderStepContent()}                        </ScrollView>                        {/* Ô£à NOUVEAU Phase 3.2: Modal AR Video Editor */}                        <Modal                            visible={showAREditor}                            animationType="slide"                            presentationStyle="fullScreen"                            onRequestClose={() => {                                if (!isUploadingARVideo) {                                    setShowAREditor(false);                                }                            }}                        >                            <ARVideoEditor                                productName={normalizeProductName(selectedProduct)}                                serviceId={selectedProduct ? Number(selectedProduct.serviceId) : undefined}                                productIndex={selectedProduct?.product_index}                                onVideoCaptured={handleARVideoCaptured}                                onClose={() => {                                    if (!isUploadingARVideo) {                                        setShowAREditor(false);                                    }                                }}                            />                        </Modal>                        {/* Ô£à NOUVEAU: Boutons de navigation par ├®tape */}                        <View style={getFixedBottomButtonStyle()}>                            {activeStep === 1 && (                                <NativeButton                                    title={selectedProduct ? "Suivant" : "S├®lectionnez un produit"}                                    variant="primary"                                    size="large"                                    onPress={() => {                                        if (selectedProduct) {                                            markStepCompleted(1);                                            // Tracking step completion                                            markStepCompleted(1);                                        }                                        handleStepChange(2);                                    }}                                    disabled={!selectedProduct}                                />                            )}                            {activeStep === 2 && (                                <View style={styles.navigationRow}>                                    <NativeButton                                        title="Pr├®c├®dent"                                        variant="secondary"                                        onPress={() => handleStepChange(1)}                                    />                                    <NativeButton                                        title="Suivant"                                        variant="primary"                                        onPress={() => handleStepChange(3)}                                    />                                </View>                            )}                            {activeStep === 3 && (                                <View style={styles.navigationRow}>                                    <NativeButton                                        title="Pr├®c├®dent"                                        variant="secondary"                                        onPress={() => handleStepChange(2)}                                        style={styles.navigationButtonLeft} // Ô£à AJOUT├ë: Style pour positionner ├á gauche                                    />                                    <NativeButton                                        title="Suivant"                                        variant="primary"                                        onPress={() => handleStepChange(4)}                                        style={styles.navigationButtonRight} // Ô£à AJOUT├ë: Style pour positionner ├á droite                                    />                                </View>                            )}                            {activeStep === 4 && (                                <View style={styles.navigationRow}>                                    <NativeButton                                        title="Pr├®c├®dent"                                        variant="secondary"                                        onPress={() => handleStepChange(3)}                                        style={styles.navigationButtonLeft} // Ô£à AJOUT├ë: Style pour positionner ├á gauche                                    />                                    <NativeButton                                        title="Suivant"                                        variant="primary"                                        onPress={() => handleStepChange(5)}                                        style={styles.navigationButtonRight} // Ô£à AJOUT├ë: Style pour positionner ├á droite                                    />                                </View>                            )}                            {activeStep === 5 && (                                <View style={styles.navigationRow}>                                    <NativeButton                                        title="Pr├®c├®dent"                                        variant="secondary"                                        onPress={() => handleStepChange(4)}                                        style={styles.navigationButtonLeft} // Ô£à AJOUT├ë: Style pour positionner ├á gauche                                    />                                    <NativeButton                                        title="Suivant"                                        variant="primary"                                        onPress={() => handleStepChange(6)}                                        style={styles.navigationButtonRight} // Ô£à AJOUT├ë: Style pour positionner ├á droite                                    />                                </View>                            )}                            {activeStep === 6 && (                                <View style={styles.navigationRow}>                                    <NativeButton                                        title="Pr├®c├®dent"                                        variant="secondary"                                        onPress={() => handleStepChange(5)}                                    />                                    <NativeButton                                        title={isSubmitting ? 'G├®n├®ration en cours...' : 'G├®n├®rer la vid├®o'}                                        variant="primary"                                        onPress={handleSubmit}                                        disabled={isSubmitting || !selectedProduct}                                    />                                </View>                            )}                            {/* Ô£à SUPPRIM├ë: Doublon de boutons pour l'├®tape 4 - Les boutons sont d├®j├á g├®r├®s au-dessus */}                        </View>                    </NativeCard>                </View>            </Modal>            <Modal                visible={variantPickerVisible}                animationType="fade"                transparent                onRequestClose={() => setVariantPickerVisible(false)}            >                <View style={styles.variantModalBackdrop}>                    <View style={styles.variantModalContainer}>                        <Text style={styles.variantModalTitle}>Choisissez un sc├®nario IA</Text>                        <ScrollView style={{ maxHeight: 320 }}>                            {briefVariants.map((variant, index) => (                                <TouchableOpacity                                    key={`brief_variant_${index}`}                                    style={styles.variantCard}                                    onPress={() => handleApplyBriefVariant(variant)}                                >                                    <Text style={styles.variantCardTitle}>                                        Variante {index + 1}                                    </Text>                                    {variant.hook && (                                        <Text style={styles.variantCardHook}>{variant.hook}</Text>                                    )}                                    <View style={styles.variantOutline}>                                        {Array.isArray(variant.script_outline) ? variant.script_outline.map((line, idx) => (                                            <Text key={idx} style={styles.variantOutlineLine}>                                                ÔÇó {line}                                            </Text>                                        )) : null}                                    </View>                                    {variant.hashtags?.length > 0 && (                                        <Text style={styles.variantHashtags}>                                            {Array.isArray(variant.hashtags) ? variant.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}                                        </Text>                                    )}                                </TouchableOpacity>                            ))}                        </ScrollView>                        <TouchableOpacity                            style={styles.variantCloseButton}                            onPress={() => setVariantPickerVisible(false)}                        >                            <Text style={styles.variantCloseText}>Annuler</Text>                        </TouchableOpacity>                    </View>                </View>            </Modal>        </>    );};const styles = StyleSheet.create({    overlay: {        flex: 1,        backgroundColor: 'rgba(15, 23, 42, 0.55)',        padding: 16,        justifyContent: 'flex-end',    },    modalCard: {        borderRadius: 28,        padding: 0,        maxHeight: '94%',        overflow: 'hidden',        backgroundColor: '#FFFFFF',    },    modalHeader: {        paddingHorizontal: 20,        paddingTop: 20,        paddingBottom: 12,        flexDirection: 'row',        alignItems: 'flex-start',        justifyContent: 'space-between',        gap: 16,    },    modalTitle: {        fontSize: 20,        fontWeight: '700',        color: modernColors.text,    },    modalSubtitle: {        fontSize: 13,        color: modernColors.textSecondary,        marginTop: 4,        lineHeight: 18,    },    closeButton: {        width: 36,        height: 36,        borderRadius: 18,        backgroundColor: '#F1F5F9',        alignItems: 'center',        justifyContent: 'center',    },    modalBody: {        paddingHorizontal: 20,    },    sectionCard: {        marginBottom: 16,        borderWidth: 1,        borderColor: '#E5E7EB',        borderRadius: 18,        padding: 20,        backgroundColor: '#FFFFFF',    },    sectionHeader: {        flexDirection: 'row',        alignItems: 'center',        justifyContent: 'space-between',        marginBottom: 12,        gap: 8, // Ô£à AJOUT├ë: Espacement entre titre et bouton    },    sectionTitle: {        fontSize: 16,        fontWeight: '700',        color: modernColors.text,        flexShrink: 1, // Ô£à AJOUT├ë: Permet au titre de se r├®tr├®cir si n├®cessaire pour laisser de l'espace au bouton    },    sectionSubtitle: {        fontSize: 13,        color: modernColors.textSecondary,        lineHeight: 18,        marginBottom: 12,    },    coachLoading: {        flexDirection: 'row',        alignItems: 'center',        gap: 12,        paddingVertical: 8,    },    coachLoadingText: {        fontSize: 13,        color: modernColors.textSecondary,        flex: 1,    },    coachRow: {        flexDirection: 'row',        alignItems: 'flex-start',        gap: 12,        paddingVertical: 12,        borderTopWidth: StyleSheet.hairlineWidth,        borderTopColor: '#E5E7EB',    },    coachIcon: {        marginTop: 2,    },    coachContent: {        flex: 1,        gap: 6,    },    coachLabel: {        fontSize: 13,        fontWeight: '700',        color: modernColors.text,    },    coachText: {        fontSize: 13,        color: modernColors.textSecondary,        lineHeight: 18,    },    coachMeta: {        fontSize: 12,        color: modernColors.textSecondary,    },    coachAction: {        marginTop: 6,        flexDirection: 'row',        alignItems: 'center',        gap: 6,    },    coachActionText: {        fontSize: 12,        fontWeight: '600',        color: modernColors.primary,    },    linkButton: {        flexDirection: 'row',        alignItems: 'center',        gap: 6,        paddingHorizontal: 12,        paddingVertical: 6,        minWidth: 100, // Ô£à AJOUT├ë: Largeur minimale pour que "Analyse IA" soit enti├¿rement visible        flexShrink: 0, // Ô£à AJOUT├ë: Emp├¬cher le bouton de r├®tr├®cir        borderRadius: 999,        backgroundColor: '#EEF2FF',        borderWidth: 1,        borderColor: '#E0E7FF',    },    linkButtonText: {        fontSize: 12,        color: modernColors.primary,        fontWeight: '600',        flexShrink: 0, // Ô£à AJOUT├ë: Emp├¬cher le texte de se r├®tr├®cir    },    selectedProductContainer: {        flexDirection: 'row',        alignItems: 'center',        gap: 14,        marginTop: 12,    },    selectedProductImage: {        width: 72,        height: 72,        borderRadius: 16,    },    selectedProductPlaceholder: {        width: 72,        height: 72,        borderRadius: 16,        backgroundColor: '#EEF2FF',        alignItems: 'center',        justifyContent: 'center',        borderWidth: 1,        borderColor: '#E0E7FF',    },    selectedProductInfo: {        flex: 1,        gap: 4,    },    selectedProductName: {        fontSize: 15,        fontWeight: '700',        color: modernColors.text,    },    selectedProductService: {        fontSize: 13,        color: modernColors.textSecondary,    },    selectedProductPrice: {        fontSize: 13,        fontWeight: '700',        color: '#10B981',    },    productSelectionList: {        marginTop: 12,        // Ô£à Pas de maxHeight car le ScrollView parent g├¿re le scroll    },    productGroup: {        marginBottom: 16,    },    productGroupTitle: {        fontSize: 14,        fontWeight: '700',        color: modernColors.primary,        marginBottom: 8,    },    productSelectItem: {        flexDirection: 'row',        alignItems: 'center',        gap: 12,        paddingVertical: 10,        paddingHorizontal: 12,        borderRadius: 12,        backgroundColor: '#F8FAFC',        marginBottom: 8,        borderWidth: 1,        borderColor: '#E2E8F0',    },    productSelectIcon: {        width: 32,        height: 32,        borderRadius: 16,        backgroundColor: '#EEF2FF',        alignItems: 'center',        justifyContent: 'center',    },    productSelectName: {        fontSize: 14,        fontWeight: '600',        color: modernColors.text,    },    productSelectMeta: {        fontSize: 12,        color: modernColors.textSecondary,        marginTop: 2,    },    fieldGroup: {        marginTop: 12,    },    fieldLabel: {        fontSize: 13,        fontWeight: '600',        color: modernColors.text,        marginBottom: 8,    },    styleRow: {        flexDirection: 'row',        flexWrap: 'wrap',        gap: 8, // Ô£à CORRIG├ë: R├®duit de 12 ├á 8 pour garantir 2 colonnes        marginTop: 12,        justifyContent: 'flex-start', // Ô£à CORRIG├ë: flex-start au lieu de space-between pour meilleur contr├┤le    },    styleChip: {        // Ô£à CORRIG├ë: 2 colonnes avec taille r├®duite pour meilleure UX        // Calcul: (100% - 8px gap) / 2 = 46% par colonne pour garantir l'affichage        width: '46%', // Ô£à CORRIG├ë: R├®duit de 48% ├á 46% pour garantir 2 colonnes avec gap        minWidth: 0, // Ô£à Permet au width de fonctionner correctement        borderRadius: 10, // Ô£à R├®duit de 12 ├á 10        borderWidth: 1,        borderColor: '#E2E8F0',        padding: 8, // Ô£à CORRIG├ë: R├®duit de 10 ├á 8 pour plus de compacit├®        gap: 3, // Ô£à R├®duit de 4 ├á 3        backgroundColor: '#F8FAFC',    },    styleChipSelected: {        borderColor: '#6366F1',        backgroundColor: '#EEF2FF',    },    styleChipLabel: {        fontSize: 11, // Ô£à CORRIG├ë: R├®duit de 12 ├á 11 pour plus de compacit├®        fontWeight: '700',        color: modernColors.text,    },    styleChipLabelSelected: {        color: modernColors.primary,    },    styleChipDescription: {        fontSize: 10, // Ô£à CORRIG├ë: R├®duit de 11 ├á 10 pour plus de compacit├®        color: modernColors.textSecondary,        lineHeight: 12, // Ô£à CORRIG├ë: R├®duit de 14 ├á 12    },    voiceRow: {        flexDirection: 'row',        flexWrap: 'wrap',        gap: 8,        marginTop: 8,        marginBottom: 12,    },    audioRow: {        flexDirection: 'row',        gap: 12,        paddingVertical: 8,    },    // Ô£à CORRIG├ë: Style pour afficher les ambiances musicales en 2 colonnes    audioRowGrid: {        flexDirection: 'row',        flexWrap: 'wrap',        gap: 8, // Ô£à CORRIG├ë: R├®duit de 12 ├á 8 pour garantir 2 colonnes        marginTop: 12,        justifyContent: 'flex-start', // Ô£à CORRIG├ë: flex-start au lieu de space-between pour meilleur contr├┤le    },    // Ô£à CORRIG├ë: Style pour les cartes d'ambiances musicales en 2 colonnes    audioChipGrid: {        flexDirection: 'row',        alignItems: 'center',        gap: 6, // Ô£à CORRIG├ë: R├®duit de 8 ├á 6        paddingHorizontal: 10, // Ô£à CORRIG├ë: R├®duit de 12 ├á 10        paddingVertical: 8,        borderRadius: 10, // Ô£à CORRIG├ë: R├®duit de 12 ├á 10        borderWidth: 1,        borderColor: '#E2E8F0',        backgroundColor: '#F8FAFC',        width: '46%', // Ô£à CORRIG├ë: R├®duit de 48% ├á 46% pour garantir 2 colonnes avec gap        minWidth: 0, // Ô£à Permet au width de fonctionner correctement    },    audioActionsRow: {        flexDirection: 'row',        alignItems: 'center',        marginTop: 12,        marginBottom: 8,    },    audioImportButton: {        flexDirection: 'row',        alignItems: 'center',        paddingVertical: 8,        paddingHorizontal: 12,        borderRadius: 12,        borderWidth: 1,        borderColor: `${modernColors.primary}33`,        backgroundColor: '#EEF2FF',    },    audioImportText: {        marginLeft: 8,        color: modernColors.primary,        fontSize: 13,        fontWeight: '600',    },    audioChip: {        flexDirection: 'row',        alignItems: 'center',        gap: 8,        paddingHorizontal: 14,        paddingVertical: 10,        borderRadius: 14,        borderWidth: 1,        borderColor: '#E2E8F0',        backgroundColor: '#F8FAFC',        maxWidth: 220,    },    audioChipSelected: {        borderColor: '#0EA5E9',        backgroundColor: '#E0F2FE',    },    audioChipText: {        fontSize: 12,        fontWeight: '600',        color: modernColors.text,        flexShrink: 1,    },    audioChipTextSelected: {        color: '#0F172A',    },    audioChipSubtitle: {        fontSize: 11,        color: modernColors.textSecondary,        marginTop: 2,    },    voiceChip: {        paddingHorizontal: 12,        paddingVertical: 6,        borderRadius: 999,        borderWidth: 1,        borderColor: '#E2E8F0',        backgroundColor: '#F8FAFC',    },    voiceChipSelected: {        backgroundColor: '#EEF2FF',        borderColor: '#6366F1',    },    voiceChipText: {        fontSize: 12,        fontWeight: '600',        color: modernColors.textSecondary,    },    voiceChipTextSelected: {        color: modernColors.primary,    },    distributionHint: {        fontSize: 11,        color: modernColors.textSecondary,        marginBottom: 8,        lineHeight: 16,    },    durationRow: {        marginTop: 18,    },    durationInputRow: {        flexDirection: 'row',        alignItems: 'center',        gap: 12,        marginTop: 8,    },    durationInput: {        flex: 0.4,    },    durationUnit: {        fontSize: 13,        color: modernColors.textSecondary,    },    durationHint: {        fontSize: 12,        color: modernColors.textSecondary,        marginTop: 6,        lineHeight: 16,    },    toggleRow: {        flexDirection: 'row',        alignItems: 'center',        justifyContent: 'space-between',        paddingVertical: 10,        gap: 12,    },    toggleText: {        flex: 1,        gap: 2,    },    toggleLabel: {        fontSize: 13,        fontWeight: '600',        color: modernColors.text,    },    toggleDescription: {        fontSize: 12,        color: modernColors.textSecondary,        lineHeight: 16,    },    relatedProductsContainer: {        flexDirection: 'row',        flexWrap: 'wrap',        gap: 8,        marginTop: 12,    },    relatedProductChip: {        flexDirection: 'row',        alignItems: 'center',        gap: 6,        paddingHorizontal: 12,        paddingVertical: 8,        borderRadius: 999,        borderWidth: 1,        borderColor: '#E0E7FF',        backgroundColor: '#F8FAFC',    },    relatedProductChipSelected: {        backgroundColor: '#ECFDF5',        borderColor: '#A7F3D0',    },    relatedProductText: {        fontSize: 12,        fontWeight: '600',        color: modernColors.primary,        maxWidth: 160,    },    relatedProductTextSelected: {        color: '#047857',    },    mediaSection: {        marginTop: 16,    },    mediaBadge: {        paddingHorizontal: 10,        paddingVertical: 4,        borderRadius: 999,        backgroundColor: '#6366F1',    },    mediaBadgeText: {        fontSize: 11,        fontWeight: '700',        color: '#FFFFFF',    },    mediaLoading: {        flexDirection: 'row',        alignItems: 'center',        gap: 10,        paddingVertical: 16,    },    mediaLoadingText: {        fontSize: 12,        color: modernColors.textSecondary,    },    emptyMediaState: {        alignItems: 'center',        justifyContent: 'center',        paddingVertical: 24,        gap: 8,        backgroundColor: '#F8FAFC',        borderRadius: 12,        borderWidth: 1,        borderColor: '#E2E8F0',    },    emptyMediaText: {        fontSize: 12,        color: modernColors.textSecondary,        textAlign: 'center',        lineHeight: 16,        paddingHorizontal: 24,    },    emptyState: {        alignItems: 'center',        justifyContent: 'center',        paddingVertical: 24,        gap: 8,    },    emptyStateText: {        fontSize: 12,        color: modernColors.textSecondary,        textAlign: 'center',        lineHeight: 16,    },    mediaList: {        gap: 12,        paddingVertical: 12,    },    mediaItem: {        width: 120,        height: 180,        borderRadius: 16,        overflow: 'hidden',        borderWidth: 1,        borderColor: '#E2E8F0',        backgroundColor: '#F8FAFC',    },    mediaItemSelected: {        borderColor: '#6366F1',        shadowColor: '#6366F1',        shadowRadius: 8,        shadowOpacity: 0.25,        elevation: 4,    },    mediaThumbnail: {        width: '100%',        height: '100%',    },    mediaThumbnailFallback: {        flex: 1,        alignItems: 'center',        justifyContent: 'center',        backgroundColor: '#EEF2FF',    },    mediaOverlay: {        position: 'absolute',        left: 0,        right: 0,        bottom: 0,        padding: 8,        backgroundColor: 'rgba(15, 23, 42, 0.45)',        gap: 6,    },    mediaCaption: {        fontSize: 11,        color: '#FFFFFF',    },    mediaSelectedBadge: {        position: 'absolute',        top: 8,        right: 8,        width: 26,        height: 26,        borderRadius: 13,        backgroundColor: '#10B981',        alignItems: 'center',        justifyContent: 'center',    },    actionsRow: {        padding: 20,        paddingTop: 12,        borderTopWidth: 1,        borderTopColor: '#E2E8F0',        flexDirection: 'row',        gap: 12,    },    actionButton: {        flex: 1,    },    primaryActionButton: {        flex: 1.4,    },    // Ô£à NOUVEAU: Styles pour le syst├¿me d'├®tapes    stepIndicator: {        flexDirection: 'row',        alignItems: 'center',        gap: 8,        marginTop: 12,    },    stepDot: {        width: 8,        height: 8,        borderRadius: 4,        backgroundColor: modernColors.border,    },    stepDotActive: {        backgroundColor: modernColors.primary,        width: 10,        height: 10,        borderRadius: 5,    },    stepDotCompleted: {        backgroundColor: '#10B981',    },    stepText: {        fontSize: 12,        color: modernColors.textSecondary,        marginLeft: 4,        fontWeight: '500',    },    navigationRow: {        flexDirection: 'row',        gap: 12,        width: '100%',        justifyContent: 'space-between', // Ô£à AJOUT├ë: Positionner Pr├®c├®dent ├á gauche et Suivant ├á droite    },    navigationButtonLeft: {        flex: 0, // Ô£à AJOUT├ë: Ne pas prendre tout l'espace        minWidth: 120, // Ô£à AJOUT├ë: Largeur minimale pour le bouton    },    navigationButtonRight: {        flex: 0, // Ô£à AJOUT├ë: Ne pas prendre tout l'espace        minWidth: 120, // Ô£à AJOUT├ë: Largeur minimale pour le bouton        marginLeft: 'auto', // Ô£à AJOUT├ë: Pousser le bouton vers la droite    },    variantModalBackdrop: {        flex: 1,        backgroundColor: 'rgba(15, 23, 42, 0.45)',        justifyContent: 'center',        alignItems: 'center',        padding: 24,    },    variantModalContainer: {        width: '100%',        maxWidth: 420,        backgroundColor: '#FFF',        borderRadius: 20,        padding: 20,        gap: 16,    },    variantModalTitle: {        fontSize: 18,        fontWeight: '700',        color: '#0F172A',        marginBottom: 4,    },    variantCard: {        borderWidth: 1,        borderColor: '#E2E8F0',        borderRadius: 14,        padding: 14,        marginBottom: 12,        backgroundColor: '#F8FAFC',    },    variantCardTitle: {        fontSize: 15,        fontWeight: '700',        color: '#1E293B',        marginBottom: 6,    },    variantCardHook: {        fontSize: 13,        fontWeight: '600',        color: modernColors.primary,        marginBottom: 6,    },    variantOutline: {        gap: 4,    },    variantOutlineLine: {        fontSize: 13,        color: '#334155',        lineHeight: 18,    },    variantHashtags: {        marginTop: 8,        fontSize: 12,        color: modernColors.primary,    },    variantCloseButton: {        alignSelf: 'center',        marginTop: 4,        paddingVertical: 8,        paddingHorizontal: 18,    },    variantCloseText: {        color: modernColors.primary,        fontWeight: '600',        fontSize: 14,    },    // Ô£à NOUVEAU: Styles pour le champ script am├®lior├®    fieldLabelRow: {        flexDirection: 'row',        alignItems: 'center',        gap: 4,        marginBottom: 4,    },    fieldRequired: {        fontSize: 14,        fontWeight: '700',        color: '#EF4444',    },    fieldHint: {        fontSize: 12,        color: modernColors.textSecondary,        marginBottom: 8,        lineHeight: 16,    },    scriptInputRequired: {        borderColor: '#EF4444',        borderWidth: 2,    },    fieldError: {        fontSize: 12,        color: '#EF4444',        marginTop: 4,        fontWeight: '500',    },    // Ô£à NOUVEAU: Styles pour estimation de co├╗t    costEstimationContainer: {        marginTop: 12,        padding: 16,        backgroundColor: '#F0FDF4',        borderRadius: 12,        borderWidth: 1,        borderColor: '#BBF7D0',    },    costRow: {        flexDirection: 'row',        justifyContent: 'space-between',        alignItems: 'center',        marginBottom: 12,    },    costLabel: {        fontSize: 16,        fontWeight: '600',        color: modernColors.text,    },    costValue: {        fontSize: 20,        fontWeight: '700',        color: '#10B981',    },    costBreakdown: {        marginTop: 8,        paddingTop: 12,        borderTopWidth: 1,        borderTopColor: '#BBF7D0',        gap: 8,    },    costItem: {        flexDirection: 'row',        justifyContent: 'space-between',        alignItems: 'center',    },    costItemLabel: {        fontSize: 14,        color: modernColors.textSecondary,    },    costItemValue: {        fontSize: 14,        fontWeight: '600',        color: modernColors.text,    },    costHint: {        fontSize: 12,        color: modernColors.textSecondary,        marginTop: 8,        fontStyle: 'italic',    },    // Ô£à NOUVEAU: Styles pour cha├«nage de vid├®os    videoChainingContainer: {        marginTop: 12,        gap: 12,    },    sessionsList: {        flexDirection: 'row',        flexWrap: 'wrap',        gap: 8,        marginTop: 8,    },    sessionChip: {        flexDirection: 'row',        alignItems: 'center',        gap: 6,        paddingHorizontal: 12,        paddingVertical: 8,        borderRadius: 8,        borderWidth: 1,        borderColor: modernColors.border,        backgroundColor: modernColors.surface,    },    sessionChipSelected: {        backgroundColor: modernColors.primary + '15',        borderColor: modernColors.primary,    },    sessionChipText: {        fontSize: 13,        fontWeight: '500',        color: modernColors.text,    },    sessionChipTextSelected: {        color: modernColors.primary,        fontWeight: '600',    },    // Ô£à NOUVEAU: Styles pour options avanc├®es    advancedOptionsHeader: {        flexDirection: 'row',        alignItems: 'center',        justifyContent: 'space-between',        paddingVertical: 4,    },    advancedOptionsTitleRow: {        flexDirection: 'row',        alignItems: 'center',        gap: 8,    },    optionalBadge: {        paddingHorizontal: 8,        paddingVertical: 2,        borderRadius: 8,        backgroundColor: '#F0F9FF',        borderWidth: 1,        borderColor: '#BAE6FD',    },    optionalBadgeText: {        fontSize: 10,        fontWeight: '600',        color: '#0369A1',        textTransform: 'uppercase',    },    advancedOptionsContent: {        marginTop: 16,        gap: 20,        paddingTop: 16,        borderTopWidth: 1,        borderTopColor: '#E5E7EB',    },    advancedSection: {        gap: 12,    },    advancedSectionTitle: {        fontSize: 15,        fontWeight: '600',        color: modernColors.text,    },    suggestionSection: {        marginTop: 16,        paddingTop: 12,        borderTopWidth: 1,        borderTopColor: '#E2E8F0',    },    suggestionTitle: {        fontSize: 14,        fontWeight: '700',        color: '#1E293B',        marginBottom: 8,    },    suggestionRow: {        flexDirection: 'row',        flexWrap: 'wrap',        gap: 8,    },    suggestionChip: {        paddingHorizontal: 12,        paddingVertical: 6,        borderRadius: 999,        borderWidth: 1,        borderColor: '#E2E8F0',        backgroundColor: '#F8FAFC',    },    suggestionChipSelected: {        backgroundColor: '#EEF2FF',        borderColor: '#6366F1',    },    suggestionChipText: {        fontSize: 12,        fontWeight: '600',        color: modernColors.textSecondary,    },    suggestionChipTextSelected: {        color: modernColors.primary,    },    mediaInsightsBox: {        marginTop: 12,        padding: 12,        borderRadius: 12,        backgroundColor: '#F8FAFC',        borderWidth: 1,        borderColor: '#E2E8F0',        gap: 6,    },    mediaInsightsTitle: {        fontSize: 13,        fontWeight: '700',        color: '#1E293B',    },    mediaInsightsText: {        fontSize: 12,        color: '#475569',    },    colorRow: {        flexDirection: 'row',        flexWrap: 'wrap',        gap: 8,    },    colorSwatch: {        borderRadius: 10,        paddingHorizontal: 10,        paddingVertical: 6,        minWidth: 90,    },    colorLabel: {        fontSize: 11,        fontWeight: '600',        color: '#FFF',        textShadowColor: 'rgba(15, 23, 42, 0.4)',        textShadowOffset: { width: 0, height: 1 },        textShadowRadius: 2,    },    planBox: {        marginTop: 12,        padding: 12,        borderRadius: 12,        backgroundColor: '#F0F9FF',        borderWidth: 1,        borderColor: '#BAE6FD',        gap: 6,    },    planSummary: {        fontSize: 13,        fontWeight: '600',        color: '#0C4A6E',    },    planHashtags: {        fontSize: 12,        color: '#0369A1',    },    planSchedule: {        marginTop: 6,        gap: 6,    },    planScheduleRow: {        flexDirection: 'row',        justifyContent: 'space-between',        alignItems: 'center',    },    planScheduleChannel: {        fontSize: 12,        fontWeight: '600',        color: '#0F172A',        flex: 1,    },    planScheduleTime: {        fontSize: 12,        color: '#0369A1',        flex: 1,        textAlign: 'center',    },    planScheduleCTA: {        fontSize: 12,        color: '#0F172A',        flex: 1,        textAlign: 'right',    },    // Ô£à NOUVEAU Phase 3.2: Styles pour le bouton AR    arButtonContainer: {        marginTop: 16,        marginBottom: 16,        padding: 16,        borderRadius: 16,        backgroundColor: '#EEF2FF',        borderWidth: 2,        borderColor: '#6366F1',        borderStyle: 'dashed',        alignItems: 'center',        gap: 8,    },    arButton: {        width: '100%',    },    arButtonHint: {        fontSize: 12,        color: modernColors.textSecondary,        textAlign: 'center',        marginTop: 4,    },    // Ô£à NOUVEAU: Styles pour storyboard IA    storyboardList: {        marginTop: 12,        gap: 8,    },    storyboardItem: {        padding: 12,        backgroundColor: '#F8FAFC',        borderRadius: 8,        borderWidth: 1,        borderColor: '#E2E8F0',    },    storyboardSceneType: {        fontSize: 11,        fontWeight: '700',        color: modernColors.primary,        textTransform: 'uppercase',        marginBottom: 4,    },    storyboardSceneText: {        fontSize: 13,        color: modernColors.text,        lineHeight: 18,    },    // Ô£à NOUVEAU: Styles pour short preview    shortPreviewContainer: {        marginTop: 16,        padding: 16,        backgroundColor: '#F0F9FF',        borderRadius: 12,        borderWidth: 1,        borderColor: '#BAE6FD',    },    shortPreviewButton: {        width: '100%',    },    shortPreviewHint: {        fontSize: 12,        color: modernColors.textSecondary,        marginTop: 8,        textAlign: 'center',    },    // Ô£à NOUVEAU: Styles pour templates narratifs (depuis Wizard)    templateList: {        marginTop: 12,        gap: 12,    },    templateCard: {        padding: 16,        borderRadius: 12,        borderWidth: 1,        borderColor: '#E2E8F0',        backgroundColor: '#F8FAFC',    },    templateCardActive: {        backgroundColor: '#EEF2FF',        borderColor: modernColors.primary,    },    templateTitle: {        fontSize: 15,        fontWeight: '600',        color: modernColors.text,        marginBottom: 4,    },    templateTitleActive: {        color: modernColors.primary,    },    templateDescription: {        fontSize: 13,        color: modernColors.textSecondary,        marginBottom: 8,        lineHeight: 18,    },    templateMeta: {        fontSize: 11,        color: modernColors.textSecondary,        fontWeight: '500',    },    // Ô£à NOUVEAU: Styles pour inline row (depuis Wizard)    inlineRow: {        flexDirection: 'row',        alignItems: 'center',        justifyContent: 'space-between',        marginTop: 12,        paddingVertical: 8,    },    inlineLabel: {        fontSize: 14,        fontWeight: '500',        color: modernColors.text,    },});export default ProductVideoCreationModal;
+﻿import * as DocumentPicker from 'expo-document-picker';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { config } from '../config/environment';
+import { mediaApi } from '../services/api';
+import { modernColors } from '../theme/modernTheme';
+import { ManagedProduct } from '../types/ManagedProduct';
+import { AIDistributionPlan, AIVideoBriefVariant, AIVideoStyleSuggestion, GeneratedVideoResponse } from '../types/VideoGeneration';
+import { getFieldValue } from '../utils/productNormalizer';
+import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
+import SafeIcon from './SafeIcon';
+
+type VideoStylePreset = 'tiktok' | 'story' | 'cinematic' | 'carousel';
+type MusicMode = 'pulse' | 'lofi' | 'ambient' | 'cinematic' | 'none';
+
+interface MediaLibraryItem {
+    id: number;
+    path: string;
+    type?: string | null;
+    media_type?: string | null;
+    product_index?: number | null;
+    ai_description?: string | null;
+}
+
+interface CuratedAudioLoop {
+    id: string;
+    title: string;
+    genre: string;
+    mood: string;
+    bpm: number;
+    url: string;
+    license: string;
+}
+
+interface GroupedProducts {
+    serviceId: string;
+    serviceTitre: string;
+    items: ManagedProduct[];
+}
+
+interface ProductVideoCreationModalProps {
+    visible: boolean;
+    primaryProduct: ManagedProduct | null;
+    products: ManagedProduct[];
+    onClose: () => void;
+    onSuccess: (result: GeneratedVideoResponse) => void | Promise<void>;
+}
+
+const VIDEO_STYLE_OPTIONS: Array<{ key: VideoStylePreset; label: string; description: string }> = [
+    { key: 'tiktok', label: 'TikTok Boost', description: 'Transitions rapides, texte dynamique, format vertical 9:16' },
+    { key: 'story', label: 'Story Produit', description: 'Narration douce, highlight des atouts, superpositions ├®l├®gantes' },
+    { key: 'cinematic', label: 'Cin├® Premium', description: 'Animations lentes, focus sur d├®tails, ambiance immersive' },
+    { key: 'carousel', label: 'Carousel Flash', description: 'Slides punchy, CTA r├®p├®t├®s, id├®al publicit├®s express' },
+];
+
+const MUSIC_MODE_OPTIONS: Array<{ key: MusicMode; label: string; description: string }> = [
+    { key: 'pulse', label: 'Pulse', description: "Beat ├®nergique parfait pour capter l'attention" },
+    { key: 'lofi', label: 'Lofi', description: 'Ambiance douce et premium' },
+    { key: 'ambient', label: 'Ambient', description: 'Atmosph├¿re a├®rienne et relaxante' },
+    { key: 'cinematic', label: 'Cin├®', description: 'Mont├®e orchestrale immersive' },
+    { key: 'none', label: 'Aucun', description: 'Sans musique automatique' },
+];
+
+const VOICE_LANG_OPTIONS = [
+    { value: 'fr', label: 'Fran├ºais (FR)' },
+    { value: 'fr-fr', label: 'Fran├ºais Premium' },
+    { value: 'en', label: 'English (US)' },
+    { value: 'en-gb', label: 'English (UK)' },
+    { value: 'pt-br', label: 'Portugu├¬s (BR)' },
+    { value: 'es', label: 'Espa├▒ol' },
+];
+
+const DISTRIBUTION_OPTIONS = [
+    { key: 'chat', label: 'Chat Commerce' },
+    { key: 'product', label: 'Carte Produit' },
+    { key: 'shorts', label: 'Shorts / Reels' },
+    { key: 'instagram', label: 'Instagram Feed' },
+    { key: 'youtube', label: 'YouTube' },
+];
+
+const buildMediaUrl = (path: string | undefined | null): string => {
+    if (!path) {
+        return '';
+    }
+
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:image')) {
+        return path;
+    }
+
+    const base = config.UPLOAD_BASE_URL ? config.UPLOAD_BASE_URL.replace(/\/$/, '') : '';
+    const sanitizedPath = path.replace(/^\//, '');
+
+    return base ? `${base}/${sanitizedPath}` : sanitizedPath;
+};
+
+const normalizeProductName = (product?: ManagedProduct | null): string => {
+    if (!product) {
+        return 'Votre produit';
+    }
+
+    // Ô£à CORRIG├ë: Extraire la valeur en utilisant getFieldValue pour g├®rer les structures wrapper
+    const nom = getFieldValue(product.nom) ||
+        getFieldValue((product as any).nom_produit) ||
+        getFieldValue(product.name) ||
+        getFieldValue(product.title) ||
+        getFieldValue((product as any).data?.nom_produit) ||
+        getFieldValue((product as any).data?.nom);
+
+    // Ô£à CORRIG├ë: S'assurer que c'est toujours une string (pas un objet JSON)
+    if (typeof nom === 'string' && nom.trim()) {
+        return nom;
+    }
+
+    // Si c'est un objet, essayer de le convertir en string de mani├¿re lisible
+    if (typeof nom === 'object' && nom !== null) {
+        console.warn('[ProductVideoCreationModal] Nom de produit est un objet:', nom);
+        // Essayer d'extraire une valeur lisible
+        if ('valeur' in nom && typeof nom.valeur === 'string') {
+            return nom.valeur;
+        }
+        // Sinon, retourner un fallback
+        return 'Votre produit';
+    }
+
+    return 'Votre produit';
+};
+
+const ensureNumber = (value: any, fallback: number): number => {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+        return parsed;
+    }
+    return fallback;
+};
+
+const computePriceLabel = (product: ManagedProduct | null | undefined): string | undefined => {
+    if (!product) {
+        return undefined;
+    }
+
+    // Ô£à CORRIG├ë: Extraire la valeur du prix en utilisant getFieldValue
+    const prix = getFieldValue(product.prix);
+    const devise = getFieldValue(product.devise) || 'XAF';
+
+    if (prix === undefined || prix === null || prix === '') {
+        return undefined;
+    }
+
+    const value =
+        typeof prix === 'number'
+            ? prix.toLocaleString()
+            : String(prix).trim();
+    if (!value) {
+        return undefined;
+    }
+    return `${value} ${devise}`;
+};
+
+const computePromotionLabel = (product: ManagedProduct | null | undefined): string | undefined => {
+    if (!product) {
+        return undefined;
+    }
+    const candidate =
+        (product as any)?.promotion_label ||
+        (product as any)?.promotion ||
+        ((product as any)?.promotionActive ? 'Promotion active' : undefined);
+    return candidate ? String(candidate) : undefined;
+};
+
+const collectProductHighlights = (product: ManagedProduct | null | undefined): string[] => {
+    if (!product) {
+        return [];
+    }
+    const highlights: string[] = [];
+    if (product.type) {
+        highlights.push(`Type: ${product.type}`);
+    }
+    if (product.category_label) {
+        highlights.push(`Cat├®gorie: ${product.category_label}`);
+    }
+    const priceLabel = computePriceLabel(product);
+    if (priceLabel) {
+        highlights.push(`Prix courant: ${priceLabel}`);
+    }
+    if ((product as any)?.city) {
+        highlights.push(`Localisation: ${(product as any).city}`);
+    }
+    if (Array.isArray((product as any)?.tags)) {
+        (product as any).tags.forEach((tag: string) => {
+            if (tag) {
+                highlights.push(`#${tag}`);
+            }
+        });
+    }
+    return highlights;
+};
+
+const buildDefaultVoiceover = (
+    productName: string,
+    headline: string,
+    callToAction: string,
+    storyboardLines: string[],
+) => {
+    const lines: string[] = [];
+
+    if (headline) {
+        lines.push(headline.replace(/[­ƒÜÇ­ƒÄ»­ƒöÑÔ£àÔ¡É´©Å#]+/g, '').trim());
+    } else {
+        lines.push(`D├®couvrez ${productName} sur Yukpomnang.`);
+    }
+
+    storyboardLines.slice(0, 3).forEach((line) => {
+        if (line.trim().length > 0) {
+            lines.push(line.replace(/[­ƒÜÇ­ƒÄ»­ƒöÑÔ£àÔ¡É´©Å#]+/g, '').trim());
+        }
+    });
+
+    if (callToAction) {
+        lines.push(callToAction.replace(/[­ƒÜÇ­ƒÄ»­ƒöÑÔ£àÔ¡É´©Å#]+/g, '').trim());
+    } else {
+        lines.push('Contactez-nous d├¿s maintenant via Yukpomnang.');
+    }
+
+    return lines.join('\n');
+};
+
+const applyBriefVariant = (
+    variant: AIVideoBriefVariant,
+    setHeadline: (headline: string) => void,
+    setCallToAction: (callToAction: string) => void,
+    setScriptNotes: (scriptNotes: string) => void,
+    setVoiceoverScript: (voiceoverScript: string) => void,
+    setVariantPickerVisible: (visible: boolean) => void,
+) => {
+    if (variant.headline) {
+        setHeadline(variant.headline);
+    }
+    if (variant.call_to_action) {
+        setCallToAction(variant.call_to_action);
+    }
+    if (Array.isArray(variant.script_outline) && variant.script_outline.length > 0) {
+        setScriptNotes(variant.script_outline.join('\n'));
+    }
+    if (variant.voiceover) {
+        setVoiceoverScript(variant.voiceover);
+    }
+    setVariantPickerVisible(false);
+    Alert.alert('Brief appliqu├®', 'La variante s├®lectionn├®e a ├®t├® appliqu├®e.');
+};
+
+const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
+    visible,
+    primaryProduct,
+    products,
+    onClose,
+    onSuccess,
+}) => {
+    const [selectedProduct, setSelectedProduct] = useState<ManagedProduct | null>(primaryProduct);
+    const [selectedRelatedProducts, setSelectedRelatedProducts] = useState<Set<number>>(new Set());
+    const [selectedMediaIds, setSelectedMediaIds] = useState<Set<number>>(new Set());
+
+    const [productMedia, setProductMedia] = useState<MediaLibraryItem[]>([]);
+    const [serviceMedia, setServiceMedia] = useState<MediaLibraryItem[]>([]);
+    const [mediaLoading, setMediaLoading] = useState(false);
+
+    const [stylePreset, setStylePreset] = useState<VideoStylePreset>('tiktok');
+    const [duration, setDuration] = useState<string>('28');
+    const [headline, setHeadline] = useState<string>('');
+    const [callToAction, setCallToAction] = useState<string>('Commandez maintenant sur Yukpomnang Ô£à');
+    const [scriptNotes, setScriptNotes] = useState<string>('');
+
+    const [includePrice, setIncludePrice] = useState<boolean>(true);
+    const [includePromotion, setIncludePromotion] = useState<boolean>(false);
+    const [includeContact, setIncludeContact] = useState<boolean>(true);
+    const [useProductGallery, setUseProductGallery] = useState<boolean>(true);
+    const [useMediatechLibrary, setUseMediatechLibrary] = useState<boolean>(true);
+    const [includePubliciteAssets, setIncludePubliciteAssets] = useState<boolean>(true);
+    const [publishToChat, setPublishToChat] = useState<boolean>(true);
+    const [publishToProductCard, setPublishToProductCard] = useState<boolean>(true);
+    const [musicMode, setMusicMode] = useState<MusicMode>('pulse');
+    const [musicVolume, setMusicVolume] = useState<string>('0.28');
+    const [voiceoverEnabled, setVoiceoverEnabled] = useState<boolean>(false);
+    const [voiceoverScript, setVoiceoverScript] = useState<string>('');
+    const [voiceoverLang, setVoiceoverLang] = useState<string>('fr');
+    const [generateSquareVariant, setGenerateSquareVariant] = useState<boolean>(true);
+    const [generateLandscapeVariant, setGenerateLandscapeVariant] = useState<boolean>(false);
+    const [subtitleLang, setSubtitleLang] = useState<string>('fr');
+    const [availableAudioTracks, setAvailableAudioTracks] = useState<MediaLibraryItem[]>([]);
+    const [selectedMusicTrackId, setSelectedMusicTrackId] = useState<number | null>(null);
+    const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set(['chat', 'product']));
+    const [audioLibrary, setAudioLibrary] = useState<CuratedAudioLoop[]>([]);
+    const [loadingLibrary, setLoadingLibrary] = useState<boolean>(false);
+    const [attachingLoopId, setAttachingLoopId] = useState<string | null>(null);
+    const [isUploadingAudio, setIsUploadingAudio] = useState<boolean>(false);
+    const [isGeneratingBrief, setIsGeneratingBrief] = useState<boolean>(false);
+    const [briefVariants, setBriefVariants] = useState<AIVideoBriefVariant[]>([]);
+    const [variantPickerVisible, setVariantPickerVisible] = useState<boolean>(false);
+    const [styleSuggestion, setStyleSuggestion] = useState<AIVideoStyleSuggestion | null>(null);
+    const [isGeneratingStyle, setIsGeneratingStyle] = useState<boolean>(false);
+    const [selectedEffects, setSelectedEffects] = useState<Set<string>>(new Set());
+    const [selectedTransitions, setSelectedTransitions] = useState<Set<string>>(new Set());
+    const [selectedOverlayTips, setSelectedOverlayTips] = useState<Set<string>>(new Set());
+    const [colorPalette, setColorPalette] = useState<string>('');
+    const [styleMusicHint, setStyleMusicHint] = useState<string>('');
+    const [mediaAnalysis, setMediaAnalysis] = useState<{ dominantColors?: string[]; detectedObjects?: string[]; ambiance?: string | null; marketingAngle?: string | null }>({});
+    const [isAnalyzingMedia, setIsAnalyzingMedia] = useState<boolean>(false);
+    const [distributionPlan, setDistributionPlan] = useState<AIDistributionPlan | null>(null);
+    const [isGeneratingDistribution, setIsGeneratingDistribution] = useState<boolean>(false);
+    const [coachLoading, setCoachLoading] = useState<boolean>(false);
+    const coachPrefetchDoneRef = useRef(false);
+
+    const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+    const refreshMedia = useCallback(
+        async (product?: ManagedProduct | null): Promise<MediaLibraryItem[]> => {
+            if (!product || typeof product.product_index !== 'number') {
+                setProductMedia([]);
+                setServiceMedia([]);
+                setAvailableAudioTracks([]);
+                setSelectedMusicTrackId(null);
+                return [];
+            }
+
+            setMediaLoading(true);
+
+            try {
+                const [productMediaResponse, serviceMediaResponse] = await Promise.all([
+                    mediaApi.getProductMedia(product.serviceId, product.product_index),
+                    mediaApi.getServiceMediaDetailed(product.serviceId),
+                ]);
+
+                if (!productMediaResponse.success) {
+                    throw new Error(
+                        productMediaResponse.error || 'Impossible de r├®cup├®rer les m├®dias du produit.'
+                    );
+                }
+
+                if (!serviceMediaResponse.success) {
+                    throw new Error(
+                        serviceMediaResponse.error || 'Impossible de r├®cup├®rer la m├®diath├¿que du prestataire.'
+                    );
+                }
+
+                const productMediaItems: MediaLibraryItem[] = Array.isArray((productMediaResponse.data as any)?.data)
+                    ? (productMediaResponse.data as any).data
+                        .map((item: any) => ({
+                            id: ensureNumber(item.id, -1),
+                            path: item.path,
+                            type: item.media_type ?? item.type ?? 'image',
+                            media_type: item.media_type ?? item.type ?? 'image',
+                            product_index: item.product_index ?? null,
+                            ai_description: item.ai_description ?? null,
+                        }))
+                        .filter((item: MediaLibraryItem) => item.id > 0)
+                    : [];
+
+                const serviceMediaItems: MediaLibraryItem[] = Array.isArray(serviceMediaResponse.data)
+                    ? serviceMediaResponse.data
+                        .map((item: any) => ({
+                            id: ensureNumber(item.id, -1),
+                            path: item.path,
+                            type: item.media_type ?? item.type ?? 'image',
+                            media_type: item.media_type ?? item.type ?? 'image',
+                            product_index: item.product_index ?? null,
+                            ai_description: item.ai_description ?? null,
+                        }))
+                        .filter((item: MediaLibraryItem) => item.id > 0)
+                    : [];
+
+                setProductMedia(productMediaItems);
+                setServiceMedia(serviceMediaItems);
+
+                const audioTracks = [...serviceMediaItems, ...productMediaItems].filter((item) => {
+                    const kind = (item.media_type || item.type || '').toLowerCase();
+                    return kind.includes('audio');
+                });
+                setAvailableAudioTracks(audioTracks);
+
+                const defaultIds = new Set<number>();
+                productMediaItems.slice(0, 4).forEach((item) => defaultIds.add(item.id));
+                setSelectedMediaIds(defaultIds);
+
+                return audioTracks;
+            } catch (error) {
+                console.error('[ProductVideoCreationModal] Erreur chargement m├®dias:', error);
+                Alert.alert(
+                    'Erreur r├®cup├®ration m├®dias',
+                    'Impossible de r├®cup├®rer vos images et vid├®os pour le moment. R├®essayez plus tard.'
+                );
+                return [];
+            } finally {
+                setMediaLoading(false);
+            }
+        },
+        []
+    );
+
+    // Ô£à AM├ëLIORATION: Fonction helper pour retry avec exponential backoff
+    const fetchWithRetry = useCallback(async <T,>(
+        fetchFn: () => Promise<T>,
+        maxRetries: number = 3,
+        type: string = 'unknown'
+    ): Promise<T | null> => {
+        let retryCount = 0;
+
+        while (retryCount < maxRetries) {
+            try {
+                const result = await fetchFn();
+                return result;
+            } catch (error) {
+                retryCount++;
+                if (retryCount >= maxRetries) {
+                    console.warn(`[ProductVideoCreationModal] Coach IA: ${type} indisponible apr├¿s ${maxRetries} tentatives`, error);
+                    return null;
+                }
+                // Exponential backoff: 1s, 2s, 4s
+                const delay = Math.pow(2, retryCount) * 1000;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        return null;
+    }, []);
+
+    // Ô£à AM├ëLIORATION: Valeurs par d├®faut pour Coach IA
+    const getDefaultCoachData = useCallback((type: 'brief' | 'style' | 'plan'): any => {
+        if (!selectedProduct) return null;
+
+        const productName = normalizeProductName(selectedProduct);
+
+        switch (type) {
+            case 'brief':
+                return {
+                    variants: [{
+                        headline: productName,
+                        call_to_action: 'D├®couvrez maintenant',
+                        script_outline: ['Introduction', 'Caract├®ristiques', 'Appel ├á l\'action'],
+                        tone: stylePreset
+                    }]
+                };
+            case 'style':
+                return {
+                    suggestion: {
+                        preset: stylePreset || 'story',
+                        transitions: 'smooth',
+                        effects: [],
+                        overlay_tips: []
+                    }
+                };
+            case 'plan':
+                return {
+                    plan: {
+                        distribution: Array.from(selectedChannels.values()).length > 0
+                            ? Array.from(selectedChannels.values())
+                            : ['product', 'chat'],
+                        duration: 15,
+                        hashtags: [],
+                        schedule: []
+                    }
+                };
+            default:
+                return null;
+        }
+    }, [selectedProduct, stylePreset, selectedChannels]);
+
+    const prefetchCoachInsights = useCallback(async () => {
+        if (!selectedProduct || coachLoading) {
+            return;
+        }
+        if (coachPrefetchDoneRef.current && (briefVariants.length > 0 || styleSuggestion || distributionPlan)) {
+            return;
+        }
+
+        coachPrefetchDoneRef.current = true;
+        setCoachLoading(true);
+
+        const priceLabel = computePriceLabel(selectedProduct);
+        const promotionValue = computePromotionLabel(selectedProduct);
+        const highlights = collectProductHighlights(selectedProduct);
+        const channelsArray = Array.from(selectedChannels.values());
+        const lang = subtitleLang || voiceoverLang;
+
+        try {
+            // Ô£à AM├ëLIORATION: Brief avec retry + valeurs par d├®faut
+            if (briefVariants.length === 0) {
+                const briefResult = await fetchWithRetry(
+                    async () => {
+                        const response = await mediaApi.generateVideoBrief({
+                            product_name: normalizeProductName(selectedProduct),
+                            description: selectedProduct.description,
+                            price: priceLabel,
+                            promotion: promotionValue,
+                            highlights,
+                            target_audience: channelsArray.join(', '),
+                            tone: stylePreset,
+                            lang,
+                            variant_count: 3,
+                        });
+                        if (response.success && Array.isArray((response.data as any)?.variants) && (response.data as any).variants.length > 0) {
+                            return (response.data as any).variants;
+                        }
+                        throw new Error('Aucun variant retourn├®');
+                    },
+                    3,
+                    'brief'
+                );
+
+                if (briefResult) {
+                    setBriefVariants(briefResult);
+                } else {
+                    // Utiliser valeurs par d├®faut
+                    const defaultBrief = getDefaultCoachData('brief');
+                    if (defaultBrief?.variants) {
+                        setBriefVariants(defaultBrief.variants);
+                    }
+                }
+            }
+
+            // Ô£à AM├ëLIORATION: Style avec retry + valeurs par d├®faut
+            if (!styleSuggestion) {
+                const styleResult = await fetchWithRetry(
+                    async () => {
+                        const channelPriority = ['shorts', 'instagram', 'youtube', 'chat', 'product'];
+                        const preferredChannel = channelPriority.find((key) => selectedChannels.has(key)) || 'shorts';
+                        const response = await mediaApi.generateVideoStyle({
+                            channel: preferredChannel,
+                            product_type: selectedProduct.type || selectedProduct.category_label,
+                            tone: stylePreset,
+                            promotion: promotionValue,
+                            highlights,
+                            lang,
+                        });
+                        if (response.success && (response.data as any)?.suggestion) {
+                            return (response.data as any).suggestion;
+                        }
+                        throw new Error('Aucune suggestion retourn├®e');
+                    },
+                    3,
+                    'style'
+                );
+
+                if (styleResult) {
+                    setStyleSuggestion(styleResult);
+                } else {
+                    // Utiliser valeurs par d├®faut
+                    const defaultStyle = getDefaultCoachData('style');
+                    if (defaultStyle?.suggestion) {
+                        setStyleSuggestion(defaultStyle.suggestion);
+                    }
+                }
+            }
+
+            // Ô£à AM├ëLIORATION: Plan avec retry + valeurs par d├®faut
+            if (!distributionPlan) {
+                const planResult = await fetchWithRetry(
+                    async () => {
+                        const response = await mediaApi.generateDistributionPlan({
+                            product_name: normalizeProductName(selectedProduct),
+                            channels: channelsArray,
+                            target_audience: channelsArray.join(', '),
+                            marketing_angle: mediaAnalysis.marketingAngle || undefined,
+                            lang,
+                        });
+                        if (response.success && (response.data as any)?.plan) {
+                            return (response.data as any).plan;
+                        }
+                        throw new Error('Aucun plan retourn├®');
+                    },
+                    3,
+                    'plan'
+                );
+
+                if (planResult) {
+                    setDistributionPlan(planResult);
+                } else {
+                    // Utiliser valeurs par d├®faut
+                    const defaultPlan = getDefaultCoachData('plan');
+                    if (defaultPlan?.plan) {
+                        setDistributionPlan(defaultPlan.plan);
+                    }
+                }
+            }
+        } finally {
+            setCoachLoading(false);
+        }
+    }, [
+        briefVariants.length,
+        distributionPlan,
+        mediaAnalysis.marketingAngle,
+        selectedChannels,
+        selectedProduct,
+        coachLoading,
+        stylePreset,
+        styleSuggestion,
+        subtitleLang,
+        voiceoverLang,
+        fetchWithRetry,
+        getDefaultCoachData,
+    ]);
+
+    const handleRefreshCoach = useCallback(() => {
+        coachPrefetchDoneRef.current = false;
+        prefetchCoachInsights().catch((error) =>
+            console.warn('[ProductVideoCreationModal] Coach IA: rafra├«chissement impossible', error)
+        );
+    }, [prefetchCoachInsights]);
+
+    useEffect(() => {
+        if (!visible) {
+            coachPrefetchDoneRef.current = false;
+            setCoachLoading(false);
+        }
+    }, [visible]);
+
+    useEffect(() => {
+        coachPrefetchDoneRef.current = false;
+        setCoachLoading(false);
+    }, [selectedProduct?.id]);
+
+    useEffect(() => {
+        if (visible && selectedProduct) {
+            prefetchCoachInsights().catch((error) =>
+                console.warn('[ProductVideoCreationModal] Coach IA: pr├®-chargement impossible', error)
+            );
+        }
+    }, [visible, selectedProduct, prefetchCoachInsights]);
+
+    const handleAttachAudioLoop = useCallback(
+        async (loopId: string) => {
+            if (!selectedProduct) {
+                return;
+            }
+            const numericServiceId = Number(selectedProduct.serviceId);
+            if (Number.isNaN(numericServiceId)) {
+                Alert.alert('Service introuvable', "Impossible d'attacher cette piste audio.");
+                return;
+            }
+            setAttachingLoopId(loopId);
+            try {
+                const response = await mediaApi.attachAudioLoop(loopId, numericServiceId);
+                if (!response.success) {
+                    throw new Error(response.error || 'Attache impossible');
+                }
+                await refreshMedia(selectedProduct);
+                Alert.alert('­ƒÄÁ Audio ajout├®', 'La boucle a ├®t├® ajout├®e ├á votre m├®diath├¿que.');
+            } catch (error) {
+                console.error("[ProductVideoCreationModal] Impossible d'attacher la boucle audio: ", error);
+                Alert.alert('Erreur', "Ajout de la boucle audio impossible pour le moment.");
+            } finally {
+                setAttachingLoopId(null);
+            }
+        },
+        [refreshMedia, selectedProduct]
+    );
+
+    const handleImportAudioTrack = useCallback(async () => {
+        if (!selectedProduct) {
+            Alert.alert('Produit requis', "S├®lectionnez un produit principal avant d'importer un audio.");
+            return;
+        }
+
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: ['audio/*'],
+                multiple: false,
+                copyToCacheDirectory: true,
+            });
+
+            if (!result || (result as any).canceled || (result as any).type === 'cancel') {
+                return;
+            }
+
+            const asset: any = (result as any).assets?.[0] || result;
+            if (!asset?.uri) {
+                Alert.alert('Import audio', 'Impossible de lire ce fichier audio.');
+                return;
+            }
+
+            setIsUploadingAudio(true);
+
+            const uploaded = await mediaApi.uploadServiceAudio(selectedProduct.serviceId, {
+                uri: asset.uri,
+                name: asset.name || asset.originalName,
+                type: asset.mimeType || asset.type || 'audio/mpeg',
+            });
+
+            const audioTracks = await refreshMedia(selectedProduct);
+
+            if (uploaded?.id) {
+                setSelectedMusicTrackId(uploaded.id);
+            } else if (audioTracks.length > 0) {
+                const latest = [...audioTracks].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+                setSelectedMusicTrackId(latest?.id ?? null);
+            }
+
+            Alert.alert('Audio import├®', 'Votre piste a ├®t├® ajout├®e ├á la m├®diath├¿que.');
+        } catch (error) {
+            console.error('[ProductVideoCreationModal] Import audio ├®chou├®:', error);
+            Alert.alert(
+                'Erreur import audio',
+                error instanceof Error ? error.message : "Impossible d'importer ce fichier audio pour le moment."
+            );
+        } finally {
+            setIsUploadingAudio(false);
+        }
+    }, [refreshMedia, selectedProduct]);
+
+    const handleGenerateBrief = useCallback(async () => {
+        if (!selectedProduct) {
+            Alert.alert('Produit requis', 'S├®lectionnez un produit avant de g├®n├®rer un brief.');
+            return;
+        }
+
+        setIsGeneratingBrief(true);
+        try {
+            const priceLabel = computePriceLabel(selectedProduct);
+            const promotionValue = computePromotionLabel(selectedProduct);
+            const highlights = collectProductHighlights(selectedProduct);
+            const response = await mediaApi.generateVideoBrief({
+                product_name: normalizeProductName(selectedProduct),
+                description: selectedProduct.description,
+                price: priceLabel,
+                promotion: promotionValue,
+                highlights,
+                target_audience: Array.from(selectedChannels.values()).join(', '),
+                tone: stylePreset,
+                lang: subtitleLang || voiceoverLang,
+                variant_count: 3,
+            });
+
+            if (!response.success || !(response.data as any)?.variants) {
+                throw new Error(response.error || 'G├®n├®ration IA impossible');
+            }
+
+            const variants: AIVideoBriefVariant[] = (response.data as any).variants;
+            setBriefVariants(variants);
+
+            if (variants.length === 0) {
+                throw new Error('Aucune variante g├®n├®r├®e');
+            } else if (variants.length === 1) {
+                applyBriefVariant(variants[0], setHeadline, setCallToAction, setScriptNotes, setVoiceoverScript, setVariantPickerVisible);
+                Alert.alert('Brief g├®n├®r├®', 'Le script et le CTA ont ├®t├® optimis├®s par Yukpomnang IA.');
+            } else {
+                setVariantPickerVisible(true);
+            }
+        } catch (error) {
+            console.error('[ProductVideoCreationModal] Brief IA impossible:', error);
+            Alert.alert(
+                'Erreur IA',
+                error instanceof Error ? error.message : 'Impossible de g├®n├®rer le brief IA pour le moment.'
+            );
+        } finally {
+            setIsGeneratingBrief(false);
+        }
+    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang]); // Ô£à CORRIG├ë: applyBriefVariant est une fonction utilitaire stable, pas besoin de d├®pendance
+
+    const applyStyleSuggestion = useCallback((suggestion: AIVideoStyleSuggestion) => {
+        setStyleSuggestion(suggestion);
+        setSelectedEffects(new Set(suggestion.effects || []));
+        setSelectedTransitions(new Set(suggestion.transitions || []));
+        setSelectedOverlayTips(new Set(suggestion.overlay_tips || []));
+        setColorPalette(suggestion.color_palette || '');
+        setStyleMusicHint(suggestion.music_hint || '');
+    }, []);
+
+    const handleGenerateStyleSuggestion = useCallback(async () => {
+        if (!selectedProduct) {
+            Alert.alert('Produit requis', 'S├®lectionnez un produit avant de g├®n├®rer des effets IA.');
+            return;
+        }
+
+        setIsGeneratingStyle(true);
+        try {
+            const highlights = collectProductHighlights(selectedProduct);
+            const channelPriority = ['shorts', 'instagram', 'youtube', 'chat', 'product'];
+            const selectedChannel = channelPriority.find((key) => selectedChannels.has(key)) || 'shorts';
+
+            const response = await mediaApi.generateVideoStyle({
+                channel: selectedChannel,
+                product_type: selectedProduct.type || selectedProduct.category_label,
+                tone: stylePreset,
+                promotion: computePromotionLabel(selectedProduct),
+                highlights,
+                lang: subtitleLang || voiceoverLang,
+            });
+
+            if (!response.success || !(response.data as any)?.suggestion) {
+                throw new Error(response.error || 'Impossible de r├®cup├®rer les suggestions IA');
+            }
+
+            applyStyleSuggestion((response.data as any).suggestion);
+            Alert.alert('Effets IA g├®n├®r├®s', 'Les effets et transitions recommand├®s ont ├®t├® ajout├®s. Vous pouvez les ajuster.');
+        } catch (error) {
+            console.error('[ProductVideoCreationModal] Style IA impossible:', error);
+            Alert.alert(
+                'Erreur IA',
+                error instanceof Error ? error.message : 'Impossible de g├®n├®rer les suggestions visuelles pour le moment.'
+            );
+        } finally {
+            setIsGeneratingStyle(false);
+        }
+    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang, applyStyleSuggestion]);
+
+    const handleAnalyzeMedia = useCallback(async () => {
+        if (!selectedProduct) {
+            Alert.alert('Produit requis', "S├®lectionnez un produit avant d'analyser vos m├®dias.");
+            return;
+        }
+
+        setIsAnalyzingMedia(true);
+        try {
+            const tags: string[] = [];
+            productMedia.forEach((item) => {
+                if (item.ai_description) {
+                    tags.push(item.ai_description);
+                }
+            });
+            serviceMedia.forEach((item) => {
+                if (item.ai_description) {
+                    tags.push(item.ai_description);
+                }
+            });
+
+            const response = await mediaApi.analyzeMedia({
+                product_name: normalizeProductName(selectedProduct),
+                media_tags: tags,
+                description: selectedProduct.description,
+                lang: subtitleLang || voiceoverLang,
+            });
+
+            if (!response.success || !(response.data as any)?.analysis) {
+                throw new Error(response.error || 'Analyse IA indisponible');
+            }
+
+            const analysis = (response.data as any).analysis;
+            setMediaAnalysis({
+                dominantColors: analysis.dominant_colors,
+                detectedObjects: analysis.detected_objects,
+                ambiance: analysis.ambiance,
+                marketingAngle: analysis.marketing_angle,
+            });
+            Alert.alert('Analyse IA termin├®e', 'Couleurs dominantes et angles marketing mis ├á jour.');
+        } catch (error) {
+            console.error('[ProductVideoCreationModal] Analyse m├®dia impossible:', error);
+            Alert.alert(
+                'Erreur IA',
+                error instanceof Error ? error.message : "Impossible d'analyser vos m├®dias pour le moment."
+            );
+        } finally {
+            setIsAnalyzingMedia(false);
+        }
+    }, [productMedia, serviceMedia, selectedProduct, subtitleLang, voiceoverLang]);
+
+    useEffect(() => {
+        if (!visible) {
+            setSelectedProduct(primaryProduct);
+            setSelectedRelatedProducts(new Set());
+            setSelectedMediaIds(new Set());
+            setStylePreset('tiktok');
+            setDuration('28');
+            setScriptNotes('');
+            setIncludePrice(true);
+            setIncludeContact(true);
+            setUseProductGallery(true);
+            setUseMediatechLibrary(true);
+            setIncludePubliciteAssets(true);
+            setPublishToChat(true);
+            setPublishToProductCard(true);
+            setMusicMode('pulse');
+            setMusicVolume('0.28');
+            setVoiceoverEnabled(false);
+            setVoiceoverScript('');
+            setVoiceoverLang('fr');
+            setSubtitleLang('fr');
+            setGenerateSquareVariant(true);
+            setGenerateLandscapeVariant(false);
+            setSelectedMusicTrackId(null);
+            setAvailableAudioTracks([]);
+            setSelectedChannels(new Set(['chat', 'product']));
+            setBriefVariants([]);
+            setVariantPickerVisible(false);
+            setStyleSuggestion(null);
+            setSelectedEffects(new Set());
+            setSelectedTransitions(new Set());
+            setSelectedOverlayTips(new Set());
+            setColorPalette('');
+            setStyleMusicHint('');
+            setMediaAnalysis({});
+            setDistributionPlan(null);
+            return;
+        }
+
+        setSelectedProduct(primaryProduct);
+        setSelectedRelatedProducts(new Set());
+        setSelectedMediaIds(new Set());
+        setStylePreset('tiktok');
+        setDuration('28');
+        setScriptNotes('');
+        setIncludePrice(true);
+        setIncludeContact(true);
+        setUseProductGallery(true);
+        setUseMediatechLibrary(true);
+        setIncludePubliciteAssets(true);
+        setPublishToChat(true);
+        setPublishToProductCard(true);
+        setMusicMode('pulse');
+        setMusicVolume('0.28');
+        setVoiceoverEnabled(false);
+        setVoiceoverScript('');
+        setVoiceoverLang('fr');
+        setSubtitleLang('fr');
+        setGenerateSquareVariant(true);
+        setGenerateLandscapeVariant(false);
+        setSelectedMusicTrackId(null);
+        setAvailableAudioTracks([]);
+        setSelectedChannels(new Set(['chat', 'product']));
+    }, [visible, primaryProduct]);
+
+    useEffect(() => {
+        if (!visible) {
+            return;
+        }
+
+        if (!selectedProduct) {
+            setHeadline('');
+            setCallToAction('Commandez maintenant sur Yukpomnang Ô£à');
+            setIncludePromotion(false);
+            setSelectedRelatedProducts(new Set());
+            setProductMedia([]);
+            setServiceMedia([]);
+            setAvailableAudioTracks([]);
+            setSelectedMusicTrackId(null);
+            setSubtitleLang('fr');
+            refreshMedia(null);
+            return;
+        }
+
+        const productName = normalizeProductName(selectedProduct);
+        const defaultHeadline = `­ƒÄ» ${productName} en ${selectedProduct.city || 'promo'}`;
+        const defaultCTA = `­ƒô▓ Contactez ${selectedProduct.serviceTitre || 'nous'} sur Yukpomnang`;
+
+        setHeadline(defaultHeadline);
+        setCallToAction(defaultCTA);
+        setIncludePromotion(Boolean(selectedProduct.promotionActive));
+        setSelectedRelatedProducts(new Set());
+        setVoiceoverScript(
+            buildDefaultVoiceover(productName, defaultHeadline, defaultCTA, [])
+        );
+
+        void refreshMedia(selectedProduct);
+    }, [visible, selectedProduct, refreshMedia]);
+
+    useEffect(() => {
+        if (!visible) {
+            return;
+        }
+
+        setLoadingLibrary(true);
+        mediaApi.getAudioLibrary()
+            .then((response) => {
+                if (response.success && Array.isArray((response.data as any)?.loops)) {
+                    setAudioLibrary((response.data as any).loops);
+                }
+            })
+            .catch((error) => {
+                console.warn('[ProductVideoCreationModal] Impossible de charger la biblioth├¿que audio:', error);
+            })
+            .finally(() => setLoadingLibrary(false));
+    }, [visible]);
+
+    const groupedProducts: GroupedProducts[] = useMemo(() => {
+        const groups = new Map<string, GroupedProducts>();
+
+        console.log('[ProductVideoCreationModal] ­ƒôª Traitement produits:', products.length);
+
+        products.forEach((product) => {
+            const serviceId = product.serviceId || 'service';
+            const existing = groups.get(serviceId);
+            const item: ManagedProduct = product;
+
+            if (existing) {
+                existing.items.push(item);
+            } else {
+                groups.set(serviceId, {
+                    serviceId,
+                    serviceTitre: product.serviceTitre || 'Service',
+                    items: [item],
+                });
+            }
+        });
+
+        const result = Array.from(groups.values());
+        console.log('[ProductVideoCreationModal] ­ƒôª Groupes cr├®├®s:', result.length, 'services');
+        return result;
+    }, [products]);
+
+    const productsSameService = useMemo(() => {
+        if (!selectedProduct) {
+            return [];
+        }
+        // Ô£à CORRIG├ë: V├®rifier que products est un tableau avant d'appeler .filter()
+        if (!Array.isArray(products)) {
+            return [];
+        }
+        return products
+            .filter(
+                (product) =>
+                    product &&
+                    product.serviceId === selectedProduct.serviceId &&
+                    product.product_index !== selectedProduct.product_index
+            )
+            .sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
+    }, [products, selectedProduct]);
+
+    const toggleRelatedProduct = (productIndex?: number) => {
+        if (typeof productIndex !== 'number') {
+            return;
+        }
+
+        setSelectedRelatedProducts((prev) => {
+            const next = new Set(prev);
+            if (next.has(productIndex)) {
+                next.delete(productIndex);
+            } else {
+                next.add(productIndex);
+            }
+            return next;
+        });
+    };
+
+    const toggleMediaSelection = (mediaId: number) => {
+        setSelectedMediaIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(mediaId)) {
+                next.delete(mediaId);
+            } else {
+                next.add(mediaId);
+            }
+            return next;
+        });
+    };
+
+    const toggleSelection = useCallback((value: string, setter: React.Dispatch<React.SetStateAction<Set<string>>>) => {
+        setter((prev) => {
+            const next = new Set(prev);
+            if (next.has(value)) {
+                next.delete(value);
+            } else {
+                next.add(value);
+            }
+            return next;
+        });
+    }, []);
+
+    // Ô£à CORRIG├ë: Fonction wrapper pour applyBriefVariant avec les setters du composant
+    // Ô£à CORRIG├ë 2025-11-28: Retir├® les setters des d├®pendances car ils sont stables
+    const handleApplyBriefVariant = useCallback((variant: AIVideoBriefVariant) => {
+        applyBriefVariant(
+            variant,
+            setHeadline,
+            setCallToAction,
+            setScriptNotes,
+            setVoiceoverScript,
+            setVariantPickerVisible
+        );
+    }, []); // Setters useState sont stables, pas besoin de d├®pendances
+
+    const coachPanel = useMemo(() => {
+        if (!selectedProduct) {
+            return null;
+        }
+        const hasInsights = briefVariants.length > 0 || styleSuggestion || distributionPlan;
+        if (!hasInsights && !coachLoading) {
+            return null;
+        }
+
+        const topVariant = briefVariants[0];
+        const scriptPreview =
+            topVariant?.headline ||
+            topVariant?.script_outline?.[0] ||
+            topVariant?.call_to_action ||
+            '';
+        // Ô£à CORRIG├ë: V├®rifier que hashtags est un tableau avant d'appeler .slice() et .map()
+        const limitedHashtags =
+            (Array.isArray(distributionPlan?.hashtags)
+                ? distributionPlan.hashtags.slice(0, 3).map((tag) => `#${String(tag || '').replace(/^#/, '')}`)
+                : []) || [];
+        const nextSchedule = distributionPlan?.schedule?.[0];
+
+        return (
+            <NativeCard style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Coach IA Yukpo</Text>
+                    <TouchableOpacity style={styles.linkButton} onPress={handleRefreshCoach}>
+                        {coachLoading ? (
+                            <ActivityIndicator size="small" color={modernColors.primary} />
+                        ) : (
+                            <SafeIcon name="refresh-cw" size={16} color={modernColors.primary} />
+                        )}
+                        <Text style={styles.linkButtonText}>
+                            {coachLoading ? 'AnalyseÔÇª' : 'Actualiser'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+                {coachLoading && !hasInsights ? (
+                    <View style={styles.coachLoading}>
+                        <ActivityIndicator size="small" color={modernColors.primary} />
+                        <Text style={styles.coachLoadingText}>
+                            Le coach pr├®pare vos recommandations personnalis├®esÔÇª
+                        </Text>
+                    </View>
+                ) : (
+                    <>
+                        {topVariant && (
+                            <View style={styles.coachRow}>
+                                <SafeIcon
+                                    name="align-left"
+                                    size={18}
+                                    color={modernColors.primary}
+                                />
+                                <View style={styles.coachContent}>
+                                    <Text style={styles.coachLabel}>Script IA</Text>
+                                    {scriptPreview ? (
+                                        <Text style={styles.coachText} numberOfLines={2}>
+                                            {scriptPreview}
+                                        </Text>
+                                    ) : null}
+                                    <TouchableOpacity
+                                        style={styles.coachAction}
+                                        onPress={() => setVariantPickerVisible(true)}
+                                    >
+                                        <SafeIcon name="sparkles" size={14} color={modernColors.primary} />
+                                        <Text style={styles.coachActionText}>
+                                            Voir les {briefVariants.length} variantes
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+
+                        {styleSuggestion && (
+                            <View style={styles.coachRow}>
+                                <SafeIcon
+                                    name="film"
+                                    size={18}
+                                    color={modernColors.primary}
+                                />
+                                <View style={styles.coachContent}>
+                                    <Text style={styles.coachLabel}>Effets recommand├®s</Text>
+                                    {Array.isArray(styleSuggestion.effects) && styleSuggestion.effects.length > 0 ? (
+                                        <Text style={styles.coachText} numberOfLines={2}>
+                                            Effets : {styleSuggestion.effects.slice(0, 3).join(', ')}
+                                        </Text>
+                                    ) : null}
+                                    {Array.isArray(styleSuggestion.transitions) && styleSuggestion.transitions.length > 0 ? (
+                                        <Text style={styles.coachMeta}>
+                                            Transitions : {styleSuggestion.transitions.slice(0, 2).join(', ')}
+                                        </Text>
+                                    ) : null}
+                                    <TouchableOpacity
+                                        style={styles.coachAction}
+                                        onPress={() => applyStyleSuggestion(styleSuggestion)}
+                                    >
+                                        <SafeIcon name="plus-circle" size={14} color={modernColors.primary} />
+                                        <Text style={styles.coachActionText}>Appliquer les effets</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+
+                        {distributionPlan && (
+                            <View style={styles.coachRow}>
+                                <SafeIcon
+                                    name="send"
+                                    size={18}
+                                    color={modernColors.primary}
+                                />
+                                <View style={styles.coachContent}>
+                                    <Text style={styles.coachLabel}>Plan de diffusion</Text>
+                                    {distributionPlan.summary ? (
+                                        <Text style={styles.coachText} numberOfLines={2}>
+                                            {distributionPlan.summary}
+                                        </Text>
+                                    ) : null}
+                                    {limitedHashtags.length > 0 ? (
+                                        <Text style={styles.coachMeta}>
+                                            Hashtags : {limitedHashtags.join(' ')}
+                                        </Text>
+                                    ) : null}
+                                    {nextSchedule ? (
+                                        <Text style={styles.coachMeta}>
+                                            Prochaine diffusion : {nextSchedule.channel} ÔÇó {nextSchedule.best_time}
+                                        </Text>
+                                    ) : null}
+                                </View>
+                            </View>
+                        )}
+                    </>
+                )}
+            </NativeCard>
+        );
+    }, [
+        applyStyleSuggestion,
+        briefVariants,
+        coachLoading,
+        distributionPlan,
+        handleRefreshCoach,
+        selectedProduct,
+        // Ô£à CORRIG├ë: setVariantPickerVisible retir├® des d├®pendances car c'est un setter useState stable
+        styleSuggestion,
+    ]);
+
+    const handleSubmit = async () => {
+        if (!selectedProduct) {
+            Alert.alert('Produit requis', "S├®lectionnez d'abord le produit principal ├á mettre en avant.");
+            return;
+        }
+
+        if (typeof selectedProduct.product_index !== 'number') {
+            Alert.alert('Produit incomplet', "Ce produit ne poss├¿de pas d'index. Rechargez la page et r├®essayez.");
+            return;
+        }
+
+        if (!headline.trim()) {
+            Alert.alert('Titre manquant', 'Ajoutez un titre accrocheur pour votre vid├®o.');
+            return;
+        }
+
+        const durationSeconds = ensureNumber(duration, 28);
+        if (durationSeconds < 10 || durationSeconds > 90) {
+            Alert.alert('Dur├®e invalide', 'Choisissez une dur├®e comprise entre 10 et 90 secondes.');
+            return;
+        }
+
+        if (voiceoverEnabled) {
+            if (voiceoverScript.trim().length < 10) {
+                Alert.alert('Narration insuffisante', 'Le texte de la voix off doit contenir au moins 10 caract├¿res.');
+                return;
+            }
+        }
+
+        const parsedMusicVolume = Number.parseFloat(musicVolume);
+        const safeMusicVolume = Number.isFinite(parsedMusicVolume)
+            ? Math.min(Math.max(parsedMusicVolume, 0.05), 0.7)
+            : 0.28;
+
+        const payload = {
+            style: stylePreset,
+            duration_seconds: durationSeconds,
+            headline: headline.trim(),
+            call_to_action: callToAction.trim(),
+            include_price: includePrice,
+            include_promotion: includePromotion,
+            include_contact: includeContact,
+            selected_media_ids: Array.from(selectedMediaIds.values()),
+            related_product_indices: Array.from(selectedRelatedProducts.values()),
+            use_product_gallery: useProductGallery,
+            use_service_mediatech: useMediatechLibrary,
+            include_publicite_assets: includePubliciteAssets,
+            publish_to_chat: publishToChat,
+            publish_to_product_card: publishToProductCard,
+            storyboard: scriptNotes
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0),
+            music_mode: musicMode,
+            music_volume: musicMode === 'none' ? undefined : safeMusicVolume,
+            music_track_id: selectedMusicTrackId ?? undefined,
+            voiceover_script: voiceoverEnabled ? voiceoverScript.trim() : undefined,
+            voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
+            voiceover_voice: voiceoverEnabled ? voiceoverLang : undefined,
+            subtitle_lang: subtitleLang,
+            generate_square_variant: generateSquareVariant,
+            generate_landscape_variant: generateLandscapeVariant,
+            distribute_channels: Array.from(selectedChannels.values()),
+            style_effects: selectedEffects.size > 0 ? Array.from(selectedEffects) : undefined,
+            style_transitions: selectedTransitions.size > 0 ? Array.from(selectedTransitions) : undefined,
+            style_overlay_tips: selectedOverlayTips.size > 0 ? Array.from(selectedOverlayTips) : undefined,
+            style_color_palette: colorPalette.trim().length > 0 ? colorPalette.trim() : undefined,
+            style_music_hint: styleMusicHint.trim().length > 0 ? styleMusicHint.trim() : undefined,
+        };
+
+        setIsSubmitting(true);
+
+        try {
+            const response = await mediaApi.generateProductVideo(
+                selectedProduct.serviceId,
+                selectedProduct.product_index,
+                payload
+            );
+
+            if (!response.success || !response.data) {
+                throw new Error(response.error || 'G├®n├®ration impossible');
+            }
+
+            const result = response.data as GeneratedVideoResponse;
+            await onSuccess(result);
+        } catch (error: any) {
+            console.error('[ProductVideoCreationModal] Erreur g├®n├®ration vid├®o:', error);
+            Alert.alert(
+                'G├®n├®ration impossible',
+                error?.message || 'Nous ne parvenons pas ├á g├®n├®rer la vid├®o. V├®rifiez votre connexion et r├®essayez.'
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const renderProductSelection = () => {
+        if (selectedProduct) {
+            const imagePreview = (selectedProduct.images && selectedProduct.images[0]) || null;
+
+            return (
+                <NativeCard style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Produit principal</Text>
+                        <TouchableOpacity onPress={() => setSelectedProduct(null)} style={styles.linkButton}>
+                            <SafeIcon name="refresh-ccw" size={16} color={modernColors.primary} />
+                            <Text style={styles.linkButtonText}>Changer</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.selectedProductContainer}>
+                        {imagePreview ? (
+                            <Image source={{ uri: imagePreview }} style={styles.selectedProductImage} />
+                        ) : (
+                            <View style={styles.selectedProductPlaceholder}>
+                                <SafeIcon name="image" size={28} color={modernColors.primary} />
+                            </View>
+                        )}
+                        <View style={styles.selectedProductInfo}>
+                            <Text style={styles.selectedProductName} numberOfLines={2}>
+                                {normalizeProductName(selectedProduct)}
+                            </Text>
+                            <Text style={styles.selectedProductService} numberOfLines={1}>
+                                {selectedProduct.serviceTitre || 'Service'}
+                            </Text>
+                            {(() => {
+                                const prix = getFieldValue(selectedProduct.prix);
+                                const devise = getFieldValue(selectedProduct.devise) || 'XAF';
+                                return prix ? (
+                                    <Text style={styles.selectedProductPrice}>
+                                        {prix} {devise}
+                                    </Text>
+                                ) : null;
+                            })()}
+                        </View>
+                    </View>
+                </NativeCard>
+            );
+        }
+
+        // Ô£à V├®rifier si des produits sont disponibles
+        if (!groupedProducts || groupedProducts.length === 0) {
+            return (
+                <NativeCard style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>S├®lectionnez le produit ├á mettre en avant</Text>
+                    <Text style={styles.sectionSubtitle}>
+                        Aucun produit disponible. Cr├®ez d'abord un produit dans vos services.
+                    </Text>
+                </NativeCard>
+            );
+        }
+
+        return (
+            <NativeCard style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>S├®lectionnez le produit ├á mettre en avant</Text>
+                <Text style={styles.sectionSubtitle}>
+                    Choisissez un service puis un produit pour lancer la cr├®ation automatique de votre vid├®o verticale.
+                </Text>
+                {/* Ô£à CORRECTION: Remplacer ScrollView imbriqu├® par View pour ├®viter les probl├¿mes de toucher */}
+                <View style={styles.productSelectionList}>
+                    {Array.isArray(groupedProducts) && groupedProducts.length > 0 ? (
+                        groupedProducts.map((group) => {
+                            // Ô£à CORRIG├ë: V├®rifier que group et group.items sont d├®finis
+                            if (!group || !Array.isArray(group.items)) {
+                                return null;
+                            }
+
+                            return (
+                                <View key={group.serviceId || 'unknown'} style={styles.productGroup}>
+                                    <Text style={styles.productGroupTitle}>
+                                        {group.serviceTitre || 'Service sans nom'}
+                                    </Text>
+                                    {group.items.map((product, idx) => {
+                                        // Ô£à CORRIG├ë: V├®rifier que product est d├®fini
+                                        if (!product) return null;
+
+                                        return (
+                                            <TouchableOpacity
+                                                key={`${group.serviceId}_${product.product_index ?? product.id ?? idx}`}
+                                                style={styles.productSelectItem}
+                                                onPress={() => {
+                                                    console.log('[ProductVideoCreationModal] Produit s├®lectionn├®:', product);
+
+                                                    // Ô£à CORRIG├ë: V├®rifier que le produit est valide
+                                                    if (!product) {
+                                                        console.error('[ProductVideoCreationModal] Produit null/undefined');
+                                                        return;
+                                                    }
+
+                                                    // Ô£à CORRIG├ë: Normaliser le produit en extrayant les valeurs des wrappers
+                                                    const normalizedProduct: ManagedProduct = {
+                                                        ...product,
+                                                        nom: getFieldValue(product.nom) ||
+                                                            getFieldValue((product as any).nom_produit) ||
+                                                            'Produit sans nom',
+                                                        nom_produit: getFieldValue((product as any).nom_produit) ||
+                                                            getFieldValue(product.nom) ||
+                                                            'Produit sans nom',
+                                                        // Normaliser aussi les autres champs qui pourraient avoir des wrappers
+                                                        prix: getFieldValue(product.prix),
+                                                        devise: getFieldValue(product.devise),
+                                                        description: getFieldValue(product.description),
+                                                    };
+
+                                                    setSelectedProduct(normalizedProduct);
+                                                    console.log('[ProductVideoCreationModal] Produit normalis├®:', normalizedProduct);
+                                                }}
+                                                activeOpacity={0.7}
+                                            >
+                                                <View style={styles.productSelectIcon}>
+                                                    <SafeIcon name="package" size={18} color={modernColors.primary} />
+                                                </View>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.productSelectName} numberOfLines={2}>
+                                                        {normalizeProductName(product)}
+                                                    </Text>
+                                                    <Text style={styles.productSelectMeta} numberOfLines={1}>
+                                                        {getFieldValue(product.type) || 'produit'}
+                                                        {(() => {
+                                                            const prix = getFieldValue(product.prix);
+                                                            const devise = getFieldValue(product.devise) || 'XAF';
+                                                            return prix ? ` ÔÇó ${prix} ${devise}` : '';
+                                                        })()}
+                                                    </Text>
+                                                </View>
+                                                <SafeIcon name="chevron-right" size={18} color={modernColors.textSecondary} />
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            );
+                        })
+                    ) : (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyStateText}>Aucun produit disponible</Text>
+                        </View>
+                    )}
+                </View>
+            </NativeCard>
+        );
+    };
+
+    const renderRelatedProducts = () => {
+        if (!selectedProduct || productsSameService.length === 0) {
+            return null;
+        }
+
+        return (
+            <NativeCard style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Associer d'autres produits</Text>
+                <Text style={styles.sectionSubtitle}>
+                    Ajoutez des produits compl├®mentaires pour g├®n├®rer des tags et liens cliquables directement depuis la
+                    vid├®o.
+                </Text>
+                <View style={styles.relatedProductsContainer}>
+                    {Array.isArray(productsSameService) && productsSameService.length > 0 ? (
+                        productsSameService.map((product) => {
+                            const index = typeof product.product_index === 'number' ? product.product_index : undefined;
+                            const selected = index !== undefined && selectedRelatedProducts.has(index);
+                            return (
+                                <TouchableOpacity
+                                    key={`related_${product.id}_${product.product_index}`}
+                                    style={[
+                                        styles.relatedProductChip,
+                                        selected && styles.relatedProductChipSelected,
+                                    ]}
+                                    onPress={() => toggleRelatedProduct(index)}
+                                >
+                                    <SafeIcon
+                                        name={selected ? 'check-circle' : 'circle'}
+                                        size={16}
+                                        color={selected ? '#10B981' : modernColors.primary}
+                                    />
+                                    <Text
+                                        style={[
+                                            styles.relatedProductText,
+                                            selected && styles.relatedProductTextSelected,
+                                        ]}
+                                        numberOfLines={1}
+                                    >
+                                        {normalizeProductName(product)}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })
+                    ) : (
+                        <Text style={styles.emptyStateText}>Aucun produit compl├®mentaire disponible</Text>
+                    )}
+                </View>
+            </NativeCard>
+        );
+    };
+
+    const renderMediaGrid = (
+        items: MediaLibraryItem[],
+        title: string,
+        emptyMessage: string,
+        accentColor: string,
+    ) => (
+        <View style={styles.mediaSection}>
+            <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{title}</Text>
+                <View style={[styles.mediaBadge, { backgroundColor: accentColor }]}>
+                    <Text style={styles.mediaBadgeText}>{items.length}</Text>
+                </View>
+            </View>
+            {mediaLoading ? (
+                <View style={styles.mediaLoading}>
+                    <ActivityIndicator size="small" color={modernColors.primary} />
+                    <Text style={styles.mediaLoadingText}>R├®cup├®ration de vos m├®diasÔÇª</Text>
+                </View>
+            ) : items.length === 0 ? (
+                <View style={styles.emptyMediaState}>
+                    <SafeIcon name="image-off" size={24} color={modernColors.textSecondary} />
+                    <Text style={styles.emptyMediaText}>{emptyMessage}</Text>
+                </View>
+            ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mediaList}>
+                    {items.map((item) => {
+                        const uri = buildMediaUrl(item.path);
+                        const isSelected = selectedMediaIds.has(item.id);
+                        const iconName =
+                            (item.type || item.media_type)?.toLowerCase().includes('video') ? 'video' : 'image';
+
+                        return (
+                            <TouchableOpacity
+                                key={`media_${item.id}`}
+                                style={[styles.mediaItem, isSelected && styles.mediaItemSelected]}
+                                onPress={() => toggleMediaSelection(item.id)}
+                                activeOpacity={0.85}
+                            >
+                                {uri ? (
+                                    <Image source={{ uri }} style={styles.mediaThumbnail} resizeMode="cover" />
+                                ) : (
+                                    <View style={styles.mediaThumbnailFallback}>
+                                        <SafeIcon name={iconName as any} size={28} color={modernColors.primary} />
+                                    </View>
+                                )}
+                                <View style={styles.mediaOverlay}>
+                                    <SafeIcon name={iconName as any} size={14} color="#FFFFFF" />
+                                    {item.ai_description ? (
+                                        <Text style={styles.mediaCaption} numberOfLines={2}>
+                                            {item.ai_description}
+                                        </Text>
+                                    ) : null}
+                                </View>
+                                {isSelected && (
+                                    <View style={styles.mediaSelectedBadge}>
+                                        <SafeIcon name="check" size={16} color="#FFFFFF" />
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+            )}
+        </View>
+    );
+
+    const handleGenerateDistribution = useCallback(async () => {
+        if (!selectedProduct) {
+            Alert.alert('Produit requis', 'S├®lectionnez un produit avant de g├®n├®rer un plan de diffusion.');
+            return;
+        }
+
+        setIsGeneratingDistribution(true);
+        try {
+            const response = await mediaApi.generateDistributionPlan({
+                product_name: normalizeProductName(selectedProduct),
+                channels: Array.from(selectedChannels.values()),
+                target_audience: Array.from(selectedChannels.values()).join(', '),
+                marketing_angle: mediaAnalysis.marketingAngle || undefined,
+                lang: subtitleLang || voiceoverLang,
+            });
+
+            if (!response.success || !(response.data as any)?.plan) {
+                throw new Error(response.error || 'Plan IA indisponible');
+            }
+
+            setDistributionPlan((response.data as any).plan);
+            Alert.alert('Plan IA g├®n├®r├®', 'Le plan de diffusion et hashtags ont ├®t├® ajout├®s.');
+        } catch (error) {
+            console.error('[ProductVideoCreationModal] Plan IA impossible:', error);
+            Alert.alert(
+                'Erreur IA',
+                error instanceof Error ? error.message : 'Impossible de g├®n├®rer le plan de diffusion pour le moment.'
+            );
+        } finally {
+            setIsGeneratingDistribution(false);
+        }
+    }, [selectedProduct, selectedChannels, mediaAnalysis, subtitleLang, voiceoverLang]);
+
+    return (
+        <>
+            <Modal
+                visible={visible}
+                animationType="slide"
+                transparent
+                onRequestClose={() => {
+                    if (!isSubmitting) {
+                        onClose();
+                    }
+                }}
+            >
+                <View style={styles.overlay}>
+                    <NativeCard style={styles.modalCard}>
+                        <View style={styles.modalHeader}>
+                            <View>
+                                <Text style={styles.modalTitle}>Studio vid├®o produit</Text>
+                                <Text style={styles.modalSubtitle}>
+                                    Assemblez en 30 secondes une vid├®o verticale pr├¬te pour TikTok, Reels et votre fiche
+                                    produit.
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={onClose} disabled={isSubmitting} style={styles.closeButton}>
+                                <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                            {renderProductSelection()}
+                            {coachPanel}
+
+                            {selectedProduct && (
+                                <>
+                                    <NativeCard style={styles.sectionCard}>
+                                        <View style={styles.sectionHeader}>
+                                            <Text style={styles.sectionTitle}>Brief & script marketing</Text>
+                                            <TouchableOpacity
+                                                style={styles.linkButton}
+                                                onPress={handleGenerateBrief}
+                                                disabled={isGeneratingBrief}
+                                            >
+                                                {isGeneratingBrief ? (
+                                                    <ActivityIndicator size="small" color={modernColors.primary} />
+                                                ) : (
+                                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                                                )}
+                                                <Text style={styles.linkButtonText}>
+                                                    {isGeneratingBrief ? 'G├®n├®rationÔÇª' : 'Brief IA'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={styles.fieldGroup}>
+                                            <Text style={styles.fieldLabel}>Titre percutant</Text>
+                                            <NativeInput
+                                                value={headline}
+                                                onChangeText={setHeadline}
+                                                placeholder="Ex: ­ƒÜÇ Promotion sp├®ciale sur nos m├¿ches premium !"
+                                                multiline
+                                                minLines={2}
+                                            />
+                                        </View>
+                                        <View style={styles.fieldGroup}>
+                                            <Text style={styles.fieldLabel}>Call-to-action principal</Text>
+                                            <NativeInput
+                                                value={callToAction}
+                                                onChangeText={setCallToAction}
+                                                placeholder="Ex: R├®servez en ligne et profitez de la livraison express !"
+                                                multiline
+                                                minLines={2}
+                                            />
+                                        </View>
+                                        <View style={styles.fieldGroup}>
+                                            <Text style={styles.fieldLabel}>Brief marketing (optionnel)</Text>
+                                            <NativeInput
+                                                value={scriptNotes}
+                                                onChangeText={setScriptNotes}
+                                                placeholder={`D├®crivez les messages cl├®s, avantages, garanties, etc.\nUne ligne = une sc├¿ne.`}
+                                                multiline
+                                                minLines={3}
+                                            />
+                                        </View>
+                                    </NativeCard>
+
+                                    <NativeCard style={styles.sectionCard}>
+                                        <View style={styles.sectionHeader}>
+                                            <Text style={styles.sectionTitle}>Style et rythme de la vid├®o</Text>
+                                            <TouchableOpacity
+                                                style={styles.linkButton}
+                                                onPress={handleGenerateStyleSuggestion}
+                                                disabled={isGeneratingStyle}
+                                            >
+                                                {isGeneratingStyle ? (
+                                                    <ActivityIndicator size="small" color={modernColors.primary} />
+                                                ) : (
+                                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                                                )}
+                                                <Text style={styles.linkButtonText}>
+                                                    {isGeneratingStyle ? 'AnalyseÔÇª' : 'Effets IA'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={styles.styleRow}>
+                                            {VIDEO_STYLE_OPTIONS.map((option) => {
+                                                const selected = stylePreset === option.key;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={option.key}
+                                                        style={[
+                                                            styles.styleChip,
+                                                            selected && styles.styleChipSelected,
+                                                        ]}
+                                                        onPress={() => setStylePreset(option.key)}
+                                                    >
+                                                        <Text
+                                                            style={[
+                                                                styles.styleChipLabel,
+                                                                selected && styles.styleChipLabelSelected,
+                                                            ]}
+                                                        >
+                                                            {option.label}
+                                                        </Text>
+                                                        <Text style={styles.styleChipDescription} numberOfLines={2}>
+                                                            {option.description}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                        {styleSuggestion && (
+                                            <View style={styles.suggestionSection}>
+                                                <Text style={styles.suggestionTitle}>Effets recommand├®s</Text>
+                                                <View style={styles.suggestionRow}>
+                                                    {Array.isArray(styleSuggestion.effects) ? styleSuggestion.effects.map((effect) => {
+                                                        const active = selectedEffects.has(effect);
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={`effect_${effect}`}
+                                                                style={[
+                                                                    styles.suggestionChip,
+                                                                    active && styles.suggestionChipSelected,
+                                                                ]}
+                                                                onPress={() => toggleSelection(effect, setSelectedEffects)}
+                                                            >
+                                                                <Text
+                                                                    style={[
+                                                                        styles.suggestionChipText,
+                                                                        active && styles.suggestionChipTextSelected,
+                                                                    ]}
+                                                                >
+                                                                    {effect}
+                                                                </Text>
+                                                            </TouchableOpacity>
+                                                        );
+                                                    }) : null}
+                                                </View>
+
+                                                <Text style={styles.suggestionTitle}>Transitions</Text>
+                                                <View style={styles.suggestionRow}>
+                                                    {Array.isArray(styleSuggestion.transitions) ? styleSuggestion.transitions.map((transition) => {
+                                                        const active = selectedTransitions.has(transition);
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={`transition_${transition}`}
+                                                                style={[
+                                                                    styles.suggestionChip,
+                                                                    active && styles.suggestionChipSelected,
+                                                                ]}
+                                                                onPress={() => toggleSelection(transition, setSelectedTransitions)}
+                                                            >
+                                                                <Text
+                                                                    style={[
+                                                                        styles.suggestionChipText,
+                                                                        active && styles.suggestionChipTextSelected,
+                                                                    ]}
+                                                                >
+                                                                    {transition}
+                                                                </Text>
+                                                            </TouchableOpacity>
+                                                        );
+                                                    }) : null}
+                                                </View>
+
+                                                <Text style={styles.suggestionTitle}>Overlays & tips</Text>
+                                                <View style={styles.suggestionRow}>
+                                                    {Array.isArray(styleSuggestion.overlay_tips) ? styleSuggestion.overlay_tips.map((tip) => {
+                                                        const active = selectedOverlayTips.has(tip);
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={`tip_${tip}`}
+                                                                style={[
+                                                                    styles.suggestionChip,
+                                                                    active && styles.suggestionChipSelected,
+                                                                ]}
+                                                                onPress={() => toggleSelection(tip, setSelectedOverlayTips)}
+                                                            >
+                                                                <Text
+                                                                    style={[
+                                                                        styles.suggestionChipText,
+                                                                        active && styles.suggestionChipTextSelected,
+                                                                    ]}
+                                                                >
+                                                                    {tip}
+                                                                </Text>
+                                                            </TouchableOpacity>
+                                                        );
+                                                    }) : null}
+                                                </View>
+
+                                                <Text style={styles.suggestionTitle}>Palette de couleurs</Text>
+                                                <NativeInput
+                                                    value={colorPalette}
+                                                    onChangeText={setColorPalette}
+                                                    placeholder={styleSuggestion.color_palette || '#6366F1 / #0EA5E9'}
+                                                />
+
+                                                <Text style={styles.suggestionTitle}>Ambiance musicale recommand├®e</Text>
+                                                <NativeInput
+                                                    value={styleMusicHint}
+                                                    onChangeText={setStyleMusicHint}
+                                                    placeholder={styleSuggestion.music_hint || 'Ex: Beat afro-pop ├®nergique'}
+                                                />
+                                            </View>
+                                        )}
+                                        <View style={styles.durationRow}>
+                                            <Text style={styles.fieldLabel}>Dur├®e cible</Text>
+                                            <View style={styles.durationInputRow}>
+                                                <NativeInput
+                                                    value={duration}
+                                                    onChangeText={setDuration}
+                                                    keyboardType="numeric"
+                                                    style={styles.durationInput}
+                                                />
+                                                <Text style={styles.durationUnit}>secondes</Text>
+                                            </View>
+                                            <Text style={styles.durationHint}>
+                                                Astuce : 25-35s performe mieux sur les r├®seaux sociaux. Yukpomnang g├¿re les
+                                                transitions automatiquement.
+                                            </Text>
+                                        </View>
+                                    </NativeCard>
+
+                                    <NativeCard style={styles.sectionCard}>
+                                        <Text style={styles.sectionTitle}>Ambiance musicale</Text>
+                                        <Text style={styles.sectionSubtitle}>
+                                            Choisissez une ambiance g├®n├®r├®e automatiquement. Vous pouvez ajouter vos propres pistes via la m├®diath├¿que.
+                                        </Text>
+                                        <View style={styles.styleRow}>
+                                            {MUSIC_MODE_OPTIONS.map((option) => {
+                                                const selected = musicMode === option.key;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={option.key}
+                                                        style={[
+                                                            styles.styleChip,
+                                                            selected && styles.styleChipSelected,
+                                                        ]}
+                                                        onPress={() => setMusicMode(option.key)}
+                                                    >
+                                                        <Text
+                                                            style={[
+                                                                styles.styleChipLabel,
+                                                                selected && styles.styleChipLabelSelected,
+                                                            ]}
+                                                        >
+                                                            {option.label}
+                                                        </Text>
+                                                        <Text style={styles.styleChipDescription} numberOfLines={2}>
+                                                            {option.description}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                        {musicMode !== 'none' && (
+                                            <View style={styles.fieldGroup}>
+                                                <Text style={styles.fieldLabel}>Volume musique (0.10 - 0.60)</Text>
+                                                <NativeInput
+                                                    value={musicVolume}
+                                                    onChangeText={setMusicVolume}
+                                                    keyboardType="decimal-pad"
+                                                />
+                                                <View style={styles.audioActionsRow}>
+                                                    <TouchableOpacity
+                                                        style={styles.audioImportButton}
+                                                        onPress={handleImportAudioTrack}
+                                                        disabled={isUploadingAudio}
+                                                    >
+                                                        {isUploadingAudio ? (
+                                                            <ActivityIndicator size="small" color={modernColors.primary} />
+                                                        ) : (
+                                                            <SafeIcon name="plus" size={16} color={modernColors.primary} />
+                                                        )}
+                                                        <Text style={styles.audioImportText}>
+                                                            {isUploadingAudio ? 'Import en coursÔÇª' : "Importer une piste depuis l'appareil"}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                                {availableAudioTracks.length > 0 && (
+                                                    <>
+                                                        <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
+                                                            S├®lectionner une piste audio existante
+                                                        </Text>
+                                                        <ScrollView
+                                                            horizontal
+                                                            showsHorizontalScrollIndicator={false}
+                                                            contentContainerStyle={styles.audioRow}
+                                                        >
+                                                            {availableAudioTracks.map((track) => {
+                                                                const selected = selectedMusicTrackId === track.id;
+                                                                return (
+                                                                    <TouchableOpacity
+                                                                        key={`audio_${track.id}`}
+                                                                        style={[
+                                                                            styles.audioChip,
+                                                                            selected && styles.audioChipSelected,
+                                                                        ]}
+                                                                        onPress={() => setSelectedMusicTrackId(selected ? null : track.id)}
+                                                                    >
+                                                                        <SafeIcon
+                                                                            name={selected ? 'music' : 'headphones'}
+                                                                            size={16}
+                                                                            color={selected ? '#0EA5E9' : modernColors.primary}
+                                                                        />
+                                                                        <Text
+                                                                            style={[
+                                                                                styles.audioChipText,
+                                                                                selected && styles.audioChipTextSelected,
+                                                                            ]}
+                                                                            numberOfLines={1}
+                                                                        >
+                                                                            {track.ai_description || `Piste ${track.id}`}
+                                                                        </Text>
+                                                                    </TouchableOpacity>
+                                                                );
+                                                            })}
+                                                        </ScrollView>
+                                                    </>
+                                                )}
+                                                {audioLibrary.length > 0 && (
+                                                    <>
+                                                        <Text style={[styles.fieldLabel, { marginTop: 16 }]}>
+                                                            Biblioth├¿que audio Yukpomnang
+                                                        </Text>
+                                                        {loadingLibrary ? (
+                                                            <View style={styles.audioRow}>
+                                                                <ActivityIndicator size="small" color={modernColors.primary} />
+                                                            </View>
+                                                        ) : (
+                                                            <ScrollView
+                                                                horizontal
+                                                                showsHorizontalScrollIndicator={false}
+                                                                contentContainerStyle={styles.audioRow}
+                                                            >
+                                                                {audioLibrary.map((loop) => {
+                                                                    const isAttaching = attachingLoopId === loop.id;
+                                                                    return (
+                                                                        <TouchableOpacity
+                                                                            key={loop.id}
+                                                                            style={styles.audioChip}
+                                                                            onPress={() => handleAttachAudioLoop(loop.id)}
+                                                                            disabled={isAttaching}
+                                                                        >
+                                                                            {isAttaching ? (
+                                                                                <ActivityIndicator size="small" color={modernColors.primary} />
+                                                                            ) : (
+                                                                                <SafeIcon name="download-cloud" size={16} color={modernColors.primary} />
+                                                                            )}
+                                                                            <View style={{ flex: 1 }}>
+                                                                                <Text style={styles.audioChipText} numberOfLines={1}>
+                                                                                    {loop.title}
+                                                                                </Text>
+                                                                                <Text style={styles.audioChipSubtitle} numberOfLines={1}>
+                                                                                    {loop.genre} ÔÇó {loop.bpm} BPM
+                                                                                </Text>
+                                                                            </View>
+                                                                        </TouchableOpacity>
+                                                                    );
+                                                                })}
+                                                            </ScrollView>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </View>
+                                        )}
+                                    </NativeCard>
+
+                                    <NativeCard style={styles.sectionCard}>
+                                        <Text style={styles.sectionTitle}>Informations ├á int├®grer automatiquement</Text>
+                                        <View style={styles.toggleRow}>
+                                            <View style={styles.toggleText}>
+                                                <Text style={styles.toggleLabel}>Prix & devise</Text>
+                                                <Text style={styles.toggleDescription}>
+                                                    Affiche automatiquement le prix actuel du produit.
+                                                </Text>
+                                            </View>
+                                            <Switch
+                                                value={includePrice}
+                                                onValueChange={setIncludePrice}
+                                                trackColor={{ true: '#6366F1' }}
+                                            />
+                                        </View>
+                                        <View style={styles.toggleRow}>
+                                            <View style={styles.toggleText}>
+                                                <Text style={styles.toggleLabel}>Promotions actives</Text>
+                                                <Text style={styles.toggleDescription}>
+                                                    Ajoute badges et messages promo d├®tect├®s dans votre fiche produit.
+                                                </Text>
+                                            </View>
+                                            <Switch
+                                                value={includePromotion}
+                                                onValueChange={setIncludePromotion}
+                                                trackColor={{ true: '#6366F1' }}
+                                            />
+                                        </View>
+                                        <View style={styles.toggleRow}>
+                                            <View style={styles.toggleText}>
+                                                <Text style={styles.toggleLabel}>Coordonn├®es & CTA</Text>
+                                                <Text style={styles.toggleDescription}>
+                                                    Ajoute votre CTA + boutons vers le chat Yukpomnang.
+                                                </Text>
+                                            </View>
+                                            <Switch
+                                                value={includeContact}
+                                                onValueChange={setIncludeContact}
+                                                trackColor={{ true: '#6366F1' }}
+                                            />
+                                        </View>
+                                    </NativeCard>
+
+                                    {renderRelatedProducts()}
+
+                                    <NativeCard style={styles.sectionCard}>
+                                        <View style={styles.sectionHeader}>
+                                            <Text style={styles.sectionTitle}>Narration vocale IA</Text>
+                                            <Switch
+                                                value={voiceoverEnabled}
+                                                onValueChange={(value) => {
+                                                    setVoiceoverEnabled(value);
+                                                    if (value && voiceoverScript.trim().length === 0) {
+                                                        const storyboardLines = scriptNotes
+                                                            .split(/\r?\n/)
+                                                            .map((line) => line.trim())
+                                                            .filter((line) => line.length > 0);
+                                                        setVoiceoverScript(
+                                                            buildDefaultVoiceover(
+                                                                normalizeProductName(selectedProduct),
+                                                                headline,
+                                                                callToAction,
+                                                                storyboardLines,
+                                                            ),
+                                                        );
+                                                    }
+                                                }}
+                                                trackColor={{ true: '#6366F1' }}
+                                            />
+                                        </View>
+                                        <Text style={styles.sectionSubtitle}>
+                                            G├®n├¿re une voix off automatique (espeak doit ├¬tre install├® sur le serveur). Vous pouvez ajuster le script avant synth├¿se.
+                                        </Text>
+                                        {voiceoverEnabled && (
+                                            <>
+                                                <View style={styles.voiceRow}>
+                                                    {VOICE_LANG_OPTIONS.map((option) => {
+                                                        const selected = voiceoverLang === option.value;
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={option.value}
+                                                                style={[
+                                                                    styles.voiceChip,
+                                                                    selected && styles.voiceChipSelected,
+                                                                ]}
+                                                                onPress={() => {
+                                                                    setVoiceoverLang(option.value);
+                                                                    setSubtitleLang(option.value);
+                                                                }}
+                                                            >
+                                                                <Text
+                                                                    style={[
+                                                                        styles.voiceChipText,
+                                                                        selected && styles.voiceChipTextSelected,
+                                                                    ]}
+                                                                >
+                                                                    {option.label}
+                                                                </Text>
+                                                            </TouchableOpacity>
+                                                        );
+                                                    })}
+                                                </View>
+                                                <NativeInput
+                                                    value={voiceoverScript}
+                                                    onChangeText={setVoiceoverScript}
+                                                    placeholder="Texte de narration..."
+                                                    multiline
+                                                    minLines={3}
+                                                />
+                                            </>
+                                        )}
+                                    </NativeCard>
+
+                                    <NativeCard style={styles.sectionCard}>
+                                        <View style={styles.sectionHeader}>
+                                            <Text style={styles.sectionTitle}>Sources m├®dias</Text>
+                                            <TouchableOpacity
+                                                style={styles.linkButton}
+                                                onPress={handleAnalyzeMedia}
+                                                disabled={isAnalyzingMedia}
+                                            >
+                                                {isAnalyzingMedia ? (
+                                                    <ActivityIndicator size="small" color={modernColors.primary} />
+                                                ) : (
+                                                    <SafeIcon name="scan" size={16} color={modernColors.primary} />
+                                                )}
+                                                <Text style={styles.linkButtonText}>
+                                                    {isAnalyzingMedia ? 'AnalyseÔÇª' : 'Analyse IA'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <Text style={styles.sectionSubtitle}>
+                                            S├®lectionnez les images/vid├®os ├á mettre en avant. Vous pouvez combiner votre
+                                            galerie produit et la m├®diath├¿que g├®n├®rale.
+                                        </Text>
+                                        {Array.isArray(mediaAnalysis.dominantColors) && mediaAnalysis.dominantColors.length > 0 && (
+                                            <View style={styles.mediaInsightsBox}>
+                                                <Text style={styles.mediaInsightsTitle}>Palette dominante</Text>
+                                                <View style={styles.colorRow}>
+                                                    {mediaAnalysis.dominantColors.map((color, idx) => (
+                                                        <View
+                                                            key={`color_${idx}`}
+                                                            style={[styles.colorSwatch, { backgroundColor: color }]}
+                                                        >
+                                                            <Text style={styles.colorLabel}>{color}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                                {mediaAnalysis.detectedObjects && mediaAnalysis.detectedObjects.length > 0 && (
+                                                    <Text style={styles.mediaInsightsText}>
+                                                        Objets rep├®r├®s : {mediaAnalysis.detectedObjects.join(', ')}
+                                                    </Text>
+                                                )}
+                                                {mediaAnalysis.ambiance && (
+                                                    <Text style={styles.mediaInsightsText}>
+                                                        Ambiance : {mediaAnalysis.ambiance}
+                                                    </Text>
+                                                )}
+                                                {mediaAnalysis.marketingAngle && (
+                                                    <Text style={styles.mediaInsightsText}>
+                                                        Angle marketing : {mediaAnalysis.marketingAngle}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        )}
+                                        <View style={styles.toggleRow}>
+                                            <View style={styles.toggleText}>
+                                                <Text style={styles.toggleLabel}>Galerie produit intelligente</Text>
+                                                <Text style={styles.toggleDescription}>
+                                                    Yukpomnang exploitera automatiquement les images enregistr├®es dans cette
+                                                    fiche produit.
+                                                </Text>
+                                            </View>
+                                            <Switch
+                                                value={useProductGallery}
+                                                onValueChange={setUseProductGallery}
+                                                trackColor={{ true: '#6366F1' }}
+                                            />
+                                        </View>
+                                        <View style={styles.toggleRow}>
+                                            <View style={styles.toggleText}>
+                                                <Text style={styles.toggleLabel}>M├®diath├¿que du prestataire</Text>
+                                                <Text style={styles.toggleDescription}>
+                                                    Ajoute vos assets g├®n├®raux (logos, publicit├®s, vid├®os verticales) pour un
+                                                    rendu premium.
+                                                </Text>
+                                            </View>
+                                            <Switch
+                                                value={useMediatechLibrary}
+                                                onValueChange={setUseMediatechLibrary}
+                                                trackColor={{ true: '#6366F1' }}
+                                            />
+                                        </View>
+                                        <View style={styles.toggleRow}>
+                                            <View style={styles.toggleText}>
+                                                <Text style={styles.toggleLabel}>Inclure vos visuels publicitaires</Text>
+                                                <Text style={styles.toggleDescription}>
+                                                    Ajoute automatiquement les banni├¿res/affiches d├®j├á configur├®es dans vos
+                                                    campagnes.
+                                                </Text>
+                                            </View>
+                                            <Switch
+                                                value={includePubliciteAssets}
+                                                onValueChange={setIncludePubliciteAssets}
+                                                trackColor={{ true: '#6366F1' }}
+                                            />
+                                        </View>
+                                        {renderMediaGrid(
+                                            productMedia,
+                                            'Images et vid├®os du produit',
+                                            'Ajoutez des m├®dias ├á cette fiche pour dynamiser la vid├®o.',
+                                            '#6366F1',
+                                        )}
+                                        {renderMediaGrid(
+                                            serviceMedia,
+                                            'M├®diath├¿que prestataire',
+                                            'Aucun m├®dia global enregistr├® pour ce service pour le moment.',
+                                            '#8B5CF6',
+                                        )}
+                                    </NativeCard>
+
+                                    <NativeCard style={styles.sectionCard}>
+                                        <View style={styles.sectionHeader}>
+                                            <Text style={styles.sectionTitle}>Diffusion automatique</Text>
+                                            <TouchableOpacity
+                                                style={styles.linkButton}
+                                                onPress={handleGenerateDistribution}
+                                                disabled={isGeneratingDistribution}
+                                            >
+                                                {isGeneratingDistribution ? (
+                                                    <ActivityIndicator size="small" color={modernColors.primary} />
+                                                ) : (
+                                                    <SafeIcon name="send" size={16} color={modernColors.primary} />
+                                                )}
+                                                <Text style={styles.linkButtonText}>
+                                                    {isGeneratingDistribution ? 'PlanificationÔÇª' : 'Plan IA'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <Text style={styles.sectionSubtitle}>
+                                            Contr├┤lez o├╣ la vid├®o sera mise en avant imm├®diatement apr├¿s sa g├®n├®ration.
+                                        </Text>
+                                        {distributionPlan && (
+                                            <View style={styles.planBox}>
+                                                {distributionPlan.summary && (
+                                                    <Text style={styles.planSummary}>{distributionPlan.summary}</Text>
+                                                )}
+                                                {distributionPlan.hashtags?.length > 0 && (
+                                                    <Text style={styles.planHashtags}>
+                                                        Hashtags : {Array.isArray(distributionPlan.hashtags) ? distributionPlan.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}
+                                                    </Text>
+                                                )}
+                                                {distributionPlan.schedule?.length > 0 && (
+                                                    <View style={styles.planSchedule}>
+                                                        {Array.isArray(distributionPlan.schedule) ? distributionPlan.schedule.map((item, idx) => (
+                                                            <View key={`schedule_${idx}`} style={styles.planScheduleRow}>
+                                                                <Text style={styles.planScheduleChannel}>{item.channel}</Text>
+                                                                <Text style={styles.planScheduleTime}>{item.best_time}</Text>
+                                                                {item.call_to_action && (
+                                                                    <Text style={styles.planScheduleCTA}>{item.call_to_action}</Text>
+                                                                )}
+                                                            </View>
+                                                        )) : null}
+                                                    </View>
+                                                )}
+                                            </View>
+                                        )}
+                                        <View style={styles.toggleRow}>
+                                            <View style={styles.toggleText}>
+                                                <Text style={styles.toggleLabel}>Envoyer dans le Chat Commerce</Text>
+                                                <Text style={styles.toggleDescription}>
+                                                    Permet ├á vos prospects de visionner la vid├®o directement dans la
+                                                    conversation.
+                                                </Text>
+                                            </View>
+                                            <Switch
+                                                value={publishToChat}
+                                                onValueChange={setPublishToChat}
+                                                trackColor={{ true: '#6366F1' }}
+                                            />
+                                        </View>
+                                        <View style={styles.toggleRow}>
+                                            <View style={styles.toggleText}>
+                                                <Text style={styles.toggleLabel}>Afficher sur la carte produit</Text>
+                                                <Text style={styles.toggleDescription}>
+                                                    Ajoute la vid├®o dans la galerie principale du produit (mobile & web).
+                                                </Text>
+                                            </View>
+                                            <Switch
+                                                value={publishToProductCard}
+                                                onValueChange={setPublishToProductCard}
+                                                trackColor={{ true: '#6366F1' }}
+                                            />
+                                        </View>
+                                        <Text style={[styles.sectionSubtitle, { marginTop: 8 }]}>
+                                            Ciblez aussi des canaux externes ├á planifier (export automatique disponible) :
+                                        </Text>
+                                        <View style={styles.voiceRow}>
+                                            {DISTRIBUTION_OPTIONS.map((option) => {
+                                                const selected = selectedChannels.has(option.key);
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={option.key}
+                                                        style={[
+                                                            styles.voiceChip,
+                                                            selected && styles.voiceChipSelected,
+                                                        ]}
+                                                        onPress={() =>
+                                                            setSelectedChannels((prev) => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(option.key)) {
+                                                                    next.delete(option.key);
+                                                                } else {
+                                                                    next.add(option.key);
+                                                                }
+                                                                return next;
+                                                            })
+                                                        }
+                                                    >
+                                                        <Text
+                                                            style={[
+                                                                styles.voiceChipText,
+                                                                selected && styles.voiceChipTextSelected,
+                                                            ]}
+                                                        >
+                                                            {option.label}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                        <Text style={styles.distributionHint}>
+                                            Les canaux externes seront export├®s au format adapt├® (carr├® ou paysage) pour faciliter vos publications.
+                                        </Text>
+                                        <View style={styles.toggleRow}>
+                                            <View style={styles.toggleText}>
+                                                <Text style={styles.toggleLabel}>G├®n├®rer aussi un format carr├® (1080x1080)</Text>
+                                                <Text style={styles.toggleDescription}>
+                                                    Id├®al pour Instagram, WhatsApp et fiches produits.
+                                                </Text>
+                                            </View>
+                                            <Switch
+                                                value={generateSquareVariant}
+                                                onValueChange={setGenerateSquareVariant}
+                                                trackColor={{ true: '#6366F1' }}
+                                            />
+                                        </View>
+                                        <View style={styles.toggleRow}>
+                                            <View style={styles.toggleText}>
+                                                <Text style={styles.toggleLabel}>G├®n├®rer un format paysage (1920x1080)</Text>
+                                                <Text style={styles.toggleDescription}>
+                                                    Parfait pour ├®crans larges et pr├®sentations.
+                                                </Text>
+                                            </View>
+                                            <Switch
+                                                value={generateLandscapeVariant}
+                                                onValueChange={setGenerateLandscapeVariant}
+                                                trackColor={{ true: '#6366F1' }}
+                                            />
+                                        </View>
+                                    </NativeCard>
+                                </>
+                            )}
+                        </ScrollView>
+
+                        <View style={styles.actionsRow}>
+                            <NativeButton
+                                title="Annuler"
+                                variant="outline"
+                                onPress={onClose}
+                                disabled={isSubmitting}
+                                style={styles.actionButton}
+                            />
+                            <NativeButton
+                                title={isSubmitting ? 'G├®n├®ration en cours...' : 'Cr├®er la vid├®o maintenant'}
+                                onPress={handleSubmit}
+                                disabled={isSubmitting || !selectedProduct}
+                                style={styles.primaryActionButton}
+                            />
+                        </View>
+                    </NativeCard>
+                </View>
+            </Modal>
+
+            <Modal
+                visible={variantPickerVisible}
+                animationType="fade"
+                transparent
+                onRequestClose={() => setVariantPickerVisible(false)}
+            >
+                <View style={styles.variantModalBackdrop}>
+                    <View style={styles.variantModalContainer}>
+                        <Text style={styles.variantModalTitle}>Choisissez un sc├®nario IA</Text>
+                        <ScrollView style={{ maxHeight: 320 }}>
+                            {briefVariants.map((variant, index) => (
+                                <TouchableOpacity
+                                    key={`brief_variant_${index}`}
+                                    style={styles.variantCard}
+                                    onPress={() => handleApplyBriefVariant(variant)}
+                                >
+                                    <Text style={styles.variantCardTitle}>
+                                        Variante {index + 1}
+                                    </Text>
+                                    {variant.hook && (
+                                        <Text style={styles.variantCardHook}>{variant.hook}</Text>
+                                    )}
+                                    <View style={styles.variantOutline}>
+                                        {Array.isArray(variant.script_outline) ? variant.script_outline.map((line, idx) => (
+                                            <Text key={idx} style={styles.variantOutlineLine}>
+                                                ÔÇó {line}
+                                            </Text>
+                                        )) : null}
+                                    </View>
+                                    {variant.hashtags?.length > 0 && (
+                                        <Text style={styles.variantHashtags}>
+                                            {Array.isArray(variant.hashtags) ? variant.hashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ') : ''}
+                                        </Text>
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <TouchableOpacity
+                            style={styles.variantCloseButton}
+                            onPress={() => setVariantPickerVisible(false)}
+                        >
+                            <Text style={styles.variantCloseText}>Annuler</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        </>
+    );
+};
+
+const styles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.55)',
+        padding: 16,
+        justifyContent: 'flex-end',
+    },
+    modalCard: {
+        borderRadius: 28,
+        padding: 0,
+        maxHeight: '94%',
+        overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
+    },
+    modalHeader: {
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 12,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 16,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    modalSubtitle: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        lineHeight: 18,
+    },
+    closeButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalBody: {
+        paddingHorizontal: 20,
+    },
+    sectionCard: {
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 18,
+        padding: 20,
+        backgroundColor: '#FFFFFF',
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    sectionSubtitle: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        lineHeight: 18,
+        marginBottom: 12,
+    },
+    coachLoading: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 8,
+    },
+    coachLoadingText: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        flex: 1,
+    },
+    coachRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+        paddingVertical: 12,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: '#E5E7EB',
+    },
+    coachIcon: {
+        marginTop: 2,
+    },
+    coachContent: {
+        flex: 1,
+        gap: 6,
+    },
+    coachLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    coachText: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        lineHeight: 18,
+    },
+    coachMeta: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+    },
+    coachAction: {
+        marginTop: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    coachActionText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    linkButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: '#EEF2FF',
+        borderWidth: 1,
+        borderColor: '#E0E7FF',
+    },
+    linkButtonText: {
+        fontSize: 12,
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    selectedProductContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        marginTop: 12,
+    },
+    selectedProductImage: {
+        width: 72,
+        height: 72,
+        borderRadius: 16,
+    },
+    selectedProductPlaceholder: {
+        width: 72,
+        height: 72,
+        borderRadius: 16,
+        backgroundColor: '#EEF2FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E0E7FF',
+    },
+    selectedProductInfo: {
+        flex: 1,
+        gap: 4,
+    },
+    selectedProductName: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    selectedProductService: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+    },
+    selectedProductPrice: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#10B981',
+    },
+    productSelectionList: {
+        marginTop: 12,
+        // Ô£à Pas de maxHeight car le ScrollView parent g├¿re le scroll
+    },
+    productGroup: {
+        marginBottom: 16,
+    },
+    productGroupTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: modernColors.primary,
+        marginBottom: 8,
+    },
+    productSelectItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: '#F8FAFC',
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    productSelectIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#EEF2FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    productSelectName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    productSelectMeta: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 2,
+    },
+    fieldGroup: {
+        marginTop: 12,
+    },
+    fieldLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    styleRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginTop: 12,
+    },
+    styleChip: {
+        flexBasis: '48%',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        padding: 12,
+        gap: 6,
+        backgroundColor: '#F8FAFC',
+    },
+    styleChipSelected: {
+        borderColor: '#6366F1',
+        backgroundColor: '#EEF2FF',
+    },
+    styleChipLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    styleChipLabelSelected: {
+        color: modernColors.primary,
+    },
+    styleChipDescription: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        lineHeight: 16,
+    },
+    voiceRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+        marginBottom: 12,
+    },
+    audioRow: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingVertical: 8,
+    },
+    audioActionsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 12,
+        marginBottom: 8,
+    },
+    audioImportButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: `${modernColors.primary}33`,
+        backgroundColor: '#EEF2FF',
+    },
+    audioImportText: {
+        marginLeft: 8,
+        color: modernColors.primary,
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    audioChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+        maxWidth: 220,
+    },
+    audioChipSelected: {
+        borderColor: '#0EA5E9',
+        backgroundColor: '#E0F2FE',
+    },
+    audioChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.text,
+        flexShrink: 1,
+    },
+    audioChipTextSelected: {
+        color: '#0F172A',
+    },
+    audioChipSubtitle: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        marginTop: 2,
+    },
+    voiceChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+    },
+    voiceChipSelected: {
+        backgroundColor: '#EEF2FF',
+        borderColor: '#6366F1',
+    },
+    voiceChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+    },
+    voiceChipTextSelected: {
+        color: modernColors.primary,
+    },
+    distributionHint: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        marginBottom: 8,
+        lineHeight: 16,
+    },
+    durationRow: {
+        marginTop: 18,
+    },
+    durationInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginTop: 8,
+    },
+    durationInput: {
+        flex: 0.4,
+    },
+    durationUnit: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+    },
+    durationHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 6,
+        lineHeight: 16,
+    },
+    toggleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 10,
+        gap: 12,
+    },
+    toggleText: {
+        flex: 1,
+        gap: 2,
+    },
+    toggleLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    toggleDescription: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        lineHeight: 16,
+    },
+    relatedProductsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 12,
+    },
+    relatedProductChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: '#E0E7FF',
+        backgroundColor: '#F8FAFC',
+    },
+    relatedProductChipSelected: {
+        backgroundColor: '#ECFDF5',
+        borderColor: '#A7F3D0',
+    },
+    relatedProductText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+        maxWidth: 160,
+    },
+    relatedProductTextSelected: {
+        color: '#047857',
+    },
+    mediaSection: {
+        marginTop: 16,
+    },
+    mediaBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 999,
+        backgroundColor: '#6366F1',
+    },
+    mediaBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    mediaLoading: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 16,
+    },
+    mediaLoadingText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+    },
+    emptyMediaState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 24,
+        gap: 8,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    emptyMediaText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        lineHeight: 16,
+        paddingHorizontal: 24,
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 24,
+        gap: 8,
+    },
+    emptyStateText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        lineHeight: 16,
+    },
+    mediaList: {
+        gap: 12,
+        paddingVertical: 12,
+    },
+    mediaItem: {
+        width: 120,
+        height: 180,
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+    },
+    mediaItemSelected: {
+        borderColor: '#6366F1',
+        shadowColor: '#6366F1',
+        shadowRadius: 8,
+        shadowOpacity: 0.25,
+        elevation: 4,
+    },
+    mediaThumbnail: {
+        width: '100%',
+        height: '100%',
+    },
+    mediaThumbnailFallback: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#EEF2FF',
+    },
+    mediaOverlay: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        padding: 8,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        gap: 6,
+    },
+    mediaCaption: {
+        fontSize: 11,
+        color: '#FFFFFF',
+    },
+    mediaSelectedBadge: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: '#10B981',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    actionsRow: {
+        padding: 20,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
+        flexDirection: 'row',
+        gap: 12,
+    },
+    actionButton: {
+        flex: 1,
+    },
+    primaryActionButton: {
+        flex: 1.4,
+    },
+    variantModalBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    variantModalContainer: {
+        width: '100%',
+        maxWidth: 420,
+        backgroundColor: '#FFF',
+        borderRadius: 20,
+        padding: 20,
+        gap: 16,
+    },
+    variantModalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#0F172A',
+        marginBottom: 4,
+    },
+    variantCard: {
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 12,
+        backgroundColor: '#F8FAFC',
+    },
+    variantCardTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginBottom: 6,
+    },
+    variantCardHook: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+        marginBottom: 6,
+    },
+    variantOutline: {
+        gap: 4,
+    },
+    variantOutlineLine: {
+        fontSize: 13,
+        color: '#334155',
+        lineHeight: 18,
+    },
+    variantHashtags: {
+        marginTop: 8,
+        fontSize: 12,
+        color: modernColors.primary,
+    },
+    variantCloseButton: {
+        alignSelf: 'center',
+        marginTop: 4,
+        paddingVertical: 8,
+        paddingHorizontal: 18,
+    },
+    variantCloseText: {
+        color: modernColors.primary,
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    suggestionSection: {
+        marginTop: 16,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
+    },
+    suggestionTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginBottom: 8,
+    },
+    suggestionRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    suggestionChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+    },
+    suggestionChipSelected: {
+        backgroundColor: '#EEF2FF',
+        borderColor: '#6366F1',
+    },
+    suggestionChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+    },
+    suggestionChipTextSelected: {
+        color: modernColors.primary,
+    },
+    mediaInsightsBox: {
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        gap: 6,
+    },
+    mediaInsightsTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    mediaInsightsText: {
+        fontSize: 12,
+        color: '#475569',
+    },
+    colorRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    colorSwatch: {
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        minWidth: 90,
+    },
+    colorLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#FFF',
+        textShadowColor: 'rgba(15, 23, 42, 0.4)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    planBox: {
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: '#F0F9FF',
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+        gap: 6,
+    },
+    planSummary: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#0C4A6E',
+    },
+    planHashtags: {
+        fontSize: 12,
+        color: '#0369A1',
+    },
+    planSchedule: {
+        marginTop: 6,
+        gap: 6,
+    },
+    planScheduleRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    planScheduleChannel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#0F172A',
+        flex: 1,
+    },
+    planScheduleTime: {
+        fontSize: 12,
+        color: '#0369A1',
+        flex: 1,
+        textAlign: 'center',
+    },
+    planScheduleCTA: {
+        fontSize: 12,
+        color: '#0F172A',
+        flex: 1,
+        textAlign: 'right',
+    },
+});
+
+export default ProductVideoCreationModal;
+
+

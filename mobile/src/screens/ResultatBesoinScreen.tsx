@@ -1342,18 +1342,31 @@ const ResultatBesoinScreen: React.FC = () => {
                                     if (result.type === 'service') {
                                         // Afficher le service complet
                                         const service = result.data as Service;
+                                        const prestataire = prestataires.get(service.user_id);
                                         return (
                                             <UltraModernServiceCard
                                                 key={`service-${index}-${service.id}`}
                                                 service={service}
-                                                onContactPress={() => handleContactPress(service)}
-                                                onCallPress={() => handleCallPress(service)}
-                                                onViewGallery={() => {
+                                                prestataireInfo={prestataire}
+                                                user={user}
+                                                onPress={() => {
+                                                    // Navigation vers le détail du service si nécessaire
+                                                    console.log('Service pressé:', service.id);
+                                                }}
+                                                onContact={handleContact}
+                                                onShare={(service) => {
+                                                    Alert.alert('Partage', `Partager le service: ${service.titre}`);
+                                                }}
+                                                onFavorite={(service) => {
+                                                    Alert.alert('Favoris', `Service ${service.titre} ajouté aux favoris`);
+                                                }}
+                                                onGallery={(service) => {
                                                     setSelectedService(service);
                                                     setShowGalleryModal(true);
                                                 }}
-                                                categoryStyle={categoryStyle}
-                                                terminology={terminology}
+                                                onReview={(service) => {
+                                                    Alert.alert('Avis', 'Ouverture du formulaire d\'avis');
+                                                }}
                                             />
                                         );
                                     } else {

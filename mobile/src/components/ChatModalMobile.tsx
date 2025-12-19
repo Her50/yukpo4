@@ -20,7 +20,9 @@ import {
 import { useWebSocketChat } from '../hooks/useWebSocketChat';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import FindCourierModal from './delivery/FindCourierModal';
 import InAppCallModal from './InAppCallModal';
+import PriceNegotiationModal from '../legacy/components/TransportIntraUrbain/PriceNegotiationModal';
 import ProductGalleryPickerModal from './ProductGalleryPickerModal';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
@@ -83,6 +85,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     // États pour les appels internes
     const [showCallModal, setShowCallModal] = useState(false);
     const [callType, setCallType] = useState<'audio' | 'video'>('audio');
+    
+    // État pour le modal de recherche de coursier
+    const [showFindCourierModal, setShowFindCourierModal] = useState(false);
+    
+    // État pour le modal de négociation de prix
+    const [showNegotiationModal, setShowNegotiationModal] = useState(false);
 
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -780,6 +788,26 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             >
                                 <SafeIcon name="video" size={20} color={modernColors.primary} />
                             </TouchableOpacity>
+
+                            {/* ✅ NOUVEAU: Bouton Me livrer */}
+                            {service?.data?.produits && (
+                                <TouchableOpacity
+                                    style={[styles.actionButton, styles.deliveryButton]}
+                                    onPress={() => setShowFindCourierModal(true)}
+                                >
+                                    <SafeIcon name="truck" size={20} color="#10B981" />
+                                </TouchableOpacity>
+                            )}
+
+                            {/* ✅ NOUVEAU: Bouton Négociation de prix */}
+                            {service?.data?.produits && service.data.produits.length > 0 && service.data.produits[0]?.prix && (
+                                <TouchableOpacity
+                                    style={[styles.actionButton, styles.negotiationButton]}
+                                    onPress={() => setShowNegotiationModal(true)}
+                                >
+                                    <SafeIcon name="dollar-sign" size={20} color="#F59E0B" />
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
 
@@ -1264,6 +1292,37 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     </View>
                 </View>
             </Modal>
+
+            {/* ✅ NOUVEAU: Modal de recherche de coursier */}
+            {service?.data?.produits && service.data.produits.length > 0 && (
+                <FindCourierModal
+                    visible={showFindCourierModal}
+                    onClose={() => setShowFindCourierModal(false)}
+                    product={service.data.produits[0]} // Prendre le premier produit par défaut
+                    service={service}
+                    onSuccess={(deliveryId) => {
+                        Alert.alert('✅ Livraison créée', 'Votre demande de livraison a été créée avec succès');
+                        setShowFindCourierModal(false);
+                    }}
+                />
+            )}
+
+            {/* ✅ NOUVEAU: Modal de négociation de prix */}
+            {service?.data?.produits && service.data.produits.length > 0 && (
+                <PriceNegotiationModal
+                    visible={showNegotiationModal}
+                    onClose={() => setShowNegotiationModal(false)}
+                    driverName={nomPrestataire}
+                    driverId={String(prestataireInfo?.userId || prestataireInfo?.id || service?.user_id || '')}
+                    initialPrice={service.data.produits[0]?.prix ? parseFloat(service.data.produits[0].prix) : undefined}
+                    distance={0} // TODO: Calculer la distance réelle si nécessaire
+                    onPriceAccepted={(finalPrice) => {
+                        Alert.alert('✅ Prix accepté', `Le prix de ${finalPrice} FCFA a été accepté !`);
+                        setShowNegotiationModal(false);
+                    }}
+                    userRole="client"
+                />
+            )}
         </Modal>
     );
 };
@@ -1344,6 +1403,12 @@ const styles = StyleSheet.create({
     },
     actionButtonHighlight: {
         backgroundColor: modernColors.primary + '20', // 20% opacity
+    },
+    negotiationButton: {
+        backgroundColor: '#FEF3C7',
+    },
+    deliveryButton: {
+        backgroundColor: '#10B981' + '20', // 20% opacity pour le bouton livraison
     },
     participantsBadge: {
         position: 'absolute',

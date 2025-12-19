@@ -781,7 +781,7 @@ async fn get_product_delivery_config(
         SELECT 
             id, service_id, product_index,
             pickup_address, pickup_latitude, pickup_longitude,
-            required_vehicle_type_id, weight_kg, volume_cm3,
+            required_vehicle_type_id, preparation_time_minutes, weight_kg, volume_cm3,
             requires_isothermal, requires_fragile_handling,
             pickup_availability_schedule,
             pickup_instructions, billing_mode, billing_partner_label,
@@ -806,6 +806,7 @@ async fn get_product_delivery_config(
                 "pickup_latitude": config.get::<f64, _>("pickup_latitude"),
                 "pickup_longitude": config.get::<f64, _>("pickup_longitude"),
                 "required_vehicle_type_id": config.get::<i32, _>("required_vehicle_type_id"),
+                "preparation_time_minutes": config.try_get::<Option<i32>, _>("preparation_time_minutes")?,
                 "weight_kg": config.try_get::<Option<f64>, _>("weight_kg")?,
                 "volume_cm3": config.try_get::<Option<f64>, _>("volume_cm3")?,
                 "requires_isothermal": config.get::<bool, _>("requires_isothermal"),
@@ -2691,79 +2692,318 @@ async fn list_available_couriers(
     Extension(_user): Extension<AuthenticatedUser>,
     Query(params): Query<serde_json::Value>,
 ) -> AppResult<Json<Value>> {
+    // ✅ NOUVEAU: Extraire les paramètres de recherche avancée
     let _service_id: Option<i32> = params
         .get("service_id")
         .and_then(|v| v.as_i64())
         .map(|i| i as i32);
+    
+    let pickup_lat: Option<f64> = params
+        .get("pickup_latitude")
+        .and_then(|v| v.as_f64());
+    let pickup_lng: Option<f64> = params
+        .get("pickup_longitude")
+        .and_then(|v| v.as_f64());
+    let delivery_lat: Option<f64> = params
+        .get("delivery_latitude")
+        .and_then(|v| v.as_f64());
+    let delivery_lng: Option<f64> = params
+        .get("delivery_longitude")
+        .and_then(|v| v.as_f64());
+    let transport_type: Option<String> = params
+        .get("transport_type")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let preparation_time_minutes: Option<i32> = params
+        .get("preparation_time_minutes")
+        .and_then(|v| v.as_i64())
+        .map(|i| i as i32);
+    let max_distance_km: Option<f64> = params
+        .get("max_distance_km")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(Some(10.0)); // 10km par défaut
 
-    // Récupérer les coursiers actifs avec leurs stats
-    let couriers: Vec<CourierWithStatsRow> = sqlx::query_as(
-        r#"
-        SELECT 
-            c.id,
-            c.user_id,
-            c.status AS "status",
-            c.rating_average,
-            c.rating_count,
-            c.bio,
-            u.nom_complet,
-            u.avatar_url,
-            u.email,
-            -- Stats de livraison
-            COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS completed_deliveries,
-            COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'cancelled') AS cancelled_deliveries,
-            AVG(EXTRACT(EPOCH FROM (d.delivered_at - d.picked_up_at)) / 60.0) 
-                FILTER (WHERE d.status = 'delivered' AND d.delivered_at IS NOT NULL AND d.picked_up_at IS NOT NULL) 
-                AS avg_delivery_time_minutes
-        FROM couriers c
-        JOIN users u ON u.id = c.user_id
-        LEFT JOIN deliveries d ON d.courier_id = c.id
-        WHERE c.status = 'approved'
-        GROUP BY c.id, c.user_id, c.status, c.rating_average, c.rating_count, c.bio, 
-                 u.nom_complet, u.avatar_url, u.email
-        ORDER BY c.rating_average DESC NULLS LAST, completed_deliveries DESC
-        LIMIT 50
-        "#
-    )
-    .fetch_all(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur récupération coursiers: {}", e)))?;
+    // ✅ NOUVEAU: Si pickup/delivery sont fournis, utiliser la recherche géographique optimisée
+    let couriers = if pickup_lat.is_some() && pickup_lng.is_some() {
+        // Recherche géographique avec distance et temps estimé
+        let max_distance_meters = (max_distance_km.unwrap_or(10.0) * 1000.0) as i32;
+        
+        #[derive(sqlx::FromRow)]
+        struct CourierWithDistanceRow {
+            id: Uuid,
+            user_id: i32,
+            #[sqlx(rename = "status")]
+            status: String,
+            rating_average: Option<Decimal>,
+            rating_count: Option<i32>,
+            bio: Option<String>,
+            nom_complet: Option<String>,
+            avatar_url: Option<String>,
+            email: String,
+            completed_deliveries: Option<i64>,
+            cancelled_deliveries: Option<i64>,
+            avg_delivery_time_minutes: Option<Decimal>,
+            distance_to_pickup_meters: Option<f64>,
+            distance_pickup_to_delivery_meters: Option<f64>,
+            engine_type: Option<String>,
+            current_latitude: Option<f64>,
+            current_longitude: Option<f64>,
+        }
 
-    let couriers_list: Vec<Value> = couriers
-        .into_iter()
-        .map(|row| {
-            // Calculer le success_rate avant le json!
-            let completed = row.completed_deliveries.unwrap_or(0) as f64;
-            let cancelled = row.cancelled_deliveries.unwrap_or(0) as f64;
-            let total = completed + cancelled;
-            let success_rate = if total > 0.0 {
-                (completed / total * 100.0).round() as i32
-            } else {
-                100
-            };
+        let mut query = String::from(
+            r#"
+            SELECT 
+                c.id,
+                c.user_id,
+                c.status::text AS "status",
+                c.rating_average,
+                c.rating_count,
+                c.bio,
+                u.nom_complet,
+                u.avatar_url,
+                u.email,
+                -- Stats de livraison
+                COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS completed_deliveries,
+                COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'cancelled') AS cancelled_deliveries,
+                AVG(EXTRACT(EPOCH FROM (d.delivered_at - d.picked_up_at)) / 60.0) 
+                    FILTER (WHERE d.status = 'delivered' AND d.delivered_at IS NOT NULL AND d.picked_up_at IS NOT NULL) 
+                    AS avg_delivery_time_minutes,
+                -- Distance du coursier au point de pickup
+                CASE 
+                    WHEN cas.location IS NOT NULL THEN 
+                        ST_Distance(
+                            cas.location,
+                            ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography
+                        )
+                    ELSE NULL
+                END AS distance_to_pickup_meters,
+                -- Distance totale pickup -> delivery (si delivery fourni)
+                CASE 
+                    WHEN $3 IS NOT NULL AND $4 IS NOT NULL THEN
+                        ST_Distance(
+                            ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
+                            ST_SetSRID(ST_MakePoint($4, $3), 4326)::geography
+                        )
+                    ELSE NULL
+                END AS distance_pickup_to_delivery_meters,
+                -- Type de transport du coursier
+                ca.engine_type::text AS engine_type,
+                -- Position actuelle du coursier
+                ST_Y(cas.location::geometry) AS current_latitude,
+                ST_X(cas.location::geometry) AS current_longitude
+            FROM couriers c
+            JOIN users u ON u.id = c.user_id
+            LEFT JOIN deliveries d ON d.courier_id = c.id
+            LEFT JOIN LATERAL (
+                SELECT cas.*
+                FROM courier_availability_snapshots cas
+                WHERE cas.courier_id = c.id
+                  AND cas.is_online = TRUE
+                  AND cas.captured_at >= NOW() - INTERVAL '30 minutes'
+                ORDER BY cas.captured_at DESC
+                LIMIT 1
+            ) cas ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT ca.engine_type
+                FROM courier_assets ca
+                WHERE ca.courier_id = c.id
+                  AND ca.is_active = TRUE
+                ORDER BY ca.created_at DESC
+                LIMIT 1
+            ) ca ON TRUE
+            WHERE c.status = 'approved'
+              AND cas.is_online = TRUE
+              AND cas.active_deliveries < cas.max_capacity
+            "#,
+        );
 
-            json!({
-                "id": row.id,
-                "user_id": row.user_id,
-                "name": row.nom_complet,
-                "email": row.email,
-                "avatar_url": row.avatar_url,
-                "rating_average": row.rating_average.map(|r| r.to_string().parse::<f64>().unwrap_or(0.0)),
-                "rating_count": row.rating_count.unwrap_or(0),
-                "bio": row.bio,
-                "stats": {
-                    "completed_deliveries": row.completed_deliveries.unwrap_or(0),
-                    "cancelled_deliveries": row.cancelled_deliveries.unwrap_or(0),
-                    "avg_delivery_time_minutes": row.avg_delivery_time_minutes.and_then(|t| ToPrimitive::to_f64(&t)),
-                    "success_rate": success_rate
+        // Filtrer par distance maximale
+        query.push_str(&format!(
+            " AND (cas.location IS NULL OR ST_Distance(cas.location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) <= {})",
+            max_distance_meters
+        ));
+
+        // Filtrer par type de transport si spécifié
+        if let Some(ref transport) = transport_type {
+            match transport.as_str() {
+                "bike" | "velo" | "velo_cargo" => {
+                    query.push_str(" AND (ca.engine_type IS NULL OR ca.engine_type::text IN ('velo_cargo', 'velo'))");
                 }
+                "motorcycle" | "moto" | "scooter" => {
+                    query.push_str(" AND (ca.engine_type IS NULL OR ca.engine_type::text IN ('moto', 'scooter'))");
+                }
+                "car" | "voiture" | "camionnette" | "camion_leger" => {
+                    query.push_str(" AND (ca.engine_type IS NULL OR ca.engine_type::text IN ('voiture', 'camionnette', 'camion_leger'))");
+                }
+                _ => {} // "any" ou autre : pas de filtre
+            }
+        }
+
+        query.push_str(
+            r#"
+            GROUP BY c.id, c.user_id, c.status, c.rating_average, c.rating_count, c.bio, 
+                     u.nom_complet, u.avatar_url, u.email,
+                     cas.location, ca.engine_type, cas.captured_at
+            ORDER BY distance_to_pickup_meters ASC NULLS LAST, 
+                     c.rating_average DESC NULLS LAST, 
+                     completed_deliveries DESC
+            LIMIT 50
+            "#,
+        );
+
+        let rows: Vec<CourierWithDistanceRow> = sqlx::query_as(&query)
+            .bind(pickup_lat.unwrap_or(0.0))
+            .bind(pickup_lng.unwrap_or(0.0))
+            .bind(delivery_lat)
+            .bind(delivery_lng)
+            .fetch_all(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur récupération coursiers géolocalisés: {}", e)))?;
+
+        rows.into_iter()
+            .map(|row| {
+                let completed = row.completed_deliveries.unwrap_or(0) as f64;
+                let cancelled = row.cancelled_deliveries.unwrap_or(0) as f64;
+                let total = completed + cancelled;
+                let success_rate = if total > 0.0 {
+                    (completed / total * 100.0).round() as i32
+                } else {
+                    100
+                };
+
+                // Calculer le temps estimé total
+                let distance_to_pickup_km = row.distance_to_pickup_meters.map(|d| d / 1000.0);
+                let distance_total_km = row.distance_pickup_to_delivery_meters.map(|d| d / 1000.0);
+                
+                // Vitesse moyenne selon le type de transport (km/h)
+                let avg_speed_kmh = match row.engine_type.as_deref() {
+                    Some("velo_cargo") | Some("velo") => 15.0,
+                    Some("moto") | Some("scooter") => 40.0,
+                    Some("voiture") | Some("camionnette") | Some("camion_leger") => 30.0, // En ville
+                    Some("tricycle") => 20.0,
+                    Some("pieton") => 5.0,
+                    _ => 25.0, // Par défaut
+                };
+
+                // Temps estimé pour rejoindre le pickup (minutes)
+                let estimated_time_to_pickup_minutes = distance_to_pickup_km
+                    .map(|d| (d / avg_speed_kmh * 60.0).round() as i32);
+
+                // Temps estimé pour la livraison pickup -> delivery (minutes)
+                let estimated_delivery_time_minutes = distance_total_km
+                    .map(|d| (d / avg_speed_kmh * 60.0).round() as i32);
+
+                // Temps total estimé = temps au pickup + préparation + livraison
+                let total_estimated_minutes = estimated_time_to_pickup_minutes
+                    .unwrap_or(0)
+                    + preparation_time_minutes.unwrap_or(0)
+                    + estimated_delivery_time_minutes.unwrap_or(0);
+
+                json!({
+                    "id": row.id,
+                    "user_id": row.user_id,
+                    "name": row.nom_complet,
+                    "email": row.email,
+                    "avatar_url": row.avatar_url,
+                    "rating_average": row.rating_average.and_then(|r| ToPrimitive::to_f64(&r)),
+                    "rating_count": row.rating_count.unwrap_or(0),
+                    "bio": row.bio,
+                    "transport_type": row.engine_type,
+                    "distance_km": distance_to_pickup_km,
+                    "estimated_time_minutes": total_estimated_minutes,
+                    "estimated_time_to_pickup_minutes": estimated_time_to_pickup_minutes,
+                    "estimated_delivery_time_minutes": estimated_delivery_time_minutes,
+                    "current_location": if row.current_latitude.is_some() && row.current_longitude.is_some() {
+                        Some(json!({
+                            "latitude": row.current_latitude,
+                            "longitude": row.current_longitude
+                        }))
+                    } else {
+                        None
+                    },
+                    "stats": {
+                        "completed_deliveries": row.completed_deliveries.unwrap_or(0),
+                        "cancelled_deliveries": row.cancelled_deliveries.unwrap_or(0),
+                        "avg_delivery_time_minutes": row.avg_delivery_time_minutes.and_then(|t| ToPrimitive::to_f64(&t)),
+                        "success_rate": success_rate
+                    }
+                })
             })
-        })
-        .collect();
+            .collect()
+    } else {
+        // Recherche simple sans géolocalisation (comportement original)
+        let couriers: Vec<CourierWithStatsRow> = sqlx::query_as(
+            r#"
+            SELECT 
+                c.id,
+                c.user_id,
+                c.status AS "status",
+                c.rating_average,
+                c.rating_count,
+                c.bio,
+                u.nom_complet,
+                u.avatar_url,
+                u.email,
+                COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS completed_deliveries,
+                COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'cancelled') AS cancelled_deliveries,
+                AVG(EXTRACT(EPOCH FROM (d.delivered_at - d.picked_up_at)) / 60.0) 
+                    FILTER (WHERE d.status = 'delivered' AND d.delivered_at IS NOT NULL AND d.picked_up_at IS NOT NULL) 
+                    AS avg_delivery_time_minutes
+            FROM couriers c
+            JOIN users u ON u.id = c.user_id
+            LEFT JOIN deliveries d ON d.courier_id = c.id
+            WHERE c.status = 'approved'
+            GROUP BY c.id, c.user_id, c.status, c.rating_average, c.rating_count, c.bio, 
+                     u.nom_complet, u.avatar_url, u.email
+            ORDER BY c.rating_average DESC NULLS LAST, completed_deliveries DESC
+            LIMIT 50
+            "#
+        )
+        .fetch_all(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération coursiers: {}", e)))?;
+
+        couriers
+            .into_iter()
+            .map(|row| {
+                let completed = row.completed_deliveries.unwrap_or(0) as f64;
+                let cancelled = row.cancelled_deliveries.unwrap_or(0) as f64;
+                let total = completed + cancelled;
+                let success_rate = if total > 0.0 {
+                    (completed / total * 100.0).round() as i32
+                } else {
+                    100
+                };
+
+                json!({
+                    "id": row.id,
+                    "user_id": row.user_id,
+                    "name": row.nom_complet,
+                    "email": row.email,
+                    "avatar_url": row.avatar_url,
+                    "rating_average": row.rating_average.map(|r| r.to_string().parse::<f64>().unwrap_or(0.0)),
+                    "rating_count": row.rating_count.unwrap_or(0),
+                    "bio": row.bio,
+                    "stats": {
+                        "completed_deliveries": row.completed_deliveries.unwrap_or(0),
+                        "cancelled_deliveries": row.cancelled_deliveries.unwrap_or(0),
+                        "avg_delivery_time_minutes": row.avg_delivery_time_minutes.and_then(|t| ToPrimitive::to_f64(&t)),
+                        "success_rate": success_rate
+                    }
+                })
+            })
+            .collect()
+    };
 
     Ok(Json(json!({
-        "couriers": couriers_list,
-        "total": couriers_list.len(),
+        "couriers": couriers,
+        "total": couriers.len(),
+        "preparation_time_minutes": preparation_time_minutes,
+        "note": if pickup_lat.is_some() && pickup_lng.is_some() {
+            "Recherche géolocalisée avec calcul de distance et temps estimé"
+        } else {
+            "Recherche simple sans géolocalisation"
+        }
     })))
 }
 

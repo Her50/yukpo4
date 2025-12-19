@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     Alert,
+    Linking,
     Share,
     StyleSheet,
     Text,
@@ -115,7 +116,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
         localisation: locationData?.location || getServiceFieldValue(service.data?.localisation) || service.localisation || service.location || 'Non spécifié',
         prestataire: prestataireInfo || service.prestataire || {
             id: service.prestataire?.id || '',
-            nom: prestataireInfo?.nom_complet || prestataireInfo?.nom || service.prestataire?.nom || service.prestataire?.name || 'Prestataire',
+            nom: prestataireInfo?.nom_complet || prestataireInfo?.nom || prestataireInfo?.name || service.prestataire?.nom || service.prestataire?.name || 'Prestataire',
             email: prestataireInfo?.email || service.prestataire?.email || '',
             isOnline: prestataireInfo?.isOnline || service.prestataire?.isOnline || false,
             lastSeen: prestataireInfo?.lastSeen || service.prestataire?.lastSeen || ''
@@ -341,13 +342,70 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
                         </View>
                     )}
 
-                    {/* Coordonnées GPS si disponibles */}
-                    {service.gps && (
-                        <View style={styles.gpsContainer}>
-                            <SafeIcon name="navigation" size={12} color={modernColors.info} />
-                            <Text style={styles.gpsText}>GPS: {service.gps}</Text>
-                        </View>
-                    )}
+                    {/* Bouton de navigation GPS si disponibles */}
+                    {service.gps && (() => {
+                        const handleNavigation = async () => {
+                            try {
+                                // Parser les coordonnées GPS
+                                const gpsString = service.gps || '';
+                                const coords = gpsString.split(',').map(c => parseFloat(c.trim()));
+                                
+                                if (coords.length >= 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+                                    const [lat, lng] = coords;
+                                    
+                                    // Essayer d'ouvrir Google Maps d'abord, puis Apple Maps, puis l'app par défaut
+                                    const googleMapsUrl = `google.navigation:q=${lat},${lng}`;
+                                    const appleMapsUrl = `maps://?q=${lat},${lng}`;
+                                    const geoUrl = `geo:${lat},${lng}`;
+                                    
+                                    // Essayer Google Maps
+                                    const canOpenGoogle = await Linking.canOpenURL(googleMapsUrl);
+                                    if (canOpenGoogle) {
+                                        await Linking.openURL(googleMapsUrl);
+                                        return;
+                                    }
+                                    
+                                    // Essayer Apple Maps
+                                    const canOpenApple = await Linking.canOpenURL(appleMapsUrl);
+                                    if (canOpenApple) {
+                                        await Linking.openURL(appleMapsUrl);
+                                        return;
+                                    }
+                                    
+                                    // Essayer l'URL géographique générique
+                                    const canOpenGeo = await Linking.canOpenURL(geoUrl);
+                                    if (canOpenGeo) {
+                                        await Linking.openURL(geoUrl);
+                                        return;
+                                    }
+                                    
+                                    // Fallback : afficher les coordonnées
+                                    Alert.alert(
+                                        'Navigation',
+                                        `Coordonnées: ${lat}, ${lng}\n\nAucune application de cartes n'est disponible sur cet appareil.`,
+                                        [{ text: 'OK' }]
+                                    );
+                                } else {
+                                    Alert.alert('Erreur', 'Coordonnées GPS invalides');
+                                }
+                            } catch (error) {
+                                console.error('Erreur ouverture navigation:', error);
+                                Alert.alert('Erreur', 'Impossible d\'ouvrir l\'application de navigation');
+                            }
+                        };
+                        
+                        return (
+                            <TouchableOpacity 
+                                style={styles.gpsContainer}
+                                onPress={handleNavigation}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="navigation" size={14} color={modernColors.primary} />
+                                <Text style={styles.gpsText}>Naviguer vers le prestataire</Text>
+                                <SafeIcon name="external-link" size={12} color={modernColors.primary} />
+                            </TouchableOpacity>
+                        );
+                    })()}
 
                     {/* Informations de contact réelles */}
                     <View style={styles.contactInfoContainer}>
@@ -598,13 +656,20 @@ const styles = StyleSheet.create({
     gpsContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        justifyContent: 'center',
+        gap: 6,
         marginTop: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: modernColors.primary + '15',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.primary + '30',
     },
     gpsText: {
-        fontSize: 10,
-        color: modernColors.info,
-        fontFamily: 'monospace',
+        fontSize: 12,
+        color: modernColors.primary,
+        fontWeight: '600',
     },
     contactInfoContainer: {
         marginTop: 8,

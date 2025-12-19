@@ -135,7 +135,12 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ NOUVEAU: Route pour modifier un produit spécifique (avec historique)
         .route("/api/products/{product_id}/update", patch(update_product))
         // ✅ NOUVEAU 2025-11-01: Route pour ajouter un produit incrémental (coût fixe 2000 FCFA)
-        .route("/api/services/{service_id}/products", post(add_product_to_service))
+        // ✅ CORRECTION 2025-12-19: Limite augmentée à 200 MB pour supporter les médias base64 volumineux
+        .route(
+            "/api/services/{service_id}/products",
+            post(add_product_to_service)
+                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // ✅ 200 MB - pour supporter médias base64 volumineux
+        )
         // ✅ NOUVEAU 2025-11-01: Routes pour cycle de vie produits (désactivation/réactivation)
         .route("/api/services/{service_id}/products/{product_index}/deactivate", post(deactivate_product))
         .route("/api/services/{service_id}/products/{product_index}/reactivate", post(reactivate_product))

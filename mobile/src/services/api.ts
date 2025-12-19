@@ -947,9 +947,20 @@ export const deliveryApi = {
     });
   },
   // ✅ Phase 9 - Amélioration 28 : Lister les coursiers disponibles
-  listAvailableCouriers: async (serviceId?: number) => {
-    const params = serviceId ? `?service_id=${serviceId}` : '';
+  // ✅ AMÉLIORÉ : Prend en compte pickup/delivery points, transport type, et preparation time
+  listAvailableCouriers: async (serviceId?: number, queryParams?: string) => {
+    let params = '';
+    if (serviceId) {
+      params = `?service_id=${serviceId}`;
+    }
+    if (queryParams) {
+      params += serviceId ? `&${queryParams}` : `?${queryParams}`;
+    }
     return apiCall(`/api/couriers/available${params}`);
+  },
+  // ✅ NOUVEAU : Récupérer la configuration de livraison d'un produit
+  getProductDeliveryConfig: async (serviceId: number, productIndex: number) => {
+    return apiCall(`/api/delivery/product-config/${serviceId}/${productIndex}`);
   },
   // ✅ Phase 9 - Amélioration 32 : Gestion des lieux de stock
   listStorageLocations: async () => {
