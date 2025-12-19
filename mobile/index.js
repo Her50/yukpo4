@@ -17,7 +17,7 @@ let asyncStorageInitialized = false;
         // ✅ CRITIQUE: Attendre jusqu'à 5 secondes pour l'initialisation
         const initialized = await Promise.race([
             initializeAsyncStorage(),
-            new Promise < boolean > ((resolve) => {
+            new Promise((resolve) => {
                 setTimeout(() => resolve(false), 5000); // Timeout après 5s
             })
         ]);

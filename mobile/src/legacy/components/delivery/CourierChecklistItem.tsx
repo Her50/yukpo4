@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { modernColors } from '../../theme/modernTheme';
 import { NativeInput } from '../NativeDesign';
-import SafeIcon from '../SafeIcon';
+import SafeIcon from '../../../components/SafeIcon';
 
 interface CourierChecklistItemProps {
     label: string;

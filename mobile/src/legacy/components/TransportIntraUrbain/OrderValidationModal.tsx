@@ -12,7 +12,7 @@ import {
     StyleSheet,
     Alert,
 } from 'react-native';
-import SafeIcon from '../SafeIcon';
+import SafeIcon from '../../../components/SafeIcon';
 
 interface OrderDetails {
     driverName: string;

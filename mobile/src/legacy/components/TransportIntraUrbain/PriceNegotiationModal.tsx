@@ -15,7 +15,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import SafeIcon from '../SafeIcon';
+import SafeIcon from '../../../components/SafeIcon';
 
 interface Message {
     id: string;

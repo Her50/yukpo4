@@ -15,7 +15,7 @@ import {
     View,
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
-import SafeIcon from '../SafeIcon';
+import SafeIcon from '../../../components/SafeIcon';
 
 const { width, height } = Dimensions.get('window');
 

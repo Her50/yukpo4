@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
-import { Alert, Dimensions, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Dimensions, FlatList, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { apiPost } from '../services/api';
 import FindCourierModal from './delivery/FindCourierModal';
@@ -33,15 +34,25 @@ const ProductCard: React.FC<ProductCardProps> = ({
     const [showAllImages, setShowAllImages] = useState(false);
     const [showFindCourierModal, setShowFindCourierModal] = useState(false);
     const [showRatingModal, setShowRatingModal] = useState(false);
+    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+    const [videoStatus, setVideoStatus] = useState<any>({});
+    const carouselRef = useRef<FlatList>(null);
+    const videoRef = useRef<Video>(null);
+    const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
 
     // Récupérer la configuration intelligente de la catégorie
     const categoryConfig = getCategoryConfig(product.type || 'default');
     const categoryStyle = getCategoryStyle(product.type || 'default');
     const terminology = getCategoryTerminology(product.type || 'default');
 
-    // Extraire les images et vidéos
+    // Extraire les images et vidéos - Vidéos en premier
     const images = product.images || product.imagesRealisations || [];
     const videos = product.videos || product.videosRealisations || [];
+    const allMedia = [
+        ...videos.map((v: string) => ({ type: 'video', uri: v })),
+        ...images.map((i: string) => ({ type: 'image', uri: i }))
+    ];
+    const hasMedia = allMedia.length > 0;
     const mainImage = images[0] || null;
     const hasVideo = videos.length > 0;
 
@@ -92,901 +103,112 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
     const typeStyle = getTypeStyle();
 
-    // Rendu spécialisé par type de produit
-    const renderProductDetails = () => {
-        switch (product.type) {
-            case 'immobilier_batiment':
-            case 'immobilier_terrain':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.typeImmobilier && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🏠 {product.typeImmobilier}</Text>
-                            </View>
-                        )}
-                        {product.statutImmobilier && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>📋 {product.statutImmobilier}</Text>
-                            </View>
-                        )}
-                        {product.superficie && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="maximize-2" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.superficie} m²</Text>
-                            </View>
-                        )}
-                        {product.nbChambres && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="grid" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.nbChambres} ch.</Text>
-                            </View>
-                        )}
-                        {product.ameublement && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🛋️ {product.ameublement}</Text>
-                            </View>
-                        )}
-                        {product.quartier && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="map-pin" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.quartier}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
+    // Auto-scroll du carousel
+    useEffect(() => {
+        if (allMedia.length <= 1) return;
 
-            case 'automobile':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.marque && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🏷️ {product.marque}</Text>
-                            </View>
-                        )}
-                        {product.modele && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🚗 {product.modele}</Text>
-                            </View>
-                        )}
-                        {product.etatVehicule && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>{product.etatVehicule === 'Neuf' ? '✨' : '🔧'} {product.etatVehicule}</Text>
-                            </View>
-                        )}
-                        {product.annee && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="calendar" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.annee}</Text>
-                            </View>
-                        )}
-                        {product.kilometrage && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="activity" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.kilometrage} km</Text>
-                            </View>
-                        )}
-                        {product.typeCarburant && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>⛽ {product.typeCarburant}</Text>
-                            </View>
-                        )}
-                        {product.transmission && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>⚙️ {product.transmission}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
+        const startAutoScroll = () => {
+            if (autoScrollTimer.current) {
+                clearInterval(autoScrollTimer.current);
+            }
 
-            case 'hotellerie':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.typeHebergement && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🏨 {product.typeHebergement}</Text>
-                            </View>
-                        )}
-                        {product.categorieHotel && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>⭐ {product.categorieHotel}</Text>
-                            </View>
-                        )}
-                        {product.prixParNuit && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>💰 {product.prixParNuit} FCFA/nuit</Text>
-                            </View>
-                        )}
-                        {product.nbChambresHotel && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="grid" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.nbChambresHotel} chambres</Text>
-                            </View>
-                        )}
-                        {product.equipementsHotel && product.equipementsHotel.length > 0 && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="check-circle" size={14} color="#10B981" />
-                                <Text style={styles.detailText}>{product.equipementsHotel.length} équipements</Text>
-                            </View>
-                        )}
-                        {product.villeHotel && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="map-pin" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.villeHotel}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
+            autoScrollTimer.current = setInterval(() => {
+                setCurrentMediaIndex((prev) => {
+                    const next = (prev + 1) % allMedia.length;
+                    carouselRef.current?.scrollToIndex({ index: next, animated: true });
+                    return next;
+                });
+            }, allMedia[currentMediaIndex]?.type === 'video' ? 8000 : 4000); // 8s pour vidéo, 4s pour image
+        };
 
-            case 'ticket_voyage':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.compagnie && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>✈️ {product.compagnie}</Text>
-                            </View>
-                        )}
-                        {product.typeVehiculeTransport && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🚌 {product.typeVehiculeTransport}</Text>
-                            </View>
-                        )}
-                        {product.classeVoyage && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>💺 {product.classeVoyage}</Text>
-                            </View>
-                        )}
-                        {product.depart && product.destination && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="navigation" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.depart} → {product.destination}</Text>
-                            </View>
-                        )}
-                        {product.dateDepart && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="calendar" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.dateDepart}</Text>
-                            </View>
-                        )}
-                        {product.numeroPlace && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🎫 Place {product.numeroPlace}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
+        startAutoScroll();
+        return () => {
+            if (autoScrollTimer.current) {
+                clearInterval(autoScrollTimer.current);
+            }
+        };
+    }, [allMedia.length, currentMediaIndex]);
 
-            case 'vetement':
-            case 'chaussure':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.taille && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="maximize" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>Taille {product.taille}</Text>
-                            </View>
-                        )}
-                        {product.couleur && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="droplet" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.couleur}</Text>
-                            </View>
-                        )}
-                        {product.marque && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🏷️ {product.marque}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'electromenager':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.marque && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🏷️ {product.marque}</Text>
-                            </View>
-                        )}
-                        {product.modele && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>📱 {product.modele}</Text>
-                            </View>
-                        )}
-                        {product.etatProduit && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="check-circle" size={14} color="#10B981" />
-                                <Text style={styles.detailText}>{product.etatProduit}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'pharmacie':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.typePharmacie && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="shield" size={14} color="#059669" />
-                                <Text style={styles.detailText}>{product.typePharmacie}</Text>
-                            </View>
-                        )}
-                        {product.joursGarde && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="clock" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>Garde: {product.joursGarde}</Text>
-                            </View>
-                        )}
-                        {product.telephoneUrgence && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="phone" size={14} color="#DC2626" />
-                                <Text style={styles.detailText}>{product.telephoneUrgence}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'hopital_clinique':
-                return (
-                    <View style={styles.detailsSection}>
-                        {/* Type d'établissement */}
-                        {product.typeEtablissement && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="building" size={14} color="#DC2626" />
-                                <Text style={styles.detailText}>{product.typeEtablissement}</Text>
-                            </View>
-                        )}
-
-                        {/* Banque de sang */}
-                        {product.banqueSang && (
-                            <View style={[styles.detailChip, styles.highlightChip]}>
-                                <Text style={styles.detailText}>🩸 Banque de sang</Text>
-                            </View>
-                        )}
-
-                        {/* Prestations médicales */}
-                        {product.prestationsMedicales && product.prestationsMedicales.length > 0 && (
-                            <View style={styles.prestationsContainer}>
-                                <Text style={styles.prestationLabel}>Prestations disponibles:</Text>
-                                <View style={styles.tagsContainer}>
-                                    {product.prestationsMedicales.slice(0, 4).map((prestation: string, idx: number) => (
-                                        <View key={idx} style={styles.tag}>
-                                            <Text style={styles.tagText}>{prestation}</Text>
-                                        </View>
-                                    ))}
-                                    {product.prestationsMedicales.length > 4 && (
-                                        <View style={styles.tag}>
-                                            <Text style={styles.tagText}>+{product.prestationsMedicales.length - 4}</Text>
-                                        </View>
-                                    )}
-                                </View>
-                            </View>
-                        )}
-
-                        {/* Planning simplifié */}
-                        {product.planningHebdomadaire && Object.keys(product.planningHebdomadaire).length > 0 && (
-                            <View style={styles.planningPreview}>
-                                <SafeIcon name="clock" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>
-                                    Horaires: {(Object.values(product.planningHebdomadaire)[0] as any)?.permanent
-                                        ? '24h/24'
-                                        : `${(Object.values(product.planningHebdomadaire)[0] as any)?.debut || '08:00'}-${(Object.values(product.planningHebdomadaire)[0] as any)?.fin || '18:00'}`}
-                                </Text>
-                            </View>
-                        )}
-
-                        {/* RDV en ligne */}
-                        {product.rdvEnLigne && (
-                            <View style={[styles.detailChip, styles.successChip]}>
-                                <SafeIcon name="calendar" size={14} color="#10B981" />
-                                <Text style={[styles.detailText, styles.successText]}>RDV en ligne</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'ticket_voyage':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.depart && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="map-pin" size={14} color="#8B5CF6" />
-                                <Text style={styles.detailText}>De: {product.depart}</Text>
-                            </View>
-                        )}
-                        {product.destination && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="flag" size={14} color="#8B5CF6" />
-                                <Text style={styles.detailText}>À: {product.destination}</Text>
-                            </View>
-                        )}
-                        {product.dateDepart && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="calendar" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.dateDepart}</Text>
-                            </View>
-                        )}
-                        {product.heureDepart && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="clock" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.heureDepart}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'covoiturage':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.pointDepart && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="map-pin" size={14} color="#EC4899" />
-                                <Text style={styles.detailText}>De: {product.pointDepart}</Text>
-                            </View>
-                        )}
-                        {product.pointArrivee && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="flag" size={14} color="#EC4899" />
-                                <Text style={styles.detailText}>À: {product.pointArrivee}</Text>
-                            </View>
-                        )}
-                        {product.nbPlacesDisponibles && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="users" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.nbPlacesDisponibles} places</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'mobilier':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.typeMobilier && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🪑 {product.typeMobilier}</Text>
-                            </View>
-                        )}
-                        {product.materiau && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>📦 {product.materiau}</Text>
-                            </View>
-                        )}
-                        {product.dimensions && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="maximize-2" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.dimensions}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'aliments':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.categorieAliment && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🍕 {product.categorieAliment}</Text>
-                            </View>
-                        )}
-                        {product.origine && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="globe" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.origine}</Text>
-                            </View>
-                        )}
-                        {product.certification && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="award" size={14} color="#10B981" />
-                                <Text style={styles.detailText}>{product.certification}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'livres_fournitures':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.categorieLivre && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>📚 {product.categorieLivre}</Text>
-                            </View>
-                        )}
-                        {product.niveau && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="book-open" size={14} color="#6366F1" />
-                                <Text style={styles.detailText}>{product.niveau}</Text>
-                            </View>
-                        )}
-                        {product.matiereScolaire && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="file-text" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.matiereScolaire}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'quincaillerie':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.categorieQuincaillerie && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🔧 {product.categorieQuincaillerie}</Text>
-                            </View>
-                        )}
-                        {product.marqueQuincaillerie && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="tag" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.marqueQuincaillerie}</Text>
-                            </View>
-                        )}
-                        {product.unite && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="package" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>Unité: {product.unite}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'image_son':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.marqueImageSon && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🏷️ {product.marqueImageSon}</Text>
-                            </View>
-                        )}
-                        {product.typeImageSon && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>📺 {product.typeImageSon}</Text>
-                            </View>
-                        )}
-                        {product.diagonaleEcran && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="maximize-2" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.diagonaleEcran}"</Text>
-                            </View>
-                        )}
-                        {product.resolution && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🎬 {product.resolution}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'telephone':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.marqueTelephone && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🏷️ {product.marqueTelephone}</Text>
-                            </View>
-                        )}
-                        {product.modeleTelephone && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>📱 {product.modeleTelephone}</Text>
-                            </View>
-                        )}
-                        {product.stockage && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="hard-drive" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.stockage}</Text>
-                            </View>
-                        )}
-                        {product.ram && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="cpu" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>RAM: {product.ram}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'ordinateur':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.marqueOrdinateur && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🏷️ {product.marqueOrdinateur}</Text>
-                            </View>
-                        )}
-                        {product.processeur && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="cpu" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.processeur}</Text>
-                            </View>
-                        )}
-                        {product.ramOrdinateur && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>RAM: {product.ramOrdinateur}</Text>
-                            </View>
-                        )}
-                        {product.stockageOrdinateur && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="hard-drive" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.stockageOrdinateur}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'decoration':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.typeDecoration && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🖼️ {product.typeDecoration}</Text>
-                            </View>
-                        )}
-                        {product.style && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>✨ {product.style}</Text>
-                            </View>
-                        )}
-                        {product.couleurDecoration && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="droplet" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.couleurDecoration}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'ustensiles_cuisine':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.typeUstensile && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>🍴 {product.typeUstensile}</Text>
-                            </View>
-                        )}
-                        {product.materiauUstensile && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>📦 {product.materiauUstensile}</Text>
-                            </View>
-                        )}
-                        {product.marqueUstensile && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="tag" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.marqueUstensile}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'assurance':
-                return (
-                    <View style={styles.detailsGrid}>
-                        {product.typeAssurance && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="shield" size={14} color="#14B8A6" />
-                                <Text style={styles.detailText}>{product.typeAssurance}</Text>
-                            </View>
-                        )}
-                        {product.compagnie && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="briefcase" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.compagnie}</Text>
-                            </View>
-                        )}
-                        {product.couverture && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="check-circle" size={14} color="#10B981" />
-                                <Text style={styles.detailText}>{product.couverture}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'prestation_service':
-                return (
-                    <View style={styles.prestationsContainer}>
-                        {product.prestations && product.prestations.length > 0 ? (
-                            <>
-                                <Text style={styles.prestationsSectionTitle}>🎯 Offres de service :</Text>
-                                {product.prestations.map((prestation, index) => (
-                                    <View key={index} style={styles.prestationItem}>
-                                        <View style={styles.prestationHeader}>
-                                            <SafeIcon name="check-circle" size={16} color="#8B5CF6" />
-                                            <Text style={styles.prestationName}>{prestation.nom}</Text>
-                                        </View>
-                                        {prestation.prixAPartirDe && (
-                                            <Text style={styles.prestationPrice}>
-                                                Montant minimum : {parseFloat(prestation.prixAPartirDe).toLocaleString()} FCFA
-                                            </Text>
-                                        )}
-                                        {prestation.description && (
-                                            <Text style={styles.prestationDescription} numberOfLines={2}>
-                                                {prestation.description}
-                                            </Text>
-                                        )}
-                                    </View>
-                                ))}
-                            </>
-                        ) : (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="briefcase" size={14} color="#8B5CF6" />
-                                <Text style={styles.detailText}>Prestation de service</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'demenagement':
-                return (
-                    <View style={styles.detailsSection}>
-                        {/* Type de déménagement */}
-                        {product.typeDemenagement && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="truck" size={14} color="#F97316" />
-                                <Text style={styles.detailText}>{product.typeDemenagement}</Text>
-                            </View>
-                        )}
-
-                        <View style={styles.detailsGrid}>
-                            {/* Volume */}
-                            {product.volumeEstime && (
-                                <View style={styles.detailChip}>
-                                    <SafeIcon name="package" size={14} color="#6B7280" />
-                                    <Text style={styles.detailText}>{product.volumeEstime} m³</Text>
-                                </View>
-                            )}
-
-                            {/* Véhicule */}
-                            {product.typeVehicule && (
-                                <View style={styles.detailChip}>
-                                    <Text style={styles.detailText}>🚚 {product.typeVehicule}</Text>
-                                </View>
-                            )}
-
-                            {/* Déménageurs */}
-                            {product.nbDemenageurs && (
-                                <View style={styles.detailChip}>
-                                    <SafeIcon name="users" size={14} color="#6B7280" />
-                                    <Text style={styles.detailText}>{product.nbDemenageurs} personnes</Text>
-                                </View>
-                            )}
-
-                            {/* Distance */}
-                            {product.distanceKm && (
-                                <View style={styles.detailChip}>
-                                    <SafeIcon name="map" size={14} color="#6B7280" />
-                                    <Text style={styles.detailText}>Max {product.distanceKm} km</Text>
-                                </View>
-                            )}
-                        </View>
-
-                        {/* Services inclus */}
-                        {(product.assuranceMarchandise || product.serviceManutention || product.montageDemontage ||
-                            product.emballageCartons || product.gardeMeuble || product.debarras) && (
-                                <View style={styles.servicesInclus}>
-                                    <Text style={styles.prestationLabel}>Services inclus:</Text>
-                                    <View style={styles.servicesGrid}>
-                                        {product.assuranceMarchandise && (
-                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Assurance</Text></View>
-                                        )}
-                                        {product.serviceManutention && (
-                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Manutention</Text></View>
-                                        )}
-                                        {product.montageDemontage && (
-                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Montage</Text></View>
-                                        )}
-                                        {product.emballageCartons && (
-                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Emballage</Text></View>
-                                        )}
-                                        {product.gardeMeuble && (
-                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Garde-meuble</Text></View>
-                                        )}
-                                        {product.debarras && (
-                                            <View style={styles.serviceTag}><Text style={styles.serviceTagText}>✓ Débarras</Text></View>
-                                        )}
-                                    </View>
-                                </View>
-                            )}
-                    </View>
-                );
-
-            case 'cosmetique_parfum':
-                return (
-                    <View style={styles.detailsSection}>
-                        {/* Type de cosmétique */}
-                        {product.typeCosmetique && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="sparkle" size={14} color="#EC4899" />
-                                <Text style={styles.detailText}>{product.typeCosmetique}</Text>
-                            </View>
-                        )}
-
-                        <View style={styles.detailsGrid}>
-                            {/* Marque */}
-                            {product.marqueCosmetique && (
-                                <View style={styles.detailChip}>
-                                    <Text style={styles.detailText}>🏷️ {product.marqueCosmetique}</Text>
-                                </View>
-                            )}
-
-                            {/* Volume */}
-                            {product.volumeCosmetique && product.uniteCosmetique && (
-                                <View style={styles.detailChip}>
-                                    <SafeIcon name="droplet" size={14} color="#6B7280" />
-                                    <Text style={styles.detailText}>{product.volumeCosmetique} {product.uniteCosmetique}</Text>
-                                </View>
-                            )}
-
-                            {/* Type de peau */}
-                            {product.typePeau && (
-                                <View style={styles.detailChip}>
-                                    <SafeIcon name="user" size={14} color="#6B7280" />
-                                    <Text style={styles.detailText}>Peau: {product.typePeau}</Text>
-                                </View>
-                            )}
-
-                            {/* Âge recommandé */}
-                            {product.ageRecommandé && (
-                                <View style={styles.detailChip}>
-                                    <SafeIcon name="calendar" size={14} color="#6B7280" />
-                                    <Text style={styles.detailText}>Âge: {product.ageRecommandé}</Text>
-                                </View>
-                            )}
-                        </View>
-
-                        {/* Origine */}
-                        {product.origineCosmetique && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="globe" size={14} color="#10B981" />
-                                <Text style={styles.detailText}>Origine: {product.origineCosmetique}</Text>
-                            </View>
-                        )}
-
-                        {/* Ingrédients */}
-                        {product.ingredientsCosmetique && (
-                            <View style={styles.ingredientsContainer}>
-                                <Text style={styles.prestationLabel}>Ingrédients:</Text>
-                                <Text style={styles.ingredientsText} numberOfLines={2}>
-                                    {product.ingredientsCosmetique}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'bijoux':
-                return (
-                    <View style={styles.detailsSection}>
-                        {/* Type de bijou */}
-                        {product.typeBijou && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="gem" size={14} color="#F59E0B" />
-                                <Text style={styles.detailText}>{product.typeBijou}</Text>
-                            </View>
-                        )}
-
-                        <View style={styles.detailsGrid}>
-                            {/* Matière */}
-                            {product.matiereBijou && (
-                                <View style={styles.detailChip}>
-                                    <Text style={styles.detailText}>💎 {product.matiereBijou}</Text>
-                                </View>
-                            )}
-
-                            {/* Poids */}
-                            {product.poidsBijou && product.unitePoids && (
-                                <View style={styles.detailChip}>
-                                    <SafeIcon name="scale" size={14} color="#6B7280" />
-                                    <Text style={styles.detailText}>{product.poidsBijou} {product.unitePoids}</Text>
-                                </View>
-                            )}
-
-                            {/* Taille */}
-                            {product.tailleBijou && (
-                                <View style={styles.detailChip}>
-                                    <SafeIcon name="maximize" size={14} color="#6B7280" />
-                                    <Text style={styles.detailText}>Taille: {product.tailleBijou}</Text>
-                                </View>
-                            )}
-
-                            {/* Style */}
-                            {product.styleBijou && (
-                                <View style={styles.detailChip}>
-                                    <Text style={styles.detailText}>✨ {product.styleBijou}</Text>
-                                </View>
-                            )}
-                        </View>
-
-                        {/* Origine */}
-                        {product.origineBijou && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="globe" size={14} color="#10B981" />
-                                <Text style={styles.detailText}>Origine: {product.origineBijou}</Text>
-                            </View>
-                        )}
-
-                        {/* Certificat */}
-                        {product.certificatBijou && (
-                            <View style={[styles.detailChip, styles.certificateChip]}>
-                                <SafeIcon name="award" size={14} color="#10B981" />
-                                <Text style={[styles.detailText, styles.certificateText]}>
-                                    Certifié: {product.certificatBijou}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            case 'coiffure_beaute':
-                return (
-                    <View style={styles.detailsSection}>
-                        {/* Type de coiffure */}
-                        {product.typeCoiffure && (
-                            <View style={styles.detailChip}>
-                                <Text style={styles.detailText}>💇‍♀️ {product.typeCoiffure}</Text>
-                            </View>
-                        )}
-
-                        <View style={styles.detailsGrid}>
-                            {/* Longueur */}
-                            {product.longueurMech && (
-                                <View style={styles.detailChip}>
-                                    <SafeIcon name="ruler" size={14} color="#6B7280" />
-                                    <Text style={styles.detailText}>{product.longueurMech}</Text>
-                                </View>
-                            )}
-
-                            {/* Texture */}
-                            {product.textureMech && (
-                                <View style={styles.detailChip}>
-                                    <Text style={styles.detailText}>✨ {product.textureMech}</Text>
-                                </View>
-                            )}
-
-                            {/* Couleur */}
-                            {product.couleurMech && (
-                                <View style={styles.detailChip}>
-                                    <SafeIcon name="droplet" size={14} color="#6B7280" />
-                                    <Text style={styles.detailText}>{product.couleurMech}</Text>
-                                </View>
-                            )}
-                        </View>
-
-                        {/* Type de cheveux */}
-                        {product.typeCheveux && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="check-circle" size={14} color="#10B981" />
-                                <Text style={styles.detailText}>{product.typeCheveux}</Text>
-                            </View>
-                        )}
-
-                        {/* Origine */}
-                        {product.origineMech && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="globe" size={14} color="#10B981" />
-                                <Text style={styles.detailText}>Origine: {product.origineMech}</Text>
-                            </View>
-                        )}
-
-                        {/* Marque */}
-                        {product.marqueCoiffure && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="tag" size={14} color="#EC4899" />
-                                <Text style={styles.detailText}>{product.marqueCoiffure}</Text>
-                            </View>
-                        )}
-
-                        {/* Durée de vie */}
-                        {product.dureeVie && (
-                            <View style={styles.detailChip}>
-                                <SafeIcon name="clock" size={14} color="#8B5CF6" />
-                                <Text style={styles.detailText}>Durée: {product.dureeVie}</Text>
-                            </View>
-                        )}
-                    </View>
-                );
-
-            default:
-                return null;
+    // Gérer la lecture vidéo
+    useEffect(() => {
+        if (allMedia[currentMediaIndex]?.type === 'video' && videoRef.current) {
+            videoRef.current.playAsync();
+        } else if (videoRef.current) {
+            videoRef.current.pauseAsync();
         }
+    }, [currentMediaIndex]);
+
+    // Rendu du média (vidéo ou image)
+    const renderMediaItem = ({ item, index }: { item: { type: string; uri: string }; index: number }) => {
+        if (item.type === 'video') {
+                return (
+                <View style={styles.mediaItem}>
+                    <Video
+                        ref={index === currentMediaIndex ? videoRef : null}
+                        source={{ uri: item.uri }}
+                        style={styles.mediaVideo}
+                        resizeMode={ResizeMode.COVER}
+                        isLooping={false}
+                        shouldPlay={index === currentMediaIndex}
+                        onPlaybackStatusUpdate={(status) => {
+                            if (index === currentMediaIndex) {
+                                setVideoStatus(status);
+                                if (status.didJustFinish) {
+                                    // Passer à l'élément suivant après la fin de la vidéo
+                                    setTimeout(() => {
+                                        const next = (currentMediaIndex + 1) % allMedia.length;
+                                        setCurrentMediaIndex(next);
+                                        carouselRef.current?.scrollToIndex({ index: next, animated: true });
+                                    }, 500);
+                                }
+                            }
+                        }}
+                    />
+                    </View>
+                );
+        }
+                return (
+            <View style={styles.mediaItem}>
+                <Image source={{ uri: item.uri }} style={styles.mediaImage} resizeMode="cover" />
+                    </View>
+                );
+    };
+
+    // Rendu générique des détails du produit (sans catégorie spécifique)
+    const renderProductDetails = () => {
+        // Liste des champs génériques à afficher (sans dépendre de product.type)
+        const genericFields = [
+            { key: 'marque', icon: 'tag', label: null },
+            { key: 'modele', icon: 'package', label: null },
+            { key: 'couleur', icon: 'droplet', label: null },
+            { key: 'taille', icon: 'maximize', label: 'Taille' },
+            { key: 'etat', icon: 'check-circle', label: null },
+            { key: 'etatProduit', icon: 'check-circle', label: null },
+            { key: 'quartier', icon: 'map-pin', label: null },
+            { key: 'ville', icon: 'map-pin', label: null },
+            { key: 'origine', icon: 'globe', label: null },
+            { key: 'certification', icon: 'award', label: null },
+            { key: 'unite', icon: 'package', label: 'Unité' },
+        ];
+
+        const availableFields = genericFields.filter(field => product[field.key]);
+
+        if (availableFields.length === 0) {
+            return null;
+        }
+
+        return (
+            <View style={styles.detailsGrid}>
+                {availableFields.slice(0, 6).map((field) => (
+                    <View key={field.key} style={styles.detailChip}>
+                        <SafeIcon name={field.icon as any} size={10} color="#6B7280" />
+                                <Text style={styles.detailText}>
+                            {field.label ? `${field.label} ` : ''}{product[field.key]}
+                                </Text>
+                            </View>
+                ))}
+                    </View>
+                );
     };
 
     return (
@@ -996,19 +218,52 @@ const ProductCard: React.FC<ProductCardProps> = ({
             activeOpacity={0.95}
         >
             <View style={styles.cardContent}>
-                {/* Image principale avec vidéo overlay */}
+                {/* Carousel automatique d'images et vidéos */}
                 <View style={styles.imageContainer}>
-                    {mainImage ? (
-                        <Image source={{ uri: mainImage }} style={styles.mainImage} resizeMode="cover" />
+                    {hasMedia ? (
+                        <FlatList
+                            ref={carouselRef}
+                            data={allMedia}
+                            renderItem={renderMediaItem}
+                            keyExtractor={(item, index) => `${item.type}-${index}`}
+                            horizontal
+                            pagingEnabled
+                            showsHorizontalScrollIndicator={false}
+                            scrollEnabled={false}
+                            onMomentumScrollEnd={(event) => {
+                                const index = Math.round(event.nativeEvent.contentOffset.x / (width * 0.4));
+                                setCurrentMediaIndex(index);
+                            }}
+                            getItemLayout={(data, index) => ({
+                                length: width * 0.4,
+                                offset: width * 0.4 * index,
+                                index,
+                            })}
+                        />
                     ) : (
                         <View style={[styles.mainImage, styles.noImageContainer]}>
-                            <SafeIcon name="package" size={48} color="#D1D5DB" />
+                            <SafeIcon name="package" size={24} color="#D1D5DB" />
+                        </View>
+                    )}
+
+                    {/* Indicateurs de pagination */}
+                    {allMedia.length > 1 && (
+                        <View style={styles.paginationDots}>
+                            {allMedia.map((_, index) => (
+                                <View
+                                    key={index}
+                                    style={[
+                                        styles.paginationDot,
+                                        index === currentMediaIndex && styles.paginationDotActive,
+                                    ]}
+                                />
+                            ))}
                         </View>
                     )}
 
                     {/* Badge type de produit */}
                     <View style={[styles.typeBadge, { backgroundColor: typeStyle.bg }]}>
-                        <SafeIcon name={typeStyle.icon} size={14} color={typeStyle.color} />
+                        <SafeIcon name={typeStyle.icon} size={8} color={typeStyle.color} />
                         <Text style={[styles.typeText, { color: typeStyle.color }]}>{typeStyle.label}</Text>
                     </View>
 
@@ -1021,28 +276,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 end={{ x: 1, y: 0 }}
                                 style={styles.promoBadgeGradient}
                             >
-                                <SafeIcon name="zap" size={12} color="#FFFFFF" />
+                                <SafeIcon name="zap" size={8} color="#FFFFFF" />
                                 <Text style={styles.promoText}>PROMO</Text>
                             </LinearGradient>
                         </View>
                     )}
 
-                    {/* Indicateur vidéo si présente */}
-                    {hasVideo && (
-                        <View style={styles.videoIndicator}>
-                            <SafeIcon name="play-circle" size={20} color="#FFFFFF" />
-                        </View>
-                    )}
-
-                    {/* Galerie miniature si plusieurs images - Clickable */}
-                    {images.length > 1 && (
+                    {/* Badge nombre de médias */}
+                    {allMedia.length > 1 && (
                         <TouchableOpacity
-                            style={styles.imageCountBadge}
+                            style={styles.mediaCountBadge}
                             onPress={onGalleryPress}
                             activeOpacity={0.8}
                         >
-                            <SafeIcon name="image" size={12} color="#FFFFFF" />
-                            <Text style={styles.imageCountText}>{images.length}</Text>
+                            <SafeIcon name="image" size={8} color="#FFFFFF" />
+                            <Text style={styles.mediaCountText}>{allMedia.length}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -1280,7 +528,7 @@ const styles = StyleSheet.create({
     },
     imageContainer: {
         width: width * 0.4,
-        height: 180,
+        height: 90,
         position: 'relative',
     },
     mainImage: {
@@ -1294,57 +542,57 @@ const styles = StyleSheet.create({
     },
     typeBadge: {
         position: 'absolute',
-        top: 8,
-        left: 8,
+        top: 4,
+        left: 4,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
+        gap: 3,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
     },
     typeText: {
-        fontSize: 10,
+        fontSize: 8,
         fontWeight: '600',
     },
     promoBadge: {
         position: 'absolute',
-        top: 42,
-        left: 8,
-        borderRadius: 8,
+        top: 24,
+        left: 4,
+        borderRadius: 6,
         overflow: 'hidden',
     },
     promoBadgeGradient: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        gap: 3,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
     },
     promoText: {
-        fontSize: 10,
+        fontSize: 8,
         fontWeight: '700',
         color: '#FFFFFF',
     },
     videoIndicator: {
         position: 'absolute',
-        bottom: 8,
-        right: 8,
+        bottom: 4,
+        right: 4,
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        borderRadius: 20,
-        padding: 6,
+        borderRadius: 12,
+        padding: 4,
     },
     imageCountBadge: {
         position: 'absolute',
-        bottom: 8,
-        left: 8,
+        bottom: 4,
+        left: 4,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 3,
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
     },
     imageCountText: {
         color: '#FFFFFF',
@@ -1353,55 +601,55 @@ const styles = StyleSheet.create({
     },
     infoContainer: {
         flex: 1,
-        padding: 12,
+        padding: 8,
         justifyContent: 'space-between',
     },
     productName: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '700',
         color: '#1F2937',
-        marginBottom: 4,
+        marginBottom: 2,
     },
     productDescription: {
-        fontSize: 12,
+        fontSize: 10,
         color: '#6B7280',
-        lineHeight: 16,
-        marginBottom: 8,
+        lineHeight: 14,
+        marginBottom: 4,
     },
     detailsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 6,
-        marginBottom: 8,
+        gap: 4,
+        marginBottom: 4,
     },
     detailChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 3,
         backgroundColor: '#F3F4F6',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
     },
     detailText: {
-        fontSize: 11,
+        fontSize: 9,
         color: '#4B5563',
         fontWeight: '500',
     },
     priceContainer: {
-        marginBottom: 8,
+        marginBottom: 4,
     },
     priceGradient: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 10,
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
         alignSelf: 'flex-start',
     },
     priceText: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '700',
         color: '#FFFFFF',
     },
@@ -1409,7 +657,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        marginBottom: 8,
+        marginBottom: 4,
     },
     locationText: {
         fontSize: 11,
@@ -1425,16 +673,16 @@ const styles = StyleSheet.create({
     prestataireInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        marginBottom: 8,
-        paddingTop: 8,
+        gap: 4,
+        marginBottom: 4,
+        paddingTop: 4,
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
     },
     prestataireAvatar: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
         backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
@@ -1460,10 +708,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-around',
-        paddingVertical: 8,
-        marginBottom: 8,
+        paddingVertical: 4,
+        marginBottom: 4,
         backgroundColor: '#F9FAFB',
-        borderRadius: 8,
+        borderRadius: 6,
     },
     statItem: {
         flexDirection: 'row',
@@ -1471,7 +719,7 @@ const styles = StyleSheet.create({
         gap: 3,
     },
     statText: {
-        fontSize: 11,
+        fontSize: 9,
         color: '#6B7280',
         fontWeight: '600',
     },
@@ -1492,13 +740,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
+        gap: 4,
         backgroundColor: '#3B82F6',
-        paddingVertical: 10,
-        borderRadius: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
     },
     chatButtonText: {
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: '600',
         color: '#FFFFFF',
     },
@@ -1506,14 +754,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
+        gap: 4,
         backgroundColor: '#10B981',
-        paddingVertical: 10,
-        borderRadius: 10,
-        marginTop: 8,
+        paddingVertical: 6,
+        borderRadius: 8,
+        marginTop: 4,
     },
     deliveryButtonText: {
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: '600',
         color: '#FFFFFF',
     },
@@ -1713,6 +961,58 @@ const styles = StyleSheet.create({
     },
     certificateText: {
         color: '#15803D',
+        fontWeight: '600',
+    },
+    // Styles pour le carousel
+    mediaItem: {
+        width: width * 0.4,
+        height: 90,
+    },
+    mediaVideo: {
+        width: '100%',
+        height: '100%',
+    },
+    mediaImage: {
+        width: '100%',
+        height: '100%',
+    },
+    paginationDots: {
+        position: 'absolute',
+        bottom: 4,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 4,
+    },
+    paginationDot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    },
+    paginationDotActive: {
+        backgroundColor: '#FFFFFF',
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    mediaCountBadge: {
+        position: 'absolute',
+        bottom: 4,
+        right: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+    },
+    mediaCountText: {
+        color: '#FFFFFF',
+        fontSize: 9,
         fontWeight: '600',
     },
 });
