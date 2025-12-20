@@ -11,11 +11,11 @@
 ## Alternative : Client SQL (pgAdmin, DBeaver, etc.)
 
 1. Connectez-vous avec :
-   - **Host**: `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com`
+   - **Host**: `your-render-db-host.render.com`
    - **Port**: `5432`
    - **Database**: `yukpo_db`
    - **Username**: `yukpo_db_user`
-   - **Password**: `88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4`
+   - **Password**: `YOUR_PASSWORD`
 
 2. Ouvrez et exécutez le fichier `APPLY_EFFECTS_MIGRATION_RENDER.sql`
 

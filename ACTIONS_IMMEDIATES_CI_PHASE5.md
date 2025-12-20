@@ -18,7 +18,7 @@ cd backend
 **Si le cache est manquant ou vide** :
 ```powershell
 # Avec accès à la base Render
-$env:DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL = "postgresql://user:password@host:port/database"
 cargo sqlx prepare --workspace
 ```
 

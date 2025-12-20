@@ -57,7 +57,7 @@ Si vous voulez vérifier que les migrations ont été appliquées :
 
 1. **Se connecter à la base PostgreSQL Render**:
    ```bash
-   psql "postgresql://yukpo_db_user:PASSWORD@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+   psql "postgresql://yukpo_db_user:PASSWORD@your-render-db-host.render.com/yukpo_db"
    ```
 
 2. **Vérifier les tables**:

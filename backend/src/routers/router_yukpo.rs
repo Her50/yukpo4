@@ -21,7 +21,6 @@ use crate::{
         intelligent_service_controller::{process_services_intelligently, get_services_pending_processing, reactivate_service_intelligent},
         product_addition_controller::add_product_to_service, // ✅ NOUVEAU 2025-11-01
         product_lifecycle_controller::{deactivate_product, reactivate_product}, // ✅ NOUVEAU 2025-11-01
-        product_video_controller::{generate_video_for_product, estimate_video_cost_for_product}, // ✅ NOUVEAU 2025-12-20: Routes génération vidéo
     },
     routes::products_management::update_product,
     routes::{
@@ -178,6 +177,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ NOUVEAU: Routes pour système de publicité (intégrées directement)
     use crate::controllers::publicite_controller;
     use crate::controllers::media_product_controller;
+    use crate::controllers::product_video_controller;
     let publicite_routes_inline = Router::new()
         .route("/api/publicites/create", post(publicite_controller::create_publicite))
         .route("/api/publicites/{id}/update", post(publicite_controller::update_publicite))

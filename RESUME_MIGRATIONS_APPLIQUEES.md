@@ -4,7 +4,7 @@
 
 ### ✅ **APPLIQUÉE** avec succès sur Render
 
-**Base de données** : `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db`
+**Base de données** : `your-render-db-host.render.com/yukpo_db`
 
 ### Contenu de la Migration
 
@@ -38,7 +38,7 @@
 
 ```bash
 # Application directe via psql
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com \
+psql -h your-render-db-host.render.com \
      -U yukpo_db_user \
      -d yukpo_db \
      -f migrations/20251202195420_add_delivery_engine_pricing.sql

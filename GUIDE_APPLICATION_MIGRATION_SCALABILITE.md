@@ -13,7 +13,7 @@ cd C:\Users\23767\yukpomnang2
 
 ```bash
 # Se connecter à la base de données Render
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+psql "postgresql://user:password@host:port/database"
 
 # Appliquer la migration
 \i backend/migrations/20251202_search_scalability_improvements.sql
@@ -28,7 +28,7 @@ SELECT refresh_services_search_optimized();
 ### Option C : Via Docker (si psql non disponible)
 
 ```bash
-docker run -i --rm postgres psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" < backend/migrations/20251202_search_scalability_improvements.sql
+docker run -i --rm postgres psql "postgresql://user:password@host:port/database" < backend/migrations/20251202_search_scalability_improvements.sql
 ```
 
 ## ✅ Étape 2 : Vérifier l'Intégration dans le Code
@@ -75,7 +75,7 @@ cargo test search_cache
 REDIS_URL=redis://localhost:6379
 
 # Database (déjà configuré)
-DATABASE_URL=postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+DATABASE_URL=postgresql://user:password@host:port/database
 ```
 
 ### Déploiement Render

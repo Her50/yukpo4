@@ -18,7 +18,7 @@ La fonction `ensure_scalability_indexes()` a été ajoutée dans `auto_migrate.r
 cd backend
 
 # Définir les variables d'environnement
-$env:DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL="postgresql://user:password@host:port/database"
 
 # Appliquer toutes les migrations
 sqlx migrate run
@@ -32,7 +32,7 @@ La migration sera appliquée automatiquement au démarrage du serveur via `run_a
 
 ```bash
 # Se connecter à la base
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+psql "postgresql://user:password@host:port/database"
 
 # Exécuter le fichier SQL
 \i backend/migrations/20251201_scalability_indexes.sql

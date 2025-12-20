@@ -7,7 +7,7 @@
 ## ✅ 1. Base de Données Render - VALIDÉE
 
 **Coordonnées** :
-- Host: `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com`
+- Host: `your-render-db-host.render.com`
 - Database: `yukpo_db`
 - User: `yukpo_db_user`
 

@@ -7,10 +7,10 @@ Write-Host "🚀 Application de la migration de performance sur Render" -Foregro
 Write-Host "==================================================" -ForegroundColor Green
 
 # Informations de connexion
-$hostname = "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com"
+$hostname = "your-render-db-host.render.com"
 $database = "yukpo_db"
 $username = "yukpo_db_user"
-$password = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
+$password = "YOUR_PASSWORD"
 $connectionString = "postgresql://${username}:${password}@${hostname}/${database}"
 
 # Chemin de la migration (depuis le répertoire backend)

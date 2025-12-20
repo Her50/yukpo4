@@ -20,7 +20,7 @@ chmod +x scripts/test_templates_api.sh
 ./scripts/test_templates_api.sh "your_jwt_token"
 
 # Tests base de données
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com -U yukpo_db_user -d yukpo_db -f scripts/test_database.sql
+psql -h your-render-db-host.render.com -U yukpo_db_user -d yukpo_db -f scripts/test_database.sql
 ```
 
 ---

@@ -5,7 +5,7 @@ echo "🧪 Tests Phase 2 - Optimisations Livraison"
 echo "=========================================="
 
 # Configuration
-DB_URL="${DATABASE_URL:-postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db}"
+DB_URL="${DATABASE_URL:-postgresql://user:password@host:port/database}"
 API_URL="${API_URL:-http://localhost:3001}"
 
 echo ""

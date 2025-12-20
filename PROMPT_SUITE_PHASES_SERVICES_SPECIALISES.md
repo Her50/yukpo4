@@ -6,7 +6,7 @@
 **Backend** : Rust avec Axum, SQLx, PostgreSQL, pgvector, Redis  
 **Frontend Mobile** : React Native (Expo SDK 52) avec TypeScript  
 **Frontend Web** : React avec TypeScript, TailwindCSS  
-**Base de données** : PostgreSQL Render (hostname: `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com`)
+**Base de données** : PostgreSQL Render (hostname: `your-render-db-host.render.com`)
 
 ## ✅ Ce qui a été complété (Phases 1-4)
 
@@ -233,7 +233,7 @@
 ## 📝 Notes Techniques Importantes
 
 ### Base de données Render
-- **URL** : `postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db`
+- **URL** : `postgresql://user:password@host:port/database`
 - **Migrations** : Appliquer via `psql` ou intégrer dans `auto_migrate.rs`
 - **SQLX_OFFLINE** : Utiliser `SQLX_OFFLINE=true` pour développement
 

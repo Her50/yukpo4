@@ -1,8 +1,8 @@
 # 🔍 Script PowerShell pour diagnostic recherche et vérification produit Toyota Avensis 200
 # Base de données Render PostgreSQL
 
-$env:PGPASSWORD = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
-$DB_HOST = "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com"
+$env:PGPASSWORD = "YOUR_PASSWORD"
+$DB_HOST = "your-render-db-host.render.com"
 $DB_PORT = "5432"
 $DB_NAME = "yukpo_db"
 $DB_USER = "yukpo_db_user"

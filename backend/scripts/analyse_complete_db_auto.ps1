@@ -1,7 +1,7 @@
 # Script d'analyse automatique avec execution des requetes via psql
 # Version autonome qui execute toutes les analyses
 
-$DatabaseUrl = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$DatabaseUrl = "postgresql://user:password@host:port/database"
 
 $resultsDir = "backend/analyses_db"
 if (-not (Test-Path $resultsDir)) {
@@ -43,9 +43,9 @@ Requete: $Query
     
     try {
         # Utiliser PGPASSWORD pour eviter les prompts
-        $env:PGPASSWORD = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
+        $env:PGPASSWORD = "YOUR_PASSWORD"
         
-        $result = & $psqlPath -h "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com" -p 5432 -U "yukpo_db_user" -d "yukpo_db" -t -A -c $Query 2>&1
+        $result = & $psqlPath -h "your-render-db-host.render.com" -p 5432 -U "yukpo_db_user" -d "yukpo_db" -t -A -c $Query 2>&1
         
         if ($LASTEXITCODE -eq 0) {
             $output += "`n[OK] Resultat:`n$result`n"
@@ -74,7 +74,7 @@ $header = @"
 RAPPORT D'ANALYSE AUTOMATIQUE
 Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 Base: yukpo_db
-Host: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
+Host: your-render-db-host.render.com
 ========================================
 
 "@

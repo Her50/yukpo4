@@ -84,7 +84,7 @@ total_commission_cents = product_commission_cents + delivery_commission_cents
 ## 🚀 Application Production
 
 **Base de données** :
-- `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db`
+- `your-render-db-host.render.com/yukpo_db`
 
 **Commandes** :
 ```bash

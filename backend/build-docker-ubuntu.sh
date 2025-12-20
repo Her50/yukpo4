@@ -24,7 +24,7 @@ if [ ! -d "$CACHE_DIR" ]; then
     echo "❌ Le dossier .sqlx n'existe pas!"
     echo ""
     echo "   Génération du cache SQLx..."
-    export DATABASE_URL="${DATABASE_URL:-postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db}"
+    export DATABASE_URL="${DATABASE_URL:-postgresql://user:password@host:port/database}"
     export SQLX_OFFLINE=false
     cargo sqlx prepare --workspace
     echo ""

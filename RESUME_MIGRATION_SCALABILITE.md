@@ -75,7 +75,7 @@ Pour vérifier que tout est bien en place :
 
 ```bash
 # Via psql
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+psql "postgresql://user:password@host:port/database"
 
 # Vérifier les tables
 \dt video_generation_metrics rate_limit_tracking studio_session_cache

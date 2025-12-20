@@ -91,7 +91,7 @@ yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).awai
 ### Vérification Manuelle (Optionnel)
 ```bash
 # Se connecter à la DB
-psql postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+psql postgresql://user:password@host:port/database
 
 # Vérifier la table
 \d message_reactions

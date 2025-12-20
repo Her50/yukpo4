@@ -13,7 +13,7 @@
 #### 1.2 Commandes d'Application
 ```bash
 # Appliquer la migration corrigée
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" -f backend/migrations/20251201_scalability_indexes.sql
+psql "postgresql://user:password@host:port/database" -f backend/migrations/20251201_scalability_indexes.sql
 
 # Vérifier les index créés
 psql "postgresql://..." -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public' AND indexname LIKE 'idx_%';"

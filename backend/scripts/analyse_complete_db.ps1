@@ -7,7 +7,7 @@ param(
 
 # Si DATABASE_URL n'est pas fournie, utiliser celle fournie par l'utilisateur
 if (-not $DatabaseUrl) {
-    $DatabaseUrl = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+    $DatabaseUrl = "postgresql://user:password@host:port/database"
     Write-Host "Utilisation de l'URL par défaut" -ForegroundColor Gray
 }
 
@@ -68,7 +68,7 @@ $header = @"
 RAPPORT D'ANALYSE DE LA BASE DE DONNÉES
 Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 Base: yukpo_db
-Host: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
+Host: your-render-db-host.render.com
 ========================================
 
 "@

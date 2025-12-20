@@ -35,7 +35,7 @@ OU manuellement :
 cd /opt/yukpo/backend
 
 # 1. Configurer DATABASE_URL
-export DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+export DATABASE_URL="postgresql://user:password@host:port/database"
 export SQLX_OFFLINE=false
 
 # 2. Supprimer l'ancien cache

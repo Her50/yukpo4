@@ -5,7 +5,7 @@
 ### ✅ Base de Données - 100% VALIDÉE
 
 **Coordonnées utilisées** :
-- Host: `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com`
+- Host: `your-render-db-host.render.com`
 - Database: `yukpo_db`
 - User: `yukpo_db_user`
 

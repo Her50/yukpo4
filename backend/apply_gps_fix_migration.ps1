@@ -4,9 +4,9 @@
 Write-Host "🔧 Application de la migration GPS fix..." -ForegroundColor Cyan
 
 # Variables de connexion
-$DB_HOST = "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com"
+$DB_HOST = "your-render-db-host.render.com"
 $DB_USER = "yukpo_db_user"
-$DB_PASSWORD = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
+$DB_PASSWORD = "YOUR_PASSWORD"
 $DB_NAME = "yukpo_db"
 
 # Chemin du fichier de migration

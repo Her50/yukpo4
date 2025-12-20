@@ -37,7 +37,7 @@ Le serveur va :
 cargo install sqlx-cli --features postgres
 
 # Configurer la base de données
-$env:DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL="postgresql://user:password@host:port/database"
 
 # Appliquer la migration
 sqlx migrate run
@@ -52,14 +52,14 @@ Si vous avez psql installé :
 
 ```powershell
 # Windows PowerShell
-$env:PGPASSWORD="88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com -U yukpo_db_user -d yukpo_db -f backend/migrations/20250127_create_menu_planning_tables.sql
+$env:PGPASSWORD="YOUR_PASSWORD"
+psql -h your-render-db-host.render.com -U yukpo_db_user -d yukpo_db -f backend/migrations/20250127_create_menu_planning_tables.sql
 ```
 
 ```bash
 # Linux/macOS
-export PGPASSWORD="88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com -U yukpo_db_user -d yukpo_db -f backend/migrations/20250127_create_menu_planning_tables.sql
+export PGPASSWORD="YOUR_PASSWORD"
+psql -h your-render-db-host.render.com -U yukpo_db_user -d yukpo_db -f backend/migrations/20250127_create_menu_planning_tables.sql
 ```
 
 ### Option 4: Script PowerShell

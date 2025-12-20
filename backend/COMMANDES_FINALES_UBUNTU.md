@@ -10,7 +10,7 @@ Le build Docker échoue avec des erreurs SQLx car le cache `.sqlx` est incomplet
 
 ```bash
 cd /opt/yukpo/backend
-export DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+export DATABASE_URL="postgresql://user:password@host:port/database"
 chmod +x diagnose-sqlx-complete.sh
 ./diagnose-sqlx-complete.sh
 ```
@@ -21,7 +21,7 @@ chmod +x diagnose-sqlx-complete.sh
 cd /opt/yukpo/backend
 
 # Exporter DATABASE_URL
-export DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+export DATABASE_URL="postgresql://user:password@host:port/database"
 export SQLX_OFFLINE=false
 
 # Supprimer l'ancien cache

@@ -1,8 +1,8 @@
 # Script PowerShell pour appliquer les migrations des services (Bourse, Orientation, Emploi)
 # Base de données Render
 
-$env:PGPASSWORD = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
-$hostname = "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com"
+$env:PGPASSWORD = "YOUR_PASSWORD"
+$hostname = "your-render-db-host.render.com"
 $database = "yukpo_db"
 $username = "yukpo_db_user"
 

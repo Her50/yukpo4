@@ -14,7 +14,7 @@ Le backend Rust utilise SQLx avec des macros `query!()` qui nécessitent soit :
 
 Le cache a été généré localement avec :
 ```powershell
-$env:DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL="postgresql://user:password@host:port/database"
 $env:SQLX_OFFLINE="false"
 cargo sqlx prepare -- --lib
 ```

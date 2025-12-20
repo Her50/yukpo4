@@ -6,7 +6,7 @@
 - **Port**: `5432`
 - **Database**: `yukpo_db`
 - **Username**: `yukpo_db_user` ✅
-- **URL**: `postgresql://yukpo_db_user:...@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db`
+- **URL**: `postgresql://yukpo_db_user:...@your-render-db-host.render.com/yukpo_db`
 
 ## ✅ Points à Vérifier
 
@@ -53,7 +53,7 @@
 
 ```powershell
 # Définir DATABASE_URL
-$env:DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL = "postgresql://user:password@host:port/database"
 
 # Exécuter le script
 .\backend\scripts\verify_database_connection.ps1

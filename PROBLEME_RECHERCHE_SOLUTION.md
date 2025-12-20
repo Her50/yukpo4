@@ -57,7 +57,7 @@ Erreur: error returned from database: structure of query does not match function
 ### Étape 1 : Appliquer la correction SQL
 ```bash
 # Se connecter à la DB Render et exécuter
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com \
+psql -h your-render-db-host.render.com \
      -U yukpo_db_user \
      -d yukpo_db \
      -f backend/fix_search_performance_issues.sql

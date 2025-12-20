@@ -1,8 +1,8 @@
 # Script pour appliquer la migration d'optimisation directement sur Render
 # Date: 2025-12-17
 
-$env:PGPASSWORD = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
-$env:PGHOST = "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com"
+$env:PGPASSWORD = "YOUR_PASSWORD"
+$env:PGHOST = "your-render-db-host.render.com"
 $env:PGPORT = "5432"
 $env:PGUSER = "yukpo_db_user"
 $env:PGDATABASE = "yukpo_db"

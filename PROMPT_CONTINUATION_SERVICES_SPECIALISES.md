@@ -357,7 +357,7 @@ sqlx migrate run
 
 **URL Base de Données :**
 ```
-postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+postgresql://user:password@host:port/database
 ```
 
 ### Services Backend Existants

@@ -29,7 +29,7 @@ error: error communicating with database: Connection refused
 - Vérifiez que `DATABASE_URL` est bien définie dans Render
 - Testez la connexion depuis un terminal :
   ```bash
-  psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" -c "SELECT 1"
+  psql "postgresql://user:password@host:port/database" -c "SELECT 1"
   ```
 
 #### Option B : Utiliser SQLX_OFFLINE=true si nécessaire

@@ -89,9 +89,9 @@ Si vous voulez appliquer les migrations manuellement :
 
 ```bash
 # Via psql
-psql postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db -f backend/migrations/20251126_fix_search_services_gps_final_signature.sql
+psql postgresql://user:password@host:port/database -f backend/migrations/20251126_fix_search_services_gps_final_signature.sql
 
-psql postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db -f backend/migrations/20251126_optimize_search_indexes.sql
+psql postgresql://user:password@host:port/database -f backend/migrations/20251126_optimize_search_indexes.sql
 ```
 
 ---

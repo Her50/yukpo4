@@ -1,5 +1,5 @@
 # Script simple pour exécuter les migrations avec sqlx-cli
-$dbUrl = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$dbUrl = "postgresql://user:password@host:port/database"
 
 Write-Host "🔧 Exécution des migrations directement sur la base de données..." -ForegroundColor Green
 Write-Host ""

@@ -13,7 +13,7 @@ cd C:\Users\23767\yukpomnang2
 
 ```bash
 # Se connecter
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+psql "postgresql://user:password@host:port/database"
 
 # Appliquer
 \i backend/migrations/20251202_search_scalability_improvements.sql

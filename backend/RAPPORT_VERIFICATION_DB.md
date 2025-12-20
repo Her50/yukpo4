@@ -2,11 +2,11 @@
 
 ## ✅ Informations de Connexion
 
-- **Hostname**: `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com`
+- **Hostname**: `your-render-db-host.render.com`
 - **Port**: `5432`
 - **Database**: `yukpo_db`
 - **Username**: `yukpo_db_user` ✅
-- **URL Format**: `postgresql://yukpo_db_user:password@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db`
+- **URL Format**: `postgresql://yukpo_db_user:password@your-render-db-host.render.com/yukpo_db`
 
 ## 🔍 Vérifications à Effectuer
 
@@ -187,7 +187,7 @@ ORDER BY granted, pid;
 
 ### Via psql (si installé)
 ```powershell
-$env:DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL = "postgresql://user:password@host:port/database"
 
 # Test de connexion
 psql $env:DATABASE_URL -c "SELECT version();"

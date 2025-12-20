@@ -48,7 +48,7 @@
 **Option A : Utiliser base existante (recommandé pour début)**
 ```bash
 # Utiliser la base de production pour tests (ATTENTION : données de test uniquement)
-export TEST_DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+export TEST_DATABASE_URL="postgresql://user:password@host:port/database"
 export TEST_REDIS_URL="redis://localhost:6379/1"
 ```
 

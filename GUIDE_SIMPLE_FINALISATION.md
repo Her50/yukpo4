@@ -3,10 +3,10 @@
 ## 🎯 Ce que vous avez déjà
 
 ✅ **Base de données Render** (déjà configurée) :
-- Host: `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com`
+- Host: `your-render-db-host.render.com`
 - Database: `yukpo_db`
 - User: `yukpo_db_user`
-- Password: `88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4`
+- Password: `YOUR_PASSWORD`
 
 ✅ **Backend Render** (déjà déployé) :
 - URL: `https://yukpomnang.onrender.com`
@@ -55,7 +55,7 @@ Allez sur https://dashboard.render.com → Votre service → Environment
 
 **Variables CRITIQUES (déjà configurées normalement)** :
 ```
-DATABASE_URL=postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+DATABASE_URL=postgresql://user:password@host:port/database
 JWT_SECRET=votre_secret_jwt
 OPENAI_API_KEY=votre_cle_openai
 ```

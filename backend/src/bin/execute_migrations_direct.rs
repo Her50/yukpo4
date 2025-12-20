@@ -9,7 +9,7 @@ use std::path::Path;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // URL de connexion à la base de données
-    let database_url = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db";
+    let database_url = "postgresql://user:password@host:port/database";
 
     println!("🔧 Connexion à la base de données...");
     let pool = PgPoolOptions::new()

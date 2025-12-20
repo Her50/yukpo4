@@ -36,7 +36,7 @@ Ce script :
 
 ```bash
 # Se connecter à la DB Render et exécuter
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com \
+psql -h your-render-db-host.render.com \
      -U yukpo_db_user \
      -d yukpo_db \
      -f backend/fix_search_performance_issues.sql

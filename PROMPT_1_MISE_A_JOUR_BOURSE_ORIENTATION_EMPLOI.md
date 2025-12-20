@@ -202,7 +202,7 @@ Pour chaque service, compare avec les leaders occidentaux :
    - Suivre le pattern des migrations hospital/pharmacy/lab
 
 3. **Appliquer sur Render** :
-   - Database URL Render : `postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db`
+   - Database URL Render : `postgresql://user:password@host:port/database`
    - Vérifier application via logs Render
 
 ### Services IA

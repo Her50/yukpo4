@@ -39,7 +39,7 @@ match sqlx::migrate!("./migrations").run(&pg_pool).await {
 ### Via psql (si accès direct)
 
 ```bash
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" -f backend/migrations/20251128_001_optimize_search_performance_indexes.sql
+psql "postgresql://user:password@host:port/database" -f backend/migrations/20251128_001_optimize_search_performance_indexes.sql
 ```
 
 ## ✅ Vérification Post-Migration

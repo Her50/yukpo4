@@ -1,7 +1,7 @@
 # Script PowerShell pour appliquer toutes les migrations templates
 # Usage: .\backend\scripts\apply_all_templates_migrations.ps1
 
-$dbUrl = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$dbUrl = "postgresql://user:password@host:port/database"
 
 $migrations = @(
     "backend\migrations\20250127_005_enrich_templates_ecommerce_200.sql",

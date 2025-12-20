@@ -4,7 +4,7 @@
 import psycopg2
 import time
 
-DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+DATABASE_URL = "postgresql://user:password@host:port/database"
 
 SEARCH_TERMS = {
     "plombier": 5,  # Service 5: "Services de plomberie à domicile"

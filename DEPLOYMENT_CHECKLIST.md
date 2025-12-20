@@ -20,7 +20,7 @@ Les migrations s'appliquent automatiquement via `auto_migrate.rs` au démarrage 
 **Vérification**:
 ```sql
 -- Se connecter à la base Render
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+psql "postgresql://user:password@host:port/database"
 
 -- Vérifier les tables créées
 \dt book_exchanges

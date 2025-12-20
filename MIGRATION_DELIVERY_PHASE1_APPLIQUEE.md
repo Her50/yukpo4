@@ -5,7 +5,7 @@
 La migration `20250127_phase1_delivery_optimizations.sql` a été appliquée sur la base de données Render.
 
 **Base de données**: `yukpo_db`  
-**Host**: `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com`  
+**Host**: `your-render-db-host.render.com`  
 **Date**: 2025-01-XX
 
 ---

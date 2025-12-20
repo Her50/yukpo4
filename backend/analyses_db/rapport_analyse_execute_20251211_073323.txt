@@ -2,7 +2,7 @@
 RAPPORT D'ANALYSE AUTOMATIQUE
 Date: 2025-12-11 07:33:23
 Base: yukpo_db
-Host: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
+Host: your-render-db-host.render.com
 ========================================
 
 
@@ -19,7 +19,7 @@ PostgreSQL 16.10 (Debian 16.10-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by g
 ========================================
 Requete: SELECT current_user, current_database();
 [ERREUR] Code: 2
-psql: error: connection to server at "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com" (3.65.142.85), port 5432 failed: SSL connection has been closed unexpectedly
+psql: error: connection to server at "your-render-db-host.render.com" (3.65.142.85), port 5432 failed: SSL connection has been closed unexpectedly
 
 
 ========================================
@@ -27,7 +27,7 @@ psql: error: connection to server at "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postg
 ========================================
 Requete: SELECT usename, COUNT(*) as count FROM pg_stat_activity WHERE datname = 'yukpo_db' GROUP BY usename ORDER BY count DESC;
 [ERREUR] Code: 2
-psql: error: connection to server at "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com" (3.65.142.85), port 5432 failed: FATAL:  the database system is in recovery mode
+psql: error: connection to server at "your-render-db-host.render.com" (3.65.142.85), port 5432 failed: FATAL:  the database system is in recovery mode
 
 
 ========================================

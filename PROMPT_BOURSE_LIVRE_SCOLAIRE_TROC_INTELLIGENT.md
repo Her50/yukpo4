@@ -428,19 +428,19 @@ match ensure_livres_scolaires_tables(pool).await {
 #### 6.3 Application migrations Render
 **Coordonnées Render** (à utiliser pour application migrations) :
 ```
-Hostname: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
+Hostname: your-render-db-host.render.com
 Database: yukpo_db
 Username: yukpo_db_user
-URL: postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+URL: postgresql://user:password@host:port/database
 ```
 
 **Commandes pour appliquer migrations** :
 ```bash
 # Option 1: Via psql
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" -f backend/migrations/20250128_create_livres_scolaires_troc.sql
+psql "postgresql://user:password@host:port/database" -f backend/migrations/20250128_create_livres_scolaires_troc.sql
 
 # Option 2: Via sqlx (si disponible)
-sqlx migrate run --database-url "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+sqlx migrate run --database-url "postgresql://user:password@host:port/database"
 ```
 
 ### Phase 7: Cache Redis et performance
@@ -654,7 +654,7 @@ cargo fmt
 # Migrations
 sqlx migrate add create_livres_scolaires_troc
 sqlx migrate run
-sqlx migrate run --database-url "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+sqlx migrate run --database-url "postgresql://user:password@host:port/database"
 
 # Mobile
 npm run dev

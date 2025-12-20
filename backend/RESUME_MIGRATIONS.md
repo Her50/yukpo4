@@ -1,7 +1,7 @@
 # 📊 Résumé de l'Analyse des Migrations - Backend Yukpomnang
 
 **Date:** 2025-01-27  
-**Base de données:** Render PostgreSQL (dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com)
+**Base de données:** Render PostgreSQL (your-render-db-host.render.com)
 
 ## ✅ État Actuel
 
@@ -73,14 +73,14 @@ WHERE version = 0;
 
 **Méthode 3: Via psql**
 ```bash
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" -c "UPDATE _sqlx_migrations SET checksum = decode('CHECKSUM_HEX', 'hex') WHERE version = 0;"
+psql "postgresql://user:password@host:port/database" -c "UPDATE _sqlx_migrations SET checksum = decode('CHECKSUM_HEX', 'hex') WHERE version = 0;"
 ```
 
 ### Étape 2: Appliquer les Migrations En Attente
 
 Après correction du checksum:
 ```powershell
-$env:DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL = "postgresql://user:password@host:port/database"
 cd backend
 cargo sqlx migrate run
 ```
@@ -96,7 +96,7 @@ Toutes les migrations devraient être marquées comme `installed`.
 ### Étape 4: Régénérer le Cache SQLx (si nécessaire)
 
 ```powershell
-$env:DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL = "postgresql://user:password@host:port/database"
 cargo sqlx prepare --workspace --database-url $env:DATABASE_URL
 ```
 

@@ -68,7 +68,7 @@ let expanded_query = self.expand_search_query_with_variations(query);
 **Commande** :
 ```bash
 cd backend
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" -f migrations/20251130_002_IMPROVE_SEARCH_VARIATIONS_TRIGRAM.sql
+psql "postgresql://user:password@host:port/database" -f migrations/20251130_002_IMPROVE_SEARCH_VARIATIONS_TRIGRAM.sql
 ```
 
 **Voir** : `backend/APPLICATION_MIGRATION_MANUELLE.md` pour plus de détails

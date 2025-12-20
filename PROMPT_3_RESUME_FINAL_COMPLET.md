@@ -82,7 +82,7 @@ chmod +x scripts/apply_menu_planning_migration.sh
 cargo run
 
 # Ou utiliser sqlx-cli
-export DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+export DATABASE_URL="postgresql://user:password@host:port/database"
 sqlx migrate run
 ```
 

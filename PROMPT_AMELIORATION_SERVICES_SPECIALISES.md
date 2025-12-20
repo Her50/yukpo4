@@ -265,7 +265,7 @@ pub async fn run_auto_migrations(pool: &PgPool) {
 Hostname: dpg-d2t7ntbuibrs73eh9tvg-a
 Database: yukpo_db
 Username: yukpo_db_user
-URL: postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+URL: postgresql://user:password@host:port/database
 ```
 
 **IMPORTANT** :

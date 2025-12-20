@@ -44,7 +44,7 @@
 cd backend
 
 # Définir la variable d'environnement
-$env:DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL="postgresql://user:password@host:port/database"
 
 # Appliquer la migration
 sqlx migrate run

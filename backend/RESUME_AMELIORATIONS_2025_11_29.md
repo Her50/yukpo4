@@ -66,7 +66,7 @@
 
 ### 1. Exécuter la Migration
 ```bash
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com \
+psql -h your-render-db-host.render.com \
      -U yukpo_db_user -d yukpo_db \
      -f migrations/20251129_003_improve_search_services_gps_final.sql
 ```
@@ -74,7 +74,7 @@ psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com \
 ### 2. Nettoyer les Index (Mode DRY RUN d'abord)
 ```bash
 # 1. Exécuter en mode DRY RUN (afficher seulement)
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com \
+psql -h your-render-db-host.render.com \
      -U yukpo_db_user -d yukpo_db \
      -f CLEANUP_INDEXES_SERVICES.sql
 

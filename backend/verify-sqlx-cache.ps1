@@ -7,7 +7,7 @@ Write-Host "=== Vérification et régénération du cache SQLx ===" -ForegroundC
 Set-Location (Split-Path -Parent $MyInvocation.MyCommand.Definition)
 
 # 1. Exporter DATABASE_URL
-$env:DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL = "postgresql://user:password@host:port/database"
 $env:SQLX_OFFLINE = "false"
 
 Write-Host "1. DATABASE_URL configurée" -ForegroundColor Cyan

@@ -21,14 +21,14 @@ Tous les appels à `search_services_gps_final()` utilisent maintenant la requêt
 
 ```bash
 cd backend
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" -f migrations/20251130_002_IMPROVE_SEARCH_VARIATIONS_TRIGRAM.sql
+psql "postgresql://user:password@host:port/database" -f migrations/20251130_002_IMPROVE_SEARCH_VARIATIONS_TRIGRAM.sql
 ```
 
 ### Option 2 : Via sqlx migrate (si pas de conflit)
 
 ```bash
 cd backend
-export DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+export DATABASE_URL="postgresql://user:password@host:port/database"
 export SQLX_OFFLINE=true
 sqlx migrate run
 ```
@@ -37,7 +37,7 @@ sqlx migrate run
 
 1. Ouvrir psql :
 ```bash
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+psql "postgresql://user:password@host:port/database"
 ```
 
 2. Copier le contenu de `migrations/20251130_002_IMPROVE_SEARCH_VARIATIONS_TRIGRAM.sql`

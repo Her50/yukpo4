@@ -1,6 +1,6 @@
 # Script PowerShell pour exécuter les migrations directement
-$env:PGPASSWORD = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
-$dbUrl = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:PGPASSWORD = "YOUR_PASSWORD"
+$dbUrl = "postgresql://user:password@host:port/database"
 
 Write-Host "🔧 Exécution des migrations directement sur la base de données..." -ForegroundColor Green
 Write-Host ""

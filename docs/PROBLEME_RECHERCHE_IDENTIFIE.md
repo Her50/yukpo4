@@ -38,7 +38,7 @@ Quand un produit est ajouté via `add_product_to_service` (endpoint `/api/servic
 ### **1. Vérifier le Produit dans la Base de Données**
 ```bash
 # Exécuter le script de diagnostic
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com:5432/yukpo_db" -f scripts/check_toyota_avensis.sql
+psql "postgresql://user:password@your-render-db-host.render.com:5432/yukpo_db" -f scripts/check_toyota_avensis.sql
 ```
 
 ### **2. Réindexer les Produits Existants**

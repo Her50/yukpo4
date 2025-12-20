@@ -11,7 +11,7 @@ import psycopg2
 import re
 import time
 
-DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+DATABASE_URL = "postgresql://user:password@host:port/database"
 
 # Simuler extract_keywords_from_text avec "trouver" dans les stop words
 STOP_WORDS = {

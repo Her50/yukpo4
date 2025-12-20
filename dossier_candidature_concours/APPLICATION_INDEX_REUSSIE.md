@@ -34,7 +34,7 @@
 ```powershell
 # Application des index
 $env:PGPASSWORD="***";
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com -U yukpo_db_user -d yukpo_db -c "
+psql -h your-render-db-host.render.com -U yukpo_db_user -d yukpo_db -c "
 CREATE INDEX IF NOT EXISTS idx_services_user_id_created_at ON services (user_id, created_at DESC) WHERE is_active = true;
 CREATE INDEX IF NOT EXISTS idx_services_is_active_created_at ON services (is_active, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_services_user_active_created ON services (user_id, is_active, created_at DESC);

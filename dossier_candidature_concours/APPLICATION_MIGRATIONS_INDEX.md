@@ -7,7 +7,7 @@
 - **Hostname:** dpg-d2t7ntbuibrs73eh9tvg-a
 - **Database:** yukpo_db
 - **Username:** yukpo_db_user
-- **URL:** postgresql://yukpo_db_user:***@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+- **URL:** postgresql://yukpo_db_user:***@your-render-db-host.render.com/yukpo_db
 
 ## Migrations appliquées
 

@@ -78,7 +78,7 @@ grep -A 20 "backend:" docker-compose.yml | grep -E "(DATABASE_URL|JWT_SECRET|VID
 
 # Vérifier que DATABASE_URL pointe vers Render (pas localhost)
 grep DATABASE_URL docker-compose.yml
-# Doit contenir: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
+# Doit contenir: your-render-db-host.render.com
 ```
 
 **✅ Checklist :**
@@ -208,13 +208,13 @@ curl -H "Authorization: Bearer <token>" http://localhost:3001/api/video/estimate
 
 ```bash
 # URL complète
-DATABASE_URL=postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+DATABASE_URL=postgresql://user:password@host:port/database
 
 # Détails
-Hostname: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
+Hostname: your-render-db-host.render.com
 Database: yukpo_db
 Username: yukpo_db_user
-Password: 88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4
+Password: YOUR_PASSWORD
 Port: 5432 (par défaut)
 ```
 
@@ -513,7 +513,7 @@ npx expo start --clear
 
 # SQLx (générer cache offline)
 cd backend
-export DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+export DATABASE_URL="postgresql://user:password@host:port/database"
 cargo sqlx prepare -- --lib
 ```
 

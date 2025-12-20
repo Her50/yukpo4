@@ -33,7 +33,7 @@ cd C:\Users\23767\yukpomnang2\backend
 
 ```powershell
 # S'assurer que le cache est à jour
-$env:DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL = "postgresql://user:password@host:port/database"
 $env:SQLX_OFFLINE = "false"
 
 cd C:\Users\23767\yukpomnang2\backend

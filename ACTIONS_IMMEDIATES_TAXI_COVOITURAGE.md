@@ -69,7 +69,7 @@
    hostname: dpg-d2t7ntbuibrs73eh9tvg-a
    database: yukpo_db
    username: yukpo_db_user
-   url: postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+   url: postgresql://user:password@host:port/database
    ```
 
 ---

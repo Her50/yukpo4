@@ -5,7 +5,7 @@
 La migration `20250101_scalability_improvements.sql` a été appliquée sur la base de données Render.
 
 **Base de données**: `yukpo_db`  
-**Host**: `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com`  
+**Host**: `your-render-db-host.render.com`  
 **Date**: 2025-01-XX
 
 ---

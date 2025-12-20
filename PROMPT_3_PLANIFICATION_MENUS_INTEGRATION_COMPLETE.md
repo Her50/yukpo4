@@ -360,7 +360,7 @@ Créer pages correspondantes dans `frontend/src/pages/specialized/menu-planning/
 1. **Créer fichier** : `backend/migrations/20250127_create_menu_planning_tables.sql`
 2. **Intégrer dans** : `backend/src/migrations/auto_migrate.rs`
 3. **Appliquer sur Render** :
-   - Database URL : `postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db`
+   - Database URL : `postgresql://user:password@host:port/database`
 
 ### Services IA
 1. **Utiliser AppIA** : Comme dans `hospital_ai_service.rs`

@@ -8,7 +8,7 @@
 Le cache SQLx a été régénéré avec succès en se connectant à la base de données PostgreSQL Render.
 
 **Base de données:**
-- Host: `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com`
+- Host: `your-render-db-host.render.com`
 - Database: `yukpo_db`
 - User: `yukpo_db_user`
 
@@ -24,7 +24,7 @@ Une migration est en attente d'application :
 Pour appliquer la migration en attente :
 ```bash
 cd backend
-$env:DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL="postgresql://user:password@host:port/database"
 $env:SQLX_OFFLINE="false"
 cargo sqlx migrate run
 ```

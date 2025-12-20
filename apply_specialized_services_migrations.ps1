@@ -7,7 +7,7 @@ Write-Host "Render Database - Advanced Tables" -ForegroundColor Green
 Write-Host ""
 
 # Render database connection
-$DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$DATABASE_URL = "postgresql://user:password@host:port/database"
 
 # Check if psql is available
 $psqlPath = Get-Command psql -ErrorAction SilentlyContinue
@@ -18,7 +18,7 @@ if (-not $psqlPath) {
 }
 
 Write-Host "Connecting to Render database..." -ForegroundColor Blue
-Write-Host "Host: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com" -ForegroundColor Gray
+Write-Host "Host: your-render-db-host.render.com" -ForegroundColor Gray
 Write-Host "Database: yukpo_db" -ForegroundColor Gray
 Write-Host ""
 

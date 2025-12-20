@@ -1,6 +1,6 @@
 -- ✅ Script SQL pour appliquer la migration effects sur la base Render
--- Base: yukpo_db sur dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
--- Usage: psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" -f APPLY_EFFECTS_MIGRATION_RENDER.sql
+-- Base: yukpo_db sur your-render-db-host.render.com
+-- Usage: psql "postgresql://user:password@host:port/database" -f APPLY_EFFECTS_MIGRATION_RENDER.sql
 
 -- ✅ NOUVEAU 2025-01-27: Table pour bibliothèque d'effets vidéo étendue (50+)
 

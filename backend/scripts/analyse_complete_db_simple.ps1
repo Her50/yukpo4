@@ -1,7 +1,7 @@
 # Script d'analyse simplifiée sans psql (utilise des requêtes SQLx ou curl)
 # Version alternative si psql n'est pas disponible
 
-$DatabaseUrl = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$DatabaseUrl = "postgresql://user:password@host:port/database"
 
 $resultsDir = "backend/analyses_db"
 if (-not (Test-Path $resultsDir)) {
@@ -36,8 +36,8 @@ $header = @"
 RAPPORT D'ANALYSE DE LA BASE DE DONNEES
 Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 Base: yukpo_db
-Host: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
-URL: postgresql://yukpo_db_user:***@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+Host: your-render-db-host.render.com
+URL: postgresql://yukpo_db_user:***@your-render-db-host.render.com/yukpo_db
 ========================================
 
 "@
@@ -109,7 +109,7 @@ Option 3: Via Client PostgreSQL
 ---------------------------------
 Utilisez pgAdmin, DBeaver, ou tout autre client PostgreSQL
 avec les informations de connexion:
-- Host: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
+- Host: your-render-db-host.render.com
 - Port: 5432
 - Database: yukpo_db
 - Username: yukpo_db_user

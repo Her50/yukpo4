@@ -7,10 +7,10 @@ set -e
 echo "🔍 Vérification des index existants sur la table services..."
 
 # Variables de connexion (à adapter selon votre configuration)
-DB_HOST="${DB_HOST:-dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com}"
+DB_HOST="${DB_HOST:-your-render-db-host.render.com}"
 DB_NAME="${DB_NAME:-yukpo_db}"
 DB_USER="${DB_USER:-yukpo_db_user}"
-DB_PASSWORD="${DB_PASSWORD:-88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4}"
+DB_PASSWORD="${DB_PASSWORD:-YOUR_PASSWORD}"
 
 export PGPASSWORD="$DB_PASSWORD"
 

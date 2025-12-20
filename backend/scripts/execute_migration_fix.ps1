@@ -1,7 +1,7 @@
 # Script pour exécuter la migration 20251210_fix_u_client_name_error.sql
 # et vérifier qu'elle est bien enregistrée dans _sqlx_migrations
 
-$DatabaseUrl = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$DatabaseUrl = "postgresql://user:password@host:port/database"
 
 Write-Host "=== Execution de la migration 20251210_fix_u_client_name_error.sql ===" -ForegroundColor Cyan
 Write-Host ""
@@ -18,8 +18,8 @@ catch {
 
 # Vérifier si la migration existe déjà dans _sqlx_migrations
 Write-Host "[VERIF] Verification si la migration est deja appliquee..." -ForegroundColor Yellow
-$env:PGPASSWORD = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
-$checkMigration = & $psqlPath -h "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com" -p 5432 -U "yukpo_db_user" -d "yukpo_db" -t -A -c "SELECT COUNT(*) FROM _sqlx_migrations WHERE version = 20251210000000;" 2>&1
+$env:PGPASSWORD = "YOUR_PASSWORD"
+$checkMigration = & $psqlPath -h "your-render-db-host.render.com" -p 5432 -U "yukpo_db_user" -d "yukpo_db" -t -A -c "SELECT COUNT(*) FROM _sqlx_migrations WHERE version = 20251210000000;" 2>&1
 
 if ($LASTEXITCODE -eq 0 -and $checkMigration.Trim() -eq "1") {
     Write-Host "[INFO] Migration deja appliquee (version 20251210000000)" -ForegroundColor Yellow
@@ -40,7 +40,7 @@ if (-not (Test-Path $migrationFile)) {
     exit 1
 }
 
-$result = & $psqlPath -h "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com" -p 5432 -U "yukpo_db_user" -d "yukpo_db" -f $migrationFile 2>&1
+$result = & $psqlPath -h "your-render-db-host.render.com" -p 5432 -U "yukpo_db_user" -d "yukpo_db" -f $migrationFile 2>&1
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "[OK] Migration executee avec succes!" -ForegroundColor Green
@@ -61,7 +61,7 @@ Write-Host ""
 Write-Host "[VERIF] Verification dans _sqlx_migrations..." -ForegroundColor Yellow
 
 # Note: SQLx utilise un format de version spécifique. Vérifions les migrations récentes
-$recentMigrations = & $psqlPath -h "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com" -p 5432 -U "yukpo_db_user" -d "yukpo_db" -c "SELECT version, description, installed_on, success FROM _sqlx_migrations WHERE description ILIKE '%u_client%' OR description ILIKE '%fix%' ORDER BY installed_on DESC LIMIT 5;" 2>&1
+$recentMigrations = & $psqlPath -h "your-render-db-host.render.com" -p 5432 -U "yukpo_db_user" -d "yukpo_db" -c "SELECT version, description, installed_on, success FROM _sqlx_migrations WHERE description ILIKE '%u_client%' OR description ILIKE '%fix%' ORDER BY installed_on DESC LIMIT 5;" 2>&1
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "[OK] Migrations trouvees:" -ForegroundColor Green

@@ -105,8 +105,8 @@
 
 ### Méthode 2: Manuellement via psql
 ```powershell
-$env:PGPASSWORD="88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com -U yukpo_db_user -d yukpo_db -f backend/migrations/20250128_add_taxi_covoit_scalability_indexes.sql
+$env:PGPASSWORD="YOUR_PASSWORD"
+psql -h your-render-db-host.render.com -U yukpo_db_user -d yukpo_db -f backend/migrations/20250128_add_taxi_covoit_scalability_indexes.sql
 ```
 
 ### Vérification Index Créés

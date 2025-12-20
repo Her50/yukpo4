@@ -140,7 +140,7 @@
 
 **Commande à exécuter** :
 ```bash
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" -f APPLY_EFFECTS_MIGRATION_RENDER.sql
+psql "postgresql://user:password@host:port/database" -f APPLY_EFFECTS_MIGRATION_RENDER.sql
 ```
 
 **Vérification** :

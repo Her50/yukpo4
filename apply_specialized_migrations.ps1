@@ -1,10 +1,10 @@
 # Apply specialized services migrations to Render database
 $ErrorActionPreference = "Continue"
 
-$DB_HOST = "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com"
+$DB_HOST = "your-render-db-host.render.com"
 $DB_NAME = "yukpo_db"
 $DB_USER = "yukpo_db_user"
-$DB_PASS = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
+$DB_PASS = "YOUR_PASSWORD"
 
 Write-Host "=== Applying Specialized Services Migrations ===" -ForegroundColor Cyan
 Write-Host "Database: $DB_NAME on $DB_HOST" -ForegroundColor Gray

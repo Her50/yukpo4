@@ -3,10 +3,10 @@
 $ErrorActionPreference = "Stop"
 
 # ✅ Coordonnées de la base de données Render
-$DB_HOST = "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com"
+$DB_HOST = "your-render-db-host.render.com"
 $DB_NAME = "yukpo_db"
 $DB_USER = "yukpo_db_user"
-$DB_PASSWORD = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
+$DB_PASSWORD = "YOUR_PASSWORD"
 $DB_URL = "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"
 
 # ✅ URL du backend Render

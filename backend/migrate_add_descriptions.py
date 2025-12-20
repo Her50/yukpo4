@@ -8,7 +8,7 @@ import psycopg2
 import json
 import sys
 
-DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+DATABASE_URL = "postgresql://user:password@host:port/database"
 
 def extract_description_from_full_vector(full_vector):
     """Extrait la description depuis full_vector (3ème élément ou élément long)"""

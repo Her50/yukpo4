@@ -1,5 +1,5 @@
 -- Script pour exécuter toutes les migrations directement
--- À exécuter avec: psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" -f run_all_migrations.sql
+-- À exécuter avec: psql "postgresql://user:password@host:port/database" -f run_all_migrations.sql
 
 \echo '🔧 Exécution des migrations directement sur la base de données...'
 \echo ''

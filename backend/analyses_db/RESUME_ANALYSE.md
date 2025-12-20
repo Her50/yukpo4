@@ -2,7 +2,7 @@
 
 **Date**: 2025-12-11 07:33:23  
 **Base**: yukpo_db  
-**Host**: dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com
+**Host**: your-render-db-host.render.com
 
 ---
 

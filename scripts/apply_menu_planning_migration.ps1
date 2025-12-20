@@ -4,10 +4,10 @@
 $ErrorActionPreference = "Stop"
 
 # Configuration base de données
-$dbHost = "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com"
+$dbHost = "your-render-db-host.render.com"
 $dbName = "yukpo_db"
 $dbUser = "yukpo_db_user"
-$dbPassword = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
+$dbPassword = "YOUR_PASSWORD"
 $dbUrl = "postgresql://${dbUser}:${dbPassword}@${dbHost}/${dbName}"
 
 Write-Host "===================================" -ForegroundColor Cyan

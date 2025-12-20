@@ -345,8 +345,8 @@
    hostname: dpg-d2t7ntbuibrs73eh9tvg-a
    database: yukpo_db
    username: yukpo_db_user
-   password: 88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4
-   url: postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db
+   password: YOUR_PASSWORD
+   url: postgresql://user:password@host:port/database
    ```
 
    **Méthode 1: Via auto_migrate (RECOMMANDÉ)**
@@ -355,8 +355,8 @@
 
    **Méthode 2: Manuellement via psql**
    ```powershell
-   $env:PGPASSWORD="88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
-   psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com -U yukpo_db_user -d yukpo_db -f backend/migrations/20250128_add_taxi_covoit_scalability_indexes.sql
+   $env:PGPASSWORD="YOUR_PASSWORD"
+   psql -h your-render-db-host.render.com -U yukpo_db_user -d yukpo_db -f backend/migrations/20250128_add_taxi_covoit_scalability_indexes.sql
    ```
 
 5. **Vérifications Finales**

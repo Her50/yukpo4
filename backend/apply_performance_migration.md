@@ -39,7 +39,7 @@ Si vous avez accès direct à la base de données PostgreSQL :
 psql $DATABASE_URL
 
 # Ou avec les credentials Render
-psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+psql "postgresql://user:password@host:port/database"
 
 # Appliquer la migration
 \i migrations/20251128_001_optimize_search_performance_indexes.sql

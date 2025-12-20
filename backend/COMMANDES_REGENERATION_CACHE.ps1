@@ -6,7 +6,7 @@ Write-Host "=== Régénération du Cache SQLx Complet ===" -ForegroundColor Cyan
 Set-Location "C:\Users\23767\yukpomnang2\backend"
 
 # Configurer DATABASE_URL
-$env:DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL = "postgresql://user:password@host:port/database"
 $env:SQLX_OFFLINE = "false"
 
 Write-Host "DATABASE_URL configuré" -ForegroundColor Green

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script pour exécuter les diagnostics SQL sur la base de données Render
 
-DB_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com:5432/yukpo_db"
+DB_URL="postgresql://user:password@your-render-db-host.render.com:5432/yukpo_db"
 
 echo "🔍 Diagnostic de la recherche et vérification du produit Toyota Avensis 200"
 echo "=================================================================="

@@ -589,13 +589,13 @@ MES_TRAJETS_COVOITURAGE: "/mes-trajets-covoiturage",
 
    **Option 2: Manuellement via psql**
    ```bash
-   psql "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" -f backend/migrations/20250128_add_taxi_covoit_scalability_indexes.sql
+   psql "postgresql://user:password@host:port/database" -f backend/migrations/20250128_add_taxi_covoit_scalability_indexes.sql
    ```
 
    **Option 3: Via sqlx migrate**
    ```bash
    cd backend
-   DATABASE_URL="postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db" sqlx migrate run
+   DATABASE_URL="postgresql://user:password@host:port/database" sqlx migrate run
    ```
 
 6. **Vérifications Finales**

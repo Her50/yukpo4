@@ -7,10 +7,10 @@ Write-Host "🚀 Application de la migration de performance" -ForegroundColor Gr
 Write-Host "=============================================" -ForegroundColor Green
 
 # Informations de connexion Render
-$hostname = "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com"
+$hostname = "your-render-db-host.render.com"
 $database = "yukpo_db"
 $username = "yukpo_db_user"
-$password = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
+$password = "YOUR_PASSWORD"
 
 # Chemin de la migration
 $migrationFile = "backend\migrations\20251128_001_optimize_search_performance_indexes.sql"

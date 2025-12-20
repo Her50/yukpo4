@@ -71,7 +71,7 @@ Les tests doivent être exécutés avec la base de données configurée (pas en 
 ## 🚀 Application sur Production
 
 Migration appliquée sur :
-- `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db`
+- `your-render-db-host.render.com/yukpo_db`
 
 ---
 

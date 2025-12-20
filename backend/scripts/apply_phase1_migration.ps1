@@ -1,7 +1,7 @@
 # Script pour appliquer la migration Phase 1 directement
 # Utilise les credentials Render fournis
 
-$env:DATABASE_URL = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+$env:DATABASE_URL = "postgresql://user:password@host:port/database"
 
 Write-Host "🔍 Application de la migration Phase 1 (optimisations livraison)..." -ForegroundColor Cyan
 

@@ -4,10 +4,10 @@
 $ErrorActionPreference = "Stop"
 
 # Variables de connexion
-$DB_HOST = if ($env:DB_HOST) { $env:DB_HOST } else { "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com" }
+$DB_HOST = if ($env:DB_HOST) { $env:DB_HOST } else { "your-render-db-host.render.com" }
 $DB_NAME = if ($env:DB_NAME) { $env:DB_NAME } else { "yukpo_db" }
 $DB_USER = if ($env:DB_USER) { $env:DB_USER } else { "yukpo_db_user" }
-$DB_PASSWORD = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4" }
+$DB_PASSWORD = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { "YOUR_PASSWORD" }
 
 $env:PGPASSWORD = $DB_PASSWORD
 

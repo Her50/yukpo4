@@ -39,7 +39,7 @@
 
 **Configuration actuelle** :
 - **Base de données** : PostgreSQL 15 sur Render
-- **URL** : `postgresql://yukpo_db_user:...@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db`
+- **URL** : `postgresql://yukpo_db_user:...@your-render-db-host.render.com/yukpo_db`
 - **Extensions** : pgvector, PostGIS, imgsmlr
 - **Pool** : 200 connexions max, 20 min
 
@@ -144,7 +144,7 @@ BACKUP_DIR="/var/backups/yukpomnang"
 mkdir -p "$BACKUP_DIR"
 
 # URL PostgreSQL Render
-DATABASE_URL="postgresql://yukpo_db_user:password@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
+DATABASE_URL="postgresql://yukpo_db_user:password@your-render-db-host.render.com/yukpo_db"
 
 # Backup avec pg_dump
 pg_dump "$DATABASE_URL" | gzip > "$BACKUP_DIR/db_backup_$DATE.sql.gz"
@@ -288,7 +288,7 @@ sudo /usr/local/bin/backup_postgres_render.sh
 
 ✅ **OUI** : Les données sont stockées **DANS PostgreSQL** sur Render
 - Base de données : `yukpo_db`
-- Host : `dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com`
+- Host : `your-render-db-host.render.com`
 - Toutes les tables de production
 
 ### Backup

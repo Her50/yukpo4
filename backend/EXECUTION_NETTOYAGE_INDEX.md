@@ -121,7 +121,7 @@
 ### Étape 1: Vérification (DRY RUN)
 ```bash
 # Voir ce qui sera supprimé
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com \
+psql -h your-render-db-host.render.com \
      -U yukpo_db_user -d yukpo_db \
      -f CLEANUP_INDEXES_SERVICES.sql
 ```
@@ -129,7 +129,7 @@ psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com \
 ### Étape 2: Exécution Réelle
 ```bash
 # ⚠️ ATTENTION: Ceci supprime réellement les index
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com \
+psql -h your-render-db-host.render.com \
      -U yukpo_db_user -d yukpo_db \
      -f DROP_INDEXES_SERVICES.sql
 ```
@@ -137,7 +137,7 @@ psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com \
 ### Étape 3: Vérification Finale
 ```bash
 # Vérifier le nombre d'index restants
-psql -h dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com \
+psql -h your-render-db-host.render.com \
      -U yukpo_db_user -d yukpo_db \
      -c "SELECT COUNT(*) as total_indexes FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'services';"
 ```
