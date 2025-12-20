@@ -2732,8 +2732,6 @@ async fn list_available_couriers(
         struct CourierWithDistanceRow {
             id: Uuid,
             user_id: i32,
-            #[sqlx(rename = "status")]
-            status: String,
             rating_average: Option<Decimal>,
             rating_count: Option<i32>,
             bio: Option<String>,
@@ -2755,7 +2753,6 @@ async fn list_available_couriers(
             SELECT 
                 c.id,
                 c.user_id,
-                c.status::text AS "status",
                 c.rating_average,
                 c.rating_count,
                 c.bio,
@@ -2841,7 +2838,7 @@ async fn list_available_couriers(
 
         query.push_str(
             r#"
-            GROUP BY c.id, c.user_id, c.status, c.rating_average, c.rating_count, c.bio, 
+            GROUP BY c.id, c.user_id, c.rating_average, c.rating_count, c.bio, 
                      u.nom_complet, u.avatar_url, u.email,
                      cas.location, ca.engine_type, cas.captured_at
             ORDER BY distance_to_pickup_meters ASC NULLS LAST, 
