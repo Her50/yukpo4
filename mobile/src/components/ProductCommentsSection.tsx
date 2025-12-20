@@ -285,7 +285,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             }
         } catch (err) {
             console.error('[ProductCommentsSection] handleSubmitComment error', err);
-            Alert.alert('Erreur', 'Une erreur est survenue lors de l'envoi du commentaire');
+            Alert.alert('Erreur', "Une erreur est survenue lors de l'envoi du commentaire");
         } finally {
             setSubmitting(false);
         }
@@ -348,7 +348,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             try {
                 const response = await commentsApi.toggleCommentReaction(comment.id, reactionType);
                 if (!response.success) {
-                    Alert.alert('Erreur', response.error || 'Impossible d'enregistrer la réaction');
+                    Alert.alert('Erreur', response.error || "Impossible d'enregistrer la réaction");
                 } else {
                     await loadComments();
                 }
