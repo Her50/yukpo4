@@ -14,9 +14,10 @@ if ($confirm -ne "oui") {
 Write-Host "🧹 Nettoyage de l'historique Git..." -ForegroundColor Green
 
 # Utiliser git filter-branch pour remplacer toutes les occurrences dans l'historique
-$renderUrl = "postgresql://yukpo_db_user:88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4@dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com/yukpo_db"
-$renderHost = "dpg-d2t7ntbuibrs73eh9tvg-a.frankfurt-postgres.render.com"
-$password = "88X47ZWBiLkX5WatFcLU4KQ4rgaHYml4"
+# Variables de remplacement (les valeurs réelles ont été supprimées pour sécurité)
+$renderUrl = "postgresql://yukpo_db_user:YOUR_PASSWORD@your-render-db-host.render.com/yukpo_db"
+$renderHost = "your-render-db-host.render.com"
+$password = "YOUR_PASSWORD"
 
 $placeholderUrl = "postgresql://user:password@host:port/database"
 $placeholderHost = "your-render-db-host.render.com"
