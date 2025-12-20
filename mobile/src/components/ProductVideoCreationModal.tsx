@@ -1,4 +1,4 @@
-import * as DocumentPicker from 'expo-document-picker';
+﻿import * as DocumentPicker from 'expo-document-picker';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -30,7 +30,7 @@ import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import { TimelineEditor } from './TimelineEditor';
 import { TimelinePreview, VideoTimeline as VideoTimelineType } from './TimelinePreview';
-// ✨ NOUVEAU: Composants IA avancés
+// ✅ NOUVEAU: Composants IA avancés
 import { AudioSuggestionPanel } from './AudioSuggestionPanel';
 import { AudioSyncPanel } from './AudioSyncPanel';
 import { AutoCaptionsPanel } from './AutoCaptionsPanel';
@@ -40,7 +40,7 @@ import { CreatorStudioCard } from './CreatorStudioCard';
 import { EffectPreviewCarousel } from './EffectPreviewCarousel';
 import { QuickPreview } from './QuickPreview';
 import { TimelineVariantSelector } from './TimelineVariantSelector';
-// ✨ NOUVEAU Phase 3.2: Éditeur AR immersif
+// ✅ NOUVEAU Phase 3.2: Éditeur AR immersif
 import ARVideoEditor from './ARVideoEditor';
 
 type VideoStylePreset = 'tiktok' | 'story' | 'cinematic' | 'carousel';
@@ -99,7 +99,7 @@ const VOICE_LANG_OPTIONS = [
     { value: 'fr-fr', label: 'Français Premium' },
     { value: 'en', label: 'English (US)' },
     { value: 'en-gb', label: 'English (UK)' },
-    { value: 'pt-br', label: 'Portuguîs (BR)' },
+    { value: 'pt-br', label: 'Português (BR)' },
     { value: 'es', label: 'Español' },
 ];
 
@@ -111,7 +111,7 @@ const DISTRIBUTION_OPTIONS = [
     { key: 'youtube', label: 'YouTube' },
 ];
 
-// ✨ CORRIGÉ 2025-11-30: Utiliser l'endpoint /api/media/files pour les chemins uploads/
+// ✅ CORRIGÉ 2025-11-30: Utiliser l'endpoint /api/media/files pour les chemins uploads/
 const buildMediaUrl = (path: string | undefined | null): string => {
     if (!path) {
         return '';
@@ -121,7 +121,7 @@ const buildMediaUrl = (path: string | undefined | null): string => {
         return path;
     }
 
-    // ✨ CORRIGÉ: Utiliser /api/media/files pour les chemins uploads/
+    // ✅ CORRIGÉ: Utiliser /api/media/files pour les chemins uploads/
     if (path.startsWith('uploads/') || path.startsWith('/uploads/')) {
         const cleanPath = path.startsWith('/') ? path.slice(1) : path;
         const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
@@ -139,7 +139,7 @@ const normalizeProductName = (product?: ManagedProduct | null): string => {
         return 'Votre produit';
     }
 
-    // ✨ CORRIGÉ: Utiliser extractProductName qui gère tous les cas
+    // ✅ CORRIGÉ: Utiliser extractProductName qui gère tous les cas
     const { extractProductName } = require('../utils/displayHelpers');
     return extractProductName(product, 'Votre produit');
 };
@@ -157,7 +157,7 @@ const computePriceLabel = (product: ManagedProduct | null | undefined): string |
         return undefined;
     }
 
-    // ✨ CORRIGÉ: Extraire la valeur du prix en utilisant getFieldValue
+    // ✅ CORRIGÉ: Extraire la valeur du prix en utilisant getFieldValue
     const prix = getFieldValue(product.prix);
     const devise = getFieldValue(product.devise) || 'XAF';
 
@@ -223,19 +223,19 @@ const buildDefaultVoiceover = (
     const lines: string[] = [];
 
     if (headline) {
-        lines.push(headline.replace(/[­ƒÜÇ­ƒÄ»­ƒöÑ✨´©Å#]+/g, '').trim());
+        lines.push(headline.replace(/[✅⚠️🎵🔥📞📦📝🎬…]+/g, '').trim());
     } else {
         lines.push(`Découvrez ${productName} sur Yukpomnang.`);
     }
 
     storyboardLines.slice(0, 3).forEach((line) => {
         if (line.trim().length > 0) {
-            lines.push(line.replace(/[­ƒÜÇ­ƒÄ»­ƒöÑ✨´©Å#]+/g, '').trim());
+            lines.push(line.replace(/[✅⚠️🎵🔥📞📦📝🎬…]+/g, '').trim());
         }
     });
 
     if (callToAction) {
-        lines.push(callToAction.replace(/[­ƒÜÇ­ƒÄ»­ƒöÑ✨´©Å#]+/g, '').trim());
+        lines.push(callToAction.replace(/[✅⚠️🎵🔥📞📦📝🎬…]+/g, '').trim());
     } else {
         lines.push('Contactez-nous dès maintenant via Yukpomnang.');
     }
@@ -289,7 +289,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [stylePreset, setStylePreset] = useState<VideoStylePreset>('tiktok');
     const [duration, setDuration] = useState<string>('28');
     const [headline, setHeadline] = useState<string>('');
-    const [callToAction, setCallToAction] = useState<string>('Commandez maintenant sur Yukpomnang ✨');
+    const [callToAction, setCallToAction] = useState<string>('Commandez maintenant sur Yukpomnang ✅');
     const [scriptNotes, setScriptNotes] = useState<string>('');
 
     const [includePrice, setIncludePrice] = useState<boolean>(true);
@@ -331,12 +331,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [isGeneratingDistribution, setIsGeneratingDistribution] = useState<boolean>(false);
     const [coachLoading, setCoachLoading] = useState<boolean>(false);
     const coachPrefetchDoneRef = useRef(false);
-    // ✨ NOUVEAU: État pour la timeline générée
+    // ✅ NOUVEAU: État pour la timeline générée
     const [generatedTimeline, setGeneratedTimeline] = useState<VideoTimelineType | null>(null);
     const [isGeneratingTimeline, setIsGeneratingTimeline] = useState<boolean>(false);
     const [isEditingTimeline, setIsEditingTimeline] = useState<boolean>(false);
 
-    // ✨ NOUVEAU: États pour les fonctionnalités migrées du wizard
+    // ✅ NOUVEAU: États pour les fonctionnalités migrées du wizard
     const [costEstimation, setCostEstimation] = useState<VideoCostEstimation | null>(null);
     const [costLoading, setCostLoading] = useState<boolean>(false);
     const [showCostEstimation, setShowCostEstimation] = useState<boolean>(false);
@@ -346,7 +346,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [showVideoChaining, setShowVideoChaining] = useState<boolean>(false);
     const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
 
-    // ✨ NOUVEAU: Studio Sessions (depuis Wizard)
+    // ✅ NOUVEAU: Studio Sessions (depuis Wizard)
     const [studioSessionId, setStudioSessionId] = useState<string | undefined>();
     const [storyboard, setStoryboard] = useState<import('../services/studioService').Storyboard | null>(null);
     const [storyboardLoading, setStoryboardLoading] = useState<boolean>(false);
@@ -354,24 +354,24 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [shortPreviewLoading, setShortPreviewLoading] = useState<boolean>(false);
     const [prewarmedShortPreviewUrl, setPrewarmedShortPreviewUrl] = useState<string | undefined>();
 
-    // ✨ NOUVEAU: Auto-Storyboard Toggle (depuis Wizard)
+    // ✅ NOUVEAU: Auto-Storyboard Toggle (depuis Wizard)
     const [autoStoryboard, setAutoStoryboard] = useState<boolean>(true);
 
-    // ✨ NOUVEAU: Completed Steps Tracking (depuis Wizard)
+    // ✅ NOUVEAU: Completed Steps Tracking (depuis Wizard)
     const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
 
-    // ✨ NOUVEAU: Story Templates Serveur (depuis Wizard)
+    // ✅ NOUVEAU: Story Templates Serveur (depuis Wizard)
     const [storyTemplates, setStoryTemplates] = useState<import('../types/VideoGeneration').StoryTemplateSpec[]>([]);
     const [storyTemplatesLoading, setStoryTemplatesLoading] = useState<boolean>(false);
     const [storyTemplateId, setStoryTemplateId] = useState<string>('blog');
 
-    // ✨ NOUVEAU Phase 3.2: État pour l'éditeur AR
+    // ✅ NOUVEAU Phase 3.2: État pour l'éditeur AR
     const [showAREditor, setShowAREditor] = useState<boolean>(false);
     const [isUploadingARVideo, setIsUploadingARVideo] = useState<boolean>(false);
 
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-    // ✨ NOUVEAU Phase 3.2: Gérer la vidéo AR capturée
+    // ✅ NOUVEAU Phase 3.2: Gérer la vidéo AR capturée
     const handleARVideoCaptured = useCallback(async (videoUri: string) => {
         if (!selectedProduct || typeof selectedProduct.product_index !== 'number') {
             Alert.alert('Erreur', 'Produit non sélectionné');
@@ -510,7 +510,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         []
     );
 
-    // ✨ AMÉLIORATION: Fonction helper pour retry avec exponential backoff
+    // ✅ AMÉLIORATION: Fonction helper pour retry avec exponential backoff
     const fetchWithRetry = useCallback(async <T,>(
         fetchFn: () => Promise<T>,
         maxRetries: number = 3,
@@ -530,7 +530,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 if (retryCount >= maxRetries) {
                     console.warn(`[ProductVideoCreationModal] Coach IA: ${type} indisponible après ${maxRetries} tentatives`, error);
-                    // ✨ AMÉLIORATION: Logger plus de détails pour debugging
+                    // ✅ AMÉLIORATION: Logger plus de détails pour debugging
                     console.warn(`[ProductVideoCreationModal] Dernière erreur pour ${type}:`, {
                         message: errorMsg,
                         isTimeout,
@@ -540,7 +540,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     return null;
                 }
 
-                // ✨ AMÉLIORATION: Log des retries pour debugging
+                // ✅ AMÉLIORATION: Log des retries pour debugging
                 console.log(`[ProductVideoCreationModal] Coach IA ${type}: Tentative ${retryCount + 1}/${maxRetries} (erreur: ${errorMsg.substring(0, 50)})`);
 
                 // Exponential backoff: 1s, 2s, 4s
@@ -551,7 +551,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         return null;
     }, []);
 
-    // ✨ AMÉLIORATION: Valeurs par défaut pour Coach IA
+    // ✅ AMÉLIORATION: Valeurs par défaut pour Coach IA
     const getDefaultCoachData = useCallback((type: 'brief' | 'style' | 'plan'): any => {
         if (!selectedProduct) return null;
 
@@ -610,7 +610,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         const lang = subtitleLang || voiceoverLang;
 
         try {
-            // ✨ AMÉLIORATION: Brief avec retry + valeurs par défaut
+            // ✅ AMÉLIORATION: Brief avec retry + valeurs par défaut
             if (briefVariants.length === 0) {
                 const briefResult = await fetchWithRetry(
                     async () => {
@@ -637,18 +637,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 if (briefResult) {
                     setBriefVariants(briefResult);
                 } else {
-                    // ✨ CORRECTION: Utiliser valeurs par défaut avec notification silencieuse
+                    // ✅ CORRECTION: Utiliser valeurs par défaut avec notification silencieuse
                     const defaultBrief = getDefaultCoachData('brief');
                     if (defaultBrief?.variants) {
                         console.log('[ProductVideoCreationModal] Coach IA: Utilisation valeurs par défaut pour brief');
                         setBriefVariants(defaultBrief.variants);
                     } else {
-                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de générer brief, mîme avec valeurs par défaut');
+                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de générer brief, même avec valeurs par défaut');
                     }
                 }
             }
 
-            // ✨ AMÉLIORATION: Style avec retry + valeurs par défaut
+            // ✅ AMÉLIORATION: Style avec retry + valeurs par défaut
             if (!styleSuggestion) {
                 const styleResult = await fetchWithRetry(
                     async () => {
@@ -674,18 +674,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 if (styleResult) {
                     setStyleSuggestion(styleResult);
                 } else {
-                    // ✨ CORRECTION: Utiliser valeurs par défaut avec notification silencieuse
+                    // ✅ CORRECTION: Utiliser valeurs par défaut avec notification silencieuse
                     const defaultStyle = getDefaultCoachData('style');
                     if (defaultStyle?.suggestion) {
                         console.log('[ProductVideoCreationModal] Coach IA: Utilisation valeurs par défaut pour style');
                         setStyleSuggestion(defaultStyle.suggestion);
                     } else {
-                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de générer style, mîme avec valeurs par défaut');
+                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de générer style, même avec valeurs par défaut');
                     }
                 }
             }
 
-            // ✨ NOUVEAU: Génération de timeline après le style
+            // ✅ NOUVEAU: Génération de timeline après le style
             if (!generatedTimeline && briefVariants.length > 0 && styleSuggestion) {
                 const selectedBrief = briefVariants[0]; // Utiliser le premier brief
                 setIsGeneratingTimeline(true);
@@ -725,9 +725,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     if (timelineResponse.success && timelineResponse.data) {
                         const responseData = timelineResponse.data as { success?: boolean; timeline?: VideoTimelineType };
                         if (responseData.timeline) {
-                            console.log('[ProductVideoCreationModal] ✨ Timeline générée:', responseData.timeline);
+                            console.log('[ProductVideoCreationModal] ✅ Timeline générée:', responseData.timeline);
                             setGeneratedTimeline(responseData.timeline);
-                            // ✨ NOUVEAU: Mettre à jour scriptNotes avec le texte des scènes si vide
+                            // ✅ NOUVEAU: Mettre à jour scriptNotes avec le texte des scènes si vide
                             if (!scriptNotes.trim() && responseData.timeline.scenes.length > 0) {
                                 const scriptFromTimeline = responseData.timeline.scenes
                                     .map(s => s.text)
@@ -751,7 +751,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 }
             }
 
-            // ✨ AMÉLIORATION: Plan avec retry + valeurs par défaut
+            // ✅ AMÉLIORATION: Plan avec retry + valeurs par défaut
             if (!distributionPlan) {
                 const planResult = await fetchWithRetry(
                     async () => {
@@ -774,13 +774,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 if (planResult) {
                     setDistributionPlan(planResult);
                 } else {
-                    // ✨ CORRECTION: Utiliser valeurs par défaut avec notification silencieuse
+                    // ✅ CORRECTION: Utiliser valeurs par défaut avec notification silencieuse
                     const defaultPlan = getDefaultCoachData('plan');
                     if (defaultPlan?.plan) {
                         console.log('[ProductVideoCreationModal] Coach IA: Utilisation valeurs par défaut pour plan');
                         setDistributionPlan(defaultPlan.plan);
                     } else {
-                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de générer plan, mîme avec valeurs par défaut');
+                        console.warn('[ProductVideoCreationModal] Coach IA: Impossible de générer plan, même avec valeurs par défaut');
                     }
                 }
             }
@@ -809,7 +809,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         );
     }, [prefetchCoachInsights]);
 
-    // ✨ NOUVEAU: Fonction pour estimer le coût de génération
+    // ✅ NOUVEAU: Fonction pour estimer le coût de génération
     const handleEstimateCost = useCallback(async () => {
         if (!selectedProduct || typeof selectedProduct.product_index !== 'number') {
             Alert.alert('Produit requis', 'Sélectionnez d\'abord un produit.');
@@ -895,7 +895,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         selectedChannels,
     ]);
 
-    // ✨ NOUVEAU: Charger le brouillon au démarrage
+    // ✅ NOUVEAU: Charger le brouillon au démarrage
     useEffect(() => {
         if (!visible || !selectedProduct) return;
 
@@ -943,7 +943,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         loadDraft();
     }, [visible, selectedProduct]);
 
-    // ✨ NOUVEAU: Sauvegarde automatique du brouillon avec debounce
+    // ✅ NOUVEAU: Sauvegarde automatique du brouillon avec debounce
     useEffect(() => {
         if (!visible || !selectedProduct) return;
 
@@ -979,7 +979,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         selectedChannels,
     ]);
 
-    // ✨ NOUVEAU: Charger les sessions disponibles pour le chaënage
+    // ✅ NOUVEAU: Charger les sessions disponibles pour le chaënage
     useEffect(() => {
         if (!visible || !showVideoChaining) return;
 
@@ -1003,16 +1003,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         if (!visible) {
             coachPrefetchDoneRef.current = false;
             setCoachLoading(false);
-            // ✨ CORRECTION: Réinitialiser l'étape quand le modal se ferme
+            // ✅ CORRECTION: Réinitialiser l'étape quand le modal se ferme
             setActiveStep(1);
-            // ✨ NOUVEAU: Réinitialiser les états des fonctionnalités migrées
+            // ✅ NOUVEAU: Réinitialiser les états des fonctionnalités migrées
             setCostEstimation(null);
             setShowCostEstimation(false);
             setShowVideoChaining(false);
             setSelectedLinkedSessions([]);
             setCompletedSteps(new Set());
         } else {
-            // ✨ NOUVEAU: Tracking UX (depuis Wizard)
+            // ✅ NOUVEAU: Tracking UX (depuis Wizard)
             trackUxEvent('wizard_open', {
                 device: 'mobile',
                 serviceId: selectedProduct?.serviceId ? Number(selectedProduct.serviceId) : undefined,
@@ -1052,7 +1052,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     throw new Error(response.error || 'Attache impossible');
                 }
                 await refreshMedia(selectedProduct);
-                Alert.alert('­ƒÄÁ Audio ajouté', 'La boucle a été ajoutée à votre médiathèque.');
+                Alert.alert('🎵 Audio ajouté', 'La boucle a été ajoutée à votre médiathèque.');
             } catch (error) {
                 console.error("[ProductVideoCreationModal] Impossible d'attacher la boucle audio: ", error);
                 Alert.alert('Erreur', "Ajout de la boucle audio impossible pour le moment.");
@@ -1162,7 +1162,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         } finally {
             setIsGeneratingBrief(false);
         }
-    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang]); // ✨ CORRIGÉ: applyBriefVariant est une fonction utilitaire stable, pas besoin de dépendance
+    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang]); // ✅ CORRIGÉ: applyBriefVariant est une fonction utilitaire stable, pas besoin de dépendance
 
     const applyStyleSuggestion = useCallback((suggestion: AIVideoStyleSuggestion) => {
         setStyleSuggestion(suggestion);
@@ -1231,7 +1231,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 }
             });
 
-            // ✨ CORRECTION: Utiliser iaApi.analyzeMedia() au lieu de mediaApi.analyzeMedia()
+            // ✅ CORRECTION: Utiliser iaApi.analyzeMedia() au lieu de mediaApi.analyzeMedia()
             // L'endpoint correct est /api/ia/media-analysis, pas /api/media/analyze
             const response = await iaApi.analyzeMedia({
                 product_name: normalizeProductName(selectedProduct),
@@ -1335,7 +1335,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         if (!selectedProduct) {
             setHeadline('');
-            setCallToAction('Commandez maintenant sur Yukpomnang ✨');
+            setCallToAction('Commandez maintenant sur Yukpomnang ✅');
             setIncludePromotion(false);
             setSelectedRelatedProducts(new Set());
             setProductMedia([]);
@@ -1348,8 +1348,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
 
         const productName = normalizeProductName(selectedProduct);
-        const defaultHeadline = `­ƒÄ» ${productName} en ${getFieldValue(selectedProduct.city) || 'promo'}`;
-        const defaultCTA = `­ƒô▓ Contactez ${extractServiceName(selectedProduct, 'nous')} sur Yukpomnang`;
+        const defaultHeadline = `🔥 ${productName} en ${getFieldValue(selectedProduct.city) || 'promo'}`;
+        const defaultCTA = `📞 Contactez ${extractServiceName(selectedProduct, 'nous')} sur Yukpomnang`;
 
         setHeadline(defaultHeadline);
         setCallToAction(defaultCTA);
@@ -1383,7 +1383,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const groupedProducts: GroupedProducts[] = useMemo(() => {
         const groups = new Map<string, GroupedProducts>();
 
-        console.log('[ProductVideoCreationModal] ­ƒôª Traitement produits:', products.length);
+        console.log('[ProductVideoCreationModal] 📦 Traitement produits:', products.length);
 
         products.forEach((product) => {
             const serviceId = product.serviceId || 'service';
@@ -1402,7 +1402,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         });
 
         const result = Array.from(groups.values());
-        console.log('[ProductVideoCreationModal] ­ƒôª Groupes créés:', result.length, 'services');
+        console.log('[ProductVideoCreationModal] 📦 Groupes créés:', result.length, 'services');
         return result;
     }, [products]);
 
@@ -1410,7 +1410,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         if (!selectedProduct) {
             return [];
         }
-        // ✨ CORRIGÉ: Vérifier que products est un tableau avant d'appeler .filter()
+        // ✅ CORRIGÉ: Vérifier que products est un tableau avant d'appeler .filter()
         if (!Array.isArray(products)) {
             return [];
         }
@@ -1464,11 +1464,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         });
     }, []);
 
-    // ✨ NOUVEAU: Fonction helper pour calculer les styles dynamiquement avec insets
+    // ✅ NOUVEAU: Fonction helper pour calculer les styles dynamiquement avec insets
     const getStepContentStyle = useCallback(() => ({
         padding: 20,
         gap: 20,
-        paddingBottom: 100 + insets.bottom, // ✨ Espace pour les boutons fixes + safe area
+        paddingBottom: 100 + insets.bottom, // ✅ Espace pour les boutons fixes + safe area
         flexGrow: 1,
     }), [insets.bottom]);
 
@@ -1492,8 +1492,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         minHeight: 80 + insets.bottom,
     }), [insets.bottom]);
 
-    // ✨ NOUVEAU: Fonctions de rendu par étape - Réorganisées en 6 étapes courtes
-    // ✨ NOUVEAU: Charger Templates Narratifs Serveur (depuis Wizard)
+    // ✅ NOUVEAU: Fonctions de rendu par étape - Réorganisées en 6 étapes courtes
+    // ✅ NOUVEAU: Charger Templates Narratifs Serveur (depuis Wizard)
     useEffect(() => {
         const loadTemplates = async () => {
             setStoryTemplatesLoading(true);
@@ -1516,12 +1516,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
     }, [visible, selectedProduct, storyTemplateId]);
 
-    // ✨ NOUVEAU: Marquer étape complétée (depuis Wizard)
+    // ✅ NOUVEAU: Marquer étape complétée (depuis Wizard)
     const markStepCompleted = useCallback((stepNum: number) => {
         setCompletedSteps((prev) => new Set([...prev, stepNum]));
     }, []);
 
-    // ✨ NOUVEAU: Ensure Studio Session (depuis Wizard)
+    // ✅ NOUVEAU: Ensure Studio Session (depuis Wizard)
     const ensureStudioSession = useCallback(async (): Promise<string | undefined> => {
         if (studioSessionId) {
             return studioSessionId;
@@ -1552,7 +1552,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
     }, [selectedProduct, scriptNotes, headline, studioSessionId]);
 
-    // ✨ NOUVEAU: Generate Storyboard via Studio (depuis Wizard)
+    // ✅ NOUVEAU: Generate Storyboard via Studio (depuis Wizard)
     const handleGenerateStoryboard = useCallback(async () => {
         if (!selectedProduct) {
             Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer un storyboard.');
@@ -1619,7 +1619,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
     }, [selectedProduct, ensureStudioSession, scriptNotes, headline, callToAction, stylePreset, duration, storyTemplateId, studioSessionId, activeStep]);
 
-    // ✨ NOUVEAU: Request Short Preview (depuis Wizard)
+    // ✅ NOUVEAU: Request Short Preview (depuis Wizard)
     const handleShortPreview = useCallback(async () => {
         if (!studioSessionId) {
             Alert.alert('Session requise', 'Générez d\'abord un storyboard pour créer une session Studio.');
@@ -1635,7 +1635,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         });
         setShortPreviewLoading(true);
         try {
-            // ✨ NOUVEAU: Utiliser prewarmed preview si disponible (depuis Wizard)
+            // ✅ NOUVEAU: Utiliser prewarmed preview si disponible (depuis Wizard)
             if (prewarmedShortPreviewUrl) {
                 const { Linking } = require('react-native');
                 Linking.openURL(prewarmedShortPreviewUrl);
@@ -1695,18 +1695,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         return (
             <>
                 {renderProductSelection()}
-                {/* ✨ NOUVEAU: CreatorStudioCard (depuis Wizard) */}
+                {/* ✅ NOUVEAU: CreatorStudioCard (depuis Wizard) */}
                 {selectedProduct && (
                     <CreatorStudioCard
                         serviceName={`Service #${selectedProduct.serviceId}`}
                         productName={normalizeProductName(selectedProduct)}
                     />
                 )}
-                {/* ✨ NOUVEAU: Templates Narratifs Serveur (depuis Wizard) */}
+                {/* ✅ NOUVEAU: Templates Narratifs Serveur (depuis Wizard) */}
                 {selectedProduct && storyTemplates.length > 0 && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>­ƒôÜ Templates narratifs</Text>
+                            <Text style={styles.sectionTitle}>📝 Templates narratifs</Text>
                             {storyTemplatesLoading && (
                                 <ActivityIndicator size="small" color={modernColors.primary} />
                             )}
@@ -1730,7 +1730,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                             {spec.description}
                                         </Text>
                                         <Text style={styles.templateMeta}>
-                                            {spec.suggestedScenes} scènes ┬À ~{spec.defaultDurationSeconds}s
+                                            {spec.suggestedScenes} scènes • ~{spec.defaultDurationSeconds}s
                                         </Text>
                                     </TouchableOpacity>
                                 );
@@ -1739,11 +1739,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </NativeCard>
                 )}
 
-                {/* ✨ NOUVEAU: Storyboard IA via Studio (depuis Wizard) */}
+                {/* ✅ NOUVEAU: Storyboard IA via Studio (depuis Wizard) */}
                 {selectedProduct && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>­ƒÄ¼ Storyboard IA</Text>
+                            <Text style={styles.sectionTitle}>🎬 Storyboard IA</Text>
                             <TouchableOpacity
                                 style={styles.linkButton}
                                 onPress={handleGenerateStoryboard}
@@ -1755,14 +1755,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
                                 )}
                                 <Text style={styles.linkButtonText}>
-                                    {storyboardLoading ? 'GénérationÔÇª' : 'Générer storyboard'}
+                                    {storyboardLoading ? 'Génération…' : 'Générer storyboard'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
                         <Text style={styles.sectionSubtitle}>
                             Génère une proposition de scènes (intro, bénéfices, preuves, CTA) à partir de ton brief.
                         </Text>
-                        {/* ✨ NOUVEAU: Auto-Storyboard Toggle (depuis Wizard) */}
+                        {/* ✅ NOUVEAU: Auto-Storyboard Toggle (depuis Wizard) */}
                         <View style={styles.inlineRow}>
                             <Text style={styles.inlineLabel}>Storyboard automatique</Text>
                             <Switch
@@ -1787,6 +1787,29 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         )}
                     </NativeCard>
                 )}
+                {/* ✅ NOUVEAU Phase 3.2: Bouton pour créer vidéo AR à l'étape 1 */}
+                {selectedProduct && (
+                    <NativeCard style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>🎬 Création vidéo AR</Text>
+                        </View>
+                        <Text style={styles.sectionSubtitle}>
+                            Capturez votre produit en réalité augmentée avec effets 3D immersifs.
+                        </Text>
+                        <View style={styles.arButtonContainer}>
+                            <NativeButton
+                                title="🎬 Créer vidéo AR immersive"
+                                variant="primary"
+                                size="medium"
+                                onPress={() => setShowAREditor(true)}
+                                style={styles.arButton}
+                            />
+                            <Text style={styles.arButtonHint}>
+                                Ajoutez une vidéo AR directement à votre médiathèque produit
+                            </Text>
+                        </View>
+                    </NativeCard>
+                )}
                 {coachPanel}
                 {selectedProduct && renderRelatedProducts()}
             </>
@@ -1809,7 +1832,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         return (
             <NativeCard style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>­ƒô© Sélection des médias</Text>
+                    <Text style={styles.sectionTitle}>📸 Sélection des médias</Text>
                     <TouchableOpacity
                         style={styles.linkButton}
                         onPress={handleAnalyzeMedia}
@@ -1821,7 +1844,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <SafeIcon name="scan" size={16} color={modernColors.primary} />
                         )}
                         <Text style={styles.linkButtonText}>
-                            {isAnalyzingMedia ? 'AnalyseÔÇª' : 'Analyse IA'}
+                            {isAnalyzingMedia ? 'Analyse…' : 'Analyse IA'}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -1829,10 +1852,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     Choisissez les images/vidéos à utiliser dans votre vidéo, ou créez une vidéo AR immersive.
                 </Text>
 
-                {/* ✨ NOUVEAU Phase 3.2: Bouton pour créer vidéo AR */}
+                {/* ✅ NOUVEAU Phase 3.2: Bouton pour créer vidéo AR */}
                 <View style={styles.arButtonContainer}>
                     <NativeButton
-                        title="­ƒÄ¼ Créer vidéo AR immersive"
+                        title="🎬 Créer vidéo AR immersive"
                         variant="primary"
                         size="medium"
                         onPress={() => setShowAREditor(true)}
@@ -1934,7 +1957,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         return (
             <NativeCard style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>­ƒÄ¿ Style et effets</Text>
+                    <Text style={styles.sectionTitle}>🎨 Style et effets</Text>
                     <TouchableOpacity
                         style={styles.linkButton}
                         onPress={handleGenerateStyleSuggestion}
@@ -1946,7 +1969,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
                         )}
                         <Text style={styles.linkButtonText}>
-                            {isGeneratingStyle ? 'AnalyseÔÇª' : 'Effets IA'}
+                            {isGeneratingStyle ? 'Analyse…' : 'Effets IA'}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -2096,7 +2119,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             <>
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>­ƒôØ Script de montage</Text>
+                        <Text style={styles.sectionTitle}>✍️ Script de montage</Text>
                         <TouchableOpacity
                             style={styles.linkButton}
                             onPress={handleGenerateBrief}
@@ -2108,7 +2131,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
                             )}
                             <Text style={styles.linkButtonText}>
-                                {isGeneratingBrief ? 'GénérationÔÇª' : 'Brief IA'}
+                                {isGeneratingBrief ? 'Génération…' : 'Brief IA'}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -2117,7 +2140,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         <NativeInput
                             value={headline}
                             onChangeText={setHeadline}
-                            placeholder="Ex: ­ƒÜÇ Promotion spéciale sur nos mèches premium !"
+                            placeholder="Ex: 🎯 Promotion spéciale sur nos mèches premium !"
                             multiline
                             minLines={2}
                         />
@@ -2134,7 +2157,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                     <View style={styles.fieldGroup}>
                         <View style={styles.fieldLabelRow}>
-                            <Text style={styles.fieldLabel}>­ƒôØ Script de montage</Text>
+                            <Text style={styles.fieldLabel}>✍️ Script de montage</Text>
                             <Text style={styles.fieldRequired}>*</Text>
                         </View>
                         <Text style={styles.fieldHint}>
@@ -2171,7 +2194,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                 </NativeCard>
 
-                {/* ✨ NOUVEAU: Sélecteur de variantes de timeline */}
+                {/* ✅ NOUVEAU: Sélecteur de variantes de timeline */}
                 {!generatedTimeline && !isEditingTimeline && scriptNotes.trim().length > 0 && (
                     <TimelineVariantSelector
                         timelineRequest={{
@@ -2215,19 +2238,19 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             />
                         </NativeCard>
 
-                        {/* ✨ NOUVEAU: Preview rapide */}
+                        {/* ✅ NOUVEAU: Preview rapide */}
                         <QuickPreview
                             timeline={generatedTimeline}
                             onPreviewReady={(preview) => {
-                                console.log('[ProductVideoCreationModal] Preview prît:', preview.preview_url);
+                                console.log('[ProductVideoCreationModal] Preview prêt:', preview.preview_url);
                             }}
                         />
 
-                        {/* ✨ NOUVEAU: Short Preview via Studio (depuis Wizard) */}
+                        {/* ✅ NOUVEAU: Short Preview via Studio (depuis Wizard) */}
                         {studioSessionId && (
                             <View style={styles.shortPreviewContainer}>
                                 <NativeButton
-                                    title={shortPreviewLoading ? "Génération previewÔÇª" : "­ƒÄ¼ Preview courte (Studio)"}
+                                    title={shortPreviewLoading ? "Génération preview…" : "🎬 Preview courte (Studio)"}
                                     variant="outline"
                                     size="medium"
                                     onPress={handleShortPreview}
@@ -2256,7 +2279,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </NativeCard>
                 )}
 
-                {/* ✨ NOUVEAU: Auto-cut intelligent */}
+                {/* ✅ NOUVEAU: Auto-cut intelligent */}
                 {generatedTimeline && !isEditingTimeline && generatedTimeline.scenes.length > 0 && (
                     <AutoCutPanel
                         videoUrl={generatedTimeline.scenes[0]?.media_url || ''}
@@ -2288,7 +2311,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     />
                 )}
 
-                {/* ✨ NOUVEAU: Color grading automatique */}
+                {/* ✅ NOUVEAU: Color grading automatique */}
                 {selectedMediaIds.size > 0 && Array.from(selectedMediaIds).length > 0 && (
                     <ColorGradingPanel
                         mediaUrl={Array.from(selectedMediaIds)[0]?.toString() || ''}
@@ -2298,7 +2321,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     />
                 )}
 
-                {/* ✨ NOUVEAU: Carousel de previews d'effets */}
+                {/* ✅ NOUVEAU: Carousel de previews d'effets */}
                 {styleSuggestion && styleSuggestion.effects && styleSuggestion.effects.length > 0 && selectedMediaIds.size > 0 && (
                     <EffectPreviewCarousel
                         effectNames={styleSuggestion.effects}
@@ -2311,7 +2334,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     />
                 )}
 
-                {/* ✨ NOUVEAU: Sous-titres automatiques */}
+                {/* ✅ NOUVEAU: Sous-titres automatiques */}
                 {generatedTimeline && !isEditingTimeline && (
                     <AutoCaptionsPanel
                         videoUrl={generatedTimeline.scenes[0]?.media_url || ''}
@@ -2341,7 +2364,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         return (
             <>
                 <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>­ƒÄÁ Ambiance musicale</Text>
+                    <Text style={styles.sectionTitle}>🎵 Ambiance musicale</Text>
                     <Text style={styles.sectionSubtitle}>
                         Choisissez une ambiance générée automatiquement ou importez votre propre piste.
                     </Text>
@@ -2392,7 +2415,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         <SafeIcon name="plus" size={16} color={modernColors.primary} />
                                     )}
                                     <Text style={styles.audioImportText}>
-                                        {isUploadingAudio ? 'Import en coursÔÇª' : "Importer une piste depuis l'appareil"}
+                                        {isUploadingAudio ? 'Import en cours…' : "Importer une piste depuis l'appareil"}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
@@ -2401,7 +2424,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
                                         Sélectionner une piste audio existante
                                     </Text>
-                                    {/* ✨ NOUVEAU: Panel de suggestions audio contextuelles IA */}
+                                    {/* ✅ NOUVEAU: Panel de suggestions audio contextuelles IA */}
                                     {selectedProduct && (
                                         <AudioSuggestionPanel
                                             productName={selectedProduct.name || 'Produit'}
@@ -2417,7 +2440,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         />
                                     )}
 
-                                    {/* ✨ CORRIGÉ: Affichage en 2 colonnes au lieu d'un scroll horizontal */}
+                                    {/* ✅ CORRIGÉ: Affichage en 2 colonnes au lieu d'un scroll horizontal */}
                                     <View style={styles.audioRowGrid}>
                                         {availableAudioTracks.map((track) => {
                                             const selected = selectedMusicTrackId === track.id;
@@ -2483,7 +2506,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                                 {loop.title}
                                                             </Text>
                                                             <Text style={styles.audioChipSubtitle} numberOfLines={1}>
-                                                                {loop.genre} ÔÇó {loop.bpm} BPM
+                                                                {loop.genre} • {loop.bpm} BPM
                                                             </Text>
                                                         </View>
                                                     </TouchableOpacity>
@@ -2499,7 +2522,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>­ƒÄñ Narration vocale IA</Text>
+                        <Text style={styles.sectionTitle}>🎤 Narration vocale IA</Text>
                         <Switch
                             value={voiceoverEnabled}
                             onValueChange={(value) => {
@@ -2580,10 +2603,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         return (
             <>
-                {/* ✨ ESSENTIEL: Options de publication principales */}
+                {/* ✅ ESSENTIEL: Options de publication principales */}
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>­ƒôñ Publication</Text>
+                        <Text style={styles.sectionTitle}>📤 Publication</Text>
                     </View>
                     <Text style={styles.sectionSubtitle}>
                         Choisissez où votre vidéo sera automatiquement publiée après sa génération.
@@ -2616,11 +2639,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                 </NativeCard>
 
-                {/* ✨ CORRIGÉ 2025-11-30: Prévisualisation de la timeline générée à l'étape 6 */}
+                {/* ✅ CORRIGÉ 2025-11-30: Prévisualisation de la timeline générée à l'étape 6 */}
                 {!generatedTimeline && !isGeneratingTimeline && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>­ƒÄ¼ Structure de la vidéo</Text>
+                            <Text style={styles.sectionTitle}>🎬 Structure de la vidéo</Text>
                             <TouchableOpacity
                                 style={styles.linkButton}
                                 onPress={async () => {
@@ -2681,7 +2704,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
                                 )}
                                 <Text style={styles.linkButtonText}>
-                                    {isGeneratingTimeline ? 'GénérationÔÇª' : 'Générer la timeline'}
+                                    {isGeneratingTimeline ? 'Génération…' : 'Générer la timeline'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -2693,7 +2716,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {generatedTimeline && !isEditingTimeline && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>­ƒÄ¼ Structure de la vidéo</Text>
+                            <Text style={styles.sectionTitle}>🎬 Structure de la vidéo</Text>
                         </View>
                         <Text style={styles.sectionSubtitle}>
                             Visualisez la structure de votre vidéo avant la génération finale.
@@ -2708,7 +2731,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </NativeCard>
                 )}
 
-                {/* ✨ AJOUTÉ: Éditeur de timeline à l'étape 6 */}
+                {/* ✅ AJOUTÉ: Éditeur de timeline à l'étape 6 */}
                 {isEditingTimeline && generatedTimeline && (
                     <NativeCard style={styles.sectionCard}>
                         <TimelineEditor
@@ -2722,7 +2745,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </NativeCard>
                 )}
 
-                {/* ✨ Distribution automatique avec plan IA */}
+                {/* ✅ Distribution automatique avec plan IA */}
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Diffusion automatique</Text>
@@ -2737,12 +2760,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 <SafeIcon name="send" size={16} color={modernColors.primary} />
                             )}
                             <Text style={styles.linkButtonText}>
-                                {isGeneratingDistribution ? 'PlanificationÔÇª' : 'Plan IA'}
+                                {isGeneratingDistribution ? 'Planification…' : 'Plan IA'}
                             </Text>
                         </TouchableOpacity>
                     </View>
                     <Text style={styles.sectionSubtitle}>
-                        Contr├┤lez où la vidéo sera mise en avant immédiatement après sa génération.
+                        Contrôlez où la vidéo sera mise en avant immédiatement après sa génération.
                     </Text>
                     {distributionPlan && (
                         <View style={styles.planBox}>
@@ -2838,7 +2861,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </Text>
                 </NativeCard>
 
-                {/* ✨ OPTIONNEL: Options avancées (pliable) */}
+                {/* ✅ OPTIONNEL: Options avancées (pliable) */}
                 <NativeCard style={styles.sectionCard}>
                     <TouchableOpacity
                         style={styles.advancedOptionsHeader}
@@ -2846,7 +2869,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         activeOpacity={0.7}
                     >
                         <View style={styles.advancedOptionsTitleRow}>
-                            <Text style={styles.sectionTitle}>ÔÜÖ´©Å Options avancées</Text>
+                            <Text style={styles.sectionTitle}>⚙️ Options avancées</Text>
                             <View style={styles.optionalBadge}>
                                 <Text style={styles.optionalBadgeText}>Optionnel</Text>
                             </View>
@@ -2859,12 +2882,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </TouchableOpacity>
                     {showAdvancedOptions && (
                         <View style={styles.advancedOptionsContent}>
-                            {/* ✨ SUPPRIMÉ 2025-11-30: Estimation de coût retirée des options - Affichée dans un toast au clic sur "Générer la vidéo" */}
+                            {/* ✅ SUPPRIMÉ 2025-11-30: Estimation de coût retirée des options - Affichée dans un toast au clic sur "Générer la vidéo" */}
 
-                            {/* Chaënage de vidéos */}
+                            {/* Chaînage de vidéos */}
                             <View style={styles.advancedSection}>
                                 <View style={styles.sectionHeader}>
-                                    <Text style={styles.advancedSectionTitle}>­ƒöù Chaënage de vidéos</Text>
+                                    <Text style={styles.advancedSectionTitle}>🔗 Chaînage de vidéos</Text>
                                     <Switch
                                         value={showVideoChaining}
                                         onValueChange={setShowVideoChaining}
@@ -2929,7 +2952,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                             {/* Formats de sortie */}
                             <View style={styles.advancedSection}>
-                                <Text style={styles.advancedSectionTitle}>­ƒôÉ Formats de sortie</Text>
+                                <Text style={styles.advancedSectionTitle}>💾 Formats de sortie</Text>
                                 <Text style={styles.sectionSubtitle}>
                                     Générer des variantes dans d'autres formats pour une diffusion multi-plateformes.
                                 </Text>
@@ -2966,7 +2989,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 {/* Informations à intégrer automatiquement */}
                 <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Ôä╣´©Å Informations automatiques</Text>
+                    <Text style={styles.sectionTitle}>ℹ️ Informations automatiques</Text>
                     <Text style={styles.sectionSubtitle}>
                         Choisissez quelles informations du produit seront intégrées automatiquement dans la vidéo.
                     </Text>
@@ -3011,7 +3034,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                 </NativeCard>
 
-                {/* ✨ NOUVEAU: Synchronisation audio-vidéo */}
+                {/* ✅ NOUVEAU: Synchronisation audio-vidéo */}
                 {musicMode !== 'none' && generatedTimeline && generatedTimeline.scenes.length > 0 && (
                     <AudioSyncPanel
                         videoUrl={generatedTimeline.scenes[0]?.media_url || ''}
@@ -3052,7 +3075,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         );
     };
 
-    // ✨ NOUVEAU: Fonction pour rendre le contenu de l'étape active
+    // ✅ NOUVEAU: Fonction pour rendre le contenu de l'étape active
     const renderStepContent = () => {
         switch (activeStep) {
             case 1:
@@ -3072,7 +3095,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
     };
 
-    // ✨ NOUVEAU: Fonction pour gérer la navigation entre les étapes
+    // ✅ NOUVEAU: Fonction pour gérer la navigation entre les étapes
     const handleStepChange = (newStep: ModalStep) => {
         // Validation basique : on ne peut pas avancer si aucun produit n'est sélectionné (sauf étape 1)
         if (newStep > 1 && !selectedProduct) {
@@ -3086,8 +3109,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         setActiveStep(newStep);
     };
 
-    // ✨ CORRIGÉ: Fonction wrapper pour applyBriefVariant avec les setters du composant
-    // ✨ CORRIGÉ 2025-11-28: Retiré les setters des dépendances car ils sont stables
+    // ✅ CORRIGÉ: Fonction wrapper pour applyBriefVariant avec les setters du composant
+    // ✅ CORRIGÉ 2025-11-28: Retiré les setters des dépendances car ils sont stables
     const handleApplyBriefVariant = useCallback((variant: AIVideoBriefVariant) => {
         applyBriefVariant(
             variant,
@@ -3114,7 +3137,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             topVariant?.script_outline?.[0] ||
             topVariant?.call_to_action ||
             '';
-        // ✨ CORRIGÉ: Vérifier que hashtags est un tableau avant d'appeler .slice() et .map()
+        // ✅ CORRIGÉ: Vérifier que hashtags est un tableau avant d'appeler .slice() et .map()
         const limitedHashtags =
             (Array.isArray(distributionPlan?.hashtags)
                 ? distributionPlan.hashtags.slice(0, 3).map((tag) => `#${String(tag || '').replace(/^#/, '')}`)
@@ -3132,7 +3155,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <SafeIcon name="refresh-cw" size={16} color={modernColors.primary} />
                         )}
                         <Text style={styles.linkButtonText}>
-                            {coachLoading ? 'AnalyseÔÇª' : 'Actualiser'}
+                            {coachLoading ? 'Analyse…' : 'Actualiser'}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -3140,7 +3163,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     <View style={styles.coachLoading}>
                         <ActivityIndicator size="small" color={modernColors.primary} />
                         <Text style={styles.coachLoadingText}>
-                            Le coach prépare vos recommandations personnaliséesÔÇª
+                            Le coach prépare vos recommandations personnalisées…
                         </Text>
                     </View>
                 ) : (
@@ -3223,7 +3246,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     ) : null}
                                     {nextSchedule ? (
                                         <Text style={styles.coachMeta}>
-                                            Prochaine diffusion : {nextSchedule.channel} ÔÇó {nextSchedule.best_time}
+                                            Prochaine diffusion : {nextSchedule.channel} • {nextSchedule.best_time}
                                         </Text>
                                     ) : null}
                                 </View>
@@ -3240,7 +3263,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         distributionPlan,
         handleRefreshCoach,
         selectedProduct,
-        // ✨ CORRIGÉ: setVariantPickerVisible retiré des dépendances car c'est un setter useState stable
+        // ✅ CORRIGÉ: setVariantPickerVisible retiré des dépendances car c'est un setter useState stable
         styleSuggestion,
     ]);
 
@@ -3260,11 +3283,19 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return;
         }
 
-        // ✨ NOUVEAU: Vérifier que le script est rempli
-        if (!scriptNotes.trim()) {
+        // ✅ CORRIGÉ: Vérifier que le script est rempli OU qu'un storyboard/brief existe
+        const hasScript = scriptNotes.trim().length > 0;
+        const hasStoryboard = storyboard && storyboard.scenes.length > 0;
+        const hasBrief = briefVariants.length > 0 && briefVariants[0]?.script_outline?.length > 0;
+        
+        if (!hasScript && !hasStoryboard && !hasBrief) {
             Alert.alert(
                 'Script requis',
-                'Le script de montage vidéo est requis. Décrivez les messages clés, avantages, garanties, etc. Une ligne = une scène.'
+                'Le script de montage vidéo est requis. Vous pouvez :\n\n' +
+                '• Remplir manuellement le script\n' +
+                '• Générer un storyboard IA (étape 1)\n' +
+                '• Générer un brief IA (étape 4)\n\n' +
+                'Une ligne = une scène.'
             );
             return;
         }
@@ -3287,7 +3318,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             ? Math.min(Math.max(parsedMusicVolume, 0.05), 0.7)
             : 0.28;
 
-        // ✨ NOUVEAU 2025-11-30: Estimer le coût et afficher dans un toast avant de générer
+        // ✅ NOUVEAU 2025-11-30: Estimer le coût et afficher dans un toast avant de générer
         try {
             setCostLoading(true);
             const serviceId = selectedProduct.serviceId;
@@ -3329,10 +3360,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 auto_storyboard: autoStoryboard,
                 storyboard: generatedTimeline
                     ? undefined
-                    : scriptNotes
-                        .split(/\r?\n/)
-                        .map((line) => line.trim())
-                        .filter((line) => line.length > 0),
+                    : (hasStoryboard && storyboard
+                        ? storyboard.scenes.map(s => s.body || s.headline || '').filter(Boolean)
+                        : hasBrief && briefVariants[0]?.script_outline
+                            ? briefVariants[0].script_outline
+                            : scriptNotes
+                                .split(/\r?\n/)
+                                .map((line) => line.trim())
+                                .filter((line) => line.length > 0)),
                 music_mode: musicMode,
                 music_volume: musicMode === 'none' ? undefined : safeMusicVolume,
                 music_track_id: selectedMusicTrackId ?? undefined,
@@ -3348,7 +3383,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 style_overlay_tips: selectedOverlayTips.size > 0 ? Array.from(selectedOverlayTips) : undefined,
                 style_color_palette: colorPalette.trim().length > 0 ? colorPalette.trim() : undefined,
                 style_music_hint: styleMusicHint.trim().length > 0 ? styleMusicHint.trim() : undefined,
-                // ✨ NOTE: linked_session_ids retiré car non supporté dans VideoGenerationPayload
+                // ✅ NOTE: linked_session_ids retiré car non supporté dans VideoGenerationPayload
             };
 
             const response = await iaApi.estimateVideoCost(serviceId, selectedProduct.product_index, payloadForEstimation);
@@ -3370,16 +3405,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             const currentBalance = estimation.current_balance_fcfa || 0;
             const isAffordable = estimation.affordable !== false;
 
-            let costMessage = `­ƒÆ░ Estimation du coût de génération\n\n`;
+            let costMessage = `💰 Estimation du coût de génération\n\n`;
             costMessage += `Coût total : ${totalCost.toLocaleString('fr-FR')} FCFA\n`;
             if (estimation.breakdown) {
                 costMessage += `\nDétail :\n`;
-                costMessage += `ÔÇó Tokens IA : ${estimation.breakdown.tokens_cost_usd.toFixed(2)} USD\n`;
+                costMessage += `• Tokens IA : ${estimation.breakdown.tokens_cost_usd.toFixed(2)} USD\n`;
                 if (estimation.breakdown.audio_mastering_usd > 0) {
-                    costMessage += `ÔÇó Mastering audio : ${estimation.breakdown.audio_mastering_usd.toFixed(2)} USD\n`;
+                    costMessage += `• Mastering audio : ${estimation.breakdown.audio_mastering_usd.toFixed(2)} USD\n`;
                 }
                 if (estimation.breakdown.broll_generation_usd > 0) {
-                    costMessage += `ÔÇó Génération B-roll : ${estimation.breakdown.broll_generation_usd.toFixed(2)} USD\n`;
+                    costMessage += `• Génération B-roll : ${estimation.breakdown.broll_generation_usd.toFixed(2)} USD\n`;
                 }
             }
             costMessage += `\nSolde actuel : ${currentBalance.toLocaleString('fr-FR')} FCFA\n`;
@@ -3420,7 +3455,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
     };
 
-    // ✨ NOUVEAU 2025-11-30: Fonction séparée pour la génération effective de la vidéo
+    // ✅ NOUVEAU 2025-11-30: Fonction séparée pour la génération effective de la vidéo
     const proceedWithVideoGeneration = async (payload: VideoGenerationPayload) => {
         if (!selectedProduct) {
             return;
@@ -3429,11 +3464,19 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         setIsSubmitting(true);
 
         try {
+            // ✅ DEBUG: Log du payload pour diagnostic
+            console.log('[ProductVideoCreationModal] 🎬 Génération vidéo - Payload:', JSON.stringify(payload, null, 2));
+            console.log('[ProductVideoCreationModal] 🎬 Service ID:', selectedProduct.serviceId);
+            console.log('[ProductVideoCreationModal] 🎬 Product Index:', selectedProduct.product_index);
+            
             const response = await mediaApi.generateProductVideo(
                 selectedProduct.serviceId,
                 selectedProduct.product_index,
                 payload
             );
+            
+            // ✅ DEBUG: Log de la réponse
+            console.log('[ProductVideoCreationModal] 🎬 Réponse génération:', response);
 
             if (!response.success || !response.data) {
                 throw new Error(response.error || 'Génération impossible');
@@ -3444,7 +3487,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur génération vidéo:', error);
 
-            // ✨ CORRECTION: Améliorer les messages d'erreur avec des détails spécifiques
+            // ✅ CORRECTION: Améliorer les messages d'erreur avec des détails spécifiques
             let errorMessage = 'Nous ne parvenons pas à générer la vidéo.';
 
             if (error?.message) {
@@ -3452,9 +3495,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 if (msg.includes('aucune image') || msg.includes('image trouvée')) {
                     errorMessage = 'Aucune image disponible pour générer la vidéo.\n\n' +
                         'Solutions :\n' +
-                        'ÔÇó Ajoutez des images dans la médiathèque du service\n' +
-                        'ÔÇó Ajoutez des images au produit\n' +
-                        'ÔÇó La génération automatique d\'images IA sera activée lors de la prochaine tentative';
+                        '• Ajoutez des images dans la médiathèque du service\n' +
+                        '• Ajoutez des images au produit\n' +
+                        '• La génération automatique d\'images IA sera activée lors de la prochaine tentative';
                 } else if (msg.includes('400') || msg.includes('bad request')) {
                     errorMessage = 'Demande invalide.\n\n' +
                         'Vérifiez que tous les champs sont correctement remplis et réessayez.';
@@ -3463,7 +3506,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         'Veuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.';
                 } else if (msg.includes('timeout') || msg.includes('timed out')) {
                     errorMessage = 'La génération prend plus de temps que prévu.\n\n' +
-                        'La vidéo est peut-ître en cours de création. Vérifiez vos vidéos dans quelques instants.';
+                        'La vidéo est peut-être en cours de création. Vérifiez vos vidéos dans quelques instants.';
                 } else {
                     errorMessage = error.message;
                 }
@@ -3521,7 +3564,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             );
         }
 
-        // ✨ Vérifier si des produits sont disponibles
+        // ✅ Vérifier si des produits sont disponibles
         if (!groupedProducts || groupedProducts.length === 0) {
             return (
                 <NativeCard style={styles.sectionCard}>
@@ -3539,11 +3582,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 <Text style={styles.sectionSubtitle}>
                     Choisissez un service puis un produit pour lancer la création automatique de votre vidéo verticale.
                 </Text>
-                {/* ✨ CORRECTION: Remplacer ScrollView imbriqué par View pour éviter les problèmes de toucher */}
+                {/* ✅ CORRECTION: Remplacer ScrollView imbriqué par View pour éviter les problèmes de toucher */}
                 <View style={styles.productSelectionList}>
                     {Array.isArray(groupedProducts) && groupedProducts.length > 0 ? (
                         groupedProducts.map((group) => {
-                            // ✨ CORRIGÉ: Vérifier que group et group.items sont définis
+                            // ✅ CORRIGÉ: Vérifier que group et group.items sont définis
                             if (!group || !Array.isArray(group.items)) {
                                 return null;
                             }
@@ -3554,7 +3597,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         {extractServiceName(group, 'Service sans nom')}
                                     </Text>
                                     {group.items.map((product, idx) => {
-                                        // ✨ CORRIGÉ: Vérifier que product est défini
+                                        // ✅ CORRIGÉ: Vérifier que product est défini
                                         if (!product) return null;
 
                                         return (
@@ -3564,13 +3607,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                 onPress={() => {
                                                     console.log('[ProductVideoCreationModal] Produit sélectionné:', product);
 
-                                                    // ✨ CORRIGÉ: Vérifier que le produit est valide
+                                                    // ✅ CORRIGÉ: Vérifier que le produit est valide
                                                     if (!product) {
                                                         console.error('[ProductVideoCreationModal] Produit null/undefined');
                                                         return;
                                                     }
 
-                                                    // ✨ CORRIGÉ: Normaliser le produit en extrayant les valeurs des wrappers
+                                                    // ✅ CORRIGÉ: Normaliser le produit en extrayant les valeurs des wrappers
                                                     const normalizedProduct: ManagedProduct = {
                                                         ...product,
                                                         nom: getFieldValue(product.nom) ||
@@ -3602,7 +3645,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                                         {(() => {
                                                             const prix = getFieldValue(product.prix);
                                                             const devise = getFieldValue(product.devise) || 'XAF';
-                                                            return prix ? ` ÔÇó ${prix} ${devise}` : '';
+                                                            return prix ? ` • ${prix} ${devise}` : '';
                                                         })()}
                                                     </Text>
                                                 </View>
@@ -3690,7 +3733,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             {mediaLoading ? (
                 <View style={styles.mediaLoading}>
                     <ActivityIndicator size="small" color={modernColors.primary} />
-                    <Text style={styles.mediaLoadingText}>Récupération de vos médiasÔÇª</Text>
+                    <Text style={styles.mediaLoadingText}>Récupération de vos médias…</Text>
                 </View>
             ) : items.length === 0 ? (
                 <View style={styles.emptyMediaState}>
@@ -3791,10 +3834,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.modalTitle}>Studio vidéo produit</Text>
                                 <Text style={styles.modalSubtitle}>
-                                    Assemblez en 30 secondes une vidéo verticale prîte pour TikTok, Reels et votre fiche
+                                    Assemblez en 30 secondes une vidéo verticale prête pour TikTok, Reels et votre fiche
                                     produit.
                                 </Text>
-                                {/* ✨ NOUVEAU: Indicateur d'étapes */}
+                                {/* ✅ NOUVEAU: Indicateur d'étapes */}
                                 <View style={styles.stepIndicator}>
                                     {[1, 2, 3, 4, 5, 6].map((step) => (
                                         <View
@@ -3824,7 +3867,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             {renderStepContent()}
                         </ScrollView>
 
-                        {/* ✨ NOUVEAU Phase 3.2: Modal AR Video Editor */}
+                        {/* ✅ NOUVEAU Phase 3.2: Modal AR Video Editor */}
                         <Modal
                             visible={showAREditor}
                             animationType="slide"
@@ -3848,7 +3891,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             />
                         </Modal>
 
-                        {/* ✨ NOUVEAU: Boutons de navigation par étape */}
+                        {/* ✅ NOUVEAU: Boutons de navigation par étape */}
                         <View style={getFixedBottomButtonStyle()}>
                             {activeStep === 1 && (
                                 <NativeButton
@@ -3886,13 +3929,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         title="Précédent"
                                         variant="secondary"
                                         onPress={() => handleStepChange(2)}
-                                        style={styles.navigationButtonLeft} // ✨ AJOUTÉ: Style pour positionner à gauche
+                                        style={styles.navigationButtonLeft} // ✅ AJOUTÉ: Style pour positionner à gauche
                                     />
                                     <NativeButton
                                         title="Suivant"
                                         variant="primary"
                                         onPress={() => handleStepChange(4)}
-                                        style={styles.navigationButtonRight} // ✨ AJOUTÉ: Style pour positionner à droite
+                                        style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
                                     />
                                 </View>
                             )}
@@ -3902,13 +3945,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         title="Précédent"
                                         variant="secondary"
                                         onPress={() => handleStepChange(3)}
-                                        style={styles.navigationButtonLeft} // ✨ AJOUTÉ: Style pour positionner à gauche
+                                        style={styles.navigationButtonLeft} // ✅ AJOUTÉ: Style pour positionner à gauche
                                     />
                                     <NativeButton
                                         title="Suivant"
                                         variant="primary"
                                         onPress={() => handleStepChange(5)}
-                                        style={styles.navigationButtonRight} // ✨ AJOUTÉ: Style pour positionner à droite
+                                        style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
                                     />
                                 </View>
                             )}
@@ -3918,13 +3961,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         title="Précédent"
                                         variant="secondary"
                                         onPress={() => handleStepChange(4)}
-                                        style={styles.navigationButtonLeft} // ✨ AJOUTÉ: Style pour positionner à gauche
+                                        style={styles.navigationButtonLeft} // ✅ AJOUTÉ: Style pour positionner à gauche
                                     />
                                     <NativeButton
                                         title="Suivant"
                                         variant="primary"
                                         onPress={() => handleStepChange(6)}
-                                        style={styles.navigationButtonRight} // ✨ AJOUTÉ: Style pour positionner à droite
+                                        style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
                                     />
                                 </View>
                             )}
@@ -3943,7 +3986,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     />
                                 </View>
                             )}
-                            {/* ✨ SUPPRIMÉ: Doublon de boutons pour l'étape 4 - Les boutons sont déjà gérés au-dessus */}
+                            {/* ✅ SUPPRIMÉ: Doublon de boutons pour l'étape 4 - Les boutons sont déjà gérés au-dessus */}
                         </View>
                     </NativeCard>
                 </View>
@@ -3974,7 +4017,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     <View style={styles.variantOutline}>
                                         {Array.isArray(variant.script_outline) ? variant.script_outline.map((line, idx) => (
                                             <Text key={idx} style={styles.variantOutlineLine}>
-                                                ÔÇó {line}
+                                                • {line}
                                             </Text>
                                         )) : null}
                                     </View>
@@ -4057,13 +4100,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: 12,
-        gap: 8, // ✨ AJOUTÉ: Espacement entre titre et bouton
+        gap: 8, // ✅ AJOUTÉ: Espacement entre titre et bouton
     },
     sectionTitle: {
         fontSize: 16,
         fontWeight: '700',
         color: modernColors.text,
-        flexShrink: 1, // ✨ AJOUTÉ: Permet au titre de se rétrécir si nécessaire pour laisser de l'espace au bouton
+        flexShrink: 1, // ✅ AJOUTÉ: Permet au titre de se rétrécir si nécessaire pour laisser de l'espace au bouton
     },
     sectionSubtitle: {
         fontSize: 13,
@@ -4128,8 +4171,8 @@ const styles = StyleSheet.create({
         gap: 6,
         paddingHorizontal: 12,
         paddingVertical: 6,
-        minWidth: 100, // ✨ AJOUTÉ: Largeur minimale pour que "Analyse IA" soit entièrement visible
-        flexShrink: 0, // ✨ AJOUTÉ: Empîcher le bouton de rétrécir
+        minWidth: 100, // ✅ AJOUTÉ: Largeur minimale pour que "Analyse IA" soit entièrement visible
+        flexShrink: 0, // ✅ AJOUTÉ: Empêcher le bouton de rétrécir
         borderRadius: 999,
         backgroundColor: '#EEF2FF',
         borderWidth: 1,
@@ -4139,7 +4182,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.primary,
         fontWeight: '600',
-        flexShrink: 0, // ✨ AJOUTÉ: Empîcher le texte de se rétrécir
+        flexShrink: 0, // ✅ AJOUTÉ: Empêcher le texte de se rétrécir
     },
     selectedProductContainer: {
         flexDirection: 'row',
@@ -4182,7 +4225,7 @@ const styles = StyleSheet.create({
     },
     productSelectionList: {
         marginTop: 12,
-        // ✨ Pas de maxHeight car le ScrollView parent gère le scroll
+        // ✅ Pas de maxHeight car le ScrollView parent gère le scroll
     },
     productGroup: {
         marginBottom: 16,
@@ -4235,20 +4278,20 @@ const styles = StyleSheet.create({
     styleRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8, // ✨ CORRIGÉ: Réduit de 12 à 8 pour garantir 2 colonnes
+        gap: 8, // ✅ CORRIGÉ: Réduit de 12 à 8 pour garantir 2 colonnes
         marginTop: 12,
-        justifyContent: 'flex-start', // ✨ CORRIGÉ: flex-start au lieu de space-between pour meilleur contrôle
+        justifyContent: 'flex-start', // ✅ CORRIGÉ: flex-start au lieu de space-between pour meilleur contrôle
     },
     styleChip: {
-        // ✨ CORRIGÉ: 2 colonnes avec taille réduite pour meilleure UX
+        // ✅ CORRIGÉ: 2 colonnes avec taille réduite pour meilleure UX
         // Calcul: (100% - 8px gap) / 2 = 46% par colonne pour garantir l'affichage
-        width: '46%', // ✨ CORRIGÉ: Réduit de 48% à 46% pour garantir 2 colonnes avec gap
-        minWidth: 0, // ✨ Permet au width de fonctionner correctement
-        borderRadius: 10, // ✨ Réduit de 12 à 10
+        width: '46%', // ✅ CORRIGÉ: Réduit de 48% à 46% pour garantir 2 colonnes avec gap
+        minWidth: 0, // ✅ Permet au width de fonctionner correctement
+        borderRadius: 10, // ✅ Réduit de 12 à 10
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        padding: 8, // ✨ CORRIGÉ: Réduit de 10 à 8 pour plus de compacité
-        gap: 3, // ✨ Réduit de 4 à 3
+        padding: 8, // ✅ CORRIGÉ: Réduit de 10 à 8 pour plus de compacité
+        gap: 3, // ✅ Réduit de 4 à 3
         backgroundColor: '#F8FAFC',
     },
     styleChipSelected: {
@@ -4256,7 +4299,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#EEF2FF',
     },
     styleChipLabel: {
-        fontSize: 11, // ✨ CORRIGÉ: Réduit de 12 à 11 pour plus de compacité
+        fontSize: 11, // ✅ CORRIGÉ: Réduit de 12 à 11 pour plus de compacité
         fontWeight: '700',
         color: modernColors.text,
     },
@@ -4264,9 +4307,9 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
     },
     styleChipDescription: {
-        fontSize: 10, // ✨ CORRIGÉ: Réduit de 11 à 10 pour plus de compacité
+        fontSize: 10, // ✅ CORRIGÉ: Réduit de 11 à 10 pour plus de compacité
         color: modernColors.textSecondary,
-        lineHeight: 12, // ✨ CORRIGÉ: Réduit de 14 à 12
+        lineHeight: 12, // ✅ CORRIGÉ: Réduit de 14 à 12
     },
     voiceRow: {
         flexDirection: 'row',
@@ -4280,27 +4323,27 @@ const styles = StyleSheet.create({
         gap: 12,
         paddingVertical: 8,
     },
-    // ✨ CORRIGÉ: Style pour afficher les ambiances musicales en 2 colonnes
+    // ✅ CORRIGÉ: Style pour afficher les ambiances musicales en 2 colonnes
     audioRowGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8, // ✨ CORRIGÉ: Réduit de 12 à 8 pour garantir 2 colonnes
+        gap: 8, // ✅ CORRIGÉ: Réduit de 12 à 8 pour garantir 2 colonnes
         marginTop: 12,
-        justifyContent: 'flex-start', // ✨ CORRIGÉ: flex-start au lieu de space-between pour meilleur contrôle
+        justifyContent: 'flex-start', // ✅ CORRIGÉ: flex-start au lieu de space-between pour meilleur contrôle
     },
-    // ✨ CORRIGÉ: Style pour les cartes d'ambiances musicales en 2 colonnes
+    // ✅ CORRIGÉ: Style pour les cartes d'ambiances musicales en 2 colonnes
     audioChipGrid: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6, // ✨ CORRIGÉ: Réduit de 8 à 6
-        paddingHorizontal: 10, // ✨ CORRIGÉ: Réduit de 12 à 10
+        gap: 6, // ✅ CORRIGÉ: Réduit de 8 à 6
+        paddingHorizontal: 10, // ✅ CORRIGÉ: Réduit de 12 à 10
         paddingVertical: 8,
-        borderRadius: 10, // ✨ CORRIGÉ: Réduit de 12 à 10
+        borderRadius: 10, // ✅ CORRIGÉ: Réduit de 12 à 10
         borderWidth: 1,
         borderColor: '#E2E8F0',
         backgroundColor: '#F8FAFC',
-        width: '46%', // ✨ CORRIGÉ: Réduit de 48% à 46% pour garantir 2 colonnes avec gap
-        minWidth: 0, // ✨ Permet au width de fonctionner correctement
+        width: '46%', // ✅ CORRIGÉ: Réduit de 48% à 46% pour garantir 2 colonnes avec gap
+        minWidth: 0, // ✅ Permet au width de fonctionner correctement
     },
     audioActionsRow: {
         flexDirection: 'row',
@@ -4574,7 +4617,7 @@ const styles = StyleSheet.create({
     primaryActionButton: {
         flex: 1.4,
     },
-    // ✨ NOUVEAU: Styles pour le système d'étapes
+    // ✅ NOUVEAU: Styles pour le système d'étapes
     stepIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -4606,16 +4649,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         width: '100%',
-        justifyContent: 'space-between', // ✨ AJOUTÉ: Positionner Précédent à gauche et Suivant à droite
+        justifyContent: 'space-between', // ✅ AJOUTÉ: Positionner Précédent à gauche et Suivant à droite
     },
     navigationButtonLeft: {
-        flex: 0, // ✨ AJOUTÉ: Ne pas prendre tout l'espace
-        minWidth: 120, // ✨ AJOUTÉ: Largeur minimale pour le bouton
+        flex: 0, // ✅ AJOUTÉ: Ne pas prendre tout l'espace
+        minWidth: 120, // ✅ AJOUTÉ: Largeur minimale pour le bouton
     },
     navigationButtonRight: {
-        flex: 0, // ✨ AJOUTÉ: Ne pas prendre tout l'espace
-        minWidth: 120, // ✨ AJOUTÉ: Largeur minimale pour le bouton
-        marginLeft: 'auto', // ✨ AJOUTÉ: Pousser le bouton vers la droite
+        flex: 0, // ✅ AJOUTÉ: Ne pas prendre tout l'espace
+        minWidth: 120, // ✅ AJOUTÉ: Largeur minimale pour le bouton
+        marginLeft: 'auto', // ✅ AJOUTÉ: Pousser le bouton vers la droite
     },
     variantModalBackdrop: {
         flex: 1,
@@ -4682,7 +4725,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         fontSize: 14,
     },
-    // ✨ NOUVEAU: Styles pour le champ script amélioré
+    // ✅ NOUVEAU: Styles pour le champ script amélioré
     fieldLabelRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -4710,7 +4753,7 @@ const styles = StyleSheet.create({
         marginTop: 4,
         fontWeight: '500',
     },
-    // ✨ NOUVEAU: Styles pour estimation de coût
+    // ✅ NOUVEAU: Styles pour estimation de coût
     costEstimationContainer: {
         marginTop: 12,
         padding: 16,
@@ -4762,7 +4805,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
         fontStyle: 'italic',
     },
-    // ✨ NOUVEAU: Styles pour chaënage de vidéos
+    // ✅ NOUVEAU: Styles pour chaënage de vidéos
     videoChainingContainer: {
         marginTop: 12,
         gap: 12,
@@ -4797,7 +4840,7 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
     },
-    // ✨ NOUVEAU: Styles pour options avancées
+    // ✅ NOUVEAU: Styles pour options avancées
     advancedOptionsHeader: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -4957,7 +5000,7 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlign: 'right',
     },
-    // ✨ NOUVEAU Phase 3.2: Styles pour le bouton AR
+    // ✅ NOUVEAU Phase 3.2: Styles pour le bouton AR
     arButtonContainer: {
         marginTop: 16,
         marginBottom: 16,
@@ -4979,7 +5022,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: 4,
     },
-    // ✨ NOUVEAU: Styles pour storyboard IA
+    // ✅ NOUVEAU: Styles pour storyboard IA
     storyboardList: {
         marginTop: 12,
         gap: 8,
@@ -5003,7 +5046,7 @@ const styles = StyleSheet.create({
         color: modernColors.text,
         lineHeight: 18,
     },
-    // ✨ NOUVEAU: Styles pour short preview
+    // ✅ NOUVEAU: Styles pour short preview
     shortPreviewContainer: {
         marginTop: 16,
         padding: 16,
@@ -5021,7 +5064,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
         textAlign: 'center',
     },
-    // ✨ NOUVEAU: Styles pour templates narratifs (depuis Wizard)
+    // ✅ NOUVEAU: Styles pour templates narratifs (depuis Wizard)
     templateList: {
         marginTop: 12,
         gap: 12,
@@ -5057,7 +5100,7 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         fontWeight: '500',
     },
-    // ✨ NOUVEAU: Styles pour inline row (depuis Wizard)
+    // ✅ NOUVEAU: Styles pour inline row (depuis Wizard)
     inlineRow: {
         flexDirection: 'row',
         alignItems: 'center',

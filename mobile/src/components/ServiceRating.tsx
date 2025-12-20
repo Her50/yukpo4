@@ -69,7 +69,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
         await onRatingSubmit(rating, comment);
         setComment('');
         setShowReviewFormLocal(false);
-        Alert.alert('Succ├¿s', 'Votre avis a ├®t├® envoy├® avec succ├¿s !');
+        Alert.alert('Succès', 'Votre avis a été envoyé avec succès !');
       }
     } catch (error) {
       console.error('Erreur lors de la soumission de la note:', error);
@@ -114,7 +114,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
   };
 
   const getRatingText = (rating: number) => {
-    const texts = ['', 'Tr├¿s mauvais', 'Mauvais', 'Moyen', 'Bon', 'Excellent'];
+    const texts = ['', 'Très mauvais', 'Mauvais', 'Moyen', 'Bon', 'Excellent'];
     return texts[rating] || '';
   };
 
@@ -242,7 +242,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
               multiline
               numberOfLines={3}
               style={styles.commentInput}
-              placeholder="Partagez votre exp├®rience... (@ pour taguer quelqu'un)"
+              placeholder="Partagez votre expérience... (@ pour taguer quelqu'un)"
             />
 
             <View style={styles.formActions}>
@@ -284,7 +284,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
       {/* Liste des avis r├®cents */}
       {reviews.length > 0 && (
         <View style={styles.reviewsSection}>
-          <Text style={styles.reviewsTitle}>Avis r├®cents</Text>
+          <Text style={styles.reviewsTitle}>Avis récents</Text>
 
           {reviews.slice(0, 3).map((review) => (
             <Card key={review.id} style={styles.reviewCard}>
@@ -336,7 +336,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
                     >
                       <ChatCircle size={14} color={theme.colors.primary} weight="regular" />
                       <Text style={styles.contactButtonText}>
-                        Contacter en priv├®
+                        Contacter en privé
                       </Text>
                     </TouchableOpacity>
                   )}

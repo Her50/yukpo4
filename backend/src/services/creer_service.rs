@@ -5110,26 +5110,42 @@ pub async fn save_autocomplete_combination(
 
     // 1. Extraire vecteur produit depuis champ produits
     // ✅ CORRIGÉ: Réduire le niveau de log (warn → debug) car c'est normal pour certains services sans produits
+    // ✅ NOUVEAU 2025-12-20: Gérer le cas où produits est directement un array (rétrocompatibilité)
     let produits_field = match data_obj.get("produits") {
-        Some(p) => p,
+        Some(p) => {
+            // Si produits est directement un array, le transformer en format attendu
+            if p.is_array() {
+                log::info!("[save_autocomplete_combination] Produits est directement un array, transformation en format structuré");
+                // Créer un objet temporaire avec type_donnee et valeur
+                serde_json::json!({
+                    "type_donnee": "listeproduit",
+                    "valeur": p
+                })
+            } else {
+                p.clone()
+            }
+        },
         None => {
             log::debug!("[save_autocomplete_combination] Pas de champ produits (service sans produits - normal)");
             return Ok(());
         }
     };
+    
+    // Convertir en référence pour les appels suivants
+    let produits_field_ref = &produits_field;
 
-    let type_donnee = produits_field
+    let type_donnee = produits_field_ref
         .get("type_donnee")
         .and_then(|v| v.as_str())
         .unwrap_or("autocomplete");
 
-    let separateur = produits_field
+    let separateur = produits_field_ref
         .get("separateur")
         .and_then(|v| v.as_str())
         .unwrap_or(",");
 
     let mut product_vector: Vec<String> = Vec::new();
-    let mut product_labels: Vec<String> = if let Some(sous_caracs) = produits_field
+    let mut product_labels: Vec<String> = if let Some(sous_caracs) = produits_field_ref
         .get("sous_caracteristiques")
         .and_then(|v| v.as_object())
     {
@@ -5138,12 +5154,12 @@ pub async fn save_autocomplete_combination(
         vec![]
     };
     let mut variation_prix_node: Option<serde_json::Value> =
-        produits_field.get("variation_prix").cloned();
+        produits_field_ref.get("variation_prix").cloned();
     let mut embedded_product_object: Option<serde_json::Value> = None;
 
     // ✅ OPTIMISATION : Extraire product_vector directement depuis les objets JSON
     if type_donnee == "listeproduit" {
-        if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
+        if let Some(valeur_array) = produits_field_ref.get("valeur").and_then(|v| v.as_array()) {
             if let Some(first) = valeur_array.first() {
                 if let Some(obj) = first.as_object() {
                     // Générer product_vector directement depuis l'objet JSON
@@ -5176,13 +5192,13 @@ pub async fn save_autocomplete_combination(
         }
     } else {
         // ✅ RÉTROCOMPATIBILITÉ : Gérer les anciennes chaînes concaténées
-        if let Some(valeur_str) = produits_field.get("valeur").and_then(|v| v.as_str()) {
+        if let Some(valeur_str) = produits_field_ref.get("valeur").and_then(|v| v.as_str()) {
             product_vector = valeur_str
                 .split(separateur)
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect();
-        } else if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
+        } else if let Some(valeur_array) = produits_field_ref.get("valeur").and_then(|v| v.as_array()) {
             // Si c'est un array de chaînes (ancien format)
             if let Some(first_str) = valeur_array.iter().filter_map(|v| v.as_str()).next() {
                 product_vector = first_str

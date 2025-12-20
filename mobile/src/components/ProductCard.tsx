@@ -332,14 +332,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     )}
 
                     {/* GPS et distance */}
-                    {displayGPS && (
+                    {(displayGPS || product.distance) && (
                         <View style={styles.locationContainer}>
                             <SafeIcon name="map-pin" size={14} color="#EF4444" />
                             <Text style={styles.locationText} numberOfLines={1}>
-                                {product.quartier || product.ville || 'Localisation disponible'}
+                                {product.quartier || product.ville || (displayGPS ? 'Localisation disponible' : '')}
                             </Text>
-                            {product.distance && (
-                                <Text style={styles.distanceText}>• {product.distance.toFixed(1)} km</Text>
+                            {product.distance !== undefined && product.distance !== null && (
+                                <Text style={styles.distanceText}>• {typeof product.distance === 'number' ? product.distance.toFixed(1) : product.distance} km</Text>
                             )}
                         </View>
                     )}
@@ -375,10 +375,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     </View>
 
                     {/* Informations prestataire */}
-                    {prestataire && (
+                    {(prestataire || service?.user_id) && (
                         <View style={styles.prestataireInfo}>
                             <View style={styles.prestataireAvatar}>
-                                {(prestataire.avatar || (prestataire as any).avatar_url || (prestataire as any).photo_profil) ? (
+                                {prestataire && (prestataire.avatar || (prestataire as any).avatar_url || (prestataire as any).photo_profil) ? (
                                     <Image 
                                         source={{ uri: prestataire.avatar || (prestataire as any).avatar_url || (prestataire as any).photo_profil }} 
                                         style={styles.avatarImage} 
@@ -389,9 +389,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             </View>
                             <Text style={styles.prestataireName} numberOfLines={1}>
                                 {/* ✅ CORRIGÉ: Extraire le nom réel du prestataire (nom_complet en priorité) */}
-                                {(prestataire as any).nom_complet || prestataire.name || (prestataire as any).nom || `Prestataire ${(prestataire as any).id || ''}`}
+                                {prestataire 
+                                    ? ((prestataire as any).nom_complet || prestataire.name || (prestataire as any).nom || `Prestataire ${(prestataire as any).id || service?.user_id || ''}`)
+                                    : (service?.user_id ? `Prestataire ${service.user_id}` : 'Prestataire')
+                                }
                             </Text>
-                            {prestataire.isOnline && (
+                            {prestataire?.isOnline && (
                                 <View style={styles.onlineIndicator} />
                             )}
                         </View>
@@ -411,7 +414,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         {/* ✅ Bouton Me livrer - Affiché uniquement pour les produits (pas pour les services/prestations) */}
                         {/* Ce bouton permet à l'utilisateur de préciser le lieu de livraison et lancer le matching de coursier */}
                         {/* Le FindCourierModal gère automatiquement la configuration de livraison du produit et le délai de préparation */}
-                        {product.type !== 'prestation_service' && (
+                        {/* Afficher le bouton par défaut SAUF si le type est explicitement 'prestation_service' ou 'service' */}
+                        {product.type !== 'prestation_service' && product.type !== 'service' && (
                             <TouchableOpacity
                                 style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
                                 onPress={() => {

@@ -1374,7 +1374,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     textInput: {
         fontSize: 14, // ✅ Réduit de 15 à 14 pour compacter
-        color: colors.text, // ✅ NOUVEAU: Support thème
+        color: '#0F172A', // ✅ CORRIGÉ: Couleur texte très foncée (#0F172A = slate-900) pour contraste maximum sur fond bleu clair #F0F9FF
         minHeight: 40, // ✅ Ajusté de 35 à 40 pour meilleure utilisabilité
         maxHeight: 70, // ✅ Ajusté de 60 à 70 pour permettre plus de texte
         textAlignVertical: 'top',

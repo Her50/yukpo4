@@ -466,8 +466,18 @@ const ResultatBesoinScreen: React.FC = () => {
 
                             // Calculer la distance si GPS disponible
                             let distance = undefined;
-                            if (userGPS && bestGPS) {
-                                distance = calculateDistance(userGPS, bestGPS);
+                            if (userGPS && bestGPS && location?.coords) {
+                                try {
+                                    // Parser les coordonnées GPS
+                                    const [userLat, userLon] = userGPS.split(',').map(Number);
+                                    const [productLat, productLon] = bestGPS.split(',').map(Number);
+                                    
+                                    if (!isNaN(userLat) && !isNaN(userLon) && !isNaN(productLat) && !isNaN(productLon)) {
+                                        distance = calculateDistance(userLat, userLon, productLat, productLon);
+                                    }
+                                } catch (error) {
+                                    console.warn('⚠️ [ResultatBesoinScreen] Erreur calcul distance produit:', error);
+                                }
                             }
 
                             // ✅ Calculer le score de priorité pour produits en promotion
@@ -577,6 +587,24 @@ const ResultatBesoinScreen: React.FC = () => {
 
             console.log(`📊 ${newPrestataires.size} prestataires chargés sur ${userIds.length} demandés`);
             setPrestataires(newPrestataires);
+            
+            // ✅ Mettre à jour les produits avec les informations des prestataires maintenant chargés
+            setProducts(prevProducts => {
+                return prevProducts.map(product => {
+                    const service = product._service;
+                    if (service && service.user_id) {
+                        const prestataire = newPrestataires.get(service.user_id);
+                        if (prestataire) {
+                            return {
+                                ...product,
+                                _prestataire: prestataire
+                            };
+                        }
+                    }
+                    return product;
+                });
+            });
+            
             setPrestatairesLoaded(true);
         } catch (error) {
             console.error('❌ Erreur lors de la récupération des prestataires:', error);
@@ -1034,7 +1062,22 @@ const ResultatBesoinScreen: React.FC = () => {
     // Composant de rendu pour chaque produit
     const ProductCardComponent = ({ product }: { product: any }) => {
         const service = product._service;
-        const prestataire = product._prestataire || prestataires.get(service.user_id) || null;
+        // ✅ Priorité: prestataire dans le produit > prestataire dans la Map > null
+        const prestataireFromProduct = product._prestataire;
+        const prestataireFromMap = service?.user_id ? prestataires.get(service.user_id) : null;
+        const prestataire = prestataireFromProduct || prestataireFromMap || null;
+
+        // Log de débogage pour vérifier les données
+        if (__DEV__) {
+            console.log('📦 [ProductCardComponent] Produit:', {
+                productName: product.nom || product.name,
+                hasPrestataireInProduct: !!prestataireFromProduct,
+                hasPrestataireInMap: !!prestataireFromMap,
+                prestataireName: prestataire ? ((prestataire as any).nom_complet || prestataire.name) : null,
+                distance: product.distance,
+                serviceUserId: service?.user_id
+            });
+        }
 
         return (
             <ProductCard
@@ -1057,6 +1100,11 @@ const ResultatBesoinScreen: React.FC = () => {
                     setSelectedService(service);
                     setSelectedPrestataire(prestataire);
                     setShowGalleryModal(true);
+                }}
+                onDeliveryPress={() => {
+                    setSelectedProduct(product);
+                    setSelectedService(service);
+                    setSelectedPrestataire(prestataire);
                 }}
             />
         );
@@ -1448,34 +1496,6 @@ const ResultatBesoinScreen: React.FC = () => {
                         })()}
                     </View>
 
-                    {/* Footer informatif */}
-                    <View style={styles.footerContainer}>
-                        <View style={styles.footerCard}>
-                            <View style={styles.cardContent}>
-                                <Text style={styles.footerTitle}>Comment procéder ?</Text>
-                                <View style={styles.stepsContainer}>
-                                    <View style={styles.stepItem}>
-                                        <View style={styles.stepNumber}>
-                                            <Text style={styles.stepNumberText}>1</Text>
-                                        </View>
-                                        <Text style={styles.stepText}>Choisissez le service qui vous convient</Text>
-                                    </View>
-                                    <View style={styles.stepItem}>
-                                        <View style={styles.stepNumber}>
-                                            <Text style={styles.stepNumberText}>2</Text>
-                                        </View>
-                                        <Text style={styles.stepText}>Contactez le prestataire via le bouton</Text>
-                                    </View>
-                                    <View style={styles.stepItem}>
-                                        <View style={styles.stepNumber}>
-                                            <Text style={styles.stepNumberText}>3</Text>
-                                        </View>
-                                        <Text style={styles.stepText}>Échangez et finalisez votre projet</Text>
-                                    </View>
-                                </View>
-                            </View>
-                        </View>
-                    </View>
                 </>
             )}
 
@@ -1815,48 +1835,6 @@ const styles = StyleSheet.create({
     },
     actionButtonLabel: {
         fontSize: 12,
-    },
-    footerContainer: {
-        padding: 16,
-    },
-    footerCard: {
-        backgroundColor: '#E3F2FD',
-        borderColor: theme.colors.primary,
-        borderWidth: 1,
-    },
-    footerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 16,
-        color: theme.colors.primary,
-    },
-    stepsContainer: {
-        flexDirection: 'column',
-    },
-    stepItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    stepNumber: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: theme.colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-    },
-    stepNumberText: {
-        color: 'white',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    stepText: {
-        flex: 1,
-        fontSize: 14,
-        color: theme.colors.primary,
     },
     // Styles pour les filtres
     filtersContainer: {

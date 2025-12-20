@@ -915,22 +915,38 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 }
 
                 // 🔧 ÉTAPE 4 : Ajouter les produits aux données de service
+                // ✅ CORRIGÉ 2025-12-20: Transformer les produits au format attendu par le backend
+                // Le backend attend: produits.valeur = [array] avec type_donnee = "listeproduit"
+                // ProductManagerMobile crée: produits = [{ nom, prix, devise, description }]
                 if (products.length > 0) {
-                  finalServiceData.produits = products;
-                  console.log('[FormulaireYukpoIntelligentScreen] Produits ajoutés:', products);
+                  // Transformer le format ProductManagerMobile vers le format backend
+                  const produitsFormates = products.map(p => ({
+                    nom_produit: p.nom,
+                    nom: p.nom, // Double pour compatibilité
+                    prix: p.prix,
+                    devise: p.devise,
+                    description: p.description || ''
+                  }));
+                  
+                  finalServiceData.produits = {
+                    type_donnee: 'listeproduit',
+                    valeur: produitsFormates,
+                    separateur: ','
+                  };
+                  console.log('[FormulaireYukpoIntelligentScreen] Produits formatés et ajoutés:', finalServiceData.produits);
                 }
 
                 // 🔧 ÉTAPE 5 : Créer le service avec les données structurées par l'IA
                 console.log('[FormulaireYukpoIntelligentScreen] Transmission tokens IA externe au backend:', tokensIAExterne);
 
-                const response = await fetch('https://yukpomnang.onrender.com/api/services', {
+                const response = await fetch('https://yukpomnang.onrender.com/api/services/create', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user?.token || ''}`
                   },
                   body: JSON.stringify({
-                    ...finalServiceData,
+                    data: finalServiceData,
                     tokens_ia_externe: tokensIAExterne // Transmettre les tokens IA externes
                   })
                 });

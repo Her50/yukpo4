@@ -218,3 +218,4 @@ Le composant `ProductCommentsSection` est **très complet** et proche du niveau 
 
 **Verdict : Le composant est à ~85% du niveau Facebook et est prêt pour la production. Les fonctionnalités manquantes sont des "nice-to-have" plutôt que des fonctionnalités critiques.**
 
+

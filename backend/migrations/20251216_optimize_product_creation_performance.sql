@@ -125,3 +125,4 @@ COMMENT ON INDEX idx_services_user_id_created_at_desc_optimized_v2 IS
 COMMENT ON MATERIALIZED VIEW services_search_optimized_v2 IS 
 'Vue matérialisée optimisée utilisant autocomplete_characteristics au lieu de extract_all_product_text() - 10-20x plus rapide';
 
+

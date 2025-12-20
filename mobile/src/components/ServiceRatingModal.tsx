@@ -33,7 +33,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
 
     const handleSubmit = async () => {
         if (rating === 0) {
-            Alert.alert('Note requise', 'Veuillez s├®lectionner une note avant de soumettre votre avis.');
+            Alert.alert('Note requise', 'Veuillez sélectionner une note avant de soumettre votre avis.');
             return;
         }
 
@@ -42,18 +42,18 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
             const success = await onSubmit(rating, comment);
             if (success) {
                 Alert.alert(
-                    'Avis envoy├®',
-                    'Merci pour votre avis ! Il sera visible apr├¿s validation.',
+                    'Avis envoyé',
+                    'Merci pour votre avis ! Il sera visible après validation.',
                     [{ text: 'OK', onPress: onClose }]
                 );
                 // Reset form
                 setRating(0);
                 setComment('');
             } else {
-                Alert.alert('Erreur', 'Impossible d\'envoyer votre avis. Veuillez r├®essayer.');
+                Alert.alert('Erreur', 'Impossible d\'envoyer votre avis. Veuillez réessayer.');
             }
         } catch (error) {
-            console.error('ÔØî [ServiceRatingModal] Erreur soumission:', error);
+            console.error('⚠️ [ServiceRatingModal] Erreur soumission:', error);
             Alert.alert('Erreur', 'Une erreur est survenue lors de l\'envoi de votre avis.');
         } finally {
             setIsSubmitting(false);
@@ -80,7 +80,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                             styles.star,
                             star <= rating && styles.starActive
                         ]}>
-                            {star <= rating ? 'Ô¡É' : 'Ôÿå'}
+                            {star <= rating ? '⭐' : '☆'}
                         </Text>
                     </TouchableOpacity>
                 ))}
@@ -90,12 +90,12 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
 
     const getRatingText = () => {
         switch (rating) {
-            case 1: return 'Tr├¿s d├®├ºu';
-            case 2: return 'D├®├ºu';
+            case 1: return 'Très déçu';
+            case 2: return 'Déçu';
             case 3: return 'Moyen';
             case 4: return 'Satisfait';
-            case 5: return 'Tr├¿s satisfait';
-            default: return 'S├®lectionnez une note';
+            case 5: return 'Très satisfait';
+            default: return 'Sélectionnez une note';
         }
     };
 
@@ -136,7 +136,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                     {/* Service info */}
                     <View style={styles.serviceInfo}>
                         <Text style={styles.serviceTitle}>{serviceTitle}</Text>
-                        <Text style={styles.serviceSubtitle}>Partagez votre exp├®rience</Text>
+                        <Text style={styles.serviceSubtitle}>Partagez votre expérience</Text>
                     </View>
 
                     {/* Rating section */}
@@ -148,7 +148,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                             Votre note <Text style={styles.requiredStar}>*</Text>
                         </Text>
                         <Text style={styles.ratingInstruction}>
-                            Cliquez sur les ├®toiles ci-dessous pour noter
+                            Cliquez sur les étoiles ci-dessous pour noter
                         </Text>
                         {renderStars()}
                         <Text style={[
@@ -161,7 +161,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                             <View style={styles.warningBox}>
                                 <SafeIcon name="alert-circle" size={16} color="#F59E0B" />
                                 <Text style={styles.warningText}>
-                                    N'oubliez pas de s├®lectionner une note !
+                                    N'oubliez pas de sélectionner une note !
                                 </Text>
                             </View>
                         )}
@@ -174,7 +174,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                             style={styles.commentInput}
                             value={comment}
                             onChangeText={setComment}
-                            placeholder="D├®crivez votre exp├®rience avec ce service..."
+                            placeholder="Décrivez votre expérience avec ce service..."
                             placeholderTextColor={modernColors.textSecondary}
                             multiline
                             numberOfLines={4}
@@ -205,8 +205,8 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                         ]}
                         onPress={rating === 0 ? () => {
                             Alert.alert(
-                                'Ô¡É Note requise',
-                                'Veuillez d\'abord s├®lectionner une note en cliquant sur les ├®toiles ci-dessus.',
+                                '⭐ Note requise',
+                                'Veuillez d\'abord sélectionner une note en cliquant sur les étoiles ci-dessus.',
                                 [{ text: 'Compris' }]
                             );
                         } : handleSubmit}
@@ -225,7 +225,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                                 <>
                                     <SafeIcon name="star" size={20} color="#6B7280" style={styles.buttonIcon} />
                                     <Text style={styles.submitButtonTextLocked}>
-                                        Cliquez sur les ├®toiles d'abord
+                                        Cliquez sur les étoiles d'abord
                                     </Text>
                                     <SafeIcon name="arrow-up" size={20} color="#6B7280" style={styles.buttonIcon} />
                                 </>
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
     },
     submitButton: {
-        // Style g├®r├® par le gradient
+        // Style géré par le gradient
     },
     submitButtonLocked: {
         opacity: 1,

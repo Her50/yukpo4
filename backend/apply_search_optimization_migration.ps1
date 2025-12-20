@@ -84,3 +84,4 @@ ORDER BY tablename, indexname;
     exit 1
 }
 
+

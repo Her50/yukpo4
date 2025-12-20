@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
 use std::sync::Arc;
+use crate::services::creer_service::save_autocomplete_combination;
 
 #[derive(Debug, Deserialize)]
 pub struct AddProductRequest {
@@ -194,13 +195,33 @@ pub async fn add_product_to_service(
                 .await
             })
         },
-        3, // 3 tentatives max
+        5, // ✅ AUGMENTÉ 2025-12-20: 5 tentatives max pour plus de robustesse avec Render DB instable
     )
     .await;
     
     match update_result {
         Ok(_) => {
             log_info(&format!("[add_product_to_service] ✅ Produit ajouté au service {} (index: {})", service_id, product_index));
+            
+            // ✅ CRITIQUE 2025-12-20: Mettre à jour autocomplete_characteristics pour que le produit soit trouvable dans la recherche
+            // La recherche utilise autocomplete_characteristics, donc si on ne met pas à jour cette table, le produit ne sera pas trouvé !
+            let pool_for_autocomplete = state.pg.clone();
+            let service_data_for_autocomplete = service_data.clone(); // service_data contient déjà le nouveau produit
+            
+            // Appeler save_autocomplete_combination en arrière-plan (non-bloquant)
+            tokio::spawn(async move {
+                // Utiliser service_data directement car il contient déjà le nouveau produit ajouté
+                match save_autocomplete_combination(&pool_for_autocomplete, service_id, &service_data_for_autocomplete).await {
+                    Ok(_) => {
+                        log_info(&format!("[add_product_to_service] ✅ autocomplete_characteristics mis à jour pour service {} (produit indexé pour recherche)", service_id));
+                    }
+                    Err(e) => {
+                        log_error(&format!("[add_product_to_service] ⚠️ Erreur mise à jour autocomplete_characteristics (produit toujours dans services.data mais non indexé): {}", e));
+                        // Ne pas faire échouer la requête si autocomplete échoue, le produit est déjà dans services.data
+                        // MAIS il ne sera pas trouvable dans la recherche jusqu'à ce que autocomplete soit mis à jour
+                    }
+                }
+            });
             
             // ✅ Créer notification
             let _ = crate::services::notification_service::create_notification(

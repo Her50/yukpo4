@@ -76,24 +76,29 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
 
     const connectWebSocket = useCallback(() => {
         // ✅ CORRIGÉ: Vérifier que les IDs sont valides avant de se connecter
-        if (!serviceId || typeof serviceId !== 'number' || serviceId <= 0) {
-            console.error('❌ [useWebSocketChat] serviceId invalide:', serviceId);
+        // ✅ CORRIGÉ 2025-12-20: Conversion explicite en number pour gérer les cas où userId peut être string
+        const serviceIdNum = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
+        const prestataireIdNum = typeof prestataireId === 'string' ? parseInt(prestataireId.toString(), 10) : prestataireId;
+        const userIdNum = typeof userId === 'string' ? parseInt(userId.toString(), 10) : userId;
+        
+        if (!serviceIdNum || typeof serviceIdNum !== 'number' || isNaN(serviceIdNum) || serviceIdNum <= 0) {
+            console.error('❌ [useWebSocketChat] serviceId invalide:', serviceId, '(type:', typeof serviceId, ')');
             return;
         }
-        if (!prestataireId || typeof prestataireId !== 'number' || prestataireId <= 0) {
-            console.error('❌ [useWebSocketChat] prestataireId invalide:', prestataireId);
+        if (!prestataireIdNum || typeof prestataireIdNum !== 'number' || isNaN(prestataireIdNum) || prestataireIdNum <= 0) {
+            console.error('❌ [useWebSocketChat] prestataireId invalide:', prestataireId, '(type:', typeof prestataireId, ')');
             return;
         }
-        if (!userId || typeof userId !== 'number' || userId <= 0) {
-            console.error('❌ [useWebSocketChat] userId invalide:', userId);
+        if (!userIdNum || typeof userIdNum !== 'number' || isNaN(userIdNum) || userIdNum <= 0) {
+            console.error('❌ [useWebSocketChat] userId invalide:', userId, '(type:', typeof userId, ')');
             return;
         }
 
         try {
             console.log('🔌 [useWebSocketChat] Connexion WebSocket...');
 
-            // ✅ CORRIGÉ: Utilise la configuration centralisée
-            const wsUrl = WS_ENDPOINTS.CHAT(serviceId, prestataireId, userId);
+            // ✅ CORRIGÉ: Utilise la configuration centralisée avec valeurs converties en number
+            const wsUrl = WS_ENDPOINTS.CHAT(serviceIdNum, prestataireIdNum, userIdNum);
             wsRef.current = new WebSocket(wsUrl);
 
             wsRef.current.onopen = () => {
@@ -107,9 +112,9 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                         if (wsRef.current.readyState === WebSocket.OPEN) {
                             wsRef.current.send(JSON.stringify({
                                 type: 'auth',
-                                userId,
-                                serviceId,
-                                prestataireId
+                                userId: userIdNum,
+                                serviceId: serviceIdNum,
+                                prestataireId: prestataireIdNum
                             }));
                         } else {
                             console.warn(`⚠️ [useWebSocketChat] WebSocket non ouvert pour auth (état: ${wsRef.current.readyState})`);

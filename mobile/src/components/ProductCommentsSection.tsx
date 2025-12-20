@@ -8,6 +8,7 @@ import {
     Modal,
     Platform,
     RefreshControl,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -190,6 +191,18 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const [mentionQuery, setMentionQuery] = useState('');
     const [showMentionPicker, setShowMentionPicker] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+    // ✅ NOUVEAU: Liste d'émojis populaires pour le sélecteur
+    const popularEmojis = [
+        '😊', '😂', '❤️', '👍', '👎', '😍', '🤔', '😢', '😮', '🔥',
+        '💯', '🎉', '👏', '🙏', '💪', '😎', '🤗', '😴', '🤩', '🥳',
+        '😋', '😇', '🥰', '😘', '😃', '😄', '😁', '😆', '😅', '🤣',
+        '☺️', '🙂', '🙃', '😉', '😌', '😏', '😒', '😞', '😔', '😟',
+        '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😭', '😤',
+        '😠', '😡', '🤯', '😳', '😱', '😨', '😰', '😥', '🤭', '🤫',
+        '🤥', '😶', '😐', '😑', '🙄', '😯', '😦', '😧', '😲', '🤐',
+    ];
 
     const isFullMode = mode === 'full' || modalVisible;
 
@@ -230,6 +243,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         setSelectedMentions([]);
         setMentionQuery('');
         setShowMentionPicker(false);
+        setShowEmojiPicker(false);
     }, []);
 
     const handleSubmitComment = useCallback(async () => {
@@ -369,12 +383,19 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             if (spaceIndex === -1) {
                 setMentionQuery(textAfterAt);
                 setShowMentionPicker(true);
+                setShowEmojiPicker(false); // Fermer le picker emoji quand on ouvre le picker mention
             } else {
                 setShowMentionPicker(false);
             }
         } else {
             setShowMentionPicker(false);
         }
+    }, []);
+
+    // ✅ NOUVEAU: Fonction pour insérer un emoji dans le texte
+    const handleEmojiClick = useCallback((emoji: string) => {
+        setComposerContent(prev => prev + emoji);
+        setShowEmojiPicker(false);
     }, []);
 
     const insertMention = useCallback(
@@ -573,6 +594,31 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         ],
     );
 
+    // ✅ NOUVEAU: Fonction pour afficher le sélecteur d'émojis
+    const renderEmojiPicker = useCallback(() => {
+        if (!showEmojiPicker) return null;
+
+        return (
+            <View style={styles.emojiPickerContainer}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.emojiPickerScroll}
+                >
+                    {popularEmojis.map((emoji, index) => (
+                        <TouchableOpacity
+                            key={`emoji-${index}`}
+                            style={styles.emojiPickerButton}
+                            onPress={() => handleEmojiClick(emoji)}
+                        >
+                            <Text style={styles.emojiPickerText}>{emoji}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+        );
+    }, [showEmojiPicker, popularEmojis, handleEmojiClick]);
+
     const renderComposer = () => (
         <View style={styles.composerContainer}>
             {(replyTarget || editingTarget) && (
@@ -610,20 +656,38 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 </View>
             )}
 
+            {/* ✅ NOUVEAU: Sélecteur d'émojis */}
+            {renderEmojiPicker()}
+
             <View style={styles.composerInputContainer}>
-                <TextInput
-                    value={composerContent}
-                    onChangeText={handleComposerChange}
-                    multiline
-                    placeholder={
-                        replyTarget
-                            ? `Répondre à ${replyTarget.user_name}...`
-                            : 'Partagez votre expérience...'
-                    }
-                    placeholderTextColor={modernColors.textSecondary}
-                    style={styles.composerInput}
-                    maxLength={1000}
-                />
+                <View style={styles.composerInputRow}>
+                    <TextInput
+                        value={composerContent}
+                        onChangeText={handleComposerChange}
+                        multiline
+                        placeholder={
+                            replyTarget
+                                ? `Répondre à ${replyTarget.user_name}...`
+                                : 'Partagez votre expérience...'
+                        }
+                        placeholderTextColor={modernColors.textSecondary}
+                        style={styles.composerInput}
+                        maxLength={1000}
+                    />
+                    <TouchableOpacity
+                        style={styles.emojiToggleButton}
+                        onPress={() => {
+                            setShowEmojiPicker(!showEmojiPicker);
+                            setShowMentionPicker(false);
+                        }}
+                    >
+                        <SafeIcon
+                            name="smile"
+                            size={22}
+                            color={showEmojiPicker ? modernColors.primary : modernColors.textSecondary}
+                        />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {selectedMentions.length > 0 && (
@@ -1198,13 +1262,49 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         backgroundColor: '#FFFFFF',
     },
+    composerInputRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        gap: 8,
+    },
     composerInput: {
+        flex: 1,
         paddingHorizontal: 16,
         paddingVertical: 12,
         fontSize: 14,
         color: modernColors.text,
         minHeight: 80,
         textAlignVertical: 'top',
+    },
+    emojiToggleButton: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: modernColors.surfaceVariant,
+        marginBottom: 8,
+    },
+    emojiPickerContainer: {
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 12,
+        paddingVertical: 8,
+        maxHeight: 120,
+    },
+    emojiPickerScroll: {
+        paddingHorizontal: 8,
+        gap: 4,
+    },
+    emojiPickerButton: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: '#FFFFFF',
+        marginHorizontal: 2,
+        minWidth: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emojiPickerText: {
+        fontSize: 24,
     },
     selectedMentionsRow: {
         flexDirection: 'row',
