@@ -71,12 +71,12 @@ interface ProductCommentsSectionProps {
 }
 
 const REACTION_OPTIONS = [
-    { type: 'like', label: 'J'aime', emoji: '👍' },
-    { type: 'love', label: 'J'adore', emoji: '❤️' },
+    { type: 'like', label: "J'aime", emoji: '👍' },
+    { type: 'love', label: "J'adore", emoji: '❤️' },
     { type: 'insightful', label: 'Pertinent', emoji: '💡' },
     { type: 'support', label: 'Soutien', emoji: '🤝' },
     { type: 'funny', label: 'Drôle', emoji: '😄' },
-    { type: 'angry', label: 'Pas d'accord', emoji: '😠' },
+    { type: 'angry', label: "Pas d'accord", emoji: '😠' },
 ];
 
 const formatDate = (iso: string): string => {
