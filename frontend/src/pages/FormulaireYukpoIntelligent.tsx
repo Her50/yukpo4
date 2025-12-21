@@ -19,6 +19,8 @@ import { API_ENDPOINTS, buildUrl } from '../config/api.config';
 import PaymentMethodSelector from '@/components/PaymentMethodSelector';
 import BrandingManager from '@/components/ui/BrandingManager';
 import ProductManager from '@/components/ui/ProductManager';
+import MediaUploadManager from '@/components/ui/MediaUploadManager';
+import LocationSelector, { LocationObject } from '@/components/ui/LocationSelector';
 
 export default function FormulaireDemandeOuService() {
   const location = useLocation();
@@ -39,6 +41,14 @@ export default function FormulaireDemandeOuService() {
   const [chargement, setChargement] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
+  const [promotion, setPromotion] = useState({
+    active: false,
+    type: 'reduction' as 'reduction' | 'offre' | 'bon_plan' | 'flash',
+    valeur: '',
+    description: '',
+    date_fin: '',
+    conditions: '',
+  });
   const [mediaFiles, setMediaFiles] = useState({
     images: mediaData.base64_image || [],
     audios: mediaData.audio_base64 || [],
@@ -108,6 +118,22 @@ export default function FormulaireDemandeOuService() {
               ...prev,
               images: Array.isArray(serviceData.base64_image) ? serviceData.base64_image : [serviceData.base64_image]
             }));
+          }
+
+          // ✅ NOUVEAU: Pré-remplir la promotion si disponible
+          if (serviceData.data?.promotion) {
+            const promoData = serviceData.data.promotion.valeur || serviceData.data.promotion;
+            if (promoData && typeof promoData === 'object') {
+              setPromotion({
+                active: promoData.active || false,
+                type: promoData.type || 'reduction',
+                valeur: promoData.valeur || '',
+                description: promoData.description || '',
+                date_fin: promoData.date_fin || '',
+                conditions: promoData.conditions || '',
+              });
+              console.log('[FormulaireYukpoIntelligent] ✅ Promotion chargée:', promoData);
+            }
           }
 
         } catch (error) {
@@ -285,6 +311,23 @@ export default function FormulaireDemandeOuService() {
           console.log('[FormulaireYukpoIntelligent] ✅ Mode de paiement ajouté (modification):', paymentMethod);
         }
 
+        // ✅ NOUVEAU: Ajouter la promotion si activée
+        if (promotion.active) {
+          finalServiceData.promotion = {
+            type_donnee: 'object',
+            valeur: {
+              active: true,
+              type: promotion.type,
+              valeur: promotion.valeur,
+              description: promotion.description,
+              date_fin: promotion.date_fin || null,
+              conditions: promotion.conditions || null,
+            },
+            origine_champs: 'formulaire'
+          };
+          console.log('[FormulaireYukpoIntelligent] ✅ Promotion ajoutée (modification):', promotion);
+        }
+
         // Préparer le payload de modification
         const updatePayload = {
           user_id: parseInt(user?.id || '0', 10),
@@ -329,17 +372,171 @@ export default function FormulaireDemandeOuService() {
         saved: `${((1 - compressedMedia.totalSizeAfter / compressedMedia.totalSizeBefore) * 100).toFixed(1)}%`
       });
 
-      // Construire les données brutes pour l'IA avec médias compressés
+      // ✅ NOUVEAU: Upload préalable vers CDN avec cloudUploadService
+      console.log('[FormulaireYukpoIntelligent] 📤 Upload médias vers CDN...');
+      const { cloudUploadService } = await import('../services/cloudUploadService');
+      
+      // Compteur pour suivre la progression globale
+      let totalMedia = compressedMedia.images.length + compressedMedia.videos.length + 
+                      (compressedMedia.audios?.length || 0) + 
+                      (compressedMedia.logo?.length || 0) + 
+                      (compressedMedia.banner?.length || 0);
+      let uploadedCount = 0;
+
+      const updateProgress = (type: string) => {
+        uploadedCount++;
+        const progress = Math.round((uploadedCount / totalMedia) * 100);
+        console.log(`[FormulaireYukpoIntelligent] 📤 Upload ${type}: ${uploadedCount}/${totalMedia} (${progress}%)`);
+        // Optionnel: Afficher une notification de progression
+        if (uploadedCount % 5 === 0 || uploadedCount === totalMedia) {
+          toast.loading(`Upload médias: ${uploadedCount}/${totalMedia} (${progress}%)`, { id: 'upload-progress' });
+        }
+      };
+
+      // Upload images vers CDN avec progression
+      const uploadedImages = await Promise.all(
+        compressedMedia.images.map(async (image, index) => {
+          try {
+            const result = await cloudUploadService.uploadToCloud(
+              image, 
+              'image',
+              undefined,
+              (progress) => {
+                console.log(`[FormulaireYukpoIntelligent] Image ${index + 1}: ${progress.percentage.toFixed(0)}%`);
+              }
+            );
+            updateProgress('images');
+            return result.success && result.url ? result.url : image; // Fallback base64
+          } catch (error) {
+            console.warn('[FormulaireYukpoIntelligent] Erreur upload image, fallback base64:', error);
+            updateProgress('images');
+            return image; // Fallback base64
+          }
+        })
+      );
+
+      // Upload vidéos vers CDN avec progression
+      const uploadedVideos = await Promise.all(
+        compressedMedia.videos.map(async (video, index) => {
+          try {
+            const result = await cloudUploadService.uploadToCloud(
+              video, 
+              'video',
+              undefined,
+              (progress) => {
+                console.log(`[FormulaireYukpoIntelligent] Vidéo ${index + 1}: ${progress.percentage.toFixed(0)}%`);
+              }
+            );
+            updateProgress('videos');
+            return result.success && result.url ? result.url : video; // Fallback base64
+          } catch (error) {
+            console.warn('[FormulaireYukpoIntelligent] Erreur upload vidéo, fallback base64:', error);
+            updateProgress('videos');
+            return video; // Fallback base64
+          }
+        })
+      );
+
+      // Upload audios vers CDN avec progression
+      const uploadedAudios = await Promise.all(
+        (compressedMedia.audios || []).map(async (audio, index) => {
+          try {
+            const result = await cloudUploadService.uploadToCloud(
+              audio, 
+              'audio',
+              undefined,
+              (progress) => {
+                console.log(`[FormulaireYukpoIntelligent] Audio ${index + 1}: ${progress.percentage.toFixed(0)}%`);
+              }
+            );
+            updateProgress('audios');
+            return result.success && result.url ? result.url : audio; // Fallback base64
+          } catch (error) {
+            console.warn('[FormulaireYukpoIntelligent] Erreur upload audio, fallback base64:', error);
+            updateProgress('audios');
+            return audio; // Fallback base64
+          }
+        })
+      );
+
+      // Upload logo et banner vers CDN avec progression
+      const uploadedLogo = await Promise.all(
+        (compressedMedia.logo || []).map(async (logo, index) => {
+          try {
+            const result = await cloudUploadService.uploadToCloud(
+              logo, 
+              'logo',
+              undefined,
+              (progress) => {
+                console.log(`[FormulaireYukpoIntelligent] Logo ${index + 1}: ${progress.percentage.toFixed(0)}%`);
+              }
+            );
+            updateProgress('logo');
+            return result.success && result.url ? result.url : logo; // Fallback base64
+          } catch (error) {
+            console.warn('[FormulaireYukpoIntelligent] Erreur upload logo, fallback base64:', error);
+            updateProgress('logo');
+            return logo; // Fallback base64
+          }
+        })
+      );
+
+      const uploadedBanner = await Promise.all(
+        (compressedMedia.banner || []).map(async (banner, index) => {
+          try {
+            const result = await cloudUploadService.uploadToCloud(
+              banner, 
+              'banner',
+              undefined,
+              (progress) => {
+                console.log(`[FormulaireYukpoIntelligent] Banner ${index + 1}: ${progress.percentage.toFixed(0)}%`);
+              }
+            );
+            updateProgress('banner');
+            return result.success && result.url ? result.url : banner; // Fallback base64
+          } catch (error) {
+            console.warn('[FormulaireYukpoIntelligent] Erreur upload banner, fallback base64:', error);
+            updateProgress('banner');
+            return banner; // Fallback base64
+          }
+        })
+      );
+
+      // Fermer la notification de progression
+      toast.dismiss('upload-progress');
+
+      const cdnCount = uploadedImages.filter(url => url.startsWith('http')).length +
+                      uploadedVideos.filter(url => url.startsWith('http')).length +
+                      uploadedAudios.filter(url => url.startsWith('http')).length +
+                      uploadedLogo.filter(url => url.startsWith('http')).length +
+                      uploadedBanner.filter(url => url.startsWith('http')).length;
+
+      console.log('[FormulaireYukpoIntelligent] ✅ Médias uploadés vers CDN:', {
+        total: totalMedia,
+        cdn: cdnCount,
+        fallback: totalMedia - cdnCount,
+        images: uploadedImages.filter(url => url.startsWith('http')).length,
+        videos: uploadedVideos.filter(url => url.startsWith('http')).length,
+        audios: uploadedAudios.filter(url => url.startsWith('http')).length,
+        logo: uploadedLogo.filter(url => url.startsWith('http')).length,
+        banner: uploadedBanner.filter(url => url.startsWith('http')).length,
+      });
+
+      if (cdnCount > 0) {
+        toast.success(`${cdnCount} média(x) uploadé(s) vers CDN avec succès`);
+      }
+
+      // Construire les données brutes pour l'IA avec médias uploadés (URLs CDN ou base64 fallback)
       const donneesService = {
         texte: composants.map(c => `${c.nomChamp}: ${valeursFormulaire[c.nomChamp] || ''}`).join('\n'),
         intention: 'creation_service',
-        base64_image: compressedMedia.images,
-        audio_base64: compressedMedia.audios,
-        video_base64: compressedMedia.videos,
-        doc_base64: compressedMedia.documents,
-        excel_base64: compressedMedia.excel,
-        logo: compressedMedia.logo,
-        banner: compressedMedia.banner
+        base64_image: uploadedImages, // URLs CDN ou base64
+        audio_base64: uploadedAudios.length > 0 ? uploadedAudios : undefined,
+        video_base64: uploadedVideos.length > 0 ? uploadedVideos : undefined,
+        doc_base64: compressedMedia.documents, // Documents restent en base64
+        excel_base64: compressedMedia.excel, // Excel reste en base64
+        logo: uploadedLogo.length > 0 ? uploadedLogo : undefined,
+        banner: uploadedBanner.length > 0 ? uploadedBanner : undefined
       };
 
       console.log('[FormulaireYukpoIntelligent] Données brutes pour génération IA (COMPRESSÉES)');
@@ -479,6 +676,23 @@ export default function FormulaireDemandeOuService() {
           origine_champs: 'formulaire'
         };
         console.log('[FormulaireYukpoIntelligent] ✅ Mode de paiement ajouté:', paymentMethod);
+      }
+
+      // ✅ NOUVEAU: Ajouter la promotion si activée
+      if (promotion.active) {
+        serviceData.promotion = {
+          type_donnee: 'object',
+          valeur: {
+            active: true,
+            type: promotion.type,
+            valeur: promotion.valeur,
+            description: promotion.description,
+            date_fin: promotion.date_fin || null,
+            conditions: promotion.conditions || null,
+          },
+          origine_champs: 'formulaire'
+        };
+        console.log('[FormulaireYukpoIntelligent] ✅ Promotion ajoutée:', promotion);
       }
 
       // 🔧 ÉTAPE 5 : Créer le service (en mode création uniquement)
@@ -842,6 +1056,45 @@ export default function FormulaireDemandeOuService() {
               </h3>
 
               <div className="space-y-2">
+                {/* Zone d'intervention avec LocationSelector */}
+                <div className="bg-gray-50 rounded p-2 max-w-sm mx-auto">
+                  <LocationSelector
+                    label="Zone d'intervention"
+                    value={valeursFormulaire.zone_intervention || ''}
+                    onSelect={(location: LocationObject) => {
+                      handleFieldChange('zone_intervention', location.raw || location.place_name);
+                    }}
+                    placeholder="Rechercher une ville, quartier ou pays..."
+                    scope="all"
+                    enrichWithBackend={true}
+                    readonly={mode === 'readonly'}
+                    className="mb-2"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    💡 Indiquez où vous proposez vos services (ville, quartier, région)
+                  </p>
+                </div>
+
+                {/* Adresse (optionnel) */}
+                <div className="bg-gray-50 rounded p-2 max-w-sm mx-auto">
+                  <LocationSelector
+                    label="Adresse (optionnel)"
+                    value={valeursFormulaire.adresse || ''}
+                    onSelect={(location: LocationObject) => {
+                      handleFieldChange('adresse', location.raw || location.place_name);
+                    }}
+                    placeholder="Rechercher une adresse précise..."
+                    scope="point"
+                    enrichWithBackend={true}
+                    readonly={mode === 'readonly'}
+                    className="mb-2"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    💡 Adresse précise de votre établissement (si applicable)
+                  </p>
+                </div>
+
+                {/* Position GPS fixe */}
                 <div className="bg-gray-50 rounded p-2 max-w-sm mx-auto">
                   <label className="text-xs font-bold text-gray-700 mb-1 block">
                     🎯 Position GPS fixe (optionnel)
@@ -910,6 +1163,33 @@ export default function FormulaireDemandeOuService() {
               </div>
             </div>
 
+            {/* Bloc Médias du Service */}
+            <div className="p-2 space-y-2">
+              <h3 className="font-bold text-sm text-center text-white bg-gradient-to-r from-blue-500 to-cyan-500 rounded py-1 mb-1 max-w-sm mx-auto">
+                📸 Médias du Service
+              </h3>
+              <div className="space-y-2">
+                <div className="max-w-sm mx-auto">
+                  <MediaUploadManager
+                    images={mediaFiles.images || []}
+                    videos={mediaFiles.videos || []}
+                    onImagesChange={(images) => handleMediaChange({ ...mediaFiles, images })}
+                    onVideosChange={(videos) => handleMediaChange({ ...mediaFiles, videos })}
+                    readonly={mode === 'readonly'}
+                    maxImages={10}
+                    maxVideos={3}
+                    uploadToCDN={true}
+                    onUploadProgress={(type, completed, total) => {
+                      console.log(`[FormulaireYukpoIntelligent] Upload ${type}: ${completed}/${total}`);
+                    }}
+                  />
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    💡 Ajoutez des photos et vidéos pour illustrer votre service et inspirer confiance
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Bloc Identité Visuelle */}
             <div className="p-2 space-y-2">
               <h3 className="font-bold text-sm text-center text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded py-1 mb-1 max-w-sm mx-auto">
@@ -924,6 +1204,109 @@ export default function FormulaireDemandeOuService() {
                     onBannerChange={(banner) => handleMediaChange({ ...mediaFiles, banner })}
                     readonly={mode === 'readonly'}
                   />
+                </div>
+              </div>
+            </div>
+
+            {/* Bloc Promotion et Offres */}
+            <div className="p-2 space-y-2">
+              <h3 className="font-bold text-sm text-center text-white bg-gradient-to-r from-yellow-500 to-orange-500 rounded py-1 mb-1 max-w-sm mx-auto">
+                🎉 Promotion et Offres
+              </h3>
+              <div className="space-y-2">
+                <div className="bg-gray-50 rounded p-2 max-w-sm mx-auto">
+                  <label className="flex items-center gap-2 mb-3">
+                    <input
+                      type="checkbox"
+                      checked={promotion.active}
+                      onChange={(e) => setPromotion(prev => ({ ...prev, active: e.target.checked }))}
+                      disabled={mode === 'readonly'}
+                      className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Activer une promotion pour ce service
+                    </span>
+                  </label>
+
+                  {promotion.active && (
+                    <div className="space-y-3 mt-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          Type de promotion
+                        </label>
+                        <select
+                          value={promotion.type}
+                          onChange={(e) => setPromotion(prev => ({ ...prev, type: e.target.value as any }))}
+                          disabled={mode === 'readonly'}
+                          className="w-full text-xs h-8 px-2 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
+                        >
+                          <option value="reduction">Réduction</option>
+                          <option value="offre">Offre spéciale</option>
+                          <option value="bon_plan">Bon plan</option>
+                          <option value="flash">Offre flash</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          Valeur de la promotion
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ex: 20%, -5000 FCFA, 1+1 gratuit"
+                          value={promotion.valeur}
+                          onChange={(e) => setPromotion(prev => ({ ...prev, valeur: e.target.value }))}
+                          disabled={mode === 'readonly'}
+                          className="w-full text-xs h-8 px-2 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          Description
+                        </label>
+                        <textarea
+                          placeholder="Décrivez votre promotion..."
+                          value={promotion.description}
+                          onChange={(e) => setPromotion(prev => ({ ...prev, description: e.target.value }))}
+                          disabled={mode === 'readonly'}
+                          rows={3}
+                          className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          Date de fin (optionnel)
+                        </label>
+                        <input
+                          type="date"
+                          value={promotion.date_fin}
+                          onChange={(e) => setPromotion(prev => ({ ...prev, date_fin: e.target.value }))}
+                          disabled={mode === 'readonly'}
+                          className="w-full text-xs h-8 px-2 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          Conditions spéciales (optionnel)
+                        </label>
+                        <textarea
+                          placeholder="Ex: Valable uniquement sur commande en ligne"
+                          value={promotion.conditions}
+                          onChange={(e) => setPromotion(prev => ({ ...prev, conditions: e.target.value }))}
+                          disabled={mode === 'readonly'}
+                          rows={2}
+                          className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
+                        />
+                      </div>
+
+                      <p className="text-xs text-gray-500 mt-2 bg-yellow-50 p-2 rounded">
+                        💡 <strong>Conseil :</strong> Les promotions augmentent la visibilité de votre service dans les résultats de recherche
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

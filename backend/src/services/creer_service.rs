@@ -5130,7 +5130,7 @@ pub async fn save_autocomplete_combination(
             return Ok(());
         }
     };
-    
+
     // Convertir en référence pour les appels suivants
     let produits_field_ref = &produits_field;
 

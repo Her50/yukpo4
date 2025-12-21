@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Dimensions,
@@ -11,9 +11,10 @@ import {
     View
 } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
-import InteractiveMapView from './InteractiveMapView';
-import { NativeButton, NativeCard, NativeInput } from './SafeNativeDesign';
+import InteractiveMapView, { InteractiveMapViewRef } from './InteractiveMapView';
+import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import LocationSelector, { LocationObject } from './LocationSelector';
 
 const { width, height } = Dimensions.get('window');
 
@@ -41,9 +42,9 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(currentLocation || null);
     const [loading, setLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<any[]>([]);
-    const [showMap, setShowMap] = useState(false);
+    const [searchLocation, setSearchLocation] = useState<LocationObject | string>(''); // ✅ NOUVEAU: Utiliser LocationObject
+    const [selectedAddress, setSelectedAddress] = useState<string>(''); // ✅ NOUVEAU: Adresse formatée
+    const mapRef = useRef<InteractiveMapViewRef>(null); // ✅ NOUVEAU: Ref pour repositionner la carte
     const [zoneType, setZoneType] = useState<'point' | 'circle' | 'rectangle' | 'polygon'>('point');
     const [radius, setRadius] = useState(50);
     const [mapStyle, setMapStyle] = useState<'standard' | 'satellite' | 'hybrid'>('satellite');
@@ -106,29 +107,40 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
         }
     };
 
-    const handleSearchAddress = async () => {
-        if (!searchQuery.trim()) return;
-
-        try {
-            setLoading(true);
-            const geocodeResult = await Location.geocodeAsync(searchQuery);
-
-            if (geocodeResult.length > 0) {
-                const location = geocodeResult[0];
-                const newLocation = {
-                    lat: location.latitude,
-                    lng: location.longitude
-                };
-                setSelectedLocation(newLocation);
-                setSearchResults(geocodeResult);
-            } else {
-                Alert.alert('Aucun résultat', 'Aucune adresse trouvée pour cette recherche');
-            }
-        } catch (error) {
-            console.error('Erreur recherche adresse:', error);
-            Alert.alert('Erreur', 'Impossible de rechercher cette adresse');
-        } finally {
-            setLoading(false);
+    // ✅ NOUVEAU: Gérer la sélection d'un lieu via LocationSelector
+    const handleLocationSelect = (location: LocationObject) => {
+        const coords = location.coordinates;
+        if (coords?.lat && coords?.lng) {
+            const newLocation = {
+                lat: coords.lat,
+                lng: coords.lng
+            };
+            setSelectedLocation(newLocation);
+            setSearchLocation(location);
+            setSelectedAddress(location.raw || location.place_name || '');
+            
+            // ✅ NOUVEAU: Repositionner la carte automatiquement
+            // Le zoom sera adapté selon le type de lieu (quartier vs ville)
+            setTimeout(() => {
+                if (mapRef.current) {
+                    // Déterminer le zoom selon le type de lieu
+                    const isQuartier = !!(location.components?.quartier);
+                    const isVille = !!(location.components?.ville && !location.components?.quartier);
+                    
+                    // Zoom plus proche pour quartier, plus large pour ville
+                    const latitudeDelta = isQuartier ? 0.005 : (isVille ? 0.02 : 0.01); // Quartier: ~500m, Ville: ~2km, Autre: ~1km
+                    const longitudeDelta = isQuartier ? 0.005 : (isVille ? 0.02 : 0.01);
+                    
+                    mapRef.current.animateToRegion({
+                        latitude: coords.lat,
+                        longitude: coords.lng,
+                        latitudeDelta,
+                        longitudeDelta,
+                    }, 500); // Animation de 500ms
+                }
+            }, 300);
+        } else {
+            Alert.alert('Erreur', 'Coordonnées GPS non disponibles pour ce lieu');
         }
     };
 
@@ -139,7 +151,7 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                 lng: selectedLocation.lng,
                 radius: zoneType === 'circle' ? radius : undefined,
                 zoneType: zoneType,
-                address: searchQuery || undefined
+                address: selectedAddress || (typeof searchLocation === 'string' ? searchLocation : searchLocation.raw) || undefined
             });
             onClose();
         } else {
@@ -149,8 +161,8 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
 
     const handleClearSelection = () => {
         setSelectedLocation(null);
-        setSearchQuery('');
-        setSearchResults([]);
+        setSearchLocation('');
+        setSelectedAddress('');
     };
 
     const formatCoordinates = (lat: number, lng: number) => {
@@ -198,20 +210,12 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                             />
 
                             <View style={styles.searchSectionCompact}>
-                                <NativeInput
-                                    placeholder="Rechercher une adresse..."
-                                    value={searchQuery}
-                                    onChangeText={setSearchQuery}
-                                    style={styles.searchInputCompact}
-                                    icon="search"
-                                />
-                                <NativeButton
-                                    title="OK"
-                                    onPress={handleSearchAddress}
-                                    disabled={loading || !searchQuery.trim()}
-                                    variant="primary"
-                                    size="small"
-                                    style={styles.searchButtonCompact}
+                                <LocationSelector
+                                    label=""
+                                    value={searchLocation}
+                                    onSelect={handleLocationSelect}
+                                    placeholder="Ville, quartier, pays..."
+                                    enrichWithBackend={true}
                                 />
                             </View>
                         </View>
@@ -299,6 +303,7 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                     <View style={styles.mapContainerFull}>
                         <NativeCard style={styles.mapCard}>
                             <InteractiveMapView
+                                ref={mapRef}
                                 selectedLocation={selectedLocation}
                                 onLocationSelect={(location) => setSelectedLocation(location)}
                                 zoneType={zoneType}

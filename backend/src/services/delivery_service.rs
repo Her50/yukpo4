@@ -1376,16 +1376,23 @@ impl DeliveryService {
         self.broadcast_status_update(summary.id, DeliveryStatus::Requested, None)
             .await;
 
-        // ⚠️ MODIFICATION Phase 1 - Amélioration 2 :
-        // Ne plus déclencher le matching immédiatement à la création
-        // Le matching sera déclenché seulement après assign_delivery_recipient
-        // if let Err(err) = self.enqueue_delivery_matching(&summary).await {
-        //     log::error!(
-        //         "[DeliveryMatching] Enfilement impossible pour la livraison {}: {:?}",
-        //         summary.id,
-        //         err
-        //     );
-        // }
+        // ✅ CORRIGÉ 2025-12-21 : Déclencher le matching si un destinataire est fourni à la création
+        // Si le destinataire est fourni directement dans la requête de création, on doit déclencher le matching
+        // Sinon, le matching sera déclenché après assign_delivery_recipient
+        if summary.recipient.is_some() {
+            if let Err(err) = self.enqueue_delivery_matching(&summary).await {
+                log::error!(
+                    "[DeliveryMatching] Enfilement impossible pour la livraison {} (destinataire fourni à la création): {:?}",
+                    summary.id,
+                    err
+                );
+            } else {
+                log::debug!(
+                    "[DeliveryMatching] ✅ Livraison {} enfilée dans la queue de matching (destinataire fourni à la création)",
+                    summary.id
+                );
+            }
+        }
 
         Ok(summary)
     }

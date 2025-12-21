@@ -20,12 +20,15 @@ import HapticTouchable from '../../components/delivery/HapticTouchable';
 import StepWizardForm from '../../components/delivery/StepWizardForm';
 import MediaUploadManager from '../../components/MediaUploadManager';
 import ModernGPSModal from '../../components/ModernGPSModal';
+import { SavedAddressSelector } from '../../components/delivery/SavedAddressSelector';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useLocation } from '../../contexts/LocationContext';
 import { CreateDeliveryRequestPayload, deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { useScreenEnter } from '../../utils/animations';
+import { LocationObject } from '../../components/LocationSelector';
+import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 
 interface DeliveryParcelFlowNewProps {
     visible: boolean;
@@ -66,6 +69,14 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     const [preferredDeliveryDate, setPreferredDeliveryDate] = useState<string>('');
     const [preferredDeliveryTimeStart, setPreferredDeliveryTimeStart] = useState<string>('');
     const [preferredDeliveryTimeEnd, setPreferredDeliveryTimeEnd] = useState<string>('');
+
+    // États pour le destinataire
+    const [recipientName, setRecipientName] = useState<string>('');
+    const [recipientPhone, setRecipientPhone] = useState<string>('');
+    const [recipientCountryCode, setRecipientCountryCode] = useState<string>('+237');
+    const [recipientConsentGranted, setRecipientConsentGranted] = useState<boolean>(false);
+    const [recipientInstructions, setRecipientInstructions] = useState<string>('');
+    const [recipientAllowTracking, setRecipientAllowTracking] = useState<boolean>(false);
 
     // Animation d'entrée
     const screenEnterStyle = useScreenEnter();
@@ -197,6 +208,11 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             return;
         }
 
+        if (!recipientName || !recipientPhone || !recipientConsentGranted) {
+            Alert.alert('Erreur', 'Veuillez renseigner toutes les informations obligatoires du destinataire');
+            return;
+        }
+
         setLoading(true);
         try {
             const payload: CreateDeliveryRequestPayload = {
@@ -220,6 +236,14 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     latitude: dropoffLocation.latitude,
                     longitude: dropoffLocation.longitude,
                     address: dropoffLocation.address,
+                },
+                recipient: {
+                    contact_name: recipientName,
+                    contact_phone: recipientPhone,
+                    country_code: recipientCountryCode || undefined,
+                    consent_granted: recipientConsentGranted,
+                    notes: recipientInstructions || undefined,
+                    allow_tracking: recipientAllowTracking || undefined,
                 },
                 metadata: {
                     kind: 'parcel',
@@ -364,10 +388,47 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         </ScrollView>
     );
 
+    // ✅ NOUVEAU : Handler pour sélection d'adresse de collecte sauvegardée ou GPS
+    const handlePickupAddressSelect = (address: UserSavedAddress | LocationObject) => {
+        if ('id' in address && 'latitude' in address) {
+            // C'est un UserSavedAddress
+            const savedAddr = address as UserSavedAddress;
+            setPickupLocation({
+                latitude: savedAddr.latitude,
+                longitude: savedAddr.longitude,
+                address: savedAddr.address,
+            });
+        } else {
+            // C'est un LocationObject
+            const loc = address as LocationObject;
+            const coords = loc.coordinates;
+            if (coords?.lat && coords?.lng) {
+                setPickupLocation({
+                    latitude: coords.lat,
+                    longitude: coords.lng,
+                    address: loc.raw || loc.place_name || '',
+                });
+            }
+        }
+    };
+
     const PickupAddressStep = (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
             <Text style={styles.stepTitle}>Adresse de collecte</Text>
             <Text style={styles.stepSubtitle}>Où se trouve le colis actuellement ?</Text>
+
+            {/* ✅ NOUVEAU : Sélecteur d'adresse sauvegardée */}
+            <SavedAddressSelector
+                addressType="pickup"
+                value={pickupLocation ? {
+                    raw: pickupLocation.address || '',
+                    place_name: pickupLocation.address || '',
+                    coordinates: { lat: pickupLocation.latitude, lng: pickupLocation.longitude },
+                    components: {},
+                } : undefined}
+                onSelect={handlePickupAddressSelect}
+                allowNew={true}
+            />
 
             {pickupLocation ? (
                 <NativeCard style={styles.locationCard}>
@@ -407,10 +468,47 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         </ScrollView>
     );
 
+    // ✅ NOUVEAU : Handler pour sélection d'adresse de livraison sauvegardée ou GPS
+    const handleDropoffAddressSelect = (address: UserSavedAddress | LocationObject) => {
+        if ('id' in address && 'latitude' in address) {
+            // C'est un UserSavedAddress
+            const savedAddr = address as UserSavedAddress;
+            setDropoffLocation({
+                latitude: savedAddr.latitude,
+                longitude: savedAddr.longitude,
+                address: savedAddr.address,
+            });
+        } else {
+            // C'est un LocationObject
+            const loc = address as LocationObject;
+            const coords = loc.coordinates;
+            if (coords?.lat && coords?.lng) {
+                setDropoffLocation({
+                    latitude: coords.lat,
+                    longitude: coords.lng,
+                    address: loc.raw || loc.place_name || '',
+                });
+            }
+        }
+    };
+
     const DropoffAddressStep = (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
             <Text style={styles.stepTitle}>Adresse de livraison</Text>
             <Text style={styles.stepSubtitle}>Où souhaitez-vous que le colis soit livré ?</Text>
+
+            {/* ✅ NOUVEAU : Sélecteur d'adresse sauvegardée */}
+            <SavedAddressSelector
+                addressType="dropoff"
+                value={dropoffLocation ? {
+                    raw: dropoffLocation.address || '',
+                    place_name: dropoffLocation.address || '',
+                    coordinates: { lat: dropoffLocation.latitude, lng: dropoffLocation.longitude },
+                    components: {},
+                } : undefined}
+                onSelect={handleDropoffAddressSelect}
+                allowNew={true}
+            />
 
             {dropoffLocation ? (
                 <NativeCard style={styles.locationCard}>
@@ -428,7 +526,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                         </Text>
                     )}
                     <NativeButton
-                        title="Changer l'adresse"
+                        title="Sélectionner sur la carte (nouveau)"
                         variant="outline"
                         size="small"
                         onPress={() => setShowDropoffGPS(true)}
@@ -455,6 +553,95 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         </ScrollView>
     );
 
+    const RecipientInfoStep = (
+        <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+            <Text style={styles.stepTitle}>Informations du destinataire</Text>
+            <Text style={styles.stepSubtitle}>Qui va recevoir le colis ?</Text>
+
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>Nom du destinataire *</Text>
+                <NativeInput
+                    placeholder="Ex: Jean Dupont"
+                    value={recipientName}
+                    onChangeText={setRecipientName}
+                    autoCapitalize="words"
+                />
+                {!recipientName && (
+                    <Text style={styles.errorText}>Ce champ est obligatoire</Text>
+                )}
+            </View>
+
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>Téléphone *</Text>
+                <View style={styles.phoneInputContainer}>
+                    <NativeInput
+                        placeholder="+237"
+                        value={recipientCountryCode}
+                        onChangeText={setRecipientCountryCode}
+                        keyboardType="phone-pad"
+                        style={styles.countryCodeInput}
+                    />
+                    <NativeInput
+                        placeholder="6XX XXX XXX"
+                        value={recipientPhone}
+                        onChangeText={setRecipientPhone}
+                        keyboardType="phone-pad"
+                        style={styles.phoneInput}
+                    />
+                </View>
+                {!recipientPhone && (
+                    <Text style={styles.errorText}>Ce champ est obligatoire</Text>
+                )}
+            </View>
+
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>Instructions de livraison (optionnel)</Text>
+                <NativeInput
+                    placeholder="Ex: Sonner 2 fois, laisser devant la porte..."
+                    value={recipientInstructions}
+                    onChangeText={setRecipientInstructions}
+                    multiline
+                    minLines={3}
+                />
+            </View>
+
+            <View style={styles.checkboxGroup}>
+                <TouchableOpacity
+                    style={styles.checkboxRow}
+                    onPress={() => setRecipientConsentGranted(!recipientConsentGranted)}
+                >
+                    <View style={[styles.checkbox, recipientConsentGranted && styles.checkboxChecked]}>
+                        {recipientConsentGranted && (
+                            <SafeIcon name="check" size={16} color="#FFFFFF" />
+                        )}
+                    </View>
+                    <Text style={styles.checkboxLabel}>
+                        Le destinataire consent à recevoir le colis et à être contacté *
+                    </Text>
+                </TouchableOpacity>
+                {!recipientConsentGranted && (
+                    <Text style={styles.errorText}>Ce consentement est obligatoire</Text>
+                )}
+            </View>
+
+            <View style={styles.checkboxGroup}>
+                <TouchableOpacity
+                    style={styles.checkboxRow}
+                    onPress={() => setRecipientAllowTracking(!recipientAllowTracking)}
+                >
+                    <View style={[styles.checkbox, recipientAllowTracking && styles.checkboxChecked]}>
+                        {recipientAllowTracking && (
+                            <SafeIcon name="check" size={16} color="#FFFFFF" />
+                        )}
+                    </View>
+                    <Text style={styles.checkboxLabel}>
+                        Autoriser le suivi de position du destinataire (optionnel)
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        </ScrollView>
+    );
+
     const steps = [
         {
             id: 'parcel',
@@ -476,6 +663,13 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             icon: 'navigation',
             component: DropoffAddressStep,
             validation: () => !!dropoffLocation,
+        },
+        {
+            id: 'recipient',
+            label: 'Destinataire',
+            icon: 'user',
+            component: RecipientInfoStep,
+            validation: () => !!recipientName && !!recipientPhone && recipientConsentGranted,
         },
     ];
 
@@ -684,6 +878,50 @@ const styles = StyleSheet.create({
     },
     changeButton: {
         marginTop: 12,
+    },
+    phoneInputContainer: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    countryCodeInput: {
+        flex: 0.3,
+    },
+    phoneInput: {
+        flex: 0.7,
+    },
+    checkboxGroup: {
+        marginBottom: 16,
+    },
+    checkboxRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.surfaceVariant,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 2,
+    },
+    checkboxChecked: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    checkboxLabel: {
+        flex: 1,
+        fontSize: 14,
+        color: modernColors.text,
+        lineHeight: 20,
+    },
+    errorText: {
+        fontSize: 12,
+        color: '#EF4444',
+        marginTop: 4,
     },
 });
 

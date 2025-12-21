@@ -6901,6 +6901,30 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto optimize_product_creation_performance: {}", e),
     }
 
+    // ✅ NOUVEAU 2025-12-21 : Optimisation des endpoints lents
+    match ensure_optimize_slow_endpoints(pool).await {
+        Ok(_) => info!("✅ Migration auto: optimize_slow_endpoints OK"),
+        Err(e) => error!("❌ Erreur migration auto optimize_slow_endpoints: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-12-21 : Optimisation des index delivery
+    match ensure_optimize_delivery_indexes(pool).await {
+        Ok(_) => info!("✅ Migration auto: optimize_delivery_indexes OK"),
+        Err(e) => error!("❌ Erreur migration auto optimize_delivery_indexes: {}", e),
+    }
+
+    // ✅ 2025-12-21 : Aligner parcel_types avec les types de véhicules des coursiers
+    match ensure_align_parcel_types_with_vehicle_types(pool).await {
+        Ok(_) => info!("✅ Migration auto: align_parcel_types_with_vehicle_types OK"),
+        Err(e) => error!("❌ Erreur migration auto align_parcel_types_with_vehicle_types: {}", e),
+    }
+
+    // ✅ 2025-12-21 : Optimisation des UPDATE services
+    match ensure_optimize_services_update_performance(pool).await {
+        Ok(_) => info!("✅ Migration auto: optimize_services_update_performance OK"),
+        Err(e) => error!("❌ Erreur migration auto optimize_services_update_performance: {}", e),
+    }
+
     // ✅ NOUVEAU : Table delivery_engine_pricing pour calcul coût par type d'engin
     match ensure_delivery_engine_pricing_table(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery_engine_pricing OK"),
@@ -6944,6 +6968,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_hybrid_image_search(pool).await {
         Ok(_) => info!("✅ Migration auto: hybrid_image_search OK"),
         Err(e) => error!("❌ Erreur migration auto hybrid_image_search: {}", e),
+    }
+
+    // ✅ 2025-12-21 : Amélioration hybrid_image_search avec fallback vers services.data->produits
+    match ensure_hybrid_image_search_fallback(pool).await {
+        Ok(_) => info!("✅ Migration auto: hybrid_image_search_fallback OK"),
+        Err(e) => error!("❌ Erreur migration auto hybrid_image_search_fallback: {}", e),
     }
 
     // ✅ 2025-11-25 : Fonctions de recherche avec planification (pharmacie/hôpital)
@@ -10286,6 +10316,16 @@ pub async fn ensure_hybrid_image_search(pool: &PgPool) -> Result<(), sqlx::Error
     Ok(())
 }
 
+/// ✅ 2025-12-21 : Améliore hybrid_image_search avec fallback vers services.data->produits
+/// Migration: 20251221_add_fallback_to_hybrid_image_search.sql
+pub async fn ensure_hybrid_image_search_fallback(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration hybrid_image_search_fallback...");
+    let migration_sql = include_str!("../../migrations/20251221_add_fallback_to_hybrid_image_search.sql");
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    info!("✅ Migration hybrid_image_search_fallback appliquée");
+    Ok(())
+}
+
 /// ✅ 2025-11-25 : Crée les fonctions de recherche avec planification (pharmacie/hôpital)
 /// Migration: 20251020003_add_pharmacy_hospital_scheduling_search.sql
 pub async fn ensure_scheduling_search_functions(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -12480,5 +12520,69 @@ pub async fn ensure_optimize_product_creation_performance(pool: &PgPool) -> Resu
     execute_multiple_sql_commands(pool, migration_sql).await?;
 
     info!("✅ Migration optimize_product_creation_performance appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-21 : Optimisation des endpoints lents
+/// Migration: 20251221_optimize_slow_endpoints.sql
+/// Optimise:
+/// - /api/services/{id}/stats et /api/services/{id}/reviews (MongoDB - optimisé dans le code)
+/// - /api/search/direct et /api/autocomplete/search-products (index GIN sur full_vector)
+/// - Requête principale dans native_search_service.rs (limitation du fallback)
+pub async fn ensure_optimize_slow_endpoints(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration optimize_slow_endpoints...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251221_optimize_slow_endpoints.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Migration optimize_slow_endpoints appliquée");
+    Ok(())
+}
+
+pub async fn ensure_optimize_delivery_indexes(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration optimize_delivery_indexes...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251221_optimize_delivery_indexes.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Migration optimize_delivery_indexes appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-21 : Aligner parcel_types avec les types de véhicules des coursiers
+/// Migration: 20251221_align_parcel_types_with_vehicle_types.sql
+/// Problème: La liste des modes de livraison est vide car parcel_types ne correspond pas aux types de véhicules
+pub async fn ensure_align_parcel_types_with_vehicle_types(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration align_parcel_types_with_vehicle_types...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251221_align_parcel_types_with_vehicle_types.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Migration align_parcel_types_with_vehicle_types appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-21 : Optimisation des UPDATE services pour réduire la latence
+/// Migration: 20251221_optimize_services_update_performance.sql
+/// Problème: UPDATE services SET data prend 5-7s à cause de la réécriture complète du JSON
+pub async fn ensure_optimize_services_update_performance(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration optimize_services_update_performance...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251221_optimize_services_update_performance.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Migration optimize_services_update_performance appliquée");
     Ok(())
 }

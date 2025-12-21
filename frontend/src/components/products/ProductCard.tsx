@@ -39,9 +39,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
     onCallPress,
     onGalleryPress
 }) => {
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [deliveryConfig, setDeliveryConfig] = useState<any>(null);
+    const autoScrollTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
     // Récupérer la configuration de livraison
     useEffect(() => {
@@ -80,10 +81,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
     // Par défaut, si le type n'est pas défini, on considère que c'est un produit
     const isProduct = product.type !== 'prestation_service';
 
-    // Extraire les images et vidéos
+    // ✅ AMÉLIORATION: Extraire les images et vidéos avec support vidéo prioritaire (comme mobile)
     const images = product.images || product.imagesRealisations || [];
     const videos = product.videos || product.videosRealisations || [];
-    const allMedia = [...images, ...videos];
+    // Vidéos en premier (comme mobile)
+    const allMedia = [
+        ...videos.map((v: string) => ({ type: 'video', uri: v })),
+        ...images.map((i: string) => ({ type: 'image', uri: i }))
+    ];
+    const hasMedia = allMedia.length > 0;
+    const hasVideo = videos.length > 0;
 
     // GPS prioritaire : produit > service gps_fixe > service gps
     const productGPS = product.gps || product.gpsFixe;
@@ -130,6 +137,31 @@ const ProductCard: React.FC<ProductCardProps> = ({
     };
 
     const typeStyle = getTypeStyle();
+
+    // ✅ AMÉLIORATION: Auto-scroll du carousel (comme mobile)
+    useEffect(() => {
+        if (allMedia.length <= 1) return;
+
+        const startAutoScroll = () => {
+            if (autoScrollTimerRef.current) {
+                clearInterval(autoScrollTimerRef.current);
+            }
+
+            autoScrollTimerRef.current = setInterval(() => {
+                setCurrentMediaIndex((prev) => {
+                    const next = (prev + 1) % allMedia.length;
+                    return next;
+                });
+            }, allMedia[currentMediaIndex]?.type === 'video' ? 8000 : 4000); // 8s pour vidéo, 4s pour image
+        };
+
+        startAutoScroll();
+        return () => {
+            if (autoScrollTimerRef.current) {
+                clearInterval(autoScrollTimerRef.current);
+            }
+        };
+    }, [allMedia.length, currentMediaIndex]);
 
     // Rendu spécialisé par type de produit
     const renderProductDetails = () => {
@@ -752,15 +784,43 @@ const ProductCard: React.FC<ProductCardProps> = ({
     return (
         <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-blue-400">
             <div className="flex flex-col md:flex-row">
-                {/* Section Image/Vidéo */}
-                <div className="relative w-full md:w-2/5 h-64 md:h-auto">
-                    {/* Image principale */}
-                    {images.length > 0 ? (
-                        <img
-                            src={images[currentImageIndex]}
-                            alt={product.nom || 'Produit'}
-                            className="w-full h-full object-cover"
-                        />
+                {/* ✅ AMÉLIORATION: Section Image/Vidéo avec carousel automatique */}
+                <div className="relative w-full md:w-2/5 h-64 md:h-auto overflow-hidden">
+                    {/* Carousel automatique d'images et vidéos */}
+                    {hasMedia ? (
+                        <div className="relative w-full h-full">
+                            {allMedia.map((media, index) => (
+                                <div
+                                    key={index}
+                                    className={`absolute inset-0 transition-opacity duration-500 ${
+                                        index === currentMediaIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                                    }`}
+                                >
+                                    {media.type === 'video' ? (
+                                        <video
+                                            src={media.uri}
+                                            className="w-full h-full object-cover"
+                                            autoPlay={index === currentMediaIndex}
+                                            loop={false}
+                                            muted
+                                            playsInline
+                                            onEnded={() => {
+                                                // Passer à l'élément suivant après la fin de la vidéo
+                                                setTimeout(() => {
+                                                    setCurrentMediaIndex((prev) => (prev + 1) % allMedia.length);
+                                                }, 500);
+                                            }}
+                                        />
+                                    ) : (
+                                        <img
+                                            src={media.uri}
+                                            alt={product.nom || 'Produit'}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                             <ImageIcon className="w-16 h-16 text-gray-400" />
@@ -781,50 +841,66 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         </div>
                     )}
 
-                    {/* Indicateur vidéo */}
-                    {videos.length > 0 && (
-                        <div className="absolute top-3 right-3 bg-black bg-opacity-70 p-2 rounded-full">
+                    {/* ✅ AMÉLIORATION: Indicateurs de pagination (comme mobile) */}
+                    {allMedia.length > 1 && (
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-20">
+                            {allMedia.map((_, index) => (
+                                <div
+                                    key={index}
+                                    className={`w-2 h-2 rounded-full transition-all ${
+                                        index === currentMediaIndex
+                                            ? 'bg-white w-6'
+                                            : 'bg-white bg-opacity-50'
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ✅ AMÉLIORATION: Badge nombre de médias cliquable (comme mobile) */}
+                    {allMedia.length > 1 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onGalleryPress) onGalleryPress();
+                            }}
+                            className="absolute bottom-3 right-3 bg-black bg-opacity-70 hover:bg-opacity-90 px-2 py-1 rounded-lg flex items-center gap-1 transition-all z-20"
+                        >
+                            <ImageIcon className="w-3 h-3 text-white" />
+                            <span className="text-xs text-white font-semibold">{allMedia.length}</span>
+                        </button>
+                    )}
+
+                    {/* Indicateur vidéo si vidéo en cours */}
+                    {allMedia[currentMediaIndex]?.type === 'video' && (
+                        <div className="absolute top-3 right-3 bg-black bg-opacity-70 p-2 rounded-full z-20">
                             <PlayCircle className="w-5 h-5 text-white" />
                         </div>
                     )}
 
-                    {/* Navigation images si plusieurs */}
-                    {images.length > 1 && (
+                    {/* Navigation manuelle si plusieurs médias */}
+                    {allMedia.length > 1 && (
                         <>
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+                                    setCurrentMediaIndex((prev) => (prev === 0 ? allMedia.length - 1 : prev - 1));
                                 }}
-                                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-2 rounded-full transition-all"
+                                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-2 rounded-full transition-all z-20"
                             >
                                 ←
                             </button>
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+                                    setCurrentMediaIndex((prev) => (prev === allMedia.length - 1 ? 0 : prev + 1));
                                 }}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-2 rounded-full transition-all"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-2 rounded-full transition-all z-20"
                             >
                                 →
                             </button>
-                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
-                                {images.map((_, idx) => (
-                                    <div
-                                        key={idx}
-                                        className={`w-2 h-2 rounded-full ${idx === currentImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'}`}
-                                    />
-                                ))}
-                            </div>
                         </>
                     )}
-
-                    {/* Compteur images */}
-                    <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 px-2 py-1 rounded-lg flex items-center gap-1">
-                        <ImageIcon className="w-3 h-3 text-white" />
-                        <span className="text-xs text-white font-semibold">{images.length + videos.length}</span>
-                    </div>
                 </div>
 
                 {/* Section Informations */}

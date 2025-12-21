@@ -1090,22 +1090,36 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
 
             {/* Zone de texte principale avec boutons intégrés en bas */}
             <View style={dynamicStyles.inputContainer}>
-                <TextInput
-                    style={dynamicStyles.textInput}
-                    placeholder={text.length === 0 && dynamicPlaceholder ? dynamicPlaceholder : placeholder}
-                    placeholderTextColor="#9CA3AF"
-                    value={text}
-                    onChangeText={setText}
-                    multiline
-                    numberOfLines={2}
-                    textAlignVertical="top"
-                    editable={true} // ✅ CORRIGÉ: Toujours permettre la saisie (loading ne doit pas bloquer)
-                    autoFocus={false} // ✅ CORRIGÉ: Ne pas auto-focus pour éviter les problèmes de clavier
-                    keyboardType="default"
-                    returnKeyType="default"
-                    accessibilityLabel={isCreateService ? "Zone de saisie pour créer un service" : "Zone de saisie pour rechercher un service"}
-                    accessibilityHint={isCreateService ? "Tapez votre description ou ajoutez des médias pour créer un service" : "Tapez votre recherche ou ajoutez des médias pour trouver un service"}
-                />
+                <View style={styles.inputRow}>
+                    <TextInput
+                        style={[dynamicStyles.textInput, isSearchMode && styles.searchInputText]}
+                        placeholder={text.length === 0 && dynamicPlaceholder ? dynamicPlaceholder : placeholder}
+                        placeholderTextColor="#9CA3AF"
+                        value={text}
+                        onChangeText={setText}
+                        multiline={!isSearchMode}
+                        numberOfLines={isSearchMode ? 1 : 2}
+                        textAlignVertical={isSearchMode ? 'center' : 'top'}
+                        editable={true} // ✅ CORRIGÉ: Toujours permettre la saisie (loading ne doit pas bloquer)
+                        autoFocus={false} // ✅ CORRIGÉ: Ne pas auto-focus pour éviter les problèmes de clavier
+                        keyboardType="default"
+                        returnKeyType="default"
+                        accessibilityLabel={isCreateService ? "Zone de saisie pour créer un service" : "Zone de saisie pour rechercher un service"}
+                        accessibilityHint={isCreateService ? "Tapez votre description ou ajoutez des médias pour créer un service" : "Tapez votre recherche ou ajoutez des médias pour trouver un service"}
+                    />
+                    {/* ✅ NOUVEAU: Bouton d'envoi compact à droite pour mode recherche */}
+                    {isSearchMode && showSendButton && (
+                        <TouchableOpacity
+                            style={[styles.searchSendButton, loading && styles.sendButtonDisabled]}
+                            onPress={() => handleSubmit()}
+                            disabled={loading}
+                            accessibilityLabel={loading ? "Envoi en cours" : "Rechercher"}
+                            accessibilityRole="button"
+                        >
+                            <SafeIcon name="send" size={20} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    )}
+                </View>
 
                 {/* Boutons d'action - LIGNE PRINCIPALE */}
                 <View style={dynamicStyles.actionsContainer}>
@@ -1302,8 +1316,8 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                 </View>
             )}
 
-            {/* Bouton d'envoi - HORS DE LA ZONE DE SAISIE */}
-            {showSendButton && (
+            {/* Bouton d'envoi - HORS DE LA ZONE DE SAISIE (seulement si pas en mode recherche) */}
+            {showSendButton && !isSearchMode && (
                 <View style={styles.sendButtonContainerExternal}>
                     <TouchableOpacity
                         style={[styles.submitButtonBottom, loading && styles.sendButtonDisabled]}
@@ -1372,6 +1386,11 @@ const createStyles = (colors: any) => StyleSheet.create({
         marginBottom: 8,
         minHeight: 55,
     },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     textInput: {
         fontSize: 14, // ✅ Réduit de 15 à 14 pour compacter
         color: '#0F172A', // ✅ CORRIGÉ: Couleur texte très foncée (#0F172A = slate-900) pour contraste maximum sur fond bleu clair #F0F9FF
@@ -1380,6 +1399,23 @@ const createStyles = (colors: any) => StyleSheet.create({
         textAlignVertical: 'top',
         padding: 8, // ✅ Réduit de 12 à 8 pour compacter
         fontWeight: '500',
+        flex: 1,
+    },
+    searchInputText: {
+        textAlignVertical: 'center',
+        minHeight: 44,
+        maxHeight: 44,
+        paddingRight: 8,
+    },
+    searchSendButton: {
+        backgroundColor: '#6366F1',
+        borderRadius: 8,
+        padding: 10,
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 4,
     },
     actionsContainer: {
         flexDirection: 'row',

@@ -182,10 +182,28 @@ export interface DeliveryLocationUpdatePayload {
 }
 
 export interface DeliveryRecipientPayload {
-    name: string;
-    phone: string;
+    // Format backend (snake_case)
+    user_id?: number;
+    contact_name?: string;
+    contact_phone?: string;
+    country_code?: string;
+    consent_granted?: boolean;
+    notes?: string;
+    allow_tracking?: boolean;
+    allow_contact?: boolean;
+    preferred_language?: string;
+    dropoff_override?: {
+        latitude: number;
+        longitude: number;
+        address?: string;
+    };
+    dropoff_address?: string;
+    chat_thread_id?: string;
+    // Format mobile (camelCase) - pour compatibilité
+    name?: string;
+    phone?: string;
     countryCode?: string;
-    consentGranted: boolean;
+    consentGranted?: boolean;
     instructions?: string;
     deliveryAccess?: string;
     allowTracking?: boolean;

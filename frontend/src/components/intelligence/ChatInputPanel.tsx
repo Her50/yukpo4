@@ -8,6 +8,8 @@ import AudioRecorderModal from '@/components/ui/AudioRecorderModal';
 import { useOptimizedApi } from '@/hooks/useOptimizedApi';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { YukpoBrand } from '@/components/Footer';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 interface UploadedFile {
   name: string;
@@ -36,9 +38,12 @@ interface ChatInputPanelProps {
 }
 
 const ChatInputPanel: React.FC<ChatInputPanelProps> = React.memo(({ onSubmit, loading, onInputChange, showIASuggestion }) => {
+  const navigate = useNavigate();
   const [texte, setTexte] = useState('');
   const [site_web, setSiteWeb] = useState<string>('');
   const [showLinkInput, setShowLinkInput] = useState(false);
+  const [searchingAudio, setSearchingAudio] = useState(false);
+  const [searchingVideo, setSearchingVideo] = useState(false);
 
   // Optimisation: État avec objets { nom, données, type }
   const [base64_image, setBase64Image] = useState<UploadedFile[]>([]);
@@ -488,6 +493,143 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = React.memo(({ onSubmit, lo
           <button type="button" onClick={openAudioModal}>
             <Mic className="w-6 h-6 text-purple-600 hover:text-purple-800" />
           </button>
+        </Tooltip>
+
+        <Tooltip content="Ajouter des vidéos">
+          <label className="cursor-pointer">
+            <Video className="w-6 h-6 text-red-600 hover:text-red-800" />
+            <input 
+              ref={(el) => fileInputRefs.current.video = el}
+              type="file" 
+              accept="video/*" 
+              multiple 
+              hidden 
+              onChange={(e) => handleFile(e, setVideo_base64)} 
+            />
+          </label>
+        </Tooltip>
+
+        {/* ✅ NOUVEAU: Recherche par audio */}
+        <Tooltip content="Rechercher par audio (transcription automatique)">
+          <label className="cursor-pointer">
+            {searchingAudio ? (
+              <Loader2 className="w-6 h-6 text-indigo-600 animate-spin" />
+            ) : (
+              <Mic className="w-6 h-6 text-indigo-600 hover:text-indigo-800" />
+            )}
+            <input
+              type="file"
+              accept="audio/*"
+              hidden
+              disabled={searchingAudio}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                setSearchingAudio(true);
+                try {
+                  const { audioSearchService } = await import('@/services/audioSearchService');
+                  const result = await audioSearchService.searchByAudio({ audioFile: file });
+
+                  if (result.success && result.results) {
+                    // Afficher notification avec transcription
+                    if (result.transcription?.text) {
+                      toast.success(`🎤 Transcription: "${result.transcription.text.substring(0, 50)}..."`);
+                    }
+
+                    // Rediriger vers les résultats
+                    navigate('/resultat-besoin', {
+                      state: {
+                        results: result.results,
+                        type: 'recherche_besoin',
+                        audioSearch: true,
+                        audioTranscription: result.transcription,
+                        billing: result.billing,
+                      }
+                    });
+                  } else {
+                    toast.error(result.error || 'Erreur lors de la recherche par audio');
+                  }
+                } catch (error: any) {
+                  console.error('[ChatInputPanel] Erreur recherche audio:', error);
+                  toast.error('Erreur lors de la recherche par audio');
+                } finally {
+                  setSearchingAudio(false);
+                  // Réinitialiser l'input pour permettre de sélectionner le même fichier
+                  e.target.value = '';
+                }
+              }}
+            />
+          </label>
+        </Tooltip>
+
+        {/* ✅ NOUVEAU: Recherche par vidéo */}
+        <Tooltip content="Rechercher par vidéo (transcription automatique)">
+          <label className="cursor-pointer">
+            {searchingVideo ? (
+              <Loader2 className="w-6 h-6 text-red-600 animate-spin" />
+            ) : (
+              <Video className="w-6 h-6 text-red-600 hover:text-red-800" />
+            )}
+            <input
+              type="file"
+              accept="video/*"
+              hidden
+              disabled={searchingVideo}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                setSearchingVideo(true);
+                try {
+                  // Vérifier la taille et le type
+                  const { videoSearchService } = await import('@/services/videoSearchService');
+                  const canProcess = videoSearchService.canProcessVideo(file.size, file.type);
+                  
+                  if (!canProcess.canProcess) {
+                    toast.error(canProcess.error || 'Fichier vidéo non supporté');
+                    return;
+                  }
+
+                  const result = await videoSearchService.searchByVideo({ videoFile: file });
+
+                  if (result.success && result.results) {
+                    // Afficher notification avec transcription
+                    if (result.transcription?.text) {
+                      toast.success(`🎥 Transcription: "${result.transcription.text.substring(0, 50)}..."`);
+                    }
+
+                    // Rediriger vers les résultats
+                    navigate('/resultat-besoin', {
+                      state: {
+                        results: result.results,
+                        type: 'recherche_besoin',
+                        videoSearch: true,
+                        videoTranscription: result.transcription,
+                        billing: result.billing,
+                      }
+                    });
+                  } else {
+                    // Gestion erreur solde insuffisant
+                    if (result.error?.includes('solde') || result.error?.includes('insufficient')) {
+                      toast.error(result.error, {
+                        onClick: () => navigate('/recharge-tokens')
+                      });
+                    } else {
+                      toast.error(result.error || 'Erreur lors de la recherche par vidéo');
+                    }
+                  }
+                } catch (error: any) {
+                  console.error('[ChatInputPanel] Erreur recherche vidéo:', error);
+                  toast.error('Erreur lors de la recherche par vidéo');
+                } finally {
+                  setSearchingVideo(false);
+                  // Réinitialiser l'input pour permettre de sélectionner le même fichier
+                  e.target.value = '';
+                }
+              }}
+            />
+          </label>
         </Tooltip>
 
         <Tooltip content="Ajouter une vidéo explicative">

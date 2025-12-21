@@ -55,6 +55,14 @@ const DeliveryParcelFlowPage: React.FC = () => {
     const [flexibilityWindowDays, setFlexibilityWindowDays] = useState<number>(3);
     const [urgencyLevel, setUrgencyLevel] = useState<'standard' | 'urgent' | 'scheduled'>('standard');
 
+    // État destinataire
+    const [recipientName, setRecipientName] = useState<string>('');
+    const [recipientPhone, setRecipientPhone] = useState<string>('');
+    const [recipientCountryCode, setRecipientCountryCode] = useState<string>('+237');
+    const [recipientConsentGranted, setRecipientConsentGranted] = useState<boolean>(false);
+    const [recipientInstructions, setRecipientInstructions] = useState<string>('');
+    const [recipientAllowTracking, setRecipientAllowTracking] = useState<boolean>(false);
+
     // Calculer la distance entre pickup et dropoff
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
         const R = 6371; // Rayon de la Terre en km
@@ -319,6 +327,17 @@ const DeliveryParcelFlowPage: React.FC = () => {
             newErrors.dropoff = 'Le point de livraison est requis';
         }
 
+        // Validation destinataire
+        if (!recipientName) {
+            newErrors.recipientName = 'Le nom du destinataire est requis';
+        }
+        if (!recipientPhone) {
+            newErrors.recipientPhone = 'Le téléphone du destinataire est requis';
+        }
+        if (!recipientConsentGranted) {
+            newErrors.recipientConsentGranted = 'Le consentement du destinataire est requis';
+        }
+
         // Validation des champs numériques
         if (weight) {
             const weightError = validateField('weight', weight);
@@ -379,6 +398,14 @@ const DeliveryParcelFlowPage: React.FC = () => {
                     latitude: dropoffLocation!.latitude,
                     longitude: dropoffLocation!.longitude,
                     address: dropoffLocation!.address,
+                },
+                recipient: {
+                    contact_name: recipientName,
+                    contact_phone: recipientPhone,
+                    country_code: recipientCountryCode || undefined,
+                    consent_granted: recipientConsentGranted,
+                    notes: recipientInstructions || undefined,
+                    allow_tracking: recipientAllowTracking || undefined,
                 },
                 metadata: {
                     kind: 'parcel',
@@ -760,6 +787,102 @@ const DeliveryParcelFlowPage: React.FC = () => {
                     />
                 </section>
 
+                {/* Informations du destinataire */}
+                <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="mb-4 flex items-center gap-2">
+                        <MapPin className="h-5 w-5 text-primary" />
+                        <h2 className="text-lg font-semibold text-slate-900">Informations du destinataire *</h2>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-2">
+                            <Label htmlFor="recipientName">Nom du destinataire *</Label>
+                            <Input
+                                id="recipientName"
+                                type="text"
+                                placeholder="Ex: Jean Dupont"
+                                value={recipientName}
+                                onChange={(e) => {
+                                    setRecipientName(e.target.value);
+                                    setErrors(prev => ({ ...prev, recipientName: '' }));
+                                }}
+                                className={errors.recipientName ? 'border-red-500' : ''}
+                            />
+                            {errors.recipientName && (
+                                <p className="text-sm text-red-600">{errors.recipientName}</p>
+                            )}
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="recipientPhone">Téléphone *</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    id="recipientCountryCode"
+                                    type="text"
+                                    placeholder="+237"
+                                    value={recipientCountryCode}
+                                    onChange={(e) => setRecipientCountryCode(e.target.value)}
+                                    className="w-24"
+                                />
+                                <Input
+                                    id="recipientPhone"
+                                    type="tel"
+                                    placeholder="6XX XXX XXX"
+                                    value={recipientPhone}
+                                    onChange={(e) => {
+                                        setRecipientPhone(e.target.value);
+                                        setErrors(prev => ({ ...prev, recipientPhone: '' }));
+                                    }}
+                                    className={`flex-1 ${errors.recipientPhone ? 'border-red-500' : ''}`}
+                                />
+                            </div>
+                            {errors.recipientPhone && (
+                                <p className="text-sm text-red-600">{errors.recipientPhone}</p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="mt-4 grid gap-2">
+                        <Label htmlFor="recipientInstructions">Instructions de livraison (optionnel)</Label>
+                        <textarea
+                            id="recipientInstructions"
+                            className="min-h-[100px] w-full rounded-lg border border-slate-300 p-3 text-sm"
+                            placeholder="Ex: Sonner 2 fois, laisser devant la porte..."
+                            value={recipientInstructions}
+                            onChange={(e) => setRecipientInstructions(e.target.value)}
+                        />
+                    </div>
+                    <div className="mt-4 space-y-3">
+                        <div className="flex items-start gap-2">
+                            <input
+                                type="checkbox"
+                                id="recipientConsentGranted"
+                                checked={recipientConsentGranted}
+                                onChange={(e) => {
+                                    setRecipientConsentGranted(e.target.checked);
+                                    setErrors(prev => ({ ...prev, recipientConsentGranted: '' }));
+                                }}
+                                className="mt-1 h-4 w-4 rounded border-slate-300"
+                            />
+                            <Label htmlFor="recipientConsentGranted" className="cursor-pointer flex-1">
+                                Le destinataire consent à recevoir le colis et à être contacté *
+                            </Label>
+                        </div>
+                        {errors.recipientConsentGranted && (
+                            <p className="text-sm text-red-600 ml-6">{errors.recipientConsentGranted}</p>
+                        )}
+                        <div className="flex items-start gap-2">
+                            <input
+                                type="checkbox"
+                                id="recipientAllowTracking"
+                                checked={recipientAllowTracking}
+                                onChange={(e) => setRecipientAllowTracking(e.target.checked)}
+                                className="mt-1 h-4 w-4 rounded border-slate-300"
+                            />
+                            <Label htmlFor="recipientAllowTracking" className="cursor-pointer flex-1">
+                                Autoriser le suivi de position du destinataire (optionnel)
+                            </Label>
+                        </div>
+                    </div>
+                </section>
+
                 {/* Préférences de livraison */}
                 <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="mb-4 flex items-center gap-2">
@@ -862,7 +985,7 @@ const DeliveryParcelFlowPage: React.FC = () => {
                     </Button>
                     <Button
                         onClick={handleSubmit}
-                        disabled={loading || !pickupLocation || !dropoffLocation}
+                        disabled={loading || !pickupLocation || !dropoffLocation || !recipientName || !recipientPhone || !recipientConsentGranted}
                     >
                         {loading ? 'Création...' : 'Créer la livraison'}
                     </Button>

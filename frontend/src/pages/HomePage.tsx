@@ -69,7 +69,89 @@ const HomePage: React.FC = () => {
 
       // NOUVELLE LOGIQUE : Par défaut, tout est une recherche
       if (isCreateService) {
-        // Si la case est cochée, demander confirmation
+        // ✅ NOUVEAU: Vérifier d'abord si l'utilisateur a déjà un service existant
+        // Si oui, rediriger vers AjouterProduitSimple au lieu de FormulaireYukpoIntelligent
+        let foundServiceId: number | undefined;
+
+        try {
+          console.log('[HomePage] Vérification des services existants...');
+          const servicesResponse = await fetch('/api/prestataire/services', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+
+          if (servicesResponse.ok) {
+            const servicesData = await servicesResponse.json();
+            const services = Array.isArray(servicesData)
+              ? servicesData
+              : (servicesData?.data || servicesData?.services || []);
+
+            if (services.length > 0) {
+              // Trouver le premier service actif ou le premier service
+              const activeService = services.find((s: any) => s.is_active !== false && s.actif !== false) || services[0];
+
+              if (activeService && activeService.id) {
+                foundServiceId = typeof activeService.id === 'string'
+                  ? parseInt(activeService.id, 10)
+                  : activeService.id;
+                console.log('[HomePage] Service existant trouvé:', foundServiceId);
+              }
+            }
+          }
+        } catch (serviceError) {
+          console.warn('[HomePage] Erreur lors de la vérification des services (continuation normale):', serviceError);
+          // Continuer normalement si la vérification échoue
+        }
+
+        // Si un service existe, générer les suggestions et rediriger vers AjouterProduitSimple
+        if (foundServiceId) {
+          console.log('[HomePage] Service existant détecté, redirection vers AjouterProduitSimple');
+
+          const result = await genererSuggestionsService(input) as IAResponseWithHeaders;
+          console.log('[HomePage] Résultat génération suggestions:', JSON.stringify(result, null, 2));
+
+          if (result && result.data) {
+            // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
+            const suggestionData = result.data.service_data?.data || result.data.data || result.data;
+            // ✅ Passer aussi toute la réponse pour avoir accès à service_data.base64_image, etc.
+            const fullSuggestionIA = {
+              ...result.data,
+              data: suggestionData,
+            };
+
+            navigate('/ajouter-produit-simple', {
+              state: {
+                serviceId: foundServiceId,
+                mode: 'create',
+                suggestionIA: fullSuggestionIA,
+                mediaData: {
+                  base64_image: input.base64_image || [],
+                  video_base64: input.video_base64 || [],
+                  audio_base64: input.audio_base64 || [],
+                  doc_base64: input.doc_base64 || [],
+                },
+                gpsData: {
+                  gps_mobile: input.gps_mobile,
+                  gps_fixe: input.gps_fixe,
+                },
+              }
+            });
+          } else {
+            // Si les suggestions échouent, naviguer quand même vers AjouterProduitSimple
+            navigate('/ajouter-produit-simple', {
+              state: {
+                serviceId: foundServiceId,
+                mode: 'create',
+              }
+            });
+          }
+
+          setLoading(false);
+          return;
+        }
+
+        // Aucun service existant, demander confirmation pour créer un nouveau service
         setPendingInput(input);
         setShowCreateServiceAlert(true);
         setLoading(false);
@@ -149,15 +231,48 @@ const HomePage: React.FC = () => {
         }
       }
 
+      // ✅ NOUVEAU: GESTION RECHERCHE PAR AUDIO AVEC FACTURATION
+      if (result?.search_method === 'audio_ai' && result?.billing) {
+        const billing = result.billing;
+        console.log('[HomePage] 🎤 Recherche par audio IA détectée:', billing);
+
+        // Afficher la transcription si disponible
+        if (result?.transcription?.text) {
+          const transcription = result.transcription.text;
+          console.log('[HomePage] 🎤 Transcription audio:', transcription.substring(0, 50) + '...');
+        }
+
+        // Si facturation activée, afficher notification
+        if (billing.charged && billing.amount > 0) {
+          toast.success(
+            `🎤 ${billing.results_found} résultat(s) trouvé(s)!\n` +
+            `💰 Coût: ${billing.amount} ${billing.currency}\n` +
+            `Nouveau solde: ${billing.new_balance} ${billing.currency}`,
+            {
+              autoClose: 8000,
+              position: 'top-center'
+            }
+          );
+        } else if (billing.results_found === 0) {
+          toast.info(
+            '🎤 Aucun résultat trouvé pour cet audio. La recherche est gratuite.',
+            {
+              autoClose: 5000
+            }
+          );
+        }
+      }
+
       // ✅ GESTION ERREUR SOLDE INSUFFISANT
       if (result?.status === 'error' && result?.error === 'insufficient_credits') {
-        toast.error(
-          result.message || 'Votre solde est insuffisant pour effectuer une recherche par image.',
-          {
-            autoClose: 8000,
-            onClick: () => navigate('/recharge-tokens')
-          }
-        );
+        const errorMessage = result.message || 
+          (result?.search_method === 'audio_ai' 
+            ? 'Votre solde est insuffisant pour effectuer une recherche par audio.'
+            : 'Votre solde est insuffisant pour effectuer une recherche par image.');
+        toast.error(errorMessage, {
+          autoClose: 8000,
+          onClick: () => navigate('/recharge-tokens')
+        });
         return; // Arrêter ici
       }
 
@@ -180,7 +295,9 @@ const HomePage: React.FC = () => {
           type: 'recherche_besoin',
           suggestion: result,
           imageSearch: result?.search_method === 'image_ai',
+          audioSearch: result?.search_method === 'audio_ai', // ✅ NOUVEAU
           imageAnalysis: result?.image_analysis || null,
+          audioTranscription: result?.transcription || result?.audio_transcription || null, // ✅ NOUVEAU
           billing: result?.billing || null
         }
       });

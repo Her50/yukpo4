@@ -8,6 +8,9 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOp
 import { modernColors } from '../../theme/modernTheme';
 import { NativeButton, NativeCard } from '../SafeNativeDesign';
 import { SafeIcon } from '../SafeIcon';
+import { SavedAddressSelector } from './SavedAddressSelector';
+import { LocationObject } from '../LocationSelector';
+import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 
 // Types
 interface Supermarket {
@@ -330,6 +333,7 @@ export const BasketCompositionStep: React.FC<{
 export const DeliveryAddressStep: React.FC<{
     dropoffLocation: LocationData | null;
     onSelectLocation: () => void;
+    onSelectSavedAddress?: (address: UserSavedAddress | LocationObject) => void;
     onUseCurrentLocation: () => void;
     loadingLocation: boolean;
     estimatedDistance: number | null;
@@ -337,17 +341,42 @@ export const DeliveryAddressStep: React.FC<{
 }> = ({
     dropoffLocation,
     onSelectLocation,
+    onSelectSavedAddress,
     onUseCurrentLocation,
     loadingLocation,
     estimatedDistance,
     error,
 }) => {
+        // Handler pour sélection d'adresse sauvegardée
+        const handleSavedAddressSelect = (address: UserSavedAddress | LocationObject) => {
+            if (onSelectSavedAddress) {
+                onSelectSavedAddress(address);
+            }
+        };
+
         return (
             <View style={styles.stepContainer}>
                 <Text style={styles.stepTitle}>Adresse de livraison</Text>
                 <Text style={styles.stepSubtitle}>
                     Où souhaitez-vous recevoir vos courses ?
                 </Text>
+
+                {/* ✅ NOUVEAU : Sélecteur d'adresse sauvegardée */}
+                {onSelectSavedAddress && (
+                    <View style={styles.savedAddressSelectorContainer}>
+                        <SavedAddressSelector
+                            addressType="dropoff"
+                            value={dropoffLocation ? {
+                                raw: dropoffLocation.address || '',
+                                place_name: dropoffLocation.address || '',
+                                coordinates: { lat: dropoffLocation.latitude, lng: dropoffLocation.longitude },
+                                components: {},
+                            } : undefined}
+                            onSelect={handleSavedAddressSelect}
+                            allowNew={true}
+                        />
+                    </View>
+                )}
 
                 {dropoffLocation ? (
                     <NativeCard style={styles.locationCard}>
@@ -365,7 +394,7 @@ export const DeliveryAddressStep: React.FC<{
                             </Text>
                         )}
                         <NativeButton
-                            title="Changer l'adresse"
+                            title="Sélectionner sur la carte (nouveau)"
                             variant="outline"
                             size="small"
                             onPress={onSelectLocation}
@@ -666,6 +695,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.error,
         flex: 1,
+    },
+    savedAddressSelectorContainer: {
+        marginBottom: 16,
     },
 });
 

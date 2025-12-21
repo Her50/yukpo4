@@ -13,6 +13,8 @@ import { apiGet, apiPost, deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { NativeButton } from '../SafeNativeDesign';
 import SafeIcon from '../SafeIcon';
+import LocationSelector, { LocationObject } from '../LocationSelector';
+import TimeSlotPicker from './TimeSlotPicker';
 
 interface ProductDeliveryConfigModalProps {
     visible: boolean;
@@ -98,6 +100,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     const [loadingLocations, setLoadingLocations] = useState(false);
     const [config, setConfig] = useState({
         pickup_address: '',
+        pickup_location: null as LocationObject | null, // ✅ NOUVEAU: Objet location complet
         pickup_latitude: 0,
         pickup_longitude: 0,
         storage_location_id: undefined as number | undefined, // ✅ Phase 9 - Amélioration 32
@@ -146,9 +149,16 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         if (config.storage_location_id && storageLocations.length > 0) {
             const selectedLocation = storageLocations.find(loc => loc.id === config.storage_location_id);
             if (selectedLocation) {
+                const locationObj: LocationObject = {
+                    raw: selectedLocation.address || '',
+                    place_name: selectedLocation.address?.split(',')[0].trim() || '',
+                    components: {},
+                    coordinates: { lat: selectedLocation.latitude, lng: selectedLocation.longitude }
+                };
                 setConfig(prev => ({
                     ...prev,
-                    pickup_address: selectedLocation.address,
+                    pickup_address: selectedLocation.address || '',
+                    pickup_location: locationObj,
                     pickup_latitude: selectedLocation.latitude,
                     pickup_longitude: selectedLocation.longitude,
                 }));
@@ -176,10 +186,25 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             if (response.success && response.data && typeof response.data === 'object' && 'config' in response.data) {
                 const data = response.data as any;
                 const c = data.config;
+                // ✅ CORRIGÉ: Construire LocationObject si on a une adresse
+                const pickupAddr = (typeof c.pickup_address === 'string' ? c.pickup_address : '') || '';
+                const pickupLat = (typeof c.pickup_latitude === 'number' ? c.pickup_latitude : 0) || 0;
+                const pickupLng = (typeof c.pickup_longitude === 'number' ? c.pickup_longitude : 0) || 0;
+                
+                const pickupLocationObj: LocationObject | null = pickupAddr 
+                    ? {
+                        raw: pickupAddr,
+                        place_name: pickupAddr.split(',')[0].trim(),
+                        components: {},
+                        coordinates: (pickupLat !== 0 && pickupLng !== 0) ? { lat: pickupLat, lng: pickupLng } : undefined
+                    }
+                    : null;
+                
                 setConfig({
-                    pickup_address: (typeof c.pickup_address === 'string' ? c.pickup_address : '') || '',
-                    pickup_latitude: (typeof c.pickup_latitude === 'number' ? c.pickup_latitude : 0) || 0,
-                    pickup_longitude: (typeof c.pickup_longitude === 'number' ? c.pickup_longitude : 0) || 0,
+                    pickup_address: pickupAddr,
+                    pickup_location: pickupLocationObj,
+                    pickup_latitude: pickupLat,
+                    pickup_longitude: pickupLng,
                     storage_location_id: (typeof c.storage_location_id === 'number' ? c.storage_location_id : undefined), // ✅ Phase 9 - Amélioration 32
                     required_vehicle_type_id: (typeof c.required_vehicle_type_id === 'number' ? c.required_vehicle_type_id : 0) || 0,
                     preparation_time_minutes: c.preparation_time_minutes ? String(c.preparation_time_minutes) : '0', // ✅ NOUVEAU
@@ -199,8 +224,8 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     };
 
     const handleSave = async () => {
-        // Validation
-        const pickupAddress = typeof config.pickup_address === 'string' ? config.pickup_address : '';
+        // ✅ CORRIGÉ: Validation avec support LocationObject
+        const pickupAddress = config.pickup_location?.raw || (typeof config.pickup_address === 'string' ? config.pickup_address : '');
         if (!pickupAddress.trim()) {
             Alert.alert('Erreur', 'L\'adresse de départ est obligatoire');
             return;
@@ -237,9 +262,10 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             const payload = {
                 service_id: typeof serviceId === 'number' ? serviceId : 0,
                 product_index: typeof productIndex === 'number' ? productIndex : 0,
-                pickup_address: typeof config.pickup_address === 'string' ? config.pickup_address : '',
-                pickup_latitude: typeof config.pickup_latitude === 'number' ? config.pickup_latitude : 0,
-                pickup_longitude: typeof config.pickup_longitude === 'number' ? config.pickup_longitude : 0,
+                // ✅ CORRIGÉ: Utiliser l'adresse depuis pickup_location si disponible
+                pickup_address: config.pickup_location?.raw || (typeof config.pickup_address === 'string' ? config.pickup_address : ''),
+                pickup_latitude: config.pickup_location?.coordinates?.lat || (typeof config.pickup_latitude === 'number' ? config.pickup_latitude : 0),
+                pickup_longitude: config.pickup_location?.coordinates?.lng || (typeof config.pickup_longitude === 'number' ? config.pickup_longitude : 0),
                 storage_location_id: typeof config.storage_location_id === 'number' ? config.storage_location_id : null, // ✅ Phase 9 - Amélioration 32
                 required_vehicle_type_id: typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0,
                 preparation_time_minutes: preparationTime > 0 ? preparationTime : undefined, // ✅ NOUVEAU
@@ -392,12 +418,23 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                     ...validLocations.map(location => ({
                                         text: `${String(location?.name || 'Lieu')} - ${String(location?.address || 'Adresse inconnue')}`,
                                         onPress: () => {
+                                            const address = typeof location.address === 'string' ? location.address : '';
+                                            const lat = typeof location.latitude === 'number' ? location.latitude : 0;
+                                            const lng = typeof location.longitude === 'number' ? location.longitude : 0;
+                                            const locationObj: LocationObject = address ? {
+                                                raw: address,
+                                                place_name: address.split(',')[0].trim(),
+                                                components: {},
+                                                coordinates: (lat !== 0 && lng !== 0) ? { lat, lng } : undefined
+                                            } : null;
+                                            
                                             setConfig(prev => ({
                                                 ...prev,
                                                 storage_location_id: typeof location.id === 'number' ? location.id : undefined,
-                                                pickup_address: typeof location.address === 'string' ? location.address : '',
-                                                pickup_latitude: typeof location.latitude === 'number' ? location.latitude : 0,
-                                                pickup_longitude: typeof location.longitude === 'number' ? location.longitude : 0,
+                                                pickup_address: address,
+                                                pickup_location: locationObj,
+                                                pickup_latitude: lat,
+                                                pickup_longitude: lng,
                                             }));
                                         }
                                     })),
@@ -422,15 +459,27 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                         )}
                     </View>
 
-                    {/* Adresse de départ */}
+                    {/* ✅ CORRIGÉ: Adresse de départ avec LocationSelector intelligent */}
                     <View style={styles.section}>
-                        <Text style={styles.label}>Adresse de départ *</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={config.pickup_address}
-                            onChangeText={(text) => setConfig(prev => ({ ...prev, pickup_address: text }))}
-                            placeholder="Adresse complète"
-                            multiline
+                        <LocationSelector
+                            label="Adresse de départ"
+                            value={config.pickup_location || config.pickup_address || ''}
+                            onSelect={(location: LocationObject) => {
+                                // Extraire l'adresse formatée et les coordonnées
+                                const address = location.raw || location.place_name || '';
+                                const coords = location.coordinates;
+                                
+                                setConfig(prev => ({
+                                    ...prev,
+                                    pickup_address: address,
+                                    pickup_location: location,
+                                    pickup_latitude: coords?.lat || 0,
+                                    pickup_longitude: coords?.lng || 0,
+                                }));
+                            }}
+                            placeholder="Ville, quartier, pays..."
+                            enrichWithBackend={true}
+                            required
                         />
                         {((typeof config.pickup_latitude === 'number' && config.pickup_latitude !== 0) || (typeof config.pickup_longitude === 'number' && config.pickup_longitude !== 0)) && (
                             <Text style={styles.gpsText}>
@@ -538,15 +587,11 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     <View style={styles.section}>
                         <Text style={styles.label}>Plages horaires de départ *</Text>
                         <Text style={styles.hint}>
-                            {`Format JSON: {"lundi": [{"start": "08:00", "end": "18:00"}]}`}
+                            Configurez les horaires de récupération pour chaque jour de la semaine
                         </Text>
-                        <TextInput
-                            style={[styles.input, styles.textArea]}
+                        <TimeSlotPicker
                             value={config.pickup_availability_schedule}
-                            onChangeText={(text) => setConfig(prev => ({ ...prev, pickup_availability_schedule: text }))}
-                            placeholder='{"monday": [{"start": "08:00", "end": "18:00"}]}'
-                            multiline
-                            numberOfLines={4}
+                            onChange={(jsonString) => setConfig(prev => ({ ...prev, pickup_availability_schedule: jsonString }))}
                         />
                     </View>
 

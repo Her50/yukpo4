@@ -1,5 +1,6 @@
 import ProductDeliveryConfigModal from '@/components/delivery/ProductDeliveryConfigModal';
 import { IntelligentCharacteristicsSearch } from '@/components/forms/IntelligentCharacteristicsSearch';
+import { LinearAutocompleteEditor } from '@/components/products/LinearAutocompleteEditor';
 import { Badge } from '@/components/ui/badge';
 import BusSeatSelector from '@/components/ui/BusSeatSelector';
 import { Button } from '@/components/ui/buttons';
@@ -7,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import MapModal from '@/components/ui/MapModal';
+import { PriceVariantSelector } from '@/components/ui/PriceVariantSelector';
 import { useToast } from '@/components/ui/use-toast';
 import { Check, Download, Edit2, FileText, MapPin, Plus, Settings, Trash2, Truck, Upload, Video, X } from 'lucide-react';
 import React, { useRef, useState } from 'react';
@@ -139,6 +141,8 @@ interface Product {
     }>;
     // ✅ NOUVEAU: Caractéristiques produits (combinaisons préférées IA)
     characteristics?: string; // Format: "marque,modèle,couleur" (séparateur: virgule)
+    // ✅ NOUVEAU: Sous-caractéristiques (dimensions multiples)
+    sous_caracteristiques?: Record<string, string[]>; // Ex: { marque: ["Nike", "Adidas"], taille: ["M", "L"] }
     // ✅ NOUVEAU: Variabilité de prix
     price_variant?: {
         variable: string; // Ex: "pointure", "taille", "quantité"
@@ -149,6 +153,9 @@ interface Product {
             stock?: number;
         }>;
     };
+    // ✅ NOUVEAU: Quantité disponible (stock) - obligatoire pour produits (pas prestations)
+    quantite_disponible?: number | null;
+    stock?: number | null; // Alias pour compatibilité
 
     // ✅ Promotion (pour tous les types de produits)
     promotionActive?: boolean;
@@ -377,6 +384,129 @@ const ProductManager: React.FC<ProductManagerProps> = ({
         setEditingProduct(newProduct);
     };
 
+    // ✅ NOUVEAU: Fonction d'extraction IA intelligente avec fallbacks multiples
+    const extractIAProductData = useCallback((suggestionIA: any, productType: ProductType) => {
+        if (!suggestionIA || typeof suggestionIA !== 'object') {
+            return null;
+        }
+
+        // Helper pour extraire une valeur (gère format objet avec .valeur)
+        const extractValue = (field: any): any => {
+            if (!field) return null;
+            if (typeof field === 'object' && 'valeur' in field) {
+                return field.valeur;
+            }
+            return field;
+        };
+
+        // Helper pour normaliser en tableau de strings
+        const normalizeToStringArray = (value: any): string[] => {
+            if (!value) return [];
+            if (Array.isArray(value)) {
+                return value.map(v => String(v || '').trim()).filter(v => v.length > 0);
+            }
+            return [String(value).trim()].filter(v => v.length > 0);
+        };
+
+        // Extraire les données produits depuis suggestionIA
+        const suggestionData = suggestionIA.data || suggestionIA;
+        const produitsData = suggestionData.produits || suggestionData;
+
+        // 1. Nom produit (avec fallbacks)
+        const nom_produit = extractValue(produitsData.nom_produit) || 
+                           extractValue(produitsData.nom) || 
+                           extractValue(suggestionData.nom_produit) || 
+                           extractValue(suggestionData.nom) || 
+                           null;
+
+        // 2. Description produit (avec fallbacks)
+        const description_produit = extractValue(produitsData.description_produit) || 
+                                   extractValue(produitsData.description) || 
+                                   extractValue(suggestionData.description_produit) || 
+                                   extractValue(suggestionData.description) || 
+                                   null;
+
+        // 3. Prix et devise (avec fallbacks)
+        const prix_produit = extractValue(produitsData.prix_produit) || 
+                            extractValue(produitsData.prix) || 
+                            extractValue(suggestionData.prix_produit) || 
+                            extractValue(suggestionData.prix) || 
+                            null;
+        const devise_produit = extractValue(produitsData.devise_produit) || 
+                              extractValue(produitsData.devise) || 
+                              extractValue(suggestionData.devise_produit) || 
+                              extractValue(suggestionData.devise) || 
+                              'XAF';
+
+        // 4. Quantité disponible (avec fallbacks)
+        const quantite_disponible = extractValue(produitsData.quantite_disponible) || 
+                                   extractValue(produitsData.stock) || 
+                                   extractValue(suggestionData.quantite_disponible) || 
+                                   extractValue(suggestionData.stock) || 
+                                   null;
+
+        // 5. Sous_caracteristiques (avec fallbacks multiples)
+        let sous_caracteristiques: Record<string, string[]> | null = null;
+
+        // PRIORITÉ 1: Depuis produitsData.sous_caracteristiques
+        if (produitsData.sous_caracteristiques && typeof produitsData.sous_caracteristiques === 'object') {
+            sous_caracteristiques = produitsData.sous_caracteristiques;
+        }
+        // PRIORITÉ 2: Depuis suggestionData.sous_caracteristiques
+        else if (suggestionData.sous_caracteristiques && typeof suggestionData.sous_caracteristiques === 'object') {
+            sous_caracteristiques = suggestionData.sous_caracteristiques;
+        }
+        // PRIORITÉ 3: Construire depuis product_vector et product_labels
+        else if (produitsData.product_vector && Array.isArray(produitsData.product_vector) &&
+                 produitsData.product_labels && Array.isArray(produitsData.product_labels) &&
+                 produitsData.product_vector.length > 0 && produitsData.product_vector.length === produitsData.product_labels.length) {
+            const sousCaracsObj: Record<string, string[]> = {};
+            produitsData.product_vector.forEach((value: string, index: number) => {
+                const label = produitsData.product_labels[index];
+                if (label && typeof label === 'string' && value && typeof value === 'string') {
+                    if (!sousCaracsObj[label]) {
+                        sousCaracsObj[label] = [value];
+                    } else {
+                        const existingValues = sousCaracsObj[label];
+                        if (!existingValues.includes(value)) {
+                            sousCaracsObj[label] = [value, ...existingValues];
+                        }
+                    }
+                }
+            });
+            if (Object.keys(sousCaracsObj).length > 0) {
+                sous_caracteristiques = sousCaracsObj;
+            }
+        }
+
+        // 6. Caractéristiques (product_vector concaténé)
+        let characteristics: string | null = null;
+        if (produitsData.product_vector && Array.isArray(produitsData.product_vector) && produitsData.product_vector.length > 0) {
+            const separateur = produitsData.separateur || ',';
+            characteristics = produitsData.product_vector.join(separateur);
+        }
+
+        return {
+            nom_produit,
+            description_produit,
+            prix_produit,
+            devise_produit,
+            quantite_disponible,
+            sous_caracteristiques,
+            characteristics,
+            product_vector: produitsData.product_vector || null,
+            product_labels: produitsData.product_labels || null,
+        };
+    }, []);
+
+    // ✅ NOUVEAU: Appliquer les données IA extraites au produit en cours d'édition
+    useEffect(() => {
+        if (editingProduct && sessionId) {
+            // TODO: Charger suggestionIA depuis sessionId si nécessaire
+            // Pour l'instant, on attend que suggestionIA soit passé en prop
+        }
+    }, [editingProduct, sessionId, extractIAProductData]);
+
     const handleSelectType = (type: ProductType) => {
         setSelectedType(type);
 
@@ -476,6 +606,19 @@ const ProductManager: React.FC<ProductManagerProps> = ({
             errors.push("Maximum 3 vidéos par produit");
         }
 
+        // ✅ NOUVEAU: Validation quantité disponible (obligatoire pour produits, pas prestations)
+        if (product.type !== 'prestation_service') {
+            const quantite = product.quantite_disponible ?? product.stock;
+            if (quantite === null || quantite === undefined || quantite === '') {
+                errors.push("La quantité disponible est obligatoire pour les produits");
+            } else {
+                const quantiteNum = typeof quantite === 'number' ? quantite : parseInt(String(quantite), 10);
+                if (isNaN(quantiteNum) || quantiteNum <= 0) {
+                    errors.push("La quantité disponible doit être strictement supérieure à 0");
+                }
+            }
+        }
+
         return {
             isValid: errors.length === 0,
             errors
@@ -513,7 +656,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({
         });
     };
 
-    const handleFileUpload = (files: FileList, type: 'images' | 'videos') => {
+    // ✅ NOUVEAU: Utiliser cloudUploadService pour upload préalable vers CDN
+    const handleFileUpload = async (files: FileList, type: 'images' | 'videos') => {
         if (!editingProduct) return;
 
         // ✅ CORRECTION: Augmentation des limites
@@ -547,45 +691,79 @@ const ProductManager: React.FC<ProductManagerProps> = ({
             return;
         }
 
-        // ✅ CORRECTION: Vérifier la taille des fichiers (images max 2MB, vidéos sans limite)
-        if (type === 'images') {
-            const maxSizeMB = 2;
-            const oversizedFiles = validFiles.filter(file => file.size > maxSizeMB * 1024 * 1024);
-            if (oversizedFiles.length > 0) {
-                toast({
-                    title: "Fichiers trop volumineux",
-                    description: `Certains fichiers dépassent ${maxSizeMB} MB. Veuillez compresser vos images.`,
-                });
-                return;
-            }
-        }
-        // ✅ Vidéos : plus de limite de taille
+        // ✅ NOUVEAU: Upload vers CDN avec cloudUploadService
+        const { cloudUploadService } = await import('@/services/cloudUploadService');
+        const { compressImage } = await import('@/utils/mediaCompression');
 
-        // Convertir les fichiers en base64
-        const processFiles = async () => {
-            const base64Files: string[] = [];
+        const uploadedUrls: string[] = [];
 
-            for (const file of validFiles) {
-                const base64 = await new Promise<string>((resolve) => {
+        for (const file of validFiles) {
+            try {
+                // Compresser les images avant upload
+                if (type === 'images') {
                     const reader = new FileReader();
+                    const base64 = await new Promise<string>((resolve) => {
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.readAsDataURL(file);
+                    });
+                    const compressedBase64 = await compressImage(base64);
+                    
+                    // Upload vers CDN
+                    const result = await cloudUploadService.uploadToCloud(
+                        compressedBase64,
+                        'image',
+                        file.name
+                    );
+
+                    if (result.success && result.url) {
+                        uploadedUrls.push(result.url);
+                    } else {
+                        // Fallback: utiliser base64 si upload échoue
+                        uploadedUrls.push(compressedBase64);
+                    }
+                } else {
+                    // Vidéos: upload direct vers CDN
+                    const result = await cloudUploadService.uploadToCloud(
+                        file,
+                        'video',
+                        file.name
+                    );
+
+                    if (result.success && result.url) {
+                        uploadedUrls.push(result.url);
+                    } else {
+                        // Fallback: convertir en base64 si upload échoue
+                        const reader = new FileReader();
+                        const base64 = await new Promise<string>((resolve) => {
+                            reader.onload = () => resolve(reader.result as string);
+                            reader.readAsDataURL(file);
+                        });
+                        uploadedUrls.push(base64);
+                    }
+                }
+            } catch (error: any) {
+                console.error('[ProductManager] Erreur upload média:', error);
+                // Fallback: utiliser base64 en cas d'erreur
+                const reader = new FileReader();
+                const base64 = await new Promise<string>((resolve) => {
                     reader.onload = () => resolve(reader.result as string);
                     reader.readAsDataURL(file);
                 });
-                base64Files.push(base64);
+                uploadedUrls.push(base64);
             }
+        }
 
+        if (uploadedUrls.length > 0) {
             setEditingProduct(prev => ({
                 ...prev!,
-                [type]: [...(prev![type] || []), ...base64Files]
+                [type]: [...(prev![type] || []), ...uploadedUrls]
             }));
 
             toast({
                 title: `${type === 'images' ? 'Images' : 'Vidéo'} ajoutée(s)`,
-                description: `${validFiles.length} fichier(s) ajouté(s). Maximum ${maxItems} par produit.`,
+                description: `${uploadedUrls.length} fichier(s) uploadé(s) vers CDN. Maximum ${maxItems} par produit.`,
             });
-        };
-
-        processFiles();
+        }
     };
 
     const removeMedia = (type: 'images' | 'videos', index: number) => {
@@ -959,22 +1137,56 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                                 />
                                             </div>
 
-                                            {/* ✅ NOUVEAU: Caractéristiques produits (combinaisons préférées IA) */}
+                                            {/* ✅ NOUVEAU: Caractéristiques produits (combinaisons préférées IA) - LinearAutocompleteEditor */}
                                             {selectedType !== 'prestation_service' && (
                                                 <div>
-                                                    <Label htmlFor="product-characteristics">Caractéristiques du produit</Label>
-                                                    <IntelligentCharacteristicsSearch
-                                                        value={editingProduct.characteristics || ''}
-                                                        onChange={(value) => setEditingProduct(prev => ({
-                                                            ...prev!,
-                                                            characteristics: value
-                                                        }))}
-                                                        sessionId={sessionId}
-                                                        label="Caractéristiques (marque, modèle, couleur, etc.)"
+                                                    <LinearAutocompleteEditor
+                                                        label="Caractéristiques produits / prestations"
+                                                        identifiantBase="produits"
+                                                        value={editingProduct.characteristics ? [editingProduct.characteristics] : []}
+                                                        sousCaracteristiques={editingProduct.sous_caracteristiques || {}}
                                                         separateur=","
+                                                        onChange={(values, updatedSousCaracs) => {
+                                                            setEditingProduct(prev => ({
+                                                                ...prev!,
+                                                                characteristics: values.length > 0 ? values[0] : '',
+                                                                sous_caracteristiques: updatedSousCaracs || prev?.sous_caracteristiques || {}
+                                                            }));
+                                                        }}
+                                                        contextValues={[editingProduct.description || '']}
+                                                        categoryValue={selectedType}
+                                                        placeholder="Tapez pour voir les suggestions..."
+                                                        allowCustomModality={true}
+                                                        filtrable={true}
+                                                        sessionId={sessionId} // ✅ NOUVEAU: Passer sessionId pour charger les combinaisons préférées IA
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* ✅ NOUVEAU: Quantité disponible (obligatoire pour produits, pas prestations) */}
+                                            {selectedType !== 'prestation_service' && (
+                                                <div>
+                                                    <Label htmlFor="product-quantity">
+                                                        Quantité disponible <span className="text-red-500">*</span>
+                                                    </Label>
+                                                    <Input
+                                                        id="product-quantity"
+                                                        type="number"
+                                                        min="1"
+                                                        placeholder="Ex: 50"
+                                                        value={editingProduct.quantite_disponible?.toString() || editingProduct.stock?.toString() || ''}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value.trim();
+                                                            const numValue = value === '' ? null : parseInt(value, 10);
+                                                            setEditingProduct(prev => ({
+                                                                ...prev!,
+                                                                quantite_disponible: isNaN(numValue as any) ? null : numValue,
+                                                                stock: isNaN(numValue as any) ? null : numValue // Alias pour compatibilité
+                                                            }));
+                                                        }}
                                                     />
                                                     <p className="text-xs text-gray-500 mt-1">
-                                                        💡 L'IA vous suggère les combinaisons les plus pertinentes basées sur votre demande
+                                                        ⚠️ La gestion du stock permet d'éviter les ventes de produits épuisés et d'améliorer l'expérience de vos clients.
                                                     </p>
                                                 </div>
                                             )}
@@ -987,97 +1199,24 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                                         <p className="text-sm text-gray-600 mb-3">
                                                             Si votre produit a des variantes (taille, pointure, quantité, etc.), vous pouvez définir des prix différents pour chaque variante.
                                                         </p>
-                                                        {editingProduct.price_variant && editingProduct.price_variant.modalites.length > 0 ? (
-                                                            <div className="space-y-2">
-                                                                {editingProduct.price_variant.modalites.map((mod, index) => (
-                                                                    <div key={index} className="flex items-center gap-2 p-2 bg-white rounded border">
-                                                                        <span className="font-medium">{mod.valeur}</span>
-                                                                        <span className="text-gray-500">-</span>
-                                                                        <span>{mod.prix} {mod.devise}</span>
-                                                                        {mod.stock !== undefined && (
-                                                                            <>
-                                                                                <span className="text-gray-500">-</span>
-                                                                                <span className="text-sm text-gray-600">Stock: {mod.stock}</span>
-                                                                            </>
-                                                                        )}
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            onClick={() => {
-                                                                                const newModalites = editingProduct.price_variant!.modalites.filter((_, i) => i !== index);
-                                                                                setEditingProduct(prev => ({
-                                                                                    ...prev!,
-                                                                                    price_variant: newModalites.length > 0 ? {
-                                                                                        ...prev!.price_variant!,
-                                                                                        modalites: newModalites
-                                                                                    } : undefined
-                                                                                }));
-                                                                            }}
-                                                                        >
-                                                                            <X className="w-4 h-4" />
-                                                                        </Button>
-                                                                    </div>
-                                                                ))}
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={() => {
-                                                                        const valeur = prompt('Valeur de la variante (ex: 38, M, 1kg):');
-                                                                        const prix = prompt('Prix:');
-                                                                        const devise = editingProduct.currency || 'XAF';
-                                                                        if (valeur && prix) {
-                                                                            const newModalites = [
-                                                                                ...(editingProduct.price_variant?.modalites || []),
-                                                                                {
-                                                                                    valeur,
-                                                                                    prix: parseFloat(prix) || 0,
-                                                                                    devise,
-                                                                                    stock: undefined
-                                                                                }
-                                                                            ];
-                                                                            setEditingProduct(prev => ({
-                                                                                ...prev!,
-                                                                                price_variant: {
-                                                                                    variable: editingProduct.price_variant?.variable || 'variante',
-                                                                                    modalites: newModalites
-                                                                                }
-                                                                            }));
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <Plus className="w-4 h-4 mr-2" />
-                                                                    Ajouter une variante
-                                                                </Button>
-                                                            </div>
-                                                        ) : (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    const variable = prompt('Type de variante (ex: pointure, taille, quantité):') || 'variante';
-                                                                    const valeur = prompt('Valeur de la variante (ex: 38, M, 1kg):');
-                                                                    const prix = prompt('Prix:');
-                                                                    const devise = editingProduct.currency || 'XAF';
-                                                                    if (valeur && prix) {
-                                                                        setEditingProduct(prev => ({
-                                                                            ...prev!,
-                                                                            price_variant: {
-                                                                                variable,
-                                                                                modalites: [{
-                                                                                    valeur,
-                                                                                    prix: parseFloat(prix) || 0,
-                                                                                    devise,
-                                                                                    stock: undefined
-                                                                                }]
-                                                                            }
-                                                                        }));
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <Plus className="w-4 h-4 mr-2" />
-                                                                Ajouter des variantes de prix
-                                                            </Button>
-                                                        )}
+                                                        {/* ✅ NOUVEAU: Utiliser PriceVariantSelector dédié */}
+                                                        <PriceVariantSelector
+                                                            label="Variantes de prix"
+                                                            variable={editingProduct.price_variant?.variable || 'variante'}
+                                                            modalites={editingProduct.price_variant?.modalites || []}
+                                                            onChange={(modalites) => {
+                                                                setEditingProduct(prev => ({
+                                                                    ...prev!,
+                                                                    price_variant: modalites.length > 0 ? {
+                                                                        variable: prev?.price_variant?.variable || 'variante',
+                                                                        modalites: modalites
+                                                                    } : undefined
+                                                                }));
+                                                            }}
+                                                            availableCurrencies={['XAF', 'EUR', 'USD']}
+                                                            defaultCurrency={editingProduct.currency || 'XAF'}
+                                                            helperText="Ajoutez des variantes pour permettre aux clients de choisir différentes options (taille, pointure, quantité, etc.)"
+                                                        />
                                                     </div>
                                                 </div>
                                             )}

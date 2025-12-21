@@ -401,6 +401,19 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/delivery/config/{config_id}/pickup-locations",
             get(get_pickup_locations),
         )
+        // ✅ NOUVEAU : Routes pour les adresses sauvegardées
+        .route(
+            "/api/delivery/saved-addresses",
+            get(list_saved_addresses).post(create_saved_address),
+        )
+        .route(
+            "/api/delivery/saved-addresses/{id}",
+            get(get_saved_address).put(update_saved_address).delete(delete_saved_address),
+        )
+        .route(
+            "/api/delivery/saved-addresses/{id}/set-default",
+            post(set_default_saved_address),
+        )
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
 }
@@ -3763,6 +3776,10 @@ fn delivery_service(state: &AppState) -> AppResult<Arc<DeliveryService>> {
     Ok(state.delivery_service.clone())
 }
 
+fn delivery_repository(state: &AppState) -> AppResult<crate::services::delivery_repository::DeliveryRepository> {
+    Ok(crate::services::delivery_repository::DeliveryRepository::new(state.pg.clone()))
+}
+
 async fn enforce_delivery_access(
     service: &DeliveryService,
     summary: &crate::models::delivery_model::DeliverySummary,
@@ -4184,5 +4201,163 @@ async fn get_pickup_locations(
             "address": config.pickup_address,
             "id": config_id
         }]
+    })))
+}
+
+// ✅ NOUVEAU : Handlers pour les adresses sauvegardées
+
+/// GET /api/delivery/saved-addresses - Lister les adresses sauvegardées d'un utilisateur
+async fn list_saved_addresses(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Query(params): Query<serde_json::Map<String, serde_json::Value>>,
+) -> AppResult<Json<Value>> {
+    let address_type = params
+        .get("address_type")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let repo = delivery_repository(&state)?;
+    let addresses = repo
+        .list_saved_addresses(user.id, address_type.as_deref())
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "addresses": addresses,
+        "total": addresses.len()
+    })))
+}
+
+/// POST /api/delivery/saved-addresses - Créer une nouvelle adresse sauvegardée
+async fn create_saved_address(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<crate::models::delivery_model::UserSavedAddressInput>,
+) -> AppResult<Json<Value>> {
+    // Validation
+    if payload.label.trim().is_empty() {
+        return Err(AppError::BadRequest("Le label est requis".to_string()));
+    }
+    if !["pickup", "dropoff", "both"].contains(&payload.address_type.as_str()) {
+        return Err(AppError::BadRequest(
+            "address_type doit être 'pickup', 'dropoff' ou 'both'".to_string(),
+        ));
+    }
+    if payload.address.trim().is_empty() {
+        return Err(AppError::BadRequest("L'adresse est requise".to_string()));
+    }
+    if !(-90.0..=90.0).contains(&payload.latitude) || !(-180.0..=180.0).contains(&payload.longitude) {
+        return Err(AppError::BadRequest(
+            "Coordonnées GPS invalides".to_string(),
+        ));
+    }
+
+    let repo = delivery_repository(&state)?;
+    let address = repo.create_saved_address(user.id, payload).await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "address": address
+    })))
+}
+
+/// GET /api/delivery/saved-addresses/{id} - Récupérer une adresse sauvegardée par ID
+async fn get_saved_address(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(address_id): Path<i32>,
+) -> AppResult<Json<Value>> {
+    let repo = delivery_repository(&state)?;
+    let address = repo
+        .get_saved_address_by_id(user.id, address_id)
+        .await?;
+
+    match address {
+        Some(addr) => Ok(Json(json!({
+            "success": true,
+            "address": addr
+        }))),
+        None => Err(AppError::NotFound("Adresse non trouvée".to_string())),
+    }
+}
+
+/// PUT /api/delivery/saved-addresses/{id} - Mettre à jour une adresse sauvegardée
+async fn update_saved_address(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(address_id): Path<i32>,
+    Json(payload): Json<crate::models::delivery_model::UserSavedAddressInput>,
+) -> AppResult<Json<Value>> {
+    // Validation
+    if payload.label.trim().is_empty() {
+        return Err(AppError::BadRequest("Le label est requis".to_string()));
+    }
+    if !["pickup", "dropoff", "both"].contains(&payload.address_type.as_str()) {
+        return Err(AppError::BadRequest(
+            "address_type doit être 'pickup', 'dropoff' ou 'both'".to_string(),
+        ));
+    }
+    if payload.address.trim().is_empty() {
+        return Err(AppError::BadRequest("L'adresse est requise".to_string()));
+    }
+    if !(-90.0..=90.0).contains(&payload.latitude) || !(-180.0..=180.0).contains(&payload.longitude) {
+        return Err(AppError::BadRequest(
+            "Coordonnées GPS invalides".to_string(),
+        ));
+    }
+
+    let repo = delivery_repository(&state)?;
+    let address = repo
+        .update_saved_address(user.id, address_id, payload)
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "address": address
+    })))
+}
+
+/// DELETE /api/delivery/saved-addresses/{id} - Supprimer une adresse sauvegardée
+async fn delete_saved_address(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(address_id): Path<i32>,
+) -> AppResult<Json<Value>> {
+    let repo = delivery_repository(&state)?;
+    repo.delete_saved_address(user.id, address_id).await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Adresse supprimée avec succès"
+    })))
+}
+
+/// POST /api/delivery/saved-addresses/{id}/set-default - Définir une adresse comme défaut
+async fn set_default_saved_address(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(address_id): Path<i32>,
+    Json(payload): Json<serde_json::Value>,
+) -> AppResult<Json<Value>> {
+    let address_type = payload
+        .get("address_type")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| AppError::BadRequest("address_type est requis ('pickup' ou 'dropoff')".to_string()))?;
+
+    if !["pickup", "dropoff"].contains(&address_type) {
+        return Err(AppError::BadRequest(
+            "address_type doit être 'pickup' ou 'dropoff'".to_string(),
+        ));
+    }
+
+    let repo = delivery_repository(&state)?;
+    let address = repo
+        .set_default_saved_address(user.id, address_id, address_type)
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "address": address
     })))
 }

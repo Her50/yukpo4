@@ -17,6 +17,9 @@ import ModernGPSModal from '../ModernGPSModal';
 import NativeDatePicker from '../NativeDatePicker';
 import NativeTimePicker from '../NativeTimePicker';
 import SafeIcon from '../SafeIcon';
+import { SavedAddressSelector } from './SavedAddressSelector';
+import { LocationObject } from '../LocationSelector';
+import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 
 interface OrderDeliveryModalProps {
     visible: boolean;
@@ -947,6 +950,40 @@ const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                             <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
                             <Text style={styles.sectionTitle}>Adresse de livraison *</Text>
                         </View>
+
+                        {/* ✅ NOUVEAU : Sélecteur d'adresse sauvegardée */}
+                        <SavedAddressSelector
+                            addressType="dropoff"
+                            value={dropoffLocation ? {
+                                raw: dropoffLocation.address || '',
+                                place_name: dropoffLocation.address || '',
+                                coordinates: { lat: dropoffLocation.latitude, lng: dropoffLocation.longitude },
+                                components: {},
+                            } : undefined}
+                            onSelect={(address: UserSavedAddress | LocationObject) => {
+                                if ('id' in address && 'latitude' in address) {
+                                    // C'est un UserSavedAddress
+                                    const savedAddr = address as UserSavedAddress;
+                                    setDropoffLocation({
+                                        latitude: savedAddr.latitude,
+                                        longitude: savedAddr.longitude,
+                                        address: savedAddr.address,
+                                    });
+                                } else {
+                                    // C'est un LocationObject
+                                    const loc = address as LocationObject;
+                                    const coords = loc.coordinates;
+                                    if (coords?.lat && coords?.lng) {
+                                        setDropoffLocation({
+                                            latitude: coords.lat,
+                                            longitude: coords.lng,
+                                            address: loc.raw || loc.place_name || '',
+                                        });
+                                    }
+                                }
+                            }}
+                            allowNew={true}
+                        />
 
                         {dropoffLocation ? (
                             <View style={styles.locationCard}>

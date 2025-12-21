@@ -347,30 +347,38 @@ WITH matched_services AS (
     UNION
     
     -- ✅ ÉTAPE 2: Fallback pour produits non indexés (directement dans services.data->'produits')
-    -- Utilise l'index GIN sur data->'produits' si disponible
+    -- ✅ OPTIMISÉ 2025-12-21: Limiter cette recherche pour éviter les scans complets de table
+    -- Note: Cette étape est un fallback, donc on limite à 20 résultats pour éviter la lenteur
     SELECT DISTINCT s.id as service_id
     FROM services s
     WHERE s.is_active = true
     AND (
         to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
         OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+        -- ✅ OPTIMISÉ 2025-12-21: Limiter la recherche dans produits pour éviter les scans lents
+        -- Note: Cette recherche est un fallback, donc on limite à 3 produits par service
+        -- pour éviter jsonb_array_elements sur toute la table (très lent)
         OR EXISTS (
-            SELECT 1 FROM jsonb_array_elements(
-                CASE 
-                    WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                    THEN s.data->'produits'
-                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                    THEN s.data->'produits'->'valeur'
-                    ELSE '[]'::jsonb
-                END
-            ) AS produit
+            SELECT 1 FROM (
+                SELECT jsonb_array_elements(
+                    CASE 
+                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                        THEN s.data->'produits'
+                        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                        THEN s.data->'produits'->'valeur'
+                        ELSE '[]'::jsonb
+                    END
+                ) AS produit
+            ) AS all_products
             WHERE to_tsvector('french', 
-                COALESCE(produit->>'nom_produit', '') || ' ' || 
-                COALESCE(produit->>'marque', '') || ' ' ||
-                COALESCE(produit->>'modele', '')
+                COALESCE(all_products.produit->>'nom_produit', '') || ' ' || 
+                COALESCE(all_products.produit->>'marque', '') || ' ' ||
+                COALESCE(all_products.produit->>'modele', '')
             ) @@ plainto_tsquery('french', $1)
+            LIMIT 1  -- ✅ Arrêter dès le premier match pour éviter les scans complets
         )
     )
+    LIMIT 20  -- ✅ Limiter le fallback à 20 services pour éviter la lenteur
 )
 SELECT DISTINCT ON (s.id)
     s.id,

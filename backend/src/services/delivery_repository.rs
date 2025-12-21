@@ -7,7 +7,7 @@ use crate::{
         DeliveryMatchingStatus, DeliveryParcel, DeliveryPricing, DeliveryRecipient,
         DeliveryRecipientUpdate, DeliveryStatus, DeliveryStatusEvent, DeliverySummary,
         DeliveryTrackingPoint, GeoPoint, ParcelRejectionReason, ParcelType, ShoppingItemStatus,
-        ShoppingOrder, ShoppingOrderItem, ShoppingStatus,
+        ShoppingOrder, ShoppingOrderItem, ShoppingStatus, UserSavedAddress, UserSavedAddressInput,
     },
 };
 use chrono::{DateTime, Utc};
@@ -3435,4 +3435,335 @@ pub struct ShoppingEstimateResult {
     pub estimated_total_cents: i32,
     pub estimated_shopping_time_minutes: i32,
     pub currency: String,
+}
+
+// ✅ NOUVEAU : Fonctions pour gérer les adresses sauvegardées
+impl DeliveryRepository {
+    /// Lister les adresses sauvegardées d'un utilisateur
+    pub async fn list_saved_addresses(
+        &self,
+        user_id: i32,
+        address_type: Option<&str>, // 'pickup', 'dropoff', 'both', ou None pour tous
+    ) -> AppResult<Vec<UserSavedAddress>> {
+        let addresses = if let Some(addr_type) = address_type {
+            sqlx::query_as::<_, UserSavedAddress>(
+                r#"
+                SELECT id, user_id, label, address_type, address, latitude, longitude,
+                       location_data, contact_name, contact_phone, instructions,
+                       building_number, floor, apartment, is_default_pickup,
+                       is_default_dropoff, usage_count, last_used_at, is_active,
+                       created_at, updated_at
+                FROM user_saved_addresses
+                WHERE user_id = $1 
+                  AND is_active = TRUE
+                  AND (address_type = $2 OR address_type = 'both')
+                ORDER BY 
+                    CASE WHEN address_type = $2 AND (is_default_pickup = TRUE OR is_default_dropoff = TRUE) THEN 0 ELSE 1 END,
+                    last_used_at DESC NULLS LAST,
+                    label ASC
+                "#,
+            )
+            .bind(user_id)
+            .bind(addr_type)
+            .fetch_all(&self.pool)
+            .await?
+        } else {
+            sqlx::query_as::<_, UserSavedAddress>(
+                r#"
+                SELECT id, user_id, label, address_type, address, latitude, longitude,
+                       location_data, contact_name, contact_phone, instructions,
+                       building_number, floor, apartment, is_default_pickup,
+                       is_default_dropoff, usage_count, last_used_at, is_active,
+                       created_at, updated_at
+                FROM user_saved_addresses
+                WHERE user_id = $1 
+                  AND is_active = TRUE
+                ORDER BY 
+                    CASE WHEN is_default_pickup = TRUE OR is_default_dropoff = TRUE THEN 0 ELSE 1 END,
+                    last_used_at DESC NULLS LAST,
+                    label ASC
+                "#,
+            )
+            .bind(user_id)
+            .fetch_all(&self.pool)
+            .await?
+        };
+
+        Ok(addresses)
+    }
+
+    /// Créer une nouvelle adresse sauvegardée
+    pub async fn create_saved_address(
+        &self,
+        user_id: i32,
+        input: UserSavedAddressInput,
+    ) -> AppResult<UserSavedAddress> {
+        // Si on définit cette adresse comme défaut, désactiver les autres adresses par défaut du même type
+        if input.is_default_pickup.unwrap_or(false) || input.is_default_dropoff.unwrap_or(false) {
+            if input.is_default_pickup.unwrap_or(false) {
+                sqlx::query(
+                    "UPDATE user_saved_addresses SET is_default_pickup = FALSE WHERE user_id = $1 AND is_default_pickup = TRUE"
+                )
+                .bind(user_id)
+                .execute(&self.pool)
+                .await?;
+            }
+            if input.is_default_dropoff.unwrap_or(false) {
+                sqlx::query(
+                    "UPDATE user_saved_addresses SET is_default_dropoff = FALSE WHERE user_id = $1 AND is_default_dropoff = TRUE"
+                )
+                .bind(user_id)
+                .execute(&self.pool)
+                .await?;
+            }
+        }
+
+        let address = sqlx::query_as::<_, UserSavedAddress>(
+            r#"
+            INSERT INTO user_saved_addresses 
+            (user_id, label, address_type, address, latitude, longitude, location_data,
+             contact_name, contact_phone, instructions, building_number, floor, apartment,
+             is_default_pickup, is_default_dropoff, usage_count, is_active, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 0, TRUE, NOW(), NOW())
+            RETURNING id, user_id, label, address_type, address, latitude, longitude,
+                      location_data, contact_name, contact_phone, instructions,
+                      building_number, floor, apartment, is_default_pickup,
+                      is_default_dropoff, usage_count, last_used_at, is_active,
+                      created_at, updated_at
+            "#,
+        )
+        .bind(user_id)
+        .bind(&input.label)
+        .bind(&input.address_type)
+        .bind(&input.address)
+        .bind(input.latitude)
+        .bind(input.longitude)
+        .bind(input.location_data.as_ref().unwrap_or(&Value::Null))
+        .bind(input.contact_name.as_ref())
+        .bind(input.contact_phone.as_ref())
+        .bind(input.instructions.as_ref())
+        .bind(input.building_number.as_ref())
+        .bind(input.floor.as_ref())
+        .bind(input.apartment.as_ref())
+        .bind(input.is_default_pickup.unwrap_or(false))
+        .bind(input.is_default_dropoff.unwrap_or(false))
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(address)
+    }
+
+    /// Mettre à jour une adresse sauvegardée
+    pub async fn update_saved_address(
+        &self,
+        user_id: i32,
+        address_id: i32,
+        input: UserSavedAddressInput,
+    ) -> AppResult<UserSavedAddress> {
+        // Vérifier que l'adresse appartient à l'utilisateur
+        let existing = sqlx::query_as::<_, UserSavedAddress>(
+            "SELECT id, user_id, label, address_type, address, latitude, longitude, location_data, contact_name, contact_phone, instructions, building_number, floor, apartment, is_default_pickup, is_default_dropoff, usage_count, last_used_at, is_active, created_at, updated_at FROM user_saved_addresses WHERE id = $1 AND user_id = $2"
+        )
+        .bind(address_id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if existing.is_none() {
+            return Err(AppError::NotFound("Adresse non trouvée".to_string()));
+        }
+
+        // Si on définit cette adresse comme défaut, désactiver les autres adresses par défaut du même type
+        if input.is_default_pickup.unwrap_or(false) || input.is_default_dropoff.unwrap_or(false) {
+            if input.is_default_pickup.unwrap_or(false) {
+                sqlx::query(
+                    "UPDATE user_saved_addresses SET is_default_pickup = FALSE WHERE user_id = $1 AND id != $2 AND is_default_pickup = TRUE"
+                )
+                .bind(user_id)
+                .bind(address_id)
+                .execute(&self.pool)
+                .await?;
+            }
+            if input.is_default_dropoff.unwrap_or(false) {
+                sqlx::query(
+                    "UPDATE user_saved_addresses SET is_default_dropoff = FALSE WHERE user_id = $1 AND id != $2 AND is_default_dropoff = TRUE"
+                )
+                .bind(user_id)
+                .bind(address_id)
+                .execute(&self.pool)
+                .await?;
+            }
+        }
+
+        let address = sqlx::query_as::<_, UserSavedAddress>(
+            r#"
+            UPDATE user_saved_addresses
+            SET label = $3, address_type = $4, address = $5, latitude = $6, longitude = $7,
+                location_data = $8, contact_name = $9, contact_phone = $10, instructions = $11,
+                building_number = $12, floor = $13, apartment = $14,
+                is_default_pickup = $15, is_default_dropoff = $16, updated_at = NOW()
+            WHERE id = $1 AND user_id = $2
+            RETURNING id, user_id, label, address_type, address, latitude, longitude,
+                      location_data, contact_name, contact_phone, instructions,
+                      building_number, floor, apartment, is_default_pickup,
+                      is_default_dropoff, usage_count, last_used_at, is_active,
+                      created_at, updated_at
+            "#,
+        )
+        .bind(address_id)
+        .bind(user_id)
+        .bind(&input.label)
+        .bind(&input.address_type)
+        .bind(&input.address)
+        .bind(input.latitude)
+        .bind(input.longitude)
+        .bind(input.location_data.as_ref().unwrap_or(&Value::Null))
+        .bind(input.contact_name.as_ref())
+        .bind(input.contact_phone.as_ref())
+        .bind(input.instructions.as_ref())
+        .bind(input.building_number.as_ref())
+        .bind(input.floor.as_ref())
+        .bind(input.apartment.as_ref())
+        .bind(input.is_default_pickup.unwrap_or(false))
+        .bind(input.is_default_dropoff.unwrap_or(false))
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(address)
+    }
+
+    /// Supprimer (soft delete) une adresse sauvegardée
+    pub async fn delete_saved_address(
+        &self,
+        user_id: i32,
+        address_id: i32,
+    ) -> AppResult<()> {
+        let result = sqlx::query(
+            "UPDATE user_saved_addresses SET is_active = FALSE, updated_at = NOW() WHERE id = $1 AND user_id = $2"
+        )
+        .bind(address_id)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::NotFound("Adresse non trouvée".to_string()));
+        }
+
+        Ok(())
+    }
+
+    /// Définir une adresse comme adresse par défaut
+    pub async fn set_default_saved_address(
+        &self,
+        user_id: i32,
+        address_id: i32,
+        address_type: &str, // 'pickup' ou 'dropoff'
+    ) -> AppResult<UserSavedAddress> {
+        // Vérifier que l'adresse appartient à l'utilisateur
+        let existing = sqlx::query_as::<_, UserSavedAddress>(
+            "SELECT id, user_id, label, address_type, address, latitude, longitude, location_data, contact_name, contact_phone, instructions, building_number, floor, apartment, is_default_pickup, is_default_dropoff, usage_count, last_used_at, is_active, created_at, updated_at FROM user_saved_addresses WHERE id = $1 AND user_id = $2"
+        )
+        .bind(address_id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if existing.is_none() {
+            return Err(AppError::NotFound("Adresse non trouvée".to_string()));
+        }
+
+        // Désactiver les autres adresses par défaut du même type
+        match address_type {
+            "pickup" => {
+                sqlx::query(
+                    "UPDATE user_saved_addresses SET is_default_pickup = FALSE, updated_at = NOW() WHERE user_id = $1 AND id != $2 AND is_default_pickup = TRUE"
+                )
+                .bind(user_id)
+                .bind(address_id)
+                .execute(&self.pool)
+                .await?;
+                
+                sqlx::query(
+                    "UPDATE user_saved_addresses SET is_default_pickup = TRUE, updated_at = NOW() WHERE id = $1 AND user_id = $2"
+                )
+                .bind(address_id)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await?;
+            }
+            "dropoff" => {
+                sqlx::query(
+                    "UPDATE user_saved_addresses SET is_default_dropoff = FALSE, updated_at = NOW() WHERE user_id = $1 AND id != $2 AND is_default_dropoff = TRUE"
+                )
+                .bind(user_id)
+                .bind(address_id)
+                .execute(&self.pool)
+                .await?;
+                
+                sqlx::query(
+                    "UPDATE user_saved_addresses SET is_default_dropoff = TRUE, updated_at = NOW() WHERE id = $1 AND user_id = $2"
+                )
+                .bind(address_id)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await?;
+            }
+            _ => {
+                return Err(AppError::BadRequest("address_type doit être 'pickup' ou 'dropoff'".to_string()));
+            }
+        }
+
+        // Retourner l'adresse mise à jour
+        let address = sqlx::query_as::<_, UserSavedAddress>(
+            "SELECT id, user_id, label, address_type, address, latitude, longitude, location_data, contact_name, contact_phone, instructions, building_number, floor, apartment, is_default_pickup, is_default_dropoff, usage_count, last_used_at, is_active, created_at, updated_at FROM user_saved_addresses WHERE id = $1 AND user_id = $2"
+        )
+        .bind(address_id)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(address)
+    }
+
+    /// Incrémenter le compteur d'utilisation et mettre à jour last_used_at
+    pub async fn increment_saved_address_usage(
+        &self,
+        user_id: i32,
+        address_id: i32,
+    ) -> AppResult<()> {
+        sqlx::query(
+            "SELECT increment_user_saved_address_usage($1)"
+        )
+        .bind(address_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Trouver une adresse sauvegardée par ID
+    pub async fn get_saved_address_by_id(
+        &self,
+        user_id: i32,
+        address_id: i32,
+    ) -> AppResult<Option<UserSavedAddress>> {
+        let address = sqlx::query_as::<_, UserSavedAddress>(
+            r#"
+            SELECT id, user_id, label, address_type, address, latitude, longitude,
+                   location_data, contact_name, contact_phone, instructions,
+                   building_number, floor, apartment, is_default_pickup,
+                   is_default_dropoff, usage_count, last_used_at, is_active,
+                   created_at, updated_at
+            FROM user_saved_addresses
+            WHERE id = $1 AND user_id = $2 AND is_active = TRUE
+            "#,
+        )
+        .bind(address_id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(address)
+    }
 }

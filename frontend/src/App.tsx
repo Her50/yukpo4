@@ -41,6 +41,7 @@ import ShoppingSummaryPage from '@/pages/delivery/ShoppingSummaryPage';
 import StorageLocationsPage from '@/pages/delivery/StorageLocationsPage';
 import FormulaireServiceModerne from '@/pages/FormulaireServiceModerne';
 import FormulaireYukpoIntelligent from '@/pages/FormulaireYukpoIntelligent';
+import AjouterProduitSimple from '@/pages/AjouterProduitSimple';
 import RechercheBesoin from '@/pages/RechercheBesoin';
 import SoldeDetailPage from '@/pages/SoldeDetailPage';
 import YukpoIaHub from '@/pages/YukpoIaHub';
@@ -203,6 +204,11 @@ function App() {
                         <Route path="/chat/etablissement/:etablissementId" element={<ChatDialog />} />
                         <Route path={ROUTES.FORMULAIRE_YUKPO_INTELLIGENT} element={<FormulaireYukpoIntelligent />} />
                         <Route path={ROUTES.FORMULAIRE_SERVICE_MODERNE} element={<FormulaireServiceModerne />} />
+                        <Route path={ROUTES.AJOUTER_PRODUIT_SIMPLE} element={
+                          <RequireAuth>
+                            <AjouterProduitSimple />
+                          </RequireAuth>
+                        } />
                         <Route
                           path="/formulaire-pre-rempli/:type"
                           element={

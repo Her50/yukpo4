@@ -26,6 +26,8 @@ import SafeIcon from '../../components/SafeIcon';
 import { useLocation } from '../../contexts/LocationContext';
 import { CreateDeliveryRequestPayload, deliveryApi } from '../../services/api';
 import { useScreenEnter } from '../../utils/animations';
+import { LocationObject } from '../../components/LocationSelector';
+import { UserSavedAddress } from '../../hooks/useSavedAddresses';
 
 interface DeliveryShoppingFlowNewProps {
     visible: boolean;
@@ -248,6 +250,30 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
         setShowDropoffGPS(false);
     };
 
+    // ✅ NOUVEAU : Handler pour sélection d'adresse sauvegardée
+    const handleDropoffAddressSelect = (address: UserSavedAddress | LocationObject) => {
+        if ('id' in address && 'latitude' in address) {
+            // C'est un UserSavedAddress
+            const savedAddr = address as UserSavedAddress;
+            setDropoffLocation({
+                latitude: savedAddr.latitude,
+                longitude: savedAddr.longitude,
+                address: savedAddr.address,
+            });
+        } else {
+            // C'est un LocationObject
+            const loc = address as LocationObject;
+            const coords = loc.coordinates;
+            if (coords?.lat && coords?.lng) {
+                setDropoffLocation({
+                    latitude: coords.lat,
+                    longitude: coords.lng,
+                    address: loc.raw || loc.place_name || '',
+                });
+            }
+        }
+    };
+
     const addBasketItem = (item: BasketItem) => {
         setBasketItems([...basketItems, item]);
         setNewItemName('');
@@ -398,6 +424,7 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
                 <DeliveryAddressStep
                     dropoffLocation={dropoffLocation}
                     onSelectLocation={() => setShowDropoffGPS(true)}
+                    onSelectSavedAddress={handleDropoffAddressSelect}
                     onUseCurrentLocation={handleUseCurrentLocation}
                     loadingLocation={loadingLocation}
                     estimatedDistance={estimatedDistance}

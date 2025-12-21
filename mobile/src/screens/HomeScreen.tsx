@@ -669,7 +669,7 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: modernColors.background, // ✅ AMÉLIORÉ: Fond gris clair professionnel harmonisé avec le header
+        backgroundColor: modernColors.surfaceVariant, // ✅ AMÉLIORÉ: Fond gris clair professionnel plus foncé (#f1f5f9 - slate-100)
     },
     scrollView: {
         flex: 1,

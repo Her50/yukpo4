@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import MapView, { Circle, Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Circle, Marker, Polygon, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -26,7 +26,11 @@ interface InteractiveMapViewProps {
     onPolygonPointsChange?: (points: { lat: number; lng: number }[]) => void;
 }
 
-const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
+export interface InteractiveMapViewRef {
+    animateToRegion: (region: Region, duration?: number) => void;
+}
+
+const InteractiveMapView = forwardRef<InteractiveMapViewRef, InteractiveMapViewProps>(({
     selectedLocation,
     onLocationSelect,
     onPolygonSelect,
@@ -37,7 +41,7 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
     showTraffic = true,
     polygonPoints = [],
     onPolygonPointsChange,
-}) => {
+}, ref) => {
     const mapRef = useRef<MapView>(null);
     const [localPolygonPoints, setLocalPolygonPoints] = useState<{ lat: number; lng: number }[]>(polygonPoints);
     const [mapRegion, setMapRegion] = useState({
@@ -48,6 +52,13 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
     });
     const [mapReady, setMapReady] = useState(false);
     const [mapError, setMapError] = useState(false);
+
+    // ✅ NOUVEAU: Exposer la méthode animateToRegion via ref
+    useImperativeHandle(ref, () => ({
+        animateToRegion: (region: Region, duration: number = 500) => {
+            mapRef.current?.animateToRegion(region, duration);
+        },
+    }), []);
 
     // ✅ CORRECTION CRASH: Timeout pour le chargement de la carte
     useEffect(() => {
@@ -344,7 +355,11 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
             </View>
         </View>
     );
-};
+});
+
+InteractiveMapView.displayName = 'InteractiveMapView';
+
+export default InteractiveMapView;
 
 const styles = StyleSheet.create({
     container: {
@@ -496,6 +511,3 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 });
-
-export default InteractiveMapView;
-

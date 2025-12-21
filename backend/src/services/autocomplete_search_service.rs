@@ -126,15 +126,18 @@ pub async fn search_by_autocomplete_vector(
                 ac.is_real_product = TRUE
                 AND ac.identifiant_base = 'produits'
                 AND s.is_active = TRUE
-                -- ✅ OPTIMISÉ 2025-12-20: Utiliser tsvector @@ tsquery avec index GIN (ultra-rapide)
+                -- ✅ OPTIMISÉ 2025-12-21: Utiliser tsvector @@ tsquery avec index GIN (ultra-rapide)
                 -- Au lieu de LIKE '%...%' avec sous-requêtes corrélées (très lent)
+                -- Note: Les index GIN sur to_tsvector('french', array_to_string(...)) sont créés dans la migration 20251221
                 AND (
-                    -- Recherche dans valeur (index GIN tsvector)
+                    -- Recherche dans valeur (index GIN tsvector - idx_autocomplete_characteristics_valeur_tsvector)
                     to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $4)
-                    -- OU dans full_vector (si disponible)
-                    OR to_tsvector('french', array_to_string(ac.full_vector, ' ')) @@ plainto_tsquery('french', $4)
-                    -- OU dans characteristic_vector (si disponible)
-                    OR to_tsvector('french', array_to_string(ac.characteristic_vector, ' ')) @@ plainto_tsquery('french', $4)
+                    -- OU dans full_vector (index GIN tsvector - idx_autocomplete_full_vector_tsvector_gin)
+                    -- Utilise la fonction IMMUTABLE full_vector_to_tsvector() pour utiliser l'index
+                    OR full_vector_to_tsvector(ac.full_vector) @@ plainto_tsquery('french', $4)
+                    -- OU dans characteristic_vector (index GIN tsvector - idx_autocomplete_characteristic_vector_tsvector_gin)
+                    -- Utilise la fonction IMMUTABLE characteristic_vector_to_tsvector() pour utiliser l'index
+                    OR characteristic_vector_to_tsvector(ac.characteristic_vector) @@ plainto_tsquery('french', $4)
                 )
             ORDER BY s.id, relevance_score DESC, distance_km ASC NULLS LAST
             LIMIT $5
@@ -202,15 +205,18 @@ pub async fn search_by_autocomplete_vector(
                 ac.is_real_product = TRUE
                 AND ac.identifiant_base = 'produits'
                 AND s.is_active = TRUE
-                -- ✅ OPTIMISÉ 2025-12-20: Utiliser tsvector @@ tsquery avec index GIN (ultra-rapide)
+                -- ✅ OPTIMISÉ 2025-12-21: Utiliser tsvector @@ tsquery avec index GIN (ultra-rapide)
                 -- Au lieu de LIKE '%...%' avec sous-requêtes corrélées (très lent)
+                -- Note: Les index GIN sur to_tsvector('french', array_to_string(...)) sont créés dans la migration 20251221
                 AND (
-                    -- Recherche dans valeur (index GIN tsvector)
+                    -- Recherche dans valeur (index GIN tsvector - idx_autocomplete_characteristics_valeur_tsvector)
                     to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $2)
-                    -- OU dans full_vector (si disponible)
-                    OR to_tsvector('french', array_to_string(ac.full_vector, ' ')) @@ plainto_tsquery('french', $2)
-                    -- OU dans characteristic_vector (si disponible)
-                    OR to_tsvector('french', array_to_string(ac.characteristic_vector, ' ')) @@ plainto_tsquery('french', $2)
+                    -- OU dans full_vector (index GIN tsvector - idx_autocomplete_full_vector_tsvector_gin)
+                    -- Utilise la fonction IMMUTABLE full_vector_to_tsvector() pour utiliser l'index
+                    OR full_vector_to_tsvector(ac.full_vector) @@ plainto_tsquery('french', $2)
+                    -- OU dans characteristic_vector (index GIN tsvector - idx_autocomplete_characteristic_vector_tsvector_gin)
+                    -- Utilise la fonction IMMUTABLE characteristic_vector_to_tsvector() pour utiliser l'index
+                    OR characteristic_vector_to_tsvector(ac.characteristic_vector) @@ plainto_tsquery('french', $2)
                 )
             ORDER BY s.id, relevance_score DESC
             LIMIT $3

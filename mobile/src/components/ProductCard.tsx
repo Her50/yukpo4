@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
+import { useServiceStats } from '../hooks/useServiceStats';
 import { apiGet, apiPost } from '../services/api';
 import { mediaService } from '../services/mediaService';
 import FindCourierModal from './delivery/FindCourierModal';
@@ -41,6 +42,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
     const carouselRef = useRef<FlatList>(null);
     const videoRef = useRef<Video>(null);
     const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
+
+    // ✅ NOUVEAU: Récupérer les stats actualisées du service
+    const serviceIdForStats = service?.id || service?.service_id;
+    const serviceCreatedAt = service?.date_creation || service?.created_at || new Date().toISOString();
+    const numericServiceId = serviceIdForStats ? parseInt(serviceIdForStats.toString(), 10) : 0;
+    const { stats: serviceStats } = useServiceStats(numericServiceId > 0 ? numericServiceId : 0, serviceCreatedAt);
 
     // Récupérer la configuration intelligente de la catégorie
     const categoryConfig = getCategoryConfig(product.type || 'default');
@@ -356,18 +363,36 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <Text style={styles.statText}>{product.shares || 0}</Text>
                         </View>
                         <TouchableOpacity
-                            style={styles.statItem}
+                            style={[styles.statItem, styles.ratingStatItem]}
                             onPress={() => setShowRatingModal(true)}
                         >
-                            <SafeIcon name="star" size={12} color="#F59E0B" />
-                            <Text style={[styles.statText, styles.ratingText]}>
-                                {product.rating || service.rating || '—'}
-                            </Text>
-                            {(product.reviews || product.reviews_count || 0) > 0 && (
-                                <Text style={styles.reviewsCountText}>
-                                    ({product.reviews || product.reviews_count || 0})
+                            <SafeIcon name="star" size={12} color="#F59E0B" weight="fill" />
+                            <View style={styles.ratingContainer}>
+                                <Text style={[styles.statText, styles.ratingText]}>
+                                    {(() => {
+                                        // ✅ CORRIGÉ: Utiliser les stats actualisées en priorité
+                                        const rating = serviceStats?.rating || product.rating || service?.rating || 0;
+                                        const reviewCount = serviceStats?.totalRatings || product.reviews_count || product.reviews || service?.reviews_count || 0;
+                                        
+                                        // Formater le score avec 1 décimale si disponible
+                                        if (rating && typeof rating === 'number' && rating > 0) {
+                                            return rating.toFixed(1);
+                                        }
+                                        return reviewCount > 0 ? '—' : '0.0';
+                                    })()}
                                 </Text>
-                            )}
+                                {(() => {
+                                    const reviewCount = serviceStats?.totalRatings || product.reviews_count || product.reviews || service?.reviews_count || 0;
+                                    if (reviewCount > 0) {
+                                        return (
+                                            <Text style={styles.reviewsCountText}>
+                                                ({reviewCount})
+                                            </Text>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+                            </View>
                         </TouchableOpacity>
                         <View style={styles.statItem}>
                             <SafeIcon name="message-square" size={12} color="#6B7280" />
@@ -415,8 +440,26 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         {/* ✅ Bouton Me livrer - Affiché uniquement pour les produits (pas pour les services/prestations) */}
                         {/* Ce bouton permet à l'utilisateur de préciser le lieu de livraison et lancer le matching de coursier */}
                         {/* Le FindCourierModal gère automatiquement la configuration de livraison du produit et le délai de préparation */}
-                        {/* Afficher le bouton par défaut SAUF si le type est explicitement 'prestation_service' ou 'service' */}
-                        {product.type !== 'prestation_service' && product.type !== 'service' && (
+                        {/* ✅ CORRIGÉ: Vérification plus robuste pour afficher le bouton */}
+                        {(() => {
+                            // Vérifier si c'est un service/prestation (à exclure)
+                            const isService = product.type === 'prestation_service' || product.type === 'service';
+                            // Vérifier si on a un service valide
+                            const hasService = !!(service?.id || service?.service_id);
+                            // Afficher le bouton si ce n'est pas un service ET qu'on a un service valide
+                            const shouldShowButton = !isService && hasService;
+                            
+                            if (__DEV__ && !shouldShowButton) {
+                                console.log('[ProductCard] Bouton "Me livrer" masqué:', {
+                                    productType: product.type,
+                                    isService,
+                                    hasService,
+                                    serviceId: service?.id || service?.service_id
+                                });
+                            }
+                            
+                            return shouldShowButton;
+                        })() && (
                             <TouchableOpacity
                                 style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
                                 onPress={async () => {
@@ -631,6 +674,8 @@ const styles = StyleSheet.create({
         width: width * 0.4,
         height: 90,
         position: 'relative',
+        overflow: 'hidden',
+        borderRadius: 12,
     },
     mainImage: {
         width: '100%',
@@ -819,19 +864,31 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 3,
     },
+    ratingStatItem: {
+        backgroundColor: '#FEF3C7',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+    },
     statText: {
         fontSize: 9,
         color: '#6B7280',
         fontWeight: '600',
     },
+    ratingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+    },
     ratingText: {
         color: '#F59E0B',
         fontWeight: '700',
+        fontSize: 11,
     },
     reviewsCountText: {
-        fontSize: 10,
+        fontSize: 9,
         color: '#9CA3AF',
-        marginLeft: 2,
+        fontWeight: '500',
     },
     actions: {
         flexDirection: 'column',
@@ -857,9 +914,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         gap: 4,
         backgroundColor: '#10B981',
-        paddingVertical: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
         borderRadius: 8,
         marginTop: 4,
+        minHeight: 36,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
     },
     deliveryButtonText: {
         fontSize: 11,

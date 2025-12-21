@@ -15,6 +15,7 @@ export const ROUTES = {
   CREATION_SMART_SERVICE: "/creation-smart-service",
   FORMULAIRE_YUKPO_INTELLIGENT: "/formulaire-yukpo-intelligent",
   FORMULAIRE_SERVICE_MODERNE: "/formulaire-service-moderne",  // Nouvelle page moderne
+  AJOUTER_PRODUIT_SIMPLE: "/ajouter-produit-simple",  // ✅ NOUVEAU: Page création simple de produit
   IMMERSIVE_VIDEO_WIZARD: "/immersive-video",
 
   // 🔍 Recherche intelligente de service

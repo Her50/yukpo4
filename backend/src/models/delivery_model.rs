@@ -715,3 +715,65 @@ pub struct ExternalDeliveryPreferences {
     pub preferred_delivery_time_end: Option<String>,
     pub urgency: Option<String>,
 }
+
+/// ✅ NOUVEAU : Type d'adresse sauvegardée
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[sqlx(type_name = "varchar", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum SavedAddressType {
+    Pickup,
+    Dropoff,
+    Both,
+}
+
+/// ✅ NOUVEAU : Adresse sauvegardée par un utilisateur
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct UserSavedAddress {
+    pub id: i32,
+    pub user_id: i32,
+    pub label: String,
+    pub address_type: String, // 'pickup', 'dropoff', 'both'
+    pub address: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub location_data: Option<Value>, // JSONB pour LocationObject (quartier, ville, pays, etc.)
+    pub contact_name: Option<String>,
+    pub contact_phone: Option<String>,
+    pub instructions: Option<String>,
+    pub building_number: Option<String>,
+    pub floor: Option<String>,
+    pub apartment: Option<String>,
+    pub is_default_pickup: bool,
+    pub is_default_dropoff: bool,
+    pub usage_count: i32,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// ✅ NOUVEAU : Input pour créer/mettre à jour une adresse sauvegardée
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserSavedAddressInput {
+    pub label: String,
+    pub address_type: String, // 'pickup', 'dropoff', 'both'
+    pub address: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub location_data: Option<Value>, // JSONB pour LocationObject
+    pub contact_name: Option<String>,
+    pub contact_phone: Option<String>,
+    pub instructions: Option<String>,
+    pub building_number: Option<String>,
+    pub floor: Option<String>,
+    pub apartment: Option<String>,
+    pub is_default_pickup: Option<bool>,
+    pub is_default_dropoff: Option<bool>,
+}
+
+/// ✅ NOUVEAU : Réponse pour la liste des adresses sauvegardées
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserSavedAddressListResponse {
+    pub addresses: Vec<UserSavedAddress>,
+    pub total: i64,
+}
