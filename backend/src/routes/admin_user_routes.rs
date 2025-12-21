@@ -13,7 +13,7 @@ use axum::middleware;
 pub fn admin_user_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/api/admin/users", get(list_users))
-        .route("/api/admin/users/:user_id/role", patch(update_user_role))
+        .route("/api/admin/users/{user_id}/role", patch(update_user_role))
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
 }

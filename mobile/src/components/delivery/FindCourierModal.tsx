@@ -100,9 +100,8 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
             
             try {
                 const response = await deliveryApi.checkProductAvailability(serviceId, productIndex);
-                if (response.success && (response as any).availability) {
-                    const availability = (response as any).availability;
-                    const availability = response.data.availability;
+                if (response.success && response.availability) {
+                    const availability = response.availability;
                     let estimatedReadyTime: Date | undefined;
                     
                     if (availability.preparation_time_minutes && availability.preparation_time_minutes > 0) {
