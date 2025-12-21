@@ -1,9 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Dimensions, FlatList, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
-import { apiPost } from '../services/api';
+import { apiGet, apiPost } from '../services/api';
 import { mediaService } from '../services/mediaService';
 import FindCourierModal from './delivery/FindCourierModal';
 import ProductCommentsSection from './ProductCommentsSection';
@@ -35,6 +35,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     const [showAllImages, setShowAllImages] = useState(false);
     const [showFindCourierModal, setShowFindCourierModal] = useState(false);
     const [showRatingModal, setShowRatingModal] = useState(false);
+    const [checkingAvailability, setCheckingAvailability] = useState(false);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [videoStatus, setVideoStatus] = useState<any>({});
     const carouselRef = useRef<FlatList>(null);
@@ -418,18 +419,94 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         {product.type !== 'prestation_service' && product.type !== 'service' && (
                             <TouchableOpacity
                                 style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
-                                onPress={() => {
+                                onPress={async () => {
                                     // Appeler onDeliveryPress si fourni (pour compatibilité)
                                     if (onDeliveryPress) {
                                         onDeliveryPress();
                                     }
-                                    // Ouvrir le modal de recherche de coursier
-                                    setShowFindCourierModal(true);
+                                    
+                                    // ✅ NOUVEAU: Vérifier la disponibilité AVANT d'ouvrir le modal
+                                    if (!service?.id && !service?.service_id) {
+                                        Alert.alert('Erreur', 'Service non trouvé');
+                                        return;
+                                    }
+                                    
+                                    const serviceId = service?.id || service?.service_id;
+                                    const productIndex = typeof product.product_index === 'number' 
+                                        ? product.product_index 
+                                        : product.index;
+                                    
+                                    if (typeof productIndex !== 'number') {
+                                        Alert.alert('Erreur', 'Produit invalide');
+                                        return;
+                                    }
+                                    
+                                    setCheckingAvailability(true);
+                                    try {
+                                        const response = await apiGet<{
+                                            success: boolean;
+                                            availability: {
+                                                is_available: boolean;
+                                                reason?: string;
+                                                available_days?: number[];
+                                                preparation_time_minutes?: number;
+                                            };
+                                        }>(`/api/delivery/product-availability/${serviceId}/${productIndex}`);
+                                        
+                                        if (response.success && response.data?.availability) {
+                                            const availability = response.data.availability;
+                                            
+                                            if (!availability.is_available) {
+                                                // Produit indisponible - afficher message avec jours disponibles
+                                                const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+                                                const availableDaysStr = availability.available_days?.length 
+                                                    ? availability.available_days.map(d => dayNames[d]).join(', ')
+                                                    : 'Veuillez contacter le prestataire';
+                                                
+                                                Alert.alert(
+                                                    'Produit indisponible',
+                                                    `${availability.reason || 'Ce produit n\'est pas disponible actuellement.'}\n\nDisponible : ${availableDaysStr}`,
+                                                    [
+                                                        {
+                                                            text: 'Chercher un autre prestataire',
+                                                            onPress: () => {
+                                                                // TODO: Navigation vers recherche produits similaires
+                                                            }
+                                                        },
+                                                        { text: 'OK', style: 'cancel' }
+                                                    ]
+                                                );
+                                                return; // Ne pas ouvrir le modal
+                                            }
+                                            
+                                            // Si disponible, ouvrir le modal
+                                            setShowFindCourierModal(true);
+                                        } else {
+                                            // En cas d'erreur, ouvrir quand même le modal
+                                            setShowFindCourierModal(true);
+                                        }
+                                    } catch (error) {
+                                        console.error('[ProductCard] Erreur vérification disponibilité:', error);
+                                        // En cas d'erreur, ouvrir quand même le modal
+                                        setShowFindCourierModal(true);
+                                    } finally {
+                                        setCheckingAvailability(false);
+                                    }
                                 }}
                                 activeOpacity={0.8}
+                                disabled={checkingAvailability}
                             >
-                                <SafeIcon name="truck" size={18} color="#FFFFFF" />
-                                <Text style={styles.deliveryButtonText}>Me livrer</Text>
+                                {checkingAvailability ? (
+                                    <>
+                                        <ActivityIndicator size="small" color="#FFFFFF" />
+                                        <Text style={styles.deliveryButtonText}>Vérification...</Text>
+                                    </>
+                                ) : (
+                                    <>
+                                        <SafeIcon name="truck" size={18} color="#FFFFFF" />
+                                        <Text style={styles.deliveryButtonText}>Me livrer</Text>
+                                    </>
+                                )}
                             </TouchableOpacity>
                         )}
 

@@ -44,6 +44,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { modernColors } from '../theme/modernTheme';
 import { DynamicField, processIASuggestion } from '../utils/formDispatcher';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
+import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 
 const { width } = Dimensions.get('window');
 const TAB_WIDTH = 136;
@@ -289,6 +290,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [gps, setGps] = useState<string | undefined>(undefined);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successData, setSuccessData] = useState<ServiceData | null>(null);
+  // ✅ NOUVEAU: États pour le modal de configuration de livraison
+  const [showProductDeliveryConfig, setShowProductDeliveryConfig] = useState(false);
+  const [productDeliveryConfigData, setProductDeliveryConfigData] = useState<{
+    serviceId: number;
+    productIndex: number;
+    productName: string;
+  } | null>(null);
   // ✅ SUPPRIMÉ: products et setProducts - Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
   const [suggestedProductCategories, setSuggestedProductCategories] = useState<Array<{ value: string; label: string; icon: string; confidence: number; reason?: string }>>([]); // ✅ NOUVEAU: Catégories produits suggérées
@@ -4969,7 +4977,33 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 setIsSubmitting(false);
                 setLoading(false);
 
-                // Redirection après 3 secondes
+                // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
+                const typeOffre = valeursFormulaire.type_offre || 'produit';
+                const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+                
+                if (!isPrestation && result?.id) {
+                  // C'est un produit, ouvrir le modal de configuration de livraison
+                  const serviceId = typeof result.id === 'string' ? parseInt(result.id, 10) : result.id;
+                  const productIndex = 0; // Premier produit créé
+                  
+                  // Extraire le nom du produit
+                  const produits = finalServiceData?.produits?.valeur || finalServiceData?.produits || [];
+                  const firstProduct = Array.isArray(produits) && produits.length > 0 ? produits[0] : null;
+                  const productName = firstProduct?.nom || firstProduct?.nom_produit || 'Nouveau produit';
+                  
+                  // Ouvrir le modal de configuration de livraison
+                  setShowProductDeliveryConfig(true);
+                  setProductDeliveryConfigData({
+                    serviceId: serviceId,
+                    productIndex: productIndex,
+                    productName: productName,
+                  });
+                  
+                  // Ne pas rediriger vers Mes Services, rester sur la page pour la configuration
+                  return;
+                }
+                
+                // Redirection après 3 secondes (pour prestations uniquement)
                 setTimeout(() => {
                   if (fromMesServices) {
                     (navigation as any).navigate('Main', { screen: 'Services' });
@@ -5440,10 +5474,45 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               Coût: {successData?.cout} tokens
             </Text>
             <Text style={styles.successSubtext}>
-              Redirection en cours...
+              {productDeliveryConfigData ? 'Configuration de livraison...' : 'Redirection en cours...'}
             </Text>
           </View>
         </View>
+      )}
+
+      {/* ✅ NOUVEAU: Modal de configuration de livraison */}
+      {productDeliveryConfigData && (
+        <ProductDeliveryConfigModal
+          visible={showProductDeliveryConfig}
+          onClose={() => {
+            setShowProductDeliveryConfig(false);
+            setProductDeliveryConfigData(null);
+            // Après fermeture, rediriger vers Mes Services
+            setTimeout(() => {
+              (navigation as any).navigate('Main', { screen: 'Services' });
+            }, 300);
+          }}
+          serviceId={productDeliveryConfigData.serviceId}
+          productIndex={productDeliveryConfigData.productIndex}
+          productName={productDeliveryConfigData.productName}
+          onSuccess={() => {
+            // Configuration sauvegardée avec succès
+            setShowProductDeliveryConfig(false);
+            setProductDeliveryConfigData(null);
+            Alert.alert(
+              '✅ Configuration terminée',
+              'Votre produit a été configuré avec succès !',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    (navigation as any).navigate('Main', { screen: 'Services' });
+                  }
+                }
+              ]
+            );
+          }}
+        />
       )}
 
       {/* Modal GPS moderne */}

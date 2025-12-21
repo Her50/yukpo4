@@ -27,6 +27,22 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             route: 'CourierRegistration',
             description: 'Rejoignez notre équipe de coursiers'
         },
+        ...(user?.role === 'admin' ? [
+            {
+                title: 'Gérer les coursiers',
+                icon: '👥',
+                route: 'CourierAdmin',
+                description: 'Valider les candidatures de coursiers (Admin)',
+                highlighted: true
+            },
+            {
+                title: 'Gestion des rôles',
+                icon: '👤',
+                route: 'UserRoleManagement',
+                description: 'Gérer les rôles des utilisateurs (Admin)',
+                highlighted: true
+            }
+        ] : []),
         {
             title: 'Contacter le Support',
             icon: '💬',

@@ -39,6 +39,14 @@ path = "src/bin/init_ml_models.rs"
 name = "execute_migrations_direct"
 path = "src/bin/execute_migrations_direct.rs"
 
+[[bin]]
+name = "hash_password_helper"
+path = "src/bin/hash_password_helper.rs"
+
+[[bin]]
+name = "create_admin_user"
+path = "src/bin/create_admin_user.rs"
+
 [features]
 mock = []
 gpu = ["image"]

@@ -122,6 +122,28 @@ pub async fn generate_quick_preview(
 
     let full_filter = format!("{};{}", filter_complex_parts.join(";"), concat_filter);
 
+    // ✅ CORRIGÉ: Extraire le chemin du média depuis la timeline
+    let input_video_path = preview_scenes
+        .iter()
+        .find_map(|scene| scene.media_url.as_ref())
+        .ok_or_else(|| {
+            AppError::Internal(
+                "Aucun média trouvé dans la timeline pour générer le preview".to_string(),
+            )
+        })?;
+
+    // ✅ CORRIGÉ: Vérifier que le fichier existe avant de l'utiliser (seulement pour chemins locaux)
+    if !input_video_path.starts_with("http://") && !input_video_path.starts_with("https://") {
+        let path = std::path::Path::new(input_video_path);
+        if !path.exists() {
+            return Err(AppError::Internal(format!(
+                "Le fichier vidéo source n'existe pas: {}",
+                input_video_path
+            )));
+        }
+    }
+    // Pour les URLs HTTP/HTTPS, FFmpeg peut les lire directement, pas besoin de vérification
+
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -133,7 +155,7 @@ pub async fn generate_quick_preview(
     let full_filter_str = full_filter;
     let ffmpeg_args = vec![
         "-i",
-        "input_video.mp4", // TODO: Utiliser le vrai média de la timeline
+        input_video_path,
         "-filter_complex",
         &full_filter_str,
         "-map",

@@ -14,6 +14,7 @@ pub mod stock_media_controller; // ✅ NOUVEAU Phase 2: Controller pour Stock Me
 pub mod token_pack_controller;
 pub mod upload_controller; // ✅ NOUVEAU: Contrôleur pour upload préalable de fichiers
 pub mod user_controller;
+pub mod admin_user_controller;
 // pub mod fournitures_controller;
 pub mod advanced_timeline_controller; // ✅ NOUVEAU Phase 2: Contrôleur pour timelines multi-pistes avancées
 pub mod agency_schedule_controller; // ✅ 2025-11-27: Contrôleur pour gestion horaires de départ par agence/ville

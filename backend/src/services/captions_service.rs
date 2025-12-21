@@ -94,10 +94,32 @@ pub async fn generate_captions(request: AutoCaptionsRequest) -> AppResult<AutoCa
         }
     };
 
-    // 2. Lire le fichier audio et le convertir en base64 pour Whisper
-    let audio_bytes = tokio::fs::read(&audio_url)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur lecture audio: {}", e)))?;
+    // 2. ✅ CORRIGÉ: Lire le fichier audio (local ou URL) et le convertir en base64 pour Whisper
+    let audio_bytes = if audio_url.starts_with("http://") || audio_url.starts_with("https://") {
+        // URL distante - télécharger avec reqwest
+        let client = reqwest::Client::new();
+        client
+            .get(&audio_url)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur téléchargement audio: {}", e)))?
+            .bytes()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur lecture audio téléchargé: {}", e)))?
+            .to_vec()
+    } else {
+        // Fichier local - vérifier l'existence puis lire
+        let audio_path = std::path::Path::new(&audio_url);
+        if !audio_path.exists() {
+            return Err(AppError::Internal(format!(
+                "Le fichier audio n'existe pas: {}",
+                audio_url
+            )));
+        }
+        tokio::fs::read(&audio_url)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur lecture audio: {}", e)))?
+    };
 
     let audio_base64 = base64::engine::general_purpose::STANDARD.encode(&audio_bytes);
 

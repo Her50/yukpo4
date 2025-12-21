@@ -29,6 +29,7 @@ import { apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 import { applyPriceVariantToProduits, extractPriceVariant } from '../utils/priceVariant';
+import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 
 const AjouterProduitSimpleScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -51,6 +52,13 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const prefill = params.prefill || {};
 
     const [loading, setLoading] = useState(false);
+    // ✅ NOUVEAU: États pour le modal de configuration de livraison
+    const [showProductDeliveryConfig, setShowProductDeliveryConfig] = useState(false);
+    const [productDeliveryConfigData, setProductDeliveryConfigData] = useState<{
+        serviceId: number;
+        productIndex: number;
+        productName: string;
+    } | null>(null);
 
     // ✅ FONCTION HELPER: Extraire valeur avec fallback intelligent (IDENTIQUE AU GRAND FORMULAIRE)
     const extractValue = (field: any): any => {
@@ -1230,6 +1238,31 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 const productIndexResult =
                                     responseData.product_index ??
                                     (typeof responseData === 'object' && responseData.data ? responseData.data.product_index : undefined);
+                                
+                                // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
+                                const typeOffre = formValues.type_offre || 'produit';
+                                const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+                                
+                                if (!isPrestation && productIndexResult !== undefined && serviceId) {
+                                    // C'est un produit, ouvrir le modal de configuration de livraison
+                                    const finalServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
+                                    const finalProductIndex = typeof productIndexResult === 'number' ? productIndexResult : parseInt(String(productIndexResult), 10);
+                                    const productName = formValues.nom_produit || 'Nouveau produit';
+                                    
+                                    // Ouvrir le modal de configuration de livraison
+                                    setShowProductDeliveryConfig(true);
+                                    setProductDeliveryConfigData({
+                                        serviceId: finalServiceId,
+                                        productIndex: finalProductIndex,
+                                        productName: productName,
+                                    });
+                                    
+                                    // Ne pas afficher l'Alert de succès ici, le modal s'ouvrira directement
+                                    DeviceEventEmitter.emit('service:refresh');
+                                    return;
+                                }
+                                
+                                // Pour les prestations ou si productIndexResult n'est pas disponible, afficher l'Alert normal
                                 Alert.alert(
                                     isDuplicate ? '✅ Produit dupliqué' : '✅ Produit créé',
                                     `${isDuplicate ? 'Votre produit dupliqué' : 'Votre nouveau produit'} a été ajouté au service avec succès !\n\n` +
@@ -1619,6 +1652,41 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     </NativeCard>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* ✅ NOUVEAU: Modal de configuration de livraison */}
+            {productDeliveryConfigData && (
+                <ProductDeliveryConfigModal
+                    visible={showProductDeliveryConfig}
+                    onClose={() => {
+                        setShowProductDeliveryConfig(false);
+                        setProductDeliveryConfigData(null);
+                        // Après fermeture, rediriger vers Mes Services
+                        setTimeout(() => {
+                            (navigation as any).navigate('Main', { screen: 'Services' });
+                        }, 300);
+                    }}
+                    serviceId={productDeliveryConfigData.serviceId}
+                    productIndex={productDeliveryConfigData.productIndex}
+                    productName={productDeliveryConfigData.productName}
+                    onSuccess={() => {
+                        // Configuration sauvegardée avec succès
+                        setShowProductDeliveryConfig(false);
+                        setProductDeliveryConfigData(null);
+                        Alert.alert(
+                            '✅ Configuration terminée',
+                            'Votre produit a été configuré avec succès !',
+                            [
+                                {
+                                    text: 'OK',
+                                    onPress: () => {
+                                        (navigation as any).navigate('Main', { screen: 'Services' });
+                                    }
+                                }
+                            ]
+                        );
+                    }}
+                />
+            )}
         </LinearGradient>
     );
 };

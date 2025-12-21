@@ -1165,7 +1165,7 @@ const MesServicesScreen: React.FC = () => {
                   accessibilityLabel="Configuration livraison"
                   accessibilityRole="button"
                 >
-                  <SafeIcon name="truck" size={18} color="#fff" />
+                  <SafeIcon name="bike" size={18} color="#fff" />
                 </TouchableOpacity>
                 {filteredServices.length > 0 && (
                   <TouchableOpacity

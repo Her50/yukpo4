@@ -78,6 +78,51 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
     
     // Notes de livraison
     const [deliveryNotes, setDeliveryNotes] = useState('');
+    
+    // ✅ NOUVEAU: Informations de disponibilité et délai
+    const [availabilityInfo, setAvailabilityInfo] = useState<{
+        is_available: boolean;
+        preparation_time_minutes?: number;
+        estimated_ready_time?: Date;
+    } | null>(null);
+
+    // ✅ NOUVEAU: Charger les informations de disponibilité au montage
+    useEffect(() => {
+        const loadAvailabilityInfo = async () => {
+            if (!visible || !product || !service) return;
+            
+            const serviceId = service?.id || service?.service_id;
+            const productIndex = typeof product.product_index === 'number' 
+                ? product.product_index 
+                : product.index;
+            
+            if (!serviceId || typeof productIndex !== 'number') return;
+            
+            try {
+                const response = await deliveryApi.checkProductAvailability(serviceId, productIndex);
+                if (response.success && (response as any).availability) {
+                    const availability = (response as any).availability;
+                    const availability = response.data.availability;
+                    let estimatedReadyTime: Date | undefined;
+                    
+                    if (availability.preparation_time_minutes && availability.preparation_time_minutes > 0) {
+                        estimatedReadyTime = new Date();
+                        estimatedReadyTime.setMinutes(estimatedReadyTime.getMinutes() + availability.preparation_time_minutes);
+                    }
+                    
+                    setAvailabilityInfo({
+                        is_available: availability.is_available || false,
+                        preparation_time_minutes: availability.preparation_time_minutes,
+                        estimated_ready_time: estimatedReadyTime,
+                    });
+                }
+            } catch (error) {
+                console.error('[FindCourierModal] Erreur chargement disponibilité:', error);
+            }
+        };
+        
+        loadAvailabilityInfo();
+    }, [visible, product, service]);
 
     // Initialiser les points de pickup depuis le produit/service
     useEffect(() => {
@@ -389,6 +434,25 @@ const FindCourierModal: React.FC<FindCourierModalProps> = ({
                         </TouchableOpacity>
                     </View>
 
+                    {/* ✅ NOUVEAU: Affichage des informations de disponibilité et délai */}
+                    {availabilityInfo && availabilityInfo.preparation_time_minutes && availabilityInfo.preparation_time_minutes > 0 && (
+                        <View style={styles.preparationInfoBanner}>
+                            <View style={styles.preparationInfoRow}>
+                                <SafeIcon name="clock" size={16} color={modernColors.primary} />
+                                <View style={styles.preparationInfoText}>
+                                    <Text style={styles.preparationInfoTitle}>
+                                        Temps de préparation : {availabilityInfo.preparation_time_minutes} minutes
+                                    </Text>
+                                    {availabilityInfo.estimated_ready_time && (
+                                        <Text style={styles.preparationInfoSubtitle}>
+                                            Disponible vers {availabilityInfo.estimated_ready_time.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                        </Text>
+                                    )}
+                                </View>
+                            </View>
+                        </View>
+                    )}
+
                     <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
                         {/* Points de pickup et delivery */}
                         <View style={styles.section}>
@@ -635,6 +699,34 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         padding: 4,
+    },
+    // ✅ NOUVEAU: Styles pour l'affichage des informations de préparation
+    preparationInfoBanner: {
+        backgroundColor: '#EFF6FF',
+        borderLeftWidth: 3,
+        borderLeftColor: modernColors.primary,
+        padding: 12,
+        marginHorizontal: 16,
+        marginTop: 8,
+        borderRadius: 8,
+    },
+    preparationInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    preparationInfoText: {
+        flex: 1,
+    },
+    preparationInfoTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#1F2937',
+        marginBottom: 2,
+    },
+    preparationInfoSubtitle: {
+        fontSize: 11,
+        color: '#6B7280',
     },
     scrollContent: {
         flex: 1,

@@ -48,6 +48,8 @@ import CreatorAnalyticsScreen from '../screens/CreatorAnalyticsScreen';
 import AnalyticsDashboardScreen from '../screens/dashboard/AnalyticsDashboardScreen'; // ✅ Phase 10 - Analytics Dashboard
 import DashboardPrestataireScreen from '../screens/DashboardPrestataireScreen'; // ✅ Dashboard Prestataire
 import DashboardScreen from '../screens/DashboardScreen'; // ✅ Ancien Dashboard
+import CourierAdminScreen from '../screens/delivery/CourierAdminScreen';
+import UserRoleManagementScreen from '../screens/admin/UserRoleManagementScreen';
 import DeliveryHomeScreen from '../screens/delivery/DeliveryHomeScreen';
 import DeliveryParcelFlowScreen from '../screens/delivery/DeliveryParcelFlowScreen';
 import DeliveryParcelFlowNewScreen from '../screens/delivery/DeliveryParcelFlowNewScreen';
@@ -1464,6 +1466,22 @@ const SecondaryStack = () => {
         <Stack.Screen
           name="CourierDashboard"
           component={withNavigatorSafeArea(require('../screens/delivery/CourierDashboardScreen').default)}
+        />
+        <Stack.Screen
+          name="CourierAdmin"
+          component={withNavigatorSafeArea(CourierAdminScreen)}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Gestion des coursiers',
+          }}
+        />
+        <SecondaryStack.Screen
+          name="UserRoleManagement"
+          component={withNavigatorSafeArea(UserRoleManagementScreen)}
+          options={{
+            ...defaultScreenOptions,
+            title: 'Gestion des rôles',
+          }}
         />
       </Stack.Navigator>
     </DeepLinkHandler>

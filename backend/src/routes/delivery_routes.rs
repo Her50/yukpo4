@@ -259,6 +259,14 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/delivery/product-config/{service_id}/{product_index}",
             get(get_product_delivery_config),
         )
+        .route(
+            "/api/delivery/product-availability/{service_id}/{product_index}",
+            get(get_product_availability),
+        )
+        .route(
+            "/api/delivery/product-config/list/{service_id}",
+            get(list_product_delivery_configs),
+        )
         // ✅ Phase 9 - Amélioration : Routes pour gérer les zones de livraison des produits
         .route(
             "/api/products/{service_id}/{product_index}/zones",
@@ -356,6 +364,18 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/courier/applications",
             post(submit_courier_application),
+        )
+        .route(
+            "/api/courier/applications",
+            get(list_courier_applications), // ✅ NOUVEAU : Liste des candidatures (admin uniquement)
+        )
+        .route(
+            "/api/courier/applications/{id}/approve",
+            post(approve_courier_application_endpoint), // ✅ NOUVEAU : Approuver candidature (admin)
+        )
+        .route(
+            "/api/courier/applications/{id}/reject",
+            post(reject_courier_application_endpoint), // ✅ NOUVEAU : Rejeter candidature (admin)
         )
         .route("/api/courier/me", get(get_my_courier_status)) // ✅ NOUVEAU : Vérifier statut coursier de l'utilisateur
         .route("/api/courier/{id}/assets", post(upsert_courier_asset))
@@ -576,6 +596,117 @@ async fn save_product_delivery_config(
         } else {
             "Configuration partiellement sauvegardée. Veuillez compléter tous les champs requis pour activer le produit."
         }
+    })))
+}
+
+/// ✅ NOUVEAU : GET /api/delivery/product-availability/{service_id}/{product_index} - Vérifier disponibilité produit
+async fn get_product_availability(
+    State(state): State<Arc<AppState>>,
+    Path((service_id, product_index)): Path<(i32, i32)>,
+) -> AppResult<Json<Value>> {
+    let service = crate::services::product_availability_service::ProductAvailabilityService::new(
+        state.pg.clone(),
+    );
+    
+    let availability = service
+        .check_availability(service_id, product_index, None)
+        .await?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "availability": availability
+    })))
+}
+
+/// ✅ NOUVEAU : GET /api/delivery/product-config/list/{service_id} - Lister les configurations de livraison d'un service
+async fn list_product_delivery_configs(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(service_id): Path<i32>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est propriétaire du service
+    let service: Option<ServiceUserIdRow> =
+        sqlx::query_as("SELECT user_id FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await?;
+
+    let service_owner = service.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
+
+    if service_owner.user_id != user.id {
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas le propriétaire de ce service".into(),
+        ));
+    }
+
+    // Récupérer le service pour obtenir les noms des produits
+    let service_data: Option<ServiceDataRow> =
+        sqlx::query_as("SELECT data FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await?;
+
+    let service_data =
+        service_data.ok_or_else(|| AppError::NotFound("Service non trouvé".into()))?;
+
+    // Extraire les produits depuis la structure data
+    let products = service_data
+        .data
+        .get("produits")
+        .and_then(|p| {
+            // Essayer d'abord produits.valeur (structure avec valeur)
+            p.get("valeur")
+                .or_else(|| Some(p))
+        })
+        .cloned()
+        .unwrap_or_else(|| json!([]));
+
+    // Récupérer toutes les configurations pour ce service
+    let configs: Vec<sqlx::postgres::PgRow> = sqlx::query(
+        r#"
+        SELECT product_index, is_configured, pickup_address, required_vehicle_type_id, preparation_time_minutes
+        FROM product_delivery_config
+        WHERE service_id = $1
+        ORDER BY product_index
+        "#
+    )
+    .bind(service_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur récupération configurations: {}", e)))?;
+
+    let mut result_products = Vec::new();
+    
+    for config_row in configs {
+        let product_index: i32 = config_row.get("product_index");
+        let is_configured: bool = config_row.get("is_configured");
+        let pickup_address: Option<String> = config_row.get("pickup_address");
+        
+        // Obtenir le nom du produit depuis service_data
+        let product_name = if let Some(product) = products.get(product_index as usize) {
+            product
+                .get("nom")
+                .or_else(|| product.get("nom_produit"))
+                .and_then(|v| v.as_str())
+                .or_else(|| product.get("nom").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()))
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("Produit {}", product_index))
+        } else {
+            format!("Produit {}", product_index)
+        };
+        
+        result_products.push(json!({
+            "index": product_index,
+            "name": product_name,
+            "is_configured": is_configured,
+            "has_pickup_address": pickup_address.is_some() && !pickup_address.as_ref().unwrap().is_empty(),
+        }));
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "products": result_products,
+        "total": result_products.len()
     })))
 }
 
@@ -2308,6 +2439,239 @@ async fn get_my_courier_status(
             "reviewed_at": a.reviewed_at,
             "rejection_reason": a.rejection_reason,
         })),
+    })))
+}
+
+// ✅ NOUVEAU : Liste des candidatures de coursiers (admin uniquement)
+async fn list_courier_applications(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Query(params): Query<serde_json::Value>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est admin
+    if user.role != "admin" {
+        return Err(AppError::Forbidden(
+            "Accès réservé aux administrateurs".into(),
+        ));
+    }
+
+    let service = delivery_service(&state)?;
+
+    // Récupérer les paramètres de filtrage
+    let status_filter: Option<crate::models::delivery_model::DeliveryApplicationStatus> = params
+        .get("status")
+        .and_then(|v| v.as_str())
+        .and_then(|s| {
+            match s.to_lowercase().as_str() {
+                "draft" => Some(crate::models::delivery_model::DeliveryApplicationStatus::Draft),
+                "submitted" => Some(crate::models::delivery_model::DeliveryApplicationStatus::Submitted),
+                "under_review" => Some(crate::models::delivery_model::DeliveryApplicationStatus::UnderReview),
+                "approved" => Some(crate::models::delivery_model::DeliveryApplicationStatus::Approved),
+                "rejected" => Some(crate::models::delivery_model::DeliveryApplicationStatus::Rejected),
+                _ => None,
+            }
+        });
+
+    let limit = params
+        .get("limit")
+        .and_then(|v| v.as_i64())
+        .or(Some(100));
+    let offset = params
+        .get("offset")
+        .and_then(|v| v.as_i64())
+        .or(Some(0));
+
+    let applications = service
+        .list_courier_applications(status_filter, limit, offset)
+        .await?;
+
+    // Récupérer les informations utilisateur pour chaque candidature
+    let mut applications_with_user = Vec::new();
+    for app in applications {
+        let user_info: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT nom_complet, email, avatar_url FROM users WHERE id = $1",
+        )
+        .bind(app.user_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+
+        let (name, email, avatar) = user_info.unwrap_or_else(|| {
+            (format!("User {}", app.user_id), None, None)
+        });
+
+        applications_with_user.push(json!({
+            "id": app.id,
+            "user_id": app.user_id,
+            "user_name": name,
+            "user_email": email,
+            "user_avatar": avatar,
+            "status": format!("{:?}", app.status).to_lowercase(),
+            "submitted_at": app.submitted_at,
+            "reviewed_at": app.reviewed_at,
+            "reviewer_id": app.reviewer_id,
+            "rejection_reason": app.rejection_reason,
+            "profile_data": app.profile_data,
+            "documents": app.documents,
+            "notes": app.notes,
+            "created_at": app.created_at,
+            "updated_at": app.updated_at,
+        }));
+    }
+
+    Ok(Json(json!({
+        "applications": applications_with_user,
+        "total": applications_with_user.len(),
+    })))
+}
+
+#[derive(Deserialize)]
+struct ApproveRejectPayload {
+    rejection_reason: Option<String>,
+}
+
+// ✅ NOUVEAU : Approuver une candidature de coursier (admin uniquement)
+async fn approve_courier_application_endpoint(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(application_id): Path<Uuid>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est admin
+    if user.role != "admin" {
+        return Err(AppError::Forbidden(
+            "Accès réservé aux administrateurs".into(),
+        ));
+    }
+
+    let service = delivery_service(&state)?;
+
+    // Récupérer la candidature
+    let application = service
+        .repository()
+        .find_courier_application_by_id(application_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Candidature introuvable".into()))?;
+
+    // Extraire les données du profil depuis profile_data
+    let profile_data = application.profile_data;
+    let personal = profile_data.get("personal").and_then(|p| p.as_object());
+    let transport = profile_data.get("transport").and_then(|t| t.as_object());
+
+    let user_id = application.user_id;
+    let bio = personal
+        .and_then(|p| p.get("bio"))
+        .and_then(|b| b.as_str())
+        .map(|s| s.to_string())
+        .or_else(|| {
+            profile_data
+                .get("bio")
+                .and_then(|b| b.as_str())
+                .map(|s| s.to_string())
+        });
+
+    // Extraire les informations de transport
+    let vehicle_type_str = transport
+        .and_then(|t| t.get("vehicleType"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_lowercase());
+
+    let engine_type = match vehicle_type_str.as_deref() {
+        Some("motorcycle") => crate::models::delivery_model::DeliveryEngineType::Moto,
+        Some("car") => crate::models::delivery_model::DeliveryEngineType::Voiture,
+        Some("tricycle") => crate::models::delivery_model::DeliveryEngineType::Tricycle,
+        Some("van") | Some("pickup") => crate::models::delivery_model::DeliveryEngineType::Camionnette,
+        Some("truck") => crate::models::delivery_model::DeliveryEngineType::CamionLeger,
+        Some("bike") => crate::models::delivery_model::DeliveryEngineType::VeloCargo,
+        Some("walking") => crate::models::delivery_model::DeliveryEngineType::Pieton,
+        _ => crate::models::delivery_model::DeliveryEngineType::Autre,
+    };
+
+    // Préparer l'asset input (le courier_id sera rempli automatiquement dans approve_courier_application)
+    let asset_input = Some(crate::services::delivery_service::CourierAssetInput {
+        courier_id: Uuid::new_v4(), // Sera remplacé par l'ID réel du coursier créé
+        engine_type,
+        max_weight_kg: None,
+        max_volume_cm3: None,
+        equipments: json!({}),
+        available: true,
+        availability_schedule: profile_data.get("availability").cloned(),
+        documents: Some(application.documents.clone()),
+    });
+
+    // Approuver la candidature
+    let (updated_app, courier, asset) = service
+        .approve_courier_application(
+            application_id,
+            user.id,
+            true, // approve
+            None, // rejection_reason
+            crate::services::delivery_service::CourierProfileInput {
+                user_id,
+                application_id: Some(application_id),
+                bio,
+            },
+            asset_input,
+        )
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "application": updated_app,
+        "courier": courier,
+        "asset": asset,
+    })))
+}
+
+// ✅ NOUVEAU : Rejeter une candidature de coursier (admin uniquement)
+async fn reject_courier_application_endpoint(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(application_id): Path<Uuid>,
+    Json(payload): Json<ApproveRejectPayload>,
+) -> AppResult<Json<Value>> {
+    // Vérifier que l'utilisateur est admin
+    if user.role != "admin" {
+        return Err(AppError::Forbidden(
+            "Accès réservé aux administrateurs".into(),
+        ));
+    }
+
+    let service = delivery_service(&state)?;
+
+    // Récupérer la candidature
+    let application = service
+        .repository()
+        .find_courier_application_by_id(application_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Candidature introuvable".into()))?;
+
+    // Extraire les données du profil
+    let profile_data = application.profile_data;
+    let bio = profile_data
+        .get("bio")
+        .and_then(|b| b.as_str())
+        .map(|s| s.to_string());
+
+    // Rejeter la candidature
+    let (updated_app, _courier, _asset) = service
+        .approve_courier_application(
+            application_id,
+            user.id,
+            false, // reject
+            payload.rejection_reason,
+            crate::services::delivery_service::CourierProfileInput {
+                user_id: application.user_id,
+                application_id: Some(application_id),
+                bio,
+            },
+            None, // Pas d'asset pour un rejet
+        )
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "application": updated_app,
     })))
 }
 

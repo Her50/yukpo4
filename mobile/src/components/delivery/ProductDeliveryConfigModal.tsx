@@ -80,6 +80,12 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
     const isTransversalMode = productIndex === -1;
     const [loading, setLoading] = useState(false);
     const [parcelTypes, setParcelTypes] = useState<ParcelType[]>([]);
+    
+    // ✅ NOUVEAU: Options de réutilisation de configuration
+    const [useExistingConfig, setUseExistingConfig] = useState(false);
+    const [selectedProductIndex, setSelectedProductIndex] = useState<number | null>(null);
+    const [availableProducts, setAvailableProducts] = useState<Array<{index: number, name: string, is_configured: boolean}>>([]);
+    const [loadingProducts, setLoadingProducts] = useState(false);
     // ✅ Phase 9 - Amélioration 32 : Gestion des lieux de stock
     const [storageLocations, setStorageLocations] = useState<Array<{
         id: number;
@@ -96,6 +102,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
         pickup_longitude: 0,
         storage_location_id: undefined as number | undefined, // ✅ Phase 9 - Amélioration 32
         required_vehicle_type_id: 0,
+        preparation_time_minutes: '', // ✅ NOUVEAU: Temps de préparation en minutes
         weight_kg: '',
         volume_cm3: '',
         requires_isothermal: false,
@@ -175,6 +182,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                     pickup_longitude: (typeof c.pickup_longitude === 'number' ? c.pickup_longitude : 0) || 0,
                     storage_location_id: (typeof c.storage_location_id === 'number' ? c.storage_location_id : undefined), // ✅ Phase 9 - Amélioration 32
                     required_vehicle_type_id: (typeof c.required_vehicle_type_id === 'number' ? c.required_vehicle_type_id : 0) || 0,
+                    preparation_time_minutes: c.preparation_time_minutes ? String(c.preparation_time_minutes) : '0', // ✅ NOUVEAU
                     weight_kg: c.weight_kg ? String(c.weight_kg) : '',
                     volume_cm3: c.volume_cm3 ? String(c.volume_cm3) : '',
                     requires_isothermal: typeof c.requires_isothermal === 'boolean' ? c.requires_isothermal : false,
@@ -203,6 +211,15 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
             return;
         }
 
+        // ✅ NOUVEAU: Valider le temps de préparation
+        const preparationTime = config.preparation_time_minutes.trim() 
+            ? parseInt(config.preparation_time_minutes.trim(), 10) 
+            : 0;
+        if (preparationTime < 0) {
+            Alert.alert('Erreur', 'Le temps de préparation doit être positif ou nul (0 = instantané)');
+            return;
+        }
+
         let schedule;
         try {
             schedule = JSON.parse(config.pickup_availability_schedule);
@@ -225,6 +242,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 pickup_longitude: typeof config.pickup_longitude === 'number' ? config.pickup_longitude : 0,
                 storage_location_id: typeof config.storage_location_id === 'number' ? config.storage_location_id : null, // ✅ Phase 9 - Amélioration 32
                 required_vehicle_type_id: typeof config.required_vehicle_type_id === 'number' ? config.required_vehicle_type_id : 0,
+                preparation_time_minutes: preparationTime > 0 ? preparationTime : undefined, // ✅ NOUVEAU
                 weight_kg: (typeof config.weight_kg === 'string' && config.weight_kg.trim()) ? parseFloat(config.weight_kg) : undefined,
                 volume_cm3: (typeof config.volume_cm3 === 'string' && config.volume_cm3.trim()) ? parseFloat(config.volume_cm3) : undefined,
                 requires_isothermal: typeof config.requires_isothermal === 'boolean' ? config.requires_isothermal : false,
@@ -310,6 +328,52 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             <Text style={styles.warningText}>
                                 ⚠️ Cette configuration sera appliquée à tous vos produits (sauf prestations). Les configurations existantes seront remplacées.
                             </Text>
+                        </View>
+                    )}
+
+                    {/* ✅ NOUVEAU: Option de réutilisation de configuration */}
+                    {!isTransversalMode && availableProducts.length > 0 && (
+                        <View style={styles.section}>
+                            <View style={styles.reuseSection}>
+                                <View style={styles.reuseHeader}>
+                                    <Text style={styles.label}>Utiliser la configuration d'un autre produit ?</Text>
+                                    <TouchableOpacity
+                                        onPress={() => setUseExistingConfig(!useExistingConfig)}
+                                        style={styles.switchContainer}
+                                    >
+                                        <View style={[styles.switch, useExistingConfig && styles.switchActive]}>
+                                            <View style={[styles.switchThumb, useExistingConfig && styles.switchThumbActive]} />
+                                        </View>
+                                    </TouchableOpacity>
+                                </View>
+                                
+                                {useExistingConfig && (
+                                    <View style={styles.selectContainer}>
+                                        <Text style={styles.hint}>Sélectionnez un produit pour copier sa configuration :</Text>
+                                        <TouchableOpacity
+                                            style={styles.select}
+                                            onPress={() => {
+                                                const options: Array<{ text: string; onPress?: () => void; style?: 'cancel' | 'destructive' | 'default' }> = availableProducts.map(p => ({
+                                                    text: `${p.name} ${p.is_configured ? '✓' : ''}`,
+                                                    onPress: () => setSelectedProductIndex(p.index)
+                                                }));
+                                                options.push({ text: 'Annuler', style: 'cancel' });
+                                                Alert.alert('Sélectionner un produit', '', options);
+                                            }}
+                                        >
+                                            <Text style={[styles.selectText, !selectedProductIndex && styles.selectPlaceholder]}>
+                                                {selectedProductIndex !== null
+                                                    ? availableProducts.find(p => p.index === selectedProductIndex)?.name || 'Sélectionner...'
+                                                    : 'Sélectionner un produit...'}
+                                            </Text>
+                                            <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
+                                        </TouchableOpacity>
+                                        {loadingProducts && (
+                                            <Text style={styles.hint}>Chargement des produits...</Text>
+                                        )}
+                                    </View>
+                                )}
+                            </View>
                         </View>
                     )}
 
@@ -403,6 +467,21 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             </Text>
                             <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
                         </TouchableOpacity>
+                    </View>
+
+                    {/* ✅ NOUVEAU: Temps de préparation */}
+                    <View style={styles.section}>
+                        <Text style={styles.label}>Temps de préparation (minutes) *</Text>
+                        <Text style={styles.hint}>
+                            Temps nécessaire pour préparer le produit avant la collecte. 0 = instantané (ex: produits en stock). Exemples: repas (15-30 min), commandes sur mesure (60-120 min).
+                        </Text>
+                        <TextInput
+                            style={styles.input}
+                            value={config.preparation_time_minutes}
+                            onChangeText={(text) => setConfig(prev => ({ ...prev, preparation_time_minutes: text.replace(/[^0-9]/g, '') }))}
+                            placeholder="0"
+                            keyboardType="numeric"
+                        />
                     </View>
 
                     {/* Poids et volume */}

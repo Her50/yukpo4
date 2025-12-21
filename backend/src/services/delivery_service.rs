@@ -1216,6 +1216,18 @@ impl DeliveryService {
     }
 
     /// Valide une candidature (backoffice)
+    /// ✅ NOUVEAU : Liste toutes les candidatures de coursiers (admin uniquement)
+    pub async fn list_courier_applications(
+        &self,
+        status_filter: Option<crate::models::delivery_model::DeliveryApplicationStatus>,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> AppResult<Vec<CourierApplication>> {
+        self.repository
+            .list_courier_applications(status_filter, limit, offset)
+            .await
+    }
+
     pub async fn approve_courier_application(
         &self,
         application_id: Uuid,

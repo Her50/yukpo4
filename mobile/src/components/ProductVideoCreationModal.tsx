@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { config } from '../config/environment';
-import { iaApi, mediaApi } from '../services/api';
+import { iaApi, mediaApi, apiGet, apiPost } from '../services/api';
+import ProductDeliveryConfigModal from './delivery/ProductDeliveryConfigModal';
 import { uploadToCloud } from '../services/cloudUpload';
 import { studioService, type VideoDependency } from '../services/studioService';
 import { trackUxEvent } from '../services/uxMetrics';
@@ -36,7 +37,6 @@ import { AudioSyncPanel } from './AudioSyncPanel';
 import { AutoCaptionsPanel } from './AutoCaptionsPanel';
 import { AutoCutPanel } from './AutoCutPanel';
 import { ColorGradingPanel } from './ColorGradingPanel';
-import { CreatorStudioCard } from './CreatorStudioCard';
 import { EffectPreviewCarousel } from './EffectPreviewCarousel';
 import { QuickPreview } from './QuickPreview';
 import { TimelineVariantSelector } from './TimelineVariantSelector';
@@ -295,6 +295,17 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [includePrice, setIncludePrice] = useState<boolean>(true);
     const [includePromotion, setIncludePromotion] = useState<boolean>(false);
     const [includeContact, setIncludeContact] = useState<boolean>(true);
+    const [enableDelivery, setEnableDelivery] = useState<boolean>(false);
+    const [deliveryConfig, setDeliveryConfig] = useState<{
+        pickup_address?: string;
+        pickup_latitude?: number;
+        pickup_longitude?: number;
+        preparation_time_minutes?: number;
+        required_vehicle_type_id?: number;
+        is_configured?: boolean;
+    } | null>(null);
+    const [loadingDeliveryConfig, setLoadingDeliveryConfig] = useState<boolean>(false);
+    const [showDeliveryConfigModal, setShowDeliveryConfigModal] = useState<boolean>(false);
     const [useProductGallery, setUseProductGallery] = useState<boolean>(true);
     const [useMediatechLibrary, setUseMediatechLibrary] = useState<boolean>(true);
     const [includePubliciteAssets, setIncludePubliciteAssets] = useState<boolean>(true);
@@ -426,6 +437,53 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setIsUploadingARVideo(false);
         }
     }, [selectedProduct]);
+
+    // ✅ Fonction pour charger la configuration de livraison
+    const loadDeliveryConfig = useCallback(async (serviceId: number, productIndex: number) => {
+        setLoadingDeliveryConfig(true);
+        try {
+            const response = await apiGet<{
+                config?: {
+                    is_configured?: boolean;
+                    pickup_address?: string;
+                    pickup_latitude?: number;
+                    pickup_longitude?: number;
+                    preparation_time_minutes?: number;
+                    required_vehicle_type_id?: number;
+                };
+            }>(`/api/delivery/product-config/${serviceId}/${productIndex}`);
+            
+            if (response.success && response.data?.config) {
+                setDeliveryConfig({
+                    pickup_address: response.data.config.pickup_address,
+                    pickup_latitude: response.data.config.pickup_latitude,
+                    pickup_longitude: response.data.config.pickup_longitude,
+                    preparation_time_minutes: response.data.config.preparation_time_minutes,
+                    required_vehicle_type_id: response.data.config.required_vehicle_type_id,
+                    is_configured: response.data.config.is_configured || false,
+                });
+                // Activer automatiquement le toggle si la config existe
+                if (response.data.config.is_configured) {
+                    setEnableDelivery(true);
+                }
+            } else {
+                setDeliveryConfig(null);
+            }
+        } catch (error) {
+            console.error('[ProductVideoCreationModal] Erreur chargement config livraison:', error);
+            setDeliveryConfig(null);
+        } finally {
+            setLoadingDeliveryConfig(false);
+        }
+    }, []);
+
+    // ✅ Charger la config de livraison quand un produit est sélectionné
+    useEffect(() => {
+        if (visible && selectedProduct?.serviceId && typeof selectedProduct.product_index === 'number') {
+            loadDeliveryConfig(Number(selectedProduct.serviceId), selectedProduct.product_index);
+        }
+    }, [visible, selectedProduct, loadDeliveryConfig]);
+
     const refreshMedia = useCallback(
         async (product?: ManagedProduct | null): Promise<MediaLibraryItem[]> => {
             if (!product || typeof product.product_index !== 'number') {
@@ -1691,125 +1749,86 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     }, [studioSessionId, prewarmedShortPreviewUrl, selectedProduct, activeStep]);
 
     const renderStep1 = () => {
-        // Étape 1 : Sélection produit uniquement
+        // ✅ ÉTAPE 1 NETTOYÉE : Sélection produit + Configuration livraison uniquement
         return (
             <>
                 {renderProductSelection()}
-                {/* ✅ NOUVEAU: CreatorStudioCard (depuis Wizard) */}
+                
+                {/* ✅ Configuration de livraison */}
                 {selectedProduct && (
-                    <CreatorStudioCard
-                        serviceName={`Service #${selectedProduct.serviceId}`}
-                        productName={normalizeProductName(selectedProduct)}
-                    />
-                )}
-                {/* ✅ NOUVEAU: Templates Narratifs Serveur (depuis Wizard) */}
-                {selectedProduct && storyTemplates.length > 0 && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>📝 Templates narratifs</Text>
-                            {storyTemplatesLoading && (
-                                <ActivityIndicator size="small" color={modernColors.primary} />
-                            )}
+                            <Text style={styles.sectionTitle}>🚚 Configuration de livraison</Text>
                         </View>
                         <Text style={styles.sectionSubtitle}>
-                            Choisissez un template pour structurer votre vidéo.
+                            Activez la livraison pour permettre aux clients de commander directement depuis la vidéo (bouton "Me livrer").
                         </Text>
-                        <View style={styles.templateList}>
-                            {storyTemplates.slice(0, 4).map((spec) => {
-                                const active = spec.id === storyTemplateId;
-                                return (
-                                    <TouchableOpacity
-                                        key={spec.id}
-                                        style={[styles.templateCard, active && styles.templateCardActive]}
-                                        onPress={() => setStoryTemplateId(spec.id)}
-                                    >
-                                        <Text style={[styles.templateTitle, active && styles.templateTitleActive]}>
-                                            {spec.label}
-                                        </Text>
-                                        <Text style={styles.templateDescription} numberOfLines={2}>
-                                            {spec.description}
-                                        </Text>
-                                        <Text style={styles.templateMeta}>
-                                            {spec.suggestedScenes} scènes • ~{spec.defaultDurationSeconds}s
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    </NativeCard>
-                )}
-
-                {/* ✅ NOUVEAU: Storyboard IA via Studio (depuis Wizard) */}
-                {selectedProduct && (
-                    <NativeCard style={styles.sectionCard}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>🎬 Storyboard IA</Text>
-                            <TouchableOpacity
-                                style={styles.linkButton}
-                                onPress={handleGenerateStoryboard}
-                                disabled={storyboardLoading}
-                            >
-                                {storyboardLoading ? (
-                                    <ActivityIndicator size="small" color={modernColors.primary} />
-                                ) : (
-                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                                )}
-                                <Text style={styles.linkButtonText}>
-                                    {storyboardLoading ? 'Génération…' : 'Générer storyboard'}
+                        <View style={styles.toggleRow}>
+                            <View style={styles.toggleText}>
+                                <Text style={styles.toggleLabel}>Livraison activée</Text>
+                                <Text style={styles.toggleDescription}>
+                                    Les clients pourront commander la livraison directement depuis la vidéo
                                 </Text>
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={styles.sectionSubtitle}>
-                            Génère une proposition de scènes (intro, bénéfices, preuves, CTA) à partir de ton brief.
-                        </Text>
-                        {/* ✅ NOUVEAU: Auto-Storyboard Toggle (depuis Wizard) */}
-                        <View style={styles.inlineRow}>
-                            <Text style={styles.inlineLabel}>Storyboard automatique</Text>
+                            </View>
                             <Switch
-                                value={autoStoryboard}
-                                onValueChange={setAutoStoryboard}
+                                value={enableDelivery}
+                                onValueChange={(value) => {
+                                    setEnableDelivery(value);
+                                    if (value && selectedProduct?.serviceId && typeof selectedProduct.product_index === 'number') {
+                                        // Charger la config existante si elle existe
+                                        loadDeliveryConfig(Number(selectedProduct.serviceId), selectedProduct.product_index);
+                                    }
+                                }}
                                 trackColor={{ true: modernColors.primary }}
                             />
                         </View>
-                        {storyboard && storyboard.scenes.length > 0 && (
-                            <View style={styles.storyboardList}>
-                                {storyboard.scenes.slice(0, 4).map((scene) => (
-                                    <View key={scene.index} style={styles.storyboardItem}>
-                                        <Text style={styles.storyboardSceneType}>
-                                            {scene.sceneType}
+                        {enableDelivery && (
+                            <>
+                                {loadingDeliveryConfig ? (
+                                    <ActivityIndicator size="small" color={modernColors.primary} style={{ marginTop: 12 }} />
+                                ) : deliveryConfig?.is_configured ? (
+                                    <View style={styles.deliveryConfigStatus}>
+                                        <SafeIcon name="check-circle" size={16} color="#10B981" />
+                                        <Text style={styles.deliveryConfigStatusText}>
+                                            ✅ Configuration complète - Le bouton "Me livrer" apparaîtra sur la vidéo
                                         </Text>
-                                        <Text style={styles.storyboardSceneText} numberOfLines={2}>
-                                            {scene.headline || scene.body || 'Scène générée'}
-                                        </Text>
+                                        {deliveryConfig.pickup_address && (
+                                            <Text style={styles.deliveryConfigAddress}>
+                                                📍 {deliveryConfig.pickup_address}
+                                            </Text>
+                                        )}
+                                        <TouchableOpacity
+                                            style={styles.configureButton}
+                                            onPress={() => setShowDeliveryConfigModal(true)}
+                                        >
+                                            <SafeIcon name="settings" size={16} color={modernColors.primary} />
+                                            <Text style={styles.configureButtonText}>
+                                                Modifier la configuration
+                                            </Text>
+                                        </TouchableOpacity>
                                     </View>
-                                ))}
-                            </View>
+                                ) : (
+                                    <View style={styles.deliveryConfigHint}>
+                                        <SafeIcon name="info" size={16} color={modernColors.primary} />
+                                        <Text style={styles.deliveryConfigHintText}>
+                                            ⚠️ Configuration incomplète - Configurez les détails de livraison pour activer le bouton "Me livrer"
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={styles.configureButton}
+                                            onPress={() => setShowDeliveryConfigModal(true)}
+                                        >
+                                            <SafeIcon name="settings" size={16} color={modernColors.primary} />
+                                            <Text style={styles.configureButtonText}>
+                                                Configurer la livraison
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </>
                         )}
                     </NativeCard>
                 )}
-                {/* ✅ NOUVEAU Phase 3.2: Bouton pour créer vidéo AR à l'étape 1 */}
-                {selectedProduct && (
-                    <NativeCard style={styles.sectionCard}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>🎬 Création vidéo AR</Text>
-                        </View>
-                        <Text style={styles.sectionSubtitle}>
-                            Capturez votre produit en réalité augmentée avec effets 3D immersifs.
-                        </Text>
-                        <View style={styles.arButtonContainer}>
-                            <NativeButton
-                                title="🎬 Créer vidéo AR immersive"
-                                variant="primary"
-                                size="medium"
-                                onPress={() => setShowAREditor(true)}
-                                style={styles.arButton}
-                            />
-                            <Text style={styles.arButtonHint}>
-                                Ajoutez une vidéo AR directement à votre médiathèque produit
-                            </Text>
-                        </View>
-                    </NativeCard>
-                )}
+                
                 {coachPanel}
                 {selectedProduct && renderRelatedProducts()}
             </>
@@ -2117,6 +2136,92 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         return (
             <>
+                {/* ✅ Templates Narratifs Serveur (déplacé depuis étape 1) */}
+                {selectedProduct && storyTemplates.length > 0 && (
+                    <NativeCard style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>📝 Templates narratifs</Text>
+                            {storyTemplatesLoading && (
+                                <ActivityIndicator size="small" color={modernColors.primary} />
+                            )}
+                        </View>
+                        <Text style={styles.sectionSubtitle}>
+                            Choisissez un template pour structurer votre vidéo.
+                        </Text>
+                        <View style={styles.templateList}>
+                            {storyTemplates.slice(0, 4).map((spec) => {
+                                const active = spec.id === storyTemplateId;
+                                return (
+                                    <TouchableOpacity
+                                        key={spec.id}
+                                        style={[styles.templateCard, active && styles.templateCardActive]}
+                                        onPress={() => setStoryTemplateId(spec.id)}
+                                    >
+                                        <Text style={[styles.templateTitle, active && styles.templateTitleActive]}>
+                                            {spec.label}
+                                        </Text>
+                                        <Text style={styles.templateDescription} numberOfLines={2}>
+                                            {spec.description}
+                                        </Text>
+                                        <Text style={styles.templateMeta}>
+                                            {spec.suggestedScenes} scènes • ~{spec.defaultDurationSeconds}s
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </NativeCard>
+                )}
+
+                {/* ✅ Storyboard IA via Studio (déplacé depuis étape 1) */}
+                {selectedProduct && (
+                    <NativeCard style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>🎬 Storyboard IA</Text>
+                            <TouchableOpacity
+                                style={styles.linkButton}
+                                onPress={handleGenerateStoryboard}
+                                disabled={storyboardLoading}
+                            >
+                                {storyboardLoading ? (
+                                    <ActivityIndicator size="small" color={modernColors.primary} />
+                                ) : (
+                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                                )}
+                                <Text style={styles.linkButtonText}>
+                                    {storyboardLoading ? 'Génération…' : 'Générer storyboard'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.sectionSubtitle}>
+                            Génère une proposition de scènes (intro, bénéfices, preuves, CTA) à partir de ton brief.
+                        </Text>
+                        {/* ✅ Auto-Storyboard Toggle */}
+                        <View style={styles.inlineRow}>
+                            <Text style={styles.inlineLabel}>Storyboard automatique</Text>
+                            <Switch
+                                value={autoStoryboard}
+                                onValueChange={setAutoStoryboard}
+                                trackColor={{ true: modernColors.primary }}
+                            />
+                        </View>
+                        {storyboard && storyboard.scenes.length > 0 && (
+                            <View style={styles.storyboardList}>
+                                {storyboard.scenes.slice(0, 4).map((scene) => (
+                                    <View key={scene.index} style={styles.storyboardItem}>
+                                        <Text style={styles.storyboardSceneType}>
+                                            {scene.sceneType}
+                                        </Text>
+                                        <Text style={styles.storyboardSceneText} numberOfLines={2}>
+                                            {scene.headline || scene.body || 'Scène générée'}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                    </NativeCard>
+                )}
+
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>✍️ Script de montage</Text>
@@ -4038,6 +4143,24 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                 </View>
             </Modal>
+
+            {/* ✅ Modal de configuration de livraison */}
+            {selectedProduct && selectedProduct.serviceId && typeof selectedProduct.product_index === 'number' && (
+                <ProductDeliveryConfigModal
+                    visible={showDeliveryConfigModal}
+                    onClose={() => setShowDeliveryConfigModal(false)}
+                    serviceId={Number(selectedProduct.serviceId)}
+                    productIndex={selectedProduct.product_index}
+                    productName={normalizeProductName(selectedProduct)}
+                    onSuccess={() => {
+                        // Recharger la configuration après sauvegarde
+                        if (selectedProduct?.serviceId && typeof selectedProduct.product_index === 'number') {
+                            loadDeliveryConfig(Number(selectedProduct.serviceId), selectedProduct.product_index);
+                        }
+                        setShowDeliveryConfigModal(false);
+                    }}
+                />
+            )}
         </>
     );
 };
@@ -4465,6 +4588,61 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.textSecondary,
         lineHeight: 16,
+    },
+    deliveryConfigHint: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: '#F0F9FF',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+        flexDirection: 'row',
+        gap: 8,
+        alignItems: 'flex-start',
+    },
+    deliveryConfigHintText: {
+        flex: 1,
+        fontSize: 12,
+        color: '#0369A1',
+        lineHeight: 16,
+    },
+    deliveryConfigStatus: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: '#ECFDF5',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#10B981',
+        gap: 8,
+    },
+    deliveryConfigStatusText: {
+        flex: 1,
+        fontSize: 12,
+        color: '#065F46',
+        lineHeight: 16,
+        fontWeight: '500',
+    },
+    deliveryConfigAddress: {
+        fontSize: 11,
+        color: '#047857',
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    configureButton: {
+        marginTop: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 10,
+        backgroundColor: modernColors.surface,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+    },
+    configureButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
     relatedProductsContainer: {
         flexDirection: 'row',

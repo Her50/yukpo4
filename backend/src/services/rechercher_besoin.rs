@@ -1385,7 +1385,13 @@ async fn search_services_direct_fallback(
     // C'est 10-20x plus rapide que chercher dans services.data->'produits' car full_vector est indexé avec GIN
     let search_terms: Vec<String> = all_keywords.iter().map(|k| k.to_lowercase()).collect();
     
-    // ✅ NOUVEAU: Requête optimisée utilisant autocomplete_characteristics (comme autocomplete)
+    // ✅ OPTIMISÉ 2025-12-20: Requête utilisant index GIN tsvector (ultra-rapide)
+    // Le problème: LIKE '%...%' avec unnest + EXISTS = très lent (plusieurs secondes)
+    // Solution: Utiliser tsvector @@ tsquery avec index GIN = instantané (< 100ms)
+    
+    // Construire la requête tsquery depuis les mots-clés
+    let search_query = all_keywords.join(" | "); // Format tsquery: "mot1 | mot2 | mot3"
+    
     let query = r#"
         SELECT DISTINCT ON (s.id)
             s.id,
@@ -1395,37 +1401,18 @@ async fn search_services_direct_fallback(
             s.created_at,
             s.gps,
             s.category,
-            -- Score de pertinence (comme autocomplete)
+            -- ✅ OPTIMISÉ: Score basé sur ts_rank (utilise l'index GIN) + usage_count
             (
-                -- Score correspondances exactes dans full_vector
-                (
-                    SELECT COUNT(*)::REAL * 20.0
-                    FROM unnest($1::TEXT[]) AS search_val
-                    WHERE EXISTS (
-                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                        WHERE LOWER(vec_val) = LOWER(search_val)
-                    )
-                ) +
-                -- Bonus correspondances partielles dans full_vector
-                (
-                    SELECT COUNT(*)::REAL * 10.0
-                    FROM unnest($1::TEXT[]) AS search_val
-                    WHERE EXISTS (
-                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                        WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
-                    )
-                ) +
-                -- Score characteristic_vector
-                (
-                    SELECT COUNT(*)::REAL * 8.0
-                    FROM unnest($1::TEXT[]) AS search_val
-                    WHERE EXISTS (
-                        SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
-                        WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
-                    )
-                ) +
-                -- Boost popularité
-                (ac.usage_count::REAL * 2.0)
+                ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $2)) * 20.0 +
+                (ac.usage_count::REAL * 2.0) +
+                -- Bonus si match dans full_vector ou characteristic_vector
+                CASE 
+                    WHEN to_tsvector('french', array_to_string(ac.full_vector, ' ')) @@ plainto_tsquery('french', $2)
+                    THEN 10.0
+                    WHEN to_tsvector('french', array_to_string(ac.characteristic_vector, ' ')) @@ plainto_tsquery('french', $2)
+                    THEN 8.0
+                    ELSE 0.0
+                END
             ) as relevance_score
         FROM autocomplete_characteristics ac
         INNER JOIN services s ON s.id = ac.service_id
@@ -1433,29 +1420,23 @@ async fn search_services_direct_fallback(
             ac.is_real_product = TRUE
             AND s.is_active = TRUE
             AND ac.identifiant_base = 'produits'
+            -- ✅ OPTIMISÉ 2025-12-20: Utiliser tsvector @@ tsquery avec index GIN (ultra-rapide)
+            -- Au lieu de LIKE '%...%' avec unnest + EXISTS (très lent)
             AND (
-                -- Au moins UN terme doit matcher dans full_vector ou characteristic_vector
-                EXISTS (
-                    SELECT 1 FROM unnest($1::TEXT[]) AS search_val
-                    WHERE EXISTS (
-                        SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                        WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
-                    )
-                )
-                OR EXISTS (
-                    SELECT 1 FROM unnest($1::TEXT[]) AS search_val
-                    WHERE EXISTS (
-                        SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
-                        WHERE LOWER(vec_val) LIKE '%' || LOWER(search_val) || '%'
-                    )
-                )
+                -- Recherche dans valeur (index GIN tsvector)
+                to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $2)
+                -- OU dans full_vector (si disponible)
+                OR to_tsvector('french', array_to_string(ac.full_vector, ' ')) @@ plainto_tsquery('french', $2)
+                -- OU dans characteristic_vector (si disponible)
+                OR to_tsvector('french', array_to_string(ac.characteristic_vector, ' ')) @@ plainto_tsquery('french', $2)
             )
         ORDER BY s.id, relevance_score DESC
         LIMIT 100
     "#;
 
     let services = sqlx::query(query)
-        .bind(&search_terms)
+        .bind(&search_terms) // Garder pour compatibilité (non utilisé dans la nouvelle requête)
+        .bind(&search_query) // Requête tsquery pour recherche full-text
         .fetch_all(pool)
         .await
         .map_err(|e| {

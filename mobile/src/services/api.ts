@@ -781,6 +781,19 @@ const setCachedSupermarkets = async (lat: number, lng: number, radiusKm: number,
 };
 
 export const deliveryApi = {
+  // ✅ NOUVEAU: Vérifier la disponibilité d'un produit
+  checkProductAvailability: async (serviceId: number, productIndex: number) => {
+    return apiCall<{
+      success: boolean;
+      availability: {
+        is_available: boolean;
+        reason?: string;
+        available_days?: number[];
+        is_immediately_available: boolean;
+        preparation_time_minutes?: number;
+      };
+    }>(`/api/delivery/product-availability/${serviceId}/${productIndex}`);
+  },
   listActiveDeliveries: async () => {
     return apiCall<DeliveryListResponse>('/api/deliveries/active');
   },
@@ -961,6 +974,13 @@ export const deliveryApi = {
   // ✅ NOUVEAU : Récupérer la configuration de livraison d'un produit
   getProductDeliveryConfig: async (serviceId: number, productIndex: number) => {
     return apiCall(`/api/delivery/product-config/${serviceId}/${productIndex}`);
+  },
+  // ✅ NOUVEAU: Lister les configurations de livraison d'un service
+  listProductDeliveryConfigs: async (serviceId: number) => {
+    return apiCall<{
+      success: boolean;
+      products: Array<{index: number, name: string, is_configured: boolean}>;
+    }>(`/api/delivery/product-config/list/${serviceId}`);
   },
   // ✅ Phase 9 - Amélioration 32 : Gestion des lieux de stock
   listStorageLocations: async () => {

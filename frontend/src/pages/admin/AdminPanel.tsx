@@ -1,6 +1,7 @@
 // src/pages/admin/AdminPanel.tsx
 import RequireAccess from '@/components/auth/RequireAccess';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+import { Link } from 'react-router-dom';
 import React, { useEffect } from 'react';
 
 // Composants d'administration
@@ -59,7 +60,20 @@ const AdminPanel: React.FC = () => {
   return (
     <RequireAccess role="user" plan="pro">
       <ResponsiveContainer className="pt-24 min-h-screen bg-white font-inter">
-        <h1 className="text-3xl font-bold mb-6">🛠️ Console d’administration Yukpomnang</h1>
+        <h1 className="text-3xl font-bold mb-6">🛠️ Console d'administration Yukpomnang</h1>
+
+        {/* ✅ NOUVEAU: Lien vers la gestion des rôles */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <Link 
+            to="/admin/user-roles" 
+            className="text-blue-600 hover:text-blue-800 font-semibold text-lg flex items-center gap-2"
+          >
+            👤 Gérer les rôles utilisateurs →
+          </Link>
+          <p className="text-sm text-gray-600 mt-1">
+            Liste et modifiez les rôles de tous les utilisateurs de la plateforme
+          </p>
+        </div>
 
         <div className="flex flex-col gap-4 mb-6">
           <button onClick={handleVerifyBooks}>📚 Vérifier disponibilité des livres</button>

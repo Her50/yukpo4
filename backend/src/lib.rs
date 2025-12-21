@@ -102,6 +102,7 @@ use crate::routes::{
     token_stats_routes::token_stats_routes,
     upload_routes::upload_routes, // ✅ NOUVEAU: Routes upload préalable
     user_routes::user_routes,
+    admin_user_routes::admin_user_routes,
     // vehicle_model_routes::vehicle_model_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     video_hls_routes::video_hls_routes,
     video_ml_routes::video_ml_routes, // ✅ NOUVEAU: Routes ML pour recommandations et hashtags
@@ -168,6 +169,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let auth = auth_routes(state.clone());
     // User routes (protégées par JWT dans le module)
     let users = user_routes(state.clone());
+    // ✅ NOUVEAU: Admin user routes (gestion des rôles utilisateurs)
+    let admin_users = admin_user_routes(state.clone());
     // Service routes (protégées par JWT dans le module)
     let services = service_routes(state.clone());
     // Media routes (public ou protégées selon module)
@@ -290,6 +293,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/healthz", get(healthz))
         .merge(auth)
         .merge(users)
+        .merge(admin_users) // ✅ NOUVEAU: Routes admin gestion des rôles
         .merge(services)
         .merge(media)
         .merge(stock_media) // ✅ NOUVEAU Phase 2: Routes Stock Media Integration

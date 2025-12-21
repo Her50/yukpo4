@@ -4,6 +4,7 @@ pub mod media_routes;
 pub mod service_routes;
 pub mod token_pack_routes;
 pub mod user_routes;
+pub mod admin_user_routes;
 pub mod prestataire_routes;
 pub mod echange_routes;
 pub mod fournitures_routes;

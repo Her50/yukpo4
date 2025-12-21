@@ -14,6 +14,7 @@ import { ToasterProvider } from './components/ui/toaster';
 import './config/axios';
 import { AuthProvider } from './contexts/AuthContext';
 import KYCVerificationPage from './pages/admin/KYCVerificationPage';
+import AdminUserRolesPage from './pages/admin/AdminUserRolesPage';
 import { ROUTES } from './routes/AppRoutesRegistry';
 // Pages essentielles
 import ConfirmationPage from '@/pages/ConfirmationPage';
@@ -563,6 +564,11 @@ function App() {
                         <Route path={ROUTES.ADMIN_KYC_VERIFICATION} element={
                           <RequireAdminPage>
                             <KYCVerificationPage />
+                          </RequireAdminPage>
+                        } />
+                        <Route path="/admin/user-roles" element={
+                          <RequireAdminPage>
+                            <AdminUserRolesPage />
                           </RequireAdminPage>
                         } />
                         <Route path={ROUTES.MES_TROCS} element={

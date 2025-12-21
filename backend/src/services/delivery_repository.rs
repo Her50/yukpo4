@@ -719,6 +719,135 @@ impl DeliveryRepository {
         }))
     }
 
+    /// ✅ NOUVEAU : Récupère une candidature par son ID
+    pub async fn find_courier_application_by_id(
+        &self,
+        application_id: Uuid,
+    ) -> AppResult<Option<CourierApplication>> {
+        let row: Option<CourierApplicationRow> = sqlx::query_as(
+            r#"
+            SELECT
+                id,
+                user_id,
+                status,
+                submitted_at,
+                reviewed_at,
+                reviewer_id,
+                rejection_reason,
+                profile_data,
+                documents,
+                notes,
+                created_at,
+                updated_at
+            FROM courier_applications
+            WHERE id = $1
+            "#,
+        )
+        .bind(application_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|row| CourierApplication {
+            id: row.id,
+            user_id: row.user_id,
+            status: row.status,
+            submitted_at: row.submitted_at,
+            reviewed_at: row.reviewed_at,
+            reviewer_id: row.reviewer_id,
+            rejection_reason: row.rejection_reason,
+            profile_data: row.profile_data,
+            documents: row.documents,
+            notes: row.notes,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }))
+    }
+
+    /// ✅ NOUVEAU : Liste toutes les candidatures de coursiers avec filtres optionnels
+    pub async fn list_courier_applications(
+        &self,
+        status_filter: Option<DeliveryApplicationStatus>,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> AppResult<Vec<CourierApplication>> {
+        let limit_val = limit.unwrap_or(100);
+        let offset_val = offset.unwrap_or(0);
+
+        let rows: Vec<CourierApplicationRow> = if let Some(status) = status_filter {
+            sqlx::query_as(
+                r#"
+                SELECT
+                    id,
+                    user_id,
+                    status,
+                    submitted_at,
+                    reviewed_at,
+                    reviewer_id,
+                    rejection_reason,
+                    profile_data,
+                    documents,
+                    notes,
+                    created_at,
+                    updated_at
+                FROM courier_applications
+                WHERE status = $1
+                ORDER BY created_at DESC
+                LIMIT $2
+                OFFSET $3
+                "#,
+            )
+            .bind(status)
+            .bind(limit_val)
+            .bind(offset_val)
+            .fetch_all(&self.pool)
+            .await?
+        } else {
+            sqlx::query_as(
+                r#"
+                SELECT
+                    id,
+                    user_id,
+                    status,
+                    submitted_at,
+                    reviewed_at,
+                    reviewer_id,
+                    rejection_reason,
+                    profile_data,
+                    documents,
+                    notes,
+                    created_at,
+                    updated_at
+                FROM courier_applications
+                ORDER BY created_at DESC
+                LIMIT $1
+                OFFSET $2
+                "#,
+            )
+            .bind(limit_val)
+            .bind(offset_val)
+            .fetch_all(&self.pool)
+            .await?
+        };
+
+        Ok(rows
+            .into_iter()
+            .map(|row| CourierApplication {
+                id: row.id,
+                user_id: row.user_id,
+                status: row.status,
+                submitted_at: row.submitted_at,
+                reviewed_at: row.reviewed_at,
+                reviewer_id: row.reviewer_id,
+                rejection_reason: row.rejection_reason,
+                profile_data: row.profile_data,
+                documents: row.documents,
+                notes: row.notes,
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+            })
+            .collect())
+    }
+
     /// Récupère le profil coursier associé à un utilisateur
     pub async fn find_courier_by_user(&self, user_id: i32) -> AppResult<Option<Courier>> {
         let row: Option<CourierRow> = sqlx::query_as(

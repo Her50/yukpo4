@@ -6,12 +6,13 @@ use std::time::Duration;
 use tokio::time::interval;
 
 /// Démarre un monitor de santé du pool de connexions
-/// Vérifie la santé toutes les 30 secondes (configurable via DB_HEALTH_CHECK_INTERVAL_SECS)
+/// Vérifie la santé toutes les 60 secondes (configurable via DB_HEALTH_CHECK_INTERVAL_SECS)
+/// ✅ OPTIMISÉ 2025-12-20: Réduit la fréquence pour éviter les health checks lents qui polluent les logs
 pub async fn start_db_health_monitor(pool: PgPool) {
     let interval_secs: u64 = std::env::var("DB_HEALTH_CHECK_INTERVAL_SECS")
-        .unwrap_or_else(|_| "30".to_string())
+        .unwrap_or_else(|_| "60".to_string())  // ✅ OPTIMISÉ: 60s au lieu de 30s pour réduire le bruit
         .parse()
-        .unwrap_or(30);
+        .unwrap_or(60);
     let mut interval = interval(Duration::from_secs(interval_secs));
 
     let _log_interval_secs = interval_secs; // Pour le log dans le spawn (préfixé avec _ pour éviter le warning)
@@ -25,9 +26,11 @@ pub async fn start_db_health_monitor(pool: PgPool) {
             // ✅ CORRECTION: Convertir usize en u32 pour saturating_sub
             let active_connections = pool_size.saturating_sub(idle_connections as u32);
 
-            // Tester une connexion avec timeout
+            // ✅ OPTIMISÉ 2025-12-20: Timeout réduit à 2s pour éviter les logs de "slow statement"
+            // Le pool utilise déjà test_before_acquire pour tester les connexions avant acquisition
+            // Le health check séparé est optionnel et peut être moins fréquent
             let test_result = tokio::time::timeout(
-                Duration::from_secs(5),
+                Duration::from_secs(2),  // ✅ OPTIMISÉ: 2s au lieu de 5s
                 sqlx::query("SELECT 1").execute(&pool),
             )
             .await;

@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    FlatList,
     ScrollView,
     StyleSheet,
     Text,
@@ -595,26 +596,21 @@ const CourierRegistrationScreen: React.FC = () => {
                 {/* Transport */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Moyen de transport</Text>
-                    <ScrollView 
-                        horizontal 
-                        showsHorizontalScrollIndicator={false}
-                        nestedScrollEnabled={true}
-                        scrollEnabled={true}
-                        style={styles.vehicleScroll}
+                    <FlatList
+                        data={vehicleTypes}
+                        horizontal
+                        showsHorizontalScrollIndicator={true}
+                        keyExtractor={(item) => item.value}
                         contentContainerStyle={styles.vehicleScrollContent}
-                        bounces={false}
-                        directionalLockEnabled={true}
-                        alwaysBounceHorizontal={false}
-                        alwaysBounceVertical={false}
-                    >
-                        {vehicleTypes.map((type) => (
+                        style={styles.vehicleScroll}
+                        renderItem={({ item: type }) => (
                             <TouchableOpacity
-                                key={type.value}
                                 style={[
                                     styles.vehicleOption,
                                     vehicleType === type.value && styles.vehicleOptionSelected,
                                 ]}
                                 onPress={() => setVehicleType(type.value)}
+                                activeOpacity={0.7}
                             >
                                 <Text style={styles.vehicleIcon}>{type.icon}</Text>
                                 <Text
@@ -626,8 +622,11 @@ const CourierRegistrationScreen: React.FC = () => {
                                     {type.label}
                                 </Text>
                             </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+                        )}
+                        nestedScrollEnabled={true}
+                        bounces={true}
+                        decelerationRate="fast"
+                    />
                     {vehicleType !== 'walking' && (
                         <>
                             <TextInput
@@ -918,9 +917,11 @@ const styles = StyleSheet.create({
     },
     vehicleScroll: {
         marginBottom: 16,
+        maxHeight: 110,
     },
     vehicleScrollContent: {
         paddingRight: 16,
+        alignItems: 'center',
     },
     vehicleOption: {
         alignItems: 'center',
@@ -933,6 +934,7 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.surface,
         width: 90,
         height: 90,
+        flexShrink: 0,
     },
     vehicleOptionSelected: {
         borderColor: modernColors.primary,

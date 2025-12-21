@@ -397,7 +397,7 @@ LEFT JOIN LATERAL (
 ) ac ON true
 WHERE ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
 AND ($3::text IS NULL OR s.gps IS NULL OR s.gps = $3 OR s.gps LIKE $3 || '%' OR s.gps LIKE '%' || $3)
-ORDER BY fulltext_score DESC, s.id
+ORDER BY s.id, fulltext_score DESC
 LIMIT 100
         "#;
 
