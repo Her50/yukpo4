@@ -1475,7 +1475,7 @@ const SecondaryStack = () => {
             title: 'Gestion des coursiers',
           }}
         />
-        <SecondaryStack.Screen
+        <Stack.Screen
           name="UserRoleManagement"
           component={withNavigatorSafeArea(UserRoleManagementScreen)}
           options={{
