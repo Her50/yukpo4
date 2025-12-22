@@ -20,7 +20,7 @@ pub struct MobileLogEntry {
     pub stack: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct DeviceInfo {
     pub platform: Option<String>,
     pub version: Option<String>,
@@ -155,7 +155,7 @@ async fn process_mobile_logs_async(logs: Vec<MobileLogEntry>, batch_id: String) 
 }
 
 /// ✅ NOUVEAU: Logger les erreurs par groupe
-fn log_error_group(logs: &[MobileLogEntry], batch_id: &str) {
+fn log_error_group(logs: &[MobileLogEntry], _batch_id: &str) {
     for log in logs {
         let component = log.component.as_deref().unwrap_or("unknown");
         let user_info = log
@@ -225,7 +225,7 @@ fn log_error_group(logs: &[MobileLogEntry], batch_id: &str) {
 }
 
 /// ✅ NOUVEAU: Logger les warnings par groupe
-fn log_warn_group(logs: &[MobileLogEntry], batch_id: &str) {
+fn log_warn_group(logs: &[MobileLogEntry], _batch_id: &str) {
     for log in logs {
         let component = log.component.as_deref().unwrap_or("unknown");
         let user_info = log
@@ -336,125 +336,4 @@ fn log_debug_group(logs: &[MobileLogEntry], batch_id: &str) {
             batch_id
         );
     }
-}
-
-// ✅ ANCIEN CODE (supprimé - remplacé par la version optimisée ci-dessus)
-// Ancien code de traitement synchrone supprimé pour éviter les blocages
-        let component = log.component.as_deref().unwrap_or("unknown");
-        let user_info = log
-            .user_id
-            .as_ref()
-            .map(|u| format!("User:{}", u))
-            .unwrap_or_default();
-        let device_info = log
-            .device_info
-            .as_ref()
-            .map(|d| {
-                let platform = d
-                    .platform
-                    .as_deref()
-                    .or_else(|| d.os_name.as_deref())
-                    .unwrap_or("unknown");
-                let version = d
-                    .version
-                    .as_deref()
-                    .or_else(|| d.os_version.as_deref())
-                    .unwrap_or("unknown");
-                format!("Device:{}/{}", platform, version)
-            })
-            .unwrap_or_default();
-
-        // ✅ AMÉLIORÉ : Inclure le timestamp client si disponible
-        let client_timestamp = if !log.timestamp.is_empty() {
-            format!(" | Time:{}", log.timestamp)
-        } else {
-            String::new()
-        };
-
-        let log_prefix = format!(
-            "📱[MOBILE] [{}] {}{}{}{}",
-            log.level.to_uppercase(),
-            component,
-            if !user_info.is_empty() {
-                format!(" | {}", user_info)
-            } else {
-                String::new()
-            },
-            if !device_info.is_empty() {
-                format!(" | {}", device_info)
-            } else {
-                String::new()
-            },
-            client_timestamp
-        );
-
-        match log.level.as_str() {
-            "error" => {
-                // ✅ AMÉLIORÉ : Ne pas logger comme erreur critique les erreurs WebSocket normales
-                // "Software caused connection abort" est une erreur normale qui peut se produire
-                // quand le client se met en arrière-plan ou change de réseau
-                let is_websocket_abort = log.message.contains("Software caused connection abort")
-                    || log.message.contains("connection abort")
-                    || (log.message.contains("WebSocket") && log.message.contains("abort"));
-                
-                if is_websocket_abort {
-                    // Logger comme warning au lieu d'error pour ces cas normaux
-                    log::warn!("{} {} (erreur WebSocket normale, ignorée)", log_prefix, log.message);
-                } else {
-                    log::error!("{} {}", log_prefix, log.message);
-                    if let Some(data) = &log.data {
-                        if let Ok(data_str) = serde_json::to_string(data) {
-                            log::error!("{} Data: {}", log_prefix, data_str);
-                        }
-                    }
-                    if let Some(stack) = &log.stack {
-                        log::error!("{} Stack: {}", log_prefix, stack);
-                    }
-                }
-            }
-            "warn" => {
-                log::warn!("{} {}", log_prefix, log.message);
-                if let Some(data) = &log.data {
-                    if let Ok(data_str) = serde_json::to_string(data) {
-                        log::warn!("{} Data: {}", log_prefix, data_str);
-                    }
-                }
-            }
-            "info" => {
-                log::info!("{} {}", log_prefix, log.message);
-                if let Some(data) = &log.data {
-                    if let Ok(data_str) = serde_json::to_string(data) {
-                        log::info!("{} Data: {}", log_prefix, data_str);
-                    }
-                }
-            }
-            "debug" => {
-                log::debug!("{} {}", log_prefix, log.message);
-                if let Some(data) = &log.data {
-                    if let Ok(data_str) = serde_json::to_string(data) {
-                        log::debug!("{} Data: {}", log_prefix, data_str);
-                    }
-                }
-            }
-            _ => {
-                log::info!("{} {}", log_prefix, log.message);
-            }
-        }
-    }
-
-    // Sauvegarder dans la base de données (optionnel, pour historique)
-    // Pour l'instant, on log juste dans les logs backend
-    // Vous pouvez ajouter une table mobile_logs si besoin d'historique
-
-    log::info!(
-        "📱[MOBILE-BATCH] Reçu {} logs mobile (batch: {})",
-        logs_count,
-        batch_id
-    );
-
-    Ok(Json(MobileLogsResponse {
-        success: true,
-        received: logs_count,
-        batch_id,
-    }))
 }
