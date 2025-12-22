@@ -454,23 +454,28 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }>(`/api/delivery/product-config/${serviceId}/${productIndex}`);
             
             if (response.success && response.data?.config) {
+                const config = response.data.config;
                 setDeliveryConfig({
-                    pickup_address: response.data.config.pickup_address,
-                    pickup_latitude: response.data.config.pickup_latitude,
-                    pickup_longitude: response.data.config.pickup_longitude,
-                    preparation_time_minutes: response.data.config.preparation_time_minutes,
-                    required_vehicle_type_id: response.data.config.required_vehicle_type_id,
-                    is_configured: response.data.config.is_configured || false,
+                    pickup_address: config.pickup_address || undefined,
+                    pickup_latitude: config.pickup_latitude || undefined,
+                    pickup_longitude: config.pickup_longitude || undefined,
+                    preparation_time_minutes: config.preparation_time_minutes || undefined,
+                    required_vehicle_type_id: config.required_vehicle_type_id || undefined,
+                    is_configured: config.is_configured || false,
                 });
                 // Activer automatiquement le toggle si la config existe
-                if (response.data.config.is_configured) {
+                if (config.is_configured) {
                     setEnableDelivery(true);
                 }
             } else {
                 setDeliveryConfig(null);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur chargement config livraison:', error);
+            // ✅ CORRIGÉ: Logger l'erreur complète pour debug
+            if (error?.message) {
+                console.error('[ProductVideoCreationModal] Détails erreur:', error.message);
+            }
             setDeliveryConfig(null);
         } finally {
             setLoadingDeliveryConfig(false);
@@ -1792,9 +1797,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         <Text style={styles.deliveryConfigStatusText}>
                                             ✅ Configuration complète - Le bouton "Me livrer" apparaîtra sur la vidéo
                                         </Text>
-                                        {deliveryConfig.pickup_address && (
+                                        {deliveryConfig?.pickup_address && (
                                             <Text style={styles.deliveryConfigAddress}>
-                                                📍 {deliveryConfig.pickup_address}
+                                                📍 {deliveryConfig?.pickup_address}
                                             </Text>
                                         )}
                                         <TouchableOpacity

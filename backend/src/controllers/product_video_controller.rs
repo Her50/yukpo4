@@ -46,7 +46,16 @@ pub async fn generate_video_for_product(
                 "[ProductVideoController] ❌ Validation échouée pour service_id={}, product_index={}: {}",
                 service_id, product_index, err
             );
-            err
+            // ✅ AMÉLIORÉ: Retourner une erreur BadRequest pour les erreurs de validation
+            // au lieu d'une erreur Internal pour que le client comprenne mieux
+            match err {
+                AppError::BadRequest(_) => err,
+                AppError::NotFound(_) => err,
+                _ => AppError::BadRequest(format!(
+                    "Impossible de générer la vidéo: {}. Vérifiez que le service et le produit existent et ont des images.",
+                    err
+                )),
+            }
         })?;
 
     // ✅ Créer le job seulement si la validation réussit
@@ -145,7 +154,22 @@ pub async fn estimate_video_cost_for_product(
         user.id, service_id, product_index
     );
 
-    let estimation = estimate_video_cost(state, &user, service_id, product_index, payload).await?;
+    let estimation = estimate_video_cost(state, &user, service_id, product_index, payload)
+        .await
+        .map_err(|err| {
+            error!(
+                "[ProductVideoController] ❌ Erreur estimation coût pour service_id={}, product_index={}: {}",
+                service_id, product_index, err
+            );
+            // ✅ AMÉLIORÉ: Retourner des erreurs appropriées selon le type
+            match err {
+                AppError::NotFound(_) | AppError::BadRequest(_) | AppError::Unauthorized(_) => err,
+                _ => AppError::Internal(format!(
+                    "Erreur lors de l'estimation du coût: {}. Veuillez réessayer plus tard.",
+                    err
+                )),
+            }
+        })?;
     Ok(Json(estimation))
 }
 
