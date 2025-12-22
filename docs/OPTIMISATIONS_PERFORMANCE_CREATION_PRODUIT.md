@@ -141,3 +141,4 @@ grep "slow statement.*UPDATE services" logs/*.log
 - [ ] Pas d'erreurs après déploiement
 - [ ] Création produit totale < 20s (hors IA)
 
+

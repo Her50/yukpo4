@@ -160,3 +160,4 @@ heure_pickup_possible = heure_actuelle + temps_coursier_vers_pickup + preparatio
 disponible = heure_pickup_possible ∈ plages_horaires[jour_semaine]
 ```
 
+

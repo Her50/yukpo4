@@ -112,3 +112,4 @@ Les optimisations sont maintenant actives sur Render PostgreSQL. Les recherches 
 **Prochaine étape**: Redéployer l'application pour que le code optimisé utilise les nouveaux index.
 
 
+

@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Linking, Modal, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { useServiceStats } from '../hooks/useServiceStats';
@@ -233,32 +233,51 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 {/* Carousel automatique d'images et vidéos */}
                 <View style={styles.imageContainer}>
                     {hasMedia ? (
-                        <FlatList
-                            ref={carouselRef}
-                            data={allMedia}
-                            renderItem={renderMediaItem}
-                            keyExtractor={(item, index) => `${item.type}-${index}`}
-                            horizontal
-                            pagingEnabled
-                            showsHorizontalScrollIndicator={false}
-                            scrollEnabled={false}
-                            onMomentumScrollEnd={(event) => {
-                                const index = Math.round(event.nativeEvent.contentOffset.x / (width * 0.4));
-                                setCurrentMediaIndex(index);
-                            }}
-                            getItemLayout={(data, index) => ({
-                                length: width * 0.4,
-                                offset: width * 0.4 * index,
-                                index,
-                            })}
-                        />
+                        <>
+                            <FlatList
+                                ref={carouselRef}
+                                data={allMedia}
+                                renderItem={renderMediaItem}
+                                keyExtractor={(item, index) => `${item.type}-${index}`}
+                                horizontal
+                                pagingEnabled
+                                showsHorizontalScrollIndicator={true}
+                                scrollEnabled={true}
+                                onMomentumScrollEnd={(event) => {
+                                    const index = Math.round(event.nativeEvent.contentOffset.x / (width * 0.4));
+                                    if (index >= 0 && index < allMedia.length) {
+                                        setCurrentMediaIndex(index);
+                                    }
+                                }}
+                                onScrollToIndexFailed={(info) => {
+                                    // ✅ CORRIGÉ: Gérer les erreurs de scroll
+                                    const wait = new Promise(resolve => setTimeout(resolve, 500));
+                                    wait.then(() => {
+                                        carouselRef.current?.scrollToIndex({ index: info.index, animated: true });
+                                    });
+                                }}
+                                getItemLayout={(data, index) => ({
+                                    length: width * 0.4,
+                                    offset: width * 0.4 * index,
+                                    index,
+                                })}
+                            />
+                            {/* ✅ NOUVEAU: Indicateur de scroll visible */}
+                            {allMedia.length > 1 && (
+                                <View style={styles.scrollIndicator}>
+                                    <SafeIcon name="chevron-left" size={12} color="#FFFFFF" />
+                                    <Text style={styles.scrollIndicatorText}>Glisser</Text>
+                                    <SafeIcon name="chevron-right" size={12} color="#FFFFFF" />
+                                </View>
+                            )}
+                        </>
                     ) : (
                         <View style={[styles.mainImage, styles.noImageContainer]}>
-                            <SafeIcon name="package" size={24} color="#D1D5DB" />
+                            <SafeIcon name="image" size={24} color="#D1D5DB" />
                         </View>
                     )}
 
-                    {/* Indicateurs de pagination */}
+                    {/* ✅ AMÉLIORÉ: Indicateurs de pagination plus visibles */}
                     {allMedia.length > 1 && (
                         <View style={styles.paginationDots}>
                             {allMedia.map((_, index) => (
@@ -270,6 +289,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                     ]}
                                 />
                             ))}
+                            {/* ✅ NOUVEAU: Compteur visible */}
+                            <View style={styles.paginationCounter}>
+                                <Text style={styles.paginationCounterText}>
+                                    {currentMediaIndex + 1}/{allMedia.length}
+                                </Text>
+                            </View>
                         </View>
                     )}
 
@@ -301,7 +326,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             onPress={onGalleryPress}
                             activeOpacity={0.8}
                         >
-                            <SafeIcon name="image" size={8} color="#FFFFFF" />
+                            <SafeIcon name="grid" size={8} color="#FFFFFF" />
                             <Text style={styles.mediaCountText}>{allMedia.length}</Text>
                         </TouchableOpacity>
                     )}
@@ -359,7 +384,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <Text style={styles.statText}>{product.views || service.views || 0}</Text>
                         </View>
                         <View style={styles.statItem}>
-                            <SafeIcon name="share-2" size={12} color="#6B7280" />
+                            <SafeIcon name="share" size={12} color="#6B7280" />
                             <Text style={styles.statText}>{product.shares || 0}</Text>
                         </View>
                         <TouchableOpacity
@@ -437,24 +462,26 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <Text style={styles.chatButtonText}>Discuter</Text>
                         </TouchableOpacity>
 
-                        {/* ✅ Bouton Me livrer - Affiché uniquement pour les produits (pas pour les services/prestations) */}
+                        {/* ✅ Bouton Me livrer - Affiché pour tous les produits (sauf services/prestations) */}
                         {/* Ce bouton permet à l'utilisateur de préciser le lieu de livraison et lancer le matching de coursier */}
                         {/* Le FindCourierModal gère automatiquement la configuration de livraison du produit et le délai de préparation */}
-                        {/* ✅ CORRIGÉ: Vérification plus robuste pour afficher le bouton */}
+                        {/* ✅ CORRIGÉ: Vérification simplifiée et plus permissive pour afficher le bouton */}
                         {(() => {
                             // Vérifier si c'est un service/prestation (à exclure)
                             const isService = product.type === 'prestation_service' || product.type === 'service';
-                            // Vérifier si on a un service valide
-                            const hasService = !!(service?.id || service?.service_id);
+                            // Vérifier si on a un service valide (plus permissif)
+                            const hasService = !!(service?.id || service?.service_id || service?.data);
                             // Afficher le bouton si ce n'est pas un service ET qu'on a un service valide
-                            const shouldShowButton = !isService && hasService;
+                            // ✅ AMÉLIORÉ: Afficher par défaut si pas de type spécifique (fallback)
+                            const shouldShowButton = !isService && (hasService || !product.type);
                             
-                            if (__DEV__ && !shouldShowButton) {
-                                console.log('[ProductCard] Bouton "Me livrer" masqué:', {
+                            if (__DEV__) {
+                                console.log('[ProductCard] Bouton "Me livrer" - Évaluation:', {
                                     productType: product.type,
                                     isService,
                                     hasService,
-                                    serviceId: service?.id || service?.service_id
+                                    serviceId: service?.id || service?.service_id,
+                                    shouldShow: shouldShowButton
                                 });
                             }
                             
@@ -591,11 +618,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
                             <TouchableOpacity
                                 style={styles.actionIconButton}
-                                onPress={() => {
-                                    // TODO: Implémenter partage
+                                onPress={async () => {
+                                    // ✅ NOUVEAU: Implémentation du partage
+                                    try {
+                                        const shareContent = {
+                                            message: `${product.nom || product.name || 'Produit'}\n${product.description || ''}\n\nDécouvrez ce produit sur Yukpomnang`,
+                                            title: product.nom || product.name || 'Produit',
+                                        };
+                                        await Share.share(shareContent);
+                                    } catch (error: any) {
+                                        console.error('[ProductCard] Erreur partage:', error);
+                                        // Ne pas afficher d'alerte si l'utilisateur a annulé
+                                        if (error?.message !== 'User did not share') {
+                                            Alert.alert('Erreur', 'Impossible de partager ce produit');
+                                        }
+                                    }
                                 }}
                             >
-                                <SafeIcon name="share-2" size={16} color="#6B7280" />
+                                <SafeIcon name="share" size={16} color="#6366F1" />
                             </TouchableOpacity>
 
                             {/* ✅ NOUVEAU: Bouton Avis */}
@@ -919,11 +959,13 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         marginTop: 4,
         minHeight: 36,
-        shadowColor: '#000',
+        shadowColor: '#10B981',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 2,
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#059669',
     },
     deliveryButtonText: {
         fontSize: 11,
@@ -1150,18 +1192,57 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        borderRadius: 12,
+        marginHorizontal: 4,
     },
     paginationDot: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    },
-    paginationDotActive: {
-        backgroundColor: '#FFFFFF',
         width: 6,
         height: 6,
         borderRadius: 3,
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    },
+    paginationDotActive: {
+        backgroundColor: '#FFFFFF',
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.3,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    paginationCounter: {
+        marginLeft: 6,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+    },
+    paginationCounterText: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: '#1F2937',
+    },
+    scrollIndicator: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    scrollIndicatorText: {
+        fontSize: 9,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
     mediaCountBadge: {
         position: 'absolute',

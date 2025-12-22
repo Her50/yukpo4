@@ -133,3 +133,4 @@ Envoi à l'IA (URLs CDN ou base64)
 4. Upload mixte (images + vidéos + logo) → Vérifier statistiques
 5. Création service avec médias CDN → Vérifier création réussie
 
+

@@ -596,37 +596,42 @@ const CourierRegistrationScreen: React.FC = () => {
                 {/* Transport */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Moyen de transport</Text>
-                    <FlatList
-                        data={vehicleTypes}
-                        horizontal
-                        showsHorizontalScrollIndicator={true}
-                        keyExtractor={(item) => item.value}
-                        contentContainerStyle={styles.vehicleScrollContent}
-                        style={styles.vehicleScroll}
-                        renderItem={({ item: type }) => (
-                            <TouchableOpacity
-                                style={[
-                                    styles.vehicleOption,
-                                    vehicleType === type.value && styles.vehicleOptionSelected,
-                                ]}
-                                onPress={() => setVehicleType(type.value)}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.vehicleIcon}>{type.icon}</Text>
-                                <Text
+                    <View style={styles.vehicleScrollContainer}>
+                        <FlatList
+                            data={vehicleTypes}
+                            horizontal
+                            showsHorizontalScrollIndicator={true}
+                            keyExtractor={(item) => item.value}
+                            contentContainerStyle={styles.vehicleScrollContent}
+                            style={styles.vehicleScroll}
+                            renderItem={({ item: type }) => (
+                                <TouchableOpacity
                                     style={[
-                                        styles.vehicleLabel,
-                                        vehicleType === type.value && styles.vehicleLabelSelected,
+                                        styles.vehicleOption,
+                                        vehicleType === type.value && styles.vehicleOptionSelected,
                                     ]}
+                                    onPress={() => setVehicleType(type.value)}
+                                    activeOpacity={0.7}
                                 >
-                                    {type.label}
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                        nestedScrollEnabled={true}
-                        bounces={true}
-                        decelerationRate="fast"
-                    />
+                                    <Text style={styles.vehicleIcon}>{type.icon}</Text>
+                                    <Text
+                                        style={[
+                                            styles.vehicleLabel,
+                                            vehicleType === type.value && styles.vehicleLabelSelected,
+                                        ]}
+                                    >
+                                        {type.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                            nestedScrollEnabled={true}
+                            scrollEnabled={true}
+                            bounces={true}
+                            decelerationRate="fast"
+                            alwaysBounceHorizontal={true}
+                            removeClippedSubviews={false}
+                        />
+                    </View>
                     {vehicleType !== 'walking' && (
                         <>
                             <TextInput
@@ -915,13 +920,21 @@ const styles = StyleSheet.create({
         minHeight: 80,
         textAlignVertical: 'top',
     },
-    vehicleScroll: {
+    vehicleScrollContainer: {
         marginBottom: 16,
-        maxHeight: 110,
+        height: 110,
+        width: '100%',
+    },
+    vehicleScroll: {
+        flexGrow: 0,
+        flexShrink: 0,
+        height: 110,
     },
     vehicleScrollContent: {
         paddingRight: 16,
+        paddingLeft: 4,
         alignItems: 'center',
+        flexGrow: 0,
     },
     vehicleOption: {
         alignItems: 'center',

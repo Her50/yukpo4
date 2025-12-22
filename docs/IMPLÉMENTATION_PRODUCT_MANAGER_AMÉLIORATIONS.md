@@ -125,3 +125,4 @@ if (product.type !== 'prestation_service') {
 - `LinearAutocompleteEditor` remplace `IntelligentCharacteristicsSearch` pour une meilleure gestion des sous_caracteristiques
 - Les combinaisons préférées IA seront chargées via `sessionId` une fois `useAICombinations` intégré
 
+

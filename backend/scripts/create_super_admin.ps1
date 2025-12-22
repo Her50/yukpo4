@@ -208,3 +208,4 @@ if (Test-Path $sqlScriptPath) {
 Write-Host ""
 Write-Host "✨ Script terminé!" -ForegroundColor Green
 
+

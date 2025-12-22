@@ -25,3 +25,4 @@ Les fichiers uploadés via `/api/upload` dans `AjouterProduitSimpleScreen` :
 Modifier `upload_service.rs` pour utiliser `MediaStorageService` et uploader les fichiers vers S3/Wasabi, comme pour les autres uploads.
 
 
+

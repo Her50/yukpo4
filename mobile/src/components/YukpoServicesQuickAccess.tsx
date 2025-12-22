@@ -111,7 +111,8 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
 
     // Gérer le clic sur une catégorie
     const handleCategoryPress = (categoryId: string) => {
-        hapticPress();
+        // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour navigation fluide
+        // hapticPress();
         const category = categories.find(c => c.id === categoryId);
         if (!category) return;
 
@@ -128,7 +129,8 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
     const handleServicePress = (serviceId: string) => {
         if (!serviceId || typeof serviceId !== 'string') return;
         
-        hapticPress();
+        // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour navigation fluide
+        // hapticPress();
         setExpandedCategoryId(null);
         setModalCategoryId(null);
         
@@ -139,7 +141,8 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
 
     // Fermer le modal
     const closeModal = () => {
-        hapticPress();
+        // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
+        // hapticPress();
         setModalCategoryId(null);
     };
 
@@ -340,7 +343,7 @@ const styles = StyleSheet.create({
         minHeight: 70,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#F3F4F6', // ✅ CORRIGÉ: Même couleur que les boutons chat/notification de l'en-tête
+        backgroundColor: '#E2E8F0', // ✅ AMÉLIORÉ: Fond gris moyen harmonisé plus foncé (#E2E8F0 - slate-200)
         // ✅ SUPPRIMÉ: Bordure noire foncée pour un look plus propre
         borderRadius: 10,
     },

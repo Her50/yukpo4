@@ -13,6 +13,7 @@ import {
 import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import { formatCardNumber, validateCardExpiry, validateCardNumber, validatePhoneNumber } from '../utils/paymentValidation';
+import { hapticError, hapticPaymentSuccess } from '../utils/hapticFeedback';
 import AlerteSecurite from './AlerteSecurite';
 import { NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
@@ -62,11 +63,13 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
     const handlePay = async () => {
         // Validation finale
         if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+            hapticError(); // ✅ Haptic feedback pour erreur critique
             Alert.alert('Erreur', 'Montant invalide');
             return;
         }
 
         if (!prestatairePaymentMethod) {
+            hapticError(); // ✅ Haptic feedback pour erreur critique
             Alert.alert('Erreur', 'Le prestataire n\'a pas configuré de mode de paiement');
             return;
         }
@@ -75,6 +78,7 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
         if (prestatairePaymentMethod.type === 'mobile_money' || prestatairePaymentMethod.type === 'orange_money') {
             const validation = validatePhoneNumber(phoneNumber);
             if (!validation.valid) {
+                hapticError(); // ✅ Haptic feedback pour erreur critique
                 Alert.alert('Erreur', validation.error || 'Numéro invalide');
                 return;
             }
@@ -83,14 +87,17 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
             const expiryValidation = validateCardExpiry(cardExpiry);
 
             if (!cardValidation.valid) {
+                hapticError(); // ✅ Haptic feedback pour erreur critique
                 Alert.alert('Erreur', cardValidation.error || 'Carte invalide');
                 return;
             }
             if (!expiryValidation.valid) {
+                hapticError(); // ✅ Haptic feedback pour erreur critique
                 Alert.alert('Erreur', expiryValidation.error || 'Date expirée');
                 return;
             }
             if (cardCVV.length < 3 || !cardHolder.trim()) {
+                hapticError(); // ✅ Haptic feedback pour erreur critique
                 Alert.alert('Erreur', 'Informations de carte incomplètes');
                 return;
             }
@@ -113,6 +120,7 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
             });
 
             if (response.success) {
+                hapticPaymentSuccess(); // ✅ Haptic feedback pour paiement réussi
                 Alert.alert(
                     '✅ Paiement initié',
                     `Transaction ID: ${response.data.transaction_id}\n\nLe paiement est en cours de traitement. Vous recevrez une notification de confirmation.`,
@@ -131,6 +139,7 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
             }
         } catch (error: any) {
             console.error('[PaiementEnLigneModal] Erreur:', error);
+            hapticError(); // ✅ Haptic feedback pour erreur de paiement
             Alert.alert('Erreur', error.message || 'Le paiement a échoué');
         } finally {
             setLoading(false);

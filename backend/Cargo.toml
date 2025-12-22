@@ -47,6 +47,18 @@ path = "src/bin/hash_password_helper.rs"
 name = "create_admin_user"
 path = "src/bin/create_admin_user.rs"
 
+[[bin]]
+name = "apply_indexes_direct"
+path = "src/bin/apply_indexes_direct.rs"
+
+[[bin]]
+name = "verify_indexes"
+path = "src/bin/verify_indexes.rs"
+
+[[bin]]
+name = "analyze_tables"
+path = "src/bin/analyze_tables.rs"
+
 [features]
 mock = []
 gpu = ["image"]

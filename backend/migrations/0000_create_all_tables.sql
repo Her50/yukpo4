@@ -1662,6 +1662,10 @@ CREATE TABLE IF NOT EXISTS live_sessions (
 CREATE INDEX IF NOT EXISTS idx_live_sessions_status ON live_sessions(status);
 CREATE INDEX IF NOT EXISTS idx_live_sessions_start_at ON live_sessions(start_at);
 CREATE INDEX IF NOT EXISTS idx_live_sessions_service_id ON live_sessions(service_id);
+-- ✅ 2025-12-22: Index optimisé pour JOIN avec live_flash_sales
+CREATE INDEX IF NOT EXISTS idx_live_sessions_id_host_user 
+ON live_sessions(id, host_user_id, service_id)
+WHERE id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS live_replays (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -1723,6 +1727,10 @@ CREATE INDEX IF NOT EXISTS idx_live_flash_sales_status
     ON live_flash_sales(status);
 CREATE INDEX IF NOT EXISTS idx_live_flash_sales_timing
     ON live_flash_sales(start_at, end_at);
+-- ✅ 2025-12-22: Index optimisé pour requêtes avec status + dates
+CREATE INDEX IF NOT EXISTS idx_live_flash_sales_status_dates 
+ON live_flash_sales(status, start_at, end_at)
+WHERE status IN ('scheduled', 'live', 'ended');
 
 CREATE TABLE IF NOT EXISTS live_flash_sale_reservations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -1771,6 +1779,10 @@ CREATE TABLE IF NOT EXISTS global_promo_events (
 
 CREATE INDEX IF NOT EXISTS idx_global_promo_events_status
     ON global_promo_events(status, starts_at);
+-- ✅ 2025-12-22: Index optimisé pour requêtes avec status + dates
+CREATE INDEX IF NOT EXISTS idx_global_promo_events_status_dates 
+ON global_promo_events(status, starts_at, ends_at)
+WHERE status IN ('scheduled', 'live', 'archived');
 CREATE INDEX IF NOT EXISTS idx_global_promo_events_theme
     ON global_promo_events(theme);
 
@@ -1800,6 +1812,10 @@ CREATE TABLE IF NOT EXISTS global_promo_entries (
 
 CREATE INDEX IF NOT EXISTS idx_global_promo_entries_event_status
     ON global_promo_entries(event_id, status);
+-- ✅ 2025-12-22: Index optimisé pour JOIN avec global_promo_events (amélioration existant)
+CREATE INDEX IF NOT EXISTS idx_global_promo_entries_event_id_status 
+ON global_promo_entries(event_id, status)
+WHERE event_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_global_promo_entries_service
     ON global_promo_entries(service_id);
 CREATE INDEX IF NOT EXISTS idx_global_promo_entries_live_session
@@ -1948,6 +1964,10 @@ CREATE TABLE IF NOT EXISTS video_generation_jobs (
 CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_user ON video_generation_jobs(user_id);
 CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_service ON video_generation_jobs(service_id);
 CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_status ON video_generation_jobs(status);
+-- ✅ 2025-12-22: Index optimisés pour GROUP BY status et requêtes avec updated_at
+CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_status_updated_at 
+ON video_generation_jobs(status, updated_at)
+WHERE status IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS premium_audio_jobs (
     job_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

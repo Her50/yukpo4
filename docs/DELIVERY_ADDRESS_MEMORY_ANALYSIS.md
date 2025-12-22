@@ -338,3 +338,4 @@ Le composant `LocationSelector` existant peut être enrichi pour :
 - Permettre de sauvegarder directement depuis le sélecteur
 - Marquer visuellement les adresses sauvegardées dans les résultats
 
+

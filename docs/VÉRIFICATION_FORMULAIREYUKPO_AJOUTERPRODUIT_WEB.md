@@ -153,3 +153,4 @@ const donneesService = {
 2. **Court terme**: Intégrer MediaUploadManager dans FormulaireYukpoIntelligent
 3. **Moyen terme**: Améliorer LocationSelector et PriceVariantSelector
 
+

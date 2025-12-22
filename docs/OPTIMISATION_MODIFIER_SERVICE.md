@@ -102,3 +102,4 @@ Modification service (autres champs) :
 - Pas de changement nécessaire côté frontend/mobile
 - Compatible avec tous les cas d'usage existants
 
+

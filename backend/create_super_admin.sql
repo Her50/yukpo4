@@ -42,3 +42,4 @@ SELECT id, email, role, nom_complet, tokens_balance, created_at
 FROM users 
 WHERE email = 'admin@yukpo.dev';
 
+

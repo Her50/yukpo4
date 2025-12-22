@@ -288,21 +288,33 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
     };
 
     const handleComplete = async (data: any) => {
+        console.log('[DeliveryShoppingFlowNew] handleComplete appelé avec data:', data);
+        console.log('[DeliveryShoppingFlowNew] États actuels:', {
+            selectedSupermarket: !!selectedSupermarket,
+            basketItemsCount: basketItems.length,
+            dropoffLocation: !!dropoffLocation,
+        });
+
         // Validation
         if (!selectedSupermarket) {
+            console.log('[DeliveryShoppingFlowNew] ❌ Erreur: pas de supermarché sélectionné');
             Alert.alert('Erreur', 'Veuillez sélectionner un supermarché');
             return;
         }
 
         if (basketItems.length === 0) {
+            console.log('[DeliveryShoppingFlowNew] ❌ Erreur: panier vide');
             Alert.alert('Erreur', 'Veuillez ajouter au moins un article au panier');
             return;
         }
 
         if (!dropoffLocation) {
+            console.log('[DeliveryShoppingFlowNew] ❌ Erreur: pas d\'adresse de livraison');
             Alert.alert('Erreur', 'Veuillez sélectionner une adresse de livraison');
             return;
         }
+
+        console.log('[DeliveryShoppingFlowNew] ✅ Validation passée, création de la commande...');
 
         setLoading(true);
         try {

@@ -37,15 +37,32 @@ const StepWizardForm: React.FC<StepWizardFormProps> = ({
     const isFirstStep = currentStep === 0;
     const isLastStep = currentStep === steps.length - 1;
 
-    const handleNext = () => {
+    const handleNext = async () => {
+        console.log('[StepWizardForm] handleNext appelé:', {
+            currentStep,
+            isLastStep,
+            hasValidation: !!currentStepData.validation,
+            stepId: currentStepData.id,
+        });
+
         // Validation
         if (currentStepData.validation && !currentStepData.validation()) {
+            console.log('[StepWizardForm] ❌ Validation échouée pour étape:', currentStepData.id);
             return;
         }
 
+        console.log('[StepWizardForm] ✅ Validation passée pour étape:', currentStepData.id);
+
         if (isLastStep) {
-            onComplete(formData);
+            console.log('[StepWizardForm] 🎯 Dernière étape - appel onComplete avec formData:', formData);
+            try {
+                await onComplete(formData);
+                console.log('[StepWizardForm] ✅ onComplete terminé avec succès');
+            } catch (error) {
+                console.error('[StepWizardForm] ❌ Erreur dans onComplete:', error);
+            }
         } else {
+            console.log('[StepWizardForm] ➡️ Passage à l\'étape suivante:', currentStep + 1);
             setCurrentStep(currentStep + 1);
         }
     };
@@ -79,7 +96,10 @@ const StepWizardForm: React.FC<StepWizardFormProps> = ({
                 <NativeButton
                     title={isLastStep ? 'Terminer' : 'Suivant'}
                     variant="primary"
-                    onPress={handleNext}
+                    onPress={() => {
+                        console.log('[StepWizardForm] Bouton pressé - isLastStep:', isLastStep);
+                        handleNext();
+                    }}
                     style={[styles.navButton, styles.navButtonPrimary]}
                 />
             </View>

@@ -20,6 +20,8 @@ import { apiGet, apiPost } from '../services/api';
 // Code corrigé (remplace @ts-ignore)
 // ✅ NOUVEAU 2025-11-02: Gestionnaire upload images/vidéos dédié
 import BrandingManagerMobile from '../components/BrandingManagerMobile';
+// ✅ NOUVEAU: Haptic feedback pour actions critiques
+import { hapticError, hapticFormSuccess } from '../utils/hapticFeedback';
 import MediaUploadManager from '../components/MediaUploadManager';
 // Code corrigé (remplace @ts-ignore)
 import ModernGPSModal from '../components/ModernGPSModal';
@@ -4121,8 +4123,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         const response = await apiPost(`/api/services/${serviceId}/update`, updatePayload);
 
         if (!response.success) {
+          hapticError(); // ✅ Haptic feedback pour erreur critique
           throw new Error(response.error || 'Erreur lors de la modification');
         }
+
+        // ✅ Haptic feedback pour succès de modification
+        hapticFormSuccess();
 
         // ✅ SUPPRIMÉ: Vérification tickets de voyage - Géré maintenant via les champs dynamiques
 
@@ -4892,6 +4898,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Response complet:', JSON.stringify(response, null, 2));
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Payload qui a causé l\'erreur:', JSON.stringify(servicePayload, null, 2));
 
+                  // ✅ Haptic feedback pour erreur critique
+                  hapticError();
+
                   // ✅ CORRECTION : Réinitialiser le loading AVANT l'Alert pour éviter que le bouton tourne indéfiniment
                   setIsSubmitting(false);
                   setLoading(false);
@@ -4959,6 +4968,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                 const result: any = response.data;
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Service créé avec succès:', result);
+
+                // ✅ Haptic feedback pour succès de création
+                hapticFormSuccess();
 
                 // ✅ NOTE : Le nouveau JWT est automatiquement géré par apiCall
                 // Il est sauvegardé dans AsyncStorage quand le header x-new-jwt est présent

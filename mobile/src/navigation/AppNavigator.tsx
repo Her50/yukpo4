@@ -652,10 +652,11 @@ const MainStack = () => {
     'history': 0,
   });
 
-  // ✅ NOUVEAU: Haptic feedback sur changement de tab
+  // ✅ DÉSACTIVÉ: Haptic feedback sur changement de tab (pour fluidité)
   const handleTabPress = (routeName: string) => {
-    const { hapticPress } = require('../utils/hapticFeedback');
-    hapticPress();
+    // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour une navigation plus fluide
+    // const { hapticPress } = require('../utils/hapticFeedback');
+    // hapticPress();
   };
 
   return (
@@ -692,17 +693,17 @@ const MainStack = () => {
         tabBarItemStyle: {
           paddingHorizontal: 2,
         },
-        // ✅ CORRIGÉ: Animation de transition entre tabs avec gestion d'erreur
+        // ✅ OPTIMISÉ: Navigation fluide sans haptic feedback
         tabBarButton: (props) => {
           // ✅ CRITIQUE: S'assurer que props.onPress est toujours appelé en premier
           const handlePress = (e: any) => {
             try {
-              // ✅ CRITIQUE: Appeler props.onPress en premier pour la navigation
+              // ✅ CRITIQUE: Appeler props.onPress directement pour navigation fluide
               if (props.onPress && typeof props.onPress === 'function') {
                 props.onPress(e);
               }
-              // ✅ Ensuite, ajouter le haptic feedback
-              handleTabPress(route.name);
+              // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité maximale
+              // handleTabPress(route.name);
             } catch (error) {
               console.error('[AppNavigator] Erreur navigation TabBar:', error);
               // ✅ FALLBACK: Réessayer la navigation en cas d'erreur

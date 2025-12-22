@@ -466,3 +466,4 @@ Alert.alert(
 5. Créer `frontend/src/utils/mediaCompression.ts` (adaptation web)
 6. Implémenter retry logic dans API calls
 
+

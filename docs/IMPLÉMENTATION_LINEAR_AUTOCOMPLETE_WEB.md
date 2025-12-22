@@ -122,3 +122,4 @@ interface LinearAutocompleteEditorProps {
 - L'historisation se fait automatiquement lors de l'ajout d'une modalité
 - Le composant est compatible avec les données IA (product_vector/product_labels)
 
+

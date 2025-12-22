@@ -1829,7 +1829,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </NativeCard>
                 )}
                 
-                {coachPanel}
+                {/* ✅ SUPPRIMÉ: coachPanel retiré de l'étape 1 pour éviter le doublon avec les autres étapes */}
                 {selectedProduct && renderRelatedProducts()}
             </>
         );

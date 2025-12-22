@@ -201,3 +201,4 @@ Créer une table `role_changes` pour tracer :
 - `backend/src/routes/delivery_routes.rs` - Routes protégées par rôle admin
 - `backend/src/controllers/kyc_admin_controller.rs` - Contrôleur admin KYC
 
+

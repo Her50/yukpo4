@@ -28,3 +28,4 @@ ON CONFLICT (slug) DO UPDATE SET
 -- 3. Commentaire pour documentation
 COMMENT ON TABLE parcel_types IS 'Types de colis alignés avec delivery_engine_type des coursiers. Chaque type correspond à un type de véhicule disponible dans courier_assets.';
 
+

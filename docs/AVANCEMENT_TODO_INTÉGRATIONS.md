@@ -72,3 +72,4 @@
 3. **Priorité 3**: Améliorer LocationSelector avec enrichissement backend
 4. **Priorité 4**: Ajouter recherche par vidéo
 
+

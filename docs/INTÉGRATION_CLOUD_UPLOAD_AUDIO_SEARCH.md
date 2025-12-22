@@ -207,3 +207,4 @@ Navigation vers /resultat-besoin
 4. Erreur réseau → Vérifier fallback base64
 5. Limite fichiers → Vérifier validation
 
+

@@ -258,3 +258,4 @@ let processor = OptimizedMediaProcessor::new(
 **Action requise:** Appliquer les corrections ci-dessus pour que tous les médias soient uploadés vers S3/Wasabi via `MediaStorageService`.
 
 
+

@@ -294,6 +294,15 @@ pub async fn ensure_video_generation_jobs_table(pool: &PgPool) -> Result<(), sql
     )
     .execute(pool)
     .await?;
+    
+    // ✅ 2025-12-22: Index optimisé pour GROUP BY status et requêtes avec updated_at
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_status_updated_at 
+         ON video_generation_jobs(status, updated_at)
+         WHERE status IS NOT NULL",
+    )
+    .execute(pool)
+    .await?;
 
     Ok(())
 }

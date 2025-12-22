@@ -13,21 +13,21 @@ export const transitionConfig: {
         cardStyleInterpolator: CardStyleInterpolator;
     };
 } = {
-    // Transition fade (par défaut) - ✅ AMÉLIORÉ: Plus fluide
+    // Transition fade (par défaut) - ✅ OPTIMISÉ: Ultra-fluide et rapide
     fade: {
         transitionSpec: {
             open: {
                 animation: 'timing',
                 config: {
-                    duration: 280, // ✅ AMÉLIORÉ: Légèrement réduit pour plus de réactivité
-                    easing: Easing.bezier(0.25, 0.1, 0.25, 1), // ✅ AMÉLIORÉ: Easing naturel (iOS style)
+                    duration: 200, // ✅ OPTIMISÉ: Réduit pour fluidité maximale
+                    easing: Easing.out(Easing.ease), // ✅ OPTIMISÉ: Easing plus naturel
                 },
             },
             close: {
                 animation: 'timing',
                 config: {
-                    duration: 220, // ✅ AMÉLIORÉ: Plus rapide pour fermeture
-                    easing: Easing.bezier(0.4, 0.0, 1, 1), // ✅ AMÉLIORÉ: Easing plus rapide
+                    duration: 150, // ✅ OPTIMISÉ: Fermeture très rapide
+                    easing: Easing.in(Easing.ease), // ✅ OPTIMISÉ: Easing rapide
                 },
             },
         },
@@ -38,29 +38,21 @@ export const transitionConfig: {
         }),
     },
 
-    // Transition slide horizontal (iOS style) - ✅ AMÉLIORÉ: Plus fluide et réactif
+    // Transition slide horizontal (iOS style) - ✅ OPTIMISÉ: Ultra-fluide et réactif
     slideHorizontal: {
         transitionSpec: {
             open: {
-                animation: 'spring',
+                animation: 'timing', // ✅ OPTIMISÉ: Utiliser timing au lieu de spring pour plus de fluidité
                 config: {
-                    stiffness: 1200, // ✅ AMÉLIORÉ: Plus réactif
-                    damping: 600, // ✅ AMÉLIORÉ: Moins de rebond
-                    mass: 2.5, // ✅ AMÉLIORÉ: Plus léger
-                    overshootClamping: false, // ✅ AMÉLIORÉ: Permettre légèrement overshoot pour naturel
-                    restDisplacementThreshold: 0.01,
-                    restSpeedThreshold: 0.01,
+                    duration: 250, // ✅ OPTIMISÉ: Durée optimale pour fluidité
+                    easing: Easing.out(Easing.cubic), // ✅ OPTIMISÉ: Easing cubique pour mouvement naturel
                 },
             },
             close: {
-                animation: 'spring',
+                animation: 'timing', // ✅ OPTIMISÉ: Utiliser timing pour fermeture rapide
                 config: {
-                    stiffness: 1200,
-                    damping: 650, // ✅ AMÉLIORÉ: Damping plus élevé pour fermeture rapide
-                    mass: 2.5,
-                    overshootClamping: true, // ✅ AMÉLIORÉ: Pas d'overshoot à la fermeture
-                    restDisplacementThreshold: 0.01,
-                    restSpeedThreshold: 0.01,
+                    duration: 200, // ✅ OPTIMISÉ: Fermeture rapide
+                    easing: Easing.in(Easing.cubic), // ✅ OPTIMISÉ: Easing cubique inversé
                 },
             },
         },
@@ -80,29 +72,21 @@ export const transitionConfig: {
         },
     },
 
-    // Transition slide vertical (Android style)
+    // Transition slide vertical (Android style) - ✅ OPTIMISÉ: Plus fluide
     slideVertical: {
         transitionSpec: {
             open: {
-                animation: 'spring',
+                animation: 'timing', // ✅ OPTIMISÉ: Timing pour plus de fluidité
                 config: {
-                    stiffness: 1000,
-                    damping: 500,
-                    mass: 3,
-                    overshootClamping: true,
-                    restDisplacementThreshold: 0.01,
-                    restSpeedThreshold: 0.01,
+                    duration: 250,
+                    easing: Easing.out(Easing.cubic),
                 },
             },
             close: {
-                animation: 'spring',
+                animation: 'timing', // ✅ OPTIMISÉ: Timing pour fermeture rapide
                 config: {
-                    stiffness: 1000,
-                    damping: 500,
-                    mass: 3,
-                    overshootClamping: true,
-                    restDisplacementThreshold: 0.01,
-                    restSpeedThreshold: 0.01,
+                    duration: 200,
+                    easing: Easing.in(Easing.cubic),
                 },
             },
         },
@@ -122,25 +106,21 @@ export const transitionConfig: {
         },
     },
 
-    // Transition scale (zoom)
+    // Transition scale (zoom) - ✅ OPTIMISÉ: Plus fluide
     scale: {
         transitionSpec: {
             open: {
-                animation: 'spring',
+                animation: 'timing', // ✅ OPTIMISÉ: Timing pour plus de fluidité
                 config: {
-                    stiffness: 1000,
-                    damping: 500,
-                    mass: 3,
-                    overshootClamping: true,
-                    restDisplacementThreshold: 0.01,
-                    restSpeedThreshold: 0.01,
+                    duration: 250,
+                    easing: Easing.out(Easing.cubic),
                 },
             },
             close: {
-                animation: 'timing',
+                animation: 'timing', // ✅ OPTIMISÉ: Timing pour fermeture rapide
                 config: {
-                    duration: 250,
-                    easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.in(Easing.ease)
+                    duration: 200,
+                    easing: Easing.in(Easing.cubic),
                 },
             },
         },
@@ -151,38 +131,34 @@ export const transitionConfig: {
                         {
                             scale: current.progress.interpolate({
                                 inputRange: [0, 1],
-                                outputRange: [0.9, 1],
+                                outputRange: [0.95, 1], // ✅ OPTIMISÉ: Moins de zoom pour plus de fluidité
                             }),
                         },
                     ],
                     opacity: current.progress.interpolate({
                         inputRange: [0, 0.5, 1],
-                        outputRange: [0, 0.5, 1],
+                        outputRange: [0, 0.7, 1], // ✅ OPTIMISÉ: Opacité plus rapide
                     }),
                 },
             };
         },
     },
 
-    // Transition slide up (modal style)
+    // Transition slide up (modal style) - ✅ OPTIMISÉ: Plus fluide
     slideUp: {
         transitionSpec: {
             open: {
-                animation: 'spring',
+                animation: 'timing', // ✅ OPTIMISÉ: Timing pour plus de fluidité
                 config: {
-                    stiffness: 1000,
-                    damping: 500,
-                    mass: 3,
-                    overshootClamping: true,
-                    restDisplacementThreshold: 0.01,
-                    restSpeedThreshold: 0.01,
+                    duration: 280, // ✅ OPTIMISÉ: Légèrement plus long pour modals
+                    easing: Easing.out(Easing.cubic),
                 },
             },
             close: {
-                animation: 'timing',
+                animation: 'timing', // ✅ OPTIMISÉ: Timing pour fermeture rapide
                 config: {
-                    duration: 250,
-                    easing: Easing.bezier(0.42, 0, 0.58, 1), // ✅ CORRIGÉ: Utiliser Easing.bezier au lieu de Easing.in(Easing.ease)
+                    duration: 220,
+                    easing: Easing.in(Easing.cubic),
                 },
             },
         },

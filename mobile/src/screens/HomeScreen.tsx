@@ -34,7 +34,7 @@ import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 import { modernColors } from '../theme/modernTheme';
-import { hapticPress } from '../utils/hapticFeedback';
+import { hapticError } from '../utils/hapticFeedback';
 
 // NOUVEAU: Composant pour menu promotions regroupé
 const PromotionsMenu: React.FC<{ navigate: (route: string) => boolean }> = ({ navigate }) => {
@@ -69,7 +69,8 @@ const PromotionsMenu: React.FC<{ navigate: (route: string) => boolean }> = ({ na
     ];
 
     const toggleMenu = () => {
-        hapticPress();
+        // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
+        // hapticPress();
         const toValue = expanded ? 0 : 1;
         Animated.spring(scaleAnim, {
             toValue,
@@ -81,7 +82,8 @@ const PromotionsMenu: React.FC<{ navigate: (route: string) => boolean }> = ({ na
     };
 
     const handlePromoPress = (route: string) => {
-        hapticPress();
+        // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour navigation fluide
+        // hapticPress();
         toggleMenu();
         setTimeout(() => navigate(route), 200);
     };
@@ -256,6 +258,7 @@ const HomeScreen: React.FC = () => {
             console.error('[HomeScreen] Erreur recherche:', error);
             setLoading(false);
             const errorMessage = error?.message || 'Une erreur est survenue lors de la recherche';
+            hapticError(); // ✅ Haptic feedback pour erreur critique
             Alert.alert('Erreur', errorMessage);
         }
     }, [user, navigate]);
@@ -264,6 +267,7 @@ const HomeScreen: React.FC = () => {
     const handleCreateService = useCallback(async (input: any) => {
         try {
             if (!user) {
+                hapticError(); // ✅ Haptic feedback pour erreur critique
                 Alert.alert('Erreur', 'Vous devez être connecté pour créer un service');
                 return;
             }
@@ -426,7 +430,8 @@ const HomeScreen: React.FC = () => {
 
     // Handler GPS
     const handleGPSPress = useCallback(() => {
-        hapticPress();
+        // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
+        // hapticPress();
         setShowGPSModal(true);
     }, []);
 
@@ -495,7 +500,8 @@ const HomeScreen: React.FC = () => {
                         <TouchableOpacity
                             style={styles.deliveryButton}
                             onPress={() => {
-                                hapticPress();
+                                // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour navigation fluide
+                                // hapticPress();
                                 navigate('Delivery');
                             }}
                         >
@@ -508,7 +514,8 @@ const HomeScreen: React.FC = () => {
                         <TouchableOpacity
                             style={styles.headerButton}
                             onPress={() => {
-                                hapticPress();
+                                // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
+                                // hapticPress();
                                 setShowChatModal(true);
                             }}
                         >
@@ -517,7 +524,8 @@ const HomeScreen: React.FC = () => {
                         <TouchableOpacity
                             style={styles.headerButton}
                             onPress={() => {
-                                hapticPress();
+                                // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
+                                // hapticPress();
                                 setShowNotificationModal(true);
                             }}
                         >
@@ -534,7 +542,8 @@ const HomeScreen: React.FC = () => {
                             !isCreateService && styles.modeButtonActive
                         ]}
                         onPress={() => {
-                            hapticPress();
+                            // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
+                            // hapticPress();
                             setIsCreateService(false);
                         }}
                     >
@@ -551,7 +560,8 @@ const HomeScreen: React.FC = () => {
                             isCreateService && styles.modeButtonActive
                         ]}
                         onPress={() => {
-                            hapticPress();
+                            // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour fluidité
+                            // hapticPress();
                             setIsCreateService(true);
                         }}
                     >
@@ -591,7 +601,8 @@ const HomeScreen: React.FC = () => {
                     <View style={styles.specializedServicesContainer}>
                         <YukpoServicesQuickAccess
                             onServicePress={(serviceId) => {
-                                hapticPress();
+                                // ✅ DÉSACTIVÉ: Haptic feedback désactivé pour navigation fluide
+                                // hapticPress();
                                 console.log('[HomeScreen] Service pressé:', serviceId);
                                 // ✅ CORRIGÉ: Mapping complet des services spécialisés vers leurs écrans spécifiques
                                 const searchRoutes: Record<string, string> = {
@@ -669,7 +680,7 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: modernColors.surfaceVariant, // ✅ AMÉLIORÉ: Fond gris clair professionnel plus foncé (#f1f5f9 - slate-100)
+        backgroundColor: '#E2E8F0', // ✅ AMÉLIORÉ: Fond gris moyen harmonisé plus foncé (#E2E8F0 - slate-200)
     },
     scrollView: {
         flex: 1,
@@ -766,7 +777,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         marginTop: 12,
         marginBottom: 8, // ✅ AMÉLIORÉ: Réduit l'écart entre modeSelector et ChatInputMobile
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#F1F5F9', // ✅ AMÉLIORÉ: Fond gris clair harmonisé (#F1F5F9 - slate-100)
         borderRadius: 12,
         padding: 4,
     },
@@ -790,7 +801,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     darkBackgroundContainer: {
-        backgroundColor: '#FFFFFF', // ✅ CORRIGÉ: Fond blanc
+        backgroundColor: '#F1F5F9', // ✅ AMÉLIORÉ: Fond gris clair harmonisé (#F1F5F9 - slate-100) pour contraste subtil
         marginHorizontal: 16,
         borderRadius: 16,
         padding: 16,
@@ -819,11 +830,11 @@ const styles = StyleSheet.create({
         marginHorizontal: 0, // Pas de marge horizontale car déjà dans le conteneur foncé
     },
     promotionsMainButton: {
-        backgroundColor: '#F3F4F6', // ✅ Appliqué: Même couleur que les cartes des services spécialisés
+        backgroundColor: '#E2E8F0', // ✅ AMÉLIORÉ: Fond gris moyen harmonisé plus foncé (#E2E8F0 - slate-200)
         borderRadius: 10,
         padding: 10,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#CBD5E1', // ✅ AMÉLIORÉ: Bordure plus foncée harmonisée (#CBD5E1 - slate-300)
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,

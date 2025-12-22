@@ -154,3 +154,4 @@ if (result?.search_method === 'audio_ai' && result?.billing) {
 5. Facturation recherche audio
 6. Upload multiple fichiers en parallèle
 
+

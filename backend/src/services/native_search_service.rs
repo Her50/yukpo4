@@ -323,62 +323,47 @@ impl NativeSearchService {
             return Ok(search_results);
         }
         
-        // ✅ OPTIMISÉ 2025-12-19: Requête ULTRA-SIMPLIFIÉE pour performance instantanée (< 100ms)
-        // Le problème: Requête trop complexe avec sous-requêtes corrélées et LIKE '%...%' qui ralentissent même avec 20 produits
-        // Solution: Requête directe utilisant UNIQUEMENT les index GIN (tsvector) - instantanée même avec millions de produits
+        // ✅ OPTIMISÉ 2025-12-22: Requête ULTRA-OPTIMISÉE pour performance instantanée (< 100ms)
+        // Problèmes identifiés dans les logs:
+        // 1. Le fallback avec jsonb_array_elements cause 2.6s de latence (SUPPRIMÉ)
+        // 2. La recherche n'utilise que ac.valeur, pas characteristic_vector ni full_vector (CORRIGÉ)
+        // 3. Le scoring de pertinence est trop faible (AMÉLIORÉ)
         // 
         // Stratégie:
-        // 1. Recherche directe dans autocomplete_characteristics avec tsvector (index GIN - ultra-rapide)
-        // 2. UNION avec recherche directe dans services.data->'produits' pour produits non indexés
-        // 3. JOIN simple avec services (index sur service_id)
-        // 4. Pas de sous-requêtes corrélées, pas de LIKE '%...%', pas de calculs complexes
-        // 5. Score simple basé sur usage_count et ts_rank
+        // 1. Recherche UNIQUEMENT dans autocomplete_characteristics avec TOUS les vecteurs (valeur, characteristic_vector, full_vector)
+        // 2. Utilisation des index GIN tsvector créés dans les migrations
+        // 3. Scoring amélioré avec bonus pour matches exacts et usage_count
+        // 4. Pas de fallback jsonb_array_elements (trop lent, force scan complet de table)
         let sql = r#"
 WITH matched_services AS (
-    -- ✅ ÉTAPE 1: Recherche via autocomplete_characteristics (index GIN - ultra-rapide)
+    -- ✅ ÉTAPE 1: Recherche via autocomplete_characteristics avec TOUS les vecteurs (index GIN - ultra-rapide)
     SELECT DISTINCT s.id as service_id
     FROM autocomplete_characteristics ac
     INNER JOIN services s ON s.id = ac.service_id
     WHERE s.is_active = true
     AND ac.identifiant_base = 'produits'
     AND ac.is_real_product = TRUE
-    AND to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
+    AND (
+        -- Recherche dans valeur (index GIN tsvector - idx_autocomplete_characteristics_valeur_tsvector)
+        to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
+        -- OU dans characteristic_vector (index GIN tsvector - idx_autocomplete_characteristic_vector_tsvector_gin)
+        OR characteristic_vector_to_tsvector(ac.characteristic_vector) @@ plainto_tsquery('french', $1)
+        -- OU dans full_vector (index GIN tsvector - idx_autocomplete_full_vector_tsvector_gin)
+        OR full_vector_to_tsvector(ac.full_vector) @@ plainto_tsquery('french', $1)
+    )
     
     UNION
     
-    -- ✅ ÉTAPE 2: Fallback pour produits non indexés (directement dans services.data->'produits')
-    -- ✅ OPTIMISÉ 2025-12-21: Limiter cette recherche pour éviter les scans complets de table
-    -- Note: Cette étape est un fallback, donc on limite à 20 résultats pour éviter la lenteur
+    -- ✅ ÉTAPE 2: Fallback léger pour titre/description service (sans jsonb_array_elements)
+    -- Note: Ce fallback est limité et rapide car utilise uniquement les index GIN sur services.data
     SELECT DISTINCT s.id as service_id
     FROM services s
     WHERE s.is_active = true
     AND (
         to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
         OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-        -- ✅ OPTIMISÉ 2025-12-21: Limiter la recherche dans produits pour éviter les scans lents
-        -- Note: Cette recherche est un fallback, donc on limite à 3 produits par service
-        -- pour éviter jsonb_array_elements sur toute la table (très lent)
-        OR EXISTS (
-            SELECT 1 FROM (
-                SELECT jsonb_array_elements(
-                    CASE 
-                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
-                        THEN s.data->'produits'
-                        WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
-                        THEN s.data->'produits'->'valeur'
-                        ELSE '[]'::jsonb
-                    END
-                ) AS produit
-            ) AS all_products
-            WHERE to_tsvector('french', 
-                COALESCE(all_products.produit->>'nom_produit', '') || ' ' || 
-                COALESCE(all_products.produit->>'marque', '') || ' ' ||
-                COALESCE(all_products.produit->>'modele', '')
-            ) @@ plainto_tsquery('french', $1)
-            LIMIT 1  -- ✅ Arrêter dès le premier match pour éviter les scans complets
-        )
     )
-    LIMIT 20  -- ✅ Limiter le fallback à 20 services pour éviter la lenteur
+    LIMIT 50  -- Limiter le fallback pour éviter la lenteur
 )
 SELECT DISTINCT ON (s.id)
     s.id,
@@ -387,20 +372,32 @@ SELECT DISTINCT ON (s.id)
     s.user_id,
     s.gps,
     s.category,
-    -- ✅ OPTIMISÉ 2025-12-20: Score calculé via JOIN au lieu de sous-requête corrélée (10x plus rapide)
-    COALESCE(
-        ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) * 10.0 +
-        (ac.usage_count::REAL * 0.5),
-        ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 5.0
+    -- ✅ OPTIMISÉ 2025-12-22: Score amélioré avec bonus pour matches exacts et usage_count
+    GREATEST(
+        -- Score depuis autocomplete_characteristics (priorité haute)
+        COALESCE(
+            ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) * 15.0 +
+            COALESCE(ts_rank(characteristic_vector_to_tsvector(ac.characteristic_vector), plainto_tsquery('french', $1)), 0.0) * 10.0 +
+            COALESCE(ts_rank(full_vector_to_tsvector(ac.full_vector), plainto_tsquery('french', $1)), 0.0) * 8.0 +
+            (ac.usage_count::REAL * 1.0),  -- Bonus usage_count
+            0.0
+        ),
+        -- Score depuis titre/description service (priorité basse)
+        COALESCE(
+            ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 5.0 +
+            ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0,
+            0.0
+        )
     )::REAL as fulltext_score
 FROM matched_services ms
 INNER JOIN services s ON s.id = ms.service_id
 LEFT JOIN LATERAL (
-    SELECT ac.valeur, ac.usage_count
+    SELECT ac.valeur, ac.usage_count, ac.characteristic_vector, ac.full_vector
     FROM autocomplete_characteristics ac
     WHERE ac.service_id = s.id
     AND ac.identifiant_base = 'produits'
     AND ac.is_real_product = TRUE
+    ORDER BY ac.usage_count DESC NULLS LAST
     LIMIT 1
 ) ac ON true
 WHERE ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)

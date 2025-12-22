@@ -159,3 +159,4 @@ filtered.sort((a, b) => {
 - ⚠️ Support multimédia recherche : À améliorer
 - ❌ ProductManager : Modal moderne à implémenter
 
+

@@ -9,6 +9,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Animated,
+    FlatList,
     Modal,
     ScrollView,
     StyleSheet,
@@ -29,6 +30,7 @@ import { modernColors } from '../../theme/modernTheme';
 import { useScreenEnter } from '../../utils/animations';
 import { LocationObject } from '../../components/LocationSelector';
 import { UserSavedAddress } from '../../hooks/useSavedAddresses';
+import { VEHICLE_TRANSPORT_OPTIONS } from '../../config/deliveryConfig';
 
 interface DeliveryParcelFlowNewProps {
     visible: boolean;
@@ -197,21 +199,35 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     };
 
     const handleComplete = async (data: any) => {
+        console.log('[DeliveryParcelFlowNew] handleComplete appelé avec data:', data);
+        console.log('[DeliveryParcelFlowNew] États actuels:', {
+            pickupLocation: !!pickupLocation,
+            dropoffLocation: !!dropoffLocation,
+            recipientName: !!recipientName,
+            recipientPhone: !!recipientPhone,
+            recipientConsentGranted,
+        });
+
         // Validation
         if (!pickupLocation) {
+            console.log('[DeliveryParcelFlowNew] ❌ Erreur: pas d\'adresse de collecte');
             Alert.alert('Erreur', 'Veuillez sélectionner une adresse de collecte');
             return;
         }
 
         if (!dropoffLocation) {
+            console.log('[DeliveryParcelFlowNew] ❌ Erreur: pas d\'adresse de livraison');
             Alert.alert('Erreur', 'Veuillez sélectionner une adresse de livraison');
             return;
         }
 
         if (!recipientName || !recipientPhone || !recipientConsentGranted) {
+            console.log('[DeliveryParcelFlowNew] ❌ Erreur: informations destinataire incomplètes');
             Alert.alert('Erreur', 'Veuillez renseigner toutes les informations obligatoires du destinataire');
             return;
         }
+
+        console.log('[DeliveryParcelFlowNew] ✅ Validation passée, création de la livraison...');
 
         setLoading(true);
         try {
@@ -384,6 +400,46 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     maxMedia={5}
                     allowVideo={false}
                 />
+            </View>
+
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>Type de transport souhaité (optionnel)</Text>
+                <View style={styles.vehicleScrollContainer}>
+                    <FlatList
+                        data={VEHICLE_TRANSPORT_OPTIONS}
+                        horizontal
+                        showsHorizontalScrollIndicator={true}
+                        keyExtractor={(item) => item.value}
+                        contentContainerStyle={styles.vehicleScrollContent}
+                        style={styles.vehicleScroll}
+                        renderItem={({ item: type }) => (
+                            <TouchableOpacity
+                                style={[
+                                    styles.vehicleOption,
+                                    transportMode === type.value && styles.vehicleOptionSelected,
+                                ]}
+                                onPress={() => setTransportMode(transportMode === type.value ? '' : type.value)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.vehicleIcon}>{type.icon}</Text>
+                                <Text
+                                    style={[
+                                        styles.vehicleLabel,
+                                        transportMode === type.value && styles.vehicleLabelSelected,
+                                    ]}
+                                >
+                                    {type.label}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                        nestedScrollEnabled={true}
+                        scrollEnabled={true}
+                        bounces={true}
+                        decelerationRate="fast"
+                        alwaysBounceHorizontal={true}
+                        removeClippedSubviews={false}
+                    />
+                </View>
             </View>
         </ScrollView>
     );
@@ -922,6 +978,53 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#EF4444',
         marginTop: 4,
+    },
+    vehicleScrollContainer: {
+        marginTop: 8,
+        marginBottom: 8,
+        height: 110,
+        width: '100%',
+    },
+    vehicleScroll: {
+        flexGrow: 0,
+        flexShrink: 0,
+        height: 110,
+    },
+    vehicleScrollContent: {
+        paddingRight: 16,
+        paddingLeft: 4,
+        alignItems: 'center',
+        flexGrow: 0,
+    },
+    vehicleOption: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        marginRight: 12,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.surfaceVariant,
+        width: 90,
+        height: 90,
+        flexShrink: 0,
+    },
+    vehicleOptionSelected: {
+        borderColor: modernColors.primary,
+        backgroundColor: modernColors.primary + '20',
+    },
+    vehicleIcon: {
+        fontSize: 32,
+        marginBottom: 4,
+    },
+    vehicleLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.text,
+        textAlign: 'center',
+    },
+    vehicleLabelSelected: {
+        color: modernColors.primary,
     },
 });
 

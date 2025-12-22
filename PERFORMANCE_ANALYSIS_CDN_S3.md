@@ -237,3 +237,4 @@ Utiliser une bibliothèque de compression d'images (ex: `image` crate) avant l'u
 Implémenter l'**upload asynchrone** (priorité haute) pour éliminer le seul point négatif significatif, tout en conservant tous les bénéfices du CDN-S3.
 
 
+

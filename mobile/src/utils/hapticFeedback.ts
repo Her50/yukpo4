@@ -79,4 +79,29 @@ export const hapticSuccess = () => triggerHaptic('success');
  */
 export const hapticError = () => triggerHaptic('error');
 
+/**
+ * ✅ NOUVEAU: Feedback pour les actions critiques (validation, paiement, confirmation)
+ * À utiliser uniquement pour des actions importantes qui nécessitent une confirmation tactile
+ */
+export const hapticCritical = () => triggerHaptic('heavy');
+
+/**
+ * ✅ NOUVEAU: Feedback pour les warnings (avertissements)
+ */
+export const hapticWarning = () => triggerHaptic('warning');
+
+/**
+ * ✅ NOUVEAU: Feedback pour les validations de formulaire réussies
+ */
+export const hapticFormSuccess = () => triggerHaptic('success');
+
+/**
+ * ✅ NOUVEAU: Feedback pour les paiements réussis
+ */
+export const hapticPaymentSuccess = () => triggerHaptic('success');
+
+/**
+ * ✅ NOUVEAU: Feedback pour les confirmations critiques (suppression, annulation importante)
+ */
+export const hapticConfirm = () => triggerHaptic('medium');
 

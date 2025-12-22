@@ -282,3 +282,4 @@ const loadConfigFromProduct = async (serviceId: number, productIndex: number) =>
 2. **IMPORTANT** : Workflow automatique après création produit
 3. **UTILE** : Affichage délais dans modal + réutilisation configuration
 
+

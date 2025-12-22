@@ -170,3 +170,4 @@ Le mobile est **significativement plus avancé** que le frontend web sur plusieu
 - ✅ Performance web ≥ Performance mobile
 - ✅ UX web ≥ UX mobile
 
+

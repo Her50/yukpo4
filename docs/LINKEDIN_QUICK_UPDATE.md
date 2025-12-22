@@ -162,3 +162,4 @@ Mon background statistique m'aide à optimiser les algorithmes, analyser les per
 **Conseil :** Mettez à jour progressivement, pas besoin de tout faire en une fois. Commencez par le titre et la section "À propos", puis ajoutez les compétences et l'expérience.
 
 
+

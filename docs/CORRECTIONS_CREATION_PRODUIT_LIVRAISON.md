@@ -148,3 +148,4 @@ grep "terminating connection because of crash" logs/*.log
 - [ ] Création produit < 20s (hors IA)
 - [ ] Pas d'erreurs dans les logs après déploiement
 
+

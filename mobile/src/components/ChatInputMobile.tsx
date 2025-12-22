@@ -1370,7 +1370,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
 // ✅ NOUVEAU: Fonction pour créer les styles avec support thème
 const createStyles = (colors: any) => StyleSheet.create({
     container: {
-        backgroundColor: '#F3F4F6', // ✅ Appliqué: Même couleur que les cartes des services spécialisés
+        backgroundColor: '#E2E8F0', // ✅ AMÉLIORÉ: Fond gris moyen harmonisé plus foncé (#E2E8F0 - slate-200)
         borderRadius: 12,
         padding: 10,
         marginHorizontal: 0,
@@ -1381,8 +1381,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     inputContainer: {
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#E5E7EB', // ✅ CORRIGÉ: Bordure plus claire
-        backgroundColor: '#F0F9FF', // ✅ AMÉLIORÉ: Fond bleu clair plus gai (#F0F9FF = sky-50)
+        borderColor: '#CBD5E1', // ✅ AMÉLIORÉ: Bordure plus foncée harmonisée (#CBD5E1 - slate-300)
+        backgroundColor: '#E0F2FE', // ✅ AMÉLIORÉ: Fond bleu clair harmonisé plus foncé (#E0F2FE = sky-100)
         marginBottom: 8,
         minHeight: 55,
     },
@@ -1393,7 +1393,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     textInput: {
         fontSize: 14, // ✅ Réduit de 15 à 14 pour compacter
-        color: '#0F172A', // ✅ CORRIGÉ: Couleur texte très foncée (#0F172A = slate-900) pour contraste maximum sur fond bleu clair #F0F9FF
+        color: '#0F172A', // ✅ CORRIGÉ: Couleur texte très foncée (#0F172A = slate-900) pour contraste maximum sur fond bleu clair #E0F2FE
         minHeight: 40, // ✅ Ajusté de 35 à 40 pour meilleure utilisabilité
         maxHeight: 70, // ✅ Ajusté de 60 à 70 pour permettre plus de texte
         textAlignVertical: 'top',
