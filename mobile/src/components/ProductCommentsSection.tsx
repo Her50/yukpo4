@@ -6,6 +6,7 @@ import {
     ActivityIndicator,
     Alert,
     Animated,
+    Dimensions,
     FlatList,
     KeyboardAvoidingView,
     Modal,
@@ -24,6 +25,8 @@ import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeCard } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface MentionCandidate {
     id: number;
@@ -72,6 +75,7 @@ interface ProductCommentsSectionProps {
     serviceTitle?: string;
     onOpenChat?: (userId: number, userName: string, userAvatar?: string | null) => void;
     mode?: 'inline' | 'full';
+    onStatsUpdate?: (stats: CommentStats) => void; // ✅ NOUVEAU: Callback pour mettre à jour les stats dans ProductCard
 }
 
 const REACTION_OPTIONS = [
@@ -167,6 +171,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     serviceTitle,
     onOpenChat,
     mode = 'inline',
+    onStatsUpdate,
 }) => {
     const { user } = useAuth();
     const currentUserId = useMemo(() => {
@@ -185,6 +190,9 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [modalVisible, setModalVisible] = useState(mode === 'full');
+    
+    // ✅ NOUVEAU: État pour suivre si c'est la première ouverture du modal
+    const [isFirstTimeOpening, setIsFirstTimeOpening] = useState(true);
 
     const [composerContent, setComposerContent] = useState('');
     const [composerRating, setComposerRating] = useState<number | null>(null);
@@ -218,7 +226,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
     const isFullMode = mode === 'full' || modalVisible;
 
-    // ✅ NOUVEAU: Vérifier si l'utilisateur a déjà donné un avis (avec rating)
+    // ✅ AMÉLIORÉ: Vérifier si l'utilisateur a déjà donné un avis (avec rating)
+    // L'avis n'est obligatoire QUE la première fois qu'on ouvre le modal
     const hasUserRated = useMemo(() => {
         if (!currentUserId) return false;
         return comments.some(
@@ -229,6 +238,11 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 !comment.parent_comment_id // Seulement les commentaires principaux, pas les réponses
         );
     }, [comments, currentUserId]);
+    
+    // ✅ NOUVEAU: Déterminer si un rating est requis (première fois uniquement)
+    const isRatingRequired = useMemo(() => {
+        return isFirstTimeOpening && !hasUserRated && !replyTarget && !editingTarget;
+    }, [isFirstTimeOpening, hasUserRated, replyTarget, editingTarget]);
 
     const loadComments = useCallback(async () => {
         setError(null);
@@ -238,11 +252,16 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             if (response.success && response.data) {
                 const payload: any = response.data;
                 setComments(normalizeComments(payload.comments));
-                setStats({
+                const newStats = {
                     total_comments: payload.stats?.total_comments ?? payload.comments?.length ?? 0,
                     rating_count: payload.stats?.rating_count ?? 0,
                     average_rating: payload.stats?.average_rating ?? 0,
-                });
+                };
+                setStats(newStats);
+                // ✅ NOUVEAU: Notifier ProductCard des statistiques mises à jour
+                if (onStatsUpdate) {
+                    onStatsUpdate(newStats);
+                }
             } else {
                 setError(response.error || 'Impossible de charger les commentaires');
             }
@@ -258,6 +277,14 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     useEffect(() => {
         loadComments();
     }, [loadComments]);
+    
+    // ✅ NOUVEAU: Marquer que ce n'est plus la première fois quand le modal s'ouvre
+    useEffect(() => {
+        if (modalVisible && isFirstTimeOpening) {
+            // On garde isFirstTimeOpening à true jusqu'à ce qu'un commentaire avec rating soit soumis
+            // Cela permet de demander le rating uniquement la première fois
+        }
+    }, [modalVisible, isFirstTimeOpening]);
 
     const resetComposer = useCallback(() => {
         setComposerContent('');
@@ -283,15 +310,28 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }, []);
     
-    // ✅ NOUVEAU: Démarrer l'enregistrement audio
+    // ✅ AMÉLIORÉ: Démarrer l'enregistrement audio avec meilleure gestion d'erreurs
     const startRecording = useCallback(async () => {
         try {
-            const permission = await Audio.requestPermissionsAsync();
-            if (permission.status !== 'granted') {
-                Alert.alert('Permission requise', 'Nous avons besoin de la permission pour enregistrer l\'audio');
+            // Vérifier les permissions
+            const { status: existingStatus } = await Audio.getPermissionsAsync();
+            let finalStatus = existingStatus;
+            
+            if (existingStatus !== 'granted') {
+                const { status } = await Audio.requestPermissionsAsync();
+                finalStatus = status;
+            }
+            
+            if (finalStatus !== 'granted') {
+                Alert.alert(
+                    'Permission requise',
+                    'Nous avons besoin de la permission microphone pour enregistrer des messages audio.',
+                    [{ text: 'OK' }]
+                );
                 return;
             }
 
+            // Configurer le mode audio
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: true,
                 playsInSilentModeIOS: true,
@@ -300,92 +340,101 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 playThroughEarpieceAndroid: false,
             });
 
-            const { recording: newRecording } = await Audio.Recording.createAsync({
-                android: {
-                    extension: '.m4a',
-                    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-                    audioEncoder: Audio.AndroidAudioEncoder.AAC,
-                    sampleRate: 44100,
-                    numberOfChannels: 2,
-                    bitRate: 128000,
-                },
-                ios: {
-                    extension: '.m4a',
-                    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-                    audioQuality: Audio.IOSAudioQuality.HIGH,
-                    sampleRate: 44100,
-                    numberOfChannels: 2,
-                    bitRate: 128000,
-                    linearPCMBitDepth: 16,
-                    linearPCMIsBigEndian: false,
-                    linearPCMIsFloat: false,
-                },
-            });
+            // Créer l'enregistrement
+            const { recording: newRecording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
+            );
 
             setRecording(newRecording);
             setIsRecording(true);
             setRecordingDuration(0);
+            setAudioUri(null);
+            setAudioBase64(null);
 
-            // Animation de pulsation
+            // Animation de pulsation pour l'indicateur
             Animated.loop(
                 Animated.sequence([
                     Animated.timing(pulseAnim, {
-                        toValue: 1.2,
-                        duration: 500,
+                        toValue: 1.3,
+                        duration: 600,
                         useNativeDriver: true,
                     }),
                     Animated.timing(pulseAnim, {
                         toValue: 1,
-                        duration: 500,
+                        duration: 600,
                         useNativeDriver: true,
                     }),
                 ])
             ).start();
 
-            // Timer pour la durée
+            // Timer pour la durée d'enregistrement
             recordingTimerRef.current = setInterval(() => {
                 setRecordingDuration((prev) => prev + 1);
             }, 1000);
-        } catch (error) {
+        } catch (error: any) {
             console.error('[ProductCommentsSection] Erreur démarrage enregistrement:', error);
-            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement');
+            Alert.alert(
+                'Erreur',
+                error?.message || 'Impossible de démarrer l\'enregistrement. Vérifiez les permissions microphone.'
+            );
             setIsRecording(false);
+            setRecording(null);
         }
     }, [pulseAnim]);
     
-    // ✅ NOUVEAU: Arrêter l'enregistrement audio
+    // ✅ AMÉLIORÉ: Arrêter l'enregistrement audio avec meilleure gestion
     const stopRecording = useCallback(async () => {
         if (!recording) return;
 
         try {
             setIsRecording(false);
+            
+            // Arrêter le timer
             if (recordingTimerRef.current) {
                 clearInterval(recordingTimerRef.current);
                 recordingTimerRef.current = null;
             }
+            
+            // Arrêter l'animation
+            pulseAnim.stopAnimation();
             pulseAnim.setValue(1);
 
+            // Arrêter et décharger l'enregistrement
+            const status = await recording.getStatusAsync();
             await recording.stopAndUnloadAsync();
+            
+            // Réinitialiser le mode audio
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: false,
                 playsInSilentModeIOS: true,
             });
 
+            // Récupérer l'URI
             const uri = recording.getURI();
             if (uri) {
                 setAudioUri(uri);
                 
-                // Convertir en base64
-                const base64Audio = await FileSystem.readAsStringAsync(uri, {
-                    encoding: FileSystem.EncodingType.Base64,
-                });
-                setAudioBase64(base64Audio);
+                // Convertir en base64 pour l'envoi
+                try {
+                    const base64Audio = await FileSystem.readAsStringAsync(uri, {
+                        encoding: FileSystem.EncodingType.Base64,
+                    });
+                    setAudioBase64(base64Audio);
+                    console.log('[ProductCommentsSection] ✅ Audio converti en base64, taille:', base64Audio.length);
+                } catch (base64Error) {
+                    console.error('[ProductCommentsSection] Erreur conversion base64:', base64Error);
+                    Alert.alert('Avertissement', 'L\'audio a été enregistré mais la conversion a échoué');
+                }
+            } else {
+                console.warn('[ProductCommentsSection] Aucun URI retourné par l\'enregistrement');
             }
 
             setRecording(null);
-        } catch (error) {
+        } catch (error: any) {
             console.error('[ProductCommentsSection] Erreur arrêt enregistrement:', error);
-            Alert.alert('Erreur', 'Impossible d\'arrêter l\'enregistrement');
+            Alert.alert('Erreur', error?.message || 'Impossible d\'arrêter l\'enregistrement');
+            setIsRecording(false);
+            setRecording(null);
         }
     }, [recording, pulseAnim]);
     
@@ -417,6 +466,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         };
     }, [recording]);
 
+    // ✅ AMÉLIORÉ: Soumission de commentaire avec validation améliorée
     const handleSubmitComment = useCallback(async () => {
         if (!user?.token) {
             Alert.alert('Connexion requise', 'Veuillez vous connecter pour commenter');
@@ -431,12 +481,13 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             return;
         }
 
-        // ✅ CORRIGÉ: Ne demander une note que si l'utilisateur n'a pas encore donné d'avis (et seulement si pas d'audio seul)
-        if (!replyTarget && !hasUserRated && !audioBase64 && (composerRating === null || composerRating === undefined)) {
+        // ✅ AMÉLIORÉ: Ne demander une note QUE la première fois qu'on ouvre le modal (pas à chaque commentaire)
+        if (isRatingRequired && (composerRating === null || composerRating === undefined)) {
             Alert.alert('Note requise', 'Ajoutez une note (1-5) pour votre premier avis');
             return;
         }
 
+        // Ne pas envoyer de rating pour les réponses
         if (replyTarget && composerRating !== null) {
             setComposerRating(null);
         }
@@ -444,7 +495,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         setSubmitting(true);
         try {
             if (editingTarget) {
-                const payload = {
+                const payload: any = {
                     content: trimmed || undefined,
                     audio_base64: audioBase64 || undefined,
                     rating: editingTarget.parent_comment_id ? undefined : composerRating,
@@ -456,13 +507,17 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 } else {
                     await loadComments();
                     resetComposer();
+                    // ✅ Marquer que ce n'est plus la première fois si un rating a été soumis
+                    if (composerRating !== null && isFirstTimeOpening) {
+                        setIsFirstTimeOpening(false);
+                    }
                 }
             } else {
-                const payload = {
+                const payload: any = {
                     content: trimmed || undefined,
                     audio_base64: audioBase64 || undefined,
-                    // ✅ CORRIGÉ: Ne pas envoyer de rating si l'utilisateur a déjà donné un avis (sauf si c'est une réponse)
-                    rating: replyTarget ? undefined : (hasUserRated ? undefined : composerRating),
+                    // ✅ AMÉLIORÉ: Envoyer le rating uniquement si requis (première fois)
+                    rating: replyTarget ? undefined : (isRatingRequired ? composerRating : undefined),
                     mentions: selectedMentions.map((mention) => mention.id),
                     parent_comment_id: replyTarget?.id,
                 };
@@ -472,18 +527,23 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 } else {
                     await loadComments();
                     resetComposer();
+                    // ✅ Marquer que ce n'est plus la première fois si un rating a été soumis
+                    if (composerRating !== null && isFirstTimeOpening && !replyTarget) {
+                        setIsFirstTimeOpening(false);
+                    }
                 }
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('[ProductCommentsSection] handleSubmitComment error', err);
-            Alert.alert('Erreur', "Une erreur est survenue lors de l'envoi du commentaire");
+            Alert.alert('Erreur', err?.message || "Une erreur est survenue lors de l'envoi du commentaire");
         } finally {
             setSubmitting(false);
         }
     }, [
         composerContent,
         composerRating,
-        hasUserRated,
+        isRatingRequired,
+        isFirstTimeOpening,
         audioBase64,
         loadComments,
         replyTarget,
@@ -649,9 +709,10 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
     const previewComments = useMemo(() => comments.slice(0, 2), [comments]);
 
+    // ✅ AMÉLIORÉ: Rendu des commentaires avec icônes visibles et fonctionnelles
     const renderCommentItem = useCallback(
         ({ item, depth }: { item: ProductComment; depth: number }) => (
-            <View key={item.id} style={[styles.commentContainer, depth > 0 && { marginLeft: depth * 16 }]}>
+            <View key={item.id} style={[styles.commentContainer, depth > 0 && styles.commentReplyContainer]}>
                 <View style={styles.commentHeader}>
                     <TouchableOpacity
                         activeOpacity={0.8}
@@ -659,12 +720,20 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         onPress={() => onOpenChat?.(item.user_id, item.user_name, item.user_avatar)}
                     >
                         <View style={styles.avatarBubble}>
-                            <Text style={styles.avatarInitials}>
-                                {item.user_name ? item.user_name.charAt(0).toUpperCase() : '👤'}
-                            </Text>
+                            {item.user_avatar ? (
+                                <View style={styles.avatarImagePlaceholder}>
+                                    <Text style={styles.avatarInitials}>
+                                        {item.user_name ? item.user_name.charAt(0).toUpperCase() : '👤'}
+                                    </Text>
+                                </View>
+                            ) : (
+                                <Text style={styles.avatarInitials}>
+                                    {item.user_name ? item.user_name.charAt(0).toUpperCase() : '👤'}
+                                </Text>
+                            )}
                         </View>
                         <View style={styles.authorInfo}>
-                            <Text style={styles.authorName}>{item.user_name}</Text>
+                            <Text style={styles.authorName} numberOfLines={1}>{item.user_name}</Text>
                             <Text style={styles.commentDate}>{formatDate(item.created_at)}</Text>
                         </View>
                     </TouchableOpacity>
@@ -680,6 +749,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             <TouchableOpacity
                                 style={styles.actionIcon}
                                 onPress={() => handleEdit(item)}
+                                activeOpacity={0.7}
                             >
                                 <SafeIcon name="edit-3" size={18} color={modernColors.primary} />
                             </TouchableOpacity>
@@ -688,6 +758,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             <TouchableOpacity
                                 style={styles.actionIcon}
                                 onPress={() => handleDeleteComment(item)}
+                                activeOpacity={0.7}
                             >
                                 <SafeIcon name="trash-2" size={18} color={modernColors.error} />
                             </TouchableOpacity>
@@ -713,6 +784,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     )}
                 </View>
 
+                {/* ✅ AMÉLIORÉ: Footer avec réactions et actions visibles */}
                 <View style={styles.commentFooter}>
                     <View style={styles.reactionsRow}>
                         {REACTION_OPTIONS.map((reaction) => {
@@ -726,32 +798,42 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                                         isActive && styles.reactionButtonActive,
                                     ]}
                                     onPress={() => handleToggleReaction(item, reaction.type)}
+                                    activeOpacity={0.7}
                                 >
                                     <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
                                     {count > 0 && (
-                                        <Text style={styles.reactionCount}>{count}</Text>
+                                        <Text style={[
+                                            styles.reactionCount,
+                                            isActive && styles.reactionCountActive
+                                        ]}>
+                                            {count}
+                                        </Text>
                                     )}
                                 </TouchableOpacity>
                             );
                         })}
                     </View>
 
+                    {/* ✅ AMÉLIORÉ: Actions avec icônes bien visibles */}
                     <View style={styles.commentFooterActions}>
                         <TouchableOpacity
                             style={styles.footerAction}
                             onPress={() => handleReply(item)}
+                            activeOpacity={0.7}
                         >
-                            <SafeIcon name="corner-up-right" size={16} color={modernColors.primary} />
+                            <SafeIcon name="corner-up-right" size={18} color={modernColors.primary} />
                             <Text style={styles.footerActionText}>Répondre</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.footerAction}
-                            onPress={() => onOpenChat?.(item.user_id, item.user_name, item.user_avatar)}
-                            disabled={!onOpenChat}
-                        >
-                            <SafeIcon name="message-circle" size={16} color={modernColors.primary} />
-                            <Text style={styles.footerActionText}>Chat</Text>
-                        </TouchableOpacity>
+                        {onOpenChat && (
+                            <TouchableOpacity
+                                style={styles.footerAction}
+                                onPress={() => onOpenChat(item.user_id, item.user_name, item.user_avatar)}
+                                activeOpacity={0.7}
+                            >
+                                <SafeIcon name="message-circle" size={18} color={modernColors.primary} />
+                                <Text style={styles.footerActionText}>Chat</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
 
@@ -816,23 +898,27 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 </View>
             )}
 
-            {/* ✅ CORRIGÉ: Afficher le sélecteur de rating uniquement si l'utilisateur n'a pas encore donné d'avis */}
-            {!replyTarget && !hasUserRated && (
+            {/* ✅ AMÉLIORÉ: Afficher le sélecteur de rating uniquement la première fois */}
+            {isRatingRequired && (
                 <View style={styles.ratingSelector}>
-                    {[1, 2, 3, 4, 5].map((value) => (
-                        <TouchableOpacity
-                            key={`rating-${value}`}
-                            style={[
-                                styles.ratingStar,
-                                composerRating !== null && composerRating >= value && styles.ratingStarActive,
-                            ]}
-                            onPress={() => setComposerRating(value)}
-                        >
-                            <Text style={styles.ratingStarText}>
-                                {composerRating !== null && composerRating >= value ? '⭐' : '☆'}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                    <Text style={styles.ratingSelectorLabel}>Votre note (requis pour le premier avis)</Text>
+                    <View style={styles.ratingStarsRow}>
+                        {[1, 2, 3, 4, 5].map((value) => (
+                            <TouchableOpacity
+                                key={`rating-${value}`}
+                                style={[
+                                    styles.ratingStar,
+                                    composerRating !== null && composerRating >= value && styles.ratingStarActive,
+                                ]}
+                                onPress={() => setComposerRating(value)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.ratingStarText}>
+                                    {composerRating !== null && composerRating >= value ? '⭐' : '☆'}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
                 </View>
             )}
 
@@ -864,8 +950,10 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 </View>
             )}
 
+            {/* ✅ RÉÉCRIT COMPLÈTEMENT: Zone de saisie avec interface mobile optimisée */}
             <View style={styles.composerInputContainer}>
-                <View style={styles.composerInputRow}>
+                {/* Zone de saisie principale */}
+                <View style={styles.composerInputWrapper}>
                     <TextInput
                         value={composerContent}
                         onChangeText={handleComposerChange}
@@ -873,17 +961,23 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         placeholder={
                             replyTarget
                                 ? `Répondre à ${replyTarget.user_name}...`
+                                : isRatingRequired
+                                ? 'Partagez votre expérience avec une note...'
                                 : 'Partagez votre expérience...'
                         }
                         placeholderTextColor={modernColors.textSecondary}
                         style={styles.composerInput}
                         maxLength={1000}
+                        textAlignVertical="top"
                     />
+                    
+                    {/* ✅ AMÉLIORÉ: Actions en bas à droite, visibles et accessibles */}
                     <View style={styles.composerInputActions}>
                         <TouchableOpacity
-                            style={[styles.audioToggleButton, isRecording && styles.audioToggleButtonActive]}
+                            style={[styles.composerActionButton, isRecording && styles.composerActionButtonActive]}
                             onPress={toggleRecording}
                             disabled={submitting}
+                            activeOpacity={0.7}
                         >
                             <SafeIcon
                                 name="mic"
@@ -892,53 +986,68 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             />
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={styles.emojiToggleButton}
+                            style={[styles.composerActionButton, showEmojiPicker && styles.composerActionButtonActive]}
                             onPress={() => {
                                 setShowEmojiPicker(!showEmojiPicker);
                                 setShowMentionPicker(false);
                             }}
+                            activeOpacity={0.7}
                         >
                             <SafeIcon
                                 name="smile"
-                                size={22}
-                                color={showEmojiPicker ? modernColors.primary : modernColors.textSecondary}
+                                size={20}
+                                color={showEmojiPicker ? '#FFFFFF' : modernColors.textSecondary}
                             />
                         </TouchableOpacity>
                     </View>
                 </View>
-            </View>
-
-            {selectedMentions.length > 0 && (
-                <View style={styles.selectedMentionsRow}>
-                    {selectedMentions.map((mention) => (
-                        <View key={`selected-${mention.id}`} style={styles.selectedMentionChip}>
-                            <Text style={styles.selectedMentionText}>@{mention.nom_complet}</Text>
-                            <TouchableOpacity
-                                onPress={() =>
-                                    setSelectedMentions((prev) =>
-                                        prev.filter((candidate) => candidate.id != mention.id),
-                                    )
-                                }
-                            >
-                                <SafeIcon name="x" size={12} color={modernColors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-                    ))}
-                </View>
-            )}
-
-            <View style={styles.composerActions}>
-                <TouchableOpacity
-                    style={[styles.sendCommentButton, submitting && styles.sendCommentButtonDisabled]}
-                    onPress={handleSubmitComment}
-                    disabled={submitting}
-                >
-                    {submitting ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                        <SafeIcon name="send" size={18} color="#FFFFFF" />
+                
+                {/* ✅ AMÉLIORÉ: Bouton d'envoi en bas, ne masque plus la zone de saisie */}
+                <View style={styles.composerBottomRow}>
+                    {selectedMentions.length > 0 && (
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.selectedMentionsScroll}
+                        >
+                            {selectedMentions.map((mention) => (
+                                <View key={`selected-${mention.id}`} style={styles.selectedMentionChip}>
+                                    <Text style={styles.selectedMentionText}>@{mention.nom_complet}</Text>
+                                    <TouchableOpacity
+                                        onPress={() =>
+                                            setSelectedMentions((prev) =>
+                                                prev.filter((candidate) => candidate.id != mention.id),
+                                            )
+                                        }
+                                        style={styles.removeMentionButton}
+                                    >
+                                        <SafeIcon name="x" size={12} color={modernColors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </ScrollView>
                     )}
-                </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                        style={[
+                            styles.sendCommentButton,
+                            submitting && styles.sendCommentButtonDisabled,
+                            (!composerContent.trim() && !audioBase64) && styles.sendCommentButtonDisabled,
+                        ]}
+                        onPress={handleSubmitComment}
+                        disabled={submitting || (!composerContent.trim() && !audioBase64)}
+                        activeOpacity={0.8}
+                    >
+                        {submitting ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                            <>
+                                <SafeIcon name="send" size={18} color="#FFFFFF" />
+                                <Text style={styles.sendButtonText}>Envoyer</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
@@ -1045,7 +1154,12 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     </View>
                     <TouchableOpacity
                         style={styles.viewAllButton}
-                        onPress={() => setModalVisible(true)}
+                        onPress={() => {
+                            setModalVisible(true);
+                            // ✅ NOUVEAU: Marquer que c'est la première fois qu'on ouvre le modal
+                            setIsFirstTimeOpening(true);
+                        }}
+                        activeOpacity={0.8}
                     >
                         <SafeIcon name="message-circle" size={18} color="#FFFFFF" />
                         <Text style={styles.viewAllText}>Ouvrir le fil</Text>
@@ -1321,9 +1435,30 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     actionIcon: {
-        padding: 6,
+        padding: 8,
         borderRadius: 8,
         backgroundColor: modernColors.surfaceVariant,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        minWidth: 36,
+        minHeight: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    commentReplyContainer: {
+        marginLeft: 20,
+        marginTop: 12,
+        borderLeftWidth: 2,
+        borderLeftColor: modernColors.primary + '40',
+        paddingLeft: 12,
+    },
+    avatarImagePlaceholder: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 18,
+        backgroundColor: modernColors.primary + '20',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     ratingBadge: {
         flexDirection: 'row',
@@ -1412,6 +1547,10 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         color: modernColors.text,
+        marginLeft: 2,
+    },
+    reactionCountActive: {
+        color: '#FFFFFF',
     },
     commentFooterActions: {
         flexDirection: 'row',
@@ -1461,8 +1600,23 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     ratingSelector: {
+        backgroundColor: '#FFF7E6',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#FDE68A',
+    },
+    ratingSelectorLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#B45309',
+        marginBottom: 8,
+    },
+    ratingStarsRow: {
         flexDirection: 'row',
         gap: 8,
+        justifyContent: 'center',
     },
     ratingStar: {
         width: 32,
@@ -1485,20 +1639,29 @@ const styles = StyleSheet.create({
         borderColor: modernColors.border,
         borderRadius: 16,
         backgroundColor: '#FFFFFF',
+        padding: 12,
+    },
+    composerInputWrapper: {
+        position: 'relative',
+        minHeight: 100,
+        marginBottom: 8,
     },
     composerInputRow: {
         flexDirection: 'row',
-        alignItems: 'flex-end',
+        alignItems: 'flex-start',
         gap: 8,
     },
     composerInput: {
         flex: 1,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        fontSize: 14,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        paddingRight: 70, // ✅ Espace pour les boutons d'action (mic + emoji)
+        fontSize: 15,
         color: modernColors.text,
         minHeight: 80,
+        maxHeight: 150,
         textAlignVertical: 'top',
+        lineHeight: 20,
     },
     emojiToggleButton: {
         padding: 8,
@@ -1549,26 +1712,67 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
     },
+    composerBottomRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 12,
+        gap: 8,
+    },
+    selectedMentionsScroll: {
+        flex: 1,
+        maxHeight: 40,
+    },
+    removeMentionButton: {
+        marginLeft: 4,
+        padding: 2,
+    },
     composerActions: {
         alignItems: 'flex-end',
-        marginTop: 8,
     },
     sendCommentButton: {
         backgroundColor: modernColors.primary,
-        borderRadius: 20,
-        width: 40,
-        height: 40,
+        borderRadius: 24,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
+        gap: 6,
+        minWidth: 100,
+        shadowColor: modernColors.primary,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 4,
-        elevation: 3,
+        elevation: 4,
     },
     sendCommentButtonDisabled: {
         backgroundColor: modernColors.textSecondary,
-        opacity: 0.6,
+        opacity: 0.5,
+    },
+    sendButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    ratingSelector: {
+        backgroundColor: '#FFF7E6',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#FDE68A',
+    },
+    ratingSelectorLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#B45309',
+        marginBottom: 8,
+    },
+    ratingStarsRow: {
+        flexDirection: 'row',
+        gap: 8,
+        justifyContent: 'center',
     },
     audioPreviewContainer: {
         marginBottom: 12,
@@ -1636,9 +1840,30 @@ const styles = StyleSheet.create({
         backgroundColor: '#EF4444',
     },
     composerInputActions: {
+        position: 'absolute',
+        right: 8,
+        bottom: 8,
         flexDirection: 'row',
+        gap: 6,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        padding: 4,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    composerActionButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: modernColors.surfaceVariant,
         alignItems: 'center',
-        gap: 4,
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    composerActionButtonActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
     },
     emptyState: {
         alignItems: 'center',

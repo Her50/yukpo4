@@ -5,7 +5,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
     ScrollView,
     StyleSheet,
     Text,
@@ -596,16 +595,22 @@ const CourierRegistrationScreen: React.FC = () => {
                 {/* Transport */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Moyen de transport</Text>
-                    <View style={styles.vehicleScrollContainer}>
-                        <FlatList
-                            data={vehicleTypes}
+                    <View style={styles.vehicleScrollWrapper}>
+                        <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={true}
-                            keyExtractor={(item) => item.value}
                             contentContainerStyle={styles.vehicleScrollContent}
                             style={styles.vehicleScroll}
-                            renderItem={({ item: type }) => (
+                            nestedScrollEnabled={true}
+                            scrollEnabled={true}
+                            bounces={true}
+                            decelerationRate="fast"
+                            alwaysBounceHorizontal={true}
+                            directionalLockEnabled={true}
+                        >
+                            {vehicleTypes.map((type) => (
                                 <TouchableOpacity
+                                    key={type.value}
                                     style={[
                                         styles.vehicleOption,
                                         vehicleType === type.value && styles.vehicleOptionSelected,
@@ -623,14 +628,8 @@ const CourierRegistrationScreen: React.FC = () => {
                                         {type.label}
                                     </Text>
                                 </TouchableOpacity>
-                            )}
-                            nestedScrollEnabled={true}
-                            scrollEnabled={true}
-                            bounces={true}
-                            decelerationRate="fast"
-                            alwaysBounceHorizontal={true}
-                            removeClippedSubviews={false}
-                        />
+                            ))}
+                        </ScrollView>
                     </View>
                     {vehicleType !== 'walking' && (
                         <>
@@ -920,21 +919,18 @@ const styles = StyleSheet.create({
         minHeight: 80,
         textAlignVertical: 'top',
     },
-    vehicleScrollContainer: {
-        marginBottom: 16,
-        height: 110,
+    vehicleScrollWrapper: {
         width: '100%',
+        marginBottom: 16,
     },
     vehicleScroll: {
-        flexGrow: 0,
-        flexShrink: 0,
-        height: 110,
+        width: '100%',
     },
     vehicleScrollContent: {
         paddingRight: 16,
         paddingLeft: 4,
         alignItems: 'center',
-        flexGrow: 0,
+        paddingVertical: 8,
     },
     vehicleOption: {
         alignItems: 'center',

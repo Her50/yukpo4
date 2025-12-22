@@ -208,6 +208,8 @@ function createFieldComponent(fieldName: string, fieldData: any): DynamicField |
     telephone: 'Téléphone',
     email: 'Email',
     website: 'Site web',
+    adresse: 'Adresse',
+    horaires: 'Horaires',
     localisation: 'Localisation',
     prix: 'Prix',
     duree: 'Durée',
@@ -225,7 +227,8 @@ function createFieldComponent(fieldName: string, fieldData: any): DynamicField |
     devise_produit: 'Devise'
   };
 
-  const label = fieldLabels[fieldName] || fieldName;
+  // ✅ CORRECTION: S'assurer que le label est toujours une string valide (éviter "HORAIRES FALSE")
+  const label = String(fieldLabels[fieldName] || fieldName).trim();
 
   switch (typeDonnee) {
     // ✅ NOUVEAU: Type autocomplete

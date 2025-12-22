@@ -48,6 +48,10 @@ name = "create_admin_user"
 path = "src/bin/create_admin_user.rs"
 
 [[bin]]
+name = "apply_parcel_types_migration"
+path = "src/bin/apply_parcel_types_migration.rs"
+
+[[bin]]
 name = "apply_indexes_direct"
 path = "src/bin/apply_indexes_direct.rs"
 

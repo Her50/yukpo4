@@ -519,6 +519,54 @@ impl DeliveryRepository {
             .collect())
     }
 
+    /// Vérifie si un type de colis existe
+    pub async fn validate_parcel_type_exists(&self, type_id: i32) -> AppResult<()> {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM parcel_types WHERE id = $1)"
+        )
+        .bind(type_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if !exists {
+            // Récupérer la liste des types disponibles pour un message d'erreur plus utile
+            #[derive(sqlx::FromRow)]
+            struct ParcelTypeInfo {
+                id: i32,
+                display_name: String,
+            }
+
+            let available_types: Vec<ParcelTypeInfo> = sqlx::query_as(
+                "SELECT id, display_name FROM parcel_types ORDER BY id"
+            )
+            .fetch_all(&self.pool)
+            .await
+            .unwrap_or_default();
+
+            let types_list = if available_types.is_empty() {
+                "Aucun type de colis disponible. Veuillez exécuter les migrations.".to_string()
+            } else {
+                format!(
+                    "Types disponibles: {}",
+                    available_types
+                        .iter()
+                        .map(|t| format!("ID {} ({})", t.id, t.display_name))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            };
+
+            return Err(crate::core::types::AppError::BadRequest(
+                format!(
+                    "Le type de colis avec l'ID {} n'existe pas. {}",
+                    type_id, types_list
+                )
+            ));
+        }
+
+        Ok(())
+    }
+
     /// Retourne la liste des typologies de colis
     pub async fn list_parcel_types(&self) -> AppResult<Vec<ParcelType>> {
         let rows: Vec<ParcelTypeRow> = sqlx::query_as(

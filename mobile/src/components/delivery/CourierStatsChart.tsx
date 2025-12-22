@@ -27,39 +27,45 @@ const CourierStatsChart: React.FC<CourierStatsChartProps> = ({
     successRate,
     style,
 }) => {
+    // ✅ CORRIGÉ: S'assurer que toutes les valeurs sont définies et numériques AVANT les animations
+    const safeCurrentMonthEarnings = typeof currentMonthEarnings === 'number' && !isNaN(currentMonthEarnings) ? currentMonthEarnings : 0;
+    const safeCompletedDeliveries = typeof completedDeliveries === 'number' && !isNaN(completedDeliveries) ? completedDeliveries : 0;
+    const safeSuccessRate = typeof successRate === 'number' && !isNaN(successRate) ? successRate : 0;
+    const safeAvgDeliveryTime = typeof avgDeliveryTime === 'number' && !isNaN(avgDeliveryTime) ? avgDeliveryTime : 0;
+
     const earningsAnim = useRef(new Animated.Value(0)).current;
     const deliveriesAnim = useRef(new Animated.Value(0)).current;
     const successRateAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        // Animer les valeurs
+        // Animer les valeurs avec les valeurs sécurisées
         Animated.parallel([
             Animated.timing(earningsAnim, {
-                toValue: currentMonthEarnings,
+                toValue: safeCurrentMonthEarnings,
                 duration: 1500,
                 useNativeDriver: false,
             }),
             Animated.timing(deliveriesAnim, {
-                toValue: completedDeliveries,
+                toValue: safeCompletedDeliveries,
                 duration: 1500,
                 useNativeDriver: false,
             }),
             Animated.timing(successRateAnim, {
-                toValue: successRate || 0,
+                toValue: safeSuccessRate,
                 duration: 1500,
                 useNativeDriver: false,
             }),
         ]).start();
-    }, [currentMonthEarnings, completedDeliveries, successRate]);
+    }, [safeCurrentMonthEarnings, safeCompletedDeliveries, safeSuccessRate]);
 
     const animatedEarnings = earningsAnim.interpolate({
-        inputRange: [0, Math.max(currentMonthEarnings, 1)],
-        outputRange: [0, Math.max(currentMonthEarnings, 1)],
+        inputRange: [0, Math.max(safeCurrentMonthEarnings, 1)],
+        outputRange: [0, Math.max(safeCurrentMonthEarnings, 1)],
     });
 
     const animatedDeliveries = deliveriesAnim.interpolate({
-        inputRange: [0, Math.max(completedDeliveries, 1)],
-        outputRange: [0, Math.max(completedDeliveries, 1)],
+        inputRange: [0, Math.max(safeCompletedDeliveries, 1)],
+        outputRange: [0, Math.max(safeCompletedDeliveries, 1)],
     });
 
     const animatedSuccessRate = successRateAnim.interpolate({
@@ -76,7 +82,7 @@ const CourierStatsChart: React.FC<CourierStatsChartProps> = ({
                     <Text style={styles.chartTitle}>Gains ce mois</Text>
                 </View>
                 <Text style={styles.chartValue}>
-                    {currentMonthEarnings.toLocaleString('fr-FR')} FCFA
+                    {String(safeCurrentMonthEarnings.toLocaleString('fr-FR'))} FCFA
                 </Text>
                 <View style={styles.barContainer}>
                     <Animated.View
@@ -84,7 +90,7 @@ const CourierStatsChart: React.FC<CourierStatsChartProps> = ({
                             styles.bar,
                             {
                                 width: animatedEarnings.interpolate({
-                                    inputRange: [0, Math.max(currentMonthEarnings, 1)],
+                                    inputRange: [0, Math.max(safeCurrentMonthEarnings, 1)],
                                     outputRange: ['0%', '100%'],
                                 }),
                             },
@@ -100,7 +106,7 @@ const CourierStatsChart: React.FC<CourierStatsChartProps> = ({
                     <Text style={styles.chartTitle}>Livraisons complétées</Text>
                 </View>
                 <Text style={styles.chartValue}>
-                    {completedDeliveries}
+                    {String(safeCompletedDeliveries)}
                 </Text>
                 <View style={styles.barContainer}>
                     <Animated.View
@@ -109,7 +115,7 @@ const CourierStatsChart: React.FC<CourierStatsChartProps> = ({
                             styles.barSuccess,
                             {
                                 width: animatedDeliveries.interpolate({
-                                    inputRange: [0, Math.max(completedDeliveries, 1)],
+                                    inputRange: [0, Math.max(safeCompletedDeliveries, 1)],
                                     outputRange: ['0%', '100%'],
                                 }),
                             },
@@ -119,14 +125,14 @@ const CourierStatsChart: React.FC<CourierStatsChartProps> = ({
             </View>
 
             {/* Taux de réussite */}
-            {successRate !== undefined && (
+            {successRate !== undefined && successRate !== null && (
                 <View style={styles.chartCard}>
                     <View style={styles.chartHeader}>
                         <SafeIcon name="check-circle" size={20} color={modernColors.success} />
                         <Text style={styles.chartTitle}>Taux de réussite</Text>
                     </View>
                     <Text style={styles.chartValue}>
-                        {successRate}%
+                        {String(safeSuccessRate)}%
                     </Text>
                     <View style={styles.barContainer}>
                         <Animated.View
@@ -146,13 +152,15 @@ const CourierStatsChart: React.FC<CourierStatsChartProps> = ({
             )}
 
             {/* Temps moyen */}
-            {avgDeliveryTime && (
+            {avgDeliveryTime !== undefined && avgDeliveryTime !== null && avgDeliveryTime > 0 && (
                 <View style={styles.chartCard}>
                     <View style={styles.chartHeader}>
                         <SafeIcon name="clock" size={20} color={modernColors.info} />
                         <Text style={styles.chartTitle}>Temps moyen de livraison</Text>
                     </View>
-                    <Text style={styles.chartValue}>{Math.round(avgDeliveryTime)} min</Text>
+                    <Text style={styles.chartValue}>
+                        {String(Math.round(safeAvgDeliveryTime))} min
+                    </Text>
                 </View>
             )}
         </View>

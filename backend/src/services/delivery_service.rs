@@ -1306,6 +1306,15 @@ impl DeliveryService {
             initial_event_payload,
         } = params;
 
+        // ✅ Validation du type de colis AVANT l'insertion
+        if let Some(type_id) = parcel.type_id {
+            self.repository.validate_parcel_type_exists(type_id).await?;
+        } else {
+            return Err(AppError::BadRequest(
+                "Le type de colis est requis".into(),
+            ));
+        }
+
         // Validations de base
         if let Some(distance) = distance_meters {
             if distance <= 0 {

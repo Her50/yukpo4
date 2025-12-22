@@ -37,6 +37,16 @@ const CourierDashboardScreen: React.FC = () => {
         successRate: 95,
     });
 
+    // ✅ CORRIGÉ: S'assurer que toutes les valeurs stats sont des nombres
+    const safeStats = {
+        totalDeliveries: typeof stats.totalDeliveries === 'number' ? stats.totalDeliveries : 0,
+        completedDeliveries: typeof stats.completedDeliveries === 'number' ? stats.completedDeliveries : 0,
+        totalEarnings: typeof stats.totalEarnings === 'number' ? stats.totalEarnings : 0,
+        currentMonthEarnings: typeof stats.currentMonthEarnings === 'number' ? stats.currentMonthEarnings : 0,
+        avgDeliveryTime: typeof stats.avgDeliveryTime === 'number' ? stats.avgDeliveryTime : 0,
+        successRate: typeof stats.successRate === 'number' ? stats.successRate : 0,
+    };
+
     // ✅ NOUVEAU: Animation d'entrée
     const screenEnterStyle = useScreenEnter();
 
@@ -99,11 +109,11 @@ const CourierDashboardScreen: React.FC = () => {
 
                     {/* ✅ NOUVEAU: Graphiques de statistiques animés */}
                     <CourierStatsChart
-                        completedDeliveries={stats.completedDeliveries}
-                        totalEarnings={stats.totalEarnings}
-                        currentMonthEarnings={stats.currentMonthEarnings}
-                        avgDeliveryTime={stats.avgDeliveryTime}
-                        successRate={stats.successRate}
+                        completedDeliveries={safeStats.completedDeliveries}
+                        totalEarnings={safeStats.totalEarnings}
+                        currentMonthEarnings={safeStats.currentMonthEarnings}
+                        avgDeliveryTime={safeStats.avgDeliveryTime}
+                        successRate={safeStats.successRate}
                     />
 
                     {/* Livraisons actives */}

@@ -39,61 +39,185 @@ const ProductCard: React.FC<ProductCardProps> = ({
     const [checkingAvailability, setCheckingAvailability] = useState(false);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [videoStatus, setVideoStatus] = useState<any>({});
+    const [mediaErrors, setMediaErrors] = useState<Set<number>>(new Set());
     const carouselRef = useRef<FlatList>(null);
     const videoRef = useRef<Video>(null);
     const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
 
-    // ✅ NOUVEAU: Récupérer les stats actualisées du service
+    // ✅ NOUVEAU: Récupérer les stats actualisées du service (inclut rating et totalRatings)
     const serviceIdForStats = service?.id || service?.service_id;
     const serviceCreatedAt = service?.date_creation || service?.created_at || new Date().toISOString();
     const numericServiceId = serviceIdForStats ? parseInt(serviceIdForStats.toString(), 10) : 0;
     const { stats: serviceStats } = useServiceStats(numericServiceId > 0 ? numericServiceId : 0, serviceCreatedAt);
+    
+    // ✅ NOUVEAU: État pour les statistiques des commentaires (mis à jour depuis ProductCommentsSection)
+    const [commentStats, setCommentStats] = useState<{
+        total_comments: number;
+        rating_count: number;
+        average_rating: number;
+    } | null>(null);
 
     // Récupérer la configuration intelligente de la catégorie
     const categoryConfig = getCategoryConfig(product.type || 'default');
     const categoryStyle = getCategoryStyle(product.type || 'default');
     const terminology = getCategoryTerminology(product.type || 'default');
 
-    // ✅ REFACTORISÉ: Extraire et valider les images et vidéos
-    const rawImages = product.images || product.imagesRealisations || [];
-    const rawVideos = product.videos || product.videosRealisations || [];
-    
-    // Transformer en URLs valides et filtrer les valeurs nulles/vides
-    const images = rawImages
-        .filter((img: any) => img && typeof img === 'string' && img.trim().length > 0)
-        .map((img: string) => {
+    // ✅ RÉÉCRIT COMPLÈTEMENT: États pour les médias chargés depuis l'API
+    const [loadedImages, setLoadedImages] = useState<string[]>([]);
+    const [loadedVideos, setLoadedVideos] = useState<string[]>([]);
+    const [mediaLoading, setMediaLoading] = useState(true);
+
+    // ✅ RÉÉCRIT: Fonction pour normaliser un champ média (gère tableaux, objets, strings)
+    const normalizeMediaField = (field: any): string[] => {
+        if (!field) return [];
+        
+        // Si c'est un tableau
+        if (Array.isArray(field)) {
+            return field
+                .map((item: any) => {
+                    // Si l'item est un objet avec valeur
+                    if (item && typeof item === 'object' && item.valeur) {
+                        return item.valeur;
+                    }
+                    // Si l'item est une string
+                    if (typeof item === 'string' && item.trim().length > 0) {
+                        return item.trim();
+                    }
+                    return null;
+                })
+                .filter((item: string | null): item is string => item !== null);
+        }
+        
+        // Si c'est un objet avec valeur
+        if (typeof field === 'object' && field.valeur) {
+            return [field.valeur];
+        }
+        
+        // Si c'est une string
+        if (typeof field === 'string' && field.trim().length > 0) {
+            return [field.trim()];
+        }
+        
+        return [];
+    };
+
+    // ✅ RÉÉCRIT: Charger les médias depuis l'API si nécessaire
+    useEffect(() => {
+        const loadMedia = async () => {
+            setMediaLoading(true);
+            
             try {
-                const url = mediaService.getImageUrl(img);
-                return url && url.trim().length > 0 ? url : null;
-            } catch (e) {
-                console.warn('[ProductCard] Erreur conversion image URL:', img, e);
-                return null;
+                // 1. Essayer d'extraire depuis les champs directs du produit
+                let images: string[] = [];
+                let videos: string[] = [];
+                
+                // Extraire depuis product.images, product.imagesRealisations, etc.
+                images = [
+                    ...normalizeMediaField(product.images),
+                    ...normalizeMediaField(product.imagesRealisations),
+                    ...normalizeMediaField(product.images_realisations),
+                ];
+                
+                videos = [
+                    ...normalizeMediaField(product.videos),
+                    ...normalizeMediaField(product.videosRealisations),
+                    ...normalizeMediaField(product.videos_realisations),
+                ];
+                
+                // 2. Si pas de médias dans le produit, charger depuis l'API
+                const serviceId = service?.id || service?.service_id;
+                const productIndex = typeof product.product_index === 'number' 
+                    ? product.product_index 
+                    : (typeof product.index === 'number' ? product.index : null);
+                
+                // Si on a un serviceId et un productIndex, charger depuis l'API
+                if (serviceId && productIndex !== null && productIndex !== undefined && (images.length === 0 && videos.length === 0)) {
+                    try {
+                        // Charger images depuis API
+                        const imagesResp = await apiGet(`/api/media/product/${serviceId}/${productIndex}/images`);
+                        if (imagesResp?.success && imagesResp?.data) {
+                            const apiImages = imagesResp.data.images || imagesResp.data.Images || imagesResp.images || [];
+                            if (Array.isArray(apiImages) && apiImages.length > 0) {
+                                images = apiImages.filter((img: any) => img && typeof img === 'string' && img.trim().length > 0);
+                            }
+                        }
+                        
+                        // Charger vidéos depuis API
+                        const videosResp = await apiGet(`/api/media/product/${serviceId}/${productIndex}/videos`);
+                        if (videosResp?.success && videosResp?.data) {
+                            const apiVideos = videosResp.data.videos || videosResp.data.Videos || videosResp.videos || [];
+                            if (Array.isArray(apiVideos) && apiVideos.length > 0) {
+                                videos = apiVideos.filter((vid: any) => vid && typeof vid === 'string' && vid.trim().length > 0);
+                            }
+                        }
+                    } catch (apiError) {
+                        console.warn('[ProductCard] Erreur chargement médias API:', apiError);
+                        // Continuer avec les médias extraits directement
+                    }
+                }
+                
+                // 3. Transformer les chemins en URLs valides via mediaService
+                const processedImages = images
+                    .map((img: string) => {
+                        try {
+                            const url = mediaService.getImageUrl(img);
+                            return url && url.trim().length > 0 ? url : null;
+                        } catch (e) {
+                            console.warn('[ProductCard] Erreur conversion image URL:', img, e);
+                            return null;
+                        }
+                    })
+                    .filter((url: string | null): url is string => url !== null);
+                
+                const processedVideos = videos
+                    .map((vid: string) => {
+                        try {
+                            const url = mediaService.getVideoUrl(vid);
+                            return url && url.trim().length > 0 ? url : null;
+                        } catch (e) {
+                            console.warn('[ProductCard] Erreur conversion video URL:', vid, e);
+                            return null;
+                        }
+                    })
+                    .filter((url: string | null): url is string => url !== null);
+                
+                setLoadedImages(processedImages);
+                setLoadedVideos(processedVideos);
+                // Réinitialiser les erreurs quand les médias changent
+                setMediaErrors(new Set());
+                
+                if (__DEV__) {
+                    console.log('[ProductCard] Médias chargés:', {
+                        serviceId,
+                        productIndex,
+                        imagesCount: processedImages.length,
+                        videosCount: processedVideos.length,
+                        images: processedImages.slice(0, 2),
+                        videos: processedVideos.slice(0, 2),
+                    });
+                }
+            } catch (error) {
+                console.error('[ProductCard] Erreur chargement médias:', error);
+                setLoadedImages([]);
+                setLoadedVideos([]);
+                setMediaErrors(new Set());
+            } finally {
+                setMediaLoading(false);
             }
-        })
-        .filter((url: string | null) => url !== null) as string[];
-    
-    const videos = rawVideos
-        .filter((vid: any) => vid && typeof vid === 'string' && vid.trim().length > 0)
-        .map((vid: string) => {
-            try {
-                const url = mediaService.getVideoUrl(vid);
-                return url && url.trim().length > 0 ? url : null;
-            } catch (e) {
-                console.warn('[ProductCard] Erreur conversion video URL:', vid, e);
-                return null;
-            }
-        })
-        .filter((url: string | null) => url !== null) as string[];
+        };
+        
+        loadMedia();
+    }, [product, service?.id, service?.service_id, product.product_index, product.index]);
     
     // Construire la liste des médias avec validation
     const allMedia = [
-        ...videos.map((v: string) => ({ type: 'video', uri: v })),
-        ...images.map((i: string) => ({ type: 'image', uri: i }))
+        ...loadedVideos.map((v: string) => ({ type: 'video', uri: v })),
+        ...loadedImages.map((i: string) => ({ type: 'image', uri: i }))
     ].filter((media) => media.uri && media.uri.trim().length > 0);
     
     const hasMedia = allMedia.length > 0;
-    const mainImage = images[0] || null;
-    const hasVideo = videos.length > 0;
+    const mainImage = loadedImages[0] || null;
+    const hasVideo = loadedVideos.length > 0;
 
     // GPS prioritaire : produit > service gps_fixe > service gps
     const productGPS = product.gps || product.gpsFixe;
@@ -177,8 +301,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
         }
     }, [currentMediaIndex]);
 
-    // ✅ REFACTORISÉ: Rendu du média avec gestion d'erreur
+    // ✅ RÉÉCRIT: Rendu du média avec gestion d'erreur améliorée
     const renderMediaItem = ({ item, index }: { item: { type: string; uri: string }; index: number }) => {
+        const hasError = mediaErrors.has(index);
+        
         if (!item.uri || item.uri.trim().length === 0) {
             return (
                 <View style={styles.mediaItem}>
@@ -190,6 +316,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
         }
 
         if (item.type === 'video') {
+            if (hasError) {
+                return (
+                    <View style={styles.mediaItem}>
+                        <View style={[styles.mediaVideo, styles.noImageContainer]}>
+                            <SafeIcon name="video" size={20} color="#D1D5DB" />
+                            <Text style={styles.errorText}>Erreur vidéo</Text>
+                        </View>
+                    </View>
+                );
+            }
+            
             return (
                 <View style={styles.mediaItem}>
                     <Video
@@ -202,6 +339,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         useNativeControls={false}
                         onError={(error) => {
                             console.error('[ProductCard] Erreur lecture vidéo:', item.uri, error);
+                            setMediaErrors(prev => new Set(prev).add(index));
+                        }}
+                        onLoadStart={() => {
+                            setMediaErrors(prev => {
+                                const newSet = new Set(prev);
+                                newSet.delete(index);
+                                return newSet;
+                            });
                         }}
                         onPlaybackStatusUpdate={(status) => {
                             if (index === currentMediaIndex) {
@@ -220,6 +365,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
             );
         }
         
+        if (hasError) {
+            return (
+                <View style={styles.mediaItem}>
+                    <View style={[styles.mediaImage, styles.noImageContainer]}>
+                        <SafeIcon name="image" size={20} color="#D1D5DB" />
+                        <Text style={styles.errorText}>Erreur image</Text>
+                    </View>
+                </View>
+            );
+        }
+        
         return (
             <View style={styles.mediaItem}>
                 <Image 
@@ -228,6 +384,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     resizeMode="cover"
                     onError={(error) => {
                         console.error('[ProductCard] Erreur chargement image:', item.uri, error);
+                        setMediaErrors(prev => new Set(prev).add(index));
+                    }}
+                    onLoadStart={() => {
+                        setMediaErrors(prev => {
+                            const newSet = new Set(prev);
+                            newSet.delete(index);
+                            return newSet;
+                        });
                     }}
                 />
             </View>
@@ -278,9 +442,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
             activeOpacity={0.95}
         >
             <View style={styles.cardContent}>
-                {/* ✅ REFACTORISÉ: Carousel automatique d'images et vidéos avec scroll corrigé */}
+                {/* ✅ RÉÉCRIT: Carousel automatique d'images et vidéos avec chargement depuis API */}
                 <View style={styles.imageContainer}>
-                    {hasMedia ? (
+                    {mediaLoading ? (
+                        <View style={[styles.mainImage, styles.noImageContainer]}>
+                            <ActivityIndicator size="small" color="#6366F1" />
+                        </View>
+                    ) : hasMedia ? (
                         <>
                             <FlatList
                                 ref={carouselRef}
@@ -453,19 +621,28 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <View style={styles.ratingContainer}>
                                 <Text style={[styles.statText, styles.ratingText]}>
                                     {(() => {
-                                        // ✅ CORRIGÉ: Utiliser les stats actualisées en priorité
-                                        const rating = serviceStats?.rating || product.rating || service?.rating || 0;
-                                        const reviewCount = serviceStats?.totalRatings || product.reviews_count || product.reviews || service?.reviews_count || 0;
+                                        // ✅ AMÉLIORÉ: Priorité aux stats des commentaires, puis serviceStats, puis fallback
+                                        const rating = commentStats?.average_rating 
+                                            || serviceStats?.rating 
+                                            || product.rating 
+                                            || service?.rating 
+                                            || 0;
                                         
                                         // Formater le score avec 1 décimale si disponible
                                         if (rating && typeof rating === 'number' && rating > 0) {
                                             return rating.toFixed(1);
                                         }
-                                        return reviewCount > 0 ? '—' : '0.0';
+                                        return '0.0';
                                     })()}
                                 </Text>
                                 {(() => {
-                                    const reviewCount = serviceStats?.totalRatings || product.reviews_count || product.reviews || service?.reviews_count || 0;
+                                    const reviewCount = commentStats?.rating_count 
+                                        || commentStats?.total_comments 
+                                        || serviceStats?.totalRatings 
+                                        || product.reviews_count 
+                                        || product.reviews 
+                                        || service?.reviews_count 
+                                        || 0;
                                     if (reviewCount > 0) {
                                         return (
                                             <Text style={styles.reviewsCountText}>
@@ -520,121 +697,143 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <Text style={styles.chatButtonText}>Discuter</Text>
                         </TouchableOpacity>
 
-                        {/* ✅ REFACTORISÉ: Bouton Me livrer - Logique simplifiée et toujours visible sauf services */}
+                        {/* ✅ RÉÉCRIT COMPLÈTEMENT: Bouton Me livrer - Toujours visible sauf services intangibles */}
                         {(() => {
-                            // ✅ SIMPLIFIÉ: Exclure uniquement les prestations de service
-                            const isServiceType = product.type === 'prestation_service' || product.type === 'service';
+                            // ✅ Types de produits qui ne peuvent PAS être livrés (services intangibles uniquement)
+                            const nonDeliverableTypes = [
+                                'prestation_service',
+                                'service',
+                                'assurance',
+                                'coiffure_beaute',
+                                'hotellerie' // Les hôtels ne livrent pas, on réserve
+                            ];
                             
-                            // ✅ TOUJOURS AFFICHER sauf si c'est explicitement un service/prestation
-                            const shouldShow = !isServiceType;
+                            // Vérifier si le produit peut être livré
+                            const productType = product?.type || '';
+                            const canBeDelivered = !nonDeliverableTypes.includes(productType);
+                            
+                            // Vérifier que le service existe
+                            const hasService = !!(service?.id || service?.service_id);
+                            
+                            // Le bouton s'affiche si le produit peut être livré ET qu'il y a un service
+                            const shouldShowDeliveryButton = canBeDelivered && hasService;
                             
                             if (__DEV__) {
-                                console.log('[ProductCard] Bouton "Me livrer" - Évaluation simplifiée:', {
-                                    productType: product.type,
-                                    isServiceType,
-                                    shouldShow,
-                                    serviceId: service?.id || service?.service_id
+                                console.log('[ProductCard] Bouton "Me livrer" - Évaluation complète:', {
+                                    productType,
+                                    canBeDelivered,
+                                    hasService,
+                                    serviceId: service?.id || service?.service_id,
+                                    shouldShow: shouldShowDeliveryButton
                                 });
                             }
                             
-                            return shouldShow;
-                        })() && (
-                            <TouchableOpacity
-                                style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
-                                onPress={async () => {
-                                    // Appeler onDeliveryPress si fourni (pour compatibilité)
-                                    if (onDeliveryPress) {
-                                        onDeliveryPress();
-                                    }
-                                    
-                                    // ✅ NOUVEAU: Vérifier la disponibilité AVANT d'ouvrir le modal
-                                    if (!service?.id && !service?.service_id) {
-                                        Alert.alert('Erreur', 'Service non trouvé');
-                                        return;
-                                    }
-                                    
-                                    const serviceId = service?.id || service?.service_id;
-                                    const productIndex = typeof product.product_index === 'number' 
-                                        ? product.product_index 
-                                        : product.index;
-                                    
-                                    if (typeof productIndex !== 'number') {
-                                        Alert.alert('Erreur', 'Produit invalide');
-                                        return;
-                                    }
-                                    
-                                    setCheckingAvailability(true);
-                                    try {
-                                        const response = await apiGet<{
-                                            success: boolean;
-                                            availability: {
-                                                is_available: boolean;
-                                                reason?: string;
-                                                available_days?: number[];
-                                                preparation_time_minutes?: number;
-                                            };
-                                        }>(`/api/delivery/product-availability/${serviceId}/${productIndex}`);
-                                        
-                                        if (response.success && response.data?.availability) {
-                                            const availability = response.data.availability;
-                                            
-                                            if (!availability.is_available) {
-                                                // Produit indisponible - afficher message avec jours disponibles
-                                                const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-                                                const availableDaysStr = availability.available_days?.length 
-                                                    ? availability.available_days.map(d => dayNames[d]).join(', ')
-                                                    : 'Veuillez contacter le prestataire';
-                                                
-                                                Alert.alert(
-                                                    'Produit indisponible',
-                                                    `${availability.reason || 'Ce produit n\'est pas disponible actuellement.'}\n\nDisponible : ${availableDaysStr}`,
-                                                    [
-                                                        {
-                                                            text: 'Chercher un autre prestataire',
-                                                            onPress: () => {
-                                                                // TODO: Navigation vers recherche produits similaires
-                                                            }
-                                                        },
-                                                        { text: 'OK', style: 'cancel' }
-                                                    ]
-                                                );
-                                                return; // Ne pas ouvrir le modal
+                            // Toujours retourner le bouton si les conditions sont remplies
+                            if (!shouldShowDeliveryButton) {
+                                return null;
+                            }
+                            
+                            return (
+                                <TouchableOpacity
+                                    style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
+                                    onPress={async () => {
+                                        try {
+                                            // Appeler onDeliveryPress si fourni (pour compatibilité)
+                                            if (onDeliveryPress) {
+                                                onDeliveryPress();
                                             }
                                             
-                                            // Si disponible, ouvrir le modal
-                                            setShowFindCourierModal(true);
-                                        } else {
-                                            // En cas d'erreur, ouvrir quand même le modal
-                                            setShowFindCourierModal(true);
+                                            // Vérifier que le service existe
+                                            const serviceId = service?.id || service?.service_id;
+                                            if (!serviceId) {
+                                                Alert.alert('Erreur', 'Service non trouvé');
+                                                return;
+                                            }
+                                            
+                                            // Récupérer l'index du produit
+                                            const productIndex = typeof product.product_index === 'number' 
+                                                ? product.product_index 
+                                                : (typeof product.index === 'number' ? product.index : null);
+                                            
+                                            // Si pas d'index, ouvrir directement le modal (pour les produits sans index)
+                                            if (productIndex === null || productIndex === undefined) {
+                                                console.log('[ProductCard] Pas d\'index produit, ouverture directe du modal');
+                                                setShowFindCourierModal(true);
+                                                return;
+                                            }
+                                            
+                                            // Vérifier la disponibilité AVANT d'ouvrir le modal
+                                            setCheckingAvailability(true);
+                                            
+                                            try {
+                                                const response = await apiGet<{
+                                                    success: boolean;
+                                                    data?: {
+                                                        availability: {
+                                                            is_available: boolean;
+                                                            reason?: string;
+                                                            available_days?: number[];
+                                                            preparation_time_minutes?: number;
+                                                        };
+                                                    };
+                                                }>(`/api/delivery/product-availability/${serviceId}/${productIndex}`);
+                                                
+                                                if (response?.success && response?.data?.availability) {
+                                                    const availability = response.data.availability;
+                                                    
+                                                    if (!availability.is_available) {
+                                                        // Produit indisponible - afficher message avec jours disponibles
+                                                        const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+                                                        const availableDaysStr = availability.available_days?.length 
+                                                            ? availability.available_days.map((d: number) => dayNames[d]).join(', ')
+                                                            : 'Veuillez contacter le prestataire';
+                                                        
+                                                        Alert.alert(
+                                                            'Produit indisponible',
+                                                            `${availability.reason || 'Ce produit n\'est pas disponible actuellement.'}\n\nDisponible : ${availableDaysStr}`,
+                                                            [
+                                                                { text: 'OK', style: 'cancel' }
+                                                            ]
+                                                        );
+                                                        return;
+                                                    }
+                                                }
+                                                
+                                                // Si disponible ou pas de réponse, ouvrir le modal
+                                                setShowFindCourierModal(true);
+                                            } catch (error: any) {
+                                                console.error('[ProductCard] Erreur vérification disponibilité:', error);
+                                                // En cas d'erreur, ouvrir quand même le modal (ne pas bloquer l'utilisateur)
+                                                setShowFindCourierModal(true);
+                                            } finally {
+                                                setCheckingAvailability(false);
+                                            }
+                                        } catch (error: any) {
+                                            console.error('[ProductCard] Erreur générale bouton livraison:', error);
+                                            Alert.alert('Erreur', 'Impossible d\'ouvrir la livraison. Veuillez réessayer.');
                                         }
-                                    } catch (error) {
-                                        console.error('[ProductCard] Erreur vérification disponibilité:', error);
-                                        // En cas d'erreur, ouvrir quand même le modal
-                                        setShowFindCourierModal(true);
-                                    } finally {
-                                        setCheckingAvailability(false);
-                                    }
-                                }}
-                                activeOpacity={0.8}
-                                disabled={checkingAvailability}
-                            >
-                                {checkingAvailability ? (
-                                    <>
-                                        <ActivityIndicator size="small" color="#FFFFFF" />
-                                        <Text style={styles.deliveryButtonText}>Vérification...</Text>
-                                    </>
-                                ) : (
-                                    <>
-                                        <SafeIcon name="truck" size={18} color="#FFFFFF" />
-                                        <Text style={styles.deliveryButtonText}>Me livrer</Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        )}
+                                    }}
+                                    activeOpacity={0.8}
+                                    disabled={checkingAvailability}
+                                >
+                                    {checkingAvailability ? (
+                                        <>
+                                            <ActivityIndicator size="small" color="#FFFFFF" />
+                                            <Text style={styles.deliveryButtonText}>Vérification...</Text>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <SafeIcon name="truck" size={18} color="#FFFFFF" />
+                                            <Text style={styles.deliveryButtonText}>Me livrer</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })()}
 
                         <View style={styles.secondaryActions}>
                             {/* Bouton Galerie */}
-                            {(images.length > 0 || videos.length > 0) && (
+                            {(loadedImages.length > 0 || loadedVideos.length > 0) && (
                                 <TouchableOpacity
                                     style={styles.actionIconButton}
                                     onPress={onGalleryPress}
@@ -737,7 +936,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         mode="full"
                         onOpenChat={(userId, userName, userAvatar) => {
                             // Optionnel: Ouvrir un chat privé avec l'utilisateur
-                            Alert.alert('Chat', `Ouvrir une conversation avec ${userName} ?`);
+                            if (onChatPress) {
+                                onChatPress();
+                            }
+                        }}
+                        onStatsUpdate={(stats) => {
+                            // ✅ NOUVEAU: Mettre à jour les statistiques dans ProductCard
+                            setCommentStats(stats);
                         }}
                     />
                 </View>
@@ -1319,6 +1524,12 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 9,
         fontWeight: '600',
+    },
+    errorText: {
+        fontSize: 8,
+        color: '#EF4444',
+        marginTop: 4,
+        textAlign: 'center',
     },
 });
 

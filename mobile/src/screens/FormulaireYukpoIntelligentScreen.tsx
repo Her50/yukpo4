@@ -1116,10 +1116,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // Ajouter les champs de contact s'ils n'existent pas déjà
       const contactFields = ['whatsapp', 'telephone', 'email', 'website'];
       contactFields.forEach(fieldName => {
-        if (!contactBlock.fields.find(f => f.name === fieldName)) {
+        const existingField = contactBlock.fields.find(f => f.name === fieldName);
+        if (!existingField) {
           contactBlock.fields.push({
             name: fieldName,
             type: fieldName === 'email' ? 'email' : fieldName === 'website' ? 'url' : 'text',
+            typeDonnee: fieldName === 'email' ? 'email' : fieldName === 'website' ? 'url' : 'string',
             label: fieldName === 'whatsapp' ? 'WhatsApp' :
               fieldName === 'telephone' ? 'Téléphone' :
                 fieldName === 'email' ? 'Email' : 'Site web',
@@ -1130,6 +1132,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           } as any);
         }
       });
+      // ✅ CORRECTION: S'assurer que les champs de contact sont toujours présents même s'ils existent déjà depuis l'IA
+      // Trier les champs pour mettre les champs de contact standard en premier
+      const standardContactFields = ['whatsapp', 'telephone', 'email', 'website'];
+      const otherContactFields = contactBlock.fields.filter(f => !standardContactFields.includes(f.name));
+      const standardFields = standardContactFields
+        .map(fieldName => contactBlock.fields.find(f => f.name === fieldName))
+        .filter(f => f !== undefined) as DynamicField[];
+      contactBlock.fields = [...standardFields, ...otherContactFields];
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ Champs de contact organisés:', contactBlock.fields.map(f => f.name));
     }
 
     // ✅ NOUVEAU 2025-11-06: Trier les champs du bloc Produits selon l'ordre souhaité
@@ -3529,7 +3540,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return (
           <View key={field.name} style={isProductField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              {field.label} {field.required && <Text style={styles.required}>*</Text>}
+              {typeof field.label === 'string' ? field.label : String(field.label || field.name)} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
             <NativeInput
               placeholder={field.placeholder}
@@ -3566,7 +3577,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return (
           <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              {field.label} {field.required && <Text style={styles.required}>*</Text>}
+              {typeof field.label === 'string' ? field.label : String(field.label || field.name)} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
             <NativeInput
               placeholder={field.placeholder}
@@ -3626,7 +3637,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return (
           <View key={field.name} style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              {field.label} {field.required && <Text style={styles.required}>*</Text>}
+              {typeof field.label === 'string' ? field.label : String(field.label || field.name)} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
             <NativeInput
               placeholder={field.placeholder}
@@ -5303,10 +5314,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     snapToAlignment="start"
                     contentContainerStyle={styles.blockNavigationContent}
                     style={styles.blockNavigationScrollView}
-                    scrollEventThrottle={16}
+                    scrollEventThrottle={32}
                     nestedScrollEnabled={true}
-                    alwaysBounceHorizontal={true}
-                    bounces={true}
+                    alwaysBounceHorizontal={false}
+                    bounces={false}
+                    directionalLockEnabled={true}
+                    scrollsToTop={false}
                   >
                     <View style={styles.blockNavigation}>
                       {displayedBlocks.map(({ block, index: originalIndex }) => (
@@ -5341,14 +5354,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   style={styles.contentScrollViewHorizontal}
                   contentContainerStyle={styles.contentContainerHorizontal}
                   nestedScrollEnabled={true}
-                  scrollEventThrottle={16}
-                  // ✅ CORRIGÉ: Permettre le scroll horizontal même avec des gestes verticaux
-                  directionalLockEnabled={false}
+                  scrollEventThrottle={32}
+                  // ✅ CORRIGÉ: Activer directionalLockEnabled pour améliorer la stabilité
+                  directionalLockEnabled={true}
                   // ✅ CORRIGÉ: Améliorer la détection du scroll horizontal
-                  decelerationRate="normal"
+                  decelerationRate="fast"
                   // ✅ CORRIGÉ: pagingEnabled gère déjà le snap, pas besoin de snapToInterval
-                  alwaysBounceHorizontal={true}
-                  bounces={true}
+                  alwaysBounceHorizontal={false}
+                  bounces={false}
+                  // ✅ OPTIMISATION: Désactiver les propriétés qui peuvent causer des conflits
+                  scrollsToTop={false}
                   onMomentumScrollEnd={(event) => {
                     // ✅ Détecter le bloc affiché après scroll horizontal manuel
                     const scrollX = event.nativeEvent.contentOffset.x;
@@ -5363,8 +5378,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     // ✅ Réactiver le scroll horizontal si jamais il était désactivé
                     setBlockHorizontalScrollEnabled(true);
                   }}
-                  // ✅ CORRIGÉ: Détecter le scroll horizontal même pendant le mouvement
-                  onScroll={(event) => {
+                  // ✅ OPTIMISATION: Utiliser onScrollEndDrag au lieu de onScroll pour réduire les re-renders
+                  onScrollEndDrag={(event) => {
                     const scrollX = event.nativeEvent.contentOffset.x;
                     const displayIndex = Math.round(scrollX / width);
                     const blockInfo = displayedBlocks[displayIndex];
@@ -5384,23 +5399,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         keyboardDismissMode="on-drag"
                         nestedScrollEnabled={true}
                         scrollEnabled={true}
-                        alwaysBounceVertical={true}
-                        bounces={true}
-                        // ✅ CORRIGÉ: Permettre le scroll vertical et horizontal simultanément
-                        directionalLockEnabled={false}
+                        alwaysBounceVertical={false}
+                        bounces={false}
+                        // ✅ CORRIGÉ: Activer directionalLockEnabled pour éviter les conflits avec le scroll horizontal
+                        directionalLockEnabled={true}
                         // ✅ CORRIGÉ: S'assurer que le scroll vertical fonctionne même avec beaucoup de contenu
                         contentInsetAdjustmentBehavior="automatic"
-                        // ✅ CORRIGÉ: Permettre le scroll vertical même avec peu de contenu
-                        scrollEventThrottle={16}
-                        // ✅ CORRIGÉ: Forcer le scroll vertical à fonctionner
-                        removeClippedSubviews={false}
-                        // ✅ CORRIGÉ: Permettre le scroll vertical même si le contenu est petit
-                        minimumZoomScale={1}
-                        maximumZoomScale={1}
-                        // ✅ CORRIGÉ: Améliorer la détection du scroll vertical
-                        onScrollBeginDrag={() => {
-                          // S'assurer que le scroll vertical est activé
-                        }}
+                        // ✅ OPTIMISATION: Réduire la fréquence des événements scroll pour améliorer la performance
+                        scrollEventThrottle={32}
+                        // ✅ OPTIMISATION: Activer removeClippedSubviews pour améliorer les performances avec beaucoup de contenu
+                        removeClippedSubviews={true}
+                        // ✅ OPTIMISATION: Désactiver zoom qui n'est pas nécessaire et peut causer des conflits
+                        // ✅ OPTIMISATION: Désactiver scrollsToTop pour éviter les conflits
+                        scrollsToTop={false}
                       >
                         <View style={styles.sectionContainer}>
                           <LinearGradient
@@ -5627,6 +5638,7 @@ const styles = StyleSheet.create({
   blockPanel: {
     // width est défini dynamiquement (= largeur écran)
     flex: 1, // ✅ CORRIGÉ: Utiliser flex au lieu de height pour s'adapter à la hauteur disponible
+    height: '100%', // ✅ OPTIMISATION: Forcer la hauteur pour améliorer le scroll
   },
   blockPanelScroll: {
     flex: 1,
@@ -5635,6 +5647,8 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 400, // ✅ Augmenté pour permettre le scroll jusqu'en bas, surtout dans le bloc produits
     flexGrow: 1, // ✅ Permet au contenu de s'étendre et d'activer le scroll si nécessaire
+    // ✅ OPTIMISATION: S'assurer que le contenu peut scroller correctement
+    minHeight: '100%',
   },
   stepContainer: {
     gap: 20,

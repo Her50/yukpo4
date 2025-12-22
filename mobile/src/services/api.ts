@@ -975,6 +975,23 @@ export const deliveryApi = {
   getProductDeliveryConfig: async (serviceId: number, productIndex: number) => {
     return apiCall(`/api/delivery/product-config/${serviceId}/${productIndex}`);
   },
+  // ✅ NOUVEAU : Créer une commande client directe avec matching intelligent automatique
+  createClientOrder: async (payload: {
+    service_id: number;
+    product_index?: number;
+    dropoff?: {
+      latitude: number;
+      longitude: number;
+      address?: string;
+    };
+    notes?: string;
+    metadata?: any;
+  }) => {
+    return apiCall('/api/delivery/client-order', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
   // ✅ NOUVEAU: Lister les configurations de livraison d'un service
   listProductDeliveryConfigs: async (serviceId: number) => {
     return apiCall<{
