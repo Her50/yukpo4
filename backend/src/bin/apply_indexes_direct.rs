@@ -18,6 +18,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
           ON video_generation_jobs(status, updated_at)
           WHERE status IS NOT NULL"),
         
+        ("idx_video_generation_jobs_completed_updated_at",
+         "CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_completed_updated_at 
+          ON video_generation_jobs(updated_at)
+          WHERE status = 'completed'"),
+        
+        ("idx_video_generation_jobs_failed_updated_at",
+         "CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_failed_updated_at 
+          ON video_generation_jobs(updated_at)
+          WHERE status = 'failed'"),
+        
         ("idx_global_promo_entries_event_id_status",
          "CREATE INDEX IF NOT EXISTS idx_global_promo_entries_event_id_status 
           ON global_promo_entries(event_id, status)

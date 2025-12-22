@@ -7,7 +7,7 @@ use sqlx::{PgPool, Row};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AutocompleteSearchResult {
     pub service_id: i32,
-    pub product_id: String,
+    pub product_id: Option<String>, // ✅ CORRIGÉ 2025-12-22: Peut être NULL dans la base
     pub product_vector: Vec<String>,
     pub product_labels: Vec<String>,
     pub location_vector: Vec<String>,
@@ -292,7 +292,7 @@ pub async fn search_by_autocomplete_vector(
 
         results.push(AutocompleteSearchResult {
             service_id,
-            product_id: row.get::<String, _>("product_id"),
+            product_id: row.get::<Option<String>, _>("product_id"), // ✅ CORRIGÉ 2025-12-22: Gérer NULL
             product_vector: row.get::<Vec<String>, _>("product_vector"),
             product_labels: row.get::<Vec<String>, _>("product_labels"),
             location_vector: row.get::<Vec<String>, _>("location_vector"),

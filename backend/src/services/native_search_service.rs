@@ -365,44 +365,65 @@ WITH matched_services AS (
     )
     LIMIT 50  -- Limiter le fallback pour éviter la lenteur
 )
-SELECT DISTINCT ON (s.id)
-    s.id,
-    s.data,
-    s.created_at,
-    s.user_id,
-    s.gps,
-    s.category,
-    -- ✅ OPTIMISÉ 2025-12-22: Score amélioré avec bonus pour matches exacts et usage_count
-    GREATEST(
-        -- Score depuis autocomplete_characteristics (priorité haute)
-        COALESCE(
-            ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) * 15.0 +
-            COALESCE(ts_rank(characteristic_vector_to_tsvector(ac.characteristic_vector), plainto_tsquery('french', $1)), 0.0) * 10.0 +
-            COALESCE(ts_rank(full_vector_to_tsvector(ac.full_vector), plainto_tsquery('french', $1)), 0.0) * 8.0 +
-            (ac.usage_count::REAL * 1.0),  -- Bonus usage_count
-            0.0
-        ),
-        -- Score depuis titre/description service (priorité basse)
-        COALESCE(
-            ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 5.0 +
-            ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0,
-            0.0
-        )
-    )::REAL as fulltext_score
-FROM matched_services ms
-INNER JOIN services s ON s.id = ms.service_id
-LEFT JOIN LATERAL (
-    SELECT ac.valeur, ac.usage_count, ac.characteristic_vector, ac.full_vector
-    FROM autocomplete_characteristics ac
-    WHERE ac.service_id = s.id
-    AND ac.identifiant_base = 'produits'
-    AND ac.is_real_product = TRUE
-    ORDER BY ac.usage_count DESC NULLS LAST
-    LIMIT 1
-) ac ON true
-WHERE ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
-AND ($3::text IS NULL OR s.gps IS NULL OR s.gps = $3 OR s.gps LIKE $3 || '%' OR s.gps LIKE '%' || $3)
-ORDER BY s.id, fulltext_score DESC
+SELECT 
+    ranked.id,
+    ranked.data,
+    ranked.created_at,
+    ranked.user_id,
+    ranked.gps,
+    ranked.category,
+    ranked.fulltext_score
+FROM (
+    SELECT DISTINCT ON (s.id)
+        s.id,
+        s.data,
+        s.created_at,
+        s.user_id,
+        s.gps,
+        s.category,
+        -- ✅ OPTIMISÉ 2025-12-22: Score amélioré avec bonus pour matches exacts et usage_count
+        -- ✅ AMÉLIORÉ 2025-12-22: Ajout de bonus pour correspondances exactes (améliore la pertinence)
+        GREATEST(
+            -- Score depuis autocomplete_characteristics (priorité haute)
+            COALESCE(
+                -- Score full-text avec ts_rank (utilise index GIN)
+                ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) * 15.0 +
+                COALESCE(ts_rank(characteristic_vector_to_tsvector(ac.characteristic_vector), plainto_tsquery('french', $1)), 0.0) * 10.0 +
+                COALESCE(ts_rank(full_vector_to_tsvector(ac.full_vector), plainto_tsquery('french', $1)), 0.0) * 8.0 +
+                -- ✅ NOUVEAU: Bonus pour correspondance exacte dans valeur (très pertinent)
+                CASE WHEN ac.valeur ILIKE '%' || $1 || '%' THEN 25.0 ELSE 0.0 END +
+                -- ✅ NOUVEAU: Bonus pour correspondance au début du mot (plus pertinent)
+                CASE WHEN ac.valeur ILIKE $1 || '%' THEN 15.0 ELSE 0.0 END +
+                -- ✅ NOUVEAU: Bonus pour correspondance exacte (très pertinent)
+                CASE WHEN LOWER(ac.valeur) = LOWER($1) THEN 50.0 ELSE 0.0 END +
+                (ac.usage_count::REAL * 1.0),  -- Bonus usage_count
+                0.0
+            ),
+            -- Score depuis titre/description service (priorité basse)
+            COALESCE(
+                ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 5.0 +
+                ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
+                -- ✅ NOUVEAU: Bonus pour correspondance exacte dans titre (pertinent)
+                CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 10.0 ELSE 0.0 END,
+                0.0
+            )
+        )::REAL as fulltext_score
+    FROM matched_services ms
+    INNER JOIN services s ON s.id = ms.service_id
+    LEFT JOIN LATERAL (
+        SELECT ac.valeur, ac.usage_count, ac.characteristic_vector, ac.full_vector
+        FROM autocomplete_characteristics ac
+        WHERE ac.service_id = s.id
+        AND ac.identifiant_base = 'produits'
+        AND ac.is_real_product = TRUE
+        ORDER BY ac.usage_count DESC NULLS LAST
+        LIMIT 1
+    ) ac ON true
+    WHERE ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
+    AND ($3::text IS NULL OR s.gps IS NULL OR s.gps = $3 OR s.gps LIKE $3 || '%' OR s.gps LIKE '%' || $3)
+    ORDER BY s.id, fulltext_score DESC  -- DISTINCT ON nécessite s.id en premier
+) ranked
+ORDER BY ranked.fulltext_score DESC  -- ✅ CORRIGÉ 2025-12-22: Trier les résultats finaux par score de pertinence (critique pour la pertinence)
 LIMIT 100
         "#;
 

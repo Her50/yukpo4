@@ -13,6 +13,17 @@ CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_status_updated_at
 ON video_generation_jobs(status, updated_at)
 WHERE status IS NOT NULL;
 
+-- ✅ NOUVEAU: Index partiel pour COUNT avec status = 'completed' et updated_at
+-- Optimise: SELECT COUNT(*) FROM video_generation_jobs WHERE status = 'completed' AND updated_at >= NOW() - INTERVAL '24 hours'
+CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_completed_updated_at 
+ON video_generation_jobs(updated_at)
+WHERE status = 'completed';
+
+-- ✅ NOUVEAU: Index pour optimiser les requêtes avec status = 'failed' et updated_at
+CREATE INDEX IF NOT EXISTS idx_video_generation_jobs_failed_updated_at 
+ON video_generation_jobs(updated_at)
+WHERE status = 'failed';
+
 -- Index pour optimiser les requêtes sur global_promo_entries avec JOIN
 CREATE INDEX IF NOT EXISTS idx_global_promo_entries_event_id_status 
 ON global_promo_entries(event_id, status)
