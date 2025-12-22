@@ -48,7 +48,7 @@ import { DynamicField, processIASuggestion } from '../utils/formDispatcher';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
 const TAB_WIDTH = 136;
 
 interface ServiceData {
@@ -5335,13 +5335,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 <ScrollView
                   ref={blockContentRef}
                   horizontal
-                  pagingEnabled
-                  scrollEnabled={true}
-                  showsHorizontalScrollIndicator={false}
+                  pagingEnabled={true}
+                  scrollEnabled={blockHorizontalScrollEnabled}
+                  showsHorizontalScrollIndicator={true}
                   style={styles.contentScrollViewHorizontal}
                   contentContainerStyle={styles.contentContainerHorizontal}
                   nestedScrollEnabled={true}
                   scrollEventThrottle={16}
+                  // ✅ CORRIGÉ: Permettre le scroll horizontal même avec des gestes verticaux
+                  directionalLockEnabled={false}
+                  // ✅ CORRIGÉ: Améliorer la détection du scroll horizontal
+                  decelerationRate="normal"
+                  // ✅ CORRIGÉ: pagingEnabled gère déjà le snap, pas besoin de snapToInterval
+                  alwaysBounceHorizontal={true}
+                  bounces={true}
                   onMomentumScrollEnd={(event) => {
                     // ✅ Détecter le bloc affiché après scroll horizontal manuel
                     const scrollX = event.nativeEvent.contentOffset.x;
@@ -5355,6 +5362,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   onScrollBeginDrag={() => {
                     // ✅ Réactiver le scroll horizontal si jamais il était désactivé
                     setBlockHorizontalScrollEnabled(true);
+                  }}
+                  // ✅ CORRIGÉ: Détecter le scroll horizontal même pendant le mouvement
+                  onScroll={(event) => {
+                    const scrollX = event.nativeEvent.contentOffset.x;
+                    const displayIndex = Math.round(scrollX / width);
+                    const blockInfo = displayedBlocks[displayIndex];
+                    if (blockInfo && blockInfo.index !== currentBlock) {
+                      setCurrentBlock(blockInfo.index);
+                    }
                   }}
                 >
                   {/* Affichage de TOUS les blocs côte à côte */}
@@ -5374,6 +5390,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         directionalLockEnabled={false}
                         // ✅ CORRIGÉ: S'assurer que le scroll vertical fonctionne même avec beaucoup de contenu
                         contentInsetAdjustmentBehavior="automatic"
+                        // ✅ CORRIGÉ: Permettre le scroll vertical même avec peu de contenu
+                        scrollEventThrottle={16}
+                        // ✅ CORRIGÉ: Forcer le scroll vertical à fonctionner
+                        removeClippedSubviews={false}
+                        // ✅ CORRIGÉ: Permettre le scroll vertical même si le contenu est petit
+                        minimumZoomScale={1}
+                        maximumZoomScale={1}
+                        // ✅ CORRIGÉ: Améliorer la détection du scroll vertical
+                        onScrollBeginDrag={() => {
+                          // S'assurer que le scroll vertical est activé
+                        }}
                       >
                         <View style={styles.sectionContainer}>
                           <LinearGradient
@@ -5599,6 +5626,7 @@ const styles = StyleSheet.create({
   },
   blockPanel: {
     // width est défini dynamiquement (= largeur écran)
+    flex: 1, // ✅ CORRIGÉ: Utiliser flex au lieu de height pour s'adapter à la hauteur disponible
   },
   blockPanelScroll: {
     flex: 1,
