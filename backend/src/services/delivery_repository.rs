@@ -3729,7 +3729,7 @@ impl DeliveryRepository {
     /// Incrémenter le compteur d'utilisation et mettre à jour last_used_at
     pub async fn increment_saved_address_usage(
         &self,
-        user_id: i32,
+        _user_id: i32,
         address_id: i32,
     ) -> AppResult<()> {
         sqlx::query(
