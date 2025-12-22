@@ -966,6 +966,12 @@ pub async fn generate_product_video(
     }
 
     // ✅ PRIORITÉ 1 : Récupérer les images locales
+    info!(
+        "[VideoGeneration] 🔍 Collecte des médias - service_id={}, product_index={}, selected_ids={:?}",
+        service_id,
+        product_index,
+        payload.selected_media_ids
+    );
     let mut media_sources = gather_media_sources(
         &state,
         service_id,
@@ -975,7 +981,22 @@ pub async fn generate_product_video(
         payload.use_service_mediatech.unwrap_or(true),
         payload.include_publicite_assets.unwrap_or(true),
     )
-    .await?;
+    .await
+    .map_err(|err| {
+        error!(
+            "[VideoGeneration] ❌ Erreur collecte médias pour service_id={}, product_index={}: {}",
+            service_id, product_index, err
+        );
+        AppError::Internal(format!(
+            "Impossible de collecter les médias pour la génération vidéo: {}. Vérifiez que le service a des images dans sa médiathèque.",
+            err
+        ))
+    })?;
+    
+    info!(
+        "[VideoGeneration] ✅ {} média(x) collecté(s) pour la génération",
+        media_sources.len()
+    );
 
     // ✅ PRIORITÉ 2 : Si pas d'images locales et génération IA activée, générer des images
     if media_sources.is_empty() && payload.auto_generate_images.unwrap_or(false) {
@@ -1115,11 +1136,26 @@ pub async fn generate_product_video(
     let session_id = Uuid::new_v4();
     let temp_root = storage_root.join("tmp");
     let session_dir = temp_root.join(format!("video_session_{}", session_id));
+    
+    info!(
+        "[VideoGeneration] 📁 Création dossier session: {:?}",
+        session_dir
+    );
     fs::create_dir_all(&session_dir).await.map_err(|err| {
+        error!(
+            "[VideoGeneration] ❌ Impossible de créer dossier temporaire: {:?}, erreur: {}",
+            session_dir, err
+        );
         AppError::Internal(format!(
-            "Impossible de créer le dossier temporaire de génération: {err}"
+            "Impossible de créer le dossier temporaire de génération vidéo: {}. Vérifiez les permissions d'écriture sur le répertoire de stockage.",
+            err
         ))
     })?;
+    
+    info!(
+        "[VideoGeneration] ✅ Dossier session créé: {:?}",
+        session_dir
+    );
 
     let fallback_subtitles = || async {
         match generate_subtitles_file(&session_dir, &script_outline, duration_seconds).await {
@@ -1276,14 +1312,45 @@ pub async fn generate_product_video(
             slide_name.clone(),
         ]);
 
-        run_ffmpeg(&session_dir, args).await?;
+        info!(
+            "[VideoGeneration] 🎬 Génération slide {}/{}: {}",
+            idx + 1,
+            media_sources.len(),
+            slide_name
+        );
+        
+        // ✅ VALIDATION PRÉVENTIVE: Vérifier que le fichier source existe
+        if !media.path.exists() && !media.path.to_string_lossy().starts_with("http") {
+            let error_msg = format!(
+                "Fichier source introuvable pour le slide {}: {:?}",
+                slide_name, media.path
+            );
+            error!("[VideoGeneration] ❌ {}", error_msg);
+            return Err(AppError::Internal(error_msg));
+        }
+        
+        run_ffmpeg(&session_dir, args.clone()).await.map_err(|err| {
+            error!(
+                "[VideoGeneration] ❌ Erreur FFmpeg pour slide {}: {}",
+                slide_name, err
+            );
+            error!(
+                "[VideoGeneration] Commande FFmpeg: ffmpeg {}",
+                args.join(" ")
+            );
+            AppError::Internal(format!(
+                "Erreur lors de la génération du slide {}: {}. Vérifiez que FFmpeg est installé et que les fichiers sources sont accessibles.",
+                slide_name, err
+            ))
+        })?;
 
         // ✅ VALIDATION CRITIQUE: Vérifier que le slide a bien été créé
         let slide_path = session_dir.join(&slide_name);
         if !slide_path.exists() {
             let error_msg = format!(
-                "Le slide {} n'a pas été créé. Vérifiez les logs FFmpeg pour plus de détails.",
-                slide_name
+                "Le slide {} n'a pas été créé après l'exécution de FFmpeg. Vérifiez les logs FFmpeg pour plus de détails. Commande: ffmpeg {}",
+                slide_name,
+                args.join(" ")
             );
             error!("[VideoGeneration] ❌ {}", error_msg);
             return Err(AppError::Internal(error_msg));
@@ -2652,10 +2719,42 @@ fn row_to_media_source(id: i32, path: &str, ai_description: Option<String>) -> O
 
     if !absolute.exists() {
         error!(
-            "[VideoGeneration] Média introuvable sur le disque: {:?}",
-            absolute
+            "[VideoGeneration] ❌ Média introuvable sur le disque: media_id={}, path_db={:?}, path_absolu={:?}, storage_root={:?}",
+            id,
+            path,
+            absolute,
+            upload_storage_root()
         );
+        // ✅ AMÉLIORÉ: Vérifier si c'est un fichier S3/remote qui n'est pas encore téléchargé
+        if path.starts_with("http://") || path.starts_with("https://") {
+            warn!(
+                "[VideoGeneration] ⚠️ Média est une URL distante (S3/CDN): {} - Le fichier sera téléchargé lors du rendu",
+                path
+            );
+            // Pour les URLs distantes, on peut quand même créer le MediaSource
+            // Le rendu devra gérer le téléchargement
+            return Some(MediaSource {
+                id: Some(id),
+                path: PathBuf::from(path), // Garder l'URL originale
+                ai_description,
+            });
+        }
         return None;
+    }
+
+    // ✅ VALIDATION: Vérifier que le fichier n'est pas vide
+    if let Ok(metadata) = std::fs::metadata(&absolute) {
+        if metadata.len() == 0 {
+            error!(
+                "[VideoGeneration] ❌ Média vide (0 bytes): media_id={}, path={:?}",
+                id, absolute
+            );
+            return None;
+        }
+        debug!(
+            "[VideoGeneration] ✅ Média valide: media_id={}, path={:?}, size={} bytes",
+            id, absolute, metadata.len()
+        );
     }
 
     Some(MediaSource {
