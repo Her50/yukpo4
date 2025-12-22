@@ -1050,7 +1050,13 @@ impl DeliveryRepository {
         &self,
         payload: NewDeliveryRequest,
     ) -> AppResult<DeliverySummary> {
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.pool.begin().await
+            .map_err(|e| {
+                log::error!("[DeliveryRepository] Erreur début transaction: {:?}", e);
+                crate::core::types::AppError::Internal(
+                    "Erreur de connexion à la base de données".into(),
+                )
+            })?;
 
         let parcel_row: DeliveryParcelRow = sqlx::query_as(
             r#"
@@ -1084,7 +1090,21 @@ impl DeliveryRepository {
         .bind(payload.parcel.photos)
         .bind(payload.parcel.constraints)
         .fetch_one(&mut *tx)
-        .await?;
+        .await
+        .map_err(|e| {
+            log::error!("[DeliveryRepository] Erreur insertion parcel: {:?}", e);
+            // Vérifier si c'est une erreur de contrainte de clé étrangère
+            if let sqlx::Error::Database(db_err) = &e {
+                if db_err.code().as_deref() == Some("23503") {
+                    return crate::core::types::AppError::BadRequest(
+                        "Le type de colis spécifié n'existe pas".into(),
+                    );
+                }
+            }
+            crate::core::types::AppError::Internal(
+                "Erreur lors de la création du colis".into(),
+            )
+        })?;
 
         let parcel = DeliveryParcel {
             id: parcel_row.id,
@@ -1220,7 +1240,27 @@ impl DeliveryRepository {
         .bind(payload.estimated_duration_seconds)
         .bind(payload.metadata)
         .fetch_one(&mut *tx)
-        .await?;
+        .await
+        .map_err(|e| {
+            log::error!("[DeliveryRepository] Erreur insertion delivery: {:?}", e);
+            // Vérifier si c'est une erreur liée aux coordonnées GPS
+            if let sqlx::Error::Database(db_err) = &e {
+                let err_msg = db_err.message().to_lowercase();
+                if err_msg.contains("geometry") || err_msg.contains("point") || err_msg.contains("coordinate") {
+                    return crate::core::types::AppError::BadRequest(
+                        "Les coordonnées GPS fournies sont invalides".into(),
+                    );
+                }
+                if db_err.code().as_deref() == Some("23503") {
+                    return crate::core::types::AppError::BadRequest(
+                        "Référence invalide (utilisateur ou coursier introuvable)".into(),
+                    );
+                }
+            }
+            crate::core::types::AppError::Internal(
+                "Erreur lors de la création de la livraison".into(),
+            )
+        })?;
 
         sqlx::query(
             r#"
@@ -1238,9 +1278,21 @@ impl DeliveryRepository {
         .bind(payload.initial_event_payload)
         .bind(payload.initial_status_author)
         .execute(&mut *tx)
-        .await?;
+        .await
+        .map_err(|e| {
+            log::error!("[DeliveryRepository] Erreur insertion status event: {:?}", e);
+            crate::core::types::AppError::Internal(
+                "Erreur lors de l'enregistrement de l'événement de statut".into(),
+            )
+        })?;
 
-        tx.commit().await?;
+        tx.commit().await
+        .map_err(|e| {
+            log::error!("[DeliveryRepository] Erreur commit transaction: {:?}", e);
+            crate::core::types::AppError::Internal(
+                "Erreur lors de la finalisation de la création de la livraison".into(),
+            )
+        })?;
 
         let summary = DeliverySummary {
             id: delivery_row.id,

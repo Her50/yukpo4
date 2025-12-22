@@ -54,16 +54,43 @@ const ProductCard: React.FC<ProductCardProps> = ({
     const categoryStyle = getCategoryStyle(product.type || 'default');
     const terminology = getCategoryTerminology(product.type || 'default');
 
-    // Extraire les images et vidéos - Vidéos en premier
-    // ✅ CORRIGÉ: Transformer les chemins en URLs CDN via mediaService
+    // ✅ REFACTORISÉ: Extraire et valider les images et vidéos
     const rawImages = product.images || product.imagesRealisations || [];
     const rawVideos = product.videos || product.videosRealisations || [];
-    const images = rawImages.map((img: string) => mediaService.getImageUrl(img));
-    const videos = rawVideos.map((vid: string) => mediaService.getVideoUrl(vid));
+    
+    // Transformer en URLs valides et filtrer les valeurs nulles/vides
+    const images = rawImages
+        .filter((img: any) => img && typeof img === 'string' && img.trim().length > 0)
+        .map((img: string) => {
+            try {
+                const url = mediaService.getImageUrl(img);
+                return url && url.trim().length > 0 ? url : null;
+            } catch (e) {
+                console.warn('[ProductCard] Erreur conversion image URL:', img, e);
+                return null;
+            }
+        })
+        .filter((url: string | null) => url !== null) as string[];
+    
+    const videos = rawVideos
+        .filter((vid: any) => vid && typeof vid === 'string' && vid.trim().length > 0)
+        .map((vid: string) => {
+            try {
+                const url = mediaService.getVideoUrl(vid);
+                return url && url.trim().length > 0 ? url : null;
+            } catch (e) {
+                console.warn('[ProductCard] Erreur conversion video URL:', vid, e);
+                return null;
+            }
+        })
+        .filter((url: string | null) => url !== null) as string[];
+    
+    // Construire la liste des médias avec validation
     const allMedia = [
         ...videos.map((v: string) => ({ type: 'video', uri: v })),
         ...images.map((i: string) => ({ type: 'image', uri: i }))
-    ];
+    ].filter((media) => media.uri && media.uri.trim().length > 0);
+    
     const hasMedia = allMedia.length > 0;
     const mainImage = images[0] || null;
     const hasVideo = videos.length > 0;
@@ -150,10 +177,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
         }
     }, [currentMediaIndex]);
 
-    // Rendu du média (vidéo ou image)
+    // ✅ REFACTORISÉ: Rendu du média avec gestion d'erreur
     const renderMediaItem = ({ item, index }: { item: { type: string; uri: string }; index: number }) => {
+        if (!item.uri || item.uri.trim().length === 0) {
+            return (
+                <View style={styles.mediaItem}>
+                    <View style={[styles.mediaImage, styles.noImageContainer]}>
+                        <SafeIcon name="image" size={20} color="#D1D5DB" />
+                    </View>
+                </View>
+            );
+        }
+
         if (item.type === 'video') {
-                return (
+            return (
                 <View style={styles.mediaItem}>
                     <Video
                         ref={index === currentMediaIndex ? videoRef : null}
@@ -162,11 +199,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         resizeMode={ResizeMode.COVER}
                         isLooping={false}
                         shouldPlay={index === currentMediaIndex}
+                        useNativeControls={false}
+                        onError={(error) => {
+                            console.error('[ProductCard] Erreur lecture vidéo:', item.uri, error);
+                        }}
                         onPlaybackStatusUpdate={(status) => {
                             if (index === currentMediaIndex) {
                                 setVideoStatus(status);
                                 if (status.didJustFinish) {
-                                    // Passer à l'élément suivant après la fin de la vidéo
                                     setTimeout(() => {
                                         const next = (currentMediaIndex + 1) % allMedia.length;
                                         setCurrentMediaIndex(next);
@@ -176,14 +216,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             }
                         }}
                     />
-                    </View>
-                );
+                </View>
+            );
         }
-                return (
+        
+        return (
             <View style={styles.mediaItem}>
-                <Image source={{ uri: item.uri }} style={styles.mediaImage} resizeMode="cover" />
-                    </View>
-                );
+                <Image 
+                    source={{ uri: item.uri }} 
+                    style={styles.mediaImage} 
+                    resizeMode="cover"
+                    onError={(error) => {
+                        console.error('[ProductCard] Erreur chargement image:', item.uri, error);
+                    }}
+                />
+            </View>
+        );
     };
 
     // Rendu générique des détails du produit (sans catégorie spécifique)
@@ -230,7 +278,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             activeOpacity={0.95}
         >
             <View style={styles.cardContent}>
-                {/* Carousel automatique d'images et vidéos */}
+                {/* ✅ REFACTORISÉ: Carousel automatique d'images et vidéos avec scroll corrigé */}
                 <View style={styles.imageContainer}>
                     {hasMedia ? (
                         <>
@@ -238,31 +286,41 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 ref={carouselRef}
                                 data={allMedia}
                                 renderItem={renderMediaItem}
-                                keyExtractor={(item, index) => `${item.type}-${index}`}
+                                keyExtractor={(item, index) => `media-${item.type}-${index}-${item.uri?.substring(0, 20) || 'empty'}`}
                                 horizontal
                                 pagingEnabled
-                                showsHorizontalScrollIndicator={true}
-                                scrollEnabled={true}
+                                showsHorizontalScrollIndicator={false}
+                                scrollEnabled={allMedia.length > 1}
+                                snapToInterval={width * 0.4}
+                                decelerationRate="fast"
+                                bounces={false}
                                 onMomentumScrollEnd={(event) => {
-                                    const index = Math.round(event.nativeEvent.contentOffset.x / (width * 0.4));
+                                    const itemWidth = width * 0.4;
+                                    const index = Math.round(event.nativeEvent.contentOffset.x / itemWidth);
                                     if (index >= 0 && index < allMedia.length) {
                                         setCurrentMediaIndex(index);
                                     }
                                 }}
                                 onScrollToIndexFailed={(info) => {
-                                    // ✅ CORRIGÉ: Gérer les erreurs de scroll
                                     const wait = new Promise(resolve => setTimeout(resolve, 500));
                                     wait.then(() => {
-                                        carouselRef.current?.scrollToIndex({ index: info.index, animated: true });
+                                        if (carouselRef.current && info.index < allMedia.length) {
+                                            carouselRef.current.scrollToIndex({ index: info.index, animated: true });
+                                        }
                                     });
                                 }}
-                                getItemLayout={(data, index) => ({
-                                    length: width * 0.4,
-                                    offset: width * 0.4 * index,
-                                    index,
-                                })}
+                                getItemLayout={(data, index) => {
+                                    const itemWidth = width * 0.4;
+                                    return {
+                                        length: itemWidth,
+                                        offset: itemWidth * index,
+                                        index,
+                                    };
+                                }}
+                                contentContainerStyle={styles.mediaListContainer}
+                                style={styles.mediaList}
                             />
-                            {/* ✅ NOUVEAU: Indicateur de scroll visible */}
+                            {/* Indicateur de scroll visible */}
                             {allMedia.length > 1 && (
                                 <View style={styles.scrollIndicator}>
                                     <SafeIcon name="chevron-left" size={12} color="#FFFFFF" />
@@ -462,30 +520,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <Text style={styles.chatButtonText}>Discuter</Text>
                         </TouchableOpacity>
 
-                        {/* ✅ Bouton Me livrer - Affiché pour tous les produits (sauf services/prestations) */}
-                        {/* Ce bouton permet à l'utilisateur de préciser le lieu de livraison et lancer le matching de coursier */}
-                        {/* Le FindCourierModal gère automatiquement la configuration de livraison du produit et le délai de préparation */}
-                        {/* ✅ CORRIGÉ: Vérification simplifiée et plus permissive pour afficher le bouton */}
+                        {/* ✅ REFACTORISÉ: Bouton Me livrer - Logique simplifiée et toujours visible sauf services */}
                         {(() => {
-                            // Vérifier si c'est un service/prestation (à exclure)
-                            const isService = product.type === 'prestation_service' || product.type === 'service';
-                            // Vérifier si on a un service valide (plus permissif)
-                            const hasService = !!(service?.id || service?.service_id || service?.data);
-                            // Afficher le bouton si ce n'est pas un service ET qu'on a un service valide
-                            // ✅ AMÉLIORÉ: Afficher par défaut si pas de type spécifique (fallback)
-                            const shouldShowButton = !isService && (hasService || !product.type);
+                            // ✅ SIMPLIFIÉ: Exclure uniquement les prestations de service
+                            const isServiceType = product.type === 'prestation_service' || product.type === 'service';
+                            
+                            // ✅ TOUJOURS AFFICHER sauf si c'est explicitement un service/prestation
+                            const shouldShow = !isServiceType;
                             
                             if (__DEV__) {
-                                console.log('[ProductCard] Bouton "Me livrer" - Évaluation:', {
+                                console.log('[ProductCard] Bouton "Me livrer" - Évaluation simplifiée:', {
                                     productType: product.type,
-                                    isService,
-                                    hasService,
-                                    serviceId: service?.id || service?.service_id,
-                                    shouldShow: shouldShowButton
+                                    isServiceType,
+                                    shouldShow,
+                                    serviceId: service?.id || service?.service_id
                                 });
                             }
                             
-                            return shouldShowButton;
+                            return shouldShow;
                         })() && (
                             <TouchableOpacity
                                 style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
@@ -716,6 +768,13 @@ const styles = StyleSheet.create({
         position: 'relative',
         overflow: 'hidden',
         borderRadius: 12,
+    },
+    mediaList: {
+        width: width * 0.4,
+        height: 90,
+    },
+    mediaListContainer: {
+        alignItems: 'center',
     },
     mainImage: {
         width: '100%',

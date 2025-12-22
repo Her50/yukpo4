@@ -970,11 +970,51 @@ async fn get_product_delivery_config(
     }
 }
 
+/// Valide les coordonnées GPS
+fn validate_gps_coordinates(lat: f64, lng: f64, location_name: &str) -> AppResult<()> {
+    if lat.is_nan() || lng.is_nan() {
+        return Err(crate::core::types::AppError::BadRequest(
+            format!("Les coordonnées GPS de {} sont invalides (NaN)", location_name).into(),
+        ));
+    }
+    if lat.is_infinite() || lng.is_infinite() {
+        return Err(crate::core::types::AppError::BadRequest(
+            format!("Les coordonnées GPS de {} sont invalides (infini)", location_name).into(),
+        ));
+    }
+    if lat < -90.0 || lat > 90.0 {
+        return Err(crate::core::types::AppError::BadRequest(
+            format!("La latitude de {} doit être entre -90 et 90 (reçu: {})", location_name, lat).into(),
+        ));
+    }
+    if lng < -180.0 || lng > 180.0 {
+        return Err(crate::core::types::AppError::BadRequest(
+            format!("La longitude de {} doit être entre -180 et 180 (reçu: {})", location_name, lng).into(),
+        ));
+    }
+    Ok(())
+}
+
 async fn create_delivery(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateDeliveryPayload>,
 ) -> AppResult<Json<Value>> {
+    // ✅ Validation des coordonnées GPS avant traitement
+    validate_gps_coordinates(payload.pickup.latitude, payload.pickup.longitude, "pickup")?;
+    validate_gps_coordinates(payload.dropoff.latitude, payload.dropoff.longitude, "dropoff")?;
+    
+    // ✅ Validation des coordonnées du dropoff_override si présent
+    if let Some(recipient) = &payload.recipient {
+        if let Some(dropoff_override) = &recipient.dropoff_override {
+            validate_gps_coordinates(
+                dropoff_override.latitude,
+                dropoff_override.longitude,
+                "dropoff_override",
+            )?;
+        }
+    }
+
     let service = delivery_service(&state)?;
 
     let params = CreateDeliveryParams {
@@ -1005,7 +1045,11 @@ async fn create_delivery(
         initial_event_payload: payload.initial_event_payload,
     };
 
-    let summary = service.create_delivery_request(params).await?;
+    let summary = service.create_delivery_request(params).await
+        .map_err(|e| {
+            log::error!("[create_delivery] Erreur lors de la création de la livraison: {:?}", e);
+            e
+        })?;
     Ok(Json(serde_json::json!({ "delivery": summary })))
 }
 

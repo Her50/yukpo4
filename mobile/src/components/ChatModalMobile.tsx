@@ -790,13 +790,50 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 <SafeIcon name="video" size={20} color={modernColors.primary} />
                             </TouchableOpacity>
 
-                            {/* ✅ NOUVEAU: Bouton Me livrer */}
-                            {service?.data?.produits && (
+                            {/* ✅ REFACTORISÉ: Bouton Me livrer - Toujours visible si service valide */}
+                            {(() => {
+                                // ✅ SIMPLIFIÉ: Afficher le bouton si on a un service valide
+                                // Vérifier plusieurs sources pour les produits
+                                const hasProducts = !!(
+                                    service?.data?.produits ||
+                                    service?.produits ||
+                                    (service?.id || service?.service_id)
+                                );
+                                
+                                // Exclure uniquement les services/prestations
+                                const isServiceType = service?.data?.type === 'prestation_service' || 
+                                                     service?.data?.type === 'service' ||
+                                                     service?.type === 'prestation_service' ||
+                                                     service?.type === 'service';
+                                
+                                const shouldShow = hasProducts && !isServiceType;
+                                
+                                if (__DEV__) {
+                                    console.log('[ChatModalMobile] Bouton "Me livrer" - Évaluation:', {
+                                        hasProducts,
+                                        isServiceType,
+                                        shouldShow,
+                                        serviceId: service?.id || service?.service_id,
+                                        serviceType: service?.data?.type || service?.type
+                                    });
+                                }
+                                
+                                return shouldShow;
+                            })() && (
                                 <TouchableOpacity
                                     style={[styles.actionButton, styles.deliveryButton]}
-                                    onPress={() => setShowFindCourierModal(true)}
+                                    onPress={() => {
+                                        // Vérifier qu'on a bien un produit avant d'ouvrir le modal
+                                        const product = service?.data?.produits?.[0] || service?.produits?.[0];
+                                        if (!product && !service?.id && !service?.service_id) {
+                                            Alert.alert('Erreur', 'Produit non disponible pour la livraison');
+                                            return;
+                                        }
+                                        setShowFindCourierModal(true);
+                                    }}
                                 >
                                     <SafeIcon name="truck" size={20} color="#10B981" />
+                                    <Text style={styles.deliveryButtonText}>Me livrer</Text>
                                 </TouchableOpacity>
                             )}
 
@@ -925,6 +962,50 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             ]}>
                                                 {message.content}
                                             </Text>
+                                        )}
+
+                                        {/* ✅ NOUVEAU: Bouton "Me livrer" dans les messages si produit mentionné */}
+                                        {(() => {
+                                            // Détecter si le message mentionne un produit ou contient des métadonnées produit
+                                            const hasProductMetadata = message.metadata?.product_id || 
+                                                                      message.metadata?.product_index ||
+                                                                      message.metadata?.service_id;
+                                            
+                                            // Vérifier aussi si le service a des produits
+                                            const serviceHasProducts = !!(service?.data?.produits || service?.produits);
+                                            
+                                            // Afficher le bouton si on a des métadonnées produit OU si le service a des produits
+                                            const shouldShowDeliveryButton = (hasProductMetadata || serviceHasProducts) && 
+                                                                             message.from === 'prestataire'; // Seulement pour les messages du prestataire
+                                            
+                                            return shouldShowDeliveryButton;
+                                        })() && (
+                                            <TouchableOpacity
+                                                style={styles.messageDeliveryButton}
+                                                onPress={() => {
+                                                    // Récupérer le produit depuis les métadonnées ou le service
+                                                    const productFromMetadata = message.metadata?.product_id ? {
+                                                        service_id: message.metadata.service_id || service?.id || service?.service_id,
+                                                        product_index: message.metadata.product_index || 0,
+                                                        ...message.metadata
+                                                    } : null;
+                                                    
+                                                    const product = productFromMetadata || 
+                                                                    service?.data?.produits?.[0] || 
+                                                                    service?.produits?.[0];
+                                                    
+                                                    if (!product && !service?.id && !service?.service_id) {
+                                                        Alert.alert('Erreur', 'Produit non disponible pour la livraison');
+                                                        return;
+                                                    }
+                                                    
+                                                    setShowFindCourierModal(true);
+                                                }}
+                                                activeOpacity={0.8}
+                                            >
+                                                <SafeIcon name="truck" size={16} color="#FFFFFF" />
+                                                <Text style={styles.messageDeliveryButtonText}>Me livrer</Text>
+                                            </TouchableOpacity>
                                         )}
 
                                         <View style={styles.messageFooter}>
@@ -1294,12 +1375,30 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 </View>
             </Modal>
 
-            {/* ✅ NOUVEAU: Modal de recherche de coursier */}
-            {service?.data?.produits && service.data.produits.length > 0 && (
+            {/* ✅ REFACTORISÉ: Modal de recherche de coursier - Gestion améliorée */}
+            {(() => {
+                // Récupérer le produit depuis différentes sources
+                const product = service?.data?.produits?.[0] || service?.produits?.[0];
+                const serviceId = service?.id || service?.service_id;
+                
+                // Si pas de produit mais qu'on a un service, créer un produit minimal
+                const productForDelivery = product || (serviceId ? {
+                    service_id: serviceId,
+                    product_index: 0,
+                    nom: titreService || 'Produit',
+                    prix: service?.data?.produits?.[0]?.prix || service?.produits?.[0]?.prix,
+                } : null);
+                
+                return productForDelivery && serviceId;
+            })() && (
                 <FindCourierModal
                     visible={showFindCourierModal}
                     onClose={() => setShowFindCourierModal(false)}
-                    product={service.data.produits[0]} // Prendre le premier produit par défaut
+                    product={service?.data?.produits?.[0] || service?.produits?.[0] || {
+                        service_id: service?.id || service?.service_id,
+                        product_index: 0,
+                        nom: titreService || 'Produit',
+                    }}
                     service={service}
                     onSuccess={(deliveryId) => {
                         Alert.alert('✅ Livraison créée', 'Votre demande de livraison a été créée avec succès');
@@ -1410,6 +1509,29 @@ const styles = StyleSheet.create({
     },
     deliveryButton: {
         backgroundColor: '#10B981' + '20', // 20% opacity pour le bouton livraison
+    },
+    deliveryButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#10B981',
+        marginLeft: 4,
+    },
+    messageDeliveryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        backgroundColor: '#10B981',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        marginTop: 8,
+        marginBottom: 4,
+    },
+    messageDeliveryButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
     participantsBadge: {
         position: 'absolute',
