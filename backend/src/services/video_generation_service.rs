@@ -410,10 +410,15 @@ pub async fn validate_video_generation_prerequisites(
 
     // Vérifier les images du produit
     if !has_images && use_product_gallery {
+        // ✅ CORRIGÉ: Inclure images ET vidéos, être plus permissif sur product_index
         let count: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM media 
              WHERE service_id = $1 
-             AND (product_index = $2 OR (product_index IS NULL AND type = 'image'))
+             AND (
+                 product_index = $2 
+                 OR product_index IS NULL
+             )
+             AND (media_type IN ('image', 'video') OR (media_type IS NULL AND type IN ('image', 'video')))
              LIMIT 1",
         )
         .bind(service_id)
@@ -429,18 +434,25 @@ pub async fn validate_video_generation_prerequisites(
         if count > 0 {
             has_images = true;
             info!(
-                "[VideoGeneration] ✅ Images trouvées dans galerie produit: {}",
-                count
+                "[VideoGeneration] ✅ Médias trouvés dans galerie produit: {} (service_id={}, product_index={})",
+                count, service_id, product_index
+            );
+        } else {
+            warn!(
+                "[VideoGeneration] ⚠️ Aucun média trouvé dans galerie produit (service_id={}, product_index={})",
+                service_id, product_index
             );
         }
     }
 
     // Vérifier la médiathèque du service
     if !has_images && use_service_mediatech {
+        // ✅ CORRIGÉ: Inclure images ET vidéos de la médiathèque générale
         let count: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM media 
              WHERE service_id = $1 
              AND (product_index IS NULL OR product_index != $2)
+             AND (media_type IN ('image', 'video') OR (media_type IS NULL AND type IN ('image', 'video')))
              LIMIT 1",
         )
         .bind(service_id)
@@ -456,8 +468,13 @@ pub async fn validate_video_generation_prerequisites(
         if count > 0 {
             has_images = true;
             info!(
-                "[VideoGeneration] ✅ Images trouvées dans médiathèque service: {}",
-                count
+                "[VideoGeneration] ✅ Médias trouvés dans médiathèque service: {} (service_id={})",
+                count, service_id
+            );
+        } else {
+            warn!(
+                "[VideoGeneration] ⚠️ Aucun média trouvé dans médiathèque service (service_id={})",
+                service_id
             );
         }
     }
@@ -2599,11 +2616,20 @@ async fn gather_media_sources(
     }
 
     if collected.is_empty() && use_product_gallery {
+        // ✅ CORRIGÉ: Inclure images ET vidéos, être plus permissif sur product_index
+        info!(
+            "[VideoGeneration] 🔍 Recherche médias produit - service_id={}, product_index={}",
+            service_id, product_index
+        );
         let rows: Vec<MediaRow> = sqlx::query_as(
             "SELECT id, path, type, ai_description
              FROM media
              WHERE service_id = $1
-             AND (product_index = $2 OR (product_index IS NULL AND type = 'image'))
+             AND (
+                 product_index = $2 
+                 OR product_index IS NULL
+             )
+             AND (media_type IN ('image', 'video') OR (media_type IS NULL AND type IN ('image', 'video')))
              ORDER BY COALESCE(is_main_image, FALSE) DESC, COALESCE(display_order, 0) ASC, id ASC
              LIMIT 16",
         )
@@ -2616,6 +2642,11 @@ async fn gather_media_sources(
             AppError::from(err)
         })?;
 
+        info!(
+            "[VideoGeneration] 📊 {} média(x) trouvé(s) en base pour le produit (service_id={}, product_index={})",
+            rows.len(), service_id, product_index
+        );
+
         for row in rows {
             let ai_description = row.ai_description.clone();
             if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
@@ -2626,16 +2657,36 @@ async fn gather_media_sources(
                     seen_ids.insert(id);
                 }
                 collected.push(source);
+                info!(
+                    "[VideoGeneration] ✅ Média ajouté: id={}, path={:?}",
+                    row.id, row.path
+                );
+            } else {
+                warn!(
+                    "[VideoGeneration] ⚠️ Média ignoré (fichier introuvable): id={}, path={:?}",
+                    row.id, row.path
+                );
             }
         }
+        
+        info!(
+            "[VideoGeneration] 📦 Total médias collectés après galerie produit: {}",
+            collected.len()
+        );
     }
 
     if use_service_mediatech {
+        // ✅ CORRIGÉ: Inclure images ET vidéos de la médiathèque générale
+        info!(
+            "[VideoGeneration] 🔍 Recherche médiathèque service - service_id={}",
+            service_id
+        );
         let rows: Vec<MediaRow> = sqlx::query_as(
             "SELECT id, path, type, ai_description
              FROM media
              WHERE service_id = $1
              AND (product_index IS NULL OR product_index != $2)
+             AND (media_type IN ('image', 'video') OR (media_type IS NULL AND type IN ('image', 'video')))
              ORDER BY uploaded_at DESC
              LIMIT 12",
         )
@@ -2648,6 +2699,11 @@ async fn gather_media_sources(
             AppError::from(err)
         })?;
 
+        info!(
+            "[VideoGeneration] 📊 {} média(x) trouvé(s) en base dans la médiathèque service (service_id={})",
+            rows.len(), service_id
+        );
+
         for row in rows {
             let ai_description = row.ai_description.clone();
             if let Some(source) = row_to_media_source(row.id, &row.path, ai_description) {
@@ -2658,8 +2714,22 @@ async fn gather_media_sources(
                     seen_ids.insert(id);
                 }
                 collected.push(source);
+                info!(
+                    "[VideoGeneration] ✅ Média ajouté: id={}, path={:?}",
+                    row.id, row.path
+                );
+            } else {
+                warn!(
+                    "[VideoGeneration] ⚠️ Média ignoré (fichier introuvable): id={}, path={:?}",
+                    row.id, row.path
+                );
             }
         }
+        
+        info!(
+            "[VideoGeneration] 📦 Total médias collectés après médiathèque service: {}",
+            collected.len()
+        );
     }
 
     if include_publicite_assets {
