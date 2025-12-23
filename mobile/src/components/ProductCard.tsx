@@ -1,1455 +1,2753 @@
+/**
+ * ProductCard v3.0 - Version optimale moderne (2025-11-02)
+ * Toutes fonctionnalités : vecteurs, variations, chat, distance, drapeau pays
+ * Sauvegarde : ProductCard.backup.tsx
+ */
+
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Linking, Modal, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
-import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
-import { useServiceStats } from '../hooks/useServiceStats';
-import { apiGet, apiPost } from '../services/api';
-import { mediaService } from '../services/mediaService';
-import FindCourierModal from './delivery/FindCourierModal';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  Dimensions,
+  Image,
+  Linking,
+  Modal,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { config } from '../config/environment';
+import { useLocation } from '../contexts/LocationContext';
+import { apiGet, apiPost, commentsApi } from '../services/api';
+import { modernColors } from '../theme/modernTheme';
+import ChatModalMobile from './ChatModalMobile';
+import OrderDeliveryModal from './delivery/OrderDeliveryModal';
+import { NativeCard } from './NativeDesign';
 import ProductCommentsSection from './ProductCommentsSection';
+import ProductMediaCarousel from './ProductMediaCarousel';
 import SafeIcon from './SafeIcon';
+import ServiceGalleryModal from './ServiceGalleryModal';
 
 const { width } = Dimensions.get('window');
 
 interface ProductCardProps {
-    product: any;
-    service: any;
-    prestataire?: any;
-    onPress?: () => void;
-    onChatPress?: () => void;
-    onGalleryPress?: () => void;
-    onWhatsAppPress?: () => void;
-    onDeliveryPress?: () => void;
+  product: any;
+  service: any;
+  prestataire?: any; // ✅ NOUVEAU: Prestataire déjà fourni depuis MixedContentCarousel
+  userLocation?: { latitude: number; longitude: number } | null;
+  onPress?: () => void;
+  onChatPress?: () => void; // ✅ NOUVEAU: Handler chat personnalisé
 }
 
+// ✅ NOUVEAU : Constantes pour réactions
+const REACTIONS = [
+  { type: 'love', emoji: '❤️', label: 'J\'adore' },
+  { type: 'like', emoji: '👍', label: 'J\'aime' },
+  { type: 'wow', emoji: '😮', label: 'Impressionnant' },
+  { type: 'interested', emoji: '🎯', label: 'Intéressant' },
+  { type: 'thinking', emoji: '🤔', label: 'À réfléchir' },
+  { type: 'disappointed', emoji: '😕', label: 'Déçu' },
+];
+
+const formatCompactNumber = (value: number | undefined | null): string => {
+  if (value === undefined || value === null) {
+    return '0';
+  }
+
+  const abs = Math.abs(value);
+
+  if (abs >= 1_000_000) {
+    const formatted = (abs / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1);
+    return `${value < 0 ? '-' : ''}${formatted}M`;
+  }
+
+  if (abs >= 1_000) {
+    const formatted = (abs / 1_000).toFixed(abs >= 10_000 ? 0 : 1);
+    return `${value < 0 ? '-' : ''}${formatted}k`;
+  }
+
+  return `${value}`;
+};
+
+const splitWithFallback = (input: any, primary?: string): string[] => {
+  if (!input || typeof input !== 'string') {
+    return [];
+  }
+
+  const cleaned = input.trim();
+  if (!cleaned) {
+    return [];
+  }
+
+  const separators = [primary, ',', ';', '>', '|', ' / ']
+    .filter((sep): sep is string => !!sep && typeof sep === 'string')
+    .filter((sep, index, list) => list.indexOf(sep) === index);
+
+  for (const separator of separators) {
+    const parts = cleaned
+      .split(separator)
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+
+    if (parts.length > 1) {
+      return parts;
+    }
+  }
+
+  return [cleaned];
+};
+
+// Mapper codes pays → drapeaux emoji
+const getCountryFlag = (country?: string): string => {
+  if (!country || typeof country !== 'string') return '🌍';
+
+  const countryLower = country.trim().toLowerCase();
+
+  // ✅ AMÉLIORÉ: Mapping plus complet et robuste
+  const countryMap: Record<string, string> = {
+    // Cameroun
+    'cameroun': '🇨🇲',
+    'cameroon': '🇨🇲',
+    'cm': '🇨🇲',
+    'cmr': '🇨🇲',
+    // Gabon
+    'gabon': '🇬🇦',
+    'ga': '🇬🇦',
+    'gab': '🇬🇦',
+    // Congo
+    'congo': '🇨🇬',
+    'cg': '🇨🇬',
+    'cog': '🇨🇬',
+    // RDC
+    'rdc': '🇨🇩',
+    'rd congo': '🇨🇩',
+    'république démocratique du congo': '🇨🇩',
+    'republic democratique du congo': '🇨🇩',
+    'cd': '🇨🇩',
+    'cod': '🇨🇩',
+    // Sénégal
+    'sénégal': '🇸🇳',
+    'senegal': '🇸🇳',
+    'sn': '🇸🇳',
+    'sen': '🇸🇳',
+    // Côte d'Ivoire
+    'côte d\'ivoire': '🇨🇮',
+    'cote d\'ivoire': '🇨🇮',
+    'ivory coast': '🇨🇮',
+    'ci': '🇨🇮',
+    'civ': '🇨🇮',
+    // Mali
+    'mali': '🇲🇱',
+    'ml': '🇲🇱',
+    'mli': '🇲🇱',
+    // Burkina Faso
+    'burkina': '🇧🇫',
+    'burkina faso': '🇧🇫',
+    'bf': '🇧🇫',
+    'bfa': '🇧🇫',
+    // Niger
+    'niger': '🇳🇪',
+    'ne': '🇳🇪',
+    'ner': '🇳🇪',
+    // Tchad
+    'tchad': '🇹🇩',
+    'chad': '🇹🇩',
+    'td': '🇹🇩',
+    'tcd': '🇹🇩',
+    // Togo
+    'togo': '🇹🇬',
+    'tg': '🇹🇬',
+    'tgo': '🇹🇬',
+    // Bénin
+    'bénin': '🇧🇯',
+    'benin': '🇧🇯',
+    'bj': '🇧🇯',
+    'ben': '🇧🇯',
+    // Guinée
+    'guinée': '🇬🇳',
+    'guinee': '🇬🇳',
+    'guinea': '🇬🇳',
+    'gn': '🇬🇳',
+    'gin': '🇬🇳',
+    // Madagascar
+    'madagascar': '🇲🇬',
+    'mg': '🇲🇬',
+    'mdg': '🇲🇬',
+    // France
+    'france': '🇫🇷',
+    'fr': '🇫🇷',
+    'fra': '🇫🇷',
+    // USA
+    'usa': '🇺🇸',
+    'united states': '🇺🇸',
+    'united states of america': '🇺🇸',
+    'us': '🇺🇸',
+  };
+
+  // Recherche exacte d'abord
+  if (countryMap[countryLower]) {
+    return countryMap[countryLower];
+  }
+
+  // Recherche partielle (contient)
+  for (const [key, flag] of Object.entries(countryMap)) {
+    if (countryLower.includes(key) || key.includes(countryLower)) {
+      return flag;
+    }
+  }
+
+  return '🌍';
+};
+
+// ✅ NOUVEAU 2025-11-26: Helper pour construire l'URL complète d'un média
+const buildMediaUrl = (path: string | undefined | null): string | undefined => {
+  if (!path || typeof path !== 'string') return undefined;
+
+  // Si c'est déjà une URL complète (http/https), la retourner telle quelle
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+
+  // Si c'est un data URI (base64), le retourner tel quel
+  if (path.startsWith('data:')) {
+    return path;
+  }
+
+  // Si c'est un chemin relatif (uploads/...), préfixer avec l'URL de l'API
+  if (path.startsWith('uploads/') || path.startsWith('/uploads/')) {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${config.API_BASE_URL}${cleanPath}`;
+  }
+
+  // Sinon, essayer de construire l'URL complète
+  return path.startsWith('/') ? `${config.API_BASE_URL}${path}` : `${config.API_BASE_URL}/${path}`;
+};
+
+const firstNonEmptyString = (...values: any[]): string | undefined => {
+  for (const candidate of values) {
+    if (typeof candidate === 'string') {
+      const trimmed = candidate.trim();
+      if (trimmed.length > 0) {
+        return trimmed;
+      }
+    }
+  }
+  return undefined;
+};
+
+const parseDistanceToKm = (value: any): number | undefined => {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase().replace(',', '.');
+    const match = normalized.match(/([\d.]+)/);
+    if (!match) {
+      return undefined;
+    }
+
+    const numeric = parseFloat(match[1]);
+    if (!Number.isFinite(numeric)) {
+      return undefined;
+    }
+
+    if (normalized.includes('m') && !normalized.includes('km')) {
+      return numeric / 1000;
+    }
+
+    return numeric;
+  }
+
+  return undefined;
+};
+
 const ProductCard: React.FC<ProductCardProps> = ({
-    product,
-    service,
-    prestataire,
-    onPress,
-    onChatPress,
-    onGalleryPress,
-    onWhatsAppPress,
-    onDeliveryPress,
+  product,
+  service,
+  prestataire: prestataireFromProps,
+  userLocation = null,
+  onPress,
+  onChatPress,
 }) => {
-    const [showAllImages, setShowAllImages] = useState(false);
-    const [showFindCourierModal, setShowFindCourierModal] = useState(false);
-    const [showRatingModal, setShowRatingModal] = useState(false);
-    const [checkingAvailability, setCheckingAvailability] = useState(false);
-    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-    const [videoStatus, setVideoStatus] = useState<any>({});
-    const [mediaErrors, setMediaErrors] = useState<Set<number>>(new Set());
-    const carouselRef = useRef<FlatList>(null);
-    const videoRef = useRef<Video>(null);
-    const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
+  // ✅ CORRIGÉ: Utiliser LocationContext pour calculer la distance si nécessaire
+  const { calculateDistance: locationCalculateDistance, location: contextLocation } = useLocation();
+  const effectiveUserLocation = userLocation || (contextLocation ? { latitude: contextLocation.coords.latitude, longitude: contextLocation.coords.longitude } : null);
+  const navigation = useNavigation();
+  const [imageError, setImageError] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
+  // ✅ NOUVEAU : États pour contact privé
+  const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
+  const [chatContext, setChatContext] = useState<{
+    type: 'service' | 'private';
+    targetUserId?: number;
+    targetUserName?: string;
+    targetAvatar?: string | null;
+  } | null>(null);
+  // ✅ NOUVEAU : États pour avis/ratings et galerie
+  const [showGallery, setShowGallery] = useState(false);
+  // ✅ NOUVEAU : États pour réactions
+  const [reactions, setReactions] = useState<Record<string, { count: number; hasReacted: boolean }>>({});
+  const [hoveredReaction, setHoveredReaction] = useState<string | null>(null);
+  const [loadingReactions, setLoadingReactions] = useState(false);
+  const [pendingReaction, setPendingReaction] = useState<string | null>(null);
+  // ✅ NOUVEAU : États pour commentaires compacts
+  const [commentStats, setCommentStats] = useState<{ total_comments: number; rating_count: number; average_rating: number } | null>(null);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
 
-    // ✅ NOUVEAU: Récupérer les stats actualisées du service (inclut rating et totalRatings)
-    const serviceIdForStats = service?.id || service?.service_id;
-    const serviceCreatedAt = service?.date_creation || service?.created_at || new Date().toISOString();
-    const numericServiceId = serviceIdForStats ? parseInt(serviceIdForStats.toString(), 10) : 0;
-    const { stats: serviceStats } = useServiceStats(numericServiceId > 0 ? numericServiceId : 0, serviceCreatedAt);
-    
-    // ✅ NOUVEAU: État pour les statistiques des commentaires (mis à jour depuis ProductCommentsSection)
-    const [commentStats, setCommentStats] = useState<{
-        total_comments: number;
-        rating_count: number;
-        average_rating: number;
-    } | null>(null);
+  // Données produit
+  const productVector = Array.isArray(product.product_vector)
+    ? product.product_vector
+    : Array.isArray(product.characteristic_vector)
+      ? product.characteristic_vector
+      : typeof product.product_vector === 'string'
+        ? splitWithFallback(product.product_vector, ',')
+        : [];
+  const maxDisplayedCaracs = 6;
+  const limitedProductVector = productVector.slice(0, maxDisplayedCaracs);
+  const hasMoreCaracs = productVector.length > maxDisplayedCaracs;
 
-    // Récupérer la configuration intelligente de la catégorie
-    const categoryConfig = getCategoryConfig(product.type || 'default');
-    const categoryStyle = getCategoryStyle(product.type || 'default');
-    const terminology = getCategoryTerminology(product.type || 'default');
+  const rawLocationVector = product.location_vector || product.locationVector || product.location?.vector;
+  const locationVector = Array.isArray(rawLocationVector)
+    ? rawLocationVector.filter(Boolean)
+    : typeof rawLocationVector === 'string'
+      ? splitWithFallback(rawLocationVector, ',')
+      : [];
 
-    // ✅ RÉÉCRIT COMPLÈTEMENT: États pour les médias chargés depuis l'API
-    const [loadedImages, setLoadedImages] = useState<string[]>([]);
-    const [loadedVideos, setLoadedVideos] = useState<string[]>([]);
-    const [mediaLoading, setMediaLoading] = useState(true);
+  // ✅ AMÉLIORATION: Afficher quartier en priorité, puis ville, puis région
+  // ✅ CORRIGÉ: Vérifier aussi dans service directement (pas seulement service.data)
+  // ✅ CORRIGÉ: Vérifier aussi dans les produits du service.data.produits
+  const extractLocationFromProductData = (serviceData: any): string | undefined => {
+    if (!serviceData || typeof serviceData !== 'object') return undefined;
 
-    // ✅ RÉÉCRIT: Fonction pour normaliser un champ média (gère tableaux, objets, strings)
-    const normalizeMediaField = (field: any): string[] => {
-        if (!field) return [];
-        
-        // Si c'est un tableau
-        if (Array.isArray(field)) {
-            return field
-                .map((item: any) => {
-                    // Si l'item est un objet avec valeur
-                    if (item && typeof item === 'object' && item.valeur) {
-                        return item.valeur;
-                    }
-                    // Si l'item est une string
-                    if (typeof item === 'string' && item.trim().length > 0) {
-                        return item.trim();
-                    }
-                    return null;
-                })
-                .filter((item: string | null): item is string => item !== null);
+    // Vérifier dans data.produits (array ou object)
+    const produits = serviceData.produits;
+    if (produits) {
+      // Si c'est un array, prendre le premier produit
+      if (Array.isArray(produits) && produits.length > 0) {
+        const firstProduct = produits[0];
+        if (typeof firstProduct === 'object') {
+          return firstNonEmptyString(
+            firstProduct.adresse,
+            firstProduct.adresse_complete,
+            firstProduct.localisation,
+            firstProduct.lieu,
+            firstProduct.ville,
+            firstProduct.quartier,
+            firstProduct.region,
+            firstProduct.location,
+            firstProduct.chosen_location,
+          );
         }
-        
-        // Si c'est un objet avec valeur
-        if (typeof field === 'object' && field.valeur) {
-            return [field.valeur];
+      }
+      // Si c'est un object avec valeur (array)
+      if (typeof produits === 'object' && produits.valeur && Array.isArray(produits.valeur) && produits.valeur.length > 0) {
+        const firstProduct = produits.valeur[0];
+        if (typeof firstProduct === 'object') {
+          return firstNonEmptyString(
+            firstProduct.adresse,
+            firstProduct.adresse_complete,
+            firstProduct.localisation,
+            firstProduct.lieu,
+            firstProduct.ville,
+            firstProduct.quartier,
+            firstProduct.region,
+            firstProduct.location,
+            firstProduct.chosen_location,
+          );
         }
-        
-        // Si c'est une string
-        if (typeof field === 'string' && field.trim().length > 0) {
-            return [field.trim()];
-        }
-        
-        return [];
+      }
+    }
+
+    return undefined;
+  };
+
+  const chosenLocation = firstNonEmptyString(
+    // ✅ CORRIGÉ: Priorité 1 - Données produit directes
+    product.chosen_location,
+    product.location?.primary,
+    product.location?.address,
+    product.location?.formatted_address,
+    product.location?.full_address,
+    locationVector[0], // Premier élément = lieu exact choisi par prestataire
+    product.location_name,
+    product.location_label,
+    product.location_text,
+    product.location,
+    product.lieu,
+    product.quartier,
+    product.city,
+    product.ville,
+    product.commune,
+    product.region,
+    product.departement,
+    product.adresse_complete,
+    product.adresse,
+    product.address,
+    product.localisation,
+    product.site,
+    // ✅ CORRIGÉ: Priorité 2 - Extraire depuis service.data.produits
+    extractLocationFromProductData(service?.data),
+    // ✅ CORRIGÉ: Priorité 3 - service directement
+    service?.adresse_complete,
+    service?.adresse,
+    service?.adresse_service,
+    service?.adresse_prestataire,
+    service?.localisation,
+    service?.lieu,
+    service?.ville,
+    service?.quartier,
+    service?.region,
+    // ✅ CORRIGÉ: Priorité 4 - service.data (champs dynamiques)
+    service?.data?.adresse_complete?.valeur,
+    service?.data?.adresse?.valeur,
+    service?.data?.adresse_service?.valeur,
+    service?.data?.adresse_prestataire?.valeur,
+    service?.data?.localisation?.valeur,
+    service?.data?.lieu?.valeur,
+    service?.data?.ville?.valeur,
+    service?.data?.quartier?.valeur,
+    service?.data?.region?.valeur,
+    // ✅ CORRIGÉ: Priorité 5 - service.data.location (objet)
+    service?.data?.location?.address,
+    service?.data?.location?.formatted_address,
+    service?.data?.location?.full_address,
+    service?.data?.location?.primary,
+  ) || '';
+
+  const hasVariant = product.has_variant || false;
+  const variants = product.variants || [];
+  // ✅ CORRIGÉ: Construire le nom du prestataire depuis service.user si disponible
+  const buildPrestataireNameFromUser = (user: any): string | undefined => {
+    if (!user) return undefined;
+    // Priorité 1: nom_complet
+    if (user.nom_complet && typeof user.nom_complet === 'string' && user.nom_complet.trim()) {
+      return user.nom_complet.trim();
+    }
+    // Priorité 2: nom + prenom
+    const nom = user.nom || '';
+    const prenom = user.prenom || '';
+    if (nom || prenom) {
+      return `${prenom} ${nom}`.trim();
+    }
+    // Priorité 3: email (première partie)
+    if (user.email && typeof user.email === 'string') {
+      return user.email.split('@')[0];
+    }
+    return undefined;
+  };
+
+  const rawPrestataire =
+    prestataireFromProps ||
+    product.prestataire ||
+    service?.prestataire ||
+    {
+      nom: buildPrestataireNameFromUser(service?.user) ||
+        service?.prestataire?.name || // ✅ CORRIGÉ: Vérifier aussi 'name' (format API)
+        service?.prestataire?.nom ||
+        service?.prestataire?.nom_complet ||
+        service?.data?.nom_prestataire?.valeur ||
+        service?.data?.prestataire_nom?.valeur ||
+        service?.data?.contact_nom?.valeur ||
+        service?.data?.nom_prestataire ||
+        service?.data?.prestataire_nom ||
+        product?.prestataire_nom ||
+        product?.prestataire_name ||
+        product?.owner_name ||
+        product?.vendor_name ||
+        'Prestataire',
+      user_id: service?.user_id || service?.user?.id,
+      avatar_url: service?.prestataire?.photo || service?.prestataire?.avatar_url || service?.user?.avatar_url || service?.user?.photo_profil || service?.data?.photo_prestataire?.valeur,
     };
 
-    // ✅ RÉÉCRIT: Charger les médias depuis l'API si nécessaire
-    useEffect(() => {
-        const loadMedia = async () => {
-            setMediaLoading(true);
-            
-            try {
-                // 1. Essayer d'extraire depuis les champs directs du produit
-                let images: string[] = [];
-                let videos: string[] = [];
-                
-                // Extraire depuis product.images, product.imagesRealisations, etc.
-                images = [
-                    ...normalizeMediaField(product.images),
-                    ...normalizeMediaField(product.imagesRealisations),
-                    ...normalizeMediaField(product.images_realisations),
-                ];
-                
-                videos = [
-                    ...normalizeMediaField(product.videos),
-                    ...normalizeMediaField(product.videosRealisations),
-                    ...normalizeMediaField(product.videos_realisations),
-                ];
-                
-                // 2. Si pas de médias dans le produit, charger depuis l'API
-                const serviceId = service?.id || service?.service_id;
-                const productIndex = typeof product.product_index === 'number' 
-                    ? product.product_index 
-                    : (typeof product.index === 'number' ? product.index : null);
-                
-                // Si on a un serviceId et un productIndex, charger depuis l'API
-                if (serviceId && productIndex !== null && productIndex !== undefined && (images.length === 0 && videos.length === 0)) {
-                    try {
-                        // Charger images depuis API
-                        const imagesResp = await apiGet(`/api/media/product/${serviceId}/${productIndex}/images`);
-                        if (imagesResp?.success && imagesResp?.data) {
-                            const apiImages = imagesResp.data.images || imagesResp.data.Images || imagesResp.images || [];
-                            if (Array.isArray(apiImages) && apiImages.length > 0) {
-                                images = apiImages.filter((img: any) => img && typeof img === 'string' && img.trim().length > 0);
-                            }
-                        }
-                        
-                        // Charger vidéos depuis API
-                        const videosResp = await apiGet(`/api/media/product/${serviceId}/${productIndex}/videos`);
-                        if (videosResp?.success && videosResp?.data) {
-                            const apiVideos = videosResp.data.videos || videosResp.data.Videos || videosResp.videos || [];
-                            if (Array.isArray(apiVideos) && apiVideos.length > 0) {
-                                videos = apiVideos.filter((vid: any) => vid && typeof vid === 'string' && vid.trim().length > 0);
-                            }
-                        }
-                    } catch (apiError) {
-                        console.warn('[ProductCard] Erreur chargement médias API:', apiError);
-                        // Continuer avec les médias extraits directement
-                    }
-                }
-                
-                // 3. Transformer les chemins en URLs valides via mediaService
-                const processedImages = images
-                    .map((img: string) => {
-                        try {
-                            const url = mediaService.getImageUrl(img);
-                            return url && url.trim().length > 0 ? url : null;
-                        } catch (e) {
-                            console.warn('[ProductCard] Erreur conversion image URL:', img, e);
-                            return null;
-                        }
-                    })
-                    .filter((url: string | null): url is string => url !== null);
-                
-                const processedVideos = videos
-                    .map((vid: string) => {
-                        try {
-                            const url = mediaService.getVideoUrl(vid);
-                            return url && url.trim().length > 0 ? url : null;
-                        } catch (e) {
-                            console.warn('[ProductCard] Erreur conversion video URL:', vid, e);
-                            return null;
-                        }
-                    })
-                    .filter((url: string | null): url is string => url !== null);
-                
-                setLoadedImages(processedImages);
-                setLoadedVideos(processedVideos);
-                // Réinitialiser les erreurs quand les médias changent
-                setMediaErrors(new Set());
-                
-                if (__DEV__) {
-                    console.log('[ProductCard] Médias chargés:', {
-                        serviceId,
-                        productIndex,
-                        imagesCount: processedImages.length,
-                        videosCount: processedVideos.length,
-                        images: processedImages.slice(0, 2),
-                        videos: processedVideos.slice(0, 2),
-                    });
-                }
-            } catch (error) {
-                console.error('[ProductCard] Erreur chargement médias:', error);
-                setLoadedImages([]);
-                setLoadedVideos([]);
-                setMediaErrors(new Set());
-            } finally {
-                setMediaLoading(false);
+  // ✅ NOUVEAU: Fonction pour nettoyer le nom et éviter les duplications
+  const cleanPrestataireName = (name: string | undefined | null): string | undefined => {
+    if (!name || typeof name !== 'string') return undefined;
+    const trimmed = name.trim();
+    if (!trimmed) return undefined;
+
+    // Détecter et corriger les duplications (ex: "Lélé Hernandez Lélé Hernandez")
+    const words = trimmed.split(/\s+/);
+    if (words.length >= 2) {
+      const firstHalf = words.slice(0, Math.ceil(words.length / 2)).join(' ');
+      const secondHalf = words.slice(Math.ceil(words.length / 2)).join(' ');
+      if (firstHalf === secondHalf) {
+        return firstHalf; // Retourner seulement la première moitié si duplication
+      }
+    }
+
+    return trimmed;
+  };
+
+  const rawPrestataireName = firstNonEmptyString(
+    // ✅ CORRIGÉ: Priorité 1 - Construire depuis service.user (source de vérité)
+    buildPrestataireNameFromUser(service?.user),
+    // ✅ CORRIGÉ: Priorité 2 - Vérifier service.prestataire.name (format API)
+    service?.prestataire?.name,
+    service?.prestataire?.nom,
+    service?.prestataire?.nom_complet,
+    // Priorité 3 - rawPrestataire (déjà construit)
+    rawPrestataire?.nom,
+    rawPrestataire?.nom_complet,
+    rawPrestataire?.name,
+    rawPrestataire?.username,
+    rawPrestataire?.display_name,
+    rawPrestataire?.full_name,
+    rawPrestataire?.raison_sociale,
+    // Priorité 4 - product.prestataire
+    product.prestataire?.nom,
+    product.prestataire?.nom_complet,
+    product.prestataire?.name,
+    product.prestataire_nom,
+    product.prestataire_nom_affiche,
+    product.prestataire_nom_commercial,
+    product.prestataire_nom_complet,
+    product.prestataire_name,
+    product.prestataire_fullname,
+    // Priorité 5 - product.owner/vendor
+    product.owner?.nom,
+    product.owner?.nom_complet,
+    product.owner?.name,
+    product.owner?.full_name,
+    product.vendor?.nom,
+    product.vendor?.name,
+    product.user_name,
+    product.contact_nom,
+    product.contact_name,
+    product.responsable_nom,
+    product.gerant_nom,
+    // Priorité 6 - service.data (champs dynamiques)
+    service?.data?.nom_prestataire?.valeur,
+    service?.data?.prestataire_nom?.valeur,
+    service?.data?.contact_nom?.valeur,
+    service?.data?.nom?.valeur,
+    service?.data?.nom_entreprise?.valeur,
+    service?.data?.responsable_nom?.valeur,
+    service?.data?.representant_nom?.valeur,
+    // Priorité 7 - service.user (autres champs)
+    service?.user?.name,
+    service?.user?.username,
+    service?.user?.display_name,
+  ) || 'Prestataire';
+
+  // ✅ CORRIGÉ: Nettoyer le nom pour éviter les duplications
+  const prestataireName = cleanPrestataireName(rawPrestataireName) || 'Prestataire';
+
+  const prestataireAvatar = firstNonEmptyString(
+    // ✅ CORRIGÉ: Priorité 1 - service.user (source de vérité)
+    service?.user?.avatar_url,
+    service?.user?.photo_profil,
+    // ✅ CORRIGÉ: Priorité 2 - service.prestataire
+    service?.prestataire?.avatar_url,
+    service?.prestataire?.photo,
+    service?.prestataire?.avatar,
+    // Priorité 3 - rawPrestataire
+    rawPrestataire?.avatar_url,
+    rawPrestataire?.photo_profil,
+    rawPrestataire?.photo,
+    rawPrestataire?.avatar,
+    rawPrestataire?.image_url,
+    // Priorité 4 - product.prestataire
+    product.prestataire_avatar,
+    product.prestataire?.avatar_url,
+    product.prestataire?.avatar,
+    product.owner?.avatar,
+    product.vendor?.avatar_url,
+    // Priorité 5 - service.data (champs dynamiques)
+    service?.data?.photo_prestataire?.valeur,
+    service?.data?.photo_profil?.valeur,
+  );
+
+  const prestataireUserId =
+    rawPrestataire?.user_id ||
+    product.prestataire?.user_id ||
+    service?.user_id ||
+    service?.data?.user_id;
+
+  const prestataire = {
+    ...rawPrestataire,
+    nom: prestataireName,
+    nom_complet: prestataireName,
+    avatar_url: prestataireAvatar,
+    user_id: prestataireUserId,
+  };
+
+  // ✅ NOUVEAU : Popularité (usage_count de autocomplete_characteristics)
+  const usageCount = product.usage_count || 0;
+  const isPopular = usageCount >= 5;  // Populaire si recherché 5+ fois
+  const isTrending = usageCount >= 10; // Tendance si recherché 10+ fois
+
+  // Images et vidéos
+  // ✅ CORRIGÉ: Extraire depuis product.images directement (depuis extractSearchResults)
+  const rawProductImages: string[] = Array.isArray(product.images)
+    ? product.images.filter(Boolean)
+    : [];
+  // ✅ NOUVEAU: Extraire aussi depuis service.data.produits si disponible
+  // Note: productIndex sera déclaré plus bas, on le calcule ici temporairement
+  const tempProductIndex = typeof product.product_index === 'number'
+    ? product.product_index
+    : typeof product.index === 'number'
+      ? product.index
+      : 0;
+  const produitsFromService = service?.data?.produits;
+  let productImagesFromService: string[] = [];
+  let productVideosFromService: string[] = [];
+  if (produitsFromService) {
+    // Si c'est un array, prendre le produit à l'index
+    if (Array.isArray(produitsFromService) && produitsFromService.length > tempProductIndex) {
+      const targetProduct = produitsFromService[tempProductIndex];
+      if (targetProduct && typeof targetProduct === 'object') {
+        productImagesFromService = Array.isArray(targetProduct.images)
+          ? targetProduct.images.filter(Boolean)
+          : [];
+        productVideosFromService = Array.isArray(targetProduct.videos)
+          ? targetProduct.videos.filter(Boolean)
+          : [];
+      }
+    }
+    // Si c'est un object avec valeur (array)
+    else if (typeof produitsFromService === 'object' && produitsFromService.valeur && Array.isArray(produitsFromService.valeur) && produitsFromService.valeur.length > tempProductIndex) {
+      const targetProduct = produitsFromService.valeur[tempProductIndex];
+      if (targetProduct && typeof targetProduct === 'object') {
+        productImagesFromService = Array.isArray(targetProduct.images)
+          ? targetProduct.images.filter(Boolean)
+          : [];
+        productVideosFromService = Array.isArray(targetProduct.videos)
+          ? targetProduct.videos.filter(Boolean)
+          : [];
+      }
+    }
+  }
+  const rawServiceImages: string[] = Array.isArray(service?.images)
+    ? (service?.images as string[]).filter(Boolean)
+    : [];
+  const serviceBannerImage = buildMediaUrl(
+    firstNonEmptyString(
+      service?.data?.banner?.valeur,
+      service?.data?.banner,
+      service?.data?.banniere?.valeur,
+      service?.data?.banniere,
+    )
+  );
+  const serviceLogoImage = buildMediaUrl(
+    firstNonEmptyString(
+      service?.data?.logo?.valeur,
+      service?.data?.logo,
+    )
+  );
+  const googlePlaceMeta = service?.data?.google_place;
+  const googlePhotoUrls: string[] = Array.isArray(googlePlaceMeta?.photos)
+    ? (googlePlaceMeta.photos as any[])
+      .map((photo) => {
+        const name = typeof photo?.name === 'string' ? photo.name : null;
+        if (!name) {
+          return null;
+        }
+        const maxWidth =
+          typeof photo?.width_px === 'number' && photo.width_px > 0
+            ? Math.min(photo.width_px, 1600)
+            : 800;
+        return `${config.API_BASE_URL}/api/places/photo?name=${encodeURIComponent(
+          name,
+        )}&maxWidth=${maxWidth}`;
+      })
+      .filter((url): url is string => typeof url === 'string')
+    : [];
+
+  const orderedImages: string[] = [];
+  const addImage = (uri?: string | null) => {
+    if (!uri) return;
+    // ✅ NOUVEAU 2025-11-26: Construire l'URL complète pour les chemins relatifs
+    const fullUrl = buildMediaUrl(uri);
+    if (!fullUrl) return;
+    if (orderedImages.includes(fullUrl)) return;
+    orderedImages.push(fullUrl);
+  };
+
+  addImage(serviceBannerImage);
+  addImage(serviceLogoImage);
+  rawProductImages.forEach(addImage);
+  productImagesFromService.forEach(addImage); // ✅ NOUVEAU: Ajouter images depuis service.data.produits
+  rawServiceImages.forEach(addImage);
+  googlePhotoUrls.forEach(addImage);
+
+  const images = orderedImages;
+  const videos: string[] = Array.isArray(product.videos)
+    ? product.videos.filter(Boolean)
+    : productVideosFromService.length > 0
+      ? productVideosFromService // ✅ NOUVEAU: Utiliser videos depuis service.data.produits si disponible
+      : Array.isArray(service?.videos)
+        ? (service?.videos as string[]).filter(Boolean)
+        : [];
+
+  const googleRating =
+    typeof googlePlaceMeta?.rating === 'number' ? googlePlaceMeta.rating : null;
+  const googleRatingCount =
+    typeof googlePlaceMeta?.rating_count === 'number'
+      ? googlePlaceMeta.rating_count
+      : null;
+  const googlePrimaryTag = firstNonEmptyString(
+    googlePlaceMeta?.primary_type_display_name,
+    googlePlaceMeta?.primary_type,
+  );
+  const googleCuisineBadges = Array.isArray(googlePlaceMeta?.serves_cuisine)
+    ? (googlePlaceMeta.serves_cuisine as string[])
+      .filter((cuisine) => typeof cuisine === 'string' && cuisine.trim().length > 0)
+      .slice(0, 3)
+    : [];
+  const googleOpenNow = (() => {
+    const opening = googlePlaceMeta?.current_opening_hours;
+    if (opening && typeof opening === 'object' && 'openNow' in opening) {
+      const value = (opening as any).openNow;
+      if (typeof value === 'boolean') {
+        return value;
+      }
+    }
+    return null;
+  })();
+  const googleOpeningHeadline = (() => {
+    const opening = googlePlaceMeta?.current_opening_hours;
+    if (opening && typeof opening === 'object') {
+      const nextMessage = (opening as any).nextOpenTimeMessage;
+      if (typeof nextMessage === 'string' && nextMessage.trim().length > 0) {
+        return nextMessage.trim();
+      }
+      const descriptions = (opening as any).weekdayDescriptions;
+      if (Array.isArray(descriptions) && descriptions.length > 0) {
+        return descriptions[0];
+      }
+    }
+    return null;
+  })();
+  const googleEditorialSummary =
+    typeof googlePlaceMeta?.editorial_summary === 'string'
+      ? googlePlaceMeta.editorial_summary
+      : undefined;
+  const googleMapsUri =
+    typeof googlePlaceMeta?.google_maps_uri === 'string'
+      ? googlePlaceMeta.google_maps_uri
+      : undefined;
+
+  // Image de la variation sélectionnée (si existe)
+  const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
+    ? variants[selectedVariantIndex]
+    : null;
+  const variantImage = selectedVariant?.image || selectedVariant?.images?.[0];
+  const hasMedia = images.length > 0 || videos.length > 0 || !!variantImage;
+
+  const serviceId = product.service_id || service?.id;
+  const productIndex =
+    typeof product.product_index === 'number'
+      ? product.product_index
+      : typeof product.index === 'number'
+        ? product.index
+        : 0;
+  const resolvedProductId =
+    product.product_id ||
+    product.id ||
+    (serviceId ? `${serviceId}_${productIndex}` : null);
+
+  // ✅ Vérifier si c'est un produit (pas une prestation de service)
+  // Par défaut, si le type n'est pas défini, on considère que c'est un produit
+  const isProduct = product.type !== 'prestation_service';
+
+  // ✅ CORRECTION 2025-11-29: Extraire le prix depuis service.data.produits avec améliorations
+  const extractPriceFromProductData = (serviceData: any, productIndex: number = 0): { prix: number; devise: string } => {
+    if (!serviceData || typeof serviceData !== 'object') return { prix: 0, devise: 'XAF' };
+
+    const produits = serviceData.produits;
+    if (!produits) return { prix: 0, devise: 'XAF' };
+
+    let targetProduct: any = null;
+
+    // Si c'est un array, prendre le produit à l'index spécifié
+    if (Array.isArray(produits) && produits.length > productIndex) {
+      targetProduct = produits[productIndex];
+    }
+    // Si c'est un object avec valeur (array)
+    else if (typeof produits === 'object' && produits.valeur && Array.isArray(produits.valeur) && produits.valeur.length > productIndex) {
+      targetProduct = produits.valeur[productIndex];
+    }
+
+    if (!targetProduct) return { prix: 0, devise: 'XAF' };
+
+    // Si le produit est une chaîne (format concaténé), parser
+    if (typeof targetProduct === 'string') {
+      const parts = targetProduct.split(',').map(p => p.trim());
+      // Format: "nom,categorie,description,prix" ou "nom,categorie,description,prix,devise"
+      // Chercher le dernier élément numérique (prix)
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const numericValue = parseFloat(parts[i]);
+        if (!isNaN(numericValue) && numericValue > 0) {
+          // La devise peut être après le prix ou par défaut XAF
+          const devise = parts[i + 1] || 'XAF';
+          return { prix: numericValue, devise };
+        }
+      }
+      return { prix: 0, devise: 'XAF' };
+    }
+    // Si c'est un objet, extraire prix et devise
+    else if (typeof targetProduct === 'object') {
+      // ✅ AMÉLIORÉ 2025-11-29: Chercher dans plus d'endroits
+      let prix = targetProduct.prix ||
+        targetProduct.prix_produit ||
+        targetProduct.price ||
+        (typeof targetProduct.prix === 'string' ? parseFloat(targetProduct.prix) : 0);
+
+      // ✅ NOUVEAU: Gérer cas prix = "0", null, undefined
+      if (prix === 0 || prix === null || prix === undefined || prix === "0" || (typeof prix === 'string' && prix.trim() === "0")) {
+        // Chercher dans variants si disponible
+        if (targetProduct.variants && Array.isArray(targetProduct.variants) && targetProduct.variants.length > 0) {
+          const validVariants = targetProduct.variants.filter((v: any) => v && (v.prix || v.price) && (v.prix > 0 || v.price > 0));
+          if (validVariants.length > 0) {
+            const minVariantPrice = Math.min(...validVariants.map((v: any) => v.prix || v.price || 0));
+            if (minVariantPrice > 0) {
+              prix = minVariantPrice;
             }
-        };
-        
-        loadMedia();
-    }, [product, service?.id, service?.service_id, product.product_index, product.index]);
-    
-    // Construire la liste des médias avec validation
-    const allMedia = [
-        ...loadedVideos.map((v: string) => ({ type: 'video', uri: v })),
-        ...loadedImages.map((i: string) => ({ type: 'image', uri: i }))
-    ].filter((media) => media.uri && media.uri.trim().length > 0);
-    
-    const hasMedia = allMedia.length > 0;
-    const mainImage = loadedImages[0] || null;
-    const hasVideo = loadedVideos.length > 0;
+          }
+        }
+        // Chercher aussi dans variations (format alternatif)
+        if (prix === 0 && targetProduct.variations && Array.isArray(targetProduct.variations) && targetProduct.variations.length > 0) {
+          const validVariations = targetProduct.variations.filter((v: any) => v && (v.prix || v.price) && (v.prix > 0 || v.price > 0));
+          if (validVariations.length > 0) {
+            const minVariationPrice = Math.min(...validVariations.map((v: any) => v.prix || v.price || 0));
+            if (minVariationPrice > 0) {
+              prix = minVariationPrice;
+            }
+          }
+        }
+      }
 
-    // GPS prioritaire : produit > service gps_fixe > service gps
-    const productGPS = product.gps || product.gpsFixe;
-    const serviceGPS = service.data?.gps_fixe?.valeur || service.data?.gps_fixe || service.gps;
-    const displayGPS = productGPS || serviceGPS;
+      const devise = targetProduct.devise ||
+        targetProduct.devise_produit ||
+        targetProduct.currency ||
+        targetProduct.variants?.[0]?.devise ||
+        targetProduct.variants?.[0]?.currency ||
+        'XAF';
 
-    // Formater le prix
-    const formatPrice = () => {
-        if (!product.prix) return null;
-        const devise = product.devise || 'FCFA';
-        return `${parseFloat(product.prix).toLocaleString()} ${devise}`;
+      // ✅ AMÉLIORÉ: Convertir prix en number si string
+      const prixNumber = typeof prix === 'number' ? prix : (typeof prix === 'string' ? parseFloat(prix) || 0 : 0);
+
+      return {
+        prix: prixNumber > 0 ? prixNumber : 0,
+        devise: typeof devise === 'string' ? devise : 'XAF'
+      };
+    }
+
+    return { prix: 0, devise: 'XAF' };
+  };
+
+  // ✅ NOUVEAU 2025-11-29: Formater prix en milliers (150000 → "150 000")
+  const formatPrice = (price: number | undefined | null): string => {
+    if (price === undefined || price === null || price === 0 || isNaN(price)) {
+      return '0';
+    }
+    return price.toLocaleString('fr-FR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    });
+  };
+
+  // Extraire le prix depuis service.data.produits si nécessaire
+  const extractedPriceData = extractPriceFromProductData(service?.data, productIndex);
+
+  // ✅ AMÉLIORÉ 2025-11-29: Prix avec extraction améliorée depuis multiple sources
+  const displayPrice = hasVariant && variants.length > 0
+    ? Math.min(...variants.map((v: any) => v.prix || v.price || 0))
+    : (() => {
+      // Chercher dans product directement
+      let prix = product.prix || product.prix_produit || product.price;
+      // Convertir string en number si nécessaire
+      if (typeof prix === 'string') {
+        const parsed = parseFloat(prix);
+        prix = isNaN(parsed) ? 0 : parsed;
+      }
+      // Si prix = 0, null, undefined, chercher dans extractedPriceData
+      if (!prix || prix === 0 || prix === "0") {
+        prix = extractedPriceData.prix;
+      }
+      return prix || 0;
+    })();
+
+  const devise = product.devise ||
+    variants[0]?.devise ||
+    extractedPriceData.devise ||
+    'XAF';
+
+  // ✅ CORRIGÉ: Calculer la distance avec plusieurs sources
+  // 1. Distance fournie directement
+  const rawDistance = product.distance_km
+    ?? product.distanceKm
+    ?? product.distance
+    ?? product.distance_client
+    ?? product.distance_user
+    ?? product.distance_user_km
+    ?? product.distanceFromUser
+    ?? product.distance_text
+    ?? service?.distance_km
+    ?? service?.distanceKm
+    ?? service?.distance;
+
+  let distanceKm = parseDistanceToKm(rawDistance);
+
+  // 2. ✅ NOUVEAU: Calculer la distance côté client si userLocation et service GPS disponibles
+  if (!distanceKm && effectiveUserLocation) {
+    // Extraire les coordonnées GPS du service
+    const parseGPS = (gpsValue: any): { lat: number; lng: number } | null => {
+      if (!gpsValue) return null;
+
+      // Format 1: "lat,lng" ou "lat|lng"
+      if (typeof gpsValue === 'string') {
+        const parts = gpsValue.replace(/\s+/g, '').split(/[,|]/);
+        if (parts.length >= 2) {
+          const lat = parseFloat(parts[0]);
+          const lng = parseFloat(parts[1]);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            return { lat, lng };
+          }
+        }
+      }
+
+      // Format 2: Objet { lat, lng } ou { latitude, longitude }
+      if (typeof gpsValue === 'object') {
+        const lat = gpsValue.lat ?? gpsValue.latitude;
+        const lng = gpsValue.lng ?? gpsValue.longitude;
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          return { lat, lng };
+        }
+      }
+
+      return null;
     };
 
-    // Obtenir l'icône et la couleur par type
-    const getTypeStyle = () => {
-        const styles = {
-            immobilier_batiment: { icon: 'home', color: '#3B82F6', bg: '#EFF6FF', label: 'Immobilier' },
-            immobilier_terrain: { icon: 'map', color: '#10B981', bg: '#D1FAE5', label: 'Terrain' },
-            hotellerie: { icon: 'building', color: '#EC4899', bg: '#FCE7F3', label: 'Hôtel' },
-            automobile: { icon: 'car', color: '#F59E0B', bg: '#FEF3C7', label: 'Auto' },
-            ticket_voyage: { icon: 'bus', color: '#8B5CF6', bg: '#F3E8FF', label: 'Voyage' },
-            covoiturage: { icon: 'users', color: '#EC4899', bg: '#FCE7F3', label: 'Covoiturage' },
-            vetement: { icon: 'shopping-bag', color: '#EF4444', bg: '#FEE2E2', label: 'Vêtement' },
-            chaussure: { icon: 'shoe-prints', color: '#F97316', bg: '#FFEDD5', label: 'Chaussure' },
-            electromenager: { icon: 'zap', color: '#14B8A6', bg: '#CCFBF1', label: 'Électro' },
-            image_son: { icon: 'tv', color: '#9C27B0', bg: '#F3E5F5', label: 'Image/Son' },
-            telephone: { icon: 'smartphone', color: '#FF9800', bg: '#FFF3E0', label: 'Téléphone' },
-            ordinateur: { icon: 'monitor', color: '#00BCD4', bg: '#E0F7FA', label: 'Ordinateur' },
-            mobilier: { icon: 'box', color: '#F97316', bg: '#FFEDD5', label: 'Mobilier' },
-            decoration: { icon: 'image', color: '#E91E63', bg: '#FCE4EC', label: 'Déco' },
-            ustensiles_cuisine: { icon: 'coffee', color: '#FF5722', bg: '#FFEBEE', label: 'Ustensiles' },
-            aliments: { icon: 'pizza', color: '#84CC16', bg: '#ECFCCB', label: 'Aliment' },
-            assurance: { icon: 'shield', color: '#14B8A6', bg: '#CCFBF1', label: 'Assurance' },
-            livres_fournitures: { icon: 'book', color: '#6366F1', bg: '#E0E7FF', label: 'Livre' },
-            quincaillerie: { icon: 'tool', color: '#64748B', bg: '#F1F5F9', label: 'Quincaillerie' },
-            pharmacie: { icon: 'activity', color: '#059669', bg: '#D1FAE5', label: 'Pharmacie' },
-            hopital_clinique: { icon: 'heart', color: '#DC2626', bg: '#FEE2E2', label: 'Hôpital' },
-            prestation_service: { icon: 'briefcase', color: '#8B5CF6', bg: '#F3E8FF', label: 'Service' },
-            cosmetique_parfum: { icon: 'sparkle', color: '#EC4899', bg: '#FCE7F3', label: 'Cosmétique' },
-            bijoux: { icon: 'gem', color: '#F59E0B', bg: '#FEF3C7', label: 'Bijoux' },
-            coiffure_beaute: { icon: 'scissors', color: '#E91E63', bg: '#FCE4EC', label: 'Coiffure' },
-            autre: { icon: 'package', color: '#6B7280', bg: '#F3F4F6', label: 'Produit' }
-        };
-        return styles[product.type] || styles.autre;
-    };
+    const serviceGPS = parseGPS(service?.gps)
+      ?? parseGPS(service?.data?.gps_fixe)
+      ?? parseGPS(service?.data?.gps)
+      ?? parseGPS(product.gps)
+      ?? parseGPS(product.data?.gps);
 
-    const typeStyle = getTypeStyle();
-
-    // Auto-scroll du carousel
-    useEffect(() => {
-        if (allMedia.length <= 1) return;
-
-        const startAutoScroll = () => {
-            if (autoScrollTimer.current) {
-                clearInterval(autoScrollTimer.current);
-            }
-
-            autoScrollTimer.current = setInterval(() => {
-                setCurrentMediaIndex((prev) => {
-                    const next = (prev + 1) % allMedia.length;
-                    carouselRef.current?.scrollToIndex({ index: next, animated: true });
-                    return next;
-                });
-            }, allMedia[currentMediaIndex]?.type === 'video' ? 8000 : 4000); // 8s pour vidéo, 4s pour image
-        };
-
-        startAutoScroll();
-        return () => {
-            if (autoScrollTimer.current) {
-                clearInterval(autoScrollTimer.current);
-            }
-        };
-    }, [allMedia.length, currentMediaIndex]);
-
-    // Gérer la lecture vidéo
-    useEffect(() => {
-        if (allMedia[currentMediaIndex]?.type === 'video' && videoRef.current) {
-            videoRef.current.playAsync();
-        } else if (videoRef.current) {
-            videoRef.current.pauseAsync();
-        }
-    }, [currentMediaIndex]);
-
-    // ✅ RÉÉCRIT: Rendu du média avec gestion d'erreur améliorée
-    const renderMediaItem = ({ item, index }: { item: { type: string; uri: string }; index: number }) => {
-        const hasError = mediaErrors.has(index);
-        const itemWidth = width * 0.4;
-        
-        if (!item.uri || item.uri.trim().length === 0) {
-            return (
-                <View style={[styles.mediaItem, { width: itemWidth, height: 90 }]}>
-                    <View style={[styles.mediaImage, styles.noImageContainer]}>
-                        <SafeIcon name="image" size={20} color="#D1D5DB" />
-                    </View>
-                </View>
-            );
-        }
-
-        if (item.type === 'video') {
-            if (hasError) {
-                return (
-                    <View style={[styles.mediaItem, { width: itemWidth, height: 90 }]}>
-                        <View style={[styles.mediaVideo, styles.noImageContainer]}>
-                            <SafeIcon name="video" size={20} color="#D1D5DB" />
-                            <Text style={styles.errorText}>Erreur vidéo</Text>
-                        </View>
-                    </View>
-                );
-            }
-            
-            return (
-                <View style={[styles.mediaItem, { width: itemWidth, height: 90 }]}>
-                    <Video
-                        ref={index === currentMediaIndex ? videoRef : null}
-                        source={{ uri: item.uri }}
-                        style={styles.mediaVideo}
-                        resizeMode={ResizeMode.COVER}
-                        isLooping={false}
-                        shouldPlay={index === currentMediaIndex}
-                        useNativeControls={false}
-                        onError={(error) => {
-                            console.error('[ProductCard] Erreur lecture vidéo:', item.uri, error);
-                            setMediaErrors(prev => new Set(prev).add(index));
-                        }}
-                        onLoadStart={() => {
-                            setMediaErrors(prev => {
-                                const newSet = new Set(prev);
-                                newSet.delete(index);
-                                return newSet;
-                            });
-                        }}
-                        onPlaybackStatusUpdate={(status) => {
-                            if (index === currentMediaIndex) {
-                                setVideoStatus(status);
-                                if (status.didJustFinish) {
-                                    setTimeout(() => {
-                                        const next = (currentMediaIndex + 1) % allMedia.length;
-                                        setCurrentMediaIndex(next);
-                                        carouselRef.current?.scrollToIndex({ index: next, animated: true });
-                                    }, 500);
-                                }
-                            }
-                        }}
-                    />
-                </View>
-            );
-        }
-        
-        if (hasError) {
-            return (
-                <View style={[styles.mediaItem, { width: itemWidth, height: 90 }]}>
-                    <View style={[styles.mediaImage, styles.noImageContainer]}>
-                        <SafeIcon name="image" size={20} color="#D1D5DB" />
-                        <Text style={styles.errorText}>Erreur image</Text>
-                    </View>
-                </View>
-            );
-        }
-        
-        return (
-            <View style={[styles.mediaItem, { width: itemWidth, height: 90 }]}>
-                <Image 
-                    source={{ uri: item.uri }} 
-                    style={styles.mediaImage} 
-                    resizeMode="cover"
-                    onError={(error) => {
-                        console.error('[ProductCard] Erreur chargement image:', item.uri, error);
-                        setMediaErrors(prev => new Set(prev).add(index));
-                    }}
-                    onLoadStart={() => {
-                        setMediaErrors(prev => {
-                            const newSet = new Set(prev);
-                            newSet.delete(index);
-                            return newSet;
-                        });
-                    }}
-                />
-            </View>
+    if (serviceGPS && locationCalculateDistance) {
+      try {
+        const calculatedDistance = locationCalculateDistance(
+          effectiveUserLocation.latitude,
+          effectiveUserLocation.longitude,
+          serviceGPS.lat,
+          serviceGPS.lng
         );
-    };
-
-    // Rendu générique des détails du produit (sans catégorie spécifique)
-    const renderProductDetails = () => {
-        // Liste des champs génériques à afficher (sans dépendre de product.type)
-        const genericFields = [
-            { key: 'marque', icon: 'tag', label: null },
-            { key: 'modele', icon: 'package', label: null },
-            { key: 'couleur', icon: 'droplet', label: null },
-            { key: 'taille', icon: 'maximize', label: 'Taille' },
-            { key: 'etat', icon: 'check-circle', label: null },
-            { key: 'etatProduit', icon: 'check-circle', label: null },
-            { key: 'quartier', icon: 'map-pin', label: null },
-            { key: 'ville', icon: 'map-pin', label: null },
-            { key: 'origine', icon: 'globe', label: null },
-            { key: 'certification', icon: 'award', label: null },
-            { key: 'unite', icon: 'package', label: 'Unité' },
-        ];
-
-        const availableFields = genericFields.filter(field => product[field.key]);
-
-        if (availableFields.length === 0) {
-            return null;
+        if (Number.isFinite(calculatedDistance) && calculatedDistance >= 0) {
+          distanceKm = calculatedDistance;
+          // Ne pas logger - c'est un calcul normal
         }
+      } catch (error) {
+        // Erreur silencieuse - on continue sans distance
+      }
+    }
+  }
 
-        return (
-            <View style={styles.detailsGrid}>
-                {availableFields.slice(0, 6).map((field) => (
-                    <View key={field.key} style={styles.detailChip}>
-                        <SafeIcon name={field.icon as any} size={10} color="#6B7280" />
-                                <Text style={styles.detailText}>
-                            {field.label ? `${field.label} ` : ''}{product[field.key]}
-                                </Text>
-                            </View>
-                ))}
-                    </View>
-                );
-    };
+  const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm);
 
-    return (
-        <TouchableOpacity
-            style={styles.card}
-            onPress={onPress}
-            activeOpacity={0.95}
+  // ✅ CORRIGÉ: Réduire le niveau de log (warn → debug) car c'est normal qu'un service n'ait pas toujours de distance
+  if (hasDistance) {
+    // Ne pas logger en production - trop verbeux
+    // console.log(`[ProductCard] ✅ Distance extraite pour service ${product.service_id}: ${distanceKm}km`);
+  } else {
+    // Ne logger que si vraiment nécessaire (debug uniquement)
+    // console.debug(`[ProductCard] Pas de distance pour service ${product.service_id}`);
+  }
+  const formattedDistance = hasDistance
+    ? distanceKm! < 1
+      ? `${Math.round(distanceKm! * 1000)}m`
+      : `${distanceKm!.toFixed(distanceKm! < 10 ? 1 : 0)}km`
+    : null;
+
+  // Pays (pour drapeau) - Extraction améliorée depuis plusieurs sources
+  // Essayer d'extraire le pays depuis l'adresse complète si disponible
+  const extractCountryFromAddress = (address: string | undefined): string | undefined => {
+    if (!address || typeof address !== 'string') return undefined;
+
+    // Liste des pays à chercher dans l'adresse
+    const countryKeywords = [
+      'Cameroun', 'Cameroon', 'CM', 'CMR',
+      'Gabon', 'GA', 'GAB',
+      'Congo', 'CG', 'COG',
+      'RDC', 'RD Congo', 'République démocratique du Congo',
+      'Sénégal', 'Senegal', 'SN', 'SEN',
+      'Côte d\'Ivoire', 'Cote d\'Ivoire', 'Ivory Coast', 'CI', 'CIV',
+      'Mali', 'ML', 'MLI',
+      'Burkina', 'Burkina Faso', 'BF', 'BFA',
+      'Niger', 'NE', 'NER',
+      'Tchad', 'Chad', 'TD', 'TCD',
+      'Togo', 'TG', 'TGO',
+      'Bénin', 'Benin', 'BJ', 'BEN',
+      'Guinée', 'Guinee', 'Guinea', 'GN', 'GIN',
+      'Madagascar', 'MG', 'MDG',
+      'France', 'FR', 'FRA',
+      'USA', 'United States', 'US', 'USA',
+    ];
+
+    const addressLower = address.toLowerCase();
+    for (const keyword of countryKeywords) {
+      if (addressLower.includes(keyword.toLowerCase())) {
+        return keyword;
+      }
+    }
+    return undefined;
+  };
+
+  const pays = firstNonEmptyString(
+    extractCountryFromAddress(chosenLocation || product.adresse_complete || product.adresse || product.address),
+    extractCountryFromAddress(product.location?.formatted_address || product.location?.full_address || product.location?.address),
+    locationVector[locationVector.length - 1], // Dernier élément du vecteur = pays
+    product.pays,
+    product.country,
+    product.country_name,
+    product.country_code,
+    product.countryCode,
+    product.country_label,
+    product.location?.country,
+    product.location?.country_code,
+    // ✅ AMÉLIORÉ 2025-11-29: Vérifier aussi dans prestataire (transmis par backend)
+    prestataire?.pays,
+    prestataire?.country,
+    prestataire?.country_name,
+    prestataire?.country_code,
+    // ✅ CORRIGÉ: Vérifier aussi dans service directement
+    service?.pays,
+    service?.country,
+    service?.country_name,
+    service?.country_code,
+    service?.data?.pays?.valeur,
+    service?.data?.pays_origine?.valeur,
+    service?.data?.country?.valeur,
+    service?.data?.country_code?.valeur,
+  );
+
+  const countryFlag = getCountryFlag(pays);
+  const showCountryBadge = countryFlag && countryFlag !== '🌍';
+
+  // ✅ CORRIGÉ: Supprimer les logs DEBUG verbeux qui affichent undefined
+  // Ces logs ne sont plus nécessaires et polluent les logs en production
+  // Si besoin de debug, utiliser des logs conditionnels avec vérification de valeurs
+
+  const commentServiceId = Number(product._serviceId || product.service_id || service?.id || 0);
+  const serviceTitleForComments =
+    product.nom ||
+    product.name ||
+    product.titre ||
+    product.title ||
+    service?.data?.titre_service?.valeur ||
+    service?.data?.nom ||
+    'Produit';
+
+  const isPrivateChat = chatContext?.type === 'private';
+  const activeChatPeer = isPrivateChat && chatContext?.targetUserId
+    ? {
+      nom: chatContext.targetUserName || 'Utilisateur',
+      nom_complet: chatContext.targetUserName || 'Utilisateur',
+      user_id: chatContext.targetUserId,
+      avatar_url: chatContext.targetAvatar || null,
+    }
+    : prestataire;
+
+  const viewsCount =
+    product.views ??
+    product.vues ??
+    product.consultations ??
+    service?.views ??
+    usageCount ??
+    0;
+
+  const sharesCount =
+    product.shares ??
+    product.partages ??
+    product.share_count ??
+    service?.shares ??
+    0;
+
+  const reviewsCount =
+    product.reviews ??
+    product.reviews_count ??
+    product.nb_avis ??
+    service?.reviews_count ??
+    0;
+
+  const favoritesCount =
+    product.favoris ??
+    product.likes ??
+    product.favorites ??
+    product.saves ??
+    product.bookmarks ??
+    0;
+
+  const topStatsData = [
+    { key: 'views', icon: 'eye', value: viewsCount, tint: '#4f46e5', label: 'vues' },
+    { key: 'shares', icon: 'share-2', value: sharesCount, tint: '#a855f7', label: 'partages' },
+    { key: 'reviews', icon: 'message-circle', value: reviewsCount, tint: '#f59e0b', label: 'avis' },
+    { key: 'favorites', icon: 'heart', value: favoritesCount, tint: '#ef4444', label: 'favoris' },
+  ];
+  // ✅ CORRIGÉ : Toujours afficher les 3 premières statistiques principales même si elles sont à 0
+  const compactTopStats = topStatsData.slice(0, 3);
+
+  // ✅ CORRIGÉ: Toujours ouvrir le modal - amélioration robuste
+  const handleChatPress = () => {
+    // Appeler onChatPress si fourni (pour compatibilité)
+    if (onChatPress) {
+      onChatPress();
+    }
+
+    // Toujours ouvrir le modal - laisser ChatModalMobile gérer les cas manquants
+    // Essayer de récupérer prestataireUserId de plusieurs sources
+    const resolvedPrestataireUserId =
+      prestataireUserId ||
+      prestataire?.user_id ||
+      product?.prestataire?.user_id ||
+      service?.user_id ||
+      service?.data?.user_id ||
+      null;
+
+    if (!resolvedPrestataireUserId && !service?.id && !product?.service_id) {
+      Alert.alert(
+        'Information manquante',
+        'Impossible d\'ouvrir le chat : informations du service ou du prestataire manquantes.'
+      );
+      return;
+    }
+
+    // Toujours ouvrir le modal local avec les informations disponibles
+    setChatContext({
+      type: 'service',
+      targetUserId: resolvedPrestataireUserId ? Number(resolvedPrestataireUserId) : undefined,
+      targetUserName: prestataire.nom || prestataireName || 'Prestataire',
+      targetAvatar: prestataire.avatar_url || prestataireAvatar || null,
+    });
+    setPrivateConversationId(null);
+    setShowChatModal(true);
+  };
+
+  // ✅ NOUVEAU : Handler partage produit
+  const handleShare = async () => {
+    try {
+      const productName = product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
+      const productDesc = product.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur || '';
+      const price = displayPrice > 0 ? `${displayPrice.toLocaleString()} ${devise}` : '';
+      const location = chosenLocation || '';
+
+      const shareUrl = process.env.EXPO_PUBLIC_SHARE_URL
+        ? `${process.env.EXPO_PUBLIC_SHARE_URL}/service/${product.service_id || service?.id}`
+        : `https://yukpomnang.com/service/${product.service_id || service?.id}`;
+
+      const shareMessage = `🛍️ ${productName}\n\n${productDesc ? `${productDesc}\n\n` : ''}${price ? `💰 Prix: ${price}\n` : ''}${location ? `📍 ${location}\n\n` : '\n'}🔗 Voir ce produit:\n${shareUrl}`;
+
+      const result = await Share.share({
+        message: shareMessage,
+        title: productName,
+      });
+
+      if (result.action === Share.sharedAction) {
+        console.log('[ProductCard] Produit partagé avec succès');
+      }
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('[ProductCard] Erreur partage:', {
+        message: errorMessage,
+        stack: errorStack,
+        product: product?.nom || product?.name,
+        error: error
+      });
+      Alert.alert('Erreur', 'Impossible de partager le produit');
+    }
+  };
+
+  // ✅ NOUVEAU : Charger réactions du produit
+  const loadReactions = useCallback(async () => {
+    if (!serviceId || !resolvedProductId) return;
+
+    try {
+      setLoadingReactions(true);
+      const response = await apiGet(`/api/products/${serviceId}/${resolvedProductId}/reactions`);
+      // ✅ CORRIGÉ: Vérifier que response.data existe et est un tableau avant d'appeler forEach
+      if (response.success && response.data) {
+        const reactionsMap: Record<string, { count: number; hasReacted: boolean }> = {};
+        // ✅ CORRIGÉ: Vérifier que data est un tableau avant d'appeler forEach
+        const reactionsArray = Array.isArray(response.data) ? response.data : [];
+        if (reactionsArray && typeof reactionsArray.forEach === 'function') {
+          reactionsArray.forEach((r: any) => {
+            if (r && r.reaction_type) {
+              reactionsMap[r.reaction_type] = {
+                count: typeof r.count === 'number' ? r.count : 0,
+                hasReacted: typeof r.has_reacted === 'boolean' ? r.has_reacted : false
+              };
+            }
+          });
+          setReactions(reactionsMap);
+        } else {
+          console.warn('[ProductCard] Réponse réactions invalide (pas un tableau):', response.data);
+        }
+      }
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('[ProductCard] Erreur chargement réactions:', {
+        message: errorMessage,
+        stack: errorStack,
+        serviceId,
+        resolvedProductId,
+        error: error
+      });
+    } finally {
+      setLoadingReactions(false);
+    }
+  }, [resolvedProductId, serviceId]);
+
+  useEffect(() => {
+    loadReactions();
+  }, [loadReactions]);
+
+  // ✅ NOUVEAU : Charger les stats des commentaires (version compacte)
+  const loadCommentStats = useCallback(async () => {
+    if (!commentServiceId || commentServiceId <= 0) return;
+    try {
+      setLoadingComments(true);
+      const response = await commentsApi.getProductComments(commentServiceId);
+      if (response.success && response.data) {
+        const payload: any = response.data;
+        setCommentStats({
+          total_comments: payload.stats?.total_comments ?? payload.comments?.length ?? 0,
+          rating_count: payload.stats?.rating_count ?? 0,
+          average_rating: payload.stats?.average_rating ?? 0,
+        });
+      }
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('[ProductCard] Erreur chargement stats commentaires:', {
+        message: errorMessage,
+        stack: errorStack,
+        commentServiceId,
+        error: error
+      });
+    } finally {
+      setLoadingComments(false);
+    }
+  }, [commentServiceId]);
+
+  useEffect(() => {
+    loadCommentStats();
+  }, [loadCommentStats]);
+
+  // ✅ NOUVEAU : Handler pour réagir
+  const handleReaction = async (reactionType: string) => {
+    if (!serviceId || !resolvedProductId) {
+      Alert.alert(
+        'Information manquante',
+        'Impossible de réagir à ce produit pour le moment.'
+      );
+      return;
+    }
+
+    setPendingReaction(reactionType);
+
+    try {
+      const response = await apiPost(`/api/products/${serviceId}/${resolvedProductId}/react`, {
+        reaction_type: reactionType
+      });
+
+      if (response.success) {
+        await loadReactions();
+      }
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('[ProductCard] Erreur réaction:', {
+        message: errorMessage,
+        stack: errorStack,
+        serviceId,
+        resolvedProductId,
+        reactionType,
+        error: error
+      });
+      Alert.alert('Erreur', "Impossible d'enregistrer votre réaction pour le moment.");
+    } finally {
+      setPendingReaction(null);
+    }
+  };
+
+  // ✅ NOUVEAU : Handler pour contacter un utilisateur en privé
+  const handleContactUser = async (userId: number, userName: string, userAvatar?: string | null) => {
+    try {
+      // Vérifier si une conversation existe déjà
+      const checkResponse = await apiGet(`/api/conversations/private/${userId}`);
+
+      let conversationId: string | null = null;
+
+      if (checkResponse.success && checkResponse.data) {
+        const data = checkResponse.data as { conversation_id?: string };
+        conversationId = data.conversation_id || null;
+      }
+
+      if (!conversationId) {
+        // Créer une nouvelle conversation privée
+        const createResponse = await apiPost('/api/conversations/create-private', {
+          target_user_id: userId,
+          context: 'product_review',
+        });
+
+        if (createResponse.success && createResponse.data) {
+          const data = createResponse.data as { conversation_id?: string };
+          conversationId = data.conversation_id || null;
+        } else if (!createResponse.success) {
+          throw new Error(createResponse.error || "Impossible de créer la conversation privée");
+        }
+      }
+
+      if (conversationId) {
+        setChatContext({
+          type: 'private',
+          targetUserId: userId,
+          targetUserName: userName,
+          targetAvatar: userAvatar ?? null,
+        });
+        setPrivateConversationId(conversationId);
+        setShowChatModal(true);
+      } else {
+        Alert.alert('Information', "Impossible de créer une conversation privée pour le moment");
+      }
+    } catch (error) {
+      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error('[ProductCard] Erreur création conversation privée:', {
+        message: errorMessage,
+        stack: errorStack,
+        userId,
+        userName,
+        error: error
+      });
+      Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de contacter cet utilisateur');
+    }
+  };
+
+  const handleCloseChatModal = () => {
+    setShowChatModal(false);
+    if (chatContext?.type === 'private') {
+      setChatContext(null);
+      setPrivateConversationId(null);
+    }
+  };
+
+  const totalReactions = Object.values(reactions).reduce((sum, reaction) => {
+    return sum + (reaction?.count || 0);
+  }, 0);
+
+  return (
+    <>
+      <LinearGradient
+        colors={['rgba(79, 70, 229, 0.12)', 'rgba(14, 165, 233, 0.05)', 'rgba(255, 255, 255, 0.45)']}
+        style={styles.cardGradient}
+      >
+        <NativeCard
+          padding={0}
+          style={[styles.cardContainer, !hasMedia && styles.cardContainerCompact]}
         >
-            <View style={styles.cardContent}>
-                {/* ✅ RÉÉCRIT: Carousel automatique d'images et vidéos avec chargement depuis API */}
-                <View style={styles.imageContainer}>
-                    {mediaLoading ? (
-                        <View style={[styles.mainImage, styles.noImageContainer]}>
-                            <ActivityIndicator size="small" color="#6366F1" />
-                        </View>
-                    ) : hasMedia ? (
-                        <>
-                            <FlatList
-                                ref={carouselRef}
-                                data={allMedia}
-                                renderItem={renderMediaItem}
-                                keyExtractor={(item, index) => `media-${item.type}-${index}-${item.uri?.substring(0, 20) || 'empty'}`}
-                                horizontal
-                                pagingEnabled
-                                showsHorizontalScrollIndicator={false}
-                                scrollEnabled={allMedia.length > 1}
-                                snapToInterval={width * 0.4}
-                                decelerationRate="fast"
-                                bounces={false}
-                                onMomentumScrollEnd={(event) => {
-                                    const itemWidth = width * 0.4;
-                                    const index = Math.round(event.nativeEvent.contentOffset.x / itemWidth);
-                                    if (index >= 0 && index < allMedia.length) {
-                                        setCurrentMediaIndex(index);
-                                    }
-                                }}
-                                onScrollToIndexFailed={(info) => {
-                                    const wait = new Promise(resolve => setTimeout(resolve, 500));
-                                    wait.then(() => {
-                                        if (carouselRef.current && info.index < allMedia.length) {
-                                            carouselRef.current.scrollToIndex({ index: info.index, animated: true });
-                                        }
-                                    });
-                                }}
-                                getItemLayout={(data, index) => {
-                                    const itemWidth = width * 0.4;
-                                    return {
-                                        length: itemWidth,
-                                        offset: itemWidth * index,
-                                        index,
-                                    };
-                                }}
-                                style={styles.mediaList}
-                                contentContainerStyle={styles.mediaListContainer}
-                                nestedScrollEnabled={true}
-                            />
-                            {/* Indicateur de scroll visible */}
-                            {allMedia.length > 1 && (
-                                <View style={styles.scrollIndicator}>
-                                    <SafeIcon name="chevron-left" size={12} color="#FFFFFF" />
-                                    <Text style={styles.scrollIndicatorText}>Glisser</Text>
-                                    <SafeIcon name="chevron-right" size={12} color="#FFFFFF" />
-                                </View>
-                            )}
-                        </>
-                    ) : (
-                        <View style={[styles.mainImage, styles.noImageContainer]}>
-                            <SafeIcon name="image" size={24} color="#D1D5DB" />
-                        </View>
-                    )}
+          <TouchableOpacity
+            style={styles.touchableContainer}
+            activeOpacity={0.9}
+            onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
+          >
+            {/* Carousel d'images/vidéos avec support variation */}
+            {hasMedia && (
+              <View style={styles.imageContainer}>
+                <ProductMediaCarousel
+                  images={images}
+                  videos={videos}
+                  variantImage={variantImage}
+                  onImagePress={() => {
+                    // ✅ NOUVEAU : Ouvrir galerie complète du prestataire
+                    setShowGallery(true);
+                  }}
+                />
 
-                    {/* ✅ AMÉLIORÉ: Indicateurs de pagination plus visibles */}
-                    {allMedia.length > 1 && (
-                        <View style={styles.paginationDots}>
-                            {allMedia.map((_, index) => (
-                                <View
-                                    key={index}
-                                    style={[
-                                        styles.paginationDot,
-                                        index === currentMediaIndex && styles.paginationDotActive,
-                                    ]}
-                                />
-                            ))}
-                            {/* ✅ NOUVEAU: Compteur visible */}
-                            <View style={styles.paginationCounter}>
-                                <Text style={styles.paginationCounterText}>
-                                    {currentMediaIndex + 1}/{allMedia.length}
-                                </Text>
-                            </View>
-                        </View>
-                    )}
+                {/* Badge pays (coin supérieur droit) */}
+                {showCountryBadge && (
+                  <View style={styles.countryBadge}>
+                    <Text style={styles.countryFlag}>{countryFlag}</Text>
+                  </View>
+                )}
 
-                    {/* Badge type de produit */}
-                    <View style={[styles.typeBadge, { backgroundColor: typeStyle.bg }]}>
-                        <SafeIcon name={typeStyle.icon} size={8} color={typeStyle.color} />
-                        <Text style={[styles.typeText, { color: typeStyle.color }]}>{typeStyle.label}</Text>
-                    </View>
+                {/* Badge distance (coin supérieur gauche) */}
+                {formattedDistance && (
+                  <View style={styles.distanceBadge}>
+                    <SafeIcon name="navigation" size={12} color="#FFF" />
+                    <Text style={styles.distanceText}>{formattedDistance}</Text>
+                  </View>
+                )}
 
-                    {/* ✅ Badge PROMOTION si produit en promotion */}
-                    {(product.en_promotion || product.promotion_active) && (
-                        <View style={styles.promoBadge}>
-                            <LinearGradient
-                                colors={['#F59E0B', '#EF4444']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.promoBadgeGradient}
-                            >
-                                <SafeIcon name="zap" size={8} color="#FFFFFF" />
-                                <Text style={styles.promoText}>PROMO</Text>
-                            </LinearGradient>
-                        </View>
-                    )}
+                {/* ✅ NOUVEAU : Badge popularité (coin inférieur gauche) */}
+                {isTrending && (
+                  <View style={styles.trendingBadge}>
+                    <Text style={styles.trendingEmoji}>🔥🔥</Text>
+                    <Text style={styles.trendingText}>Tendance</Text>
+                    <Text style={styles.trendingCount}>{usageCount}×</Text>
+                  </View>
+                )}
+                {!isTrending && isPopular && (
+                  <View style={styles.popularBadge}>
+                    <Text style={styles.popularEmoji}>🔥</Text>
+                    <Text style={styles.popularText}>Populaire</Text>
+                    <Text style={styles.popularCount}>{usageCount}×</Text>
+                  </View>
+                )}
+              </View>
+            )}
 
-                    {/* Badge nombre de médias */}
-                    {allMedia.length > 1 && (
-                        <TouchableOpacity
-                            style={styles.mediaCountBadge}
-                            onPress={onGalleryPress}
-                            activeOpacity={0.8}
-                        >
-                            <SafeIcon name="grid" size={8} color="#FFFFFF" />
-                            <Text style={styles.mediaCountText}>{allMedia.length}</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-
-                {/* Informations du produit */}
-                <View style={styles.infoContainer}>
-                    {/* Nom du produit */}
-                    <Text style={styles.productName} numberOfLines={2}>
-                        {product.nom || product.name || product.titre || 'Produit'}
+            <View style={[styles.content, !hasMedia && styles.contentCompact]}>
+              {/* ✅ CORRIGÉ: Toujours afficher les statistiques principales avec icônes */}
+              <View style={styles.topStatsRow}>
+                {compactTopStats.map((stat) => (
+                  <View
+                    key={stat.key}
+                    style={[
+                      styles.topStatPillCompact,
+                      { backgroundColor: `${stat.tint}08` },
+                      { borderColor: `${stat.tint}30` },
+                    ]}
+                  >
+                    <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
+                    <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
+                      {formatCompactNumber(stat.value ?? 0)}
                     </Text>
+                    <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
+                      {stat.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
 
-                    {/* Description courte */}
-                    {product.description && (
-                        <Text style={styles.productDescription} numberOfLines={2}>
-                            {product.description}
-                        </Text>
-                    )}
+              {/* Nom produit */}
+              <Text style={styles.productName} numberOfLines={2}>
+                {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
+              </Text>
 
-                    {/* Détails spécifiques par type */}
-                    {renderProductDetails()}
-
-                    {/* Prix */}
-                    {formatPrice() && (
-                        <View style={styles.priceContainer}>
-                            <LinearGradient
-                                colors={['#3B82F6', '#1D4ED8']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.priceGradient}
-                            >
-                                <SafeIcon name="tag" size={16} color="#FFFFFF" />
-                                <Text style={styles.priceText}>{formatPrice()}</Text>
-                            </LinearGradient>
-                        </View>
-                    )}
-
-                    {/* GPS et distance */}
-                    {(displayGPS || product.distance) && (
-                        <View style={styles.locationContainer}>
-                            <SafeIcon name="map-pin" size={14} color="#EF4444" />
-                            <Text style={styles.locationText} numberOfLines={1}>
-                                {product.quartier || product.ville || (displayGPS ? 'Localisation disponible' : '')}
-                            </Text>
-                            {product.distance !== undefined && product.distance !== null && (
-                                <Text style={styles.distanceText}>• {typeof product.distance === 'number' ? product.distance.toFixed(1) : product.distance} km</Text>
-                            )}
-                        </View>
-                    )}
-
-                    {/* Statistiques */}
-                    <View style={styles.statsContainer}>
-                        <View style={styles.statItem}>
-                            <SafeIcon name="eye" size={12} color="#6B7280" />
-                            <Text style={styles.statText}>{product.views || service.views || 0}</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                            <SafeIcon name="share" size={12} color="#6B7280" />
-                            <Text style={styles.statText}>{product.shares || 0}</Text>
-                        </View>
-                        <TouchableOpacity
-                            style={[styles.statItem, styles.ratingStatItem]}
-                            onPress={() => setShowRatingModal(true)}
-                        >
-                            <SafeIcon name="star" size={12} color="#F59E0B" weight="fill" />
-                            <View style={styles.ratingContainer}>
-                                <Text style={[styles.statText, styles.ratingText]}>
-                                    {(() => {
-                                        // ✅ AMÉLIORÉ: Priorité aux stats des commentaires, puis serviceStats, puis fallback
-                                        const rating = commentStats?.average_rating 
-                                            || serviceStats?.rating 
-                                            || product.rating 
-                                            || service?.rating 
-                                            || 0;
-                                        
-                                        // Formater le score avec 1 décimale si disponible
-                                        if (rating && typeof rating === 'number' && rating > 0) {
-                                            return rating.toFixed(1);
-                                        }
-                                        return '0.0';
-                                    })()}
-                                </Text>
-                                {(() => {
-                                    const reviewCount = commentStats?.rating_count 
-                                        || commentStats?.total_comments 
-                                        || serviceStats?.totalRatings 
-                                        || product.reviews_count 
-                                        || product.reviews 
-                                        || service?.reviews_count 
-                                        || 0;
-                                    if (reviewCount > 0) {
-                                        return (
-                                            <Text style={styles.reviewsCountText}>
-                                                ({reviewCount})
-                                            </Text>
-                                        );
-                                    }
-                                    return null;
-                                })()}
-                            </View>
-                        </TouchableOpacity>
-                        <View style={styles.statItem}>
-                            <SafeIcon name="message-square" size={12} color="#6B7280" />
-                            <Text style={styles.statText}>{product.reviews || product.reviews_count || 0}</Text>
-                        </View>
-                    </View>
-
-                    {/* Informations prestataire */}
-                    {(prestataire || service?.user_id) && (
-                        <View style={styles.prestataireInfo}>
-                            <View style={styles.prestataireAvatar}>
-                                {prestataire && (prestataire.avatar || (prestataire as any).avatar_url || (prestataire as any).photo_profil) ? (
-                                    <Image 
-                                        source={{ uri: prestataire.avatar || (prestataire as any).avatar_url || (prestataire as any).photo_profil }} 
-                                        style={styles.avatarImage} 
-                                    />
-                                ) : (
-                                    <SafeIcon name="user" size={16} color="#6B7280" />
-                                )}
-                            </View>
-                            <Text style={styles.prestataireName} numberOfLines={1}>
-                                {/* ✅ CORRIGÉ: Extraire le nom réel du prestataire (nom_complet en priorité) */}
-                                {prestataire 
-                                    ? ((prestataire as any).nom_complet || prestataire.name || (prestataire as any).nom || `Prestataire ${(prestataire as any).id || service?.user_id || ''}`)
-                                    : (service?.user_id ? `Prestataire ${service.user_id}` : 'Prestataire')
-                                }
-                            </Text>
-                            {prestataire?.isOnline && (
-                                <View style={styles.onlineIndicator} />
-                            )}
-                        </View>
-                    )}
-
-                    {/* Actions */}
-                    <View style={styles.actions}>
-                        {/* Bouton Chat principal - TOUJOURS PRIORITAIRE */}
-                        <TouchableOpacity
-                            style={[styles.chatButton, { backgroundColor: categoryStyle.primaryColor }]}
-                            onPress={onChatPress}
-                        >
-                            <SafeIcon name="message-square" size={18} color="#FFFFFF" />
-                            <Text style={styles.chatButtonText}>Discuter</Text>
-                        </TouchableOpacity>
-
-                        {/* ✅ REFACTORISÉ: Bouton Me livrer - Même logique que ChatModalMobile */}
-                        {(() => {
-                            // ✅ SIMPLIFIÉ: Afficher le bouton si on a un service valide
-                            // Vérifier plusieurs sources pour les produits
-                            const hasProducts = !!(
-                                service?.data?.produits ||
-                                service?.produits ||
-                                (service?.id || service?.service_id)
-                            );
-                            
-                            // Exclure uniquement les services/prestations
-                            const isServiceType = service?.data?.type === 'prestation_service' || 
-                                                 service?.data?.type === 'service' ||
-                                                 service?.type === 'prestation_service' ||
-                                                 service?.type === 'service';
-                            
-                            const shouldShow = hasProducts && !isServiceType;
-                            
-                            if (__DEV__) {
-                                console.log('[ProductCard] Bouton "Me livrer" - Évaluation:', {
-                                    hasProducts,
-                                    isServiceType,
-                                    shouldShow,
-                                    serviceId: service?.id || service?.service_id,
-                                    serviceType: service?.data?.type || service?.type
-                                });
-                            }
-                            
-                            return shouldShow;
-                        })() && (
-                            <TouchableOpacity
-                                style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
-                                onPress={() => {
-                                    // Vérifier qu'on a bien un produit avant d'ouvrir le modal
-                                    const productForDelivery = service?.data?.produits?.[0] || service?.produits?.[0] || product;
-                                    if (!productForDelivery && !service?.id && !service?.service_id) {
-                                        Alert.alert('Erreur', 'Produit non disponible pour la livraison');
-                                        return;
-                                    }
-                                    setShowFindCourierModal(true);
-                                }}
-                            >
-                                <SafeIcon name="truck" size={18} color="#FFFFFF" />
-                                <Text style={styles.deliveryButtonText}>Me livrer</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        <View style={styles.secondaryActions}>
-                            {/* Bouton Galerie */}
-                            {(loadedImages.length > 0 || loadedVideos.length > 0) && (
-                                <TouchableOpacity
-                                    style={styles.actionIconButton}
-                                    onPress={onGalleryPress}
-                                >
-                                    <SafeIcon name="image" size={16} color="#8B5CF6" />
-                                </TouchableOpacity>
-                            )}
-
-                            {/* Bouton Téléphone */}
-                            {prestataire?.telephone && (
-                                <TouchableOpacity
-                                    style={styles.actionIconButton}
-                                    onPress={async () => {
-                                        const phoneNumber = prestataire?.telephone;
-                                        if (phoneNumber) {
-                                            try {
-                                                const telUrl = `tel:${phoneNumber.replace(/\s+/g, '')}`;
-                                                const canOpen = await Linking.canOpenURL(telUrl);
-                                                if (canOpen) {
-                                                    await Linking.openURL(telUrl);
-                                                } else {
-                                                    Alert.alert('Erreur', 'Impossible de passer l\'appel');
-                                                }
-                                            } catch (error) {
-                                                Alert.alert('Erreur', 'Impossible d\'ouvrir l\'application téléphone');
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <SafeIcon name="phone" size={16} color="#10B981" />
-                                </TouchableOpacity>
-                            )}
-
-                            <TouchableOpacity
-                                style={styles.actionIconButton}
-                                onPress={async () => {
-                                    // ✅ NOUVEAU: Implémentation du partage
-                                    try {
-                                        const shareContent = {
-                                            message: `${product.nom || product.name || 'Produit'}\n${product.description || ''}\n\nDécouvrez ce produit sur Yukpomnang`,
-                                            title: product.nom || product.name || 'Produit',
-                                        };
-                                        await Share.share(shareContent);
-                                    } catch (error: any) {
-                                        console.error('[ProductCard] Erreur partage:', error);
-                                        // Ne pas afficher d'alerte si l'utilisateur a annulé
-                                        if (error?.message !== 'User did not share') {
-                                            Alert.alert('Erreur', 'Impossible de partager ce produit');
-                                        }
-                                    }
-                                }}
-                            >
-                                <SafeIcon name="share" size={16} color="#6366F1" />
-                            </TouchableOpacity>
-
-                            {/* ✅ NOUVEAU: Bouton Avis */}
-                            <TouchableOpacity
-                                style={styles.actionIconButton}
-                                onPress={() => setShowRatingModal(true)}
-                            >
-                                <SafeIcon name="star" size={16} color="#F59E0B" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            {/* Modal de recherche de coursier */}
-            <FindCourierModal
-                visible={showFindCourierModal}
-                onClose={() => setShowFindCourierModal(false)}
-                product={product}
-                service={service}
-                onSuccess={(deliveryId) => {
-                    Alert.alert('✅ Livraison créée', 'Votre demande de livraison a été créée avec succès');
-                    setShowFindCourierModal(false);
-                }}
-            />
-
-            {/* ✅ NOUVEAU: Modal d'avis et commentaires avec échanges modernes */}
-            <Modal
-                visible={showRatingModal}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={() => setShowRatingModal(false)}
-            >
-                <View style={styles.ratingModalContainer}>
-                    <View style={styles.ratingModalHeader}>
-                        <Text style={styles.ratingModalTitle}>Avis et commentaires</Text>
-                        <TouchableOpacity
-                            style={styles.ratingModalCloseButton}
-                            onPress={() => setShowRatingModal(false)}
-                        >
-                            <SafeIcon name="x" size={24} color="#1F2937" />
-                        </TouchableOpacity>
-                    </View>
-                    <ProductCommentsSection
-                        serviceId={service?.id || product?.service_id || 0}
-                        serviceTitle={product?.nom || service?.titre || 'Produit'}
-                        mode="full"
-                        onOpenChat={(userId, userName, userAvatar) => {
-                            // Optionnel: Ouvrir un chat privé avec l'utilisateur
-                            if (onChatPress) {
-                                onChatPress();
-                            }
-                        }}
-                        onStatsUpdate={(stats) => {
-                            // ✅ NOUVEAU: Mettre à jour les statistiques dans ProductCard
-                            setCommentStats(stats);
-                        }}
+              {/* ✅ CORRIGÉ: Prestataire - Toujours afficher si disponible */}
+              {prestataireName && (
+                <TouchableOpacity
+                  style={styles.prestataireRow}
+                  onPress={() => {
+                    if (prestataire.user_id) {
+                      navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {prestataireAvatar ? (
+                    <Image
+                      source={{ uri: prestataireAvatar }}
+                      style={styles.avatar}
                     />
+                  ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <SafeIcon name="user" size={14} color="#FFF" />
+                    </View>
+                  )}
+                  <Text style={styles.prestataireName} numberOfLines={1}>
+                    {prestataireName}
+                  </Text>
+                  <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+
+              {/* ✅ AMÉLIORÉ 2025-11-29: Localisation hiérarchique détaillée - Toujours afficher si disponible */}
+              {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete || prestataire?.adresse) && (
+                <View style={styles.locationSection}>
+                  <View style={styles.locationRow}>
+                    <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                    <Text style={styles.locationTextPrimary} numberOfLines={2}>
+                      {chosenLocation ||
+                        locationVector[0] ||
+                        product.adresse_complete ||
+                        product.adresse ||
+                        product.ville ||
+                        product.region ||
+                        prestataire?.adresse || // ✅ NOUVEAU: Vérifier prestataire.adresse
+                        service?.adresse_complete ||
+                        service?.adresse ||
+                        'Localisation disponible'}
+                    </Text>
+                    {/* ✅ AMÉLIORÉ : Afficher le drapeau si disponible, même si générique */}
+                    {countryFlag && countryFlag !== '🌍' && (
+                      <Text style={styles.locationFlag} numberOfLines={1}>
+                        {countryFlag}
+                      </Text>
+                    )}
+                  </View>
+                  {/* Hiérarchie complète (quartier > ville > région > pays) */}
+                  {locationVector.length > 1 && (
+                    <View style={styles.locationHierarchy}>
+                      <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
+                      <Text style={styles.locationTextSecondary} numberOfLines={2}>
+                        {locationVector.slice(1).join(' › ')}
+                      </Text>
+                    </View>
+                  )}
+                  {/* Affichage supplémentaire des adresses si disponibles */}
+                  {(!chosenLocation || locationVector.length === 0) && (
+                    <>
+                      {product.quartier && (
+                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                          📍 Quartier: {product.quartier}
+                        </Text>
+                      )}
+                      {product.ville && (
+                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                          🏙️ Ville: {product.ville}
+                        </Text>
+                      )}
+                      {product.region && (
+                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                          🌍 Région: {product.region}
+                        </Text>
+                      )}
+                    </>
+                  )}
+                  {formattedDistance && (
+                    <View style={styles.locationDistanceChip}>
+                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
+                      <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
+                    </View>
+                  )}
+                  {/* ✅ CORRIGÉ: Afficher la distance même si pas dans locationSection */}
+                  {!formattedDistance && hasDistance && distanceKm !== undefined && (
+                    <View style={styles.locationDistanceChip}>
+                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
+                      <Text style={styles.locationDistanceText}>
+                        {distanceKm < 1
+                          ? `${Math.round(distanceKm * 1000)}m`
+                          : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)}km`}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-            </Modal>
-        </TouchableOpacity>
-    );
+              )}
+              {/* ✅ CORRIGÉ: Afficher la section localisation même si minimal, pour montrer distance/drapeau */}
+              {!chosenLocation && locationVector.length === 0 && !product.adresse && !product.ville && !product.region && !product.adresse_complete && !service?.adresse && !service?.adresse_complete && (formattedDistance || hasDistance || countryFlag) && (
+                <View style={styles.locationSection}>
+                  {formattedDistance && (
+                    <View style={styles.locationDistanceChip}>
+                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
+                      <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
+                    </View>
+                  )}
+                  {countryFlag && countryFlag !== '🌍' && (
+                    <View style={styles.locationRow}>
+                      <Text style={styles.locationFlag} numberOfLines={1}>
+                        {countryFlag}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {(googleRating ||
+                googlePrimaryTag ||
+                googleCuisineBadges.length > 0 ||
+                googleOpenNow !== null) && (
+                  <View style={styles.googleMetaSection}>
+                    {googlePrimaryTag && (
+                      <View style={styles.googleMetaChip}>
+                        <SafeIcon name="sparkles" size={12} color="#4F46E5" />
+                        <Text style={styles.googleMetaText}>{googlePrimaryTag}</Text>
+                      </View>
+                    )}
+                    {googleRating && (
+                      <View style={styles.googleMetaChip}>
+                        <SafeIcon name="star" size={12} color="#F59E0B" />
+                        <Text style={styles.googleMetaText}>{googleRating.toFixed(1)}</Text>
+                        {typeof googleRatingCount === 'number' && googleRatingCount > 0 && (
+                          <Text style={styles.googleMetaSubText}>({googleRatingCount})</Text>
+                        )}
+                      </View>
+                    )}
+                    {googleOpenNow !== null && (
+                      <View
+                        style={[
+                          styles.googleMetaChip,
+                          googleOpenNow ? styles.googleMetaChipOpen : styles.googleMetaChipClosed,
+                        ]}
+                      >
+                        <SafeIcon
+                          name="clock"
+                          size={12}
+                          color={googleOpenNow ? '#047857' : '#B91C1C'}
+                        />
+                        <Text
+                          style={[
+                            styles.googleMetaText,
+                            googleOpenNow ? styles.googleMetaTextOpen : styles.googleMetaTextClosed,
+                          ]}
+                        >
+                          {googleOpenNow ? 'Ouvert' : 'Fermé'}
+                        </Text>
+                      </View>
+                    )}
+                    {googleCuisineBadges.map((cuisine) => (
+                      <View key={cuisine} style={styles.googleCuisineChip}>
+                        <Text style={styles.googleCuisineText}>🍽️ {cuisine}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              {googleOpeningHeadline && (
+                <Text style={styles.googleMetaSubInfo} numberOfLines={1}>
+                  {googleOpeningHeadline}
+                </Text>
+              )}
+
+              {googleEditorialSummary && (
+                <Text style={styles.googleEditorialText} numberOfLines={2}>
+                  {googleEditorialSummary}
+                </Text>
+              )}
+
+              {(totalReactions > 0 || usageCount > 0) && (
+                <LinearGradient
+                  colors={['#EEF2FF', '#FFFFFF']}
+                  style={styles.metricsCard}
+                >
+                  <View style={styles.compactStatsRow}>
+                    {totalReactions > 0 && (
+                      <View style={styles.compactStatPillMuted}>
+                        <Text style={styles.compactStatEmoji}>🎭</Text>
+                        <Text style={styles.compactStatValue}>{totalReactions}</Text>
+                        <Text style={styles.compactStatLabel}>réactions</Text>
+                      </View>
+                    )}
+
+                    {usageCount > 0 && (
+                      <View style={styles.compactStatPillMuted}>
+                        <Text style={styles.compactStatEmoji}>🔥</Text>
+                        <Text style={styles.compactStatValue}>{usageCount}</Text>
+                        <Text style={styles.compactStatLabel}>recherches</Text>
+                      </View>
+                    )}
+                  </View>
+                </LinearGradient>
+              )}
+
+              {/* Caractéristiques (vecteur produit) en chips */}
+              {productVector.length > 0 && (
+                <View style={styles.characteristicsSection}>
+                  <View style={styles.sectionHeader}>
+                    <SafeIcon name="tag" size={14} color="#6B7280" />
+                    <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chipsScroll}
+                  >
+                    {limitedProductVector.map((carac: string, i: number) => (
+                      <View key={i} style={styles.chip}>
+                        <Text style={styles.chipText}>{carac}</Text>
+                      </View>
+                    ))}
+                    {hasMoreCaracs && (
+                      <View style={styles.chipMore}>
+                        <Text style={styles.chipMoreText}>+{productVector.length - maxDisplayedCaracs}</Text>
+                      </View>
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Prix avec variations */}
+              {hasVariant && variants.length > 0 ? (
+                <View style={styles.priceVariations}>
+                  <View style={styles.sectionHeader}>
+                    <SafeIcon name="dollar-sign" size={14} color="#6B7280" />
+                    <Text style={styles.sectionTitle}>
+                      Prix selon {product.variant_dimension || 'variante'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.priceTable}>
+                    <View style={styles.priceTableHeader}>
+                      <Text style={styles.tableHeaderText}>Variante</Text>
+                      <Text style={styles.tableHeaderText}>Prix</Text>
+                      <Text style={styles.tableHeaderText}>Stock</Text>
+                    </View>
+
+                    {variants.slice(0, 5).map((variant: any, i: number) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={[
+                          styles.priceRow,
+                          selectedVariantIndex === i && styles.priceRowSelected
+                        ]}
+                        onPress={() => {
+                          // Sélectionner la variation pour afficher son image
+                          setSelectedVariantIndex(selectedVariantIndex === i ? null : i);
+                        }}
+                      >
+                        <View style={styles.cellVariant}>
+                          {/* Image de la variation si existe */}
+                          {variant.image && (
+                            <Image
+                              source={{ uri: variant.image.startsWith('data:') ? variant.image : `data:image/jpeg;base64,${variant.image}` }}
+                              style={styles.variantImageThumb}
+                              resizeMode="cover"
+                            />
+                          )}
+                          <Text style={styles.variantValue}>{variant.value || variant.valeur}</Text>
+                        </View>
+                        <View style={styles.cellPrice}>
+                          <Text style={styles.variantPrice}>
+                            {formatPrice(variant.prix)}
+                          </Text>
+                          <Text style={styles.variantDevise}>{variant.devise || devise}</Text>
+                        </View>
+                        <View style={styles.cellStock}>
+                          <View style={[
+                            styles.stockBadge,
+                            (variant.stock || 0) > 5 ? styles.stockOK :
+                              (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
+                          ]}>
+                            <Text style={styles.stockText}>
+                              {(variant.stock || 0) > 0 ? `${variant.stock}` : '0'}
+                            </Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+
+                    {variants.length > 5 && (
+                      <Text style={styles.moreVariantsText}>
+                        +{variants.length - 5} autres variantes
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.priceFromContainer}>
+                    <Text style={styles.priceFromLabel}>À partir de</Text>
+                    <Text style={styles.priceFromValue}>
+                      {formatPrice(displayPrice)} {devise}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.priceUniqueContainer}>
+                  <Text style={styles.priceLabel}>Prix</Text>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.price}>
+                      {formatPrice(displayPrice)}
+                    </Text>
+                    <Text style={styles.priceDevise}>{devise}</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Actions - Design moderne et subtil */}
+              <View style={styles.actions}>
+                {/* ✅ AMÉLIORÉ: Bouton "Me livrer" - Style outline subtil */}
+                {serviceId && isProduct && (
+                  <TouchableOpacity
+                    style={[styles.actionButtonModern, styles.actionButtonDelivery]}
+                    onPress={() => setShowOrderModal(true)}
+                  >
+                    <SafeIcon name="truck" size={16} color="#10B981" />
+                    <Text style={[styles.actionButtonText, styles.actionButtonTextDelivery]} numberOfLines={1}>
+                      Me livrer
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.actionButtonModern, styles.actionButtonChat]}
+                  onPress={handleChatPress}
+                >
+                  <SafeIcon name="message-circle" size={16} color={modernColors.primary} />
+                  <Text style={[styles.actionButtonText, styles.actionButtonTextChat]} numberOfLines={1}>
+                    Chat
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButtonModern, styles.actionButtonView]}
+                  onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
+                >
+                  <SafeIcon name="eye" size={16} color="#6B7280" />
+                  <Text style={[styles.actionButtonText, styles.actionButtonTextView]} numberOfLines={1}>
+                    Voir
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* ✅ NOUVEAU : Actions secondaires (Galerie, Partage) */}
+              <View style={styles.secondaryActions}>
+                {hasMedia && (
+                  <TouchableOpacity
+                    style={styles.secondaryActionButton}
+                    onPress={() => setShowGallery(true)}
+                  >
+                    <SafeIcon name="image" size={18} color={modernColors.primary} />
+                    <Text style={styles.secondaryActionText}>Galerie</Text>
+                  </TouchableOpacity>
+                )}
+                {googleMapsUri && (
+                  <TouchableOpacity
+                    style={styles.secondaryActionButton}
+                    onPress={async () => {
+                      try {
+                        await Linking.openURL(googleMapsUri);
+                      } catch (error) {
+                        Alert.alert('Google Maps', 'Impossible d\'ouvrir la fiche Google Maps');
+                      }
+                    }}
+                  >
+                    <SafeIcon name="map" size={18} color={modernColors.primary} />
+                    <Text style={styles.secondaryActionText}>Google Maps</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.secondaryActionButton}
+                  onPress={handleShare}
+                >
+                  <SafeIcon name="share" size={18} color={modernColors.primary} />
+                  <Text style={styles.secondaryActionText}>Partager</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* ✅ AMÉLIORÉ: Section commentaires ultra-compacte */}
+              {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
+                <View style={styles.commentsCompactSection}>
+                  <View style={styles.commentsCompactRow}>
+                    <View style={styles.commentsCompactStats}>
+                      <SafeIcon name="message-circle" size={14} color="#6B7280" />
+                      <Text style={styles.commentsCompactText}>
+                        {loadingComments ? '...' : commentStats ? `${commentStats.rating_count} avis` : '0 avis'}
+                      </Text>
+                      {commentStats && commentStats.average_rating > 0 && (
+                        <>
+                          <Text style={styles.commentsCompactSeparator}>•</Text>
+                          <Text style={styles.commentsCompactRating}>
+                            {commentStats.average_rating.toFixed(1)}/5
+                          </Text>
+                        </>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={styles.commentsCompactButton}
+                      onPress={() => setShowCommentsModal(true)}
+                    >
+                      <SafeIcon name="corner-up-right" size={14} color={modernColors.primary} />
+                      <Text style={styles.commentsCompactButtonText}>Ouvrir le fil</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* Footer info */}
+              <View style={styles.footer}>
+                {hasDistance && (
+                  <View style={styles.footerItem}>
+                    <SafeIcon name="map-pin" size={12} color="#9CA3AF" />
+                    <Text style={styles.footerText}>
+                      {distanceKm < 1
+                        ? 'Très proche'
+                        : distanceKm < 5
+                          ? 'À proximité'
+                          : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km`}
+                    </Text>
+                  </View>
+                )}
+                {product.usage_count && (
+                  <View style={styles.footerItem}>
+                    <SafeIcon name="eye" size={12} color="#9CA3AF" />
+                    <Text style={styles.footerText}>
+                      {product.usage_count} vues
+                    </Text>
+                  </View>
+                )}
+                {product.created_at && (
+                  <View style={styles.footerItem}>
+                    <SafeIcon name="clock" size={12} color="#9CA3AF" />
+                    <Text style={styles.footerText}>
+                      {formatDate(product.created_at)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+        </NativeCard>
+      </LinearGradient>
+
+      {/* ✅ CORRIGÉ: Modal Chat - Toujours rendre le composant, contrôler via visible */}
+      <ChatModalMobile
+        visible={showChatModal}
+        onClose={handleCloseChatModal}
+        service={service || {
+          id: product.service_id || service?.id,
+          data: { titre_service: { valeur: product.nom || service?.data?.titre_service?.valeur || 'Produit' } },
+          user_id: prestataireUserId || service?.user_id,
+        }}
+        prestataireInfo={activeChatPeer || prestataire || {
+          nom: prestataireName || 'Prestataire',
+          nom_complet: prestataireName || 'Prestataire',
+          user_id: prestataireUserId,
+          avatar_url: prestataireAvatar,
+        }}
+        user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
+        conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
+        isPrivateConversation={isPrivateChat}
+      />
+
+      {/* ✅ NOUVEAU : Modal Galerie du prestataire */}
+      {showGallery && (
+        <ServiceGalleryModal
+          visible={showGallery}
+          service={service || {
+            id: String(product.service_id || service?.id),
+            titre: product.nom || service?.data?.titre_service?.valeur || 'Produit',
+            description: product.description || service?.data?.description?.valeur || '',
+            user_id: String(prestataire.user_id || service?.user_id || ''),
+            data: service?.data || {},
+          }}
+          onClose={() => setShowGallery(false)}
+        />
+      )}
+
+      {/* ✅ Modal commande livraison - Uniquement pour les produits */}
+      {serviceId && isProduct && (
+        <OrderDeliveryModal
+          visible={showOrderModal}
+          onClose={() => setShowOrderModal(false)}
+          serviceId={serviceId}
+          productIndex={productIndex}
+          productName={product.nom || product.name || 'Produit'}
+          onSuccess={(deliveryId) => {
+            console.log('Commande créée:', deliveryId);
+            // Optionnel : rediriger vers la page de suivi
+          }}
+        />
+      )}
+
+      {/* ✅ NOUVEAU: Modal commentaires complet */}
+      <Modal
+        visible={showCommentsModal}
+        animationType="slide"
+        onRequestClose={() => setShowCommentsModal(false)}
+        transparent={false}
+      >
+        {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
+          <View style={styles.commentsModalContainer}>
+            <View style={styles.commentsModalHeader}>
+              <Text style={styles.commentsModalTitle}>Commentaires & Avis</Text>
+              <TouchableOpacity onPress={() => setShowCommentsModal(false)}>
+                <SafeIcon name="x" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+            <ProductCommentsSection
+              serviceId={commentServiceId}
+              serviceTitle={serviceTitleForComments}
+              onOpenChat={handleContactUser}
+              mode="full"
+            />
+          </View>
+        )}
+      </Modal>
+    </>
+  );
+};
+
+// Helper formatage date
+const formatDate = (dateStr: string): string => {
+  try {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Aujourd'hui";
+    if (diffDays === 1) return 'Hier';
+    if (diffDays < 7) return `Il y a ${diffDays}j`;
+    if (diffDays < 30) return `Il y a ${Math.floor(diffDays / 7)}sem`;
+    return `Il y a ${Math.floor(diffDays / 30)}mois`;
+  } catch {
+    return '';
+  }
 };
 
 const styles = StyleSheet.create({
-    card: {
-        marginHorizontal: 16,
-        marginVertical: 8,
-        borderRadius: 16,
-        backgroundColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 5,
-        overflow: 'hidden',
-    },
-    cardContent: {
-        flexDirection: 'row',
-    },
-    imageContainer: {
-        width: width * 0.4,
-        height: 90,
-        position: 'relative',
-        overflow: 'hidden',
-        borderRadius: 12,
-    },
-    mediaList: {
-        width: width * 0.4,
-        height: 90,
-    },
-    mediaListContainer: {
-        alignItems: 'center',
-        paddingHorizontal: 0,
-    },
-    mainImage: {
-        width: '100%',
-        height: '100%',
-    },
-    noImageContainer: {
-        backgroundColor: '#F3F4F6',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    typeBadge: {
-        position: 'absolute',
-        top: 4,
-        left: 4,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 6,
-    },
-    typeText: {
-        fontSize: 8,
-        fontWeight: '600',
-    },
-    promoBadge: {
-        position: 'absolute',
-        top: 24,
-        left: 4,
-        borderRadius: 6,
-        overflow: 'hidden',
-    },
-    promoBadgeGradient: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-    },
-    promoText: {
-        fontSize: 8,
-        fontWeight: '700',
-        color: '#FFFFFF',
-    },
-    videoIndicator: {
-        position: 'absolute',
-        bottom: 4,
-        right: 4,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        borderRadius: 12,
-        padding: 4,
-    },
-    imageCountBadge: {
-        position: 'absolute',
-        bottom: 4,
-        left: 4,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 8,
-    },
-    imageCountText: {
-        color: '#FFFFFF',
-        fontSize: 11,
-        fontWeight: '600',
-    },
-    infoContainer: {
-        flex: 1,
-        padding: 8,
-        justifyContent: 'space-between',
-    },
-    productName: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#1F2937',
-        marginBottom: 2,
-    },
-    productDescription: {
-        fontSize: 10,
-        color: '#6B7280',
-        lineHeight: 14,
-        marginBottom: 4,
-    },
-    detailsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 4,
-        marginBottom: 4,
-    },
-    detailChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-        backgroundColor: '#F3F4F6',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 6,
-    },
-    detailText: {
-        fontSize: 9,
-        color: '#4B5563',
-        fontWeight: '500',
-    },
-    priceContainer: {
-        marginBottom: 4,
-    },
-    priceGradient: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        alignSelf: 'flex-start',
-    },
-    priceText: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#FFFFFF',
-    },
-    locationContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        marginBottom: 4,
-    },
-    locationText: {
-        fontSize: 11,
-        color: '#EF4444',
-        fontWeight: '500',
-        flex: 1,
-    },
-    distanceText: {
-        fontSize: 11,
-        color: '#6B7280',
-        fontWeight: '600',
-    },
-    prestataireInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        marginBottom: 4,
-        paddingTop: 4,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-    },
-    prestataireAvatar: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: '#F3F4F6',
-        justifyContent: 'center',
-        alignItems: 'center',
-        overflow: 'hidden',
-    },
-    avatarImage: {
-        width: '100%',
-        height: '100%',
-    },
-    prestataireName: {
-        fontSize: 11,
-        color: '#4B5563',
-        fontWeight: '500',
-        flex: 1,
-    },
-    onlineIndicator: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#10B981',
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-        paddingVertical: 4,
-        marginBottom: 4,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 6,
-    },
-    statItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-    },
-    ratingStatItem: {
-        backgroundColor: '#FEF3C7',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 8,
-    },
-    statText: {
-        fontSize: 9,
-        color: '#6B7280',
-        fontWeight: '600',
-    },
-    ratingContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 2,
-    },
-    ratingText: {
-        color: '#F59E0B',
-        fontWeight: '700',
-        fontSize: 11,
-    },
-    reviewsCountText: {
-        fontSize: 9,
-        color: '#9CA3AF',
-        fontWeight: '500',
-    },
-    actions: {
-        flexDirection: 'column',
-        gap: 8,
-    },
-    chatButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 4,
-        backgroundColor: '#3B82F6',
-        paddingVertical: 6,
-        borderRadius: 8,
-    },
-    chatButtonText: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    deliveryButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 4,
-        backgroundColor: '#10B981',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-        marginTop: 4,
-        minHeight: 36,
-        shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 3,
-        borderWidth: 1,
-        borderColor: '#059669',
-    },
-    deliveryButtonText: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    secondaryActions: {
-        flexDirection: 'row',
-        gap: 8,
-        justifyContent: 'space-between',
-    },
-    actionIconButton: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 8,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    // Styles pour les prestations de service
-    prestationsContainer: {
-        gap: 8,
-    },
-    prestationsSectionTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#6B7280',
-        marginBottom: 4,
-    },
-    prestationItem: {
-        backgroundColor: '#F9FAFB',
-        padding: 10,
-        borderRadius: 8,
-        borderLeftWidth: 3,
-        borderLeftColor: '#8B5CF6',
-        marginBottom: 6,
-    },
-    prestationHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 4,
-    },
-    prestationName: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#1F2937',
-        flex: 1,
-    },
-    prestationPrice: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#8B5CF6',
-        marginBottom: 3,
-    },
-    prestationDescription: {
-        fontSize: 11,
-        color: '#6B7280',
-        lineHeight: 15,
-    },
-    // Styles pour logo et bannière
-    bannerContainer: {
-        width: '100%',
-        height: 80,
-        marginBottom: 8,
-        borderRadius: 12,
-        overflow: 'hidden',
-    },
-    bannerImage: {
-        width: '100%',
-        height: '100%',
-    },
-    logoOverlay: {
-        position: 'absolute',
-        bottom: 8,
-        left: 8,
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    logoImage: {
-        width: '100%',
-        height: '100%',
-    },
-    // ✅ NOUVEAU: Styles pour prestations médicales et déménagement
-    detailsSection: {
-        marginTop: 12,
-    },
-    prestationLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 6,
-    },
-    tagsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-    },
-    tag: {
-        backgroundColor: '#EFF6FF',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 6,
-    },
-    tagText: {
-        fontSize: 11,
-        color: '#3B82F6',
-        fontWeight: '500',
-    },
-    // ✅ NOUVEAU: Styles pour le modal d'avis
-    ratingModalContainer: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-    ratingModalHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    ratingModalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1F2937',
-    },
-    ratingModalCloseButton: {
-        padding: 8,
-    },
-    ratingModalContent: {
-        flex: 1,
-        padding: 16,
-    },
-    planningPreview: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginTop: 6,
-    },
-    highlightChip: {
-        backgroundColor: '#FEF2F2',
-        borderColor: '#FCA5A5',
-    },
-    successChip: {
-        backgroundColor: '#F0FDF4',
-        borderColor: '#86EFAC',
-    },
-    successText: {
-        color: '#10B981',
-    },
-    // Styles pour déménagement
-    servicesInclus: {
-        marginTop: 8,
-    },
-    servicesGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-    },
-    serviceTag: {
-        backgroundColor: '#F0FDF4',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: '#BBF7D0',
-    },
-    serviceTagText: {
-        fontSize: 11,
-        color: '#15803D',
-        fontWeight: '500',
-    },
-    // Styles pour cosmétique & bijoux
-    ingredientsContainer: {
-        marginTop: 8,
-    },
-    ingredientsText: {
-        fontSize: 11,
-        color: '#6B7280',
-        lineHeight: 15,
-        fontStyle: 'italic',
-    },
-    certificateChip: {
-        backgroundColor: '#F0FDF4',
-        borderColor: '#BBF7D0',
-    },
-    certificateText: {
-        color: '#15803D',
-        fontWeight: '600',
-    },
-    // Styles pour le carousel
-    mediaItem: {
-        width: width * 0.4,
-        height: 90,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    mediaVideo: {
-        width: '100%',
-        height: '100%',
-    },
-    mediaImage: {
-        width: '100%',
-        height: '100%',
-    },
-    paginationDots: {
-        position: 'absolute',
-        bottom: 4,
-        left: 0,
-        right: 0,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        borderRadius: 12,
-        marginHorizontal: 4,
-    },
-    paginationDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    },
-    paginationDotActive: {
-        backgroundColor: '#FFFFFF',
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.3,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    paginationCounter: {
-        marginLeft: 6,
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 8,
-    },
-    paginationCounterText: {
-        fontSize: 9,
-        fontWeight: '700',
-        color: '#1F2937',
-    },
-    scrollIndicator: {
-        position: 'absolute',
-        top: 4,
-        right: 4,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    scrollIndicatorText: {
-        fontSize: 9,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    mediaCountBadge: {
-        position: 'absolute',
-        bottom: 4,
-        right: 4,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 8,
-    },
-    mediaCountText: {
-        color: '#FFFFFF',
-        fontSize: 9,
-        fontWeight: '600',
-    },
-    errorText: {
-        fontSize: 8,
-        color: '#EF4444',
-        marginTop: 4,
-        textAlign: 'center',
-    },
+  cardContainer: {
+    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement du contenu
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.25)',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    // ✅ CORRIGÉ 2025-11-29: S'assurer que la carte s'adapte à la largeur du conteneur parent (carousel)
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
+    height: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
+    maxHeight: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
+  },
+  cardContainerCompact: {
+    borderRadius: 20,
+  },
+  touchableContainer: {
+    flex: 1,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    height: '100%', // ✅ AJOUTÉ: Prendre toute la hauteur disponible
+    maxHeight: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
+  },
+  imageContainer: {
+    position: 'relative',
+    width: '100%',
+    height: 120, // ✅ RÉDUIT: 140 → 120 pour libérer de l'espace vertical
+    overflow: 'hidden',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+  },
+  countryBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  countryFlag: {
+    fontSize: 20,
+  },
+  distanceBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(99, 102, 241, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  distanceText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  trendingBadge: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  trendingEmoji: {
+    fontSize: 14,
+  },
+  trendingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  trendingCount: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFF',
+    opacity: 0.9,
+  },
+  popularBadge: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    backgroundColor: 'rgba(251, 146, 60, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  popularEmoji: {
+    fontSize: 13,
+  },
+  popularText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  popularCount: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFF',
+    opacity: 0.9,
+  },
+  imageCountBadge: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  imageCountText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  content: {
+    paddingHorizontal: 10, // ✅ RÉDUIT: 12 → 10 (encore plus compact)
+    paddingVertical: 8, // ✅ RÉDUIT: 10 → 8
+    gap: 4, // ✅ RÉDUIT: 6 → 4
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    flex: 1, // ✅ AJOUTÉ: Prendre l'espace disponible
+    height: 140, // ✅ CORRIGÉ: Hauteur fixe (280px total - 140px image = 140px contenu)
+    maxHeight: 140, // ✅ AJOUTÉ: Hauteur maximale stricte
+    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
+    // ✅ NOTE: Le contenu est limité à 140px pour s'adapter à la hauteur fixe de 280px de la carte
+    // Si le contenu dépasse, il sera coupé (overflow: hidden) pour maintenir la cohérence visuelle
+  },
+  contentCompact: {
+    paddingTop: 8, // ✅ RÉDUIT: 10 → 8
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: 280, // ✅ AJOUTÉ: Hauteur fixe pour cartes sans médias (prend toute la hauteur disponible)
+    maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
+    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
+    // ✅ NOTE: Sans médias, le contenu prend toute la hauteur de 280px
+  },
+  topStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 3, // ✅ RÉDUIT: 4 → 3 (encore plus compact)
+    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
+  },
+  topStatPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+  },
+  // ✅ AMÉLIORÉ: Style compact pour indicateurs miniaturisés
+  topStatPillCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4, // ✅ RÉDUIT: 5 → 4 (encore plus compact)
+    paddingVertical: 2,
+    borderRadius: 8, // ✅ RÉDUIT: 10 → 8
+    borderWidth: 1,
+    gap: 2,
+  },
+  topStatValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  topStatValueCompact: {
+    fontSize: 9, // ✅ RÉDUIT: 10 → 9 (encore plus compact)
+    fontWeight: '600',
+  },
+  topStatLabelCompact: {
+    fontSize: 7, // ✅ RÉDUIT: 8 → 7
+    fontWeight: '500',
+    opacity: 0.8,
+    marginLeft: 1,
+  },
+  productName: {
+    fontSize: 14, // ✅ RÉDUIT: 15 → 14 (encore plus compact)
+    fontWeight: '700',
+    color: '#1F2937',
+    lineHeight: 18, // ✅ RÉDUIT: 20 → 18
+    marginBottom: 2, // ✅ AJOUTÉ: Réduire espace après titre
+  },
+  prestataireRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4, // ✅ RÉDUIT: 5 → 4 (encore plus compact)
+    paddingVertical: 2,
+    paddingHorizontal: 4, // ✅ RÉDUIT: 5 → 4
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E5E7EB',
+    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
+  },
+  avatar: {
+    width: 22, // ✅ RÉDUIT: 26 → 22 (encore plus compact)
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#FFF',
+  },
+  avatarPlaceholder: {
+    width: 22, // ✅ RÉDUIT: 26 → 22
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: modernColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  prestataireName: {
+    fontSize: 13,
+    color: '#374151',
+    fontWeight: '600',
+    flex: 1,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5, // ✅ RÉDUIT: 6 → 5
+    paddingVertical: 3, // ✅ RÉDUIT: 6 → 3
+  },
+  locationText: {
+    fontSize: 14,
+    color: '#6B7280',
+    flex: 1,
+  },
+  hierarchyHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  characteristicsSection: {
+    gap: 5, // ✅ RÉDUIT: 8 → 5
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  chipsScroll: {
+    gap: 6,
+    paddingVertical: 2,
+  },
+  chip: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: modernColors.primary,
+  },
+  chipText: {
+    fontSize: 13,
+    color: modernColors.primary,
+    fontWeight: '600',
+  },
+  chipMore: {
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5F5',
+  },
+  chipMoreText: {
+    fontSize: 12,
+    color: '#4B5563',
+    fontWeight: '600',
+  },
+  priceVariations: {
+    gap: 6, // ✅ RÉDUIT: 8 → 6
+    backgroundColor: '#F9FAFB',
+    padding: 8, // ✅ RÉDUIT: 10 → 8
+    borderRadius: 10,
+  },
+  priceTable: {
+    gap: 6,
+  },
+  priceTableHeader: {
+    flexDirection: 'row',
+    paddingBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E5E7EB',
+  },
+  tableHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B7280',
+    flex: 1,
+    textAlign: 'center',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    borderRadius: 6,
+  },
+  priceRowSelected: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 2,
+    borderColor: modernColors.primary,
+  },
+  cellVariant: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  variantImageThumb: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  cellPrice: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  cellStock: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  variantValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  variantPrice: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: modernColors.primary,
+  },
+  variantDevise: {
+    fontSize: 11,
+    color: '#6B7280',
+  },
+  stockBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  stockOK: {
+    backgroundColor: '#D1FAE5',
+  },
+  stockLow: {
+    backgroundColor: '#FEF3C7',
+  },
+  stockOut: {
+    backgroundColor: '#FEE2E2',
+  },
+  stockText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  moreVariantsText: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    paddingTop: 6,
+    fontStyle: 'italic',
+  },
+  priceFromContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  priceFromLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  priceFromValue: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: modernColors.primary,
+  },
+  priceUniqueContainer: {
+    gap: 4,
+  },
+  priceLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  price: {
+    fontSize: 18, // ✅ RÉDUIT: 20 → 18 (encore plus compact)
+    fontWeight: '800',
+    color: modernColors.primary,
+  },
+  priceDevise: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 4, // ✅ RÉDUIT: 6 → 4 (encore plus compact)
+    marginTop: 2,
+  },
+  actionButton: {
+    flex: 1,
+  },
+  // ✅ AMÉLIORÉ: Styles boutons d'action modernes et subtils
+  actionButtonModern: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3, // ✅ RÉDUIT: 4 → 3 (encore plus compact)
+    paddingVertical: 6, // ✅ RÉDUIT: 8 → 6
+    paddingHorizontal: 8, // ✅ RÉDUIT: 10 → 8
+    borderRadius: 8, // ✅ RÉDUIT: 10 → 8
+    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+  },
+  actionButtonDelivery: {
+    borderColor: '#D1FAE5',
+    backgroundColor: '#F0FDF4',
+  },
+  actionButtonChat: {
+    borderColor: '#DBEAFE',
+    backgroundColor: '#EFF6FF',
+  },
+  actionButtonView: {
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+  },
+  actionButtonText: {
+    fontSize: 12, // ✅ RÉDUIT: 13 → 12 (encore plus compact)
+    fontWeight: '600',
+  },
+  actionButtonTextDelivery: {
+    color: '#047857',
+  },
+  actionButtonTextChat: {
+    color: modernColors.primary,
+  },
+  actionButtonTextView: {
+    color: '#6B7280',
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingTop: 6, // ✅ RÉDUIT: 10 → 6
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  footerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  footerText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+  },
+  // ✅ NOUVEAU : Styles pour avis/ratings et actions secondaires
+  metricsCard: {
+    marginTop: 4, // ✅ RÉDUIT: 6 → 4
+    borderRadius: 14,
+    paddingVertical: 6, // ✅ RÉDUIT: 8 → 6
+    paddingHorizontal: 8, // ✅ RÉDUIT: 10 → 8
+  },
+  compactStatsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6, // ✅ RÉDUIT: 8 → 6
+    marginTop: 6, // ✅ RÉDUIT: 10 → 6
+    marginBottom: 6, // ✅ RÉDUIT: 10 → 6
+  },
+  compactStatPillMuted: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F4F4F5',
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+    gap: 6,
+  },
+  compactStatEmoji: {
+    fontSize: 14,
+  },
+  compactStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  compactStatLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  locationSection: {
+    gap: 2, // ✅ RÉDUIT: 3 → 2 (encore plus compact)
+    backgroundColor: '#F8FAFC',
+    padding: 4, // ✅ RÉDUIT: 5 → 4
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
+  },
+  locationTextPrimary: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    flex: 1,
+  },
+  locationFlag: {
+    fontSize: 18,
+    marginLeft: 4,
+    lineHeight: 20,
+  },
+  locationHierarchy: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingLeft: 16,
+  },
+  locationTextSecondary: {
+    fontSize: 11,
+    color: '#6B7280',
+    flex: 1,
+    fontStyle: 'italic',
+  },
+  locationDistanceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#CBD5F5',
+    marginTop: 4,
+  },
+  locationDistanceText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: modernColors.primary,
+  },
+  googleMetaSection: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  googleMetaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+  },
+  googleMetaChipOpen: {
+    backgroundColor: '#DCFCE7',
+  },
+  googleMetaChipClosed: {
+    backgroundColor: '#FEE2E2',
+  },
+  googleMetaText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#312E81',
+  },
+  googleMetaTextOpen: {
+    color: '#047857',
+  },
+  googleMetaTextClosed: {
+    color: '#991B1B',
+  },
+  googleMetaSubText: {
+    fontSize: 11,
+    color: '#6366F1',
+  },
+  googleCuisineChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#E0E7FF',
+  },
+  googleCuisineText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#3730A3',
+  },
+  googleMetaSubInfo: {
+    fontSize: 11,
+    color: '#4B5563',
+    marginTop: 6,
+  },
+  googleEditorialText: {
+    fontSize: 12,
+    color: '#1F2937',
+    marginTop: 8,
+    lineHeight: 16,
+  },
+  secondaryActions: {
+    flexDirection: 'row',
+    gap: 6, // ✅ RÉDUIT: 10 → 6
+    marginTop: 2, // ✅ RÉDUIT: 4 → 2
+  },
+  secondaryActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4, // ✅ RÉDUIT: 6 → 4
+    paddingVertical: 6, // ✅ RÉDUIT: 8 → 6
+    paddingHorizontal: 8, // ✅ RÉDUIT: 10 → 8
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  secondaryActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: modernColors.primary,
+  },
+  cardGradient: {
+    borderRadius: 22,
+    padding: 1,
+    marginBottom: 6, // ✅ RÉDUIT: 8 → 6 (encore plus compact)
+    height: 280, // ✅ AJOUTÉ: Hauteur fixe pour éviter le débordement
+    maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
+    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
+  },
+  // ✅ NOUVEAU: Styles section commentaires compacte
+  commentsCompactSection: {
+    marginTop: 4, // ✅ RÉDUIT: 8 → 4
+    paddingTop: 4, // ✅ RÉDUIT: 8 → 4
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  commentsCompactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6, // ✅ RÉDUIT: 8 → 6
+  },
+  commentsCompactStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  commentsCompactText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  commentsCompactSeparator: {
+    fontSize: 12,
+    color: '#D1D5DB',
+    marginHorizontal: 2,
+  },
+  commentsCompactRating: {
+    fontSize: 12,
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
+  commentsCompactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#CBD5F5',
+  },
+  commentsCompactButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: modernColors.primary,
+  },
+  // ✅ NOUVEAU: Styles modal commentaires
+  commentsModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  commentsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  commentsModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
 });
 
 export default ProductCard;
-

@@ -1,4 +1,4 @@
-﻿import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -71,12 +71,12 @@ interface ProductCommentsSectionProps {
 }
 
 const REACTION_OPTIONS = [
-    { type: 'like', label: "J'aime", emoji: '👍' },
-    { type: 'love', label: "J'adore", emoji: '❤️' },
+    { type: 'like', label: 'J’aime', emoji: '👍' },
+    { type: 'love', label: 'J’adore', emoji: '❤️' },
     { type: 'insightful', label: 'Pertinent', emoji: '💡' },
     { type: 'support', label: 'Soutien', emoji: '🤝' },
     { type: 'funny', label: 'Drôle', emoji: '😄' },
-    { type: 'angry', label: "Pas d'accord", emoji: '😠' },
+    { type: 'angry', label: 'Pas d’accord', emoji: '😠' },
 ];
 
 const formatDate = (iso: string): string => {
@@ -96,7 +96,7 @@ const formatDate = (iso: string): string => {
 
 const parseMentions = (text: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = [];
-    const regex = /@([A-Za-z├Ç-├┐0-9_\-\s]+?)(?=\s|$|[.,!?])/g;
+    const regex = /@([A-Za-zÀ-ÿ0-9_\-\s]+?)(?=\s|$|[.,!?])/g;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
     let key = 0;
@@ -130,26 +130,26 @@ const parseMentions = (text: string): React.ReactNode[] => {
     return parts;
 };
 
-// Ô£à FONCTION UTILITAIRE : Nettoyer le nom utilisateur pour ├®viter les doublons
+// ✅ FONCTION UTILITAIRE : Nettoyer le nom utilisateur pour éviter les doublons
 const cleanUserName = (name: string | undefined | null): string => {
     if (!name) return 'Utilisateur';
     const trimmed = name.trim();
 
-    // Ô£à CORRECTION : D├®tecter et supprimer les doublons (ex: "LELE Hernandez LELE Hernandez" -> "LELE Hernandez")
-    // M├®thode 1: V├®rifier si le nom est r├®p├®t├® exactement (mots s├®par├®s par espace)
+    // ✅ CORRECTION : Détecter et supprimer les doublons (ex: "LELE Hernandez LELE Hernandez" -> "LELE Hernandez")
+    // Méthode 1: Vérifier si le nom est répété exactement (mots séparés par espace)
     const words = trimmed.split(/\s+/);
     if (words.length >= 2) {
         const midPoint = Math.ceil(words.length / 2);
         const firstHalf = words.slice(0, midPoint).join(' ');
         const secondHalf = words.slice(midPoint).join(' ');
 
-        // Si les deux moiti├®s sont identiques, retourner seulement la premi├¿re
+        // Si les deux moitiés sont identiques, retourner seulement la première
         if (firstHalf === secondHalf) {
             return firstHalf;
         }
 
-        // M├®thode 2: V├®rifier si le nom complet est r├®p├®t├® (ex: "LELE Hernandez LELE Hernandez")
-        // Diviser en deux parties ├®gales et comparer
+        // Méthode 2: Vérifier si le nom complet est répété (ex: "LELE Hernandez LELE Hernandez")
+        // Diviser en deux parties égales et comparer
         const fullLength = trimmed.length;
         if (fullLength % 2 === 0) {
             const firstPart = trimmed.substring(0, fullLength / 2).trim();
@@ -160,8 +160,8 @@ const cleanUserName = (name: string | undefined | null): string => {
         }
     }
 
-    // M├®thode 3: D├®tecter les patterns r├®p├®titifs (ex: "Nom Nom" ou "Nom Nom Nom")
-    // Si le nom contient le m├¬me mot plusieurs fois cons├®cutivement, ne garder qu'une occurrence
+    // Méthode 3: Détecter les patterns répétitifs (ex: "Nom Nom" ou "Nom Nom Nom")
+    // Si le nom contient le même mot plusieurs fois consécutivement, ne garder qu'une occurrence
     const uniqueWords: string[] = [];
     let lastWord = '';
     for (const word of words) {
@@ -171,7 +171,7 @@ const cleanUserName = (name: string | undefined | null): string => {
         }
     }
 
-    // Si on a r├®duit le nombre de mots, c'est qu'il y avait des r├®p├®titions
+    // Si on a réduit le nombre de mots, c'est qu'il y avait des répétitions
     if (uniqueWords.length < words.length && uniqueWords.length > 0) {
         return uniqueWords.join(' ');
     }
@@ -184,7 +184,7 @@ const normalizeComments = (items: any[]): ProductComment[] =>
         id: item.id,
         service_id: item.service_id,
         user_id: item.user_id,
-        user_name: cleanUserName(item.user_name), // Ô£à CORRECTION : Nettoyer le nom pour ├®viter les doublons
+        user_name: cleanUserName(item.user_name), // ✅ CORRECTION : Nettoyer le nom pour éviter les doublons
         user_avatar: item.user_avatar ?? undefined,
         parent_comment_id: item.parent_comment_id ?? null,
         rating: item.rating ?? null,
@@ -192,7 +192,7 @@ const normalizeComments = (items: any[]): ProductComment[] =>
         mentions: item.mentions ?? [],
         mention_users: (item.mention_users || []).map((mention: any) => ({
             id: mention.id,
-            name: cleanUserName(mention.name), // Ô£à CORRECTION : Nettoyer aussi les noms dans les mentions
+            name: cleanUserName(mention.name), // ✅ CORRECTION : Nettoyer aussi les noms dans les mentions
             avatar_url: mention.avatar_url ?? undefined,
         })),
         reaction_counts: item.reaction_counts ?? {},
@@ -239,6 +239,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const [mentionQuery, setMentionQuery] = useState('');
     const [showMentionPicker, setShowMentionPicker] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    // ✅ NOUVEAU: État pour vérifier si l'utilisateur a déjà donné un avis
+    const [userHasRated, setUserHasRated] = useState(false);
 
     const isFullMode = mode === 'full' || modalVisible;
 
@@ -249,12 +251,20 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             const response = await commentsApi.getProductComments(serviceId);
             if (response.success && response.data) {
                 const payload: any = response.data;
-                setComments(normalizeComments(payload.comments));
+                const normalizedComments = normalizeComments(payload.comments);
+                setComments(normalizedComments);
                 setStats({
                     total_comments: payload.stats?.total_comments ?? payload.comments?.length ?? 0,
                     rating_count: payload.stats?.rating_count ?? 0,
                     average_rating: payload.stats?.average_rating ?? 0,
                 });
+                // ✅ NOUVEAU: Vérifier si l'utilisateur a déjà donné un avis (rating non null)
+                if (currentUserId) {
+                    const userHasRating = normalizedComments.some(
+                        (comment) => comment.user_id === currentUserId && comment.rating !== null && comment.rating !== undefined
+                    );
+                    setUserHasRated(userHasRating);
+                }
             } else {
                 setError(response.error || 'Impossible de charger les commentaires');
             }
@@ -265,7 +275,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             setLoading(false);
             setRefreshing(false);
         }
-    }, [serviceId, refreshing]);
+    }, [serviceId, refreshing, currentUserId]);
 
     useEffect(() => {
         loadComments();
@@ -293,8 +303,10 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             return;
         }
 
-        if (!replyTarget && (composerRating === null || composerRating === undefined)) {
-            Alert.alert('Note requise', 'Ajoutez une note (0-5) pour votre avis principal');
+        // ✅ CORRIGÉ: Exiger un rating seulement si c'est le premier avis de l'utilisateur
+        // Si l'utilisateur a déjà donné un avis, il peut commenter sans rating
+        if (!replyTarget && !userHasRated && (composerRating === null || composerRating === undefined)) {
+            Alert.alert('Note requise', 'Ajoutez une note (0-5) pour votre premier avis');
             return;
         }
 
@@ -328,13 +340,17 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 if (!response.success) {
                     Alert.alert('Erreur', response.error || 'Impossible de publier le commentaire');
                 } else {
+                    // ✅ NOUVEAU: Mettre à jour userHasRated si un rating a été fourni
+                    if (composerRating !== null && composerRating !== undefined && !replyTarget) {
+                        setUserHasRated(true);
+                    }
                     await loadComments();
                     resetComposer();
                 }
             }
         } catch (err) {
             console.error('[ProductCommentsSection] handleSubmitComment error', err);
-            Alert.alert('Erreur', 'Une erreur est survenue lors de lÔÇÖenvoi du commentaire');
+            Alert.alert('Erreur', 'Une erreur est survenue lors de l’envoi du commentaire');
         } finally {
             setSubmitting(false);
         }
@@ -359,7 +375,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
             Alert.alert(
                 'Supprimer le commentaire',
-                '├ètes-vous s├╗r de vouloir supprimer ce commentaire ?',
+                'Êtes-vous sûr de vouloir supprimer ce commentaire ?',
                 [
                     { text: 'Annuler', style: 'cancel' },
                     {
@@ -391,19 +407,19 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const handleToggleReaction = useCallback(
         async (comment: ProductComment, reactionType: string) => {
             if (!user?.token) {
-                Alert.alert('Connexion requise', 'Veuillez vous connecter pour r├®agir ├á un commentaire');
+                Alert.alert('Connexion requise', 'Veuillez vous connecter pour réagir à un commentaire');
                 return;
             }
             try {
                 const response = await commentsApi.toggleCommentReaction(comment.id, reactionType);
                 if (!response.success) {
-                    Alert.alert('Erreur', response.error || 'Impossible dÔÇÖenregistrer la r├®action');
+                    Alert.alert('Erreur', response.error || 'Impossible d’enregistrer la réaction');
                 } else {
                     await loadComments();
                 }
             } catch (err) {
                 console.error('[ProductCommentsSection] handleToggleReaction error', err);
-                Alert.alert('Erreur', 'Une erreur est survenue lors de la r├®action');
+                Alert.alert('Erreur', 'Une erreur est survenue lors de la réaction');
             }
         },
         [loadComments, user?.token],
@@ -471,12 +487,12 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
     const handleEdit = useCallback((comment: ProductComment) => {
         if (comment.is_deleted) {
-            Alert.alert('Impossible', 'Vous ne pouvez pas modifier un commentaire supprim├®');
+            Alert.alert('Impossible', 'Vous ne pouvez pas modifier un commentaire supprimé');
             return;
         }
         setEditingTarget(comment);
         setReplyTarget(null);
-        setComposerContent(comment.content.replace('[Commentaire supprim├®]', ''));
+        setComposerContent(comment.content.replace('[Commentaire supprimé]', ''));
         setComposerRating(comment.parent_comment_id ? null : (comment.rating ?? null));
         setSelectedMentions(
             comment.mention_users.map((mention) => ({
@@ -509,7 +525,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     >
                         <View style={styles.avatarBubble}>
                             <Text style={styles.avatarInitials}>
-                                {item.user_name ? item.user_name.charAt(0).toUpperCase() : '­ƒæñ'}
+                                {item.user_name ? item.user_name.charAt(0).toUpperCase() : '👤'}
                             </Text>
                         </View>
                         <View style={styles.authorInfo}>
@@ -521,7 +537,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     <View style={styles.commentActions}>
                         {typeof item.rating === 'number' && !item.parent_comment_id && (
                             <View style={styles.ratingBadge}>
-                                <Text style={styles.ratingEmoji}>Ô¡É</Text>
+                                <Text style={styles.ratingEmoji}>⭐</Text>
                                 <Text style={styles.ratingValue}>{item.rating.toFixed(0)}/5</Text>
                             </View>
                         )}
@@ -546,7 +562,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
                 <View style={styles.commentBody}>
                     {item.is_deleted ? (
-                        <Text style={styles.deletedText}>Ce commentaire a ├®t├® supprim├®</Text>
+                        <Text style={styles.deletedText}>Ce commentaire a été supprimé</Text>
                     ) : (
                         <Text style={styles.commentContent}>{parseMentions(item.content)}</Text>
                     )}
@@ -591,7 +607,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             onPress={() => handleReply(item)}
                         >
                             <SafeIcon name="corner-up-right" size={16} color={modernColors.primary} />
-                            <Text style={styles.footerActionText}>R├®pondre</Text>
+                            <Text style={styles.footerActionText}>Répondre</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.footerAction}
@@ -631,7 +647,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         <Text style={styles.composerContextLabel}>
                             {editingTarget
                                 ? 'Modification du commentaire'
-                                : `R├®ponse ├á ${replyTarget?.user_name}`}
+                                : `Réponse à ${replyTarget?.user_name}`}
                         </Text>
                     </View>
                     <TouchableOpacity onPress={handleCancelComposer}>
@@ -652,7 +668,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             onPress={() => setComposerRating(value)}
                         >
                             <Text style={styles.ratingStarText}>
-                                {composerRating !== null && composerRating >= value ? 'Ô¡É' : 'Ôÿå'}
+                                {composerRating !== null && composerRating >= value ? '⭐' : '☆'}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -666,8 +682,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     multiline
                     placeholder={
                         replyTarget
-                            ? `R├®pondre ├á ${replyTarget.user_name}...`
-                            : 'Partagez votre exp├®rience...'
+                            ? `Répondre à ${replyTarget.user_name}...`
+                            : 'Partagez votre expérience...'
                     }
                     placeholderTextColor={modernColors.textSecondary}
                     style={styles.composerInput}
@@ -696,7 +712,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
             <View style={styles.composerActions}>
                 <NativeButton
-                    title={editingTarget ? 'Mettre ├á jour' : 'Publier'}
+                    title={editingTarget ? 'Mettre à jour' : 'Publier'}
                     onPress={handleSubmitComment}
                     disabled={submitting}
                 />
@@ -725,9 +741,9 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             ) : null}
                         </View>
                         <View style={styles.statsCard}>
-                            <Text style={styles.statsTitle}>Ô¡É {stats.average_rating.toFixed(1)}</Text>
+                            <Text style={styles.statsTitle}>⭐ {stats.average_rating.toFixed(1)}</Text>
                             <Text style={styles.statsSubtitle}>
-                                {stats.rating_count} avis ÔÇó {stats.total_comments} commentaires
+                                {stats.rating_count} avis • {stats.total_comments} commentaires
                             </Text>
                         </View>
                     </View>
@@ -752,9 +768,9 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         !loading && (
                             <View style={styles.emptyState}>
                                 <SafeIcon name="message-circle" size={48} color={modernColors.textSecondary} />
-                                <Text style={styles.emptyTitle}>Aucun commentaire pour lÔÇÖinstant</Text>
+                                <Text style={styles.emptyTitle}>Aucun commentaire pour l’instant</Text>
                                 <Text style={styles.emptySubtitle}>
-                                    Soyez le premier ├á partager votre exp├®rience !
+                                    Soyez le premier à partager votre expérience !
                                 </Text>
                             </View>
                         )
@@ -801,7 +817,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     <View>
                         <Text style={styles.sectionTitle}>Commentaires clients</Text>
                         <Text style={styles.sectionSubtitle}>
-                            {stats.total_comments} avis ÔÇó {stats.average_rating.toFixed(1)}/5
+                            {stats.total_comments} avis • {stats.average_rating.toFixed(1)}/5
                         </Text>
                     </View>
                     <TouchableOpacity
@@ -823,7 +839,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             <View style={styles.emptyStatePreview}>
                                 <SafeIcon name="message-circle" size={32} color={modernColors.textSecondary} />
                                 <Text style={styles.emptyPreviewText}>
-                                    Aucun commentaire pour lÔÇÖinstant. Lancez la discussion !
+                                    Aucun commentaire pour l’instant. Lancez la discussion !
                                 </Text>
                             </View>
                         ) : (

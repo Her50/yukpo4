@@ -1,11 +1,10 @@
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
     ScrollView,
     StyleSheet,
     Text,
@@ -13,8 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
-import PaymentMethodSelector from '../../components/PaymentMethodSelector';
+import { NativeButton, NativeCard } from '../../components/NativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { VEHICLE_TRANSPORT_OPTIONS, type VehicleType } from '../../config/deliveryConfig';
@@ -37,23 +35,7 @@ const CourierRegistrationScreen: React.FC = () => {
     const [applicationStatus, setApplicationStatus] = useState<'none' | 'draft' | 'submitted' | 'approved' | 'rejected'>('none');
 
     // Informations personnelles
-    // ✅ CORRIGÉ: Extraire le nom sans duplication (user?.name peut contenir nom + prénom déjà)
-    const getCleanName = (name: string | undefined): string => {
-        if (!name) return '';
-        // Si le nom contient déjà des espaces multiples ou semble dupliqué, nettoyer
-        const cleaned = name.trim().replace(/\s+/g, ' ');
-        // Vérifier si le nom est dupliqué (ex: "Jean Dupont Jean Dupont")
-        const parts = cleaned.split(' ');
-        if (parts.length >= 4) {
-            const firstHalf = parts.slice(0, Math.floor(parts.length / 2)).join(' ');
-            const secondHalf = parts.slice(Math.floor(parts.length / 2)).join(' ');
-            if (firstHalf === secondHalf) {
-                return firstHalf; // Retourner seulement la première moitié si c'est dupliqué
-            }
-        }
-        return cleaned;
-    };
-    const [fullName, setFullName] = useState(getCleanName(user?.name));
+    const [fullName, setFullName] = useState(user?.name || '');
     const [phone, setPhone] = useState('');
     const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
@@ -82,57 +64,9 @@ const CourierRegistrationScreen: React.FC = () => {
     const [bio, setBio] = useState('');
     const [experience, setExperience] = useState('');
 
-    // Comptes de paiement
-    const [paymentMethod, setPaymentMethod] = useState<any>(null);
-
     useEffect(() => {
         checkApplicationStatus();
-        loadUserPhoneFromServices();
     }, [user]);
-
-    // ✅ NOUVEAU: Mettre à jour le nom complet si l'utilisateur change (seulement à l'initialisation)
-    const hasInitializedNameRef = React.useRef(false);
-    useEffect(() => {
-        if (user?.name && !hasInitializedNameRef.current) {
-            const cleanedName = getCleanName(user.name);
-            setFullName(cleanedName);
-            hasInitializedNameRef.current = true;
-        }
-    }, [user?.name]);
-
-    // ✅ NOUVEAU: Charger le téléphone depuis le WhatsApp des services/produits existants
-    const loadUserPhoneFromServices = async () => {
-        if (!user?.id || phone) return; // Ne pas écraser si déjà rempli
-
-        try {
-            const { apiGet } = require('../../services/api');
-            const response = await apiGet('/api/prestataire/services');
-            const services = response.data || response;
-
-            if (Array.isArray(services) && services.length > 0) {
-                // Chercher le WhatsApp dans les services
-                for (const service of services) {
-                    const serviceData = service.data || service;
-                    
-                    // Chercher whatsapp dans différentes structures possibles
-                    const whatsapp = serviceData.whatsapp || 
-                                   serviceData.whatsapp_contact?.valeur ||
-                                   serviceData.contact?.whatsapp ||
-                                   serviceData.contact_whatsapp?.valeur ||
-                                   serviceData.telephone_whatsapp?.valeur;
-
-                    if (whatsapp && typeof whatsapp === 'string' && whatsapp.trim().length > 0) {
-                        console.log('[CourierRegistrationScreen] ✅ WhatsApp trouvé dans service:', whatsapp);
-                        setPhone(whatsapp.trim());
-                        return; // Arrêter après avoir trouvé le premier
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('[CourierRegistrationScreen] Erreur chargement téléphone depuis services:', error);
-            // Ne pas bloquer si l'erreur survient
-        }
-    };
 
     const checkApplicationStatus = async () => {
         if (!user?.id) {
@@ -376,15 +310,6 @@ const CourierRegistrationScreen: React.FC = () => {
                 },
                 bio,
                 experience,
-                paymentMethod: paymentMethod ? {
-                    type: paymentMethod.type,
-                    phoneNumber: paymentMethod.phoneNumber,
-                    cardNumber: paymentMethod.cardNumber,
-                    cardExpiry: paymentMethod.cardExpiry,
-                    cardCVV: paymentMethod.cardCVV,
-                    cardHolder: paymentMethod.cardHolder,
-                    taxId: paymentMethod.taxId,
-                } : null,
             };
 
             const response = await deliveryApi.submitCourierApplication({
@@ -506,11 +431,7 @@ const CourierRegistrationScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            <ScrollView 
-                style={styles.scroll} 
-                contentContainerStyle={styles.scrollContent}
-                nestedScrollEnabled={true}
-            >
+            <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
                 <View style={styles.header}>
                     <Text style={styles.title}>Devenir coursier Yukpo</Text>
                     <Text style={styles.subtitle}>
@@ -596,40 +517,28 @@ const CourierRegistrationScreen: React.FC = () => {
                 {/* Transport */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Moyen de transport</Text>
-                    <View style={styles.vehicleContainer}>
-                        <FlatList
-                            data={vehicleTypes}
-                            horizontal
-                            showsHorizontalScrollIndicator={true}
-                            keyExtractor={(item) => item.value}
-                            contentContainerStyle={styles.vehicleListContent}
-                            nestedScrollEnabled={true}
-                            scrollEnabled={true}
-                            bounces={true}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.vehicleScroll}>
+                        {vehicleTypes.map((type) => (
+                            <TouchableOpacity
+                                key={type.value}
+                                style={[
+                                    styles.vehicleOption,
+                                    vehicleType === type.value && styles.vehicleOptionSelected,
+                                ]}
+                                onPress={() => setVehicleType(type.value)}
+                            >
+                                <Text style={styles.vehicleIcon}>{type.icon}</Text>
+                                <Text
                                     style={[
-                                        styles.vehicleOption,
-                                        vehicleType === item.value && styles.vehicleOptionSelected,
+                                        styles.vehicleLabel,
+                                        vehicleType === type.value && styles.vehicleLabelSelected,
                                     ]}
-                                    onPress={() => setVehicleType(item.value)}
-                                    activeOpacity={0.7}
                                 >
-                                    <Text style={styles.vehicleIcon}>{item.icon}</Text>
-                                    <Text
-                                        style={[
-                                            styles.vehicleLabel,
-                                            vehicleType === item.value && styles.vehicleLabelSelected,
-                                        ]}
-                                        numberOfLines={2}
-                                    >
-                                        {item.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                            ItemSeparatorComponent={() => <View style={styles.vehicleSeparator} />}
-                        />
-                    </View>
+                                    {type.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
                     {vehicleType !== 'walking' && (
                         <>
                             <TextInput
@@ -813,18 +722,6 @@ const CourierRegistrationScreen: React.FC = () => {
                     />
                 </NativeCard>
 
-                {/* Comptes de paiement */}
-                <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>Comptes de paiement</Text>
-                    <Text style={styles.helperText}>
-                        Renseignez votre compte pour recevoir vos paiements de livraison. L'argent transite toujours dans le compte de l'application avant reversement.
-                    </Text>
-                    <PaymentMethodSelector
-                        onPaymentChange={setPaymentMethod}
-                        readonly={false}
-                    />
-                </NativeCard>
-
                 {/* Actions */}
                 <View style={styles.actions}>
                     <NativeButton
@@ -880,12 +777,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.textSecondary,
     },
-    helperText: {
-        fontSize: 13,
-        color: modernColors.textSecondary,
-        marginBottom: 12,
-        lineHeight: 18,
-    },
     card: {
         marginBottom: 16,
         padding: 16,
@@ -918,29 +809,18 @@ const styles = StyleSheet.create({
         minHeight: 80,
         textAlignVertical: 'top',
     },
-    vehicleContainer: {
-        width: '100%',
+    vehicleScroll: {
         marginBottom: 16,
-        minHeight: 110,
-    },
-    vehicleListContent: {
-        paddingHorizontal: 4,
-        paddingVertical: 8,
-        alignItems: 'center',
-    },
-    vehicleSeparator: {
-        width: 12,
     },
     vehicleOption: {
         alignItems: 'center',
-        justifyContent: 'center',
         padding: 12,
+        marginRight: 12,
         borderRadius: 12,
         borderWidth: 2,
         borderColor: modernColors.border,
         backgroundColor: modernColors.surface,
-        width: 90,
-        height: 90,
+        minWidth: 80,
     },
     vehicleOptionSelected: {
         borderColor: modernColors.primary,

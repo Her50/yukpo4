@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -20,12 +21,12 @@ import {
 import { useWebSocketChat } from '../hooks/useWebSocketChat';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
-import FindCourierModal from './delivery/FindCourierModal';
 import InAppCallModal from './InAppCallModal';
-import PriceNegotiationModal from '../legacy/components/TransportIntraUrbain/PriceNegotiationModal';
 import ProductGalleryPickerModal from './ProductGalleryPickerModal';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
+import NegotiatedPriceModal from './chat/NegotiatedPriceModal'; // ✅ NOUVEAU : Prix négociés
+import OrderDeliveryModal from './delivery/OrderDeliveryModal'; // ✅ Phase 8 - Amélioration 25
 
 interface ChatModalMobileProps {
     visible: boolean;
@@ -33,6 +34,8 @@ interface ChatModalMobileProps {
     service: any;
     prestataireInfo: any;
     user: any;
+    conversationId?: string;  // ✅ NOUVEAU : Pour conversations privées (format UUID)
+    isPrivateConversation?: boolean;  // ✅ NOUVEAU : Flag pour conversation privée
 }
 
 interface Participant {
@@ -51,8 +54,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     onClose,
     service,
     prestataireInfo,
-    user
+    user,
+    conversationId: privateConversationId,
+    isPrivateConversation = false
 }) => {
+    const navigation = useNavigation();
     const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -85,15 +91,31 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     // États pour les appels internes
     const [showCallModal, setShowCallModal] = useState(false);
     const [callType, setCallType] = useState<'audio' | 'video'>('audio');
-    
-    // État pour le modal de recherche de coursier
-    const [showFindCourierModal, setShowFindCourierModal] = useState(false);
-    
-    // État pour le modal de négociation de prix
-    const [showNegotiationModal, setShowNegotiationModal] = useState(false);
+    const [showContactSheet, setShowContactSheet] = useState(false);
+
+    // ✅ Phase 8 - Amélioration 25 : États pour commande depuis chat
+    const [showOrderModal, setShowOrderModal] = useState(false);
+    const [selectedProductForOrder, setSelectedProductForOrder] = useState<{ index?: number, name?: string } | null>(null);
+
+    // ✅ NOUVEAU : États pour prix négociés
+    const [showNegotiatedPriceModal, setShowNegotiatedPriceModal] = useState(false);
+    const [selectedProductForNegotiation, setSelectedProductForNegotiation] = useState<{ index?: number, name?: string, price?: number } | null>(null);
 
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // ✅ NOUVEAU : Utiliser conversationId si conversation privée, sinon service.id
+    const parsedConversationId = privateConversationId ? Number(privateConversationId) : NaN;
+    const effectiveServiceId = isPrivateConversation && !Number.isNaN(parsedConversationId)
+        ? parsedConversationId
+        : (service?.id || 0);
+
+    // ✅ NOUVEAU : ID réel de la conversation pour les prix négociés (utilise effectiveServiceId)
+    const realConversationId = effectiveServiceId;
+
+    const prestataireUserId = Number(
+        prestataireInfo?.user_id ?? prestataireInfo?.userId ?? 0,
+    );
 
     // Utiliser le hook WebSocket
     const {
@@ -105,8 +127,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         deleteMessage,
         markAsRead
     } = useWebSocketChat(
-        service?.id || 0,
-        prestataireInfo?.userId || 0,
+        effectiveServiceId,
+        prestataireUserId,
         user?.id || 0
     );
 
@@ -127,10 +149,152 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         return 'Non spécifié';
     };
 
-    // ✅ CORRIGÉ: Extraire le nom réel du prestataire (nom_complet en priorité, puis name, puis nom)
-    const nomPrestataire = prestataireInfo?.nom_complet || prestataireInfo?.name || prestataireInfo?.nom || `Prestataire #${service?.user_id || ''}`;
+    const getRawFieldString = (field: any): string | null => {
+        if (!field) return null;
+        if (typeof field === 'string') {
+            const trimmed = field.trim();
+            return trimmed.length > 0 ? trimmed : null;
+        }
+        if (field && typeof field === 'object') {
+            if (typeof field.valeur === 'string') {
+                const trimmed = field.valeur.trim();
+                return trimmed.length > 0 ? trimmed : null;
+            }
+            if (typeof field.value === 'string') {
+                const trimmed = field.value.trim();
+                return trimmed.length > 0 ? trimmed : null;
+            }
+        }
+        return null;
+    };
+
+    const nomPrestataire =
+        prestataireInfo?.nom_complet ||
+        prestataireInfo?.nom ||
+        prestataireInfo?.name ||
+        prestataireInfo?.display_name ||
+        prestataireInfo?.full_name ||
+        `Prestataire #${service?.user_id}`;
     const titreService = getServiceFieldValue(service?.data?.titre_service);
     const categorieService = getServiceFieldValue(service?.data?.category);
+    const googlePlace = service?.data?.google_place || null;
+
+    const contactEntries: Array<{
+        label: string;
+        value: string;
+        type: 'phone' | 'link' | 'text' | 'whatsapp';
+        source: 'service' | 'google';
+    }> = [];
+
+    const servicePhone =
+        getRawFieldString(service?.data?.contact_phone) ||
+        getRawFieldString(service?.data?.telephone) ||
+        getRawFieldString(service?.data?.phone);
+    if (servicePhone) {
+        contactEntries.push({
+            label: 'Téléphone (service)',
+            value: servicePhone,
+            type: 'phone',
+            source: 'service',
+        });
+    }
+
+    const serviceEmail =
+        getRawFieldString(service?.data?.email) ||
+        getRawFieldString(service?.data?.contact_email);
+    if (serviceEmail) {
+        contactEntries.push({
+            label: 'Email',
+            value: serviceEmail,
+            type: 'text',
+            source: 'service',
+        });
+    }
+
+    const serviceWebsite =
+        getRawFieldString(service?.data?.website) ||
+        getRawFieldString(service?.data?.site_web);
+    if (serviceWebsite) {
+        contactEntries.push({
+            label: 'Site web (service)',
+            value: serviceWebsite,
+            type: 'link',
+            source: 'service',
+        });
+    }
+
+    const whatsappRaw =
+        typeof prestataireInfo?.whatsapp === 'string'
+            ? prestataireInfo.whatsapp
+            : typeof service?.data?.whatsapp?.valeur === 'string'
+                ? service.data.whatsapp.valeur
+                : typeof service?.data?.whatsapp === 'string'
+                    ? service.data.whatsapp
+                    : typeof prestataireInfo?.telephone === 'string'
+                        ? prestataireInfo.telephone
+                        : null;
+    const whatsappNumber = whatsappRaw ? whatsappRaw.trim() : null;
+    if (whatsappNumber) {
+        contactEntries.push({
+            label: 'WhatsApp',
+            value: whatsappNumber,
+            type: 'whatsapp',
+            source: 'service',
+        });
+    }
+
+    if (googlePlace) {
+        const internationalPhone =
+            typeof googlePlace.international_phone_number === 'string'
+                ? googlePlace.international_phone_number.trim()
+                : '';
+        const nationalPhone =
+            typeof googlePlace.national_phone_number === 'string'
+                ? googlePlace.national_phone_number.trim()
+                : '';
+        if (internationalPhone) {
+            contactEntries.push({
+                label: 'Téléphone (Google)',
+                value: internationalPhone,
+                type: 'phone',
+                source: 'google',
+            });
+        }
+        if (nationalPhone && nationalPhone !== internationalPhone) {
+            contactEntries.push({
+                label: 'Téléphone local',
+                value: nationalPhone,
+                type: 'phone',
+                source: 'google',
+            });
+        }
+        const googleWebsite =
+            typeof googlePlace.website_uri === 'string'
+                ? googlePlace.website_uri.trim()
+                : '';
+        if (googleWebsite) {
+            contactEntries.push({
+                label: 'Site officiel',
+                value: googleWebsite.startsWith('http')
+                    ? googleWebsite
+                    : `https://${googleWebsite}`,
+                type: 'link',
+                source: 'google',
+            });
+        }
+        const googleMapsUri =
+            typeof googlePlace.google_maps_uri === 'string'
+                ? googlePlace.google_maps_uri.trim()
+                : '';
+        if (googleMapsUri) {
+            contactEntries.push({
+                label: 'Voir sur Google Maps',
+                value: googleMapsUri,
+                type: 'link',
+                source: 'google',
+            });
+        }
+    }
 
     // Auto-scroll vers le bas
     useEffect(() => {
@@ -151,10 +315,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
     // ✅ NOUVEAU: Charger les participants de la conversation
     const loadParticipants = async () => {
-        if (!service?.id) return;
+        const convId = effectiveServiceId;
+        if (!convId) return;
 
         try {
-            const response = await apiGet<Participant[]>(`/api/conversations/${service.id}/participants`);
+            const response = await apiGet<Participant[]>(`/api/conversations/${convId}/participants`);
             if (response.success && response.data) {
                 setParticipants(response.data);
                 console.log('[ChatModalMobile] Participants chargés:', response.data);
@@ -442,8 +607,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     // Picker d'images
     const pickImage = async () => {
         try {
+            // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
+            // Utiliser 'images' as any pour éviter les erreurs TypeScript avec certaines versions d'expo-image-picker
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: 'images' as any,
                 allowsMultipleSelection: true,
                 quality: 0.8,
                 base64: true,
@@ -757,6 +924,13 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 </TouchableOpacity>
                             )}
 
+                            <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={() => setShowContactSheet(true)}
+                            >
+                                <SafeIcon name="info" size={20} color={modernColors.primary} />
+                            </TouchableOpacity>
+
                             {/* ✅ Bouton liste des participants */}
                             <TouchableOpacity
                                 style={[styles.actionButton, participants.length > 2 && styles.actionButtonHighlight]}
@@ -780,6 +954,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 <SafeIcon name="phone" size={20} color={modernColors.success} />
                             </TouchableOpacity>
 
+                            {/* ✅ CORRIGÉ : Appel vidéo - Icône d'appel vidéo classique (caméra avec téléphone) */}
                             <TouchableOpacity
                                 style={styles.actionButton}
                                 onPress={() => {
@@ -790,62 +965,17 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 <SafeIcon name="video" size={20} color={modernColors.primary} />
                             </TouchableOpacity>
 
-                            {/* ✅ REFACTORISÉ: Bouton Me livrer - Toujours visible si service valide */}
-                            {(() => {
-                                // ✅ SIMPLIFIÉ: Afficher le bouton si on a un service valide
-                                // Vérifier plusieurs sources pour les produits
-                                const hasProducts = !!(
-                                    service?.data?.produits ||
-                                    service?.produits ||
-                                    (service?.id || service?.service_id)
-                                );
-                                
-                                // Exclure uniquement les services/prestations
-                                const isServiceType = service?.data?.type === 'prestation_service' || 
-                                                     service?.data?.type === 'service' ||
-                                                     service?.type === 'prestation_service' ||
-                                                     service?.type === 'service';
-                                
-                                const shouldShow = hasProducts && !isServiceType;
-                                
-                                if (__DEV__) {
-                                    console.log('[ChatModalMobile] Bouton "Me livrer" - Évaluation:', {
-                                        hasProducts,
-                                        isServiceType,
-                                        shouldShow,
-                                        serviceId: service?.id || service?.service_id,
-                                        serviceType: service?.data?.type || service?.type
-                                    });
-                                }
-                                
-                                return shouldShow;
-                            })() && (
-                                <TouchableOpacity
-                                    style={[styles.actionButton, styles.deliveryButton]}
-                                    onPress={() => {
-                                        // Vérifier qu'on a bien un produit avant d'ouvrir le modal
-                                        const product = service?.data?.produits?.[0] || service?.produits?.[0];
-                                        if (!product && !service?.id && !service?.service_id) {
-                                            Alert.alert('Erreur', 'Produit non disponible pour la livraison');
-                                            return;
-                                        }
-                                        setShowFindCourierModal(true);
-                                    }}
-                                >
-                                    <SafeIcon name="truck" size={20} color="#10B981" />
-                                    <Text style={styles.deliveryButtonText}>Me livrer</Text>
-                                </TouchableOpacity>
-                            )}
-
-                            {/* ✅ NOUVEAU: Bouton Négociation de prix */}
-                            {service?.data?.produits && service.data.produits.length > 0 && service.data.produits[0]?.prix && (
-                                <TouchableOpacity
-                                    style={[styles.actionButton, styles.negotiationButton]}
-                                    onPress={() => setShowNegotiationModal(true)}
-                                >
-                                    <SafeIcon name="dollar-sign" size={20} color="#F59E0B" />
-                                </TouchableOpacity>
-                            )}
+                            {/* ✅ CORRIGÉ: Avatar véhicule pour livraison intelligente - Ouvre OrderDeliveryModal */}
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.deliveryVehicleButton]}
+                                onPress={() => {
+                                    // ✅ CORRIGÉ : Ouvrir OrderDeliveryModal au lieu de naviguer vers l'ancienne page
+                                    setSelectedProductForOrder(null);
+                                    setShowOrderModal(true);
+                                }}
+                            >
+                                <SafeIcon name="truck" size={20} color={modernColors.warning} />
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -964,50 +1094,6 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             </Text>
                                         )}
 
-                                        {/* ✅ NOUVEAU: Bouton "Me livrer" dans les messages si produit mentionné */}
-                                        {(() => {
-                                            // Détecter si le message mentionne un produit ou contient des métadonnées produit
-                                            const hasProductMetadata = message.metadata?.product_id || 
-                                                                      message.metadata?.product_index ||
-                                                                      message.metadata?.service_id;
-                                            
-                                            // Vérifier aussi si le service a des produits
-                                            const serviceHasProducts = !!(service?.data?.produits || service?.produits);
-                                            
-                                            // Afficher le bouton si on a des métadonnées produit OU si le service a des produits
-                                            const shouldShowDeliveryButton = (hasProductMetadata || serviceHasProducts) && 
-                                                                             message.from === 'prestataire'; // Seulement pour les messages du prestataire
-                                            
-                                            return shouldShowDeliveryButton;
-                                        })() && (
-                                            <TouchableOpacity
-                                                style={styles.messageDeliveryButton}
-                                                onPress={() => {
-                                                    // Récupérer le produit depuis les métadonnées ou le service
-                                                    const productFromMetadata = message.metadata?.product_id ? {
-                                                        service_id: message.metadata.service_id || service?.id || service?.service_id,
-                                                        product_index: message.metadata.product_index || 0,
-                                                        ...message.metadata
-                                                    } : null;
-                                                    
-                                                    const product = productFromMetadata || 
-                                                                    service?.data?.produits?.[0] || 
-                                                                    service?.produits?.[0];
-                                                    
-                                                    if (!product && !service?.id && !service?.service_id) {
-                                                        Alert.alert('Erreur', 'Produit non disponible pour la livraison');
-                                                        return;
-                                                    }
-                                                    
-                                                    setShowFindCourierModal(true);
-                                                }}
-                                                activeOpacity={0.8}
-                                            >
-                                                <SafeIcon name="truck" size={16} color="#FFFFFF" />
-                                                <Text style={styles.messageDeliveryButtonText}>Me livrer</Text>
-                                            </TouchableOpacity>
-                                        )}
-
                                         <View style={styles.messageFooter}>
                                             <View style={styles.messageFooterLeft}>
                                                 <Text style={[
@@ -1020,7 +1106,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                     )}
                                                 </Text>
 
-                                                {/* ✅ NOUVEAU: Bouton Répondre (toujours visible) */}
+                                                {/* ✅ CORRIGÉ : Bouton Répondre - Icône de réponse appropriée */}
                                                 <TouchableOpacity
                                                     style={styles.replyButton}
                                                     onPress={() => setReplyingTo({
@@ -1033,7 +1119,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                         fileUrl: message.fileUrl
                                                     })}
                                                 >
-                                                    <SafeIcon name="corner-down-left" size={14} color={modernColors.textSecondary} />
+                                                    <SafeIcon name="corner-up-right" size={14} color={modernColors.textSecondary} />
                                                     <Text style={styles.replyButtonText}>Répondre</Text>
                                                 </TouchableOpacity>
                                             </View>
@@ -1163,6 +1249,69 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         </ScrollView>
                     )}
 
+                    {/* ✅ Phase 8 - Amélioration 25 : Boutons d'actions rapides pour commande */}
+                    <View style={styles.quickActionsRow}>
+                        {/* ✅ Bouton commander avec livraison - Visible pour le client */}
+                        {user?.id !== service?.user_id && (
+                            <TouchableOpacity
+                                style={styles.quickActionButton}
+                                onPress={() => {
+                                    setSelectedProductForOrder(null);
+                                    setShowOrderModal(true);
+                                }}
+                            >
+                                <SafeIcon name="package" size={18} color={modernColors.primary} />
+                                <Text style={styles.quickActionText}>Commander avec livraison</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* ✅ CORRIGÉ : Bouton pour négocier un prix - Visible pour le CLIENT uniquement */}
+                        {user?.id !== service?.user_id && (
+                            <TouchableOpacity
+                                style={styles.quickActionButton}
+                                onPress={() => {
+                                    // Récupérer le premier produit du service pour la négociation
+                                    const produits = service?.data?.produits?.valeur || service?.data?.produits || [];
+                                    const firstProduct = produits.length > 0 ? produits[0] : null;
+                                    const productPrice = firstProduct?.price || firstProduct?.prix || 0;
+
+                                    setSelectedProductForNegotiation({
+                                        index: 0,
+                                        name: firstProduct?.nom || firstProduct?.name || 'Produit',
+                                        price: productPrice
+                                    });
+                                    setShowNegotiatedPriceModal(true);
+                                }}
+                            >
+                                <SafeIcon name="dollar-sign" size={18} color={modernColors.primary} />
+                                <Text style={styles.quickActionText}>💰 Négocier un prix</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* ✅ NOUVEAU : Bouton pour le prestataire - Voir les propositions de prix */}
+                        {user?.id === service?.user_id && (
+                            <TouchableOpacity
+                                style={styles.quickActionButton}
+                                onPress={() => {
+                                    // Récupérer le premier produit du service pour voir les propositions
+                                    const produits = service?.data?.produits?.valeur || service?.data?.produits || [];
+                                    const firstProduct = produits.length > 0 ? produits[0] : null;
+                                    const productPrice = firstProduct?.price || firstProduct?.prix || 0;
+
+                                    setSelectedProductForNegotiation({
+                                        index: 0,
+                                        name: firstProduct?.nom || firstProduct?.name || 'Produit',
+                                        price: productPrice
+                                    });
+                                    setShowNegotiatedPriceModal(true);
+                                }}
+                            >
+                                <SafeIcon name="dollar-sign" size={18} color={modernColors.warning} />
+                                <Text style={styles.quickActionText}>💵 Voir les propositions de prix</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
                     {/* Boutons d'actions média */}
                     <View style={styles.mediaActionsRow}>
                         <TouchableOpacity style={styles.mediaButton} onPress={pickImage}>
@@ -1180,12 +1329,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="file-text" size={22} color={modernColors.primary} />
                         </TouchableOpacity>
 
-                        {/* ✅ Bouton galerie de produits/service */}
+                        {/* ✅ CORRIGÉ : Bouton galerie de produits/service - Icône pièce jointe classique */}
                         <TouchableOpacity
                             style={styles.mediaButton}
                             onPress={() => setShowProductGalleryPicker(true)}
                         >
-                            <SafeIcon name="folder-open" size={22} color="#8B5CF6" />
+                            <SafeIcon name="paperclip" size={22} color="#8B5CF6" />
                         </TouchableOpacity>
                     </View>
 
@@ -1273,6 +1422,84 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 onSelectMedia={handleSelectGalleryMedia}
             />
 
+            <Modal
+                visible={showContactSheet}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowContactSheet(false)}
+            >
+                <View style={styles.contactOverlay}>
+                    <View style={styles.contactContainer}>
+                        <Text style={styles.contactTitle}>Contacts disponibles</Text>
+                        <ScrollView style={styles.contactList}>
+                            {contactEntries.length === 0 ? (
+                                <Text style={styles.contactEmpty}>Aucun contact supplémentaire</Text>
+                            ) : (
+                                contactEntries.map((entry, index) => (
+                                    <TouchableOpacity
+                                        key={`${entry.label}-${index}`}
+                                        style={[
+                                            styles.contactItem,
+                                            entry.type === 'text' && styles.contactItemStatic
+                                        ]}
+                                        activeOpacity={entry.type === 'text' ? 1 : 0.85}
+                                        onPress={() => {
+                                            if (entry.type === 'phone') {
+                                                const phone = entry.value.replace(/\s+/g, '');
+                                                Linking.openURL(`tel:${phone}`).catch(() =>
+                                                    Alert.alert('Téléphone', 'Impossible de lancer l’appel')
+                                                );
+                                            } else if (entry.type === 'link') {
+                                                Linking.openURL(entry.value).catch(() =>
+                                                    Alert.alert('Lien', 'Impossible d’ouvrir ce lien')
+                                                );
+                                            } else if (entry.type === 'whatsapp') {
+                                                const phone = entry.value.replace(/\s+/g, '');
+                                                const message = encodeURIComponent(`Bonjour ${nomPrestataire}, je souhaite discuter de ${titreService}.`);
+                                                Linking.openURL(`https://wa.me/${phone}?text=${message}`).catch(() =>
+                                                    Alert.alert('WhatsApp', 'Impossible d’ouvrir WhatsApp')
+                                                );
+                                            }
+                                        }}
+                                    >
+                                        <View style={styles.contactIconWrapper}>
+                                            <SafeIcon
+                                                name={
+                                                    entry.type === 'phone'
+                                                        ? 'phone'
+                                                        : entry.type === 'link'
+                                                            ? 'link'
+                                                            : entry.type === 'whatsapp'
+                                                                ? 'message-circle'
+                                                                : 'info'
+                                                }
+                                                size={18}
+                                                color={modernColors.primary}
+                                            />
+                                        </View>
+                                        <View style={styles.contactContent}>
+                                            <Text style={styles.contactLabel}>{entry.label}</Text>
+                                            <Text style={styles.contactValue} numberOfLines={1}>
+                                                {entry.value}
+                                            </Text>
+                                        </View>
+                                        {entry.type !== 'text' && (
+                                            <SafeIcon name="external-link" size={14} color="#9CA3AF" />
+                                        )}
+                                    </TouchableOpacity>
+                                ))
+                            )}
+                        </ScrollView>
+                        <TouchableOpacity
+                            style={styles.contactCloseButton}
+                            onPress={() => setShowContactSheet(false)}
+                        >
+                            <Text style={styles.contactCloseButtonText}>Fermer</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
             {/* Modal d'appel interne (audio/vidéo) */}
             <InAppCallModal
                 visible={showCallModal}
@@ -1291,6 +1518,47 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 onSelectUser={insertMention}
                 currentQuery={mentionQuery}
             />
+
+            {/* ✅ Phase 8 - Amélioration 25 : Modal de commande depuis chat */}
+            <OrderDeliveryModal
+                visible={showOrderModal}
+                onClose={() => {
+                    setShowOrderModal(false);
+                    setSelectedProductForOrder(null);
+                }}
+                serviceId={service?.id || 0}
+                productIndex={selectedProductForOrder?.index}
+                productName={selectedProductForOrder?.name}
+                conversationId={realConversationId || service?.id} // ✅ NOUVEAU : ID réel de la conversation (ou service.id en fallback)
+                clientUserId={user?.id} // ✅ NOUVEAU : ID du client
+                onSuccess={(deliveryId) => {
+                    // Optionnel : Envoyer un message dans le chat avec le lien de suivi
+                    sendMessage(`✅ Commande créée ! Suivez votre livraison : /delivery/${deliveryId}`, 'text');
+                    setShowOrderModal(false);
+                    setSelectedProductForOrder(null);
+                }}
+            />
+
+            {/* ✅ NOUVEAU : Modal de négociation de prix */}
+            {showNegotiatedPriceModal && selectedProductForNegotiation && (
+                <NegotiatedPriceModal
+                    visible={showNegotiatedPriceModal}
+                    onClose={() => {
+                        setShowNegotiatedPriceModal(false);
+                        setSelectedProductForNegotiation(null);
+                    }}
+                    conversationId={realConversationId || service?.id || 0} // ✅ ID réel de la conversation (ou service.id en fallback)
+                    serviceId={service?.id || 0}
+                    productIndex={selectedProductForNegotiation.index}
+                    originalPrice={selectedProductForNegotiation.price || 0}
+                    merchantUserId={service?.user_id || 0}
+                    clientUserId={user?.id || 0}
+                    onPriceNegotiated={() => {
+                        // Optionnel : Envoyer un message dans le chat
+                        sendMessage(`💰 Nouvelle offre de prix négocié proposée !`, 'text');
+                    }}
+                />
+            )}
 
             {/* ✅ NOUVEAU: Modal liste des participants */}
             <Modal
@@ -1374,55 +1642,6 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     </View>
                 </View>
             </Modal>
-
-            {/* ✅ REFACTORISÉ: Modal de recherche de coursier - Gestion améliorée */}
-            {(() => {
-                // Récupérer le produit depuis différentes sources
-                const product = service?.data?.produits?.[0] || service?.produits?.[0];
-                const serviceId = service?.id || service?.service_id;
-                
-                // Si pas de produit mais qu'on a un service, créer un produit minimal
-                const productForDelivery = product || (serviceId ? {
-                    service_id: serviceId,
-                    product_index: 0,
-                    nom: titreService || 'Produit',
-                    prix: service?.data?.produits?.[0]?.prix || service?.produits?.[0]?.prix,
-                } : null);
-                
-                return productForDelivery && serviceId;
-            })() && (
-                <FindCourierModal
-                    visible={showFindCourierModal}
-                    onClose={() => setShowFindCourierModal(false)}
-                    product={service?.data?.produits?.[0] || service?.produits?.[0] || {
-                        service_id: service?.id || service?.service_id,
-                        product_index: 0,
-                        nom: titreService || 'Produit',
-                    }}
-                    service={service}
-                    onSuccess={(deliveryId) => {
-                        Alert.alert('✅ Livraison créée', 'Votre demande de livraison a été créée avec succès');
-                        setShowFindCourierModal(false);
-                    }}
-                />
-            )}
-
-            {/* ✅ NOUVEAU: Modal de négociation de prix */}
-            {service?.data?.produits && service.data.produits.length > 0 && (
-                <PriceNegotiationModal
-                    visible={showNegotiationModal}
-                    onClose={() => setShowNegotiationModal(false)}
-                    driverName={nomPrestataire}
-                    driverId={String(prestataireInfo?.userId || prestataireInfo?.id || service?.user_id || '')}
-                    initialPrice={service.data.produits[0]?.prix ? parseFloat(service.data.produits[0].prix) : undefined}
-                    distance={0} // TODO: Calculer la distance réelle si nécessaire
-                    onPriceAccepted={(finalPrice) => {
-                        Alert.alert('✅ Prix accepté', `Le prix de ${finalPrice} FCFA a été accepté !`);
-                        setShowNegotiationModal(false);
-                    }}
-                    userRole="client"
-                />
-            )}
         </Modal>
     );
 };
@@ -1503,35 +1722,6 @@ const styles = StyleSheet.create({
     },
     actionButtonHighlight: {
         backgroundColor: modernColors.primary + '20', // 20% opacity
-    },
-    negotiationButton: {
-        backgroundColor: '#FEF3C7',
-    },
-    deliveryButton: {
-        backgroundColor: '#10B981' + '20', // 20% opacity pour le bouton livraison
-    },
-    deliveryButtonText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#10B981',
-        marginLeft: 4,
-    },
-    messageDeliveryButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        backgroundColor: '#10B981',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-        marginTop: 8,
-        marginBottom: 4,
-    },
-    messageDeliveryButtonText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#FFFFFF',
     },
     participantsBadge: {
         position: 'absolute',
@@ -1645,7 +1835,7 @@ const styles = StyleSheet.create({
     },
     messageText: {
         fontSize: 16,
-        lineHeight: 22,
+        lineHeight: 20,
     },
     messageTextLeft: {
         color: modernColors.text,
@@ -1811,6 +2001,81 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: modernColors.textSecondary,
     },
+    contactOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15,23,42,0.45)',
+        justifyContent: 'center',
+        padding: 24,
+    },
+    contactContainer: {
+        backgroundColor: modernColors.surface,
+        borderRadius: 20,
+        padding: 20,
+        maxHeight: '70%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 24,
+        elevation: 8,
+    },
+    contactTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 16,
+    },
+    contactList: {
+        maxHeight: 280,
+    },
+    contactEmpty: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        paddingVertical: 16,
+    },
+    contactItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(148, 163, 184, 0.2)',
+    },
+    contactItemStatic: {
+        opacity: 0.85,
+    },
+    contactIconWrapper: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#EEF2FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    contactContent: {
+        flex: 1,
+    },
+    contactLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    contactValue: {
+        fontSize: 13,
+        color: modernColors.text,
+        marginTop: 2,
+    },
+    contactCloseButton: {
+        marginTop: 16,
+        backgroundColor: modernColors.primary,
+        borderRadius: 12,
+        paddingVertical: 10,
+        alignItems: 'center',
+    },
+    contactCloseButtonText: {
+        color: '#FFFFFF',
+        fontWeight: '600',
+    },
     mediaPreviewContainer: {
         paddingVertical: 12,
         paddingHorizontal: 8,
@@ -1886,6 +2151,30 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    // ✅ Phase 8 - Amélioration 25 : Styles pour boutons d'actions rapides
+    quickActionsRow: {
+        paddingVertical: 8,
+        paddingHorizontal: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    quickActionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        backgroundColor: modernColors.primary + '15',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: modernColors.primary + '30',
+    },
+    quickActionText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.primary,
     },
     mediaActionsRow: {
         flexDirection: 'row',
@@ -2155,6 +2444,15 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '500',
         color: modernColors.textSecondary,
+    },
+    // ✅ NOUVEAU: Styles pour avatar véhicule livraison
+    deliveryVehicleButton: {
+        backgroundColor: modernColors.warning + '20',
+        borderWidth: 1,
+        borderColor: modernColors.warning,
+    },
+    deliveryVehicleIcon: {
+        fontSize: 20,
     },
 });
 

@@ -20,15 +20,13 @@ import { apiGet, apiPost } from '../services/api';
 // Code corrigé (remplace @ts-ignore)
 // ✅ NOUVEAU 2025-11-02: Gestionnaire upload images/vidéos dédié
 import BrandingManagerMobile from '../components/BrandingManagerMobile';
-// ✅ NOUVEAU: Haptic feedback pour actions critiques
-import { hapticError, hapticFormSuccess } from '../utils/hapticFeedback';
 import MediaUploadManager from '../components/MediaUploadManager';
 // Code corrigé (remplace @ts-ignore)
 import ModernGPSModal from '../components/ModernGPSModal';
 // Code corrigé (remplace @ts-ignore)
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 // Code corrigé (remplace @ts-ignore)
-import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/SafeNativeDesign';
+import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/NativeDesign';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 // ✅ SUPPRIMÉ: ProductManagerMobile intégré directement dans le formulaire
 import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
@@ -46,9 +44,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { modernColors } from '../theme/modernTheme';
 import { DynamicField, processIASuggestion } from '../utils/formDispatcher';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
-import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 
-const { width, height: screenHeight } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const TAB_WIDTH = 136;
 
 interface ServiceData {
@@ -93,7 +90,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, logout } = useAuth();
-  const blockContentScrollRef = React.useRef<ScrollView>(null);
+  const blockNavigationRef = React.useRef(null);
+  const blockContentRef = React.useRef(null);
 
   const params = ((route || {})?.params || {}) as any;
 
@@ -120,11 +118,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const gpsData = gpsDataParam || {};
   const type = typeParam || '';
   const mode = modeParam || 'create'; // ✅ Par défaut 'create' au lieu de 'edit'
-  
-  // ✅ CORRECTION : Extraire les données complètes avec priorité sur service_data.data
-  // service_data.data contient les données complètes avec produits (nom_produit, categorie_produit, etc.)
-  // data contient seulement les champs de base (titre_service, category, description, is_tarissable)
-  const suggestionData = suggestion?.service_data?.data || suggestion?.data || suggestion || {};
 
   // ✅ CORRECTION CRITIQUE: Si on arrive avec mode='add_product' ou édition de produit, rediriger vers AjouterProduitSimpleScreen
   // Ce formulaire est dédié à la création/modification de service, pas à l'ajout/édition de produit seul
@@ -132,17 +125,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // Cas 1: Mode add_product (ajout de produit)
     if ((mode === 'add_product' || routeAddProductFlag) && serviceId) {
       console.log('[FormulaireYukpoIntelligentScreen] 🔄 Redirection vers AjouterProduitSimpleScreen (mode add_product détecté)');
-      // ✅ CORRIGÉ: S'assurer que tous les paramètres nécessaires sont passés
       (navigation as any).replace('AjouterProduitSimple', {
         serviceId: serviceId,
         suggestionIA: {
-          ...suggestion,
-          // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
-          data: suggestion?.service_data?.data || suggestion?.data || suggestion || {},
-          session_id: suggestion?.session_id,
+          data: suggestion || {}
         },
-        mediaData: mediaData || {},
-        gpsData: gpsData || {},
+        mediaData: mediaData,
+        gpsData: gpsData,
         mode: duplicateProduct ? 'duplicate' : 'create',
         prefill: duplicateProduct || editProductData || {}
       });
@@ -156,10 +145,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // Trouver l'index du produit si possible (sinon sera null)
       let productIndex: number | null = null;
-      // ✅ CORRECTION : Utiliser suggestionData qui priorise service_data.data
-      const produitsData = suggestionData?.produits || suggestion?.data?.produits;
-      if (produitsData?.valeur && Array.isArray(produitsData.valeur)) {
-        const produitsArray = produitsData.valeur;
+      if (suggestion?.data?.produits?.valeur && Array.isArray(suggestion.data.produits.valeur)) {
+        const produitsArray = suggestion.data.produits.valeur;
         productIndex = produitsArray.findIndex((p: any) =>
           (p.id && p.id.toString() === focusProductId.toString()) ||
           (p.nom && p.nom === editProductData.nom)
@@ -167,7 +154,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         if (productIndex < 0) productIndex = null;
       }
 
-      // ✅ CORRIGÉ: Passer aussi mediaData et gpsData pour pré-remplir les médias et localisation
       (navigation as any).replace('AjouterProduitSimple', {
         mode: 'edit',
         serviceId: serviceId,
@@ -175,13 +161,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         productIndex: productIndex,
         prefill: editProductData,
         suggestionIA: {
-          ...suggestion,
-          // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
-          data: suggestion?.service_data?.data || suggestion?.data || suggestion || {},
-          session_id: suggestion?.session_id,
-        },
-        mediaData: mediaData || {},
-        gpsData: gpsData || {},
+          data: suggestion || {}
+        }
       });
       return;
     }
@@ -291,13 +272,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [gps, setGps] = useState<string | undefined>(undefined);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successData, setSuccessData] = useState<ServiceData | null>(null);
-  // ✅ NOUVEAU: États pour le modal de configuration de livraison
-  const [showProductDeliveryConfig, setShowProductDeliveryConfig] = useState(false);
-  const [productDeliveryConfigData, setProductDeliveryConfigData] = useState<{
-    serviceId: number;
-    productIndex: number;
-    productName: string;
-  } | null>(null);
   // ✅ SUPPRIMÉ: products et setProducts - Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
   const [suggestedProductCategories, setSuggestedProductCategories] = useState<Array<{ value: string; label: string; icon: string; confidence: number; reason?: string }>>([]); // ✅ NOUVEAU: Catégories produits suggérées
@@ -312,6 +286,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   }[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [dynamicTextareaHeights, setDynamicTextareaHeights] = useState<Record<string, number>>({});
+  const [blockHorizontalScrollEnabled, setBlockHorizontalScrollEnabled] = useState(true);
 
   const formatMultilineValue = React.useCallback((rawValue: any): string => {
     if (typeof rawValue !== 'string') {
@@ -322,9 +297,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       .replace(/\r/g, '\n')
       .replace(/\\n/g, '\n');
   }, []);
-  // Callbacks pour le scroll horizontal des médias (plus nécessaires mais gardés pour compatibilité)
-  const handleMediaHorizontalScrollStart = useCallback(() => {}, []);
-  const handleMediaHorizontalScrollEnd = useCallback(() => {}, []);
+  const handleMediaHorizontalScrollStart = useCallback(() => {
+    setBlockHorizontalScrollEnabled(false);
+  }, []);
+
+  const handleMediaHorizontalScrollEnd = useCallback(() => {
+    setBlockHorizontalScrollEnabled(true);
+  }, []);
 
   const displayedBlocks = useMemo(() => {
     if (!blocks || blocks.length === 0) {
@@ -341,11 +320,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }, []);
   }, [blocks, isEditingServiceInfo]);
 
-  // Calculer l'index d'affichage et le pourcentage de progression
   const currentDisplayIndex = useMemo(() => {
     if (!displayedBlocks || displayedBlocks.length === 0) {
       return 0;
     }
+
     const index = displayedBlocks.findIndex((item) => item.index === currentBlock);
     return index === -1 ? 0 : index;
   }, [displayedBlocks, currentBlock]);
@@ -354,6 +333,33 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const progressPercentage = totalVisibleBlocks > 0
     ? ((currentDisplayIndex + 1) / totalVisibleBlocks) * 100
     : 0;
+
+  useEffect(() => {
+    if (!displayedBlocks || displayedBlocks.length === 0) {
+      return;
+    }
+
+    const isCurrentVisible = displayedBlocks.some((item) => item.index === currentBlock);
+
+    if (!isCurrentVisible) {
+      setCurrentBlock(displayedBlocks[0].index);
+      if (blockContentRef.current && typeof blockContentRef.current.scrollTo === 'function') {
+        blockContentRef.current.scrollTo({ x: 0, y: 0, animated: true });
+      }
+    }
+  }, [displayedBlocks, currentBlock]);
+
+  useEffect(() => {
+    const displayIndex = displayedBlocks.findIndex((item) => item.index === currentBlock);
+    if (displayIndex === -1) {
+      return;
+    }
+
+    const targetOffset = Math.max(0, displayIndex * TAB_WIDTH - TAB_WIDTH);
+    if (blockNavigationRef.current && typeof blockNavigationRef.current.scrollTo === 'function') {
+      blockNavigationRef.current.scrollTo({ x: targetOffset, y: 0, animated: true });
+    }
+  }, [currentBlock, displayedBlocks]);
 
   useEffect(() => {
     const parseMediaValue = (value: any): any[] => {
@@ -421,24 +427,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       hasValues: !!values,
       hasSuggestion: !!suggestion,
       produitsField: values?.produits,
-      suggestionProduits: suggestionData?.produits || suggestion?.data?.produits,
+      suggestionProduits: suggestion?.data?.produits,
       suggestionDataProduits: suggestionData?.produits,
       suggestionDataRoot: suggestionData?.sous_caracteristiques ? 'OUI' : 'NON',
       suggestionDataProductVector: suggestionData?.product_vector ? suggestionData.product_vector.length : 0
     });
 
-    // ✅ CORRIGÉ: Vérifier plusieurs sources pour produitsData avec priorité sur suggestionData
-    const produitsData = values.produits || suggestionData?.produits || suggestion?.data?.produits;
+    // ✅ CORRIGÉ: Vérifier plusieurs sources pour produitsData
+    const produitsData = values.produits || suggestion?.data?.produits || suggestionData?.produits;
 
-    // ✅ NOUVEAU 2025-11-28: PRIORITÉ 0: Vérifier directement dans suggestionData.produits (seeds depuis backend)
+    // ✅ NOUVEAU 2025-11-28: PRIORITÉ 0: Vérifier directement dans suggestion.data.produits (seeds depuis backend)
     // Le backend inclut maintenant les seeds directement dans la réponse IA
-    // ✅ CORRECTION : Prioriser suggestionData qui contient service_data.data
-    const produitsNode = suggestionData?.produits || suggestion?.data?.produits;
-    if (produitsNode?.sous_caracteristiques &&
-      typeof produitsNode.sous_caracteristiques === 'object' &&
-      Object.keys(produitsNode.sous_caracteristiques).length > 0) {
+    if (suggestion?.data?.produits?.sous_caracteristiques &&
+      typeof suggestion.data.produits.sous_caracteristiques === 'object' &&
+      Object.keys(suggestion.data.produits.sous_caracteristiques).length > 0) {
       const sousCaracsObj: Record<string, string[]> = {};
-      Object.entries(produitsNode.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
+      Object.entries(suggestion.data.produits.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
         if (Array.isArray(vals) && vals.length > 0) {
           const allValues = vals
             .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
@@ -450,7 +454,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       });
 
       if (Object.keys(sousCaracsObj).length > 0) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques depuis seeds IA (suggestionData.produits):', sousCaracsObj);
+        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques depuis seeds IA (suggestion.data.produits):', sousCaracsObj);
         return sousCaracsObj;
       }
     }
@@ -503,41 +507,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       productVector.length > 0 && productVector.length === productLabels.length) {
 
       const sousCaracsFromPreferred: Record<string, string[]> = {};
-      
-      // ✅ DEBUG: Logger les données d'entrée pour diagnostiquer
-      console.log('[getSousCaracteristiquesFromIA] 🔍 Construction depuis product_vector/product_labels:', {
-        product_vector: productVector,
-        product_labels: productLabels,
-        length_vector: productVector.length,
-        length_labels: productLabels.length
-      });
-      
       productVector.forEach((value: string, index: number) => {
         const label = productLabels[index];
-        console.log(`[getSousCaracteristiquesFromIA] 🔍 Index ${index}: label="${label}", value="${value}"`);
-        
         if (label && typeof label === 'string' && value && typeof value === 'string') {
-          // ✅ CRITIQUE: Chaque valeur doit être associée à son label correspondant par index
-          // Si le label existe déjà, on ajoute la valeur (cas où même label apparaît plusieurs fois)
+          // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position
+          // Si le label n'existe pas encore, créer un tableau avec la valeur préférée en premier
           if (!sousCaracsFromPreferred[label]) {
             sousCaracsFromPreferred[label] = [value];
-            console.log(`[getSousCaracteristiquesFromIA] ✅ Nouveau label créé: "${label}" = ["${value}"]`);
           } else {
-            // Si le label existe déjà, ajouter la valeur (pour gérer les labels dupliqués)
+            // Si le label existe déjà, s'assurer que la valeur préférée est en première position
             const existingValues = sousCaracsFromPreferred[label];
             if (!existingValues.includes(value)) {
+              // Insérer la valeur préférée en première position
               sousCaracsFromPreferred[label] = [value, ...existingValues];
-              console.log(`[getSousCaracteristiquesFromIA] ✅ Label existant mis à jour: "${label}" = ["${value}", ...]`);
             } else {
-              console.log(`[getSousCaracteristiquesFromIA] ⚠️ Valeur déjà présente pour "${label}": "${value}"`);
+              // Si la valeur existe déjà mais n'est pas en première position, la déplacer
+              const filtered = existingValues.filter(v => v !== value);
+              sousCaracsFromPreferred[label] = [value, ...filtered];
             }
           }
-        } else {
-          console.warn(`[getSousCaracteristiquesFromIA] ⚠️ Index ${index}: label ou value invalide`, { label, value });
         }
       });
-      
-      console.log('[getSousCaracteristiquesFromIA] ✅ Résultat construction depuis product_vector/product_labels:', sousCaracsFromPreferred);
 
       if (Object.keys(sousCaracsFromPreferred).length > 0) {
         console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques depuis combinaison préférée (product_vector/product_labels):', sousCaracsFromPreferred);
@@ -571,13 +561,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
     }
 
-    // 3. Fallback: Essayer depuis suggestionData.produits
+    // 3. Fallback: Essayer depuis suggestionData.data.produits
     // ✅ CORRIGÉ: Passer TOUTES les valeurs pour permettre l'affichage du tableau complet
-    // ✅ CORRECTION : Prioriser suggestionData qui contient service_data.data
-    const produitsNodeForFallback = suggestionData?.produits || suggestion?.data?.produits;
-    if (produitsNodeForFallback?.sous_caracteristiques && typeof produitsNodeForFallback.sous_caracteristiques === 'object') {
+    if (suggestion?.data?.produits?.sous_caracteristiques && typeof suggestion.data.produits.sous_caracteristiques === 'object') {
       const sousCaracsObj: Record<string, string[]> = {};
-      Object.entries(produitsNodeForFallback.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
+      Object.entries(suggestion.data.produits.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
         if (Array.isArray(vals) && vals.length > 0) {
           // ✅ CORRIGÉ: Passer TOUTES les valeurs, pas seulement la première
           // Cela permet au tableau de s'afficher correctement dans LinearAutocompleteEditor
@@ -591,7 +579,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       });
 
       if (Object.keys(sousCaracsObj).length > 0) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (TOUTES les valeurs) depuis suggestionData.produits:', sousCaracsObj);
+        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (TOUTES les valeurs) depuis suggestion.data.produits:', sousCaracsObj);
         return sousCaracsObj;
       }
     }
@@ -601,7 +589,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     console.warn('[getSousCaracteristiquesFromIA] ⚠️ PROBLÈME: Aucune combinaison préférée trouvée après vérification de toutes les sources. Vérifier que:');
     console.warn('  - session_id est présent dans suggestion');
     console.warn('  - L\'API /api/combinations/session/{session_id} retourne des données');
-    console.warn('  - suggestionData.produits contient sous_caracteristiques ou product_vector/product_labels');
+    console.warn('  - suggestion.data.produits contient sous_caracteristiques ou product_vector/product_labels');
     console.warn('  - Les données sont bien passées depuis le composant parent');
     return {};
   };
@@ -709,13 +697,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         'nom_produit', // 1. Nom du produit
         'categorie_produit', // 2. Catégorie
         'description_produit', // 3. Description
-        'quantite_disponible', // 4. Quantité disponible (produits uniquement)
-        'produits', // 5. Caractéristiques (autocomplete)
-        'lieu_produit', 'lieu_commercial', 'lieu_commercialisation', // 6. Lieu
-        'prix', 'prix_produit', // 7. Prix
-        'devise', 'devise_produit', // 8. Devise (sera affichée inline avec prix)
-        'price_variant', 'variabilite_prix', // 9. Variations prix
-        'images', 'videos', '_product_media_manager' // 10. Médias
+        'produits', // 4. Caractéristiques (autocomplete)
+        'lieu_produit', 'lieu_commercial', 'lieu_commercialisation', // 5. Lieu
+        'prix', 'prix_produit', // 6. Prix
+        'devise', 'devise_produit', // 7. Devise (sera affichée inline avec prix)
+        'price_variant', 'variabilite_prix', // 8. Variations prix
+        'images', 'videos', '_product_media_manager' // 9. Médias
       ];
 
       return fields.sort((a, b) => {
@@ -1079,12 +1066,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // Ajouter les champs de contact s'ils n'existent pas déjà
       const contactFields = ['whatsapp', 'telephone', 'email', 'website'];
       contactFields.forEach(fieldName => {
-        const existingField = contactBlock.fields.find(f => f.name === fieldName);
-        if (!existingField) {
+        if (!contactBlock.fields.find(f => f.name === fieldName)) {
           contactBlock.fields.push({
             name: fieldName,
             type: fieldName === 'email' ? 'email' : fieldName === 'website' ? 'url' : 'text',
-            typeDonnee: fieldName === 'email' ? 'email' : fieldName === 'website' ? 'url' : 'string',
             label: fieldName === 'whatsapp' ? 'WhatsApp' :
               fieldName === 'telephone' ? 'Téléphone' :
                 fieldName === 'email' ? 'Email' : 'Site web',
@@ -1095,15 +1080,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           } as any);
         }
       });
-      // ✅ CORRECTION: S'assurer que les champs de contact sont toujours présents même s'ils existent déjà depuis l'IA
-      // Trier les champs pour mettre les champs de contact standard en premier
-      const standardContactFields = ['whatsapp', 'telephone', 'email', 'website'];
-      const otherContactFields = contactBlock.fields.filter(f => !standardContactFields.includes(f.name));
-      const standardFields = standardContactFields
-        .map(fieldName => contactBlock.fields.find(f => f.name === fieldName))
-        .filter(f => f !== undefined) as DynamicField[];
-      contactBlock.fields = [...standardFields, ...otherContactFields];
-      console.log('[FormulaireYukpoIntelligentScreen] ✅ Champs de contact organisés:', contactBlock.fields.map(f => f.name));
     }
 
     // ✅ NOUVEAU 2025-11-06: Trier les champs du bloc Produits selon l'ordre souhaité
@@ -1266,57 +1242,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
     }
 
-    // ✅ NOUVEAU 2025-01-28: Validation quantité obligatoire avant de quitter le bloc produit
-    const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
-    if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex) {
-      const typeOffre = valeursFormulaire.type_offre || 'produit';
-      const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
-
-      if (!isPrestation) {
-        const quantiteDisponible = valeursFormulaire.quantite_disponible;
-        const stockValue = quantiteDisponible !== null && quantiteDisponible !== undefined && quantiteDisponible !== ''
-          ? (typeof quantiteDisponible === 'number' ? quantiteDisponible : parseInt(String(quantiteDisponible), 10))
-          : null;
-
-        // Vérifier aussi dans les variants de prix si présents
-        let hasVariantStock = false;
-        const priceVariant = valeursFormulaire.variabilite_prix || valeursFormulaire.price_variant || valeursFormulaire.variation_prix;
-        if (priceVariant && typeof priceVariant === 'object') {
-          const modalites = priceVariant.modalites || priceVariant.valeur || (Array.isArray(priceVariant) ? priceVariant : []);
-          if (Array.isArray(modalites) && modalites.length > 0) {
-            hasVariantStock = modalites.some((modalite: any) => {
-              const variantStock = modalite.stock || modalite.quantite;
-              if (variantStock !== null && variantStock !== undefined && variantStock !== '') {
-                const variantStockValue = typeof variantStock === 'number' ? variantStock : parseInt(String(variantStock), 10);
-                return !isNaN(variantStockValue) && variantStockValue > 0;
-              }
-              return false;
-            });
-          }
-        }
-
-        // Si ni stock global ni stock variant n'est valide (> 0)
-        if ((stockValue === null || isNaN(stockValue) || stockValue <= 0) && !hasVariantStock) {
-          Alert.alert(
-            '⚠️ Quantité obligatoire',
-            'La quantité disponible est obligatoire pour les produits et doit être strictement supérieure à 0.\n\n' +
-            'Pourquoi ? La gestion du stock permet d\'éviter les ventes de produits épuisés et d\'améliorer l\'expérience de vos clients.\n\n' +
-            'Veuillez renseigner la quantité disponible dans le champ dédié avant de continuer.',
-            [{ text: 'OK' }]
-          );
-          setFieldErrors({ quantite_disponible: 'La quantité doit être strictement supérieure à 0' });
-          return;
-        }
-
-        // Effacer l'erreur si la validation réussit
-        if (fieldErrors.quantite_disponible) {
-          const newErrors = { ...fieldErrors };
-          delete newErrors.quantite_disponible;
-          setFieldErrors(newErrors);
-        }
-      }
-    }
-
     // Valider le bloc actuel avant de passer au suivant
     const validation = validateCurrentBlock();
 
@@ -1339,10 +1264,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const nextVisible = currentVisibleIndex !== -1 ? displayedBlocks[currentVisibleIndex + 1] : null;
 
     if (nextVisible) {
+      setBlockHorizontalScrollEnabled(true);
       setCurrentBlock(nextVisible.index);
       const targetDisplayIndex = currentVisibleIndex + 1;
       if (targetDisplayIndex >= 0) {
-        blockContentScrollRef.current?.scrollTo({
+        blockContentRef.current?.scrollTo({
           x: targetDisplayIndex * width,
           y: 0,
           animated: true
@@ -1356,10 +1282,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const previousVisible = currentVisibleIndex > 0 ? displayedBlocks[currentVisibleIndex - 1] : null;
 
     if (previousVisible) {
+      setBlockHorizontalScrollEnabled(true);
       setCurrentBlock(previousVisible.index);
       const targetDisplayIndex = currentVisibleIndex - 1;
       if (targetDisplayIndex >= 0) {
-        blockContentScrollRef.current?.scrollTo({
+        blockContentRef.current?.scrollTo({
           x: targetDisplayIndex * width,
           y: 0,
           animated: true
@@ -1392,56 +1319,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
 
-    // ✅ NOUVEAU 2025-01-28: Empêcher de quitter le bloc produit si quantité non renseignée
-    if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex !== productsBlockIndex) {
-      const typeOffre = valeursFormulaire.type_offre || 'produit';
-      const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
-
-      if (!isPrestation) {
-        const quantiteDisponible = valeursFormulaire.quantite_disponible;
-        const stockValue = quantiteDisponible !== null && quantiteDisponible !== undefined && quantiteDisponible !== ''
-          ? (typeof quantiteDisponible === 'number' ? quantiteDisponible : parseInt(String(quantiteDisponible), 10))
-          : null;
-
-        // Vérifier aussi dans les variants de prix si présents
-        let hasVariantStock = false;
-        const priceVariant = valeursFormulaire.variabilite_prix || valeursFormulaire.price_variant || valeursFormulaire.variation_prix;
-        if (priceVariant && typeof priceVariant === 'object') {
-          const modalites = priceVariant.modalites || priceVariant.valeur || (Array.isArray(priceVariant) ? priceVariant : []);
-          if (Array.isArray(modalites) && modalites.length > 0) {
-            hasVariantStock = modalites.some((modalite: any) => {
-              const variantStock = modalite.stock || modalite.quantite;
-              if (variantStock !== null && variantStock !== undefined && variantStock !== '') {
-                const variantStockValue = typeof variantStock === 'number' ? variantStock : parseInt(String(variantStock), 10);
-                return !isNaN(variantStockValue) && variantStockValue > 0;
-              }
-              return false;
-            });
-          }
-        }
-
-        // Si ni stock global ni stock variant n'est valide (> 0)
-        if ((stockValue === null || isNaN(stockValue) || stockValue <= 0) && !hasVariantStock) {
-          Alert.alert(
-            '⚠️ Quantité obligatoire',
-            'La quantité disponible est obligatoire pour les produits et doit être strictement supérieure à 0.\n\n' +
-            'Pourquoi ? La gestion du stock permet d\'éviter les ventes de produits épuisés et d\'améliorer l\'expérience de vos clients.\n\n' +
-            'Veuillez renseigner la quantité disponible dans le champ dédié avant de continuer.',
-            [{ text: 'OK' }]
-          );
-          setFieldErrors({ quantite_disponible: 'La quantité doit être strictement supérieure à 0' });
-          return;
-        }
-
-        // Effacer l'erreur si la validation réussit
-        if (fieldErrors.quantite_disponible) {
-          const newErrors = { ...fieldErrors };
-          delete newErrors.quantite_disponible;
-          setFieldErrors(newErrors);
-        }
-      }
-    }
-
     // ✅ CORRECTION: Empêcher de passer à un bloc après le bloc produits si le bloc produits n'a pas de produits
     // ✅ NOUVEAU 2025-11-06: Lever contrainte si mode edit_service_info
     if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex > productsBlockIndex && !isEditingServiceInfo) {
@@ -1457,14 +1334,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     setCurrentBlock(blockIndex);
-    // Scroll vers le bloc sélectionné
-    if (targetDisplayIndex >= 0) {
-      blockContentScrollRef.current?.scrollTo({
-        x: targetDisplayIndex * width,
-        y: 0,
-        animated: true
-      });
-    }
+    setBlockHorizontalScrollEnabled(true);
+
+    blockContentRef.current?.scrollTo({
+      x: targetDisplayIndex * width,
+      y: 0,
+      animated: true
+    });
   };
 
   // ✅ NOUVEAU: Charger les données du service en mode édition
@@ -1612,39 +1488,30 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       console.log('[FormulaireYukpoIntelligentScreen] useEffect - Traitement des données IA au chargement');
       console.log('[FormulaireYukpoIntelligentScreen] Suggestion disponible:', !!suggestion);
       console.log('[FormulaireYukpoIntelligentScreen] Suggestion.data:', suggestion?.data);
-      console.log('[FormulaireYukpoIntelligentScreen] Suggestion.service_data.data:', suggestion?.service_data?.data);
 
-      // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
-      const dataToProcess = suggestion?.service_data?.data || suggestion?.data;
-      
-      if (suggestion && dataToProcess && typeof dataToProcess === 'object') {
+      if (suggestion && suggestion.data && typeof suggestion.data === 'object') {
         console.log('[FormulaireYukpoIntelligentScreen] Données IA disponibles, génération automatique des composants');
 
         // ✅ NOUVEAU 2025-11-04: Log complet du JSON IA pour diagnostic
         try {
-          console.log('[FormulaireYukpoIntelligentScreen] 📋 JSON COMPLET de l\'IA:', JSON.stringify(dataToProcess, null, 2));
+          console.log('[FormulaireYukpoIntelligentScreen] 📋 JSON COMPLET de l\'IA:', JSON.stringify(suggestion.data, null, 2));
         } catch (e) {
-          console.warn('[FormulaireYukpoIntelligentScreen] Impossible de stringify dataToProcess');
+          console.warn('[FormulaireYukpoIntelligentScreen] Impossible de stringify suggestion.data');
         }
 
         console.log('[FormulaireYukpoIntelligentScreen] 🔍 Champs DISTINCTS dans l\'IA:', {
           // Bloc Informations Générales
-          titre_service: dataToProcess.titre_service?.valeur || dataToProcess.titre_service,
-          category: dataToProcess.category?.valeur || dataToProcess.category,
-          description: dataToProcess.description?.valeur || dataToProcess.description,
+          titre_service: suggestion.data.titre_service?.valeur || suggestion.data.titre_service,
+          category: suggestion.data.category?.valeur || suggestion.data.category,
+          description: suggestion.data.description?.valeur || suggestion.data.description,
           // Bloc Produits
-          nom_produit: dataToProcess.nom_produit?.valeur || dataToProcess.nom_produit || '❌ ABSENT',
-          categorie_produit: dataToProcess.categorie_produit?.valeur || dataToProcess.categorie_produit || '❌ ABSENT',
-          description_produit: dataToProcess.description_produit?.valeur || dataToProcess.description_produit || '❌ ABSENT'
+          nom_produit: suggestion.data.nom_produit?.valeur || suggestion.data.nom_produit || '❌ ABSENT',
+          categorie_produit: suggestion.data.categorie_produit?.valeur || suggestion.data.categorie_produit || '❌ ABSENT',
+          description_produit: suggestion.data.description_produit?.valeur || suggestion.data.description_produit || '❌ ABSENT'
         });
 
         // Traiter les suggestions IA comme dans le frontend
-        // ✅ CORRECTION : Passer les données complètes avec service_data.data
-        const suggestionWithCorrectData = {
-          ...suggestion,
-          data: dataToProcess
-        };
-        const components = processIASuggestion(suggestionWithCorrectData);
+        const components = processIASuggestion(suggestion);
 
         if (!Array.isArray(components)) {
           console.error('[FormulaireYukpoIntelligentScreen] ❌ processIASuggestion n\'a pas retourné un array');
@@ -1655,8 +1522,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         // Extraire les valeurs des données IA pour pré-remplir les champs
         const initialValues: Record<string, any> = {};
-        Object.keys(dataToProcess || {}).forEach(fieldName => {
-          const fieldData = dataToProcess[fieldName];
+        Object.keys(suggestion.data || {}).forEach(fieldName => {
+          const fieldData = suggestion.data[fieldName];
 
           // ✅ CORRECTION: Traiter tous les champs produits, y compris produits (autocomplete) et price_variant
           if (fieldData && typeof fieldData === 'object' && 'valeur' in fieldData) {
@@ -1756,10 +1623,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
 
         // CORRECTION: S'assurer que le champ category est bien chargé
-        if (dataToProcess.category) {
-          const categoryValue = typeof dataToProcess.category === 'object' && 'valeur' in dataToProcess.category
-            ? dataToProcess.category.valeur
-            : dataToProcess.category;
+        if (suggestion.data.category) {
+          const categoryValue = typeof suggestion.data.category === 'object' && 'valeur' in suggestion.data.category
+            ? suggestion.data.category.valeur
+            : suggestion.data.category;
           initialValues.category = categoryValue;
           console.log('[FormulaireYukpoIntelligentScreen] Catégorie chargée:', categoryValue);
         }
@@ -1768,52 +1635,52 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // Si l'IA a généré une structure produit (nom_produit OU prix_produit OU produits), on utilise ses valeurs
         // Sinon, on considère que l'IA n'a pas voulu créer de produit et on n'en crée pas non plus
 
-        const hasProductData = dataToProcess.nom_produit || dataToProcess.prix_produit || dataToProcess.produits || dataToProcess.variabilite_prix;
+        const hasProductData = suggestion.data.nom_produit || suggestion.data.prix_produit || suggestion.data.produits || suggestion.data.variabilite_prix;
 
         // Extraire nom_produit avec fallback intelligent
-        if (dataToProcess.nom_produit) {
-          const nomProduitValue = typeof dataToProcess.nom_produit === 'object' && 'valeur' in dataToProcess.nom_produit
-            ? dataToProcess.nom_produit.valeur
-            : dataToProcess.nom_produit;
+        if (suggestion.data.nom_produit) {
+          const nomProduitValue = typeof suggestion.data.nom_produit === 'object' && 'valeur' in suggestion.data.nom_produit
+            ? suggestion.data.nom_produit.valeur
+            : suggestion.data.nom_produit;
           initialValues.nom_produit = nomProduitValue;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ nom_produit chargé depuis IA:', nomProduitValue);
-        } else if (hasProductData && dataToProcess.titre_service) {
+        } else if (hasProductData && suggestion.data.titre_service) {
           // Fallback intelligent: Si l'IA a créé un produit mais sans nom, utiliser le titre du service
-          const fallbackNom = typeof dataToProcess.titre_service === 'object' && 'valeur' in dataToProcess.titre_service
-            ? dataToProcess.titre_service.valeur
-            : dataToProcess.titre_service;
+          const fallbackNom = typeof suggestion.data.titre_service === 'object' && 'valeur' in suggestion.data.titre_service
+            ? suggestion.data.titre_service.valeur
+            : suggestion.data.titre_service;
           initialValues.nom_produit = fallbackNom;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ nom_produit fallback depuis titre_service:', fallbackNom);
         }
 
         // Extraire categorie_produit avec fallback intelligent
-        if (dataToProcess.categorie_produit) {
-          const categorieProduitValue = typeof dataToProcess.categorie_produit === 'object' && 'valeur' in dataToProcess.categorie_produit
-            ? dataToProcess.categorie_produit.valeur
-            : dataToProcess.categorie_produit;
+        if (suggestion.data.categorie_produit) {
+          const categorieProduitValue = typeof suggestion.data.categorie_produit === 'object' && 'valeur' in suggestion.data.categorie_produit
+            ? suggestion.data.categorie_produit.valeur
+            : suggestion.data.categorie_produit;
           initialValues.categorie_produit = categorieProduitValue;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ categorie_produit chargé depuis IA:', categorieProduitValue);
-        } else if (hasProductData && dataToProcess.category) {
+        } else if (hasProductData && suggestion.data.category) {
           // Fallback intelligent: Si l'IA a créé un produit mais sans catégorie, utiliser la catégorie du service
-          const fallbackCategorie = typeof dataToProcess.category === 'object' && 'valeur' in dataToProcess.category
-            ? dataToProcess.category.valeur
-            : dataToProcess.category;
+          const fallbackCategorie = typeof suggestion.data.category === 'object' && 'valeur' in suggestion.data.category
+            ? suggestion.data.category.valeur
+            : suggestion.data.category;
           initialValues.categorie_produit = fallbackCategorie;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ categorie_produit fallback depuis category:', fallbackCategorie);
         }
 
         // Extraire description_produit avec fallback intelligent
-        if (dataToProcess.description_produit) {
-          const descriptionProduitValue = typeof dataToProcess.description_produit === 'object' && 'valeur' in dataToProcess.description_produit
-            ? dataToProcess.description_produit.valeur
-            : dataToProcess.description_produit;
+        if (suggestion.data.description_produit) {
+          const descriptionProduitValue = typeof suggestion.data.description_produit === 'object' && 'valeur' in suggestion.data.description_produit
+            ? suggestion.data.description_produit.valeur
+            : suggestion.data.description_produit;
           initialValues.description_produit = descriptionProduitValue;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ description_produit chargé depuis IA:', descriptionProduitValue);
-        } else if (hasProductData && dataToProcess.description) {
+        } else if (hasProductData && suggestion.data.description) {
           // Fallback intelligent: Si l'IA a créé un produit mais sans description, utiliser la description du service
-          const fallbackDescription = typeof dataToProcess.description === 'object' && 'valeur' in dataToProcess.description
-            ? dataToProcess.description.valeur
-            : dataToProcess.description;
+          const fallbackDescription = typeof suggestion.data.description === 'object' && 'valeur' in suggestion.data.description
+            ? suggestion.data.description.valeur
+            : suggestion.data.description;
           initialValues.description_produit = fallbackDescription;
           console.log('[FormulaireYukpoIntelligentScreen] ✅ description_produit fallback depuis description:', fallbackDescription);
         }
@@ -1928,12 +1795,34 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   }, [composants, valeursFormulaire]); // Se déclenche quand valeursFormulaire change
 
-  // Navigation automatique vers le bloc produits si focusBlock === 'produits'
+  // ✅ NOUVEAU : Scroll automatique vers le bloc courant (amélioré)
+  // ✅ DÉSACTIVÉ : Le scroll manuel gère maintenant le changement de bloc
+  // Ne plus forcer le scroll automatique pour permettre le scroll manuel
+  // useEffect(() => {
+  //   if (blockContentRef.current && displayedBlocks.length > 0) {
+  //     const displayIndex = displayedBlocks.findIndex(item => item.index === currentBlock);
+  //     if (displayIndex >= 0) {
+  //       blockContentRef.current.scrollTo({
+  //         x: displayIndex * width,
+  //         animated: true
+  //       });
+  //     }
+  //   }
+  // }, [currentBlock, displayedBlocks]);
+
+  // ✅ NOUVEAU : Scroll automatique vers le bloc produits si focusBlock === 'produits'
   useEffect(() => {
     if (focusBlock === 'produits' && blocks.length > 0 && activeStep === 2) {
+      // Trouver l'index du bloc produits
       const productsBlockIndex = blocks.findIndex(block => block.id === 'products');
+
       if (productsBlockIndex >= 0) {
-        setCurrentBlock(productsBlockIndex);
+        console.log('[FormulaireYukpoIntelligentScreen] 📦 Navigation automatique vers le bloc produits, index:', productsBlockIndex);
+
+        // Attendre un peu que les blocs soient rendus
+        setTimeout(() => {
+          setCurrentBlock(productsBlockIndex);
+        }, 300);
       }
     }
   }, [focusBlock, blocks, activeStep]);
@@ -2028,8 +1917,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         });
 
         // ✅ NOUVEAU: Extraire les variations de prix imbriquées dans le champ produits
-        // ✅ CORRECTION : Utiliser suggestionData qui priorise service_data.data
-        const iaProduitsNode = suggestionData?.produits || suggestion?.data?.produits;
+        const iaProduitsNode = suggestion.data.produits;
 
         // ✅ CORRECTION: S'assurer que produits est chargé même sans variante de prix
         if (iaProduitsNode && !initialValues.produits) {
@@ -2561,10 +2449,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const typeOffreNormalized = typeOffreRaw.toLowerCase();
     const isPrestation = ['prestation', 'service', 'services'].includes(typeOffreNormalized);
 
-    // ✅ NOUVEAU: Vérifier aussi is_tarissable pour déterminer si c'est un produit
-    const isTarissable = valeursFormulaire.is_tarissable;
-    const isProduit = !isPrestation && (isTarissable === true || isTarissable === 'true' || typeOffreNormalized === 'produit');
-
     const nomProduit = extractStringValue('nom_produit');
     const categorieProduit = extractStringValue('categorie_produit');
     const descriptionProduit = extractStringValue('description_produit');
@@ -2730,12 +2614,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const hasExistingVariants = currentModalites.length > 0;
 
     const locationField = valeursFormulaire.lieu_produit;
-    // ✅ CORRECTION: Gérer explicitement le cas où locationField est false (boolean)
     const locationValue = locationField && typeof locationField === 'object' && locationField !== null && 'valeur' in locationField
       ? locationField.valeur
-      : (typeof locationField === 'string' || (locationField && typeof locationField === 'object'))
-        ? locationField
-        : null;
+      : locationField || null;
 
     const contextValues = [
       descriptionProduit,
@@ -2844,27 +2725,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['description_produit'])}</Text>
           )}
         </View>
-
-        {/* ✅ NOUVEAU: Champ quantité disponible (uniquement pour les produits) */}
-        {!isPrestation && (
-          <View style={styles.productFieldGroup}>
-            <Text style={styles.fieldLabel}>Quantité disponible</Text>
-            <NativeInput
-              placeholder="Ex: 50"
-              value={extractStringValue('quantite_disponible') || ''}
-              onChangeText={(text) => {
-                const numValue = text.trim() === '' ? null : parseInt(text, 10);
-                handleFieldChange('quantite_disponible', isNaN(numValue as any) ? null : numValue);
-              }}
-              keyboardType="numeric"
-              style={styles.fieldInput}
-            />
-            <Text style={styles.helperText}>Nombre d'unités disponibles en stock</Text>
-            {fieldErrors['quantite_disponible'] && (
-              <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['quantite_disponible'])}</Text>
-            )}
-          </View>
-        )}
 
         <View style={styles.productFieldGroup}>
           <LinearAutocompleteEditor
@@ -3123,11 +2983,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <View style={styles.statsBox}>
               <SafeIcon name="bar-chart-2" size={14} color={modernColors.success} />
               <Text style={styles.statsText}>
-                {String(nbModalites)} modalité{nbModalites > 1 ? 's' : ''} créée{nbModalites > 1 ? 's' : ''}
+                {nbModalites} modalité{nbModalites > 1 ? 's' : ''} créée{nbModalites > 1 ? 's' : ''}
               </Text>
               <View style={styles.statsDot} />
               <Text style={styles.statsSubtext}>
-                {String(nbCaracteristiques)} caractéristique{nbCaracteristiques > 1 ? 's' : ''}
+                {nbCaracteristiques} caractéristique{nbCaracteristiques > 1 ? 's' : ''}
               </Text>
             </View>
           )}
@@ -3480,7 +3340,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return (
           <View key={field.name} style={isProductField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              {typeof field.label === 'string' ? field.label : String(field.label || field.name)} {field.required && <Text style={styles.required}>*</Text>}
+              {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
             <NativeInput
               placeholder={field.placeholder}
@@ -3517,7 +3377,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return (
           <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              {typeof field.label === 'string' ? field.label : String(field.label || field.name)} {field.required && <Text style={styles.required}>*</Text>}
+              {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
             <NativeInput
               placeholder={field.placeholder}
@@ -3577,7 +3437,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return (
           <View key={field.name} style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              {typeof field.label === 'string' ? field.label : String(field.label || field.name)} {field.required && <Text style={styles.required}>*</Text>}
+              {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
             <NativeInput
               placeholder={field.placeholder}
@@ -4074,12 +3934,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         const response = await apiPost(`/api/services/${serviceId}/update`, updatePayload);
 
         if (!response.success) {
-          hapticError(); // ✅ Haptic feedback pour erreur critique
           throw new Error(response.error || 'Erreur lors de la modification');
         }
-
-        // ✅ Haptic feedback pour succès de modification
-        hapticFormSuccess();
 
         // ✅ SUPPRIMÉ: Vérification tickets de voyage - Géré maintenant via les champs dynamiques
 
@@ -4119,9 +3975,28 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ MODE CRÉATION : Vérification solde + Coût (SANS appel IA - déjà fait lors de la génération du formulaire)
       console.log('[FormulaireYukpoIntelligentScreen] 🆕 MODE CRÉATION - Utilisation des données du formulaire');
 
-      // ✅ CORRECTION CRITIQUE: NE PAS compresser les médias AVANT la confirmation
-      // La compression prend beaucoup de temps et retarde l'affichage de l'Alert
-      // On compressera après confirmation pour que l'utilisateur voie immédiatement le coût
+      // ✅ CORRECTION 413: Compresser les médias AVANT l'envoi
+      console.log('[FormulaireYukpoIntelligentScreen] 🔄 Compression des médias...');
+      const compressedMedia = await getCompressedMedia();
+
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ Médias compressés:', {
+        before: `${(compressedMedia.totalSizeBefore / (1024 * 1024)).toFixed(2)} MB`,
+        after: `${(compressedMedia.totalSizeAfter / (1024 * 1024)).toFixed(2)} MB`,
+        saved: `${((1 - compressedMedia.totalSizeAfter / compressedMedia.totalSizeBefore) * 100).toFixed(1)}%`
+      });
+
+      // ✅ NOUVEAU: Message informatif si payload volumineux
+      const payloadSizeMB = compressedMedia.totalSizeAfter / (1024 * 1024);
+      if (payloadSizeMB > 30) {
+        const estimatedTime = Math.ceil((payloadSizeMB * 8) / 5 / 60); // Upload à 5 Mbps en minutes
+        Alert.alert(
+          '⏳ Upload en cours',
+          `Votre service contient ${payloadSizeMB.toFixed(0)} MB de données (${compressedMedia.images.length} images, ${compressedMedia.videos.length} vidéos).\n\n` +
+          `⏱️ Temps estimé : ${estimatedTime}-${estimatedTime + 2} minutes\n\n` +
+          `✅ Ne fermez pas l'application pendant l'upload.`,
+          [{ text: 'Compris, continuer' }]
+        );
+      }
 
       // 💰 ÉTAPE 1 : Récupérer le coût depuis la suggestion IA initiale (si disponible)
       // Le formulaire a déjà été généré par l'IA via genererSuggestionsService, donc on récupère le coût déjà calculé
@@ -4244,24 +4119,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
               try {
                 setIsSubmitting(true);
-                console.log('[FormulaireYukpoIntelligentScreen] ✅ Confirmation reçue, début création service...');
-
-                // ✅ CORRECTION CRITIQUE: Compresser les médias APRÈS confirmation (opération lourde)
-                console.log('[FormulaireYukpoIntelligentScreen] 🔄 Compression des médias...');
-                const compressedMedia = await getCompressedMedia();
-
-                console.log('[FormulaireYukpoIntelligentScreen] ✅ Médias compressés:', {
-                  before: `${(compressedMedia.totalSizeBefore / (1024 * 1024)).toFixed(2)} MB`,
-                  after: `${(compressedMedia.totalSizeAfter / (1024 * 1024)).toFixed(2)} MB`,
-                  saved: `${((1 - compressedMedia.totalSizeAfter / compressedMedia.totalSizeBefore) * 100).toFixed(1)}%`
-                });
-
-                // ✅ NOUVEAU: Message informatif si payload volumineux
-                const compressedMediaSizeMB = compressedMedia.totalSizeAfter / (1024 * 1024);
-                if (compressedMediaSizeMB > 30) {
-                  console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Payload volumineux détecté:', compressedMediaSizeMB.toFixed(2), 'MB');
-                }
-
                 console.log('[FormulaireYukpoIntelligentScreen] Création du service en cours...');
 
                 // 🔧 ÉTAPE 3 : Construire les données structurées directement depuis le formulaire
@@ -4269,17 +4126,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // Les données initiales sont déjà dans suggestion.data (depuis genererSuggestionsService)
                 let finalServiceData: any = {};
 
-                // ✅ CORRECTION : Prioriser service_data.data qui contient les données complètes avec produits
-                // Structure : suggestion.service_data.data contient les champs structurés complets (titre_service, category, nom_produit, etc.)
-                // suggestion.data contient seulement les champs de base (titre_service, category, description, is_tarissable)
-                if (suggestion?.service_data?.data && typeof suggestion.service_data.data === 'object') {
-                  // Copier la structure complète de service_data.data (qui vient de l'IA avec produits)
-                  finalServiceData = JSON.parse(JSON.stringify(suggestion.service_data.data));
-                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Structure initiale depuis suggestion.service_data.data:', Object.keys(finalServiceData));
-                } else if (suggestion?.data && typeof suggestion.data === 'object') {
-                  // Fallback : utiliser data si service_data.data n'est pas disponible
+                // Utiliser les données de la suggestion initiale si disponibles
+                // Structure : suggestion.data contient les champs structurés (titre_service, category, etc.)
+                if (suggestion?.data && typeof suggestion.data === 'object') {
+                  // Copier la structure de la suggestion initiale (qui vient de l'IA)
                   finalServiceData = JSON.parse(JSON.stringify(suggestion.data));
-                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Structure depuis suggestion.data (fallback):', Object.keys(finalServiceData));
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Structure initiale depuis suggestion.data:', Object.keys(finalServiceData));
+                } else if (suggestion?.service_data?.data) {
+                  // Fallback : utiliser service_data.data si disponible
+                  finalServiceData = JSON.parse(JSON.stringify(suggestion.service_data.data));
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Structure depuis suggestion.service_data.data:', Object.keys(finalServiceData));
                 } else {
                   // ✅ AMÉLIORATION: Réduire niveau log (comportement normal)
                   console.debug('[FormulaireYukpoIntelligentScreen] Aucune structure initiale trouvée, construction depuis formulaire uniquement');
@@ -4533,13 +4389,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                   origineChampsForMedia = autocompleteData.origine_champs || 'formulaire';
 
-                  // ✅ NOUVEAU: Extraire quantite_disponible et mapper vers stock
-                  const quantiteDisponible = finalServiceData.quantite_disponible?.valeur || valeursFormulaire.quantite_disponible;
-
-                  // ✅ NOUVEAU 2025-01-28: Vérifier si c'est un produit ou une prestation
-                  const typeOffre = finalServiceData.type_offre?.valeur || valeursFormulaire.type_offre || 'produit';
-                  const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
-
                   // Construire l'objet produit enrichi des médias
                   const produitObj: any = {
                     nom: nomProduit,
@@ -4552,15 +4401,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     product_labels: productLabelsFromAutocomplete,
                     origine_champs: autocompleteData.origine_champs || 'formulaire'
                   };
-
-                  // ✅ Ajouter le stock si quantite_disponible est défini (validation déjà faite dans goToNextBlock/goToBlock)
-                  if (quantiteDisponible !== null && quantiteDisponible !== undefined && quantiteDisponible !== '') {
-                    const stockValue = typeof quantiteDisponible === 'number' ? quantiteDisponible : parseInt(String(quantiteDisponible), 10);
-                    if (!isNaN(stockValue) && stockValue >= 0) {
-                      produitObj.stock = stockValue;
-                      produitObj.quantite_disponible = stockValue; // Alias pour compatibilité
-                    }
-                  }
 
                   // ✅ NOUVEAU: Ajouter les variations de prix dans produitObj si disponibles
                   // Le backend transformera variation_prix en variants/has_variant
@@ -4639,7 +4479,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       ? produitsNode.valeur[0]
                       : undefined;
 
-
                   if (!combinationString) {
                     if (typeof produitsNode.combinaison_brute === 'string') {
                       combinationString = produitsNode.combinaison_brute;
@@ -4693,8 +4532,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     origineChamps: origineChampsForMedia || 'formulaire'
                   }
                 );
-                // ✅ Note: Validation quantité déjà faite dans goToNextBlock/goToBlock (empêche de quitter le bloc produit)
-                // ✅ Validation backend ultime dans creer_service.rs (sécurité finale)
 
                 // ✅ NOUVEAU: Upload préalable des médias pour éviter payload trop volumineux
                 console.log('[FormulaireYukpoIntelligentScreen] 📤 Début upload préalable des médias...');
@@ -4849,9 +4686,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Response complet:', JSON.stringify(response, null, 2));
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Payload qui a causé l\'erreur:', JSON.stringify(servicePayload, null, 2));
 
-                  // ✅ Haptic feedback pour erreur critique
-                  hapticError();
-
                   // ✅ CORRECTION : Réinitialiser le loading AVANT l'Alert pour éviter que le bouton tourne indéfiniment
                   setIsSubmitting(false);
                   setLoading(false);
@@ -4920,9 +4754,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 const result: any = response.data;
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Service créé avec succès:', result);
 
-                // ✅ Haptic feedback pour succès de création
-                hapticFormSuccess();
-
                 // ✅ NOTE : Le nouveau JWT est automatiquement géré par apiCall
                 // Il est sauvegardé dans AsyncStorage quand le header x-new-jwt est présent
                 // Voir mobile/src/services/api.ts lignes 102-105
@@ -4940,33 +4771,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 setIsSubmitting(false);
                 setLoading(false);
 
-                // ✅ NOUVEAU: Si c'est un produit (pas une prestation), ouvrir la configuration de livraison
-                const typeOffre = valeursFormulaire.type_offre || 'produit';
-                const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
-                
-                if (!isPrestation && result?.id) {
-                  // C'est un produit, ouvrir le modal de configuration de livraison
-                  const serviceId = typeof result.id === 'string' ? parseInt(result.id, 10) : result.id;
-                  const productIndex = 0; // Premier produit créé
-                  
-                  // Extraire le nom du produit
-                  const produits = finalServiceData?.produits?.valeur || finalServiceData?.produits || [];
-                  const firstProduct = Array.isArray(produits) && produits.length > 0 ? produits[0] : null;
-                  const productName = firstProduct?.nom || firstProduct?.nom_produit || 'Nouveau produit';
-                  
-                  // Ouvrir le modal de configuration de livraison
-                  setShowProductDeliveryConfig(true);
-                  setProductDeliveryConfigData({
-                    serviceId: serviceId,
-                    productIndex: productIndex,
-                    productName: productName,
-                  });
-                  
-                  // Ne pas rediriger vers Mes Services, rester sur la page pour la configuration
-                  return;
-                }
-                
-                // Redirection après 3 secondes (pour prestations uniquement)
+                // Redirection après 3 secondes
                 setTimeout(() => {
                   if (fromMesServices) {
                     (navigation as any).navigate('Main', { screen: 'Services' });
@@ -5164,7 +4969,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     </View>
                     <View style={styles.dataContent}>
                       <Text style={styles.dataLabel}>Images</Text>
-                      <Text style={styles.dataText}>{String(mediaFiles.images.length)} image(s)</Text>
+                      <Text style={styles.dataText}>{mediaFiles.images.length} image(s)</Text>
                     </View>
                   </View>
                 )}
@@ -5176,7 +4981,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     </View>
                     <View style={styles.dataContent}>
                       <Text style={styles.dataLabel}>Audio</Text>
-                      <Text style={styles.dataText}>{String(mediaFiles.audios.length)} fichier(s) audio</Text>
+                      <Text style={styles.dataText}>{mediaFiles.audios.length} fichier(s) audio</Text>
                     </View>
                   </View>
                 )}
@@ -5219,13 +5024,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         {activeStep === 2 && (
           <KeyboardAvoidingView
             style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-            enabled={Platform.OS === 'ios'}
           >
+            {/* Navigation par blocs - Sticky */}
             {blocks.length > 0 && (
-              <View style={{ flex: 1 }}>
-                {/* Navigation par blocs - Sticky */}
+              <>
                 <View style={styles.stickyNavigation}>
                   {/* Indicateur de progression */}
                   <View style={styles.progressContainer}>
@@ -5238,16 +5042,23 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       />
                     </View>
                     <Text style={styles.progressText}>
-                      {totalVisibleBlocks > 0 ? String(currentDisplayIndex + 1) : '0'} / {String(totalVisibleBlocks || 0)}
+                      {totalVisibleBlocks > 0 ? currentDisplayIndex + 1 : 0} / {totalVisibleBlocks || 0}
                     </Text>
                   </View>
 
                   {/* Navigation entre blocs (tabs horizontales scrollables) */}
                   <ScrollView
+                    ref={blockNavigationRef}
                     horizontal
+                    scrollEnabled={true}
                     showsHorizontalScrollIndicator={true}
+                    pagingEnabled={false}
+                    decelerationRate="fast"
+                    snapToInterval={TAB_WIDTH}
+                    snapToAlignment="start"
                     contentContainerStyle={styles.blockNavigationContent}
                     style={styles.blockNavigationScrollView}
+                    scrollEventThrottle={16}
                   >
                     <View style={styles.blockNavigation}>
                       {displayedBlocks.map(({ block, index: originalIndex }) => (
@@ -5272,132 +5083,129 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   </ScrollView>
                 </View>
 
-                {/* Contenu scrollable HORIZONTAL entre blocs avec ScrollView vertical dans chaque bloc */}
+                {/* ✅ NOUVEAU 2025-11-06: Contenu scrollable HORIZONTAL entre blocs */}
                 <ScrollView
-                  ref={blockContentScrollRef}
+                  ref={blockContentRef}
                   horizontal
-                  pagingEnabled={true}
+                  pagingEnabled
+                  scrollEnabled={blockHorizontalScrollEnabled}
                   showsHorizontalScrollIndicator={false}
-                  style={{ flex: 1 }}
+                  style={styles.contentScrollViewHorizontal}
                   contentContainerStyle={styles.contentContainerHorizontal}
                   onMomentumScrollEnd={(event) => {
-                    // Détecter le bloc affiché après swipe horizontal
+                    // ✅ Détecter le bloc affiché après scroll horizontal manuel
                     const scrollX = event.nativeEvent.contentOffset.x;
                     const displayIndex = Math.round(scrollX / width);
                     const blockInfo = displayedBlocks[displayIndex];
                     if (blockInfo && blockInfo.index !== currentBlock) {
+                      console.log('[FormulaireYukpoIntelligent] 📱 Scroll manuel vers bloc', blockInfo.index);
                       setCurrentBlock(blockInfo.index);
                     }
                   }}
                   scrollEventThrottle={16}
-                  decelerationRate="fast"
-                  bounces={false}
-                  directionalLockEnabled={true}
                 >
-                  {/* Afficher tous les blocs côte à côte */}
+                  {/* Affichage de TOUS les blocs côte à côte */}
                   {displayedBlocks.map(({ block, index: blockIndex }) => (
                     <View key={block.id} style={[styles.blockPanel, { width }]}>
                       <ScrollView
                         style={styles.blockPanelScroll}
                         contentContainerStyle={styles.blockPanelContent}
-                        showsVerticalScrollIndicator={true}
+                        showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
                         nestedScrollEnabled={true}
-                        directionalLockEnabled={true}
-                        scrollEventThrottle={16}
                       >
                         <View style={styles.sectionContainer}>
-                        <LinearGradient
-                          colors={['#3B82F6', '#1D4ED8']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={styles.sectionHeader}
-                        >
-                          <Text style={styles.sectionHeaderText}>
-                            {block.icon} {block.title}
-                          </Text>
-                        </LinearGradient>
-
-                        <NativeCard style={styles.sectionContent}>
-                          {block.id === 'products' ? (
-                            <>
-                              {renderProductsBlock()}
-                              {(block.fields || [])
-                                .filter((field) => !PRODUCT_BLOCK_FIELD_NAMES.includes(field.name))
-                                .map((field) => renderField(field))}
-                            </>
-                          ) : (
-                            (block.fields || [])
-                              .filter(field => field.name !== 'devise')
-                              .map((field) => renderField(field))
-                          )}
-                        </NativeCard>
-
-                        {!isReadonly && block.id === 'payment' && (
-                          <View style={styles.finalActionContainer}>
-                            <Text style={styles.finalActionTitle}>Finaliser le service</Text>
-                            <Text style={styles.finalActionSubtitle}>
-                              Vérifiez vos informations puis validez la création du service.
-                            </Text>
-
-                            <TouchableOpacity
-                              style={[styles.finalActionButton, (loading || isSubmitting) && styles.finalActionButtonDisabled]}
-                              onPress={soumettreFormulaire}
-                              disabled={loading || isSubmitting}
-                            >
-                              <LinearGradient
-                                colors={modernColors.primaryGradient}
-                                style={styles.finalActionButtonGradient}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                              >
-                                <Text style={styles.finalActionButtonText}>
-                                  {(loading || isSubmitting)
-                                    ? (isEditingServiceInfo ? 'Mise à jour...' :
-                                      mode === 'edit' ? 'Modification...' : 'Création...')
-                                    : (isEditingServiceInfo ? 'Modifier les données du service' :
-                                      mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
-                                </Text>
-                                <SafeIcon name="check" size={20} color="#FFFFFF" />
-                              </LinearGradient>
-                            </TouchableOpacity>
-                          </View>
-                        )}
-
-                        {/* Boutons de navigation */}
-                        <View style={styles.navigationButtons}>
-                          <TouchableOpacity
-                            style={[
-                              styles.navButton,
-                              styles.navButtonSecondary,
-                              currentDisplayIndex === 0 && styles.navButtonDisabled
-                            ]}
-                            onPress={goToPreviousBlock}
-                            disabled={currentDisplayIndex === 0}
+                          <LinearGradient
+                            colors={['#3B82F6', '#1D4ED8']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.sectionHeader}
                           >
-                            <SafeIcon name="chevron-left" size={20} color="#6B7280" />
-                            <Text style={styles.navButtonTextSecondary}>Précédent</Text>
-                          </TouchableOpacity>
+                            <Text style={styles.sectionHeaderText}>
+                              {block.icon} {block.title}
+                            </Text>
+                          </LinearGradient>
 
-                          {currentDisplayIndex < totalVisibleBlocks - 1 ? (
-                            <TouchableOpacity
-                              style={[styles.navButton, styles.navButtonPrimary]}
-                              onPress={goToNextBlock}
-                            >
-                              <Text style={styles.navButtonTextPrimary}>Suivant</Text>
-                              <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
-                            </TouchableOpacity>
-                          ) : (
-                            <View style={styles.navButtonPlaceholder} />
+                          <NativeCard style={styles.sectionContent}>
+                            {block.id === 'products' ? (
+                              <>
+                                {renderProductsBlock()}
+                                {(block.fields || [])
+                                  .filter((field) => !PRODUCT_BLOCK_FIELD_NAMES.includes(field.name))
+                                  .map((field) => renderField(field))}
+                              </>
+                            ) : (
+                              (block.fields || [])
+                                .filter(field => field.name !== 'devise')
+                                .map((field) => renderField(field))
+                            )}
+                          </NativeCard>
+
+                          {!isReadonly && block.id === 'payment' && (
+                            <View style={styles.finalActionContainer}>
+                              <Text style={styles.finalActionTitle}>Finaliser le service</Text>
+                              <Text style={styles.finalActionSubtitle}>
+                                Vérifiez vos informations puis validez la création du service.
+                              </Text>
+
+                              <TouchableOpacity
+                                style={[styles.finalActionButton, (loading || isSubmitting) && styles.finalActionButtonDisabled]}
+                                onPress={soumettreFormulaire}
+                                disabled={loading || isSubmitting}
+                              >
+                                <LinearGradient
+                                  colors={modernColors.primaryGradient}
+                                  style={styles.finalActionButtonGradient}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 1, y: 0 }}
+                                >
+                                  <Text style={styles.finalActionButtonText}>
+                                    {(loading || isSubmitting)
+                                      ? (isEditingServiceInfo ? 'Mise à jour...' :
+                                        mode === 'edit' ? 'Modification...' : 'Création...')
+                                      : (isEditingServiceInfo ? 'Modifier les données du service' :
+                                        mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
+                                  </Text>
+                                  <SafeIcon name="check" size={20} color="#FFFFFF" />
+                                </LinearGradient>
+                              </TouchableOpacity>
+                            </View>
                           )}
-                        </View>
                         </View>
                       </ScrollView>
                     </View>
                   ))}
+
+                  {/* Boutons de navigation */}
+                  <View style={styles.navigationButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.navButton,
+                        styles.navButtonSecondary,
+                        currentDisplayIndex === 0 && styles.navButtonDisabled
+                      ]}
+                      onPress={goToPreviousBlock}
+                      disabled={currentDisplayIndex === 0}
+                    >
+                      <SafeIcon name="chevron-left" size={20} color="#6B7280" />
+                      <Text style={styles.navButtonTextSecondary}>Précédent</Text>
+                    </TouchableOpacity>
+
+                    {currentDisplayIndex < totalVisibleBlocks - 1 ? (
+                      <TouchableOpacity
+                        style={[styles.navButton, styles.navButtonPrimary]}
+                        onPress={goToNextBlock}
+                      >
+                        <Text style={styles.navButtonTextPrimary}>Suivant</Text>
+                        <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.navButtonPlaceholder} />
+                    )}
+                  </View>
                 </ScrollView>
-              </View>
+              </>
             )}
           </KeyboardAvoidingView>
         )}
@@ -5418,45 +5226,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               Coût: {successData?.cout} tokens
             </Text>
             <Text style={styles.successSubtext}>
-              {productDeliveryConfigData ? 'Configuration de livraison...' : 'Redirection en cours...'}
+              Redirection en cours...
             </Text>
           </View>
         </View>
-      )}
-
-      {/* ✅ NOUVEAU: Modal de configuration de livraison */}
-      {productDeliveryConfigData && (
-        <ProductDeliveryConfigModal
-          visible={showProductDeliveryConfig}
-          onClose={() => {
-            setShowProductDeliveryConfig(false);
-            setProductDeliveryConfigData(null);
-            // Après fermeture, rediriger vers Mes Services
-            setTimeout(() => {
-              (navigation as any).navigate('Main', { screen: 'Services' });
-            }, 300);
-          }}
-          serviceId={productDeliveryConfigData.serviceId}
-          productIndex={productDeliveryConfigData.productIndex}
-          productName={productDeliveryConfigData.productName}
-          onSuccess={() => {
-            // Configuration sauvegardée avec succès
-            setShowProductDeliveryConfig(false);
-            setProductDeliveryConfigData(null);
-            Alert.alert(
-              '✅ Configuration terminée',
-              'Votre produit a été configuré avec succès !',
-              [
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    (navigation as any).navigate('Main', { screen: 'Services' });
-                  }
-                }
-              ]
-            );
-          }}
-        />
       )}
 
       {/* Modal GPS moderne */}
@@ -5531,18 +5304,13 @@ const styles = StyleSheet.create({
   },
   blockPanel: {
     // width est défini dynamiquement (= largeur écran)
-    flex: 1, // ✅ CORRIGÉ: Utiliser flex au lieu de height pour s'adapter à la hauteur disponible
-    height: '100%', // ✅ OPTIMISATION: Forcer la hauteur pour améliorer le scroll
   },
   blockPanelScroll: {
     flex: 1,
   },
   blockPanelContent: {
     padding: 20,
-    paddingBottom: 400, // ✅ Augmenté pour permettre le scroll jusqu'en bas, surtout dans le bloc produits
-    flexGrow: 1, // ✅ Permet au contenu de s'étendre et d'activer le scroll si nécessaire
-    // ✅ OPTIMISATION: S'assurer que le contenu peut scroller correctement
-    minHeight: '100%',
+    paddingBottom: 300,
   },
   stepContainer: {
     gap: 20,
@@ -5740,8 +5508,6 @@ const styles = StyleSheet.create({
   },
   productBlockContent: {
     gap: 24,
-    flex: 1, // ✅ Permet au contenu de s'étendre correctement
-    minHeight: '100%', // ✅ S'assure que le contenu prend au moins toute la hauteur disponible
   },
   productIntroRow: {
     flexDirection: 'row',
