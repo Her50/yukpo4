@@ -38,6 +38,26 @@ export const AutoCutPanel: React.FC<AutoCutPanelProps> = ({
     const [selectedScenes, setSelectedScenes] = useState<Set<number>>(new Set());
 
     const handleAutoCut = async () => {
+        // ✅ CORRIGÉ: Validation avant d'appeler l'API
+        if (!videoUrl || videoUrl.trim() === '') {
+            Alert.alert(
+                'Vidéo manquante',
+                'Aucune vidéo disponible pour le découpage automatique.\n\nVeuillez d\'abord uploader ou sélectionner une vidéo.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
+        // ✅ CORRIGÉ: Vérifier que l'URL de la vidéo est valide
+        if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://') && !videoUrl.startsWith('file://')) {
+            Alert.alert(
+                'URL invalide',
+                'L\'URL de la vidéo n\'est pas valide.\n\nVeuillez réessayer après avoir uploadé la vidéo.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
         setLoading(true);
         try {
             const result = await videoAnalysisService.autoCut({
@@ -49,12 +69,16 @@ export const AutoCutPanel: React.FC<AutoCutPanelProps> = ({
                 detect_highlights: true,
             });
 
+            if (!result || !result.scenes) {
+                throw new Error('Réponse invalide du serveur');
+            }
+
             setScenes(result.scenes);
-            setHighlights(result.highlights);
+            setHighlights(result.highlights || []);
 
             // Auto-sélectionner les highlights
             const highlightIndices = new Set<number>();
-            result.highlights.forEach((h) => {
+            (result.highlights || []).forEach((h) => {
                 const sceneIdx = result.scenes.findIndex(
                     (s) => s.start_time <= h.start_time && s.end_time >= h.end_time
                 );
@@ -63,7 +87,23 @@ export const AutoCutPanel: React.FC<AutoCutPanelProps> = ({
             setSelectedScenes(highlightIndices);
         } catch (error: any) {
             console.error('[AutoCutPanel] Error:', error);
-            Alert.alert('Erreur', 'Impossible de découper la vidéo automatiquement');
+            
+            // ✅ CORRIGÉ: Messages d'erreur plus clairs selon le type d'erreur
+            let errorMessage = 'Impossible de découper la vidéo automatiquement';
+            
+            if (error?.message) {
+                if (error.message.includes('500') || error.message.includes('Erreur 500')) {
+                    errorMessage = 'Erreur serveur : La vidéo n\'a pas pu être analysée.\n\nVérifiez que la vidéo est bien uploadée et accessible.';
+                } else if (error.message.includes('durée') || error.message.includes('duration')) {
+                    errorMessage = 'Impossible de déterminer la durée de la vidéo.\n\nVérifiez que la vidéo est valide et complète.';
+                } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
+                    errorMessage = 'Le traitement prend trop de temps.\n\nVeuillez réessayer avec une vidéo plus courte.';
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+            
+            Alert.alert('Erreur de découpage', errorMessage, [{ text: 'OK' }]);
         } finally {
             setLoading(false);
         }

@@ -2,7 +2,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     Alert,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -18,6 +21,7 @@ interface ServiceRatingModalProps {
     onSubmit: (rating: number, comment: string) => Promise<boolean>;
     serviceTitle?: string;
     loading?: boolean;
+    allowCommentWithoutRating?: boolean; // ✅ NOUVEAU: Permet les commentaires sans note
 }
 
 const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
@@ -25,14 +29,26 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
     onClose,
     onSubmit,
     serviceTitle = 'Service',
-    loading = false
+    loading = false,
+    allowCommentWithoutRating = true // ✅ NOUVEAU: Par défaut, permet les commentaires sans note
 }) => {
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async () => {
-        if (rating === 0) {
+        // ✅ CORRIGÉ: Permettre la soumission si :
+        // 1. Une note est sélectionnée (avis complet), OU
+        // 2. Un commentaire est saisi ET allowCommentWithoutRating est true (commentaire seul)
+        const hasRating = rating > 0;
+        const hasComment = comment.trim().length > 0;
+        
+        if (!hasRating && !hasComment) {
+            Alert.alert('Champ requis', 'Veuillez sélectionner une note ou saisir un commentaire.');
+            return;
+        }
+        
+        if (!hasRating && !allowCommentWithoutRating) {
             Alert.alert('Note requise', 'Veuillez sélectionner une note avant de soumettre votre avis.');
             return;
         }
@@ -117,7 +133,11 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
             presentationStyle="pageSheet"
             onRequestClose={onClose}
         >
-            <View style={styles.container}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.container}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            >
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity
@@ -132,7 +152,12 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                 </View>
 
                 {/* Content */}
-                <View style={styles.content}>
+                <ScrollView
+                    style={styles.scrollView}
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={true}
+                >
                     {/* Service info */}
                     <View style={styles.serviceInfo}>
                         <Text style={styles.serviceTitle}>{serviceTitle}</Text>
@@ -145,7 +170,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                         rating === 0 && comment.length > 0 && styles.ratingSectionHighlight
                     ]}>
                         <Text style={styles.ratingLabel}>
-                            Votre note <Text style={styles.requiredStar}>*</Text>
+                            Votre note {!allowCommentWithoutRating && <Text style={styles.requiredStar}>*</Text>}
                         </Text>
                         <Text style={styles.ratingInstruction}>
                             Cliquez sur les étoiles ci-dessous pour noter
@@ -157,7 +182,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                         ]}>
                             {getRatingText()}
                         </Text>
-                        {rating === 0 && comment.length > 0 && (
+                        {rating === 0 && comment.length > 0 && !allowCommentWithoutRating && (
                             <View style={styles.warningBox}>
                                 <SafeIcon name="alert-circle" size={16} color="#F59E0B" />
                                 <Text style={styles.warningText}>
@@ -165,11 +190,21 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                                 </Text>
                             </View>
                         )}
+                        {rating === 0 && comment.length > 0 && allowCommentWithoutRating && (
+                            <View style={styles.infoBox}>
+                                <SafeIcon name="info" size={16} color={modernColors.primary} />
+                                <Text style={styles.infoText}>
+                                    Vous pouvez publier un commentaire sans note
+                                </Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* Comment section */}
                     <View style={styles.commentSection}>
-                        <Text style={styles.commentLabel}>Commentaire (optionnel)</Text>
+                        <Text style={styles.commentLabel}>
+                            Commentaire {rating === 0 && allowCommentWithoutRating ? '(optionnel)' : ''}
+                        </Text>
                         <TextInput
                             style={styles.commentInput}
                             value={comment}
@@ -185,7 +220,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                             Votre commentaire aidera d'autres utilisateurs
                         </Text>
                     </View>
-                </View>
+                </ScrollView>
 
                 {/* Footer */}
                 <View style={styles.footer}>
@@ -201,31 +236,31 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                         style={[
                             styles.button,
                             styles.submitButton,
-                            rating === 0 && styles.submitButtonLocked
+                            rating === 0 && comment.trim().length === 0 && styles.submitButtonLocked
                         ]}
-                        onPress={rating === 0 ? () => {
+                        onPress={(rating === 0 && comment.trim().length === 0) ? () => {
                             Alert.alert(
-                                '⭐ Note requise',
-                                'Veuillez d\'abord sélectionner une note en cliquant sur les étoiles ci-dessus.',
+                                'Champ requis',
+                                'Veuillez sélectionner une note ou saisir un commentaire.',
                                 [{ text: 'Compris' }]
                             );
                         } : handleSubmit}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || (rating === 0 && comment.trim().length === 0)}
                         activeOpacity={0.7}
                     >
                         <LinearGradient
-                            colors={rating === 0
+                            colors={(rating === 0 && comment.trim().length === 0)
                                 ? ['#E5E7EB', '#D1D5DB']
                                 : (isSubmitting
                                     ? ['#667eea', '#764ba2']
                                     : modernColors.primaryGradient)}
                             style={styles.submitButtonGradient}
                         >
-                            {rating === 0 ? (
+                            {(rating === 0 && comment.trim().length === 0) ? (
                                 <>
                                     <SafeIcon name="star" size={20} color="#6B7280" style={styles.buttonIcon} />
                                     <Text style={styles.submitButtonTextLocked}>
-                                        Cliquez sur les étoiles d'abord
+                                        Note ou commentaire requis
                                     </Text>
                                     <SafeIcon name="arrow-up" size={20} color="#6B7280" style={styles.buttonIcon} />
                                 </>
@@ -235,7 +270,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                                         <SafeIcon name="loader" size={20} color="#FFFFFF" style={styles.buttonIcon} />
                                     )}
                                     <Text style={styles.submitButtonText}>
-                                        {isSubmitting ? 'Envoi en cours...' : 'Envoyer l\'avis'}
+                                        {isSubmitting ? 'Envoi en cours...' : (rating > 0 ? 'Envoyer l\'avis' : 'Publier le commentaire')}
                                     </Text>
                                     {!isSubmitting && (
                                         <SafeIcon name="send" size={20} color="#FFFFFF" style={styles.buttonIcon} />
@@ -245,7 +280,7 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                         </LinearGradient>
                     </TouchableOpacity>
                 </View>
-            </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };
@@ -275,9 +310,12 @@ const styles = StyleSheet.create({
     headerSpacer: {
         width: 40,
     },
-    content: {
+    scrollView: {
         flex: 1,
+    },
+    scrollContent: {
         padding: 20,
+        paddingBottom: 20,
     },
     serviceInfo: {
         alignItems: 'center',
@@ -362,6 +400,24 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         flex: 1,
     },
+    infoBox: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#EEF2FF',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+    },
+    infoText: {
+        fontSize: 13,
+        color: modernColors.primary,
+        fontWeight: '600',
+        flex: 1,
+    },
     commentSection: {
         marginBottom: 20,
     },
@@ -391,8 +447,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         padding: 20,
+        paddingBottom: Platform.OS === 'ios' ? 20 : 20,
         borderTopWidth: 1,
         borderTopColor: modernColors.border,
+        backgroundColor: modernColors.background,
     },
     button: {
         flex: 1,

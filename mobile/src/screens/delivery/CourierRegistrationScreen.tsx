@@ -431,7 +431,13 @@ const CourierRegistrationScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
-            <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+            <ScrollView 
+                style={styles.scroll} 
+                contentContainerStyle={styles.scrollContent}
+                nestedScrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={true}
+            >
                 <View style={styles.header}>
                     <Text style={styles.title}>Devenir coursier Yukpo</Text>
                     <Text style={styles.subtitle}>
@@ -526,6 +532,14 @@ const CourierRegistrationScreen: React.FC = () => {
                             nestedScrollEnabled={true}
                             scrollEnabled={true}
                             bounces={true}
+                            decelerationRate="fast"
+                            scrollEventThrottle={16}
+                            removeClippedSubviews={false}
+                            alwaysBounceHorizontal={false}
+                            pagingEnabled={false}
+                            snapToInterval={0}
+                            snapToAlignment="start"
+                            keyboardShouldPersistTaps="handled"
                         >
                             {vehicleTypes.map((type) => (
                                 <TouchableOpacity
@@ -825,14 +839,18 @@ const styles = StyleSheet.create({
         width: '100%',
         marginBottom: 16,
         minHeight: 110,
+        maxHeight: 120,
     },
     vehicleScroll: {
         width: '100%',
+        flexGrow: 0,
     },
     vehicleListContent: {
         paddingHorizontal: 4,
         paddingVertical: 8,
         alignItems: 'center',
+        paddingRight: 16,
+        gap: 12,
     },
     vehicleOption: {
         alignItems: 'center',
@@ -844,6 +862,8 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.surface,
         width: 90,
         height: 90,
+        marginRight: 8,
+        flexShrink: 0,
     },
     vehicleOptionSelected: {
         borderColor: modernColors.primary,

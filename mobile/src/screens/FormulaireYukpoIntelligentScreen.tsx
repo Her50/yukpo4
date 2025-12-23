@@ -1024,10 +1024,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       setCurrentBlock(nextVisible.index);
       const targetDisplayIndex = currentVisibleIndex + 1;
       if (targetDisplayIndex >= 0) {
-        blockContentRef.current?.scrollTo({
-          x: targetDisplayIndex * width,
-          y: 0,
-          animated: true
+        // ✅ OPTIMISÉ: Utiliser requestAnimationFrame pour éviter les conflits
+        requestAnimationFrame(() => {
+          blockContentRef.current?.scrollTo({
+            x: targetDisplayIndex * width,
+            y: 0,
+            animated: true
+          });
         });
       }
     }
@@ -1041,10 +1044,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       setCurrentBlock(previousVisible.index);
       const targetDisplayIndex = currentVisibleIndex - 1;
       if (targetDisplayIndex >= 0) {
-        blockContentRef.current?.scrollTo({
-          x: targetDisplayIndex * width,
-          y: 0,
-          animated: true
+        // ✅ OPTIMISÉ: Utiliser requestAnimationFrame pour éviter les conflits
+        requestAnimationFrame(() => {
+          blockContentRef.current?.scrollTo({
+            x: targetDisplayIndex * width,
+            y: 0,
+            animated: true
+          });
         });
       }
     }
@@ -1075,10 +1081,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     setCurrentBlock(blockIndex);
 
-    blockContentRef.current?.scrollTo({
-      x: targetDisplayIndex * width,
-      y: 0,
-      animated: true
+    // ✅ OPTIMISÉ: Utiliser requestAnimationFrame pour éviter les conflits avec le scroll manuel
+    requestAnimationFrame(() => {
+      blockContentRef.current?.scrollTo({
+        x: targetDisplayIndex * width,
+        y: 0,
+        animated: true
+      });
     });
   };
 
@@ -4047,7 +4056,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     snapToAlignment="start"
                     contentContainerStyle={styles.blockNavigationContent}
                     style={styles.blockNavigationScrollView}
-                    scrollEventThrottle={16}
+                    scrollEventThrottle={100}
+                    removeClippedSubviews={true}
+                    keyboardShouldPersistTaps="handled"
                   >
                     <View style={styles.blockNavigation}>
                       {displayedBlocks.map(({ block, index: originalIndex }) => (
@@ -4076,11 +4087,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 <ScrollView
                   ref={blockContentRef}
                   horizontal
-                  pagingEnabled
+                  pagingEnabled={true}
                   scrollEnabled={true}
                   showsHorizontalScrollIndicator={false}
                   style={styles.contentScrollViewHorizontal}
                   contentContainerStyle={styles.contentContainerHorizontal}
+                  keyboardShouldPersistTaps="handled"
+                  removeClippedSubviews={true}
+                  decelerationRate="fast"
+                  snapToInterval={width}
+                  snapToAlignment="start"
                   onMomentumScrollEnd={(event) => {
                     // ✅ Détecter le bloc affiché après scroll horizontal manuel
                     const scrollX = event.nativeEvent.contentOffset.x;
@@ -4091,7 +4107,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       setCurrentBlock(blockInfo.index);
                     }
                   }}
-                  scrollEventThrottle={16}
+                  scrollEventThrottle={100}
                 >
                   {/* Affichage de TOUS les blocs côte à côte */}
                   {displayedBlocks.map(({ block, index: blockIndex }) => (
@@ -4103,6 +4119,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
                         nestedScrollEnabled={true}
+                        removeClippedSubviews={true}
+                        scrollEventThrottle={100}
+                        bounces={Platform.OS === 'ios'}
+                        maintainVisibleContentPosition={null}
                       >
                         <View style={styles.sectionContainer}>
                           <LinearGradient
@@ -4284,6 +4304,7 @@ const styles = StyleSheet.create({
   },
   contentContainerHorizontal: {
     flexDirection: 'row',
+    flexWrap: 'nowrap',
   },
   blockPanel: {
     // width est défini dynamiquement (= largeur écran)

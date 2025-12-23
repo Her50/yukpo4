@@ -3496,7 +3496,52 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 // ✅ NOTE: linked_session_ids retiré car non supporté dans VideoGenerationPayload
             };
 
+            // ✅ CORRIGÉ: Validations avant l'appel d'estimation
+            if (!serviceId || serviceId === null || serviceId === undefined) {
+                setCostLoading(false);
+                Alert.alert(
+                    'Service invalide',
+                    'Le service ID est manquant ou invalide.\n\nVeuillez sélectionner un produit valide.',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
+            if (selectedProduct.product_index === null || selectedProduct.product_index === undefined || isNaN(Number(selectedProduct.product_index))) {
+                setCostLoading(false);
+                Alert.alert(
+                    'Index produit invalide',
+                    'L\'index du produit est manquant ou invalide.\n\nVeuillez sélectionner un produit valide.',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
+            // ✅ CORRIGÉ: Vérifier que le payload contient les données minimales
+            if (!payloadForEstimation || !payloadForEstimation.duration_seconds) {
+                setCostLoading(false);
+                Alert.alert(
+                    'Données incomplètes',
+                    'Les données d\'estimation sont incomplètes.\n\nVeuillez remplir tous les champs requis.',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
             const response = await iaApi.estimateVideoCost(serviceId, selectedProduct.product_index, payloadForEstimation);
+            
+            // ✅ CORRIGÉ: Validation de la réponse
+            if (!response || !response.success) {
+                setCostLoading(false);
+                const errorMsg = response?.error || 'Impossible d\'estimer le coût pour le moment.';
+                Alert.alert(
+                    'Erreur d\'estimation',
+                    errorMsg + '\n\nVérifiez que tous les champs sont correctement remplis et réessayez.',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
             const estimationResponse = response.data as VideoCostEstimateResponse | VideoCostEstimation | undefined;
             const estimation =
                 estimationResponse && 'data' in estimationResponse
@@ -3506,7 +3551,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setCostLoading(false);
 
             if (!estimation) {
-                Alert.alert('Estimation impossible', 'Impossible d\'estimer le coût pour le moment. Réessayez plus tard.');
+                Alert.alert(
+                    'Estimation impossible',
+                    'Impossible d\'estimer le coût pour le moment.\n\n' +
+                    'Vérifiez que tous les champs sont correctement remplis et réessayez.',
+                    [{ text: 'OK' }]
+                );
                 return;
             }
 
@@ -3560,14 +3610,117 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         } catch (error: any) {
             setCostLoading(false);
             console.error('[ProductVideoCreationModal] Erreur estimation coût:', error);
-            const message = error?.message || 'Erreur lors de l\'estimation du coût';
-            Alert.alert('Erreur d\'estimation', message);
+            
+            // ✅ CORRIGÉ: Messages d'erreur améliorés
+            let errorMessage = 'Erreur lors de l\'estimation du coût.';
+            
+            if (error?.message) {
+                const msg = error.message.toLowerCase();
+                if (msg.includes('500') || msg.includes('internal') || msg.includes('erreur 500')) {
+                    errorMessage = 'Erreur serveur temporaire.\n\n' +
+                        'Le serveur a rencontré une erreur lors de l\'estimation.\n\n' +
+                        'Veuillez réessayer dans quelques instants.';
+                } else if (msg.includes('400') || msg.includes('bad request') || msg.includes('invalide')) {
+                    errorMessage = 'Demande invalide.\n\n' +
+                        'Vérifiez que tous les champs sont correctement remplis et réessayez.';
+                } else if (msg.includes('timeout') || msg.includes('timed out')) {
+                    errorMessage = 'Le délai d\'attente a expiré.\n\n' +
+                        'Veuillez réessayer.';
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+            
+            Alert.alert('Erreur d\'estimation', errorMessage, [{ text: 'OK' }]);
         }
     };
 
     // ✅ NOUVEAU 2025-11-30: Fonction séparée pour la génération effective de la vidéo
     const proceedWithVideoGeneration = async (payload: VideoGenerationPayload) => {
+        // ✅ CORRIGÉ: Validations complètes avant l'appel API
         if (!selectedProduct) {
+            Alert.alert('Produit requis', 'Aucun produit sélectionné. Veuillez sélectionner un produit avant de générer la vidéo.');
+            return;
+        }
+
+        const serviceId = selectedProduct.serviceId;
+        const productIndex = selectedProduct.product_index;
+
+        if (!serviceId || serviceId === null || serviceId === undefined) {
+            Alert.alert(
+                'Service invalide',
+                'Le service ID est manquant ou invalide.\n\nVeuillez sélectionner un produit valide.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
+        if (productIndex === null || productIndex === undefined || isNaN(Number(productIndex))) {
+            Alert.alert(
+                'Index produit invalide',
+                'L\'index du produit est manquant ou invalide.\n\nVeuillez sélectionner un produit valide.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
+        // ✅ CORRIGÉ: Vérifier que le payload contient les données minimales
+        if (!payload) {
+            Alert.alert(
+                'Données manquantes',
+                'Les données de génération sont manquantes.\n\nVeuillez remplir les champs requis et réessayez.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
+        // ✅ CORRIGÉ: Vérifier que la durée est valide
+        const durationSeconds = payload.duration_seconds || ensureNumber(duration, 28);
+        if (!durationSeconds || durationSeconds < 10 || durationSeconds > 90) {
+            Alert.alert(
+                'Durée invalide',
+                'La durée de la vidéo doit être comprise entre 10 et 90 secondes.\n\nVeuillez ajuster la durée et réessayez.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
+        // ✅ CORRIGÉ: Vérifier qu'il y a au moins un script, storyboard ou timeline
+        const hasScript = payload.voiceover_script && payload.voiceover_script.trim().length > 0;
+        const hasStoryboard = payload.storyboard && Array.isArray(payload.storyboard) && payload.storyboard.length > 0;
+        const hasTimeline = payload.timeline && payload.timeline.scenes && payload.timeline.scenes.length > 0;
+
+        if (!hasScript && !hasStoryboard && !hasTimeline) {
+            Alert.alert(
+                'Script requis',
+                'Aucun script, storyboard ou timeline disponible.\n\n' +
+                'Solutions :\n' +
+                '• Remplissez le script de montage\n' +
+                '• Générez un storyboard IA\n' +
+                '• Générez un brief IA\n' +
+                '• Créez une timeline avec des médias',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
+        // ✅ CORRIGÉ: Vérifier qu'il y a des médias disponibles si nécessaire
+        const hasSelectedMedia = payload.selected_media_ids && Array.isArray(payload.selected_media_ids) && payload.selected_media_ids.length > 0;
+        const useProductGallery = payload.use_product_gallery === true;
+        const useServiceMediatech = payload.use_service_mediatech === true;
+        const hasTimelineMedia = hasTimeline && payload.timeline.scenes.some((scene: any) => scene.media_id || scene.media_url);
+
+        if (!hasSelectedMedia && !useProductGallery && !useServiceMediatech && !hasTimelineMedia) {
+            Alert.alert(
+                'Médias requis',
+                'Aucun média disponible pour générer la vidéo.\n\n' +
+                'Solutions :\n' +
+                '• Sélectionnez des médias dans la médiathèque\n' +
+                '• Activez "Utiliser galerie produit"\n' +
+                '• Activez "Utiliser médiathèque service"\n' +
+                '• Ajoutez des médias à la timeline',
+                [{ text: 'OK' }]
+            );
             return;
         }
 
@@ -3576,12 +3729,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         try {
             // ✅ DEBUG: Log du payload pour diagnostic
             console.log('[ProductVideoCreationModal] 🎬 Génération vidéo - Payload:', JSON.stringify(payload, null, 2));
-            console.log('[ProductVideoCreationModal] 🎬 Service ID:', selectedProduct.serviceId);
-            console.log('[ProductVideoCreationModal] 🎬 Product Index:', selectedProduct.product_index);
+            console.log('[ProductVideoCreationModal] 🎬 Service ID:', serviceId);
+            console.log('[ProductVideoCreationModal] 🎬 Product Index:', productIndex);
             
             const response = await mediaApi.generateProductVideo(
-                selectedProduct.serviceId,
-                selectedProduct.product_index,
+                serviceId,
+                productIndex,
                 payload
             );
             
@@ -3589,34 +3742,51 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             console.log('[ProductVideoCreationModal] 🎬 Réponse génération:', response);
 
             if (!response.success || !response.data) {
-                throw new Error(response.error || 'Génération impossible');
+                // ✅ CORRIGÉ: Extraire le message d'erreur du backend si disponible
+                const backendError = response.error || 'Génération impossible';
+                throw new Error(backendError);
             }
 
             const result = response.data as GeneratedVideoResponse;
+            
+            // ✅ CORRIGÉ: Valider la réponse
+            if (!result || !result.video_url) {
+                throw new Error('Réponse invalide : URL de la vidéo manquante');
+            }
+
             await onSuccess(result);
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur génération vidéo:', error);
 
-            // ✅ CORRECTION: Améliorer les messages d'erreur avec des détails spécifiques
+            // ✅ CORRIGÉ: Messages d'erreur améliorés avec détails spécifiques
             let errorMessage = 'Nous ne parvenons pas à générer la vidéo.';
 
             if (error?.message) {
                 const msg = error.message.toLowerCase();
-                if (msg.includes('aucune image') || msg.includes('image trouvée')) {
-                    errorMessage = 'Aucune image disponible pour générer la vidéo.\n\n' +
+                if (msg.includes('aucune image') || msg.includes('image trouvée') || msg.includes('no media')) {
+                    errorMessage = 'Aucun média disponible pour générer la vidéo.\n\n' +
                         'Solutions :\n' +
                         '• Ajoutez des images dans la médiathèque du service\n' +
                         '• Ajoutez des images au produit\n' +
+                        '• Activez "Utiliser galerie produit" ou "Utiliser médiathèque service"\n' +
                         '• La génération automatique d\'images IA sera activée lors de la prochaine tentative';
-                } else if (msg.includes('400') || msg.includes('bad request')) {
+                } else if (msg.includes('400') || msg.includes('bad request') || msg.includes('invalide')) {
                     errorMessage = 'Demande invalide.\n\n' +
-                        'Vérifiez que tous les champs sont correctement remplis et réessayez.';
-                } else if (msg.includes('500') || msg.includes('internal')) {
+                        'Vérifiez que tous les champs sont correctement remplis et réessayez.\n\n' +
+                        'Champs requis :\n' +
+                        '• Durée (10-90 secondes)\n' +
+                        '• Script, storyboard ou timeline\n' +
+                        '• Au moins un média disponible';
+                } else if (msg.includes('500') || msg.includes('internal') || msg.includes('erreur 500')) {
                     errorMessage = 'Erreur serveur temporaire.\n\n' +
+                        'Le serveur a rencontré une erreur lors de la génération.\n\n' +
                         'Veuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.';
                 } else if (msg.includes('timeout') || msg.includes('timed out')) {
                     errorMessage = 'La génération prend plus de temps que prévu.\n\n' +
                         'La vidéo est peut-être en cours de création. Vérifiez vos vidéos dans quelques instants.';
+                } else if (msg.includes('solde') || msg.includes('balance') || msg.includes('tokens')) {
+                    errorMessage = 'Solde insuffisant.\n\n' +
+                        'Veuillez recharger vos tokens avant de générer la vidéo.';
                 } else {
                     errorMessage = error.message;
                 }
@@ -3624,7 +3794,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             Alert.alert(
                 'Génération impossible',
-                errorMessage + '\n\nVérifiez votre connexion et réessayez.'
+                errorMessage + '\n\nVérifiez votre connexion et réessayez.',
+                [{ text: 'OK' }]
             );
         } finally {
             setIsSubmitting(false);

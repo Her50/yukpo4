@@ -24,6 +24,8 @@ import InAppCallModal from './InAppCallModal';
 import ProductGalleryPickerModal from './ProductGalleryPickerModal';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
+import NegotiatedPriceModal from './chat/NegotiatedPriceModal';
+import OrderDeliveryModal from './delivery/OrderDeliveryModal';
 
 interface ChatModalMobileProps {
     visible: boolean;
@@ -80,6 +82,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [showProductGalleryPicker, setShowProductGalleryPicker] = useState(false);
     const [isPlayingAudio, setIsPlayingAudio] = useState(false);
     const [audioSound, setAudioSound] = useState<Audio.Sound | null>(null);
+    // ✅ NOUVEAU: États pour livraison et négociation de prix
+    const [showOrderModal, setShowOrderModal] = useState(false);
+    const [showNegotiatePriceModal, setShowNegotiatePriceModal] = useState(false);
+    const [selectedProductForDelivery, setSelectedProductForDelivery] = useState<{ product: any; productIndex: number } | null>(null);
+    const [selectedProductForNegotiation, setSelectedProductForNegotiation] = useState<{ product: any; productIndex: number; originalPrice: number } | null>(null);
 
     // ✅ NOUVEAU: États pour le système de réponse/citation
     const [replyingTo, setReplyingTo] = useState<any | null>(null);
@@ -1092,6 +1099,161 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         >
                             <SafeIcon name="folder-open" size={22} color="#8B5CF6" />
                         </TouchableOpacity>
+
+                        {/* ✅ NOUVEAU: Bouton "Me livrer" pour commander une livraison */}
+                        <TouchableOpacity
+                            style={styles.mediaButton}
+                            onPress={async () => {
+                                // Charger les produits du service pour permettre la sélection
+                                try {
+                                    if (!service?.id) {
+                                        Alert.alert('Erreur', 'Service non disponible');
+                                        return;
+                                    }
+
+                                    const response = await apiGet(`/api/services/${service.id}`);
+                                    if (response.success && response.data) {
+                                        const serviceData = response.data;
+                                        const products = serviceData.data?.produits?.valeur || 
+                                                       serviceData.produits || 
+                                                       [];
+
+                                        if (products.length === 0) {
+                                            Alert.alert('Aucun produit', 'Ce service n\'a pas de produits disponibles pour la livraison');
+                                            return;
+                                        }
+
+                                        // Si un seul produit, ouvrir directement le modal
+                                        if (products.length === 1) {
+                                            setSelectedProductForDelivery({
+                                                product: products[0],
+                                                productIndex: 0
+                                            });
+                                            setShowOrderModal(true);
+                                        } else {
+                                            // Si plusieurs produits, afficher un sélecteur
+                                            Alert.alert(
+                                                'Sélectionner un produit',
+                                                'Choisissez le produit à livrer',
+                                                products.map((product: any, index: number) => ({
+                                                    text: product.name || product.titre || `Produit ${index + 1}`,
+                                                    onPress: () => {
+                                                        setSelectedProductForDelivery({
+                                                            product,
+                                                            productIndex: index
+                                                        });
+                                                        setShowOrderModal(true);
+                                                    }
+                                                })).concat([{ text: 'Annuler', style: 'cancel' }])
+                                            );
+                                        }
+                                    } else {
+                                        Alert.alert('Erreur', 'Impossible de charger les produits');
+                                    }
+                                } catch (error) {
+                                    console.error('[ChatModalMobile] Erreur chargement produits:', error);
+                                    Alert.alert('Erreur', 'Impossible de charger les produits');
+                                }
+                            }}
+                        >
+                            <SafeIcon name="truck" size={22} color={modernColors.success} />
+                        </TouchableOpacity>
+
+                        {/* ✅ NOUVEAU: Bouton "Négocier le prix" */}
+                        <TouchableOpacity
+                            style={styles.mediaButton}
+                            onPress={async () => {
+                                // Charger les produits du service pour permettre la sélection
+                                try {
+                                    if (!service?.id) {
+                                        Alert.alert('Erreur', 'Service non disponible');
+                                        return;
+                                    }
+
+                                    const response = await apiGet(`/api/services/${service.id}`);
+                                    if (response.success && response.data) {
+                                        const serviceData = response.data;
+                                        const products = serviceData.data?.produits?.valeur || 
+                                                       serviceData.produits || 
+                                                       [];
+
+                                        if (products.length === 0) {
+                                            Alert.alert('Aucun produit', 'Ce service n\'a pas de produits disponibles');
+                                            return;
+                                        }
+
+                                        // Filtrer les produits qui ont un prix
+                                        const productsWithPrice = products.filter((product: any) => {
+                                            const price = product.price || product.prix || product.prix_unitaire;
+                                            return price && (typeof price === 'number' || !isNaN(parseFloat(price)));
+                                        });
+
+                                        if (productsWithPrice.length === 0) {
+                                            Alert.alert('Aucun prix', 'Aucun produit n\'a de prix défini pour la négociation');
+                                            return;
+                                        }
+
+                                        // Si un seul produit avec prix, ouvrir directement le modal
+                                        if (productsWithPrice.length === 1) {
+                                            const product = productsWithPrice[0];
+                                            const originalPrice = typeof product.price === 'number' 
+                                                ? product.price 
+                                                : typeof product.prix === 'number'
+                                                    ? product.prix
+                                                    : typeof product.prix_unitaire === 'number'
+                                                        ? product.prix_unitaire
+                                                        : parseFloat(product.price || product.prix || product.prix_unitaire) || 0;
+                                            
+                                            if (originalPrice <= 0) {
+                                                Alert.alert('Erreur', 'Le prix de ce produit n\'est pas valide');
+                                                return;
+                                            }
+
+                                            setSelectedProductForNegotiation({
+                                                product,
+                                                productIndex: products.indexOf(product),
+                                                originalPrice
+                                            });
+                                            setShowNegotiatePriceModal(true);
+                                        } else {
+                                            // Si plusieurs produits, afficher un sélecteur
+                                            Alert.alert(
+                                                'Négocier le prix',
+                                                'Choisissez le produit pour lequel vous voulez négocier le prix',
+                                                productsWithPrice.map((product: any, index: number) => {
+                                                    const originalPrice = typeof product.price === 'number' 
+                                                        ? product.price 
+                                                        : typeof product.prix === 'number'
+                                                            ? product.prix
+                                                            : typeof product.prix_unitaire === 'number'
+                                                                ? product.prix_unitaire
+                                                                : parseFloat(product.price || product.prix || product.prix_unitaire) || 0;
+                                                    
+                                                    return {
+                                                        text: `${product.name || product.titre || `Produit ${index + 1}`} - ${originalPrice.toLocaleString('fr-FR')} FCFA`,
+                                                        onPress: () => {
+                                                            setSelectedProductForNegotiation({
+                                                                product,
+                                                                productIndex: products.indexOf(product),
+                                                                originalPrice
+                                                            });
+                                                            setShowNegotiatePriceModal(true);
+                                                        }
+                                                    };
+                                                }).concat([{ text: 'Annuler', style: 'cancel' }])
+                                            );
+                                        }
+                                    } else {
+                                        Alert.alert('Erreur', 'Impossible de charger les produits');
+                                    }
+                                } catch (error) {
+                                    console.error('[ChatModalMobile] Erreur chargement produits:', error);
+                                    Alert.alert('Erreur', 'Impossible de charger les produits');
+                                }
+                            }}
+                        >
+                            <SafeIcon name="dollar-sign" size={22} color={modernColors.secondary || '#8B5CF6'} />
+                        </TouchableOpacity>
                     </View>
 
                     {/* ✅ NOUVEAU: Bandeau de citation quand on répond à un message */}
@@ -1196,6 +1358,46 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 onSelectUser={insertMention}
                 currentQuery={mentionQuery}
             />
+
+            {/* ✅ NOUVEAU: Modal de commande de livraison */}
+            <OrderDeliveryModal
+                visible={showOrderModal}
+                onClose={() => {
+                    setShowOrderModal(false);
+                    setSelectedProductForDelivery(null);
+                }}
+                serviceId={service?.id}
+                productIndex={selectedProductForDelivery?.productIndex}
+                productName={selectedProductForDelivery?.product?.name || selectedProductForDelivery?.product?.titre}
+                conversationId={effectiveServiceId}
+                clientUserId={user?.id}
+                onSuccess={(deliveryId) => {
+                    console.log('[ChatModalMobile] Livraison créée:', deliveryId);
+                    setShowOrderModal(false);
+                    setSelectedProductForDelivery(null);
+                }}
+            />
+
+            {/* ✅ NOUVEAU: Modal de négociation de prix */}
+            {selectedProductForNegotiation && (
+                <NegotiatedPriceModal
+                    visible={showNegotiatePriceModal}
+                    onClose={() => {
+                        setShowNegotiatePriceModal(false);
+                        setSelectedProductForNegotiation(null);
+                    }}
+                    conversationId={effectiveServiceId}
+                    serviceId={service?.id || 0}
+                    productIndex={selectedProductForNegotiation.productIndex}
+                    originalPrice={selectedProductForNegotiation.originalPrice}
+                    merchantUserId={prestataireUserId}
+                    clientUserId={user?.id || 0}
+                    onPriceNegotiated={() => {
+                        console.log('[ChatModalMobile] Prix négocié');
+                        // Optionnel: recharger les messages ou afficher une notification
+                    }}
+                />
+            )}
 
             {/* ✅ NOUVEAU: Modal liste des participants */}
             <Modal

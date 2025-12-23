@@ -30,6 +30,41 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
     const [error, setError] = useState<string | null>(null);
 
     const handleGeneratePreview = async () => {
+        // ✅ CORRIGÉ: Validation de la timeline avant d'appeler l'API
+        if (!timeline) {
+            Alert.alert(
+                'Timeline manquante',
+                'Aucune timeline disponible pour générer le preview.\n\nVeuillez d\'abord créer une timeline avec des médias.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
+        // ✅ CORRIGÉ: Vérifier que la timeline contient des médias
+        const hasMedia = timeline.scenes && Array.isArray(timeline.scenes) && timeline.scenes.length > 0;
+        if (!hasMedia) {
+            Alert.alert(
+                'Timeline vide',
+                'La timeline ne contient aucun média.\n\nVeuillez ajouter des médias (images, vidéos) à la timeline avant de générer le preview.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
+        // ✅ CORRIGÉ: Vérifier que les scènes ont des médias valides
+        const scenesWithMedia = timeline.scenes.filter((scene: any) => {
+            return scene.media_url || scene.media_id || scene.assets?.video_url || scene.assets?.image_url;
+        });
+
+        if (scenesWithMedia.length === 0) {
+            Alert.alert(
+                'Aucun média valide',
+                'Aucun média valide trouvé dans la timeline.\n\nVeuillez ajouter des médias avec des URLs valides.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -40,13 +75,33 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                 max_duration: 10.0,
             });
 
+            if (!response || !response.success) {
+                throw new Error(response?.error || 'Réponse invalide du serveur');
+            }
+
             setPreview(response);
             if (onPreviewReady) {
                 onPreviewReady(response);
             }
         } catch (err: any) {
             console.error('[QuickPreview] Error:', err);
-            setError(err.message || 'Erreur génération preview');
+            
+            // ✅ CORRIGÉ: Messages d'erreur plus clairs selon le type d'erreur
+            let errorMessage = 'Erreur lors de la génération du preview';
+            
+            if (err?.message) {
+                if (err.message.includes('500') || err.message.includes('Erreur 500')) {
+                    errorMessage = 'Erreur serveur : Le preview n\'a pas pu être généré.\n\nVérifiez que tous les médias de la timeline sont accessibles.';
+                } else if (err.message.includes('média') || err.message.includes('media') || err.message.includes('timeline')) {
+                    errorMessage = 'Aucun média trouvé dans la timeline.\n\nVeuillez ajouter des médias avant de générer le preview.';
+                } else if (err.message.includes('timeout') || err.message.includes('Timeout')) {
+                    errorMessage = 'Le traitement prend trop de temps.\n\nVeuillez réessayer avec moins de médias.';
+                } else {
+                    errorMessage = err.message;
+                }
+            }
+            
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }

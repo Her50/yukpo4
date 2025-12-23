@@ -151,25 +151,129 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
 
     const handleNavigation = async () => {
         if (!deliveryId) return;
+        
         try {
-            const response = await deliveryApi.getCourierNavigation(deliveryId);
-            const data = (response as any)?.data || response;
+            // ✅ CORRIGÉ: Utiliser les données directement depuis delivery au lieu de l'API
+            const pickup = delivery?.pickup?.location;
+            const dropoff = delivery?.dropoff?.location;
+            
+            // Déterminer l'origine et la destination selon le statut
+            let origin: { lat: number; lng: number } | null = null;
+            let destination: { lat: number; lng: number } | null = null;
+            
+            const status = delivery?.status;
+            
+            // Si le coursier n'a pas encore récupéré, aller au pickup
+            if (status === 'assigned' || status === 'awaiting_courier' || status === 'en_route_pickup') {
+                // Essayer d'utiliser la position GPS actuelle du coursier comme origine
+                try {
+                    const { status: permissionStatus } = await Location.requestForegroundPermissionsAsync();
+                    if (permissionStatus === 'granted') {
+                        const currentPosition = await Location.getCurrentPositionAsync({
+                            accuracy: Location.Accuracy.Balanced,
+                        });
+                        origin = {
+                            lat: currentPosition.coords.latitude,
+                            lng: currentPosition.coords.longitude,
+                        };
+                    }
+                } catch (gpsError) {
+                    console.warn('[DeliveryTracking] Erreur récupération GPS coursier:', gpsError);
+                    // Continuer avec pickup comme origine si GPS échoue
+                }
+                
+                // Si pas de GPS, utiliser la position du coursier depuis delivery ou le pickup
+                if (!origin) {
+                    origin = delivery?.metadata?.last_location 
+                        ? { lat: delivery.metadata.last_location.lat, lng: delivery.metadata.last_location.lng }
+                        : pickup ? { lat: pickup.lat, lng: pickup.lng } : null;
+                }
+                
+                destination = pickup ? { lat: pickup.lat, lng: pickup.lng } : null;
+            } 
+            // Si le coursier a récupéré, aller au dropoff
+            else if (status === 'shopping_completed' || status === 'en_route_delivery') {
+                // Utiliser la position GPS actuelle du coursier comme origine
+                try {
+                    const { status: permissionStatus } = await Location.requestForegroundPermissionsAsync();
+                    if (permissionStatus === 'granted') {
+                        const currentPosition = await Location.getCurrentPositionAsync({
+                            accuracy: Location.Accuracy.Balanced,
+                        });
+                        origin = {
+                            lat: currentPosition.coords.latitude,
+                            lng: currentPosition.coords.longitude,
+                        };
+                    }
+                } catch (gpsError) {
+                    console.warn('[DeliveryTracking] Erreur récupération GPS coursier:', gpsError);
+                    // Continuer avec pickup comme origine si GPS échoue
+                }
+                
+                // Si pas de GPS, utiliser la position du coursier depuis delivery ou le pickup
+                if (!origin) {
+                    origin = delivery?.metadata?.last_location 
+                        ? { lat: delivery.metadata.last_location.lat, lng: delivery.metadata.last_location.lng }
+                        : pickup ? { lat: pickup.lat, lng: pickup.lng } : null;
+                }
+                
+                destination = dropoff ? { lat: dropoff.lat, lng: dropoff.lng } : null;
+            }
+            // Par défaut, utiliser pickup -> dropoff
+            else {
+                origin = pickup ? { lat: pickup.lat, lng: pickup.lng } : null;
+                destination = dropoff ? { lat: dropoff.lat, lng: dropoff.lng } : null;
+            }
 
-            if (!data?.origin || !data?.destination) {
-                Alert.alert('Erreur', 'Données incomplètes');
+            // ✅ CORRIGÉ: Vérification améliorée avec messages d'erreur spécifiques
+            if (!origin || !destination) {
+                const missingData = [];
+                if (!origin) missingData.push('origine');
+                if (!destination) missingData.push('destination');
+                
+                Alert.alert(
+                    'Données incomplètes',
+                    `Impossible de démarrer la navigation : ${missingData.join(' et ')} manquante(s).\n\nVérifiez que les adresses de pickup et dropoff sont bien définies.`,
+                    [{ text: 'OK' }]
+                );
                 return;
             }
 
-            const url = `https://www.google.com/maps/dir/${data.origin.latitude},${data.origin.longitude}/${data.destination.latitude},${data.destination.longitude}`;
+            // ✅ CORRIGÉ: Validation des coordonnées GPS
+            if (
+                !Number.isFinite(origin.lat) || !Number.isFinite(origin.lng) ||
+                !Number.isFinite(destination.lat) || !Number.isFinite(destination.lng) ||
+                origin.lat < -90 || origin.lat > 90 ||
+                origin.lng < -180 || origin.lng > 180 ||
+                destination.lat < -90 || destination.lat > 90 ||
+                destination.lng < -180 || destination.lng > 180
+            ) {
+                Alert.alert('Erreur', 'Coordonnées GPS invalides');
+                return;
+            }
+
+            // Construire l'URL Google Maps
+            const url = `https://www.google.com/maps/dir/${origin.lat},${origin.lng}/${destination.lat},${destination.lng}`;
+            
             const canOpen = await Linking.canOpenURL(url);
             if (canOpen) {
                 await Linking.openURL(url);
                 showSuccess('Navigation ouverte');
             } else {
-                showError('Impossible d\'ouvrir');
+                // ✅ CORRIGÉ: Essayer avec d'autres applications de navigation
+                const appleMapsUrl = `http://maps.apple.com/?daddr=${destination.lat},${destination.lng}&saddr=${origin.lat},${origin.lng}`;
+                const canOpenApple = await Linking.canOpenURL(appleMapsUrl);
+                
+                if (canOpenApple) {
+                    await Linking.openURL(appleMapsUrl);
+                    showSuccess('Navigation ouverte');
+                } else {
+                    showError('Aucune application de navigation disponible');
+                }
             }
         } catch (error: any) {
-            showError('Erreur navigation');
+            console.error('[DeliveryTracking] Erreur navigation:', error);
+            showError(error?.message || 'Erreur lors de l\'ouverture de la navigation');
         }
     };
 

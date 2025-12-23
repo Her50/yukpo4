@@ -45,6 +45,26 @@ export const AutoCaptionsPanel: React.FC<AutoCaptionsPanelProps> = ({
     const [confidence, setConfidence] = useState<number | null>(null);
 
     const handleGenerate = async () => {
+        // ✅ CORRIGÉ: Validation avant d'appeler l'API
+        if (!videoUrl || videoUrl.trim() === '') {
+            Alert.alert(
+                'Vidéo manquante',
+                'Aucune vidéo disponible pour générer les sous-titres.\n\nVeuillez d\'abord uploader ou sélectionner une vidéo.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
+        // ✅ CORRIGÉ: Vérifier que l'URL de la vidéo est valide
+        if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://') && !videoUrl.startsWith('file://')) {
+            Alert.alert(
+                'URL invalide',
+                'L\'URL de la vidéo n\'est pas valide.\n\nVeuillez réessayer après avoir uploadé la vidéo.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
         setLoading(true);
         try {
             const result = await captionsService.generateCaptions({
@@ -54,12 +74,32 @@ export const AutoCaptionsPanel: React.FC<AutoCaptionsPanelProps> = ({
                 position: 'auto',
             });
 
+            if (!result || !result.subtitles) {
+                throw new Error('Réponse invalide du serveur');
+            }
+
             setSubtitles(result.subtitles);
-            setConfidence(result.confidence);
-            onCaptionsGenerated(result.subtitles, result.subtitle_file_url);
+            setConfidence(result.confidence || null);
+            onCaptionsGenerated(result.subtitles, result.subtitle_file_url || '');
         } catch (error: any) {
             console.error('[AutoCaptionsPanel] Error:', error);
-            Alert.alert('Erreur', 'Impossible de générer les sous-titres');
+            
+            // ✅ CORRIGÉ: Messages d'erreur plus clairs selon le type d'erreur
+            let errorMessage = 'Impossible de générer les sous-titres';
+            
+            if (error?.message) {
+                if (error.message.includes('500') || error.message.includes('Erreur 500')) {
+                    errorMessage = 'Erreur serveur : Les sous-titres n\'ont pas pu être générés.\n\nVérifiez que la vidéo contient de l\'audio et est accessible.';
+                } else if (error.message.includes('audio') || error.message.includes('fichier audio')) {
+                    errorMessage = 'Aucun fichier audio trouvé dans la vidéo.\n\nVérifiez que la vidéo contient de l\'audio pour générer les sous-titres.';
+                } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
+                    errorMessage = 'Le traitement prend trop de temps.\n\nVeuillez réessayer avec une vidéo plus courte.';
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+            
+            Alert.alert('Erreur de génération', errorMessage, [{ text: 'OK' }]);
         } finally {
             setLoading(false);
         }

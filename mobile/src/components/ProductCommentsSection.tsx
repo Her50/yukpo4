@@ -1,5 +1,6 @@
+import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -190,6 +191,16 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const [mentionQuery, setMentionQuery] = useState('');
     const [showMentionPicker, setShowMentionPicker] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    
+    // ✅ NOUVEAU: États pour audio
+    const [composerAudio, setComposerAudio] = useState<string | null>(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recording, setRecording] = useState<Audio.Recording | null>(null);
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+    
+    // ✅ NOUVEAU: États pour emojis
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
     const isFullMode = mode === 'full' || modalVisible;
 
@@ -222,6 +233,135 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         loadComments();
     }, [loadComments]);
 
+    // ✅ NOUVEAU: Fonction pour convertir un fichier en base64
+    const convertFileToBase64 = async (uri: string): Promise<string> => {
+        try {
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = (reader.result as string).split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.error('[ProductCommentsSection] Erreur conversion base64:', error);
+            throw error;
+        }
+    };
+
+    // ✅ NOUVEAU: Démarrer l'enregistrement audio
+    const startAudioRecording = useCallback(async () => {
+        try {
+            const permission = await Audio.requestPermissionsAsync();
+            if (permission.status !== 'granted') {
+                Alert.alert('Permission requise', 'Permission microphone nécessaire');
+                return;
+            }
+
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: true,
+                playsInSilentModeIOS: true,
+                staysActiveInBackground: false,
+                shouldDuckAndroid: true,
+                playThroughEarpieceAndroid: false,
+            });
+
+            const { recording: newRecording } = await Audio.Recording.createAsync({
+                android: {
+                    extension: '.m4a',
+                    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+                    audioEncoder: Audio.AndroidAudioEncoder.AAC,
+                    sampleRate: 44100,
+                    numberOfChannels: 2,
+                    bitRate: 128000,
+                },
+                ios: {
+                    extension: '.m4a',
+                    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+                    audioQuality: Audio.IOSAudioQuality.HIGH,
+                    sampleRate: 44100,
+                    numberOfChannels: 2,
+                    bitRate: 128000,
+                },
+            });
+
+            setRecording(newRecording);
+            setIsRecording(true);
+            setRecordingDuration(0);
+            
+            // Timer pour la durée
+            recordingTimerRef.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+        } catch (error) {
+            console.error('[ProductCommentsSection] Erreur enregistrement audio:', error);
+            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement audio');
+            setIsRecording(false);
+        }
+    }, []);
+
+    // ✅ NOUVEAU: Arrêter l'enregistrement audio
+    const stopAudioRecording = useCallback(async () => {
+        if (!recording) return;
+
+        try {
+            setIsRecording(false);
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+                recordingTimerRef.current = null;
+            }
+            
+            await recording.stopAndUnloadAsync();
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+            });
+
+            const uri = recording.getURI();
+            if (uri) {
+                const audioBase64 = await convertFileToBase64(uri);
+                setComposerAudio(audioBase64);
+            }
+            setRecording(null);
+            setRecordingDuration(0);
+        } catch (error) {
+            console.error('[ProductCommentsSection] Erreur arrêt audio:', error);
+            setRecording(null);
+            setIsRecording(false);
+        }
+    }, [recording]);
+
+    // ✅ NOUVEAU: Annuler l'enregistrement audio
+    const cancelAudioRecording = useCallback(async () => {
+        if (recording) {
+            try {
+                await recording.stopAndUnloadAsync();
+                await recording.deleteAsync();
+            } catch (error) {
+                console.error('[ProductCommentsSection] Erreur annulation audio:', error);
+            }
+        }
+        setRecording(null);
+        setIsRecording(false);
+        setRecordingDuration(0);
+        if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+            recordingTimerRef.current = null;
+        }
+    }, [recording]);
+
+    // ✅ NOUVEAU: Insérer un emoji dans le texte
+    const insertEmoji = useCallback((emoji: string) => {
+        setComposerContent(prev => prev + emoji);
+        setShowEmojiPicker(false);
+    }, []);
+
+    // ✅ NOUVEAU: Emojis populaires
+    const popularEmojis = ['😀', '😂', '❤️', '👍', '👎', '😊', '😍', '🤔', '😮', '😢', '😡', '🎉', '🔥', '💯', '✨', '🙏', '👏', '🎯', '💪', '🚀'];
+
     const resetComposer = useCallback(() => {
         setComposerContent('');
         setComposerRating(null);
@@ -230,7 +370,20 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         setSelectedMentions([]);
         setMentionQuery('');
         setShowMentionPicker(false);
-    }, []);
+        // ✅ NOUVEAU: Réinitialiser audio et emojis
+        setComposerAudio(null);
+        if (recording) {
+            recording.stopAndUnloadAsync().catch(console.error);
+        }
+        setRecording(null);
+        setIsRecording(false);
+        setRecordingDuration(0);
+        if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+            recordingTimerRef.current = null;
+        }
+        setShowEmojiPicker(false);
+    }, [recording]);
 
     const handleSubmitComment = useCallback(async () => {
         if (!user?.token) {
@@ -239,15 +392,20 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         }
 
         const trimmed = composerContent.trim();
-        if (!trimmed) {
-            Alert.alert('Champ requis', 'Veuillez saisir un commentaire');
+        const hasAudio = !!composerAudio; // ✅ NOUVEAU: Vérifier si un audio est présent
+        
+        // ✅ CORRIGÉ: Permettre la soumission si :
+        // 1. Un commentaire texte est saisi, OU
+        // 2. Un audio est enregistré, OU
+        // 3. Une note est sélectionnée (pour les avis principaux)
+        if (!trimmed && !hasAudio && !replyTarget && (composerRating === null || composerRating === undefined)) {
+            Alert.alert('Champ requis', 'Veuillez saisir un commentaire, enregistrer un audio ou sélectionner une note');
             return;
         }
-
-        if (!replyTarget && (composerRating === null || composerRating === undefined)) {
-            Alert.alert('Note requise', 'Ajoutez une note (0-5) pour votre avis principal');
-            return;
-        }
+        
+        // ✅ CORRIGÉ: Pour les avis principaux (sans réponse), permettre commentaire/audio sans note
+        // La note n'est requise que si on veut donner un avis avec note
+        // Mais on peut aussi juste commenter ou envoyer un audio
 
         if (replyTarget && composerRating !== null) {
             setComposerRating(null);
@@ -269,12 +427,16 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     resetComposer();
                 }
             } else {
-                const payload = {
-                    content: trimmed,
+                const payload: any = {
+                    content: trimmed || undefined,
                     rating: replyTarget ? undefined : composerRating,
                     mentions: selectedMentions.map((mention) => mention.id),
                     parent_comment_id: replyTarget?.id,
                 };
+                // ✅ NOUVEAU: Ajouter l'audio si présent
+                if (composerAudio) {
+                    payload.audio_base64 = composerAudio;
+                }
                 const response = await commentsApi.createProductComment(serviceId, payload);
                 if (!response.success) {
                     Alert.alert('Erreur', response.error || 'Impossible de publier le commentaire');
@@ -610,6 +772,46 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 </View>
             )}
 
+            {/* ✅ NOUVEAU: Affichage audio enregistré */}
+            {composerAudio && !isRecording && (
+                <View style={styles.audioPreviewContainer}>
+                    <SafeIcon name="mic" size={20} color={modernColors.primary} />
+                    <Text style={styles.audioPreviewText}>
+                        Audio enregistré ({Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')})
+                    </Text>
+                    <TouchableOpacity
+                        onPress={() => {
+                            setComposerAudio(null);
+                            setRecordingDuration(0);
+                        }}
+                    >
+                        <SafeIcon name="x" size={18} color={modernColors.error} />
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {/* ✅ NOUVEAU: Indicateur d'enregistrement */}
+            {isRecording && (
+                <View style={styles.recordingIndicator}>
+                    <View style={styles.recordingDot} />
+                    <Text style={styles.recordingText}>
+                        Enregistrement... {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.stopRecordingButton}
+                        onPress={stopAudioRecording}
+                    >
+                        <Text style={styles.stopRecordingText}>Arrêter</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.cancelRecordingButton}
+                        onPress={cancelAudioRecording}
+                    >
+                        <SafeIcon name="x" size={18} color={modernColors.error} />
+                    </TouchableOpacity>
+                </View>
+            )}
+
             <View style={styles.composerInputContainer}>
                 <TextInput
                     value={composerContent}
@@ -624,7 +826,49 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     style={styles.composerInput}
                     maxLength={1000}
                 />
+                {/* ✅ NOUVEAU: Boutons audio et emoji */}
+                <View style={styles.composerInputActions}>
+                    <TouchableOpacity
+                        style={[styles.composerActionButton, isRecording && styles.composerActionButtonActive]}
+                        onPress={isRecording ? stopAudioRecording : startAudioRecording}
+                    >
+                        <SafeIcon 
+                            name={isRecording ? "mic-off" : "mic"} 
+                            size={20} 
+                            color={isRecording ? modernColors.error : modernColors.primary} 
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.composerActionButton}
+                        onPress={() => setShowEmojiPicker(!showEmojiPicker)}
+                    >
+                        <Text style={styles.emojiButtonText}>😀</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
+
+            {/* ✅ NOUVEAU: Picker d'emojis */}
+            {showEmojiPicker && (
+                <View style={styles.emojiPickerContainer}>
+                    <View style={styles.emojiPickerHeader}>
+                        <Text style={styles.emojiPickerTitle}>Emojis</Text>
+                        <TouchableOpacity onPress={() => setShowEmojiPicker(false)}>
+                            <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.emojiGrid}>
+                        {popularEmojis.map((emoji, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                style={styles.emojiButton}
+                                onPress={() => insertEmoji(emoji)}
+                            >
+                                <Text style={styles.emojiText}>{emoji}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            )}
 
             {selectedMentions.length > 0 && (
                 <View style={styles.selectedMentionsRow}>
@@ -1249,6 +1493,123 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: modernColors.text,
+    },
+    // ✅ NOUVEAU: Styles pour audio
+    audioPreviewContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#EEF2FF',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+        marginBottom: 8,
+    },
+    audioPreviewText: {
+        flex: 1,
+        fontSize: 14,
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    recordingIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#FEE2E2',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: modernColors.error,
+        marginBottom: 8,
+    },
+    recordingDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: modernColors.error,
+    },
+    recordingText: {
+        flex: 1,
+        fontSize: 14,
+        color: modernColors.error,
+        fontWeight: '600',
+    },
+    stopRecordingButton: {
+        backgroundColor: modernColors.error,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    stopRecordingText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    cancelRecordingButton: {
+        padding: 4,
+    },
+    // ✅ NOUVEAU: Styles pour emojis
+    composerInputActions: {
+        flexDirection: 'row',
+        gap: 8,
+        paddingHorizontal: 8,
+        paddingBottom: 8,
+    },
+    composerActionButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    composerActionButtonActive: {
+        backgroundColor: '#FEE2E2',
+        borderColor: modernColors.error,
+    },
+    emojiButtonText: {
+        fontSize: 20,
+    },
+    emojiPickerContainer: {
+        backgroundColor: modernColors.surface,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        padding: 12,
+        marginTop: 8,
+        maxHeight: 200,
+    },
+    emojiPickerHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    emojiPickerTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    emojiGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    emojiButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 8,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emojiText: {
+        fontSize: 24,
     },
 });
 

@@ -26,6 +26,7 @@ import ProductCommentsSection from './ProductCommentsSection';
 import ProductMediaCarousel from './ProductMediaCarousel';
 import SafeIcon from './SafeIcon';
 import ServiceGalleryModal from './ServiceGalleryModal';
+import OrderDeliveryModal from './delivery/OrderDeliveryModal';
 
 const { width } = Dimensions.get('window');
 
@@ -157,6 +158,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [hoveredReaction, setHoveredReaction] = useState<string | null>(null);
   const [loadingReactions, setLoadingReactions] = useState(false);
   const [pendingReaction, setPendingReaction] = useState<string | null>(null);
+  // ✅ NOUVEAU : État pour modal de livraison
+  const [showOrderModal, setShowOrderModal] = useState(false);
 
   // Données produit
   const productVector = Array.isArray(product.product_vector)
@@ -273,6 +276,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
     product.product_id ||
     product.id ||
     (serviceId ? `${serviceId}_${productIndex}` : null);
+
+  // ✅ NOUVEAU : Déterminer si c'est un produit (et non une prestation de service)
+  const isProduct = product.type !== 'prestation_service' && product.type !== 'service';
+  
+  // ✅ NOUVEAU : Vérifier si la livraison est activée pour ce produit
+  const deliveryEnabled = product.delivery_enabled !== false && 
+                         product.livraison !== false &&
+                         service?.data?.livraison?.valeur !== false &&
+                         service?.data?.delivery_enabled !== false;
 
   // Prix
   const displayPrice = hasVariant && variants.length > 0
@@ -789,11 +801,28 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
               {/* Actions */}
               <View style={styles.actions}>
+                {/* ✅ NOUVEAU: Bouton "Me livrer" - S'affiche uniquement pour les produits avec livraison activée */}
+                {serviceId && isProduct && deliveryEnabled && (
+                  <TouchableOpacity
+                    style={[styles.actionButtonDelivery, styles.actionButton]}
+                    onPress={() => {
+                      if (!serviceId) {
+                        Alert.alert('Erreur', 'Service non disponible');
+                        return;
+                      }
+                      setShowOrderModal(true);
+                    }}
+                  >
+                    <SafeIcon name="truck" size={18} color="#10B981" />
+                    <Text style={styles.actionButtonDeliveryText}>Me livrer</Text>
+                  </TouchableOpacity>
+                )}
+                
                 <NativeButton
                   title="💬 Chat"
                   variant="primary"
                   onPress={handleChatPress}
-                  style={styles.actionButton}
+                  style={[styles.actionButton, !(serviceId && isProduct && deliveryEnabled) && styles.actionButtonFullWidth]}
                 />
                 <NativeButton
                   title="👁️ Voir"
@@ -880,6 +909,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
           user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
           conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
           isPrivateConversation={isPrivateChat}
+        />
+      )}
+
+      {/* ✅ NOUVEAU : Modal de commande de livraison */}
+      {showOrderModal && serviceId && (
+        <OrderDeliveryModal
+          visible={showOrderModal}
+          onClose={() => setShowOrderModal(false)}
+          serviceId={serviceId}
+          productIndex={productIndex}
+          productName={product.nom || product.name || product.titre || 'Produit'}
+          onSuccess={(deliveryId) => {
+            console.log('[ProductCard] Livraison créée:', deliveryId);
+            setShowOrderModal(false);
+            Alert.alert('Succès', 'Votre commande de livraison a été créée avec succès');
+          }}
         />
       )}
 
@@ -1317,6 +1362,27 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+  },
+  actionButtonFullWidth: {
+    flex: 1,
+  },
+  // ✅ NOUVEAU: Styles pour le bouton "Me livrer"
+  actionButtonDelivery: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#059669',
+  },
+  actionButtonDeliveryText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
