@@ -19,3 +19,4 @@ CREATE INDEX IF NOT EXISTS idx_live_sessions_id_host_user
 ON live_sessions(id, host_user_id, service_id) 
 WHERE id IS NOT NULL;
 
+

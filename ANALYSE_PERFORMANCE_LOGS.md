@@ -133,3 +133,4 @@ for log in &payload.logs {
 2. ✅ **Ajouter limite de logs par batch (max 100)**
 3. ✅ **Optimiser la création de service avec streaming**
 4. ✅ **Ajouter cache Redis pour autocomplete**
+

@@ -339,3 +339,4 @@ Le composant `LocationSelector` existant peut être enrichi pour :
 - Marquer visuellement les adresses sauvegardées dans les résultats
 
 
+

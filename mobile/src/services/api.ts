@@ -284,6 +284,9 @@ const apiCallInternal = async <T>(
     // ✅ CORRECTION: 90s pour création produit (upload médias peut prendre du temps)
     // ✅ CORRIGÉ: 60s pour timeline-variants (génération IA peut prendre 30-50s)
     // ✅ CORRIGÉ: 30s pour /prestataire/services (peut prendre du temps avec cache Redis)
+    // ✅ CORRIGÉ 2025-12-23: 30s pour /api/search/direct (recherche par image peut prendre 20-25s avec analyse IA)
+    // ✅ CORRIGÉ 2025-12-23: 30s pour /api/mobile-logs (traitement batch peut prendre du temps)
+    // ✅ CORRIGÉ 2025-12-23: 30s pour /api/services/*/reviews et /stats (peuvent être lents)
     const timeoutDuration = endpoint.includes('/services/create')
       ? 180000
       : endpoint.includes('/ia/creation-service')
@@ -292,6 +295,12 @@ const apiCallInternal = async <T>(
           ? 60000  // ✅ 60s pour timeline-variants (génération de variantes peut prendre du temps)
           : endpoint.includes('/services/') && endpoint.includes('/products')
             ? 90000  // ✅ 90s pour création/modification produit (upload médias)
+            : endpoint.includes('/search/direct')
+              ? 30000  // ✅ 30s pour recherche par image (analyse IA + recherche SQL peut prendre 20-25s)
+            : endpoint.includes('/mobile-logs')
+              ? 30000  // ✅ 30s pour logs mobiles (traitement batch peut prendre du temps)
+            : endpoint.includes('/services/') && (endpoint.includes('/reviews') || endpoint.includes('/stats'))
+              ? 30000  // ✅ 30s pour reviews et stats (peuvent être lents)
             : endpoint.includes('/prestataire/services')
               ? 30000  // ✅ 30s pour chargement services (peut être lent avec cache Redis)
               : 15000;

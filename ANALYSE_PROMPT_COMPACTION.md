@@ -114,3 +114,4 @@
 - **Garder** au moins 2 exemples génériques (produit matériel + prestation)
 - **Simplifier** les exemples plutôt que les supprimer complètement
 
+

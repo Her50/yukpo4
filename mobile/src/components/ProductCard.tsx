@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { useLocation } from '../contexts/LocationContext';
 import ChatModalMobile from './ChatModalMobile';
 import { NativeButton, NativeCard } from './NativeDesign';
 import ProductCommentsSection from './ProductCommentsSection';
@@ -154,6 +155,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onChatPress,
 }) => {
   const navigation = useNavigation();
+  // ✅ NOUVEAU: Utiliser useLocation pour calculer la distance si nécessaire
+  const { location: contextLocation, calculateDistance: locationCalculateDistance } = useLocation();
+  const effectiveUserLocation = userLocation || (contextLocation?.coords ? {
+    latitude: contextLocation.coords.latitude,
+    longitude: contextLocation.coords.longitude,
+  } : null);
+  
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
@@ -285,12 +293,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
     product.type !== 'service' &&
     product.type !== 'service_prestation';
 
+  // ✅ RESTAURÉ: Conditions strictes pour l'affichage du bouton "Me livrer"
+  // Le bouton s'affiche uniquement si la livraison est explicitement activée
   const deliveryEnabled = product.delivery_enabled !== false &&
     product.livraison !== false &&
     product.delivery_enabled !== 'false' &&
     product.livraison !== 'false' &&
     (service?.data?.livraison?.valeur !== false && service?.data?.livraison?.valeur !== 'false') &&
-    (service?.data?.delivery_enabled !== false && service?.data?.delivery_enabled !== 'false');
+    (service?.data?.delivery_enabled !== false && service?.data?.delivery_enabled !== 'false') &&
+    isProduct && serviceId; // ✅ S'assurer que c'est un produit et qu'il y a un serviceId
 
   const displayPrice = hasVariant && variants.length > 0
     ? Math.min(...variants.map((v: any) => v.prix || 0))
@@ -298,13 +309,53 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   const devise = product.devise || variants[0]?.devise || 'XAF';
 
+  // ✅ CORRIGÉ: Calculer la distance si elle n'est pas fournie
   const rawDistance = product.distance_km ?? product.distanceKm ?? product.distance ?? product.distance_client;
-  const distanceKm = typeof rawDistance === 'string'
+  let distanceKm = typeof rawDistance === 'string'
     ? parseFloat(rawDistance)
     : typeof rawDistance === 'number'
       ? rawDistance
       : undefined;
-  const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm);
+  
+  // ✅ NOUVEAU: Calculer la distance si elle n'est pas fournie et qu'on a les coordonnées GPS
+  if ((distanceKm === undefined || !Number.isFinite(distanceKm)) && effectiveUserLocation && locationCalculateDistance) {
+    // Extraire les coordonnées GPS du produit/service
+    const productGPS = product.gps || product.gps_coords || product.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
+    
+    if (productGPS) {
+      let productLat: number | undefined;
+      let productLon: number | undefined;
+      
+      // Parser le GPS (peut être string "lat,lng" ou object {lat, lng} ou {latitude, longitude})
+      if (typeof productGPS === 'string') {
+        const parts = productGPS.split(',').map(p => p.trim());
+        if (parts.length >= 2) {
+          productLat = parseFloat(parts[0]);
+          productLon = parseFloat(parts[1]);
+        }
+      } else if (typeof productGPS === 'object') {
+        productLat = productGPS.lat ?? productGPS.latitude;
+        productLon = productGPS.lng ?? productGPS.longitude;
+      }
+      
+      // Calculer la distance si on a les deux coordonnées
+      if (productLat !== undefined && productLon !== undefined && 
+          Number.isFinite(productLat) && Number.isFinite(productLon)) {
+        try {
+          distanceKm = locationCalculateDistance(
+            effectiveUserLocation.latitude,
+            effectiveUserLocation.longitude,
+            productLat,
+            productLon
+          );
+        } catch (error) {
+          console.warn('[ProductCard] Erreur calcul distance:', error);
+        }
+      }
+    }
+  }
+  
+  const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm) && distanceKm >= 0;
 
   const pays = locationVector[locationVector.length - 1] ||
     product.pays ||
@@ -554,7 +605,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   </View>
                 )}
 
-                {distanceKm !== undefined && distanceKm !== null && (
+                {hasDistance && distanceKm !== undefined && (
                   <View style={styles.distanceBadge}>
                     <SafeIcon name="navigation" size={12} color="#FFF" />
                     <Text style={styles.distanceText}>
@@ -783,6 +834,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               )}
 
               <View style={styles.actions}>
+                {/* ✅ CORRIGÉ: Toujours afficher le bouton "Me livrer" pour les produits, même si désactivé */}
                 {serviceId && isProduct && (
                   <TouchableOpacity
                     style={[
@@ -805,6 +857,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       setShowOrderModal(true);
                     }}
                     disabled={!deliveryEnabled}
+                    activeOpacity={0.7}
                   >
                     <SafeIcon
                       name="truck"

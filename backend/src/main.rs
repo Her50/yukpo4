@@ -116,8 +116,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .max_connections(max_connections)
                 .min_connections(min_connections)
                 .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
-                .idle_timeout(Some(std::time::Duration::from_secs(180))) // ✅ CORRIGÉ 2025-01-27: 3 min pour renouveler AVANT que Render ne ferme (~5 min)
-                .max_lifetime(Some(std::time::Duration::from_secs(240))) // ✅ CORRIGÉ 2025-01-27: 4 min pour renouveler AVANT que Render ne ferme (~5 min)
+                .idle_timeout(Some(std::time::Duration::from_secs(120))) // ✅ OPTIMISÉ 2025-12-23: Réduit à 2 min pour libérer connexions plus vite
+                .max_lifetime(Some(std::time::Duration::from_secs(180))) // ✅ OPTIMISÉ 2025-12-23: Réduit à 3 min pour libérer connexions plus vite
                 .test_before_acquire(true) // ✅ CORRIGÉ 2025-12-16: Tester connexion avant acquisition pour éviter erreurs TLS
                 .after_release(|conn, _meta| {
                     // ✅ CORRIGÉ 2025-12-16: Vérifier connexion après libération pour détecter erreurs TLS tôt

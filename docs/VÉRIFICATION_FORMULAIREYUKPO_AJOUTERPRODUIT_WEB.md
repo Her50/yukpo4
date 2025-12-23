@@ -154,3 +154,4 @@ const donneesService = {
 3. **Moyen terme**: Améliorer LocationSelector et PriceVariantSelector
 
 
+

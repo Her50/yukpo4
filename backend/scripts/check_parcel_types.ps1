@@ -82,3 +82,4 @@ SELECT slug FROM parcel_types WHERE slug IN ('bike', 'motorcycle', 'tricycle', '
     exit 1
 }
 
+

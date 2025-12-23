@@ -71,3 +71,4 @@
 3. Implémenter un système de retry pour les erreurs temporaires
 4. Ajouter des tests unitaires pour les fonctions critiques
 
+

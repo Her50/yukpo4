@@ -94,3 +94,4 @@ COMMENT ON COLUMN user_saved_addresses.usage_count IS 'Nombre de fois que cette 
 COMMENT ON COLUMN user_saved_addresses.last_used_at IS 'Date de dernière utilisation de cette adresse';
 
 
+

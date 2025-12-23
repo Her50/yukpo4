@@ -123,3 +123,4 @@ interface LinearAutocompleteEditorProps {
 - Le composant est compatible avec les données IA (product_vector/product_labels)
 
 
+

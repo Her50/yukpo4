@@ -126,3 +126,4 @@ if (product.type !== 'prestation_service') {
 - Les combinaisons préférées IA seront chargées via `sessionId` une fois `useAICombinations` intégré
 
 
+

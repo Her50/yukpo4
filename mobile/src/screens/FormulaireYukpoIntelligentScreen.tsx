@@ -6,7 +6,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -42,7 +41,6 @@ import { DynamicField, processIASuggestion } from '../utils/formDispatcher';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 
 const { width } = Dimensions.get('window');
-const TAB_WIDTH = 136;
 
 interface ServiceData {
   serviceId?: string;
@@ -63,8 +61,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, logout } = useAuth();
-  const blockNavigationRef = React.useRef<ScrollView>(null);
-  const blockContentRef = React.useRef<FlatList>(null);
+  const mainScrollViewRef = React.useRef<ScrollView>(null);
+  const blockRefs = React.useRef<Record<number, View | null>>({});
+  const blockPositions = React.useRef<Record<number, number>>({});
 
   const params = ((route || {})?.params || {}) as any;
 
@@ -253,23 +252,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     if (!isCurrentVisible) {
       setCurrentBlock(displayedBlocks[0].index);
-      if (blockContentRef.current && typeof blockContentRef.current.scrollToIndex === 'function') {
-        blockContentRef.current.scrollToIndex({ index: 0, animated: true, viewPosition: 0 });
-      }
     }
   }, [displayedBlocks, currentBlock]);
-
-  useEffect(() => {
-    const displayIndex = displayedBlocks.findIndex((item) => item.index === currentBlock);
-    if (displayIndex === -1) {
-      return;
-    }
-
-    const targetOffset = Math.max(0, displayIndex * TAB_WIDTH - TAB_WIDTH);
-    if (blockNavigationRef.current && typeof blockNavigationRef.current.scrollTo === 'function') {
-      blockNavigationRef.current.scrollTo({ x: targetOffset, y: 0, animated: true });
-    }
-  }, [currentBlock, displayedBlocks]);
 
   useEffect(() => {
     const parseMediaValue = (value: any): any[] => {
@@ -1020,15 +1004,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     if (nextVisible) {
       setCurrentBlock(nextVisible.index);
-      const targetDisplayIndex = currentVisibleIndex + 1;
-      if (targetDisplayIndex >= 0) {
-        // ✅ OPTIMISÉ: Utiliser requestAnimationFrame pour éviter les conflits
-        requestAnimationFrame(() => {
-          blockContentRef.current?.scrollToIndex({
-            index: targetDisplayIndex,
-            animated: true,
-            viewPosition: 0
-          });
+      // Scroller vers le bloc avec un offset pour la navigation sticky
+      const blockY = blockPositions.current[nextVisible.index];
+      if (blockY !== undefined && mainScrollViewRef.current) {
+        mainScrollViewRef.current.scrollTo({
+          x: 0,
+          y: Math.max(0, blockY - 120),
+          animated: true
         });
       }
     }
@@ -1040,24 +1022,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     if (previousVisible) {
       setCurrentBlock(previousVisible.index);
-      const targetDisplayIndex = currentVisibleIndex - 1;
-      if (targetDisplayIndex >= 0) {
-        // ✅ OPTIMISÉ: Utiliser requestAnimationFrame pour éviter les conflits
-        requestAnimationFrame(() => {
-          blockContentRef.current?.scrollToIndex({
-            index: targetDisplayIndex,
-            animated: true,
-            viewPosition: 0
-          });
+      // Scroller vers le bloc avec un offset pour la navigation sticky
+      const blockY = blockPositions.current[previousVisible.index];
+      if (blockY !== undefined && mainScrollViewRef.current) {
+        mainScrollViewRef.current.scrollTo({
+          x: 0,
+          y: Math.max(0, blockY - 120),
+          animated: true
         });
       }
     }
   };
 
   const goToBlock = (blockIndex: number) => {
-    const targetDisplayIndex = displayedBlocks.findIndex(item => item.index === blockIndex);
-
-    if (blockIndex < 0 || !blocks[blockIndex] || targetDisplayIndex === -1) {
+    if (blockIndex < 0 || !blocks[blockIndex]) {
       return;
     }
 
@@ -1078,15 +1056,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     setCurrentBlock(blockIndex);
-
-    // ✅ OPTIMISÉ: Utiliser requestAnimationFrame pour éviter les conflits avec le scroll manuel
-    requestAnimationFrame(() => {
-      blockContentRef.current?.scrollToIndex({
-        index: targetDisplayIndex,
-        animated: true,
-        viewPosition: 0
+    // Scroller vers le bloc avec un offset pour la navigation sticky
+    const blockY = blockPositions.current[blockIndex];
+    if (blockY !== undefined && mainScrollViewRef.current) {
+      mainScrollViewRef.current.scrollTo({
+        x: 0,
+        y: Math.max(0, blockY - 120),
+        animated: true
       });
-    });
+    }
   };
 
   // ✅ NOUVEAU: Charger les données du service en mode édition
@@ -1508,20 +1486,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   }, [composants, valeursFormulaire]); // Se déclenche quand valeursFormulaire change
 
-  // ✅ NOUVEAU : Scroll automatique vers le bloc courant (amélioré)
-  // ✅ DÉSACTIVÉ : Le scroll manuel gère maintenant le changement de bloc
-  // Ne plus forcer le scroll automatique pour permettre le scroll manuel
-  // useEffect(() => {
-  //   if (blockContentRef.current && displayedBlocks.length > 0) {
-  //     const displayIndex = displayedBlocks.findIndex(item => item.index === currentBlock);
-  //     if (displayIndex >= 0) {
-  //       blockContentRef.current.scrollTo({
-  //         x: displayIndex * width,
-  //         animated: true
-  //       });
-  //     }
-  //   }
-  // }, [currentBlock, displayedBlocks]);
 
   // ✅ NOUVEAU : Scroll automatique vers le bloc produits si focusBlock === 'produits'
   useEffect(() => {
@@ -3064,24 +3028,139 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         try {
           setIsSubmitting(true);
 
-          // Construire les données du nouveau produit uniquement
+          // ✅ CORRIGÉ: Construire les données COMPLÈTES du nouveau produit (IDENTIQUE À AjouterProduitSimpleScreen)
           const nouveauProduit: Record<string, any> = {};
 
-          // Champs produits principaux
-          if (valeursFormulaire.nom_produit) nouveauProduit.nom = valeursFormulaire.nom_produit;
-          if (valeursFormulaire.prix_produit) nouveauProduit.prix = valeursFormulaire.prix_produit;
-          if (valeursFormulaire.devise_produit) nouveauProduit.devise = valeursFormulaire.devise_produit;
-          if (valeursFormulaire.description_produit) nouveauProduit.description = valeursFormulaire.description_produit;
-          if (valeursFormulaire.categorie_produit) nouveauProduit.categorie = valeursFormulaire.categorie_produit;
+          // ✅ Liste complète des champs produits à extraire (IDENTIQUE À AjouterProduitSimpleScreen)
+          const PRODUCT_FIELDS = [
+            'nom_produit',
+            'categorie_produit',
+            'description_produit',
+            'produits',  // Autocomplete caractéristiques
+            'prix',
+            'prix_produit',
+            'devise',
+            'devise_produit',
+            'lieu_produit',
+            'lieu_commercial',
+            'lieu_commercialisation',
+            'price_variant',   // ✅ Variations de prix
+            'variabilite_prix', // Alias de price_variant
+            'product_labels',   // ✅ Labels/tags
+            'images',           // ✅ Images produit
+            'videos',           // ✅ Vidéos produit
+            'audios',           // Éventuellement
+            'documents'         // Éventuellement
+          ];
 
-          // Copier tous les autres champs du formulaire qui concernent le produit
-          Object.keys(valeursFormulaire).forEach(key => {
-            if (key.includes('produit') || key === 'produits') {
-              nouveauProduit[key] = valeursFormulaire[key];
+          PRODUCT_FIELDS.forEach(key => {
+            const value = valeursFormulaire[key];
+            // ✅ CORRECTION: Filtrer explicitement les chaînes vides pour prix
+            if (key === 'prix_produit' || key === 'prix') {
+              if (value !== undefined && value !== null && value !== '') {
+                const trimmed = String(value).trim();
+                if (trimmed.length > 0 && !isNaN(Number(trimmed))) {
+                  nouveauProduit[key] = trimmed;
+                }
+              }
+            } else if (value !== undefined && value !== null && value !== '') {
+              nouveauProduit[key] = value;
             }
           });
 
-          console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit:', nouveauProduit);
+          // ✅ Ajouter le stock si quantite_disponible est défini
+          if (valeursFormulaire.quantite_disponible !== null && valeursFormulaire.quantite_disponible !== undefined && valeursFormulaire.quantite_disponible !== '') {
+            const stockValue = typeof valeursFormulaire.quantite_disponible === 'number'
+              ? valeursFormulaire.quantite_disponible
+              : parseInt(String(valeursFormulaire.quantite_disponible), 10);
+            if (!isNaN(stockValue) && stockValue >= 0) {
+              nouveauProduit.stock = stockValue;
+              nouveauProduit.quantite_disponible = stockValue; // Alias pour compatibilité
+            }
+          }
+
+          // ✅ CRITIQUE: Construire characteristic_vector et combinaison_brute (IDENTIQUE À AjouterProduitSimpleScreen)
+          const combinationString = (() => {
+            if (Array.isArray(valeursFormulaire.produits)) {
+              const firstString = valeursFormulaire.produits.find((entry: any) => typeof entry === 'string');
+              if (typeof firstString === 'string') {
+                return firstString;
+              }
+            }
+            if (typeof valeursFormulaire.produits === 'string') {
+              return valeursFormulaire.produits;
+            }
+            if (Array.isArray(valeursFormulaire.nominalVector)) {
+              const firstString = valeursFormulaire.nominalVector.find((entry: any) => typeof entry === 'string');
+              if (typeof firstString === 'string') {
+                return firstString;
+              }
+            }
+            return '';
+          })();
+
+          if (combinationString) {
+            nouveauProduit.combinaison_brute = combinationString;
+            const characteristicVector = combinationString
+              .split(',')
+              .map((part: string) => part.trim())
+              .filter((part: string) => part.length > 0);
+            if (characteristicVector.length > 0) {
+              nouveauProduit.characteristic_vector = characteristicVector;
+            }
+          }
+
+          if (!nouveauProduit.product_labels && valeursFormulaire.sous_caracteristiques && typeof valeursFormulaire.sous_caracteristiques === 'object') {
+            nouveauProduit.product_labels = Object.keys(valeursFormulaire.sous_caracteristiques || {});
+          }
+
+          if (!nouveauProduit.origine_champs) {
+            nouveauProduit.origine_champs = 'formulaire';
+          }
+
+          // ✅ NOUVEAU: Transformer variation_prix en format variants/has_variant pour ProductCard
+          const priceVariant = nouveauProduit.variabilite_prix || nouveauProduit.price_variant || nouveauProduit.variation_prix;
+          if (priceVariant && typeof priceVariant === 'object' && !Array.isArray(priceVariant)) {
+            const modalites = priceVariant.modalites || priceVariant.valeur || priceVariant;
+            if (Array.isArray(modalites) && modalites.length > 0) {
+              const variants = modalites.map((modalite: any) => {
+                const variant: any = {};
+                if (modalite.valeur || modalite.value) {
+                  variant.value = modalite.valeur || modalite.value;
+                  variant.valeur = modalite.valeur || modalite.value;
+                }
+                if (modalite.prix !== undefined || modalite.price !== undefined) {
+                  variant.prix = modalite.prix || modalite.price;
+                }
+                if (modalite.devise || modalite.currency) {
+                  variant.devise = modalite.devise || modalite.currency;
+                }
+                if (modalite.stock !== undefined || modalite.quantite !== undefined) {
+                  variant.stock = modalite.stock || modalite.quantite;
+                }
+                if (modalite.image) {
+                  variant.image = modalite.image;
+                }
+                return variant;
+              });
+
+              nouveauProduit.has_variant = true;
+              nouveauProduit.variants = variants;
+
+              if (priceVariant.variable) {
+                nouveauProduit.variant_dimension = priceVariant.variable;
+              }
+
+              console.log('[FormulaireYukpoIntelligentScreen] ✅ Variations de prix transformées en variants:', variants.length);
+            }
+          }
+
+          console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit (complètes):', {
+            ...nouveauProduit,
+            has_variant: nouveauProduit.has_variant,
+            variants_count: nouveauProduit.variants ? nouveauProduit.variants.length : 0,
+            characteristic_vector: nouveauProduit.characteristic_vector?.length || 0
+          });
 
           // ✅ Appel route POST /api/services/{serviceId}/products
           const userId = parseInt(user?.id || '0', 10);
@@ -4021,175 +4100,107 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     </Text>
                   </View>
 
-                  {/* Navigation entre blocs (tabs horizontales scrollables) */}
-                  <ScrollView
-                    ref={blockNavigationRef}
-                    horizontal
-                    scrollEnabled={true}
-                    showsHorizontalScrollIndicator={true}
-                    pagingEnabled={false}
-                    decelerationRate="fast"
-                    snapToInterval={TAB_WIDTH}
-                    snapToAlignment="start"
-                    contentContainerStyle={styles.blockNavigationContent}
-                    style={styles.blockNavigationScrollView}
-                    scrollEventThrottle={100}
-                    removeClippedSubviews={true}
-                    keyboardShouldPersistTaps="handled"
-                  >
-                    <View style={styles.blockNavigation}>
-                      {displayedBlocks.map(({ block, index: originalIndex }) => (
-                        <TouchableOpacity
-                          key={block.id}
-                          style={[
-                            styles.blockTab,
-                            currentBlock === originalIndex && styles.blockTabActive
-                          ]}
-                          onPress={() => goToBlock(originalIndex)}
-                        >
-                          <Text style={styles.blockTabIcon}>{block.icon}</Text>
-                          <Text style={[
-                            styles.blockTabText,
-                            currentBlock === originalIndex && styles.blockTabTextActive
-                          ]}>
-                            {block.title}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </ScrollView>
+                  {/* Navigation entre blocs (tabs simples sans scroll horizontal) */}
+                  <View style={styles.blockNavigation}>
+                    {displayedBlocks.map(({ block, index: originalIndex }) => (
+                      <TouchableOpacity
+                        key={block.id}
+                        style={[
+                          styles.blockTab,
+                          currentBlock === originalIndex && styles.blockTabActive
+                        ]}
+                        onPress={() => goToBlock(originalIndex)}
+                      >
+                        <Text style={styles.blockTabIcon}>{block.icon}</Text>
+                        <Text style={[
+                          styles.blockTabText,
+                          currentBlock === originalIndex && styles.blockTabTextActive
+                        ]}>
+                          {block.title}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
 
-                {/* ✅ CORRIGÉ 2025-01-XX: FlatList horizontale pour corriger le scroll imbriqué */}
-                <View style={{ flex: 1 }}>
-                  <FlatList
-                    ref={blockContentRef}
-                    data={displayedBlocks}
-                    horizontal
-                    pagingEnabled={true}
-                    scrollEnabled={true}
-                    showsHorizontalScrollIndicator={false}
-                    keyExtractor={(item) => item.block.id}
-                    renderItem={({ item: { block, index: blockIndex } }) => (
-                      <View style={[styles.blockPanel, { width }]}>
-                        <ScrollView
-                          style={styles.blockPanelScroll}
-                          contentContainerStyle={styles.blockPanelContent}
-                          showsVerticalScrollIndicator={true}
-                          keyboardShouldPersistTaps="handled"
-                          keyboardDismissMode="on-drag"
-                          nestedScrollEnabled={true}
-                          removeClippedSubviews={false}
-                          scrollEventThrottle={16}
-                          bounces={Platform.OS === 'ios'}
-                          {...(Platform.OS === 'android' && { overScrollMode: 'never' as const })}
-                          {...(Platform.OS === 'ios' && { directionalLockEnabled: false })}
-                          scrollEnabled={true}
-                          alwaysBounceVertical={false}
-                          decelerationRate="normal"
-                          onScrollBeginDrag={() => {
-                            // Désactiver temporairement le scroll horizontal pendant le scroll vertical
-                            if (blockContentRef.current) {
-                              blockContentRef.current.setNativeProps({ scrollEnabled: false });
-                            }
-                          }}
-                          onScrollEndDrag={() => {
-                            // Réactiver le scroll horizontal après le scroll vertical
-                            if (blockContentRef.current) {
-                              blockContentRef.current.setNativeProps({ scrollEnabled: true });
-                            }
-                          }}
-                          onMomentumScrollEnd={() => {
-                            // S'assurer que le scroll horizontal est réactivé
-                            if (blockContentRef.current) {
-                              blockContentRef.current.setNativeProps({ scrollEnabled: true });
-                            }
-                          }}
+                {/* ✅ RECONSTRUIT: Un seul ScrollView vertical pour tous les blocs */}
+                <ScrollView
+                  ref={mainScrollViewRef}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={styles.contentContainer}
+                  showsVerticalScrollIndicator={true}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
+                  nestedScrollEnabled={false}
+                  bounces={Platform.OS === 'ios'}
+                >
+                  {displayedBlocks.map(({ block, index: blockIndex }) => (
+                    <View
+                      key={block.id}
+                      ref={(ref) => {
+                        blockRefs.current[blockIndex] = ref;
+                      }}
+                      onLayout={(event) => {
+                        const { y } = event.nativeEvent.layout;
+                        blockPositions.current[blockIndex] = y;
+                      }}
+                      style={styles.blockContainer}
+                    >
+                      <View style={styles.sectionContainer}>
+                        <LinearGradient
+                          colors={['#3B82F6', '#1D4ED8']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.sectionHeader}
                         >
-                          <View style={styles.sectionContainer}>
-                            <LinearGradient
-                              colors={['#3B82F6', '#1D4ED8']}
-                              start={{ x: 0, y: 0 }}
-                              end={{ x: 1, y: 0 }}
-                              style={styles.sectionHeader}
+                          <Text style={styles.sectionHeaderText}>
+                            {block.icon} {block.title}
+                          </Text>
+                        </LinearGradient>
+
+                        <NativeCard style={styles.sectionContent}>
+                          {(block.fields || [])
+                            .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
+                            .map((field, index) => renderField(field))}
+                        </NativeCard>
+
+                        {!isReadonly && block.id === 'payment' && (
+                          <View style={styles.finalActionContainer}>
+                            <Text style={styles.finalActionTitle}>Finaliser le service</Text>
+                            <Text style={styles.finalActionSubtitle}>
+                              Vérifiez vos informations puis validez la création du service.
+                            </Text>
+
+                            <TouchableOpacity
+                              style={[styles.finalActionButton, (loading || isSubmitting) && styles.finalActionButtonDisabled]}
+                              onPress={soumettreFormulaire}
+                              disabled={loading || isSubmitting}
                             >
-                              <Text style={styles.sectionHeaderText}>
-                                {block.icon} {block.title}
-                              </Text>
-                            </LinearGradient>
-
-                            <NativeCard style={styles.sectionContent}>
-                              {(block.fields || [])
-                                .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
-                                .map((field, index) => renderField(field))}
-                            </NativeCard>
-
-                            {!isReadonly && block.id === 'payment' && (
-                              <View style={styles.finalActionContainer}>
-                                <Text style={styles.finalActionTitle}>Finaliser le service</Text>
-                                <Text style={styles.finalActionSubtitle}>
-                                  Vérifiez vos informations puis validez la création du service.
+                              <LinearGradient
+                                colors={modernColors.primaryGradient}
+                                style={styles.finalActionButtonGradient}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                              >
+                                <Text style={styles.finalActionButtonText}>
+                                  {(loading || isSubmitting)
+                                    ? (isAddingProductToExistingService ? 'Création du produit...' : 
+                                      isEditingServiceInfo ? 'Mise à jour...' :
+                                        mode === 'edit' ? 'Modification...' : 'Création...')
+                                    : (isAddingProductToExistingService ? 'Créer le produit' :
+                                      isEditingServiceInfo ? 'Modifier les données du service' :
+                                        mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
                                 </Text>
-
-                                <TouchableOpacity
-                                  style={[styles.finalActionButton, (loading || isSubmitting) && styles.finalActionButtonDisabled]}
-                                  onPress={soumettreFormulaire}
-                                  disabled={loading || isSubmitting}
-                                >
-                                  <LinearGradient
-                                    colors={modernColors.primaryGradient}
-                                    style={styles.finalActionButtonGradient}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                  >
-                                    <Text style={styles.finalActionButtonText}>
-                                      {(loading || isSubmitting)
-                                        ? (isAddingProductToExistingService ? 'Création du produit...' : 
-                                          isEditingServiceInfo ? 'Mise à jour...' :
-                                            mode === 'edit' ? 'Modification...' : 'Création...')
-                                        : (isAddingProductToExistingService ? 'Créer le produit' :
-                                          isEditingServiceInfo ? 'Modifier les données du service' :
-                                            mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
-                                    </Text>
-                                    <SafeIcon name="check" size={20} color="#FFFFFF" />
-                                  </LinearGradient>
-                                </TouchableOpacity>
-                              </View>
-                            )}
+                                <SafeIcon name="check" size={20} color="#FFFFFF" />
+                              </LinearGradient>
+                            </TouchableOpacity>
                           </View>
-                        </ScrollView>
+                        )}
                       </View>
-                    )}
-                    onViewableItemsChanged={({ viewableItems }) => {
-                      if (viewableItems.length > 0) {
-                        const visibleItem = viewableItems[0];
-                        if (visibleItem && visibleItem.index !== null) {
-                          const blockInfo = displayedBlocks[visibleItem.index];
-                          if (blockInfo && blockInfo.index !== currentBlock) {
-                            console.log('[FormulaireYukpoIntelligent] 📱 Scroll manuel vers bloc', blockInfo.index);
-                            setCurrentBlock(blockInfo.index);
-                          }
-                        }
-                      }
-                    }}
-                    viewabilityConfig={{
-                      itemVisiblePercentThreshold: 50
-                    }}
-                    getItemLayout={(data, index) => ({
-                      length: width,
-                      offset: width * index,
-                      index,
-                    })}
-                    keyboardShouldPersistTaps="handled"
-                    removeClippedSubviews={false}
-                    decelerationRate="fast"
-                    snapToInterval={width}
-                    snapToAlignment="start"
-                    scrollEventThrottle={16}
-                    disableIntervalMomentum={true}
-                  />
+                    </View>
+                  ))}
 
-                  {/* Boutons de navigation */}
+                  {/* Boutons de navigation en bas du scroll */}
                   <View style={styles.navigationButtons}>
                     <TouchableOpacity
                       style={[
@@ -4216,7 +4227,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       <View style={styles.navButtonPlaceholder} />
                     )}
                   </View>
-                </View>
+                </ScrollView>
               </>
             )}
           </KeyboardAvoidingView>
@@ -4308,23 +4319,8 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 300, // ✅ Espace supplémentaire pour le clavier
   },
-  // ✅ NOUVEAU 2025-11-06: Styles pour scroll horizontal entre blocs
-  contentScrollViewHorizontal: {
-    flex: 1,
-  },
-  contentContainerHorizontal: {
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-  },
-  blockPanel: {
-    // width est défini dynamiquement (= largeur écran)
-  },
-  blockPanelScroll: {
-    flex: 1,
-  },
-  blockPanelContent: {
-    padding: 20,
-    paddingBottom: 300,
+  blockContainer: {
+    marginBottom: 24,
   },
   stepContainer: {
     gap: 20,
@@ -4873,15 +4869,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: modernColors.text,
     fontStyle: 'italic',
-  },
-  // Style pour le ScrollView horizontal du blockNavigation
-  blockNavigationScrollView: {
-    marginBottom: 20,
-    maxHeight: 80,
-  },
-  blockNavigationContent: {
-    paddingHorizontal: 8,
-    alignItems: 'center',
   },
   // Styles pour le champ GPS personnalisé
   gpsButton: {

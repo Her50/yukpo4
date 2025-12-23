@@ -283,3 +283,4 @@ const loadConfigFromProduct = async (serviceId: number, productIndex: number) =>
 3. **UTILE** : Affichage délais dans modal + réutilisation configuration
 
 
+

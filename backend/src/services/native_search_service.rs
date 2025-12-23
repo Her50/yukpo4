@@ -88,6 +88,7 @@ impl NativeSearchService {
 
         // Normaliser la requête
         let normalized_query = self.normalize_query_advanced(search_query);
+        log_info(&format!("[NativeSearch] Requête normalisée: '{}' -> '{}'", search_query, normalized_query));
         
         // Recherche full-text principale avec filtrage GPS
         let mut fulltext_results = self.fulltext_search_with_gps(
@@ -323,45 +324,82 @@ impl NativeSearchService {
             return Ok(search_results);
         }
         
-        // ✅ OPTIMISÉ 2025-12-22: Requête ULTRA-OPTIMISÉE pour performance instantanée (< 100ms)
+        // ✅ OPTIMISÉ 2025-12-23: Requête ULTRA-OPTIMISÉE pour performance instantanée (< 100ms)
         // Problèmes identifiés dans les logs:
-        // 1. Le fallback avec jsonb_array_elements cause 2.6s de latence (SUPPRIMÉ)
-        // 2. La recherche n'utilise que ac.valeur, pas characteristic_vector ni full_vector (CORRIGÉ)
-        // 3. Le scoring de pertinence est trop faible (AMÉLIORÉ)
+        // 1. LEFT JOIN LATERAL cause 1.27s de latence (SUPPRIMÉ - remplacé par CTE)
+        // 2. plainto_tsquery peut ne pas matcher les mots avec accents (AJOUT fallback ILIKE)
+        // 3. Pool de connexions saturé (requête optimisée pour libérer connexions plus vite)
         // 
         // Stratégie:
-        // 1. Recherche UNIQUEMENT dans autocomplete_characteristics avec TOUS les vecteurs (valeur, characteristic_vector, full_vector)
-        // 2. Utilisation des index GIN tsvector créés dans les migrations
-        // 3. Scoring amélioré avec bonus pour matches exacts et usage_count
-        // 4. Pas de fallback jsonb_array_elements (trop lent, force scan complet de table)
+        // 1. Pré-calculer les données autocomplete dans une CTE (évite LEFT JOIN LATERAL)
+        // 2. Ajouter fallback ILIKE pour correspondances exactes (gère les accents)
+        // 3. Utiliser les index GIN tsvector créés dans les migrations
+        // 4. Scoring amélioré avec bonus pour matches exacts et usage_count
         let sql = r#"
-WITH matched_services AS (
-    -- ✅ ÉTAPE 1: Recherche via autocomplete_characteristics avec TOUS les vecteurs (index GIN - ultra-rapide)
-    SELECT DISTINCT s.id as service_id
+WITH autocomplete_matches AS (
+    -- ✅ ÉTAPE 1: Pré-calculer les matches autocomplete avec scoring (évite LEFT JOIN LATERAL)
+    SELECT 
+        ac.service_id,
+        ac.valeur,
+        ac.usage_count,
+        ac.characteristic_vector,
+        ac.full_vector,
+        -- Score combiné pour ce match autocomplete
+        (
+            ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) * 15.0 +
+            COALESCE(ts_rank(characteristic_vector_to_tsvector(ac.characteristic_vector), plainto_tsquery('french', $1)), 0.0) * 10.0 +
+            COALESCE(ts_rank(full_vector_to_tsvector(ac.full_vector), plainto_tsquery('french', $1)), 0.0) * 8.0 +
+            -- ✅ CRITIQUE 2025-12-23: Fallback ILIKE pour correspondances exactes (gère les accents)
+            CASE WHEN ac.valeur ILIKE '%' || $1 || '%' THEN 25.0 ELSE 0.0 END +
+            CASE WHEN ac.valeur ILIKE $1 || '%' THEN 15.0 ELSE 0.0 END +
+            CASE WHEN LOWER(ac.valeur) = LOWER($1) THEN 50.0 ELSE 0.0 END +
+            (ac.usage_count::REAL * 1.0)
+        )::REAL as ac_score
     FROM autocomplete_characteristics ac
     INNER JOIN services s ON s.id = ac.service_id
     WHERE s.is_active = true
     AND ac.identifiant_base = 'produits'
     AND ac.is_real_product = TRUE
     AND (
-        -- Recherche dans valeur (index GIN tsvector - idx_autocomplete_characteristics_valeur_tsvector)
+        -- Recherche dans valeur (index GIN tsvector)
         to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
-        -- OU dans characteristic_vector (index GIN tsvector - idx_autocomplete_characteristic_vector_tsvector_gin)
+        -- OU dans characteristic_vector (index GIN tsvector)
         OR characteristic_vector_to_tsvector(ac.characteristic_vector) @@ plainto_tsquery('french', $1)
-        -- OU dans full_vector (index GIN tsvector - idx_autocomplete_full_vector_tsvector_gin)
+        -- OU dans full_vector (index GIN tsvector)
         OR full_vector_to_tsvector(ac.full_vector) @@ plainto_tsquery('french', $1)
+        -- ✅ CRITIQUE 2025-12-23: Fallback ILIKE pour correspondances exactes (gère les accents et majuscules)
+        OR ac.valeur ILIKE '%' || $1 || '%'
+        OR LOWER(ac.valeur) = LOWER($1)
     )
+),
+best_autocomplete_per_service AS (
+    -- ✅ ÉTAPE 2: Sélectionner le meilleur match autocomplete par service (évite LEFT JOIN LATERAL)
+    SELECT DISTINCT ON (service_id)
+        service_id,
+        valeur,
+        usage_count,
+        characteristic_vector,
+        full_vector,
+        ac_score
+    FROM autocomplete_matches
+    ORDER BY service_id, ac_score DESC, usage_count DESC NULLS LAST
+),
+matched_services AS (
+    -- ✅ ÉTAPE 3: Liste des services matchés (depuis autocomplete)
+    SELECT DISTINCT service_id FROM best_autocomplete_per_service
     
     UNION
     
-    -- ✅ ÉTAPE 2: Fallback léger pour titre/description service (sans jsonb_array_elements)
-    -- Note: Ce fallback est limité et rapide car utilise uniquement les index GIN sur services.data
+    -- ✅ ÉTAPE 4: Fallback léger pour titre/description service (sans jsonb_array_elements)
     SELECT DISTINCT s.id as service_id
     FROM services s
     WHERE s.is_active = true
     AND (
         to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
         OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+        -- ✅ CRITIQUE 2025-12-23: Fallback ILIKE pour correspondances exactes
+        OR COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%'
+        OR COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%'
     )
     LIMIT 50  -- Limiter le fallback pour éviter la lenteur
 )
@@ -381,49 +419,27 @@ FROM (
         s.user_id,
         s.gps,
         s.category,
-        -- ✅ OPTIMISÉ 2025-12-22: Score amélioré avec bonus pour matches exacts et usage_count
-        -- ✅ AMÉLIORÉ 2025-12-22: Ajout de bonus pour correspondances exactes (améliore la pertinence)
+        -- ✅ OPTIMISÉ 2025-12-23: Score combiné depuis CTE (évite LEFT JOIN LATERAL)
         GREATEST(
             -- Score depuis autocomplete_characteristics (priorité haute)
-            COALESCE(
-                -- Score full-text avec ts_rank (utilise index GIN)
-                ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) * 15.0 +
-                COALESCE(ts_rank(characteristic_vector_to_tsvector(ac.characteristic_vector), plainto_tsquery('french', $1)), 0.0) * 10.0 +
-                COALESCE(ts_rank(full_vector_to_tsvector(ac.full_vector), plainto_tsquery('french', $1)), 0.0) * 8.0 +
-                -- ✅ NOUVEAU: Bonus pour correspondance exacte dans valeur (très pertinent)
-                CASE WHEN ac.valeur ILIKE '%' || $1 || '%' THEN 25.0 ELSE 0.0 END +
-                -- ✅ NOUVEAU: Bonus pour correspondance au début du mot (plus pertinent)
-                CASE WHEN ac.valeur ILIKE $1 || '%' THEN 15.0 ELSE 0.0 END +
-                -- ✅ NOUVEAU: Bonus pour correspondance exacte (très pertinent)
-                CASE WHEN LOWER(ac.valeur) = LOWER($1) THEN 50.0 ELSE 0.0 END +
-                (ac.usage_count::REAL * 1.0),  -- Bonus usage_count
-                0.0
-            ),
+            COALESCE(ac.ac_score, 0.0),
             -- Score depuis titre/description service (priorité basse)
             COALESCE(
                 ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 5.0 +
                 ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
-                -- ✅ NOUVEAU: Bonus pour correspondance exacte dans titre (pertinent)
+                -- ✅ CRITIQUE 2025-12-23: Fallback ILIKE pour correspondances exactes
                 CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 10.0 ELSE 0.0 END,
                 0.0
             )
         )::REAL as fulltext_score
     FROM matched_services ms
     INNER JOIN services s ON s.id = ms.service_id
-    LEFT JOIN LATERAL (
-        SELECT ac.valeur, ac.usage_count, ac.characteristic_vector, ac.full_vector
-        FROM autocomplete_characteristics ac
-        WHERE ac.service_id = s.id
-        AND ac.identifiant_base = 'produits'
-        AND ac.is_real_product = TRUE
-        ORDER BY ac.usage_count DESC NULLS LAST
-        LIMIT 1
-    ) ac ON true
+    LEFT JOIN best_autocomplete_per_service ac ON ac.service_id = s.id
     WHERE ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
     AND ($3::text IS NULL OR s.gps IS NULL OR s.gps = $3 OR s.gps LIKE $3 || '%' OR s.gps LIKE '%' || $3)
     ORDER BY s.id, fulltext_score DESC  -- DISTINCT ON nécessite s.id en premier
 ) ranked
-ORDER BY ranked.fulltext_score DESC  -- ✅ CORRIGÉ 2025-12-22: Trier les résultats finaux par score de pertinence (critique pour la pertinence)
+ORDER BY ranked.fulltext_score DESC
 LIMIT 100
         "#;
 

@@ -6999,6 +6999,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Ok(_) => info!("✅ Migration auto: hybrid_image_search_fallback OK"),
         Err(e) => error!("❌ Erreur migration auto hybrid_image_search_fallback: {}", e),
     }
+    
+    // ✅ 2025-12-23 : Amélioration pertinence hybrid_image_search (scoring optimisé)
+    match ensure_hybrid_image_search_relevance(pool).await {
+        Ok(_) => info!("✅ Migration auto: hybrid_image_search_relevance OK"),
+        Err(e) => error!("❌ Erreur migration auto hybrid_image_search_relevance: {}", e),
+    }
 
     // ✅ 2025-11-25 : Fonctions de recherche avec planification (pharmacie/hôpital)
     match ensure_scheduling_search_functions(pool).await {
@@ -10347,6 +10353,16 @@ pub async fn ensure_hybrid_image_search_fallback(pool: &PgPool) -> Result<(), sq
     let migration_sql = include_str!("../../migrations/20251221_add_fallback_to_hybrid_image_search.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_fallback appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-23 : Améliore la pertinence de hybrid_image_search avec scoring optimisé
+/// Migration: 20251223_improve_hybrid_image_search_relevance.sql
+pub async fn ensure_hybrid_image_search_relevance(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration hybrid_image_search_relevance...");
+    let migration_sql = include_str!("../../migrations/20251223_improve_hybrid_image_search_relevance.sql");
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    info!("✅ Migration hybrid_image_search_relevance appliquée");
     Ok(())
 }
 

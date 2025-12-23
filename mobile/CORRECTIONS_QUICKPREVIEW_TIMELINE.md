@@ -324,3 +324,4 @@ console.log('[ProductVideoCreationModal] Available Media:', availableMedia);
 3. Vérifier que les erreurs 500 sont évitées
 4. Améliorer la génération de timeline pour s'assurer qu'elle assigne toujours des médias
 
+

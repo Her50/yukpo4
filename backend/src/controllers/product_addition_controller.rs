@@ -208,25 +208,34 @@ pub async fn add_product_to_service(
         Ok(_) => {
             log_info(&format!("[add_product_to_service] ✅ Produit ajouté au service {} (index: {})", service_id, product_index));
             
-            // ✅ CRITIQUE 2025-12-20: Mettre à jour autocomplete_characteristics pour que le produit soit trouvable dans la recherche
+            // ✅ CRITIQUE 2025-12-23: Mettre à jour autocomplete_characteristics SYNCHRONEMENT pour garantir l'indexation
             // La recherche utilise autocomplete_characteristics, donc si on ne met pas à jour cette table, le produit ne sera pas trouvé !
+            // PROBLÈME IDENTIFIÉ: L'indexation asynchrone (tokio::spawn) peut échouer silencieusement, rendant les produits introuvables
+            // SOLUTION: Indexation synchrone avec timeout pour éviter de bloquer trop longtemps
             let pool_for_autocomplete = state.pg.clone();
             let service_data_for_autocomplete = service_data.clone(); // service_data contient déjà le nouveau produit
             
-            // Appeler save_autocomplete_combination en arrière-plan (non-bloquant)
-            tokio::spawn(async move {
-                // Utiliser service_data directement car il contient déjà le nouveau produit ajouté
-                match save_autocomplete_combination(&pool_for_autocomplete, service_id, &service_data_for_autocomplete).await {
-                    Ok(_) => {
-                        log_info(&format!("[add_product_to_service] ✅ autocomplete_characteristics mis à jour pour service {} (produit indexé pour recherche)", service_id));
-                    }
-                    Err(e) => {
-                        log_error(&format!("[add_product_to_service] ⚠️ Erreur mise à jour autocomplete_characteristics (produit toujours dans services.data mais non indexé): {}", e));
-                        // Ne pas faire échouer la requête si autocomplete échoue, le produit est déjà dans services.data
-                        // MAIS il ne sera pas trouvable dans la recherche jusqu'à ce que autocomplete soit mis à jour
-                    }
+            // ✅ OPTIMISÉ 2025-12-23: Indexation synchrone avec timeout (max 5s) pour garantir l'indexation
+            // Si l'indexation échoue, on log l'erreur mais on ne fait pas échouer la requête (le produit est déjà dans services.data)
+            let indexation_result = tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                save_autocomplete_combination(&pool_for_autocomplete, service_id, &service_data_for_autocomplete)
+            ).await;
+            
+            match indexation_result {
+                Ok(Ok(_)) => {
+                    log_info(&format!("[add_product_to_service] ✅ autocomplete_characteristics mis à jour pour service {} (produit indexé pour recherche)", service_id));
                 }
-            });
+                Ok(Err(e)) => {
+                    log_error(&format!("[add_product_to_service] ⚠️ Erreur mise à jour autocomplete_characteristics (produit toujours dans services.data mais non indexé): {}", e));
+                    // Ne pas faire échouer la requête si autocomplete échoue, le produit est déjà dans services.data
+                    // MAIS il ne sera pas trouvable dans la recherche jusqu'à ce que autocomplete soit mis à jour
+                }
+                Err(_) => {
+                    log_error(&format!("[add_product_to_service] ⚠️ Timeout indexation autocomplete_characteristics pour service {} (produit toujours dans services.data mais non indexé)", service_id));
+                    // Timeout après 5s - on continue quand même car le produit est déjà dans services.data
+                }
+            }
             
             // ✅ Créer notification
             let _ = crate::services::notification_service::create_notification(

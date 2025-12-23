@@ -33,3 +33,4 @@ $$ LANGUAGE plpgsql;
 COMMENT ON FUNCTION update_service_products IS 'Mise à jour optimisée des produits d''un service. Utilise jsonb_set pour éviter de réécrire tout le JSON, réduisant la latence de 5-7s à ~1-2s.';
 
 
+

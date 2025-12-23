@@ -142,3 +142,4 @@ grep "slow statement.*UPDATE services" logs/*.log
 - [ ] Création produit totale < 20s (hors IA)
 
 
+

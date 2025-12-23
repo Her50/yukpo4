@@ -4724,13 +4724,29 @@ pub async fn creer_service(
         &data_obj
     };
 
-    if let Err(e) = save_autocomplete_combination(pool, service_id, data_for_products).await {
-        log::warn!(
-            "[CREER_SERVICE] Erreur sauvegarde produit réel: {} (non bloquant)",
-            e
-        );
-    } else {
-        log::info!("[CREER_SERVICE] ✅ Produit réel sauvegardé (autocomplete_characteristics + autocomplete_combinations)");
+    // ✅ OPTIMISÉ 2025-12-23: Indexation synchrone avec timeout (cohérent avec product_addition_controller)
+    // Si l'indexation échoue, on log l'erreur mais on ne fait pas échouer la requête (le service est déjà créé)
+    let indexation_result = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        save_autocomplete_combination(pool, service_id, data_for_products)
+    ).await;
+    
+    match indexation_result {
+        Ok(Ok(_)) => {
+            log::info!("[CREER_SERVICE] ✅ Produit réel sauvegardé (autocomplete_characteristics + autocomplete_combinations)");
+        }
+        Ok(Err(e)) => {
+            log::warn!(
+                "[CREER_SERVICE] ⚠️ Erreur sauvegarde produit réel: {} (non bloquant)",
+                e
+            );
+        }
+        Err(_) => {
+            log::warn!(
+                "[CREER_SERVICE] ⚠️ Timeout indexation autocomplete_characteristics pour service {} (service créé mais non indexé)",
+                service_id
+            );
+        }
     }
 
     // ✅ NOUVEAU: Créer une notification de création de service

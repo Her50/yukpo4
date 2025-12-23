@@ -28,3 +28,4 @@ ON CONFLICT (slug) DO UPDATE SET
 -- 3. Afficher les types après migration
 SELECT id, slug, display_name, description FROM parcel_types ORDER BY id;
 
+

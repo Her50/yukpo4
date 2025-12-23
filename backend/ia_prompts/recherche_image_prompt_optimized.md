@@ -96,3 +96,4 @@ Si UN SEUL produit/prestation détecté → générer TOUJOURS :
 - [ ] Types de données corrects (location, date, price_variant)
 - [ ] Extraction exacte de l'image (pas d'invention)
 
+

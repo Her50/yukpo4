@@ -1628,12 +1628,25 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         if (studioSessionId) {
             return studioSessionId;
         }
-        if (!selectedProduct || typeof selectedProduct.serviceId === 'undefined') {
+        if (!selectedProduct || !selectedProduct.serviceId) {
             console.warn('[ProductVideoCreationModal] ensureStudioSession: selectedProduct ou serviceId manquant', {
                 selectedProduct: selectedProduct ? { serviceId: selectedProduct.serviceId } : null,
             });
             return undefined;
         }
+        
+        // ✅ CORRIGÉ: Convertir serviceId en nombre (peut être string ou number)
+        const serviceIdStr = String(selectedProduct.serviceId).trim();
+        const serviceIdNum = Number(serviceIdStr);
+        
+        if (!Number.isFinite(serviceIdNum) || serviceIdNum <= 0) {
+            console.warn('[ProductVideoCreationModal] ensureStudioSession: serviceId invalide', {
+                serviceId: selectedProduct.serviceId,
+                serviceIdType: typeof selectedProduct.serviceId,
+            });
+            return undefined;
+        }
+        
         try {
             // ✅ AMÉLIORÉ: Logging détaillé pour diagnostic
             console.log('[ProductVideoCreationModal] ensureStudioSession: Vérification sessions existantes...');
@@ -1649,7 +1662,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             
             // ✅ AMÉLIORÉ: Créer une nouvelle session avec payload complet
             const payload: import('../services/studioService').CreateStudioSessionPayload = {
-                service_id: Number(selectedProduct.serviceId),
+                service_id: serviceIdNum,
                 brief: { raw: scriptNotes || headline || normalizeProductName(selectedProduct) },
                 metadata: {
                     product_name: normalizeProductName(selectedProduct),
@@ -1699,14 +1712,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return;
         }
         
-        // ✅ AMÉLIORÉ: Vérifier que le serviceId est valide
-        if (!selectedProduct.serviceId || typeof selectedProduct.serviceId !== 'number') {
+        // ✅ AMÉLIORÉ: Vérifier que le serviceId est valide (peut être string ou number)
+        const serviceIdStr = String(selectedProduct.serviceId || '').trim();
+        const serviceIdNum = Number(serviceIdStr);
+        
+        if (!serviceIdStr || !Number.isFinite(serviceIdNum) || serviceIdNum <= 0) {
             Alert.alert(
                 'Erreur',
                 'Le service associé au produit est invalide. Veuillez sélectionner un autre produit.'
             );
             console.error('[ProductVideoCreationModal] handleGenerateStoryboard: serviceId invalide', {
                 serviceId: selectedProduct.serviceId,
+                serviceIdType: typeof selectedProduct.serviceId,
                 product: selectedProduct,
             });
             return;
@@ -1715,7 +1732,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         const startedAt = Date.now();
         trackUxEvent('storyboard_generate_click', {
             device: 'mobile',
-            serviceId: Number(selectedProduct.serviceId),
+            serviceId: serviceIdNum,
             productIndex: selectedProduct.product_index,
             sessionId: studioSessionId,
             step: activeStep,
@@ -1763,7 +1780,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             const durationMs = Date.now() - startedAt;
             trackUxEvent('storyboard_generate_completed', {
                 device: 'mobile',
-                serviceId: Number(selectedProduct.serviceId),
+                serviceId: serviceIdNum,
                 productIndex: selectedProduct.product_index,
                 sessionId,
                 step: activeStep,
@@ -1776,7 +1793,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             const durationMs = Date.now() - startedAt;
             trackUxEvent('storyboard_generate_failed', {
                 device: 'mobile',
-                serviceId: Number(selectedProduct.serviceId),
+                serviceId: serviceIdNum,
                 productIndex: selectedProduct.product_index,
                 sessionId: studioSessionId,
                 step: activeStep,

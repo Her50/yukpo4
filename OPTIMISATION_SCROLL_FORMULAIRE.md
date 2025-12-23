@@ -104,3 +104,4 @@ scrollsToTop={false}                // Évite les conflits
 3. ✅ Tester le scroll rapide (swipe rapide)
 4. ✅ Tester sur différents appareils (Android/iOS)
 5. ✅ Tester avec le clavier ouvert
+

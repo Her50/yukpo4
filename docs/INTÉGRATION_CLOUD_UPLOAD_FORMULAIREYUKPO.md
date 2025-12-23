@@ -134,3 +134,4 @@ Envoi à l'IA (URLs CDN ou base64)
 5. Création service avec médias CDN → Vérifier création réussie
 
 
+

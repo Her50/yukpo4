@@ -86,3 +86,4 @@ ORDER BY id;
 \echo ''
 \echo '✅ Vérification terminée!'
 
+

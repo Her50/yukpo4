@@ -160,3 +160,4 @@ filtered.sort((a, b) => {
 - ❌ ProductManager : Modal moderne à implémenter
 
 
+
