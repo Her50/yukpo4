@@ -1307,13 +1307,45 @@ impl DeliveryService {
         } = params;
 
         // ✅ Validation du type de colis AVANT l'insertion
-        if let Some(type_id) = parcel.type_id {
+        // Si type_id n'est pas fourni, essayer de le déduire depuis preferred_vehicle_type
+        let final_type_id = if let Some(type_id) = parcel.type_id {
+            // Valider que le type_id fourni existe
             self.repository.validate_parcel_type_exists(type_id).await?;
+            type_id
         } else {
-            return Err(AppError::BadRequest(
-                "Le type de colis est requis".into(),
-            ));
-        }
+            // Essayer de trouver le type depuis preferred_vehicle_type dans metadata
+            let preferred_slug = metadata
+                .get("preferred_vehicle_type")
+                .and_then(|v| v.as_str());
+
+            let type_id = if let Some(slug) = preferred_slug {
+                // Essayer de trouver le type par slug
+                if let Some(id) = self.repository.find_parcel_type_by_slug(slug).await? {
+                    Some(id)
+                } else {
+                    log::warn!(
+                        "[create_delivery_request] Slug '{}' non trouvé, utilisation du type par défaut",
+                        slug
+                    );
+                    None
+                }
+            } else {
+                None
+            };
+
+            // Si on n'a toujours pas de type_id, utiliser le type par défaut
+            type_id.unwrap_or_else(|| {
+                // Cette valeur sera remplacée par find_default_parcel_type_id dans le code ci-dessous
+                0
+            })
+        };
+
+            // Si on n'a toujours pas de type_id valide (cas où il était 0), utiliser le type par défaut (motorcycle)
+        let final_type_id = if final_type_id == 0 {
+            self.repository.find_default_parcel_type_id().await?
+        } else {
+            final_type_id
+        };
 
         // Validations de base
         if let Some(distance) = distance_meters {
@@ -1335,10 +1367,14 @@ impl DeliveryService {
         let pickup_address = pickup.address.clone();
         let dropoff_address = dropoff.address.clone();
 
+        // Créer un nouveau parcel avec le type_id final
+        let mut final_parcel = parcel;
+        final_parcel.type_id = Some(final_type_id);
+
         let mut request = NewDeliveryRequest {
             creator_id,
             courier_id: None,
-            parcel: parcel.into(),
+            parcel: final_parcel.into(),
             pickup: pickup.clone().into(),
             pickup_address,
             dropoff: dropoff.clone().into(),

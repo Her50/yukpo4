@@ -519,6 +519,39 @@ impl DeliveryRepository {
             .collect())
     }
 
+    /// Trouve un type de colis par slug
+    pub async fn find_parcel_type_by_slug(&self, slug: &str) -> AppResult<Option<i32>> {
+        let type_id: Option<i32> = sqlx::query_scalar(
+            "SELECT id FROM parcel_types WHERE slug = $1"
+        )
+        .bind(slug)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(type_id)
+    }
+
+    /// Trouve un type de colis par défaut (motorcycle - moto)
+    pub async fn find_default_parcel_type_id(&self) -> AppResult<i32> {
+        // Essayer d'abord "motorcycle" qui est le type par défaut
+        if let Some(motorcycle_id) = self.find_parcel_type_by_slug("motorcycle").await? {
+            return Ok(motorcycle_id);
+        }
+
+        // Sinon, prendre le premier type disponible
+        let type_id: Option<i32> = sqlx::query_scalar(
+            "SELECT id FROM parcel_types ORDER BY id LIMIT 1"
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        type_id.ok_or_else(|| {
+            crate::core::types::AppError::BadRequest(
+                "Aucun type de colis disponible. Veuillez exécuter les migrations.".to_string(),
+            )
+        })
+    }
+
     /// Vérifie si un type de colis existe
     pub async fn validate_parcel_type_exists(&self, type_id: i32) -> AppResult<()> {
         let exists: bool = sqlx::query_scalar(

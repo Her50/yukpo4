@@ -297,15 +297,11 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
         }
     };
 
-    const getParcelTypeId = (type: string): number => {
-        const typeMap: Record<string, number> = {
-            document: 1,
-            package: 2,
-            moving: 3,
-            cake: 4,
-            other: 5,
-        };
-        return typeMap[type] || 2;
+    const getParcelTypeId = (type: string): number | undefined => {
+        // ✅ CORRECTION: Ne plus utiliser d'IDs codés en dur
+        // Le backend utilisera un type par défaut ou déduira depuis preferred_vehicle_type
+        // Retourner undefined pour laisser le backend gérer le type automatiquement
+        return undefined;
     };
 
     // Composants d'étapes

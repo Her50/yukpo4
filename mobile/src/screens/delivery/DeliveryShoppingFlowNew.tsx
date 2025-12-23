@@ -325,7 +325,7 @@ const DeliveryShoppingFlowNew: React.FC<DeliveryShoppingFlowNewProps> = ({
             const payload: CreateDeliveryRequestPayload = {
                 preferred_vehicle_type: preferredVehicleType || undefined,
                 parcel: {
-                    type_id: 1,
+                    type_id: undefined, // ✅ CORRECTION: Le backend utilisera un type par défaut
                     notes: notes || `Courses supermarché: ${selectedSupermarket.name}`,
                     photos: [],
                     constraints: {},

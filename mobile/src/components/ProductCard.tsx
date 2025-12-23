@@ -304,10 +304,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
     // ✅ RÉÉCRIT: Rendu du média avec gestion d'erreur améliorée
     const renderMediaItem = ({ item, index }: { item: { type: string; uri: string }; index: number }) => {
         const hasError = mediaErrors.has(index);
+        const itemWidth = width * 0.4;
         
         if (!item.uri || item.uri.trim().length === 0) {
             return (
-                <View style={styles.mediaItem}>
+                <View style={[styles.mediaItem, { width: itemWidth, height: 90 }]}>
                     <View style={[styles.mediaImage, styles.noImageContainer]}>
                         <SafeIcon name="image" size={20} color="#D1D5DB" />
                     </View>
@@ -318,7 +319,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         if (item.type === 'video') {
             if (hasError) {
                 return (
-                    <View style={styles.mediaItem}>
+                    <View style={[styles.mediaItem, { width: itemWidth, height: 90 }]}>
                         <View style={[styles.mediaVideo, styles.noImageContainer]}>
                             <SafeIcon name="video" size={20} color="#D1D5DB" />
                             <Text style={styles.errorText}>Erreur vidéo</Text>
@@ -328,7 +329,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             }
             
             return (
-                <View style={styles.mediaItem}>
+                <View style={[styles.mediaItem, { width: itemWidth, height: 90 }]}>
                     <Video
                         ref={index === currentMediaIndex ? videoRef : null}
                         source={{ uri: item.uri }}
@@ -367,7 +368,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         
         if (hasError) {
             return (
-                <View style={styles.mediaItem}>
+                <View style={[styles.mediaItem, { width: itemWidth, height: 90 }]}>
                     <View style={[styles.mediaImage, styles.noImageContainer]}>
                         <SafeIcon name="image" size={20} color="#D1D5DB" />
                         <Text style={styles.errorText}>Erreur image</Text>
@@ -377,7 +378,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         }
         
         return (
-            <View style={styles.mediaItem}>
+            <View style={[styles.mediaItem, { width: itemWidth, height: 90 }]}>
                 <Image 
                     source={{ uri: item.uri }} 
                     style={styles.mediaImage} 
@@ -485,8 +486,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                         index,
                                     };
                                 }}
-                                contentContainerStyle={styles.mediaListContainer}
                                 style={styles.mediaList}
+                                contentContainerStyle={styles.mediaListContainer}
+                                nestedScrollEnabled={true}
                             />
                             {/* Indicateur de scroll visible */}
                             {allMedia.length > 1 && (
@@ -697,139 +699,52 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <Text style={styles.chatButtonText}>Discuter</Text>
                         </TouchableOpacity>
 
-                        {/* ✅ RÉÉCRIT COMPLÈTEMENT: Bouton Me livrer - Toujours visible sauf services intangibles */}
+                        {/* ✅ REFACTORISÉ: Bouton Me livrer - Même logique que ChatModalMobile */}
                         {(() => {
-                            // ✅ Types de produits qui ne peuvent PAS être livrés (services intangibles uniquement)
-                            const nonDeliverableTypes = [
-                                'prestation_service',
-                                'service',
-                                'assurance',
-                                'coiffure_beaute',
-                                'hotellerie' // Les hôtels ne livrent pas, on réserve
-                            ];
+                            // ✅ SIMPLIFIÉ: Afficher le bouton si on a un service valide
+                            // Vérifier plusieurs sources pour les produits
+                            const hasProducts = !!(
+                                service?.data?.produits ||
+                                service?.produits ||
+                                (service?.id || service?.service_id)
+                            );
                             
-                            // Vérifier si le produit peut être livré
-                            const productType = product?.type || '';
-                            const canBeDelivered = !nonDeliverableTypes.includes(productType);
+                            // Exclure uniquement les services/prestations
+                            const isServiceType = service?.data?.type === 'prestation_service' || 
+                                                 service?.data?.type === 'service' ||
+                                                 service?.type === 'prestation_service' ||
+                                                 service?.type === 'service';
                             
-                            // Vérifier que le service existe
-                            const hasService = !!(service?.id || service?.service_id);
-                            
-                            // Le bouton s'affiche si le produit peut être livré ET qu'il y a un service
-                            const shouldShowDeliveryButton = canBeDelivered && hasService;
+                            const shouldShow = hasProducts && !isServiceType;
                             
                             if (__DEV__) {
-                                console.log('[ProductCard] Bouton "Me livrer" - Évaluation complète:', {
-                                    productType,
-                                    canBeDelivered,
-                                    hasService,
+                                console.log('[ProductCard] Bouton "Me livrer" - Évaluation:', {
+                                    hasProducts,
+                                    isServiceType,
+                                    shouldShow,
                                     serviceId: service?.id || service?.service_id,
-                                    shouldShow: shouldShowDeliveryButton
+                                    serviceType: service?.data?.type || service?.type
                                 });
                             }
                             
-                            // Toujours retourner le bouton si les conditions sont remplies
-                            if (!shouldShowDeliveryButton) {
-                                return null;
-                            }
-                            
-                            return (
-                                <TouchableOpacity
-                                    style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
-                                    onPress={async () => {
-                                        try {
-                                            // Appeler onDeliveryPress si fourni (pour compatibilité)
-                                            if (onDeliveryPress) {
-                                                onDeliveryPress();
-                                            }
-                                            
-                                            // Vérifier que le service existe
-                                            const serviceId = service?.id || service?.service_id;
-                                            if (!serviceId) {
-                                                Alert.alert('Erreur', 'Service non trouvé');
-                                                return;
-                                            }
-                                            
-                                            // Récupérer l'index du produit
-                                            const productIndex = typeof product.product_index === 'number' 
-                                                ? product.product_index 
-                                                : (typeof product.index === 'number' ? product.index : null);
-                                            
-                                            // Si pas d'index, ouvrir directement le modal (pour les produits sans index)
-                                            if (productIndex === null || productIndex === undefined) {
-                                                console.log('[ProductCard] Pas d\'index produit, ouverture directe du modal');
-                                                setShowFindCourierModal(true);
-                                                return;
-                                            }
-                                            
-                                            // Vérifier la disponibilité AVANT d'ouvrir le modal
-                                            setCheckingAvailability(true);
-                                            
-                                            try {
-                                                const response = await apiGet<{
-                                                    success: boolean;
-                                                    data?: {
-                                                        availability: {
-                                                            is_available: boolean;
-                                                            reason?: string;
-                                                            available_days?: number[];
-                                                            preparation_time_minutes?: number;
-                                                        };
-                                                    };
-                                                }>(`/api/delivery/product-availability/${serviceId}/${productIndex}`);
-                                                
-                                                if (response?.success && response?.data?.availability) {
-                                                    const availability = response.data.availability;
-                                                    
-                                                    if (!availability.is_available) {
-                                                        // Produit indisponible - afficher message avec jours disponibles
-                                                        const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-                                                        const availableDaysStr = availability.available_days?.length 
-                                                            ? availability.available_days.map((d: number) => dayNames[d]).join(', ')
-                                                            : 'Veuillez contacter le prestataire';
-                                                        
-                                                        Alert.alert(
-                                                            'Produit indisponible',
-                                                            `${availability.reason || 'Ce produit n\'est pas disponible actuellement.'}\n\nDisponible : ${availableDaysStr}`,
-                                                            [
-                                                                { text: 'OK', style: 'cancel' }
-                                                            ]
-                                                        );
-                                                        return;
-                                                    }
-                                                }
-                                                
-                                                // Si disponible ou pas de réponse, ouvrir le modal
-                                                setShowFindCourierModal(true);
-                                            } catch (error: any) {
-                                                console.error('[ProductCard] Erreur vérification disponibilité:', error);
-                                                // En cas d'erreur, ouvrir quand même le modal (ne pas bloquer l'utilisateur)
-                                                setShowFindCourierModal(true);
-                                            } finally {
-                                                setCheckingAvailability(false);
-                                            }
-                                        } catch (error: any) {
-                                            console.error('[ProductCard] Erreur générale bouton livraison:', error);
-                                            Alert.alert('Erreur', 'Impossible d\'ouvrir la livraison. Veuillez réessayer.');
-                                        }
-                                    }}
-                                    activeOpacity={0.8}
-                                    disabled={checkingAvailability}
-                                >
-                                    {checkingAvailability ? (
-                                        <>
-                                            <ActivityIndicator size="small" color="#FFFFFF" />
-                                            <Text style={styles.deliveryButtonText}>Vérification...</Text>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <SafeIcon name="truck" size={18} color="#FFFFFF" />
-                                            <Text style={styles.deliveryButtonText}>Me livrer</Text>
-                                        </>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })()}
+                            return shouldShow;
+                        })() && (
+                            <TouchableOpacity
+                                style={[styles.deliveryButton, { backgroundColor: categoryStyle.secondaryColor || '#10B981' }]}
+                                onPress={() => {
+                                    // Vérifier qu'on a bien un produit avant d'ouvrir le modal
+                                    const productForDelivery = service?.data?.produits?.[0] || service?.produits?.[0] || product;
+                                    if (!productForDelivery && !service?.id && !service?.service_id) {
+                                        Alert.alert('Erreur', 'Produit non disponible pour la livraison');
+                                        return;
+                                    }
+                                    setShowFindCourierModal(true);
+                                }}
+                            >
+                                <SafeIcon name="truck" size={18} color="#FFFFFF" />
+                                <Text style={styles.deliveryButtonText}>Me livrer</Text>
+                            </TouchableOpacity>
+                        )}
 
                         <View style={styles.secondaryActions}>
                             {/* Bouton Galerie */}
@@ -980,6 +895,7 @@ const styles = StyleSheet.create({
     },
     mediaListContainer: {
         alignItems: 'center',
+        paddingHorizontal: 0,
     },
     mainImage: {
         width: '100%',
@@ -1438,6 +1354,8 @@ const styles = StyleSheet.create({
     mediaItem: {
         width: width * 0.4,
         height: 90,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     mediaVideo: {
         width: '100%',

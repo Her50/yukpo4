@@ -93,8 +93,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, logout } = useAuth();
-  const blockNavigationRef = React.useRef(null);
-  const blockContentRef = React.useRef(null);
+  const blockContentScrollRef = React.useRef<ScrollView>(null);
 
   const params = ((route || {})?.params || {}) as any;
 
@@ -313,7 +312,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   }[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [dynamicTextareaHeights, setDynamicTextareaHeights] = useState<Record<string, number>>({});
-  const [blockHorizontalScrollEnabled, setBlockHorizontalScrollEnabled] = useState(true);
 
   const formatMultilineValue = React.useCallback((rawValue: any): string => {
     if (typeof rawValue !== 'string') {
@@ -324,17 +322,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       .replace(/\r/g, '\n')
       .replace(/\\n/g, '\n');
   }, []);
-  const handleMediaHorizontalScrollStart = useCallback(() => {
-    // ✅ CORRIGÉ: Ne pas désactiver le scroll horizontal entre blocs
-    // Permettre les gestes simultanés - le scroll des médias et le scroll entre blocs peuvent coexister
-    // On garde le scroll horizontal activé pour permettre le scroll manuel entre blocs
-    // Le système de gestes de React Native gérera automatiquement la priorité
-  }, []);
-
-  const handleMediaHorizontalScrollEnd = useCallback(() => {
-    // ✅ CORRIGÉ: Pas besoin de réactiver car on ne désactive jamais
-    // Le scroll horizontal entre blocs reste toujours actif
-  }, []);
+  // Callbacks pour le scroll horizontal des médias (plus nécessaires mais gardés pour compatibilité)
+  const handleMediaHorizontalScrollStart = useCallback(() => {}, []);
+  const handleMediaHorizontalScrollEnd = useCallback(() => {}, []);
 
   const displayedBlocks = useMemo(() => {
     if (!blocks || blocks.length === 0) {
@@ -351,11 +341,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }, []);
   }, [blocks, isEditingServiceInfo]);
 
+  // Calculer l'index d'affichage et le pourcentage de progression
   const currentDisplayIndex = useMemo(() => {
     if (!displayedBlocks || displayedBlocks.length === 0) {
       return 0;
     }
-
     const index = displayedBlocks.findIndex((item) => item.index === currentBlock);
     return index === -1 ? 0 : index;
   }, [displayedBlocks, currentBlock]);
@@ -364,33 +354,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const progressPercentage = totalVisibleBlocks > 0
     ? ((currentDisplayIndex + 1) / totalVisibleBlocks) * 100
     : 0;
-
-  useEffect(() => {
-    if (!displayedBlocks || displayedBlocks.length === 0) {
-      return;
-    }
-
-    const isCurrentVisible = displayedBlocks.some((item) => item.index === currentBlock);
-
-    if (!isCurrentVisible) {
-      setCurrentBlock(displayedBlocks[0].index);
-      if (blockContentRef.current && typeof blockContentRef.current.scrollTo === 'function') {
-        blockContentRef.current.scrollTo({ x: 0, y: 0, animated: true });
-      }
-    }
-  }, [displayedBlocks, currentBlock]);
-
-  useEffect(() => {
-    const displayIndex = displayedBlocks.findIndex((item) => item.index === currentBlock);
-    if (displayIndex === -1) {
-      return;
-    }
-
-    const targetOffset = Math.max(0, displayIndex * TAB_WIDTH - TAB_WIDTH);
-    if (blockNavigationRef.current && typeof blockNavigationRef.current.scrollTo === 'function') {
-      blockNavigationRef.current.scrollTo({ x: targetOffset, y: 0, animated: true });
-    }
-  }, [currentBlock, displayedBlocks]);
 
   useEffect(() => {
     const parseMediaValue = (value: any): any[] => {
@@ -1376,11 +1339,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const nextVisible = currentVisibleIndex !== -1 ? displayedBlocks[currentVisibleIndex + 1] : null;
 
     if (nextVisible) {
-      setBlockHorizontalScrollEnabled(true);
       setCurrentBlock(nextVisible.index);
       const targetDisplayIndex = currentVisibleIndex + 1;
       if (targetDisplayIndex >= 0) {
-        blockContentRef.current?.scrollTo({
+        blockContentScrollRef.current?.scrollTo({
           x: targetDisplayIndex * width,
           y: 0,
           animated: true
@@ -1394,11 +1356,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const previousVisible = currentVisibleIndex > 0 ? displayedBlocks[currentVisibleIndex - 1] : null;
 
     if (previousVisible) {
-      setBlockHorizontalScrollEnabled(true);
       setCurrentBlock(previousVisible.index);
       const targetDisplayIndex = currentVisibleIndex - 1;
       if (targetDisplayIndex >= 0) {
-        blockContentRef.current?.scrollTo({
+        blockContentScrollRef.current?.scrollTo({
           x: targetDisplayIndex * width,
           y: 0,
           animated: true
@@ -1496,13 +1457,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     setCurrentBlock(blockIndex);
-    setBlockHorizontalScrollEnabled(true);
-
-    blockContentRef.current?.scrollTo({
-      x: targetDisplayIndex * width,
-      y: 0,
-      animated: true
-    });
+    // Scroll vers le bloc sélectionné
+    if (targetDisplayIndex >= 0) {
+      blockContentScrollRef.current?.scrollTo({
+        x: targetDisplayIndex * width,
+        y: 0,
+        animated: true
+      });
+    }
   };
 
   // ✅ NOUVEAU: Charger les données du service en mode édition
@@ -1966,34 +1928,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   }, [composants, valeursFormulaire]); // Se déclenche quand valeursFormulaire change
 
-  // ✅ NOUVEAU : Scroll automatique vers le bloc courant (amélioré)
-  // ✅ DÉSACTIVÉ : Le scroll manuel gère maintenant le changement de bloc
-  // Ne plus forcer le scroll automatique pour permettre le scroll manuel
-  // useEffect(() => {
-  //   if (blockContentRef.current && displayedBlocks.length > 0) {
-  //     const displayIndex = displayedBlocks.findIndex(item => item.index === currentBlock);
-  //     if (displayIndex >= 0) {
-  //       blockContentRef.current.scrollTo({
-  //         x: displayIndex * width,
-  //         animated: true
-  //       });
-  //     }
-  //   }
-  // }, [currentBlock, displayedBlocks]);
-
-  // ✅ NOUVEAU : Scroll automatique vers le bloc produits si focusBlock === 'produits'
+  // Navigation automatique vers le bloc produits si focusBlock === 'produits'
   useEffect(() => {
     if (focusBlock === 'produits' && blocks.length > 0 && activeStep === 2) {
-      // Trouver l'index du bloc produits
       const productsBlockIndex = blocks.findIndex(block => block.id === 'products');
-
       if (productsBlockIndex >= 0) {
-        console.log('[FormulaireYukpoIntelligentScreen] 📦 Navigation automatique vers le bloc produits, index:', productsBlockIndex);
-
-        // Attendre un peu que les blocs soient rendus
-        setTimeout(() => {
-          setCurrentBlock(productsBlockIndex);
-        }, 300);
+        setCurrentBlock(productsBlockIndex);
       }
     }
   }, [focusBlock, blocks, activeStep]);
@@ -5283,9 +5223,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             enabled={Platform.OS === 'ios'}
           >
-            {/* Navigation par blocs - Sticky */}
             {blocks.length > 0 && (
-              <>
+              <View style={{ flex: 1 }}>
+                {/* Navigation par blocs - Sticky */}
                 <View style={styles.stickyNavigation}>
                   {/* Indicateur de progression */}
                   <View style={styles.progressContainer}>
@@ -5304,22 +5244,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                   {/* Navigation entre blocs (tabs horizontales scrollables) */}
                   <ScrollView
-                    ref={blockNavigationRef}
                     horizontal
-                    scrollEnabled={true}
                     showsHorizontalScrollIndicator={true}
-                    pagingEnabled={false}
-                    decelerationRate="fast"
-                    snapToInterval={TAB_WIDTH}
-                    snapToAlignment="start"
                     contentContainerStyle={styles.blockNavigationContent}
                     style={styles.blockNavigationScrollView}
-                    scrollEventThrottle={32}
-                    nestedScrollEnabled={true}
-                    alwaysBounceHorizontal={false}
-                    bounces={false}
-                    directionalLockEnabled={true}
-                    scrollsToTop={false}
                   >
                     <View style={styles.blockNavigation}>
                       {displayedBlocks.map(({ block, index: originalIndex }) => (
@@ -5344,42 +5272,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   </ScrollView>
                 </View>
 
-                {/* ✅ NOUVEAU 2025-11-06: Contenu scrollable HORIZONTAL entre blocs */}
+                {/* Contenu scrollable HORIZONTAL entre blocs avec ScrollView vertical dans chaque bloc */}
                 <ScrollView
-                  ref={blockContentRef}
+                  ref={blockContentScrollRef}
                   horizontal
                   pagingEnabled={true}
-                  scrollEnabled={blockHorizontalScrollEnabled}
-                  showsHorizontalScrollIndicator={true}
-                  style={styles.contentScrollViewHorizontal}
+                  showsHorizontalScrollIndicator={false}
+                  style={{ flex: 1 }}
                   contentContainerStyle={styles.contentContainerHorizontal}
-                  nestedScrollEnabled={true}
-                  scrollEventThrottle={32}
-                  // ✅ CORRIGÉ: Activer directionalLockEnabled pour améliorer la stabilité
-                  directionalLockEnabled={true}
-                  // ✅ CORRIGÉ: Améliorer la détection du scroll horizontal
-                  decelerationRate="fast"
-                  // ✅ CORRIGÉ: pagingEnabled gère déjà le snap, pas besoin de snapToInterval
-                  alwaysBounceHorizontal={false}
-                  bounces={false}
-                  // ✅ OPTIMISATION: Désactiver les propriétés qui peuvent causer des conflits
-                  scrollsToTop={false}
                   onMomentumScrollEnd={(event) => {
-                    // ✅ Détecter le bloc affiché après scroll horizontal manuel
-                    const scrollX = event.nativeEvent.contentOffset.x;
-                    const displayIndex = Math.round(scrollX / width);
-                    const blockInfo = displayedBlocks[displayIndex];
-                    if (blockInfo && blockInfo.index !== currentBlock) {
-                      console.log('[FormulaireYukpoIntelligent] 📱 Scroll manuel vers bloc', blockInfo.index);
-                      setCurrentBlock(blockInfo.index);
-                    }
-                  }}
-                  onScrollBeginDrag={() => {
-                    // ✅ Réactiver le scroll horizontal si jamais il était désactivé
-                    setBlockHorizontalScrollEnabled(true);
-                  }}
-                  // ✅ OPTIMISATION: Utiliser onScrollEndDrag au lieu de onScroll pour réduire les re-renders
-                  onScrollEndDrag={(event) => {
+                    // Détecter le bloc affiché après swipe horizontal
                     const scrollX = event.nativeEvent.contentOffset.x;
                     const displayIndex = Math.round(scrollX / width);
                     const blockInfo = displayedBlocks[displayIndex];
@@ -5387,8 +5289,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       setCurrentBlock(blockInfo.index);
                     }
                   }}
+                  scrollEventThrottle={16}
+                  decelerationRate="fast"
+                  bounces={false}
+                  directionalLockEnabled={true}
                 >
-                  {/* Affichage de TOUS les blocs côte à côte */}
+                  {/* Afficher tous les blocs côte à côte */}
                   {displayedBlocks.map(({ block, index: blockIndex }) => (
                     <View key={block.id} style={[styles.blockPanel, { width }]}>
                       <ScrollView
@@ -5398,112 +5304,99 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
                         nestedScrollEnabled={true}
-                        scrollEnabled={true}
-                        alwaysBounceVertical={false}
-                        bounces={false}
-                        // ✅ CORRIGÉ: Activer directionalLockEnabled pour éviter les conflits avec le scroll horizontal
                         directionalLockEnabled={true}
-                        // ✅ CORRIGÉ: S'assurer que le scroll vertical fonctionne même avec beaucoup de contenu
-                        contentInsetAdjustmentBehavior="automatic"
-                        // ✅ OPTIMISATION: Réduire la fréquence des événements scroll pour améliorer la performance
-                        scrollEventThrottle={32}
-                        // ✅ OPTIMISATION: Activer removeClippedSubviews pour améliorer les performances avec beaucoup de contenu
-                        removeClippedSubviews={true}
-                        // ✅ OPTIMISATION: Désactiver zoom qui n'est pas nécessaire et peut causer des conflits
-                        // ✅ OPTIMISATION: Désactiver scrollsToTop pour éviter les conflits
-                        scrollsToTop={false}
+                        scrollEventThrottle={16}
                       >
                         <View style={styles.sectionContainer}>
-                          <LinearGradient
-                            colors={['#3B82F6', '#1D4ED8']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.sectionHeader}
-                          >
-                            <Text style={styles.sectionHeaderText}>
-                              {block.icon} {block.title}
+                        <LinearGradient
+                          colors={['#3B82F6', '#1D4ED8']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.sectionHeader}
+                        >
+                          <Text style={styles.sectionHeaderText}>
+                            {block.icon} {block.title}
+                          </Text>
+                        </LinearGradient>
+
+                        <NativeCard style={styles.sectionContent}>
+                          {block.id === 'products' ? (
+                            <>
+                              {renderProductsBlock()}
+                              {(block.fields || [])
+                                .filter((field) => !PRODUCT_BLOCK_FIELD_NAMES.includes(field.name))
+                                .map((field) => renderField(field))}
+                            </>
+                          ) : (
+                            (block.fields || [])
+                              .filter(field => field.name !== 'devise')
+                              .map((field) => renderField(field))
+                          )}
+                        </NativeCard>
+
+                        {!isReadonly && block.id === 'payment' && (
+                          <View style={styles.finalActionContainer}>
+                            <Text style={styles.finalActionTitle}>Finaliser le service</Text>
+                            <Text style={styles.finalActionSubtitle}>
+                              Vérifiez vos informations puis validez la création du service.
                             </Text>
-                          </LinearGradient>
 
-                          <NativeCard style={styles.sectionContent}>
-                            {block.id === 'products' ? (
-                              <>
-                                {renderProductsBlock()}
-                                {(block.fields || [])
-                                  .filter((field) => !PRODUCT_BLOCK_FIELD_NAMES.includes(field.name))
-                                  .map((field) => renderField(field))}
-                              </>
-                            ) : (
-                              (block.fields || [])
-                                .filter(field => field.name !== 'devise')
-                                .map((field) => renderField(field))
-                            )}
-                          </NativeCard>
-
-                          {!isReadonly && block.id === 'payment' && (
-                            <View style={styles.finalActionContainer}>
-                              <Text style={styles.finalActionTitle}>Finaliser le service</Text>
-                              <Text style={styles.finalActionSubtitle}>
-                                Vérifiez vos informations puis validez la création du service.
-                              </Text>
-
-                              <TouchableOpacity
-                                style={[styles.finalActionButton, (loading || isSubmitting) && styles.finalActionButtonDisabled]}
-                                onPress={soumettreFormulaire}
-                                disabled={loading || isSubmitting}
+                            <TouchableOpacity
+                              style={[styles.finalActionButton, (loading || isSubmitting) && styles.finalActionButtonDisabled]}
+                              onPress={soumettreFormulaire}
+                              disabled={loading || isSubmitting}
+                            >
+                              <LinearGradient
+                                colors={modernColors.primaryGradient}
+                                style={styles.finalActionButtonGradient}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
                               >
-                                <LinearGradient
-                                  colors={modernColors.primaryGradient}
-                                  style={styles.finalActionButtonGradient}
-                                  start={{ x: 0, y: 0 }}
-                                  end={{ x: 1, y: 0 }}
-                                >
-                                  <Text style={styles.finalActionButtonText}>
-                                    {(loading || isSubmitting)
-                                      ? (isEditingServiceInfo ? 'Mise à jour...' :
-                                        mode === 'edit' ? 'Modification...' : 'Création...')
-                                      : (isEditingServiceInfo ? 'Modifier les données du service' :
-                                        mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
-                                  </Text>
-                                  <SafeIcon name="check" size={20} color="#FFFFFF" />
-                                </LinearGradient>
-                              </TouchableOpacity>
-                            </View>
+                                <Text style={styles.finalActionButtonText}>
+                                  {(loading || isSubmitting)
+                                    ? (isEditingServiceInfo ? 'Mise à jour...' :
+                                      mode === 'edit' ? 'Modification...' : 'Création...')
+                                    : (isEditingServiceInfo ? 'Modifier les données du service' :
+                                      mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
+                                </Text>
+                                <SafeIcon name="check" size={20} color="#FFFFFF" />
+                              </LinearGradient>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+
+                        {/* Boutons de navigation */}
+                        <View style={styles.navigationButtons}>
+                          <TouchableOpacity
+                            style={[
+                              styles.navButton,
+                              styles.navButtonSecondary,
+                              currentDisplayIndex === 0 && styles.navButtonDisabled
+                            ]}
+                            onPress={goToPreviousBlock}
+                            disabled={currentDisplayIndex === 0}
+                          >
+                            <SafeIcon name="chevron-left" size={20} color="#6B7280" />
+                            <Text style={styles.navButtonTextSecondary}>Précédent</Text>
+                          </TouchableOpacity>
+
+                          {currentDisplayIndex < totalVisibleBlocks - 1 ? (
+                            <TouchableOpacity
+                              style={[styles.navButton, styles.navButtonPrimary]}
+                              onPress={goToNextBlock}
+                            >
+                              <Text style={styles.navButtonTextPrimary}>Suivant</Text>
+                              <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
+                            </TouchableOpacity>
+                          ) : (
+                            <View style={styles.navButtonPlaceholder} />
                           )}
                         </View>
                       </ScrollView>
                     </View>
                   ))}
-
-                  {/* Boutons de navigation */}
-                  <View style={styles.navigationButtons}>
-                    <TouchableOpacity
-                      style={[
-                        styles.navButton,
-                        styles.navButtonSecondary,
-                        currentDisplayIndex === 0 && styles.navButtonDisabled
-                      ]}
-                      onPress={goToPreviousBlock}
-                      disabled={currentDisplayIndex === 0}
-                    >
-                      <SafeIcon name="chevron-left" size={20} color="#6B7280" />
-                      <Text style={styles.navButtonTextSecondary}>Précédent</Text>
-                    </TouchableOpacity>
-
-                    {currentDisplayIndex < totalVisibleBlocks - 1 ? (
-                      <TouchableOpacity
-                        style={[styles.navButton, styles.navButtonPrimary]}
-                        onPress={goToNextBlock}
-                      >
-                        <Text style={styles.navButtonTextPrimary}>Suivant</Text>
-                        <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={styles.navButtonPlaceholder} />
-                    )}
-                  </View>
                 </ScrollView>
-              </>
+              </View>
             )}
           </KeyboardAvoidingView>
         )}

@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    FlatList,
     ScrollView,
     StyleSheet,
     Text,
@@ -595,41 +596,39 @@ const CourierRegistrationScreen: React.FC = () => {
                 {/* Transport */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Moyen de transport</Text>
-                    <View style={styles.vehicleScrollWrapper}>
-                        <ScrollView
+                    <View style={styles.vehicleContainer}>
+                        <FlatList
+                            data={vehicleTypes}
                             horizontal
                             showsHorizontalScrollIndicator={true}
-                            contentContainerStyle={styles.vehicleScrollContent}
-                            style={styles.vehicleScroll}
+                            keyExtractor={(item) => item.value}
+                            contentContainerStyle={styles.vehicleListContent}
                             nestedScrollEnabled={true}
                             scrollEnabled={true}
                             bounces={true}
-                            decelerationRate="fast"
-                            alwaysBounceHorizontal={true}
-                            directionalLockEnabled={true}
-                        >
-                            {vehicleTypes.map((type) => (
+                            renderItem={({ item }) => (
                                 <TouchableOpacity
-                                    key={type.value}
                                     style={[
                                         styles.vehicleOption,
-                                        vehicleType === type.value && styles.vehicleOptionSelected,
+                                        vehicleType === item.value && styles.vehicleOptionSelected,
                                     ]}
-                                    onPress={() => setVehicleType(type.value)}
+                                    onPress={() => setVehicleType(item.value)}
                                     activeOpacity={0.7}
                                 >
-                                    <Text style={styles.vehicleIcon}>{type.icon}</Text>
+                                    <Text style={styles.vehicleIcon}>{item.icon}</Text>
                                     <Text
                                         style={[
                                             styles.vehicleLabel,
-                                            vehicleType === type.value && styles.vehicleLabelSelected,
+                                            vehicleType === item.value && styles.vehicleLabelSelected,
                                         ]}
+                                        numberOfLines={2}
                                     >
-                                        {type.label}
+                                        {item.label}
                                     </Text>
                                 </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+                            )}
+                            ItemSeparatorComponent={() => <View style={styles.vehicleSeparator} />}
+                        />
                     </View>
                     {vehicleType !== 'walking' && (
                         <>
@@ -919,31 +918,29 @@ const styles = StyleSheet.create({
         minHeight: 80,
         textAlignVertical: 'top',
     },
-    vehicleScrollWrapper: {
+    vehicleContainer: {
         width: '100%',
         marginBottom: 16,
+        minHeight: 110,
     },
-    vehicleScroll: {
-        width: '100%',
-    },
-    vehicleScrollContent: {
-        paddingRight: 16,
-        paddingLeft: 4,
-        alignItems: 'center',
+    vehicleListContent: {
+        paddingHorizontal: 4,
         paddingVertical: 8,
+        alignItems: 'center',
+    },
+    vehicleSeparator: {
+        width: 12,
     },
     vehicleOption: {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 12,
-        marginRight: 12,
         borderRadius: 12,
         borderWidth: 2,
         borderColor: modernColors.border,
         backgroundColor: modernColors.surface,
         width: 90,
         height: 90,
-        flexShrink: 0,
     },
     vehicleOptionSelected: {
         borderColor: modernColors.primary,

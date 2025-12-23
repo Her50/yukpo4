@@ -1,18 +1,13 @@
-import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Animated,
-    Dimensions,
     FlatList,
     KeyboardAvoidingView,
     Modal,
     Platform,
     RefreshControl,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -25,8 +20,6 @@ import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeCard } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface MentionCandidate {
     id: number;
@@ -75,7 +68,6 @@ interface ProductCommentsSectionProps {
     serviceTitle?: string;
     onOpenChat?: (userId: number, userName: string, userAvatar?: string | null) => void;
     mode?: 'inline' | 'full';
-    onStatsUpdate?: (stats: CommentStats) => void; // ✅ NOUVEAU: Callback pour mettre à jour les stats dans ProductCard
 }
 
 const REACTION_OPTIONS = [
@@ -104,7 +96,7 @@ const formatDate = (iso: string): string => {
 
 const parseMentions = (text: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = [];
-    const regex = /@([A-Za-zÀ-ÿ0-9_\-\s]+?)(?=\s|$|[.,!?])/g;
+    const regex = /@([A-Za-z├Ç-├┐0-9_\-\s]+?)(?=\s|$|[.,!?])/g;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
     let key = 0;
@@ -138,12 +130,61 @@ const parseMentions = (text: string): React.ReactNode[] => {
     return parts;
 };
 
+// Ô£à FONCTION UTILITAIRE : Nettoyer le nom utilisateur pour ├®viter les doublons
+const cleanUserName = (name: string | undefined | null): string => {
+    if (!name) return 'Utilisateur';
+    const trimmed = name.trim();
+
+    // Ô£à CORRECTION : D├®tecter et supprimer les doublons (ex: "LELE Hernandez LELE Hernandez" -> "LELE Hernandez")
+    // M├®thode 1: V├®rifier si le nom est r├®p├®t├® exactement (mots s├®par├®s par espace)
+    const words = trimmed.split(/\s+/);
+    if (words.length >= 2) {
+        const midPoint = Math.ceil(words.length / 2);
+        const firstHalf = words.slice(0, midPoint).join(' ');
+        const secondHalf = words.slice(midPoint).join(' ');
+
+        // Si les deux moiti├®s sont identiques, retourner seulement la premi├¿re
+        if (firstHalf === secondHalf) {
+            return firstHalf;
+        }
+
+        // M├®thode 2: V├®rifier si le nom complet est r├®p├®t├® (ex: "LELE Hernandez LELE Hernandez")
+        // Diviser en deux parties ├®gales et comparer
+        const fullLength = trimmed.length;
+        if (fullLength % 2 === 0) {
+            const firstPart = trimmed.substring(0, fullLength / 2).trim();
+            const secondPart = trimmed.substring(fullLength / 2).trim();
+            if (firstPart === secondPart) {
+                return firstPart;
+            }
+        }
+    }
+
+    // M├®thode 3: D├®tecter les patterns r├®p├®titifs (ex: "Nom Nom" ou "Nom Nom Nom")
+    // Si le nom contient le m├¬me mot plusieurs fois cons├®cutivement, ne garder qu'une occurrence
+    const uniqueWords: string[] = [];
+    let lastWord = '';
+    for (const word of words) {
+        if (word !== lastWord) {
+            uniqueWords.push(word);
+            lastWord = word;
+        }
+    }
+
+    // Si on a r├®duit le nombre de mots, c'est qu'il y avait des r├®p├®titions
+    if (uniqueWords.length < words.length && uniqueWords.length > 0) {
+        return uniqueWords.join(' ');
+    }
+
+    return trimmed;
+};
+
 const normalizeComments = (items: any[]): ProductComment[] =>
     (items || []).map((item) => ({
         id: item.id,
         service_id: item.service_id,
         user_id: item.user_id,
-        user_name: item.user_name,
+        user_name: cleanUserName(item.user_name), // Ô£à CORRECTION : Nettoyer le nom pour ├®viter les doublons
         user_avatar: item.user_avatar ?? undefined,
         parent_comment_id: item.parent_comment_id ?? null,
         rating: item.rating ?? null,
@@ -151,7 +192,7 @@ const normalizeComments = (items: any[]): ProductComment[] =>
         mentions: item.mentions ?? [],
         mention_users: (item.mention_users || []).map((mention: any) => ({
             id: mention.id,
-            name: mention.name,
+            name: cleanUserName(mention.name), // Ô£à CORRECTION : Nettoyer aussi les noms dans les mentions
             avatar_url: mention.avatar_url ?? undefined,
         })),
         reaction_counts: item.reaction_counts ?? {},
@@ -171,7 +212,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     serviceTitle,
     onOpenChat,
     mode = 'inline',
-    onStatsUpdate,
 }) => {
     const { user } = useAuth();
     const currentUserId = useMemo(() => {
@@ -190,9 +230,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [modalVisible, setModalVisible] = useState(mode === 'full');
-    
-    // ✅ NOUVEAU: État pour suivre si c'est la première ouverture du modal
-    const [isFirstTimeOpening, setIsFirstTimeOpening] = useState(true);
 
     const [composerContent, setComposerContent] = useState('');
     const [composerRating, setComposerRating] = useState<number | null>(null);
@@ -202,47 +239,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const [mentionQuery, setMentionQuery] = useState('');
     const [showMentionPicker, setShowMentionPicker] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    
-    // ✅ NOUVEAU: États pour l'enregistrement audio
-    const [audioUri, setAudioUri] = useState<string | null>(null);
-    const [audioBase64, setAudioBase64] = useState<string | null>(null);
-    const [isRecording, setIsRecording] = useState(false);
-    const [recordingDuration, setRecordingDuration] = useState(0);
-    const [recording, setRecording] = useState<Audio.Recording | null>(null);
-    const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const pulseAnim = useRef(new Animated.Value(1)).current;
-
-    // ✅ NOUVEAU: Liste d'émojis populaires pour le sélecteur
-    const popularEmojis = [
-        '😊', '😂', '❤️', '👍', '👎', '😍', '🤔', '😢', '😮', '🔥',
-        '💯', '🎉', '👏', '🙏', '💪', '😎', '🤗', '😴', '🤩', '🥳',
-        '😋', '😇', '🥰', '😘', '😃', '😄', '😁', '😆', '😅', '🤣',
-        '☺️', '🙂', '🙃', '😉', '😌', '😏', '😒', '😞', '😔', '😟',
-        '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😭', '😤',
-        '😠', '😡', '🤯', '😳', '😱', '😨', '😰', '😥', '🤭', '🤫',
-        '🤥', '😶', '😐', '😑', '🙄', '😯', '😦', '😧', '😲', '🤐',
-    ];
 
     const isFullMode = mode === 'full' || modalVisible;
-
-    // ✅ AMÉLIORÉ: Vérifier si l'utilisateur a déjà donné un avis (avec rating)
-    // L'avis n'est obligatoire QUE la première fois qu'on ouvre le modal
-    const hasUserRated = useMemo(() => {
-        if (!currentUserId) return false;
-        return comments.some(
-            (comment) =>
-                comment.user_id === currentUserId &&
-                comment.rating !== null &&
-                comment.rating !== undefined &&
-                !comment.parent_comment_id // Seulement les commentaires principaux, pas les réponses
-        );
-    }, [comments, currentUserId]);
-    
-    // ✅ NOUVEAU: Déterminer si un rating est requis (première fois uniquement)
-    const isRatingRequired = useMemo(() => {
-        return isFirstTimeOpening && !hasUserRated && !replyTarget && !editingTarget;
-    }, [isFirstTimeOpening, hasUserRated, replyTarget, editingTarget]);
 
     const loadComments = useCallback(async () => {
         setError(null);
@@ -252,16 +250,11 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             if (response.success && response.data) {
                 const payload: any = response.data;
                 setComments(normalizeComments(payload.comments));
-                const newStats = {
+                setStats({
                     total_comments: payload.stats?.total_comments ?? payload.comments?.length ?? 0,
                     rating_count: payload.stats?.rating_count ?? 0,
                     average_rating: payload.stats?.average_rating ?? 0,
-                };
-                setStats(newStats);
-                // ✅ NOUVEAU: Notifier ProductCard des statistiques mises à jour
-                if (onStatsUpdate) {
-                    onStatsUpdate(newStats);
-                }
+                });
             } else {
                 setError(response.error || 'Impossible de charger les commentaires');
             }
@@ -277,14 +270,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     useEffect(() => {
         loadComments();
     }, [loadComments]);
-    
-    // ✅ NOUVEAU: Marquer que ce n'est plus la première fois quand le modal s'ouvre
-    useEffect(() => {
-        if (modalVisible && isFirstTimeOpening) {
-            // On garde isFirstTimeOpening à true jusqu'à ce qu'un commentaire avec rating soit soumis
-            // Cela permet de demander le rating uniquement la première fois
-        }
-    }, [modalVisible, isFirstTimeOpening]);
 
     const resetComposer = useCallback(() => {
         setComposerContent('');
@@ -294,179 +279,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         setSelectedMentions([]);
         setMentionQuery('');
         setShowMentionPicker(false);
-        setShowEmojiPicker(false);
-        setAudioUri(null);
-        setAudioBase64(null);
-        setRecordingDuration(0);
-        if (recordingTimerRef.current) {
-            clearInterval(recordingTimerRef.current);
-        }
     }, []);
-    
-    // ✅ NOUVEAU: Fonction pour formater la durée
-    const formatDuration = useCallback((seconds: number): string => {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    }, []);
-    
-    // ✅ AMÉLIORÉ: Démarrer l'enregistrement audio avec meilleure gestion d'erreurs
-    const startRecording = useCallback(async () => {
-        try {
-            // Vérifier les permissions
-            const { status: existingStatus } = await Audio.getPermissionsAsync();
-            let finalStatus = existingStatus;
-            
-            if (existingStatus !== 'granted') {
-                const { status } = await Audio.requestPermissionsAsync();
-                finalStatus = status;
-            }
-            
-            if (finalStatus !== 'granted') {
-                Alert.alert(
-                    'Permission requise',
-                    'Nous avons besoin de la permission microphone pour enregistrer des messages audio.',
-                    [{ text: 'OK' }]
-                );
-                return;
-            }
 
-            // Configurer le mode audio
-            await Audio.setAudioModeAsync({
-                allowsRecordingIOS: true,
-                playsInSilentModeIOS: true,
-                staysActiveInBackground: false,
-                shouldDuckAndroid: true,
-                playThroughEarpieceAndroid: false,
-            });
-
-            // Créer l'enregistrement
-            const { recording: newRecording } = await Audio.Recording.createAsync(
-                Audio.RecordingOptionsPresets.HIGH_QUALITY
-            );
-
-            setRecording(newRecording);
-            setIsRecording(true);
-            setRecordingDuration(0);
-            setAudioUri(null);
-            setAudioBase64(null);
-
-            // Animation de pulsation pour l'indicateur
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(pulseAnim, {
-                        toValue: 1.3,
-                        duration: 600,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(pulseAnim, {
-                        toValue: 1,
-                        duration: 600,
-                        useNativeDriver: true,
-                    }),
-                ])
-            ).start();
-
-            // Timer pour la durée d'enregistrement
-            recordingTimerRef.current = setInterval(() => {
-                setRecordingDuration((prev) => prev + 1);
-            }, 1000);
-        } catch (error: any) {
-            console.error('[ProductCommentsSection] Erreur démarrage enregistrement:', error);
-            Alert.alert(
-                'Erreur',
-                error?.message || 'Impossible de démarrer l\'enregistrement. Vérifiez les permissions microphone.'
-            );
-            setIsRecording(false);
-            setRecording(null);
-        }
-    }, [pulseAnim]);
-    
-    // ✅ AMÉLIORÉ: Arrêter l'enregistrement audio avec meilleure gestion
-    const stopRecording = useCallback(async () => {
-        if (!recording) return;
-
-        try {
-            setIsRecording(false);
-            
-            // Arrêter le timer
-            if (recordingTimerRef.current) {
-                clearInterval(recordingTimerRef.current);
-                recordingTimerRef.current = null;
-            }
-            
-            // Arrêter l'animation
-            pulseAnim.stopAnimation();
-            pulseAnim.setValue(1);
-
-            // Arrêter et décharger l'enregistrement
-            const status = await recording.getStatusAsync();
-            await recording.stopAndUnloadAsync();
-            
-            // Réinitialiser le mode audio
-            await Audio.setAudioModeAsync({
-                allowsRecordingIOS: false,
-                playsInSilentModeIOS: true,
-            });
-
-            // Récupérer l'URI
-            const uri = recording.getURI();
-            if (uri) {
-                setAudioUri(uri);
-                
-                // Convertir en base64 pour l'envoi
-                try {
-                    const base64Audio = await FileSystem.readAsStringAsync(uri, {
-                        encoding: FileSystem.EncodingType.Base64,
-                    });
-                    setAudioBase64(base64Audio);
-                    console.log('[ProductCommentsSection] ✅ Audio converti en base64, taille:', base64Audio.length);
-                } catch (base64Error) {
-                    console.error('[ProductCommentsSection] Erreur conversion base64:', base64Error);
-                    Alert.alert('Avertissement', 'L\'audio a été enregistré mais la conversion a échoué');
-                }
-            } else {
-                console.warn('[ProductCommentsSection] Aucun URI retourné par l\'enregistrement');
-            }
-
-            setRecording(null);
-        } catch (error: any) {
-            console.error('[ProductCommentsSection] Erreur arrêt enregistrement:', error);
-            Alert.alert('Erreur', error?.message || 'Impossible d\'arrêter l\'enregistrement');
-            setIsRecording(false);
-            setRecording(null);
-        }
-    }, [recording, pulseAnim]);
-    
-    // ✅ NOUVEAU: Toggle enregistrement
-    const toggleRecording = useCallback(() => {
-        if (isRecording) {
-            stopRecording();
-        } else {
-            startRecording();
-        }
-    }, [isRecording, startRecording, stopRecording]);
-    
-    // ✅ NOUVEAU: Supprimer l'audio enregistré
-    const removeAudio = useCallback(() => {
-        setAudioUri(null);
-        setAudioBase64(null);
-        setRecordingDuration(0);
-    }, []);
-    
-    // Nettoyage des timers
-    useEffect(() => {
-        return () => {
-            if (recordingTimerRef.current) {
-                clearInterval(recordingTimerRef.current);
-            }
-            if (recording) {
-                recording.stopAndUnloadAsync().catch(console.error);
-            }
-        };
-    }, [recording]);
-
-    // ✅ AMÉLIORÉ: Soumission de commentaire avec validation améliorée
     const handleSubmitComment = useCallback(async () => {
         if (!user?.token) {
             Alert.alert('Connexion requise', 'Veuillez vous connecter pour commenter');
@@ -474,20 +288,16 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         }
 
         const trimmed = composerContent.trim();
-        
-        // ✅ CORRIGÉ: Accepter soit un texte soit un audio
-        if (!trimmed && !audioBase64) {
-            Alert.alert('Champ requis', 'Veuillez saisir un commentaire ou enregistrer un message audio');
+        if (!trimmed) {
+            Alert.alert('Champ requis', 'Veuillez saisir un commentaire');
             return;
         }
 
-        // ✅ AMÉLIORÉ: Ne demander une note QUE la première fois qu'on ouvre le modal (pas à chaque commentaire)
-        if (isRatingRequired && (composerRating === null || composerRating === undefined)) {
-            Alert.alert('Note requise', 'Ajoutez une note (1-5) pour votre premier avis');
+        if (!replyTarget && (composerRating === null || composerRating === undefined)) {
+            Alert.alert('Note requise', 'Ajoutez une note (0-5) pour votre avis principal');
             return;
         }
 
-        // Ne pas envoyer de rating pour les réponses
         if (replyTarget && composerRating !== null) {
             setComposerRating(null);
         }
@@ -495,9 +305,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         setSubmitting(true);
         try {
             if (editingTarget) {
-                const payload: any = {
-                    content: trimmed || undefined,
-                    audio_base64: audioBase64 || undefined,
+                const payload = {
+                    content: trimmed,
                     rating: editingTarget.parent_comment_id ? undefined : composerRating,
                     mentions: selectedMentions.map((mention) => mention.id),
                 };
@@ -507,17 +316,11 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 } else {
                     await loadComments();
                     resetComposer();
-                    // ✅ Marquer que ce n'est plus la première fois si un rating a été soumis
-                    if (composerRating !== null && isFirstTimeOpening) {
-                        setIsFirstTimeOpening(false);
-                    }
                 }
             } else {
-                const payload: any = {
-                    content: trimmed || undefined,
-                    audio_base64: audioBase64 || undefined,
-                    // ✅ AMÉLIORÉ: Envoyer le rating uniquement si requis (première fois)
-                    rating: replyTarget ? undefined : (isRatingRequired ? composerRating : undefined),
+                const payload = {
+                    content: trimmed,
+                    rating: replyTarget ? undefined : composerRating,
                     mentions: selectedMentions.map((mention) => mention.id),
                     parent_comment_id: replyTarget?.id,
                 };
@@ -527,24 +330,17 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 } else {
                     await loadComments();
                     resetComposer();
-                    // ✅ Marquer que ce n'est plus la première fois si un rating a été soumis
-                    if (composerRating !== null && isFirstTimeOpening && !replyTarget) {
-                        setIsFirstTimeOpening(false);
-                    }
                 }
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error('[ProductCommentsSection] handleSubmitComment error', err);
-            Alert.alert('Erreur', err?.message || "Une erreur est survenue lors de l'envoi du commentaire");
+            Alert.alert('Erreur', 'Une erreur est survenue lors de lÔÇÖenvoi du commentaire');
         } finally {
             setSubmitting(false);
         }
     }, [
         composerContent,
         composerRating,
-        isRatingRequired,
-        isFirstTimeOpening,
-        audioBase64,
         loadComments,
         replyTarget,
         resetComposer,
@@ -563,7 +359,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
             Alert.alert(
                 'Supprimer le commentaire',
-                'Êtes-vous sûr de vouloir supprimer ce commentaire ?',
+                '├ètes-vous s├╗r de vouloir supprimer ce commentaire ?',
                 [
                     { text: 'Annuler', style: 'cancel' },
                     {
@@ -595,19 +391,19 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const handleToggleReaction = useCallback(
         async (comment: ProductComment, reactionType: string) => {
             if (!user?.token) {
-                Alert.alert('Connexion requise', 'Veuillez vous connecter pour réagir à un commentaire');
+                Alert.alert('Connexion requise', 'Veuillez vous connecter pour r├®agir ├á un commentaire');
                 return;
             }
             try {
                 const response = await commentsApi.toggleCommentReaction(comment.id, reactionType);
                 if (!response.success) {
-                    Alert.alert('Erreur', response.error || "Impossible d'enregistrer la réaction");
+                    Alert.alert('Erreur', response.error || 'Impossible dÔÇÖenregistrer la r├®action');
                 } else {
                     await loadComments();
                 }
             } catch (err) {
                 console.error('[ProductCommentsSection] handleToggleReaction error', err);
-                Alert.alert('Erreur', 'Une erreur est survenue lors de la réaction');
+                Alert.alert('Erreur', 'Une erreur est survenue lors de la r├®action');
             }
         },
         [loadComments, user?.token],
@@ -622,19 +418,12 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             if (spaceIndex === -1) {
                 setMentionQuery(textAfterAt);
                 setShowMentionPicker(true);
-                setShowEmojiPicker(false); // Fermer le picker emoji quand on ouvre le picker mention
             } else {
                 setShowMentionPicker(false);
             }
         } else {
             setShowMentionPicker(false);
         }
-    }, []);
-
-    // ✅ NOUVEAU: Fonction pour insérer un emoji dans le texte
-    const handleEmojiClick = useCallback((emoji: string) => {
-        setComposerContent(prev => prev + emoji);
-        setShowEmojiPicker(false);
     }, []);
 
     const insertMention = useCallback(
@@ -682,12 +471,12 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
     const handleEdit = useCallback((comment: ProductComment) => {
         if (comment.is_deleted) {
-            Alert.alert('Impossible', 'Vous ne pouvez pas modifier un commentaire supprimé');
+            Alert.alert('Impossible', 'Vous ne pouvez pas modifier un commentaire supprim├®');
             return;
         }
         setEditingTarget(comment);
         setReplyTarget(null);
-        setComposerContent(comment.content.replace('[Commentaire supprimé]', ''));
+        setComposerContent(comment.content.replace('[Commentaire supprim├®]', ''));
         setComposerRating(comment.parent_comment_id ? null : (comment.rating ?? null));
         setSelectedMentions(
             comment.mention_users.map((mention) => ({
@@ -707,12 +496,11 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         resetComposer();
     }, [resetComposer]);
 
-    const previewComments = useMemo(() => comments.slice(0, 2), [comments]);
+    const previewComments = useMemo(() => comments.slice(0, 1), [comments]);
 
-    // ✅ AMÉLIORÉ: Rendu des commentaires avec icônes visibles et fonctionnelles
     const renderCommentItem = useCallback(
         ({ item, depth }: { item: ProductComment; depth: number }) => (
-            <View key={item.id} style={[styles.commentContainer, depth > 0 && styles.commentReplyContainer]}>
+            <View key={item.id} style={[styles.commentContainer, depth > 0 && { marginLeft: depth * 16 }]}>
                 <View style={styles.commentHeader}>
                     <TouchableOpacity
                         activeOpacity={0.8}
@@ -720,20 +508,12 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         onPress={() => onOpenChat?.(item.user_id, item.user_name, item.user_avatar)}
                     >
                         <View style={styles.avatarBubble}>
-                            {item.user_avatar ? (
-                                <View style={styles.avatarImagePlaceholder}>
-                                    <Text style={styles.avatarInitials}>
-                                        {item.user_name ? item.user_name.charAt(0).toUpperCase() : '👤'}
-                                    </Text>
-                                </View>
-                            ) : (
-                                <Text style={styles.avatarInitials}>
-                                    {item.user_name ? item.user_name.charAt(0).toUpperCase() : '👤'}
-                                </Text>
-                            )}
+                            <Text style={styles.avatarInitials}>
+                                {item.user_name ? item.user_name.charAt(0).toUpperCase() : '­ƒæñ'}
+                            </Text>
                         </View>
                         <View style={styles.authorInfo}>
-                            <Text style={styles.authorName} numberOfLines={1}>{item.user_name}</Text>
+                            <Text style={styles.authorName}>{item.user_name}</Text>
                             <Text style={styles.commentDate}>{formatDate(item.created_at)}</Text>
                         </View>
                     </TouchableOpacity>
@@ -741,7 +521,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     <View style={styles.commentActions}>
                         {typeof item.rating === 'number' && !item.parent_comment_id && (
                             <View style={styles.ratingBadge}>
-                                <Text style={styles.ratingEmoji}>⭐</Text>
+                                <Text style={styles.ratingEmoji}>Ô¡É</Text>
                                 <Text style={styles.ratingValue}>{item.rating.toFixed(0)}/5</Text>
                             </View>
                         )}
@@ -749,7 +529,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             <TouchableOpacity
                                 style={styles.actionIcon}
                                 onPress={() => handleEdit(item)}
-                                activeOpacity={0.7}
                             >
                                 <SafeIcon name="edit-3" size={18} color={modernColors.primary} />
                             </TouchableOpacity>
@@ -758,7 +537,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             <TouchableOpacity
                                 style={styles.actionIcon}
                                 onPress={() => handleDeleteComment(item)}
-                                activeOpacity={0.7}
                             >
                                 <SafeIcon name="trash-2" size={18} color={modernColors.error} />
                             </TouchableOpacity>
@@ -768,7 +546,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
                 <View style={styles.commentBody}>
                     {item.is_deleted ? (
-                        <Text style={styles.deletedText}>Ce commentaire a été supprimé</Text>
+                        <Text style={styles.deletedText}>Ce commentaire a ├®t├® supprim├®</Text>
                     ) : (
                         <Text style={styles.commentContent}>{parseMentions(item.content)}</Text>
                     )}
@@ -784,7 +562,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     )}
                 </View>
 
-                {/* ✅ AMÉLIORÉ: Footer avec réactions et actions visibles */}
                 <View style={styles.commentFooter}>
                     <View style={styles.reactionsRow}>
                         {REACTION_OPTIONS.map((reaction) => {
@@ -798,42 +575,32 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                                         isActive && styles.reactionButtonActive,
                                     ]}
                                     onPress={() => handleToggleReaction(item, reaction.type)}
-                                    activeOpacity={0.7}
                                 >
                                     <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
                                     {count > 0 && (
-                                        <Text style={[
-                                            styles.reactionCount,
-                                            isActive && styles.reactionCountActive
-                                        ]}>
-                                            {count}
-                                        </Text>
+                                        <Text style={styles.reactionCount}>{count}</Text>
                                     )}
                                 </TouchableOpacity>
                             );
                         })}
                     </View>
 
-                    {/* ✅ AMÉLIORÉ: Actions avec icônes bien visibles */}
                     <View style={styles.commentFooterActions}>
                         <TouchableOpacity
                             style={styles.footerAction}
                             onPress={() => handleReply(item)}
-                            activeOpacity={0.7}
                         >
-                            <SafeIcon name="corner-up-right" size={18} color={modernColors.primary} />
-                            <Text style={styles.footerActionText}>Répondre</Text>
+                            <SafeIcon name="corner-up-right" size={16} color={modernColors.primary} />
+                            <Text style={styles.footerActionText}>R├®pondre</Text>
                         </TouchableOpacity>
-                        {onOpenChat && (
-                            <TouchableOpacity
-                                style={styles.footerAction}
-                                onPress={() => onOpenChat(item.user_id, item.user_name, item.user_avatar)}
-                                activeOpacity={0.7}
-                            >
-                                <SafeIcon name="message-circle" size={18} color={modernColors.primary} />
-                                <Text style={styles.footerActionText}>Chat</Text>
-                            </TouchableOpacity>
-                        )}
+                        <TouchableOpacity
+                            style={styles.footerAction}
+                            onPress={() => onOpenChat?.(item.user_id, item.user_name, item.user_avatar)}
+                            disabled={!onOpenChat}
+                        >
+                            <SafeIcon name="message-circle" size={16} color={modernColors.primary} />
+                            <Text style={styles.footerActionText}>Chat</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -855,31 +622,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         ],
     );
 
-    // ✅ NOUVEAU: Fonction pour afficher le sélecteur d'émojis
-    const renderEmojiPicker = useCallback(() => {
-        if (!showEmojiPicker) return null;
-
-        return (
-            <View style={styles.emojiPickerContainer}>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.emojiPickerScroll}
-                >
-                    {popularEmojis.map((emoji, index) => (
-                        <TouchableOpacity
-                            key={`emoji-${index}`}
-                            style={styles.emojiPickerButton}
-                            onPress={() => handleEmojiClick(emoji)}
-                        >
-                            <Text style={styles.emojiPickerText}>{emoji}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </View>
-        );
-    }, [showEmojiPicker, popularEmojis, handleEmojiClick]);
-
     const renderComposer = () => (
         <View style={styles.composerContainer}>
             {(replyTarget || editingTarget) && (
@@ -889,7 +631,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         <Text style={styles.composerContextLabel}>
                             {editingTarget
                                 ? 'Modification du commentaire'
-                                : `Réponse à ${replyTarget?.user_name}`}
+                                : `R├®ponse ├á ${replyTarget?.user_name}`}
                         </Text>
                     </View>
                     <TouchableOpacity onPress={handleCancelComposer}>
@@ -898,156 +640,66 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 </View>
             )}
 
-            {/* ✅ AMÉLIORÉ: Afficher le sélecteur de rating uniquement la première fois */}
-            {isRatingRequired && (
+            {!replyTarget && (
                 <View style={styles.ratingSelector}>
-                    <Text style={styles.ratingSelectorLabel}>Votre note (requis pour le premier avis)</Text>
-                    <View style={styles.ratingStarsRow}>
-                        {[1, 2, 3, 4, 5].map((value) => (
-                            <TouchableOpacity
-                                key={`rating-${value}`}
-                                style={[
-                                    styles.ratingStar,
-                                    composerRating !== null && composerRating >= value && styles.ratingStarActive,
-                                ]}
-                                onPress={() => setComposerRating(value)}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.ratingStarText}>
-                                    {composerRating !== null && composerRating >= value ? '⭐' : '☆'}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    {[1, 2, 3, 4, 5].map((value) => (
+                        <TouchableOpacity
+                            key={`rating-${value}`}
+                            style={[
+                                styles.ratingStar,
+                                composerRating !== null && composerRating >= value && styles.ratingStarActive,
+                            ]}
+                            onPress={() => setComposerRating(value)}
+                        >
+                            <Text style={styles.ratingStarText}>
+                                {composerRating !== null && composerRating >= value ? 'Ô¡É' : 'Ôÿå'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
             )}
 
-            {/* ✅ NOUVEAU: Sélecteur d'émojis */}
-            {renderEmojiPicker()}
-
-            {/* ✅ NOUVEAU: Aperçu audio */}
-            {(audioUri || isRecording) && (
-                <View style={styles.audioPreviewContainer}>
-                    {isRecording ? (
-                        <View style={styles.recordingPreview}>
-                            <Animated.View style={[styles.recordingPulseIndicator, { transform: [{ scale: pulseAnim }] }]}>
-                                <View style={styles.recordingIndicator} />
-                            </Animated.View>
-                            <Text style={styles.recordingPreviewText}>Enregistrement... {formatDuration(recordingDuration)}</Text>
-                            <TouchableOpacity style={styles.stopRecordingBtn} onPress={toggleRecording}>
-                                <SafeIcon name="square" size={20} color="#FFFFFF" />
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <View style={styles.audioPreview}>
-                            <SafeIcon name="mic" size={20} color={modernColors.primary} />
-                            <Text style={styles.audioPreviewText}>Audio enregistré ({formatDuration(recordingDuration)})</Text>
-                            <TouchableOpacity onPress={removeAudio}>
-                                <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                </View>
-            )}
-
-            {/* ✅ RÉÉCRIT COMPLÈTEMENT: Zone de saisie avec interface mobile optimisée */}
             <View style={styles.composerInputContainer}>
-                {/* Zone de saisie principale */}
-                <View style={styles.composerInputWrapper}>
-                    <TextInput
-                        value={composerContent}
-                        onChangeText={handleComposerChange}
-                        multiline
-                        placeholder={
-                            replyTarget
-                                ? `Répondre à ${replyTarget.user_name}...`
-                                : isRatingRequired
-                                ? 'Partagez votre expérience avec une note...'
-                                : 'Partagez votre expérience...'
-                        }
-                        placeholderTextColor={modernColors.textSecondary}
-                        style={styles.composerInput}
-                        maxLength={1000}
-                        textAlignVertical="top"
-                    />
-                    
-                    {/* ✅ AMÉLIORÉ: Actions en bas à droite, visibles et accessibles */}
-                    <View style={styles.composerInputActions}>
-                        <TouchableOpacity
-                            style={[styles.composerActionButton, isRecording && styles.composerActionButtonActive]}
-                            onPress={toggleRecording}
-                            disabled={submitting}
-                            activeOpacity={0.7}
-                        >
-                            <SafeIcon
-                                name="mic"
-                                size={20}
-                                color={isRecording ? '#FFFFFF' : modernColors.primary}
-                            />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.composerActionButton, showEmojiPicker && styles.composerActionButtonActive]}
-                            onPress={() => {
-                                setShowEmojiPicker(!showEmojiPicker);
-                                setShowMentionPicker(false);
-                            }}
-                            activeOpacity={0.7}
-                        >
-                            <SafeIcon
-                                name="smile"
-                                size={20}
-                                color={showEmojiPicker ? '#FFFFFF' : modernColors.textSecondary}
-                            />
-                        </TouchableOpacity>
-                    </View>
+                <TextInput
+                    value={composerContent}
+                    onChangeText={handleComposerChange}
+                    multiline
+                    placeholder={
+                        replyTarget
+                            ? `R├®pondre ├á ${replyTarget.user_name}...`
+                            : 'Partagez votre exp├®rience...'
+                    }
+                    placeholderTextColor={modernColors.textSecondary}
+                    style={styles.composerInput}
+                    maxLength={1000}
+                />
+            </View>
+
+            {selectedMentions.length > 0 && (
+                <View style={styles.selectedMentionsRow}>
+                    {selectedMentions.map((mention) => (
+                        <View key={`selected-${mention.id}`} style={styles.selectedMentionChip}>
+                            <Text style={styles.selectedMentionText}>@{mention.nom_complet}</Text>
+                            <TouchableOpacity
+                                onPress={() =>
+                                    setSelectedMentions((prev) =>
+                                        prev.filter((candidate) => candidate.id != mention.id),
+                                    )
+                                }
+                            >
+                                <SafeIcon name="x" size={12} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                    ))}
                 </View>
-                
-                {/* ✅ AMÉLIORÉ: Bouton d'envoi en bas, ne masque plus la zone de saisie */}
-                <View style={styles.composerBottomRow}>
-                    {selectedMentions.length > 0 && (
-                        <ScrollView 
-                            horizontal 
-                            showsHorizontalScrollIndicator={false}
-                            style={styles.selectedMentionsScroll}
-                        >
-                            {selectedMentions.map((mention) => (
-                                <View key={`selected-${mention.id}`} style={styles.selectedMentionChip}>
-                                    <Text style={styles.selectedMentionText}>@{mention.nom_complet}</Text>
-                                    <TouchableOpacity
-                                        onPress={() =>
-                                            setSelectedMentions((prev) =>
-                                                prev.filter((candidate) => candidate.id != mention.id),
-                                            )
-                                        }
-                                        style={styles.removeMentionButton}
-                                    >
-                                        <SafeIcon name="x" size={12} color={modernColors.textSecondary} />
-                                    </TouchableOpacity>
-                                </View>
-                            ))}
-                        </ScrollView>
-                    )}
-                    
-                    <TouchableOpacity
-                        style={[
-                            styles.sendCommentButton,
-                            submitting && styles.sendCommentButtonDisabled,
-                            (!composerContent.trim() && !audioBase64) && styles.sendCommentButtonDisabled,
-                        ]}
-                        onPress={handleSubmitComment}
-                        disabled={submitting || (!composerContent.trim() && !audioBase64)}
-                        activeOpacity={0.8}
-                    >
-                        {submitting ? (
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                            <>
-                                <SafeIcon name="send" size={18} color="#FFFFFF" />
-                                <Text style={styles.sendButtonText}>Envoyer</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-                </View>
+            )}
+
+            <View style={styles.composerActions}>
+                <NativeButton
+                    title={editingTarget ? 'Mettre ├á jour' : 'Publier'}
+                    onPress={handleSubmitComment}
+                    disabled={submitting}
+                />
             </View>
         </View>
     );
@@ -1073,9 +725,9 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             ) : null}
                         </View>
                         <View style={styles.statsCard}>
-                            <Text style={styles.statsTitle}>⭐ {stats.average_rating.toFixed(1)}</Text>
+                            <Text style={styles.statsTitle}>Ô¡É {stats.average_rating.toFixed(1)}</Text>
                             <Text style={styles.statsSubtitle}>
-                                {stats.rating_count} avis • {stats.total_comments} commentaires
+                                {stats.rating_count} avis ÔÇó {stats.total_comments} commentaires
                             </Text>
                         </View>
                     </View>
@@ -1100,9 +752,9 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         !loading && (
                             <View style={styles.emptyState}>
                                 <SafeIcon name="message-circle" size={48} color={modernColors.textSecondary} />
-                                <Text style={styles.emptyTitle}>Aucun commentaire pour l'instant</Text>
+                                <Text style={styles.emptyTitle}>Aucun commentaire pour lÔÇÖinstant</Text>
                                 <Text style={styles.emptySubtitle}>
-                                    Soyez le premier à partager votre expérience !
+                                    Soyez le premier ├á partager votre exp├®rience !
                                 </Text>
                             </View>
                         )
@@ -1149,17 +801,12 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     <View>
                         <Text style={styles.sectionTitle}>Commentaires clients</Text>
                         <Text style={styles.sectionSubtitle}>
-                            {stats.total_comments} avis • {stats.average_rating.toFixed(1)}/5
+                            {stats.total_comments} avis ÔÇó {stats.average_rating.toFixed(1)}/5
                         </Text>
                     </View>
                     <TouchableOpacity
                         style={styles.viewAllButton}
-                        onPress={() => {
-                            setModalVisible(true);
-                            // ✅ NOUVEAU: Marquer que c'est la première fois qu'on ouvre le modal
-                            setIsFirstTimeOpening(true);
-                        }}
-                        activeOpacity={0.8}
+                        onPress={() => setModalVisible(true)}
                     >
                         <SafeIcon name="message-circle" size={18} color="#FFFFFF" />
                         <Text style={styles.viewAllText}>Ouvrir le fil</Text>
@@ -1176,7 +823,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             <View style={styles.emptyStatePreview}>
                                 <SafeIcon name="message-circle" size={32} color={modernColors.textSecondary} />
                                 <Text style={styles.emptyPreviewText}>
-                                    Aucun commentaire pour l'instant. Lancez la discussion !
+                                    Aucun commentaire pour lÔÇÖinstant. Lancez la discussion !
                                 </Text>
                             </View>
                         ) : (
@@ -1233,73 +880,77 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 const styles = StyleSheet.create({
     flexOne: { flex: 1 },
     sectionContainer: {
-        marginTop: 16,
+        marginTop: 12,
     },
     previewCard: {
         padding: 0,
-        overflow: 'hidden',
-        borderWidth: 1,
+        overflow: 'visible',
+        borderWidth: StyleSheet.hairlineWidth,
         borderColor: '#E2E8F0',
-        borderRadius: 18,
+        borderRadius: 12,
         shadowColor: '#1E293B',
-        shadowOpacity: 0.05,
-        shadowOffset: { width: 0, height: 6 },
-        shadowRadius: 12,
+        shadowOpacity: 0.03,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 6,
     },
     previewHeader: {
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        rowGap: 10,
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '700',
         color: modernColors.text,
     },
     sectionSubtitle: {
-        fontSize: 13,
+        fontSize: 12,
         color: modernColors.textSecondary,
         marginTop: 4,
     },
     viewAllButton: {
         backgroundColor: modernColors.primary,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
         borderRadius: 999,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         marginLeft: 12,
-        flexShrink: 0,
+        flexShrink: 1,
+        justifyContent: 'center',
+        alignSelf: 'flex-start',
     },
     viewAllText: {
         color: '#FFFFFF',
         fontWeight: '600',
-        fontSize: 13,
+        fontSize: 12,
     },
     loader: {
-        paddingVertical: 24,
+        paddingVertical: 18,
         alignItems: 'center',
         justifyContent: 'center',
     },
     previewComment: {
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderColor: modernColors.border,
     },
     previewAuthor: {
         fontWeight: '600',
-        fontSize: 14,
+        fontSize: 13,
         color: modernColors.text,
     },
     previewContent: {
-        fontSize: 13,
+        fontSize: 12,
         color: modernColors.text,
         marginTop: 6,
-        lineHeight: 18,
+        lineHeight: 16,
     },
     previewMeta: {
         flexDirection: 'row',
@@ -1312,13 +963,13 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
     },
     emptyStatePreview: {
-        paddingHorizontal: 20,
-        paddingVertical: 24,
+        paddingHorizontal: 18,
+        paddingVertical: 18,
         alignItems: 'center',
         gap: 8,
     },
     emptyPreviewText: {
-        fontSize: 13,
+        fontSize: 12,
         color: modernColors.textSecondary,
         textAlign: 'center',
     },
@@ -1435,30 +1086,9 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     actionIcon: {
-        padding: 8,
+        padding: 6,
         borderRadius: 8,
         backgroundColor: modernColors.surfaceVariant,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        minWidth: 36,
-        minHeight: 36,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    commentReplyContainer: {
-        marginLeft: 20,
-        marginTop: 12,
-        borderLeftWidth: 2,
-        borderLeftColor: modernColors.primary + '40',
-        paddingLeft: 12,
-    },
-    avatarImagePlaceholder: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 18,
-        backgroundColor: modernColors.primary + '20',
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     ratingBadge: {
         flexDirection: 'row',
@@ -1547,10 +1177,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         color: modernColors.text,
-        marginLeft: 2,
-    },
-    reactionCountActive: {
-        color: '#FFFFFF',
     },
     commentFooterActions: {
         flexDirection: 'row',
@@ -1600,23 +1226,8 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     ratingSelector: {
-        backgroundColor: '#FFF7E6',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#FDE68A',
-    },
-    ratingSelectorLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#B45309',
-        marginBottom: 8,
-    },
-    ratingStarsRow: {
         flexDirection: 'row',
         gap: 8,
-        justifyContent: 'center',
     },
     ratingStar: {
         width: 32,
@@ -1639,59 +1250,14 @@ const styles = StyleSheet.create({
         borderColor: modernColors.border,
         borderRadius: 16,
         backgroundColor: '#FFFFFF',
-        padding: 12,
-    },
-    composerInputWrapper: {
-        position: 'relative',
-        minHeight: 100,
-        marginBottom: 8,
-    },
-    composerInputRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 8,
     },
     composerInput: {
-        flex: 1,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        paddingRight: 70, // ✅ Espace pour les boutons d'action (mic + emoji)
-        fontSize: 15,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 14,
         color: modernColors.text,
         minHeight: 80,
-        maxHeight: 150,
         textAlignVertical: 'top',
-        lineHeight: 20,
-    },
-    emojiToggleButton: {
-        padding: 8,
-        borderRadius: 8,
-        backgroundColor: modernColors.surfaceVariant,
-        marginBottom: 8,
-    },
-    emojiPickerContainer: {
-        backgroundColor: modernColors.surface,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        borderRadius: 12,
-        paddingVertical: 8,
-        maxHeight: 120,
-    },
-    emojiPickerScroll: {
-        paddingHorizontal: 8,
-        gap: 4,
-    },
-    emojiPickerButton: {
-        padding: 8,
-        borderRadius: 8,
-        backgroundColor: '#FFFFFF',
-        marginHorizontal: 2,
-        minWidth: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    emojiPickerText: {
-        fontSize: 24,
     },
     selectedMentionsRow: {
         flexDirection: 'row',
@@ -1712,158 +1278,8 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
     },
-    composerBottomRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 12,
-        gap: 8,
-    },
-    selectedMentionsScroll: {
-        flex: 1,
-        maxHeight: 40,
-    },
-    removeMentionButton: {
-        marginLeft: 4,
-        padding: 2,
-    },
     composerActions: {
         alignItems: 'flex-end',
-    },
-    sendCommentButton: {
-        backgroundColor: modernColors.primary,
-        borderRadius: 24,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        minWidth: 100,
-        shadowColor: modernColors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 4,
-    },
-    sendCommentButtonDisabled: {
-        backgroundColor: modernColors.textSecondary,
-        opacity: 0.5,
-    },
-    sendButtonText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    ratingSelector: {
-        backgroundColor: '#FFF7E6',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#FDE68A',
-    },
-    ratingSelectorLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#B45309',
-        marginBottom: 8,
-    },
-    ratingStarsRow: {
-        flexDirection: 'row',
-        gap: 8,
-        justifyContent: 'center',
-    },
-    audioPreviewContainer: {
-        marginBottom: 12,
-    },
-    recordingPreview: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FEF2F2',
-        borderWidth: 1,
-        borderColor: '#FCA5A5',
-        borderRadius: 12,
-        padding: 12,
-        gap: 12,
-    },
-    recordingPulseIndicator: {
-        width: 20,
-        height: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    recordingIndicator: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        backgroundColor: '#EF4444',
-    },
-    recordingPreviewText: {
-        flex: 1,
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#991B1B',
-    },
-    stopRecordingBtn: {
-        backgroundColor: '#EF4444',
-        borderRadius: 16,
-        width: 32,
-        height: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    audioPreview: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#EEF2FF',
-        borderWidth: 1,
-        borderColor: modernColors.primary,
-        borderRadius: 12,
-        padding: 12,
-        gap: 12,
-    },
-    audioPreviewText: {
-        flex: 1,
-        fontSize: 14,
-        fontWeight: '500',
-        color: modernColors.text,
-    },
-    audioToggleButton: {
-        padding: 8,
-        borderRadius: 8,
-        backgroundColor: modernColors.surfaceVariant,
-        marginBottom: 8,
-        marginRight: 4,
-    },
-    audioToggleButtonActive: {
-        backgroundColor: '#EF4444',
-    },
-    composerInputActions: {
-        position: 'absolute',
-        right: 8,
-        bottom: 8,
-        flexDirection: 'row',
-        gap: 6,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        padding: 4,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-    },
-    composerActionButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: modernColors.surfaceVariant,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: modernColors.border,
-    },
-    composerActionButtonActive: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
     },
     emptyState: {
         alignItems: 'center',
@@ -1888,3 +1304,4 @@ const styles = StyleSheet.create({
 });
 
 export default ProductCommentsSection;
+

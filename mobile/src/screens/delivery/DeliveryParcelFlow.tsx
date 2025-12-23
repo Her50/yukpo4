@@ -339,12 +339,14 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
         try {
             // ✅ Mapping des types de colis vers type_id backend
             // 1 = document, 2 = package, 3 = moving, 4 = cake, 5 = other (ou 2 pour autre si non défini)
-            const typeIdMapping: Record<string, number> = {
-                'document': 1,
-                'package': 2,
-                'moving': 3,
-                'cake': 4, // À ajuster selon le backend
-                'other': 2, // Utilise package comme fallback
+            // ✅ CORRECTION: Ne plus utiliser d'IDs codés en dur
+            // Le backend utilisera un type par défaut ou déduira depuis preferred_vehicle_type
+            const typeIdMapping: Record<string, number | undefined> = {
+                'document': undefined,
+                'package': undefined,
+                'moving': undefined,
+                'cake': undefined,
+                'other': undefined,
             };
 
             // Construire les contraintes selon le type
@@ -369,7 +371,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                 // ✅ NOUVEAU : Mode de transport souhaité
                 preferred_vehicle_type: transportMode || undefined,
                 parcel: {
-                    type_id: typeIdMapping[parcelType] || 2,
+                    type_id: typeIdMapping[parcelType] || undefined,
                     weight_kg: weight ? parseFloat(weight) : undefined,
                     volume_cm3: volume ? parseFloat(volume) : undefined,
                     declared_value: declaredValue ? parseFloat(declaredValue) : undefined,
