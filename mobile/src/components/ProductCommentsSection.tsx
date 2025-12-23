@@ -130,61 +130,12 @@ const parseMentions = (text: string): React.ReactNode[] => {
     return parts;
 };
 
-// ✅ FONCTION UTILITAIRE : Nettoyer le nom utilisateur pour éviter les doublons
-const cleanUserName = (name: string | undefined | null): string => {
-    if (!name) return 'Utilisateur';
-    const trimmed = name.trim();
-
-    // ✅ CORRECTION : Détecter et supprimer les doublons (ex: "LELE Hernandez LELE Hernandez" -> "LELE Hernandez")
-    // Méthode 1: Vérifier si le nom est répété exactement (mots séparés par espace)
-    const words = trimmed.split(/\s+/);
-    if (words.length >= 2) {
-        const midPoint = Math.ceil(words.length / 2);
-        const firstHalf = words.slice(0, midPoint).join(' ');
-        const secondHalf = words.slice(midPoint).join(' ');
-
-        // Si les deux moitiés sont identiques, retourner seulement la première
-        if (firstHalf === secondHalf) {
-            return firstHalf;
-        }
-
-        // Méthode 2: Vérifier si le nom complet est répété (ex: "LELE Hernandez LELE Hernandez")
-        // Diviser en deux parties égales et comparer
-        const fullLength = trimmed.length;
-        if (fullLength % 2 === 0) {
-            const firstPart = trimmed.substring(0, fullLength / 2).trim();
-            const secondPart = trimmed.substring(fullLength / 2).trim();
-            if (firstPart === secondPart) {
-                return firstPart;
-            }
-        }
-    }
-
-    // Méthode 3: Détecter les patterns répétitifs (ex: "Nom Nom" ou "Nom Nom Nom")
-    // Si le nom contient le même mot plusieurs fois consécutivement, ne garder qu'une occurrence
-    const uniqueWords: string[] = [];
-    let lastWord = '';
-    for (const word of words) {
-        if (word !== lastWord) {
-            uniqueWords.push(word);
-            lastWord = word;
-        }
-    }
-
-    // Si on a réduit le nombre de mots, c'est qu'il y avait des répétitions
-    if (uniqueWords.length < words.length && uniqueWords.length > 0) {
-        return uniqueWords.join(' ');
-    }
-
-    return trimmed;
-};
-
 const normalizeComments = (items: any[]): ProductComment[] =>
     (items || []).map((item) => ({
         id: item.id,
         service_id: item.service_id,
         user_id: item.user_id,
-        user_name: cleanUserName(item.user_name), // ✅ CORRECTION : Nettoyer le nom pour éviter les doublons
+        user_name: item.user_name,
         user_avatar: item.user_avatar ?? undefined,
         parent_comment_id: item.parent_comment_id ?? null,
         rating: item.rating ?? null,
@@ -192,7 +143,7 @@ const normalizeComments = (items: any[]): ProductComment[] =>
         mentions: item.mentions ?? [],
         mention_users: (item.mention_users || []).map((mention: any) => ({
             id: mention.id,
-            name: cleanUserName(mention.name), // ✅ CORRECTION : Nettoyer aussi les noms dans les mentions
+            name: mention.name,
             avatar_url: mention.avatar_url ?? undefined,
         })),
         reaction_counts: item.reaction_counts ?? {},
@@ -239,8 +190,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const [mentionQuery, setMentionQuery] = useState('');
     const [showMentionPicker, setShowMentionPicker] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    // ✅ NOUVEAU: État pour vérifier si l'utilisateur a déjà donné un avis
-    const [userHasRated, setUserHasRated] = useState(false);
 
     const isFullMode = mode === 'full' || modalVisible;
 
@@ -251,20 +200,12 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             const response = await commentsApi.getProductComments(serviceId);
             if (response.success && response.data) {
                 const payload: any = response.data;
-                const normalizedComments = normalizeComments(payload.comments);
-                setComments(normalizedComments);
+                setComments(normalizeComments(payload.comments));
                 setStats({
                     total_comments: payload.stats?.total_comments ?? payload.comments?.length ?? 0,
                     rating_count: payload.stats?.rating_count ?? 0,
                     average_rating: payload.stats?.average_rating ?? 0,
                 });
-                // ✅ NOUVEAU: Vérifier si l'utilisateur a déjà donné un avis (rating non null)
-                if (currentUserId) {
-                    const userHasRating = normalizedComments.some(
-                        (comment) => comment.user_id === currentUserId && comment.rating !== null && comment.rating !== undefined
-                    );
-                    setUserHasRated(userHasRating);
-                }
             } else {
                 setError(response.error || 'Impossible de charger les commentaires');
             }
@@ -275,7 +216,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             setLoading(false);
             setRefreshing(false);
         }
-    }, [serviceId, refreshing, currentUserId]);
+    }, [serviceId, refreshing]);
 
     useEffect(() => {
         loadComments();
@@ -303,10 +244,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             return;
         }
 
-        // ✅ CORRIGÉ: Exiger un rating seulement si c'est le premier avis de l'utilisateur
-        // Si l'utilisateur a déjà donné un avis, il peut commenter sans rating
-        if (!replyTarget && !userHasRated && (composerRating === null || composerRating === undefined)) {
-            Alert.alert('Note requise', 'Ajoutez une note (0-5) pour votre premier avis');
+        if (!replyTarget && (composerRating === null || composerRating === undefined)) {
+            Alert.alert('Note requise', 'Ajoutez une note (0-5) pour votre avis principal');
             return;
         }
 
@@ -340,10 +279,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 if (!response.success) {
                     Alert.alert('Erreur', response.error || 'Impossible de publier le commentaire');
                 } else {
-                    // ✅ NOUVEAU: Mettre à jour userHasRated si un rating a été fourni
-                    if (composerRating !== null && composerRating !== undefined && !replyTarget) {
-                        setUserHasRated(true);
-                    }
                     await loadComments();
                     resetComposer();
                 }
@@ -512,7 +447,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         resetComposer();
     }, [resetComposer]);
 
-    const previewComments = useMemo(() => comments.slice(0, 1), [comments]);
+    const previewComments = useMemo(() => comments.slice(0, 2), [comments]);
 
     const renderCommentItem = useCallback(
         ({ item, depth }: { item: ProductComment; depth: number }) => (
@@ -896,77 +831,75 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 const styles = StyleSheet.create({
     flexOne: { flex: 1 },
     sectionContainer: {
-        marginTop: 12,
+        marginTop: 16,
     },
     previewCard: {
         padding: 0,
         overflow: 'visible',
-        borderWidth: StyleSheet.hairlineWidth,
+        borderWidth: 1,
         borderColor: '#E2E8F0',
-        borderRadius: 12,
+        borderRadius: 18,
         shadowColor: '#1E293B',
-        shadowOpacity: 0.03,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 6,
+        shadowOpacity: 0.05,
+        shadowOffset: { width: 0, height: 6 },
+        shadowRadius: 12,
     },
     previewHeader: {
-        paddingHorizontal: 14,
-        paddingVertical: 10,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        rowGap: 10,
     },
     sectionTitle: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '700',
         color: modernColors.text,
     },
     sectionSubtitle: {
-        fontSize: 12,
+        fontSize: 13,
         color: modernColors.textSecondary,
         marginTop: 4,
     },
     viewAllButton: {
         backgroundColor: modernColors.primary,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 18,
+        paddingVertical: 10,
         borderRadius: 999,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         marginLeft: 12,
-        flexShrink: 1,
+        flexShrink: 0,
+        minWidth: 130,
         justifyContent: 'center',
-        alignSelf: 'flex-start',
     },
     viewAllText: {
         color: '#FFFFFF',
         fontWeight: '600',
-        fontSize: 12,
+        fontSize: 13,
     },
     loader: {
-        paddingVertical: 18,
+        paddingVertical: 24,
         alignItems: 'center',
         justifyContent: 'center',
     },
     previewComment: {
-        paddingHorizontal: 14,
-        paddingVertical: 10,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderColor: modernColors.border,
     },
     previewAuthor: {
         fontWeight: '600',
-        fontSize: 13,
+        fontSize: 14,
         color: modernColors.text,
     },
     previewContent: {
-        fontSize: 12,
+        fontSize: 13,
         color: modernColors.text,
         marginTop: 6,
-        lineHeight: 16,
+        lineHeight: 18,
     },
     previewMeta: {
         flexDirection: 'row',
@@ -979,13 +912,13 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
     },
     emptyStatePreview: {
-        paddingHorizontal: 18,
-        paddingVertical: 18,
+        paddingHorizontal: 20,
+        paddingVertical: 24,
         alignItems: 'center',
         gap: 8,
     },
     emptyPreviewText: {
-        fontSize: 12,
+        fontSize: 13,
         color: modernColors.textSecondary,
         textAlign: 'center',
     },

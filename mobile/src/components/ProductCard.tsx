@@ -11,8 +11,6 @@ import {
   Alert,
   Dimensions,
   Image,
-  Linking,
-  Modal,
   ScrollView,
   Share,
   StyleSheet,
@@ -20,13 +18,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { config } from '../config/environment';
-import { useLocation } from '../contexts/LocationContext';
-import { apiGet, apiPost, commentsApi } from '../services/api';
+import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
-import OrderDeliveryModal from './delivery/OrderDeliveryModal';
-import { NativeCard } from './NativeDesign';
+import { NativeButton, NativeCard } from './NativeDesign';
 import ProductCommentsSection from './ProductCommentsSection';
 import ProductMediaCarousel from './ProductMediaCarousel';
 import SafeIcon from './SafeIcon';
@@ -103,171 +98,36 @@ const splitWithFallback = (input: any, primary?: string): string[] => {
 
 // Mapper codes pays → drapeaux emoji
 const getCountryFlag = (country?: string): string => {
-  if (!country || typeof country !== 'string') return '🌍';
-
-  const countryLower = country.trim().toLowerCase();
-
-  // ✅ AMÉLIORÉ: Mapping plus complet et robuste
   const countryMap: Record<string, string> = {
-    // Cameroun
-    'cameroun': '🇨🇲',
-    'cameroon': '🇨🇲',
-    'cm': '🇨🇲',
-    'cmr': '🇨🇲',
-    // Gabon
-    'gabon': '🇬🇦',
-    'ga': '🇬🇦',
-    'gab': '🇬🇦',
-    // Congo
-    'congo': '🇨🇬',
-    'cg': '🇨🇬',
-    'cog': '🇨🇬',
-    // RDC
-    'rdc': '🇨🇩',
-    'rd congo': '🇨🇩',
-    'république démocratique du congo': '🇨🇩',
-    'republic democratique du congo': '🇨🇩',
-    'cd': '🇨🇩',
-    'cod': '🇨🇩',
-    // Sénégal
-    'sénégal': '🇸🇳',
-    'senegal': '🇸🇳',
-    'sn': '🇸🇳',
-    'sen': '🇸🇳',
-    // Côte d'Ivoire
-    'côte d\'ivoire': '🇨🇮',
-    'cote d\'ivoire': '🇨🇮',
-    'ivory coast': '🇨🇮',
-    'ci': '🇨🇮',
-    'civ': '🇨🇮',
-    // Mali
-    'mali': '🇲🇱',
-    'ml': '🇲🇱',
-    'mli': '🇲🇱',
-    // Burkina Faso
-    'burkina': '🇧🇫',
-    'burkina faso': '🇧🇫',
-    'bf': '🇧🇫',
-    'bfa': '🇧🇫',
-    // Niger
-    'niger': '🇳🇪',
-    'ne': '🇳🇪',
-    'ner': '🇳🇪',
-    // Tchad
-    'tchad': '🇹🇩',
-    'chad': '🇹🇩',
-    'td': '🇹🇩',
-    'tcd': '🇹🇩',
-    // Togo
-    'togo': '🇹🇬',
-    'tg': '🇹🇬',
-    'tgo': '🇹🇬',
-    // Bénin
-    'bénin': '🇧🇯',
-    'benin': '🇧🇯',
-    'bj': '🇧🇯',
-    'ben': '🇧🇯',
-    // Guinée
-    'guinée': '🇬🇳',
-    'guinee': '🇬🇳',
-    'guinea': '🇬🇳',
-    'gn': '🇬🇳',
-    'gin': '🇬🇳',
-    // Madagascar
-    'madagascar': '🇲🇬',
-    'mg': '🇲🇬',
-    'mdg': '🇲🇬',
-    // France
-    'france': '🇫🇷',
-    'fr': '🇫🇷',
-    'fra': '🇫🇷',
-    // USA
-    'usa': '🇺🇸',
-    'united states': '🇺🇸',
-    'united states of america': '🇺🇸',
-    'us': '🇺🇸',
+    'Cameroun': '🇨🇲',
+    'Cameroon': '🇨🇲',
+    'Gabon': '🇬🇦',
+    'Congo': '🇨🇬',
+    'RDC': '🇨🇩',
+    'Sénégal': '🇸🇳',
+    'Senegal': '🇸🇳',
+    'Côte d\'Ivoire': '🇨🇮',
+    'Mali': '🇲🇱',
+    'Burkina': '🇧🇫',
+    'Niger': '🇳🇪',
+    'Tchad': '🇹🇩',
+    'Togo': '🇹🇬',
+    'Bénin': '🇧🇯',
+    'Guinée': '🇬🇳',
+    'Madagascar': '🇲🇬',
+    'France': '🇫🇷',
+    'USA': '🇺🇸',
   };
 
-  // Recherche exacte d'abord
-  if (countryMap[countryLower]) {
-    return countryMap[countryLower];
-  }
+  if (!country) return '🌍';
 
-  // Recherche partielle (contient)
   for (const [key, flag] of Object.entries(countryMap)) {
-    if (countryLower.includes(key) || key.includes(countryLower)) {
+    if (country.toLowerCase().includes(key.toLowerCase())) {
       return flag;
     }
   }
 
   return '🌍';
-};
-
-// ✅ NOUVEAU 2025-11-26: Helper pour construire l'URL complète d'un média
-const buildMediaUrl = (path: string | undefined | null): string | undefined => {
-  if (!path || typeof path !== 'string') return undefined;
-
-  // Si c'est déjà une URL complète (http/https), la retourner telle quelle
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path;
-  }
-
-  // Si c'est un data URI (base64), le retourner tel quel
-  if (path.startsWith('data:')) {
-    return path;
-  }
-
-  // Si c'est un chemin relatif (uploads/...), préfixer avec l'URL de l'API
-  if (path.startsWith('uploads/') || path.startsWith('/uploads/')) {
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    return `${config.API_BASE_URL}${cleanPath}`;
-  }
-
-  // Sinon, essayer de construire l'URL complète
-  return path.startsWith('/') ? `${config.API_BASE_URL}${path}` : `${config.API_BASE_URL}/${path}`;
-};
-
-const firstNonEmptyString = (...values: any[]): string | undefined => {
-  for (const candidate of values) {
-    if (typeof candidate === 'string') {
-      const trimmed = candidate.trim();
-      if (trimmed.length > 0) {
-        return trimmed;
-      }
-    }
-  }
-  return undefined;
-};
-
-const parseDistanceToKm = (value: any): number | undefined => {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase().replace(',', '.');
-    const match = normalized.match(/([\d.]+)/);
-    if (!match) {
-      return undefined;
-    }
-
-    const numeric = parseFloat(match[1]);
-    if (!Number.isFinite(numeric)) {
-      return undefined;
-    }
-
-    if (normalized.includes('m') && !normalized.includes('km')) {
-      return numeric / 1000;
-    }
-
-    return numeric;
-  }
-
-  return undefined;
 };
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -278,13 +138,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onPress,
   onChatPress,
 }) => {
-  // ✅ CORRIGÉ: Utiliser LocationContext pour calculer la distance si nécessaire
-  const { calculateDistance: locationCalculateDistance, location: contextLocation } = useLocation();
-  const effectiveUserLocation = userLocation || (contextLocation ? { latitude: contextLocation.coords.latitude, longitude: contextLocation.coords.longitude } : null);
   const navigation = useNavigation();
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
-  const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
   // ✅ NOUVEAU : États pour contact privé
   const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
@@ -301,10 +157,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [hoveredReaction, setHoveredReaction] = useState<string | null>(null);
   const [loadingReactions, setLoadingReactions] = useState(false);
   const [pendingReaction, setPendingReaction] = useState<string | null>(null);
-  // ✅ NOUVEAU : États pour commentaires compacts
-  const [commentStats, setCommentStats] = useState<{ total_comments: number; rating_count: number; average_rating: number } | null>(null);
-  const [loadingComments, setLoadingComments] = useState(false);
-  const [showCommentsModal, setShowCommentsModal] = useState(false);
 
   // Données produit
   const productVector = Array.isArray(product.product_vector)
@@ -314,9 +166,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
       : typeof product.product_vector === 'string'
         ? splitWithFallback(product.product_vector, ',')
         : [];
-  const maxDisplayedCaracs = 6;
-  const limitedProductVector = productVector.slice(0, maxDisplayedCaracs);
-  const hasMoreCaracs = productVector.length > maxDisplayedCaracs;
 
   const rawLocationVector = product.location_vector || product.locationVector || product.location?.vector;
   const locationVector = Array.isArray(rawLocationVector)
@@ -326,138 +175,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
       : [];
 
   // ✅ AMÉLIORATION: Afficher quartier en priorité, puis ville, puis région
-  // ✅ CORRIGÉ: Vérifier aussi dans service directement (pas seulement service.data)
-  // ✅ CORRIGÉ: Vérifier aussi dans les produits du service.data.produits
-  const extractLocationFromProductData = (serviceData: any): string | undefined => {
-    if (!serviceData || typeof serviceData !== 'object') return undefined;
-
-    // Vérifier dans data.produits (array ou object)
-    const produits = serviceData.produits;
-    if (produits) {
-      // Si c'est un array, prendre le premier produit
-      if (Array.isArray(produits) && produits.length > 0) {
-        const firstProduct = produits[0];
-        if (typeof firstProduct === 'object') {
-          return firstNonEmptyString(
-            firstProduct.adresse,
-            firstProduct.adresse_complete,
-            firstProduct.localisation,
-            firstProduct.lieu,
-            firstProduct.ville,
-            firstProduct.quartier,
-            firstProduct.region,
-            firstProduct.location,
-            firstProduct.chosen_location,
-          );
-        }
-      }
-      // Si c'est un object avec valeur (array)
-      if (typeof produits === 'object' && produits.valeur && Array.isArray(produits.valeur) && produits.valeur.length > 0) {
-        const firstProduct = produits.valeur[0];
-        if (typeof firstProduct === 'object') {
-          return firstNonEmptyString(
-            firstProduct.adresse,
-            firstProduct.adresse_complete,
-            firstProduct.localisation,
-            firstProduct.lieu,
-            firstProduct.ville,
-            firstProduct.quartier,
-            firstProduct.region,
-            firstProduct.location,
-            firstProduct.chosen_location,
-          );
-        }
-      }
-    }
-
-    return undefined;
-  };
-
-  const chosenLocation = firstNonEmptyString(
-    // ✅ CORRIGÉ: Priorité 1 - Données produit directes
-    product.chosen_location,
-    product.location?.primary,
-    product.location?.address,
-    product.location?.formatted_address,
-    product.location?.full_address,
-    locationVector[0], // Premier élément = lieu exact choisi par prestataire
-    product.location_name,
-    product.location_label,
-    product.location_text,
-    product.location,
-    product.lieu,
-    product.quartier,
-    product.city,
-    product.ville,
-    product.commune,
-    product.region,
-    product.departement,
-    product.adresse_complete,
-    product.adresse,
-    product.address,
-    product.localisation,
-    product.site,
-    // ✅ CORRIGÉ: Priorité 2 - Extraire depuis service.data.produits
-    extractLocationFromProductData(service?.data),
-    // ✅ CORRIGÉ: Priorité 3 - service directement
-    service?.adresse_complete,
-    service?.adresse,
-    service?.adresse_service,
-    service?.adresse_prestataire,
-    service?.localisation,
-    service?.lieu,
-    service?.ville,
-    service?.quartier,
-    service?.region,
-    // ✅ CORRIGÉ: Priorité 4 - service.data (champs dynamiques)
-    service?.data?.adresse_complete?.valeur,
-    service?.data?.adresse?.valeur,
-    service?.data?.adresse_service?.valeur,
-    service?.data?.adresse_prestataire?.valeur,
-    service?.data?.localisation?.valeur,
-    service?.data?.lieu?.valeur,
-    service?.data?.ville?.valeur,
-    service?.data?.quartier?.valeur,
-    service?.data?.region?.valeur,
-    // ✅ CORRIGÉ: Priorité 5 - service.data.location (objet)
-    service?.data?.location?.address,
-    service?.data?.location?.formatted_address,
-    service?.data?.location?.full_address,
-    service?.data?.location?.primary,
-  ) || '';
+  const chosenLocation = product.chosen_location ||
+    locationVector[0] || // Premier élément = lieu exact choisi par prestataire
+    product.adresse ||
+    product.address ||
+    service?.data?.adresse?.valeur ||
+    service?.data?.adresse_service?.valeur ||
+    '';
 
   const hasVariant = product.has_variant || false;
   const variants = product.variants || [];
-  // ✅ CORRIGÉ: Construire le nom du prestataire depuis service.user si disponible
-  const buildPrestataireNameFromUser = (user: any): string | undefined => {
-    if (!user) return undefined;
-    // Priorité 1: nom_complet
-    if (user.nom_complet && typeof user.nom_complet === 'string' && user.nom_complet.trim()) {
-      return user.nom_complet.trim();
-    }
-    // Priorité 2: nom + prenom
-    const nom = user.nom || '';
-    const prenom = user.prenom || '';
-    if (nom || prenom) {
-      return `${prenom} ${nom}`.trim();
-    }
-    // Priorité 3: email (première partie)
-    if (user.email && typeof user.email === 'string') {
-      return user.email.split('@')[0];
-    }
-    return undefined;
-  };
-
   const rawPrestataire =
     prestataireFromProps ||
     product.prestataire ||
     service?.prestataire ||
     {
-      nom: buildPrestataireNameFromUser(service?.user) ||
-        service?.prestataire?.name || // ✅ CORRIGÉ: Vérifier aussi 'name' (format API)
-        service?.prestataire?.nom ||
-        service?.prestataire?.nom_complet ||
-        service?.data?.nom_prestataire?.valeur ||
+      nom: service?.data?.nom_prestataire?.valeur ||
         service?.data?.prestataire_nom?.valeur ||
         service?.data?.contact_nom?.valeur ||
         service?.data?.nom_prestataire ||
@@ -467,107 +200,37 @@ const ProductCard: React.FC<ProductCardProps> = ({
         product?.owner_name ||
         product?.vendor_name ||
         'Prestataire',
-      user_id: service?.user_id || service?.user?.id,
-      avatar_url: service?.prestataire?.photo || service?.prestataire?.avatar_url || service?.user?.avatar_url || service?.user?.photo_profil || service?.data?.photo_prestataire?.valeur,
+      user_id: service?.user_id,
+      avatar_url: service?.data?.photo_prestataire?.valeur,
     };
 
-  // ✅ NOUVEAU: Fonction pour nettoyer le nom et éviter les duplications
-  const cleanPrestataireName = (name: string | undefined | null): string | undefined => {
-    if (!name || typeof name !== 'string') return undefined;
-    const trimmed = name.trim();
-    if (!trimmed) return undefined;
+  const prestataireName =
+    rawPrestataire?.nom ||
+    rawPrestataire?.nom_complet ||
+    rawPrestataire?.name ||
+    rawPrestataire?.username ||
+    rawPrestataire?.display_name ||
+    product.prestataire_nom ||
+    product.prestataire_name ||
+    product.prestataire?.nom ||
+    product.prestataire?.nom_complet ||
+    product.prestataire?.name ||
+    service?.data?.nom_prestataire?.valeur ||
+    service?.data?.prestataire_nom?.valeur ||
+    service?.data?.contact_nom?.valeur ||
+    service?.data?.nom?.valeur ||
+    service?.data?.nom_entreprise?.valeur ||
+    'Prestataire';
 
-    // Détecter et corriger les duplications (ex: "Lélé Hernandez Lélé Hernandez")
-    const words = trimmed.split(/\s+/);
-    if (words.length >= 2) {
-      const firstHalf = words.slice(0, Math.ceil(words.length / 2)).join(' ');
-      const secondHalf = words.slice(Math.ceil(words.length / 2)).join(' ');
-      if (firstHalf === secondHalf) {
-        return firstHalf; // Retourner seulement la première moitié si duplication
-      }
-    }
-
-    return trimmed;
-  };
-
-  const rawPrestataireName = firstNonEmptyString(
-    // ✅ CORRIGÉ: Priorité 1 - Construire depuis service.user (source de vérité)
-    buildPrestataireNameFromUser(service?.user),
-    // ✅ CORRIGÉ: Priorité 2 - Vérifier service.prestataire.name (format API)
-    service?.prestataire?.name,
-    service?.prestataire?.nom,
-    service?.prestataire?.nom_complet,
-    // Priorité 3 - rawPrestataire (déjà construit)
-    rawPrestataire?.nom,
-    rawPrestataire?.nom_complet,
-    rawPrestataire?.name,
-    rawPrestataire?.username,
-    rawPrestataire?.display_name,
-    rawPrestataire?.full_name,
-    rawPrestataire?.raison_sociale,
-    // Priorité 4 - product.prestataire
-    product.prestataire?.nom,
-    product.prestataire?.nom_complet,
-    product.prestataire?.name,
-    product.prestataire_nom,
-    product.prestataire_nom_affiche,
-    product.prestataire_nom_commercial,
-    product.prestataire_nom_complet,
-    product.prestataire_name,
-    product.prestataire_fullname,
-    // Priorité 5 - product.owner/vendor
-    product.owner?.nom,
-    product.owner?.nom_complet,
-    product.owner?.name,
-    product.owner?.full_name,
-    product.vendor?.nom,
-    product.vendor?.name,
-    product.user_name,
-    product.contact_nom,
-    product.contact_name,
-    product.responsable_nom,
-    product.gerant_nom,
-    // Priorité 6 - service.data (champs dynamiques)
-    service?.data?.nom_prestataire?.valeur,
-    service?.data?.prestataire_nom?.valeur,
-    service?.data?.contact_nom?.valeur,
-    service?.data?.nom?.valeur,
-    service?.data?.nom_entreprise?.valeur,
-    service?.data?.responsable_nom?.valeur,
-    service?.data?.representant_nom?.valeur,
-    // Priorité 7 - service.user (autres champs)
-    service?.user?.name,
-    service?.user?.username,
-    service?.user?.display_name,
-  ) || 'Prestataire';
-
-  // ✅ CORRIGÉ: Nettoyer le nom pour éviter les duplications
-  const prestataireName = cleanPrestataireName(rawPrestataireName) || 'Prestataire';
-
-  const prestataireAvatar = firstNonEmptyString(
-    // ✅ CORRIGÉ: Priorité 1 - service.user (source de vérité)
-    service?.user?.avatar_url,
-    service?.user?.photo_profil,
-    // ✅ CORRIGÉ: Priorité 2 - service.prestataire
-    service?.prestataire?.avatar_url,
-    service?.prestataire?.photo,
-    service?.prestataire?.avatar,
-    // Priorité 3 - rawPrestataire
-    rawPrestataire?.avatar_url,
-    rawPrestataire?.photo_profil,
-    rawPrestataire?.photo,
-    rawPrestataire?.avatar,
-    rawPrestataire?.image_url,
-    // Priorité 4 - product.prestataire
-    product.prestataire_avatar,
-    product.prestataire?.avatar_url,
-    product.prestataire?.avatar,
-    product.owner?.avatar,
-    product.vendor?.avatar_url,
-    // Priorité 5 - service.data (champs dynamiques)
-    service?.data?.photo_prestataire?.valeur,
-    service?.data?.photo_profil?.valeur,
-  );
+  const prestataireAvatar =
+    rawPrestataire?.avatar_url ||
+    rawPrestataire?.photo_profil ||
+    rawPrestataire?.photo ||
+    product.prestataire_avatar ||
+    product.prestataire?.avatar_url ||
+    product.prestataire?.avatar ||
+    service?.data?.photo_prestataire?.valeur ||
+    service?.data?.photo_profil?.valeur;
 
   const prestataireUserId =
     rawPrestataire?.user_id ||
@@ -589,162 +252,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const isTrending = usageCount >= 10; // Tendance si recherché 10+ fois
 
   // Images et vidéos
-  // ✅ CORRIGÉ: Extraire depuis product.images directement (depuis extractSearchResults)
-  const rawProductImages: string[] = Array.isArray(product.images)
-    ? product.images.filter(Boolean)
-    : [];
-  // ✅ NOUVEAU: Extraire aussi depuis service.data.produits si disponible
-  // Note: productIndex sera déclaré plus bas, on le calcule ici temporairement
-  const tempProductIndex = typeof product.product_index === 'number'
-    ? product.product_index
-    : typeof product.index === 'number'
-      ? product.index
-      : 0;
-  const produitsFromService = service?.data?.produits;
-  let productImagesFromService: string[] = [];
-  let productVideosFromService: string[] = [];
-  if (produitsFromService) {
-    // Si c'est un array, prendre le produit à l'index
-    if (Array.isArray(produitsFromService) && produitsFromService.length > tempProductIndex) {
-      const targetProduct = produitsFromService[tempProductIndex];
-      if (targetProduct && typeof targetProduct === 'object') {
-        productImagesFromService = Array.isArray(targetProduct.images)
-          ? targetProduct.images.filter(Boolean)
-          : [];
-        productVideosFromService = Array.isArray(targetProduct.videos)
-          ? targetProduct.videos.filter(Boolean)
-          : [];
-      }
-    }
-    // Si c'est un object avec valeur (array)
-    else if (typeof produitsFromService === 'object' && produitsFromService.valeur && Array.isArray(produitsFromService.valeur) && produitsFromService.valeur.length > tempProductIndex) {
-      const targetProduct = produitsFromService.valeur[tempProductIndex];
-      if (targetProduct && typeof targetProduct === 'object') {
-        productImagesFromService = Array.isArray(targetProduct.images)
-          ? targetProduct.images.filter(Boolean)
-          : [];
-        productVideosFromService = Array.isArray(targetProduct.videos)
-          ? targetProduct.videos.filter(Boolean)
-          : [];
-      }
-    }
-  }
-  const rawServiceImages: string[] = Array.isArray(service?.images)
-    ? (service?.images as string[]).filter(Boolean)
-    : [];
-  const serviceBannerImage = buildMediaUrl(
-    firstNonEmptyString(
-      service?.data?.banner?.valeur,
-      service?.data?.banner,
-      service?.data?.banniere?.valeur,
-      service?.data?.banniere,
-    )
-  );
-  const serviceLogoImage = buildMediaUrl(
-    firstNonEmptyString(
-      service?.data?.logo?.valeur,
-      service?.data?.logo,
-    )
-  );
-  const googlePlaceMeta = service?.data?.google_place;
-  const googlePhotoUrls: string[] = Array.isArray(googlePlaceMeta?.photos)
-    ? (googlePlaceMeta.photos as any[])
-      .map((photo) => {
-        const name = typeof photo?.name === 'string' ? photo.name : null;
-        if (!name) {
-          return null;
-        }
-        const maxWidth =
-          typeof photo?.width_px === 'number' && photo.width_px > 0
-            ? Math.min(photo.width_px, 1600)
-            : 800;
-        return `${config.API_BASE_URL}/api/places/photo?name=${encodeURIComponent(
-          name,
-        )}&maxWidth=${maxWidth}`;
-      })
-      .filter((url): url is string => typeof url === 'string')
-    : [];
-
-  const orderedImages: string[] = [];
-  const addImage = (uri?: string | null) => {
-    if (!uri) return;
-    // ✅ NOUVEAU 2025-11-26: Construire l'URL complète pour les chemins relatifs
-    const fullUrl = buildMediaUrl(uri);
-    if (!fullUrl) return;
-    if (orderedImages.includes(fullUrl)) return;
-    orderedImages.push(fullUrl);
-  };
-
-  addImage(serviceBannerImage);
-  addImage(serviceLogoImage);
-  rawProductImages.forEach(addImage);
-  productImagesFromService.forEach(addImage); // ✅ NOUVEAU: Ajouter images depuis service.data.produits
-  rawServiceImages.forEach(addImage);
-  googlePhotoUrls.forEach(addImage);
-
-  const images = orderedImages;
-  const videos: string[] = Array.isArray(product.videos)
-    ? product.videos.filter(Boolean)
-    : productVideosFromService.length > 0
-      ? productVideosFromService // ✅ NOUVEAU: Utiliser videos depuis service.data.produits si disponible
-      : Array.isArray(service?.videos)
-        ? (service?.videos as string[]).filter(Boolean)
-        : [];
-
-  const googleRating =
-    typeof googlePlaceMeta?.rating === 'number' ? googlePlaceMeta.rating : null;
-  const googleRatingCount =
-    typeof googlePlaceMeta?.rating_count === 'number'
-      ? googlePlaceMeta.rating_count
-      : null;
-  const googlePrimaryTag = firstNonEmptyString(
-    googlePlaceMeta?.primary_type_display_name,
-    googlePlaceMeta?.primary_type,
-  );
-  const googleCuisineBadges = Array.isArray(googlePlaceMeta?.serves_cuisine)
-    ? (googlePlaceMeta.serves_cuisine as string[])
-      .filter((cuisine) => typeof cuisine === 'string' && cuisine.trim().length > 0)
-      .slice(0, 3)
-    : [];
-  const googleOpenNow = (() => {
-    const opening = googlePlaceMeta?.current_opening_hours;
-    if (opening && typeof opening === 'object' && 'openNow' in opening) {
-      const value = (opening as any).openNow;
-      if (typeof value === 'boolean') {
-        return value;
-      }
-    }
-    return null;
-  })();
-  const googleOpeningHeadline = (() => {
-    const opening = googlePlaceMeta?.current_opening_hours;
-    if (opening && typeof opening === 'object') {
-      const nextMessage = (opening as any).nextOpenTimeMessage;
-      if (typeof nextMessage === 'string' && nextMessage.trim().length > 0) {
-        return nextMessage.trim();
-      }
-      const descriptions = (opening as any).weekdayDescriptions;
-      if (Array.isArray(descriptions) && descriptions.length > 0) {
-        return descriptions[0];
-      }
-    }
-    return null;
-  })();
-  const googleEditorialSummary =
-    typeof googlePlaceMeta?.editorial_summary === 'string'
-      ? googlePlaceMeta.editorial_summary
-      : undefined;
-  const googleMapsUri =
-    typeof googlePlaceMeta?.google_maps_uri === 'string'
-      ? googlePlaceMeta.google_maps_uri
-      : undefined;
+  const images = product.images || service?.images || [];
+  const videos = product.videos || service?.videos || [];
 
   // Image de la variation sélectionnée (si existe)
   const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
     ? variants[selectedVariantIndex]
     : null;
   const variantImage = selectedVariant?.image || selectedVariant?.images?.[0];
-  const hasMedia = images.length > 0 || videos.length > 0 || !!variantImage;
+  const hasMedia = (images?.length || 0) + (videos?.length || 0) > 0 || !!variantImage;
 
   const serviceId = product.service_id || service?.id;
   const productIndex =
@@ -758,287 +274,28 @@ const ProductCard: React.FC<ProductCardProps> = ({
     product.id ||
     (serviceId ? `${serviceId}_${productIndex}` : null);
 
-  // ✅ Vérifier si c'est un produit (pas une prestation de service)
-  // Par défaut, si le type n'est pas défini, on considère que c'est un produit
-  const isProduct = product.type !== 'prestation_service';
-
-  // ✅ CORRECTION 2025-11-29: Extraire le prix depuis service.data.produits avec améliorations
-  const extractPriceFromProductData = (serviceData: any, productIndex: number = 0): { prix: number; devise: string } => {
-    if (!serviceData || typeof serviceData !== 'object') return { prix: 0, devise: 'XAF' };
-
-    const produits = serviceData.produits;
-    if (!produits) return { prix: 0, devise: 'XAF' };
-
-    let targetProduct: any = null;
-
-    // Si c'est un array, prendre le produit à l'index spécifié
-    if (Array.isArray(produits) && produits.length > productIndex) {
-      targetProduct = produits[productIndex];
-    }
-    // Si c'est un object avec valeur (array)
-    else if (typeof produits === 'object' && produits.valeur && Array.isArray(produits.valeur) && produits.valeur.length > productIndex) {
-      targetProduct = produits.valeur[productIndex];
-    }
-
-    if (!targetProduct) return { prix: 0, devise: 'XAF' };
-
-    // Si le produit est une chaîne (format concaténé), parser
-    if (typeof targetProduct === 'string') {
-      const parts = targetProduct.split(',').map(p => p.trim());
-      // Format: "nom,categorie,description,prix" ou "nom,categorie,description,prix,devise"
-      // Chercher le dernier élément numérique (prix)
-      for (let i = parts.length - 1; i >= 0; i--) {
-        const numericValue = parseFloat(parts[i]);
-        if (!isNaN(numericValue) && numericValue > 0) {
-          // La devise peut être après le prix ou par défaut XAF
-          const devise = parts[i + 1] || 'XAF';
-          return { prix: numericValue, devise };
-        }
-      }
-      return { prix: 0, devise: 'XAF' };
-    }
-    // Si c'est un objet, extraire prix et devise
-    else if (typeof targetProduct === 'object') {
-      // ✅ AMÉLIORÉ 2025-11-29: Chercher dans plus d'endroits
-      let prix = targetProduct.prix ||
-        targetProduct.prix_produit ||
-        targetProduct.price ||
-        (typeof targetProduct.prix === 'string' ? parseFloat(targetProduct.prix) : 0);
-
-      // ✅ NOUVEAU: Gérer cas prix = "0", null, undefined
-      if (prix === 0 || prix === null || prix === undefined || prix === "0" || (typeof prix === 'string' && prix.trim() === "0")) {
-        // Chercher dans variants si disponible
-        if (targetProduct.variants && Array.isArray(targetProduct.variants) && targetProduct.variants.length > 0) {
-          const validVariants = targetProduct.variants.filter((v: any) => v && (v.prix || v.price) && (v.prix > 0 || v.price > 0));
-          if (validVariants.length > 0) {
-            const minVariantPrice = Math.min(...validVariants.map((v: any) => v.prix || v.price || 0));
-            if (minVariantPrice > 0) {
-              prix = minVariantPrice;
-            }
-          }
-        }
-        // Chercher aussi dans variations (format alternatif)
-        if (prix === 0 && targetProduct.variations && Array.isArray(targetProduct.variations) && targetProduct.variations.length > 0) {
-          const validVariations = targetProduct.variations.filter((v: any) => v && (v.prix || v.price) && (v.prix > 0 || v.price > 0));
-          if (validVariations.length > 0) {
-            const minVariationPrice = Math.min(...validVariations.map((v: any) => v.prix || v.price || 0));
-            if (minVariationPrice > 0) {
-              prix = minVariationPrice;
-            }
-          }
-        }
-      }
-
-      const devise = targetProduct.devise ||
-        targetProduct.devise_produit ||
-        targetProduct.currency ||
-        targetProduct.variants?.[0]?.devise ||
-        targetProduct.variants?.[0]?.currency ||
-        'XAF';
-
-      // ✅ AMÉLIORÉ: Convertir prix en number si string
-      const prixNumber = typeof prix === 'number' ? prix : (typeof prix === 'string' ? parseFloat(prix) || 0 : 0);
-
-      return {
-        prix: prixNumber > 0 ? prixNumber : 0,
-        devise: typeof devise === 'string' ? devise : 'XAF'
-      };
-    }
-
-    return { prix: 0, devise: 'XAF' };
-  };
-
-  // ✅ NOUVEAU 2025-11-29: Formater prix en milliers (150000 → "150 000")
-  const formatPrice = (price: number | undefined | null): string => {
-    if (price === undefined || price === null || price === 0 || isNaN(price)) {
-      return '0';
-    }
-    return price.toLocaleString('fr-FR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    });
-  };
-
-  // Extraire le prix depuis service.data.produits si nécessaire
-  const extractedPriceData = extractPriceFromProductData(service?.data, productIndex);
-
-  // ✅ AMÉLIORÉ 2025-11-29: Prix avec extraction améliorée depuis multiple sources
+  // Prix
   const displayPrice = hasVariant && variants.length > 0
-    ? Math.min(...variants.map((v: any) => v.prix || v.price || 0))
-    : (() => {
-      // Chercher dans product directement
-      let prix = product.prix || product.prix_produit || product.price;
-      // Convertir string en number si nécessaire
-      if (typeof prix === 'string') {
-        const parsed = parseFloat(prix);
-        prix = isNaN(parsed) ? 0 : parsed;
-      }
-      // Si prix = 0, null, undefined, chercher dans extractedPriceData
-      if (!prix || prix === 0 || prix === "0") {
-        prix = extractedPriceData.prix;
-      }
-      return prix || 0;
-    })();
+    ? Math.min(...variants.map((v: any) => v.prix || 0))
+    : product.prix || 0;
 
-  const devise = product.devise ||
-    variants[0]?.devise ||
-    extractedPriceData.devise ||
-    'XAF';
+  const devise = product.devise || variants[0]?.devise || 'XAF';
 
-  // ✅ CORRIGÉ: Calculer la distance avec plusieurs sources
-  // 1. Distance fournie directement
-  const rawDistance = product.distance_km
-    ?? product.distanceKm
-    ?? product.distance
-    ?? product.distance_client
-    ?? product.distance_user
-    ?? product.distance_user_km
-    ?? product.distanceFromUser
-    ?? product.distance_text
-    ?? service?.distance_km
-    ?? service?.distanceKm
-    ?? service?.distance;
-
-  let distanceKm = parseDistanceToKm(rawDistance);
-
-  // 2. ✅ NOUVEAU: Calculer la distance côté client si userLocation et service GPS disponibles
-  if (!distanceKm && effectiveUserLocation) {
-    // Extraire les coordonnées GPS du service
-    const parseGPS = (gpsValue: any): { lat: number; lng: number } | null => {
-      if (!gpsValue) return null;
-
-      // Format 1: "lat,lng" ou "lat|lng"
-      if (typeof gpsValue === 'string') {
-        const parts = gpsValue.replace(/\s+/g, '').split(/[,|]/);
-        if (parts.length >= 2) {
-          const lat = parseFloat(parts[0]);
-          const lng = parseFloat(parts[1]);
-          if (Number.isFinite(lat) && Number.isFinite(lng)) {
-            return { lat, lng };
-          }
-        }
-      }
-
-      // Format 2: Objet { lat, lng } ou { latitude, longitude }
-      if (typeof gpsValue === 'object') {
-        const lat = gpsValue.lat ?? gpsValue.latitude;
-        const lng = gpsValue.lng ?? gpsValue.longitude;
-        if (Number.isFinite(lat) && Number.isFinite(lng)) {
-          return { lat, lng };
-        }
-      }
-
-      return null;
-    };
-
-    const serviceGPS = parseGPS(service?.gps)
-      ?? parseGPS(service?.data?.gps_fixe)
-      ?? parseGPS(service?.data?.gps)
-      ?? parseGPS(product.gps)
-      ?? parseGPS(product.data?.gps);
-
-    if (serviceGPS && locationCalculateDistance) {
-      try {
-        const calculatedDistance = locationCalculateDistance(
-          effectiveUserLocation.latitude,
-          effectiveUserLocation.longitude,
-          serviceGPS.lat,
-          serviceGPS.lng
-        );
-        if (Number.isFinite(calculatedDistance) && calculatedDistance >= 0) {
-          distanceKm = calculatedDistance;
-          // Ne pas logger - c'est un calcul normal
-        }
-      } catch (error) {
-        // Erreur silencieuse - on continue sans distance
-      }
-    }
-  }
-
+  // Distance
+  const rawDistance = product.distance_km ?? product.distanceKm ?? product.distance ?? product.distance_client;
+  const distanceKm = typeof rawDistance === 'string'
+    ? parseFloat(rawDistance)
+    : typeof rawDistance === 'number'
+      ? rawDistance
+      : undefined;
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm);
 
-  // ✅ CORRIGÉ: Réduire le niveau de log (warn → debug) car c'est normal qu'un service n'ait pas toujours de distance
-  if (hasDistance) {
-    // Ne pas logger en production - trop verbeux
-    // console.log(`[ProductCard] ✅ Distance extraite pour service ${product.service_id}: ${distanceKm}km`);
-  } else {
-    // Ne logger que si vraiment nécessaire (debug uniquement)
-    // console.debug(`[ProductCard] Pas de distance pour service ${product.service_id}`);
-  }
-  const formattedDistance = hasDistance
-    ? distanceKm! < 1
-      ? `${Math.round(distanceKm! * 1000)}m`
-      : `${distanceKm!.toFixed(distanceKm! < 10 ? 1 : 0)}km`
-    : null;
-
-  // Pays (pour drapeau) - Extraction améliorée depuis plusieurs sources
-  // Essayer d'extraire le pays depuis l'adresse complète si disponible
-  const extractCountryFromAddress = (address: string | undefined): string | undefined => {
-    if (!address || typeof address !== 'string') return undefined;
-
-    // Liste des pays à chercher dans l'adresse
-    const countryKeywords = [
-      'Cameroun', 'Cameroon', 'CM', 'CMR',
-      'Gabon', 'GA', 'GAB',
-      'Congo', 'CG', 'COG',
-      'RDC', 'RD Congo', 'République démocratique du Congo',
-      'Sénégal', 'Senegal', 'SN', 'SEN',
-      'Côte d\'Ivoire', 'Cote d\'Ivoire', 'Ivory Coast', 'CI', 'CIV',
-      'Mali', 'ML', 'MLI',
-      'Burkina', 'Burkina Faso', 'BF', 'BFA',
-      'Niger', 'NE', 'NER',
-      'Tchad', 'Chad', 'TD', 'TCD',
-      'Togo', 'TG', 'TGO',
-      'Bénin', 'Benin', 'BJ', 'BEN',
-      'Guinée', 'Guinee', 'Guinea', 'GN', 'GIN',
-      'Madagascar', 'MG', 'MDG',
-      'France', 'FR', 'FRA',
-      'USA', 'United States', 'US', 'USA',
-    ];
-
-    const addressLower = address.toLowerCase();
-    for (const keyword of countryKeywords) {
-      if (addressLower.includes(keyword.toLowerCase())) {
-        return keyword;
-      }
-    }
-    return undefined;
-  };
-
-  const pays = firstNonEmptyString(
-    extractCountryFromAddress(chosenLocation || product.adresse_complete || product.adresse || product.address),
-    extractCountryFromAddress(product.location?.formatted_address || product.location?.full_address || product.location?.address),
-    locationVector[locationVector.length - 1], // Dernier élément du vecteur = pays
-    product.pays,
-    product.country,
-    product.country_name,
-    product.country_code,
-    product.countryCode,
-    product.country_label,
-    product.location?.country,
-    product.location?.country_code,
-    // ✅ AMÉLIORÉ 2025-11-29: Vérifier aussi dans prestataire (transmis par backend)
-    prestataire?.pays,
-    prestataire?.country,
-    prestataire?.country_name,
-    prestataire?.country_code,
-    // ✅ CORRIGÉ: Vérifier aussi dans service directement
-    service?.pays,
-    service?.country,
-    service?.country_name,
-    service?.country_code,
-    service?.data?.pays?.valeur,
-    service?.data?.pays_origine?.valeur,
-    service?.data?.country?.valeur,
-    service?.data?.country_code?.valeur,
-  );
+  // Pays (pour drapeau)
+  const pays = locationVector[locationVector.length - 1] ||
+    product.pays ||
+    service?.data?.pays?.valeur;
 
   const countryFlag = getCountryFlag(pays);
-  const showCountryBadge = countryFlag && countryFlag !== '🌍';
-
-  // ✅ CORRIGÉ: Supprimer les logs DEBUG verbeux qui affichent undefined
-  // Ces logs ne sont plus nécessaires et polluent les logs en production
-  // Si besoin de debug, utiliser des logs conditionnels avec vérification de valeurs
 
   const commentServiceId = Number(product._serviceId || product.service_id || service?.id || 0);
   const serviceTitleForComments =
@@ -1091,45 +348,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
     0;
 
   const topStatsData = [
-    { key: 'views', icon: 'eye', value: viewsCount, tint: '#4f46e5', label: 'vues' },
-    { key: 'shares', icon: 'share-2', value: sharesCount, tint: '#a855f7', label: 'partages' },
-    { key: 'reviews', icon: 'message-circle', value: reviewsCount, tint: '#f59e0b', label: 'avis' },
-    { key: 'favorites', icon: 'heart', value: favoritesCount, tint: '#ef4444', label: 'favoris' },
+    { key: 'views', icon: 'eye', value: viewsCount, tint: '#4f46e5' },
+    { key: 'shares', icon: 'share-2', value: sharesCount, tint: '#a855f7' },
+    { key: 'reviews', icon: 'message-circle', value: reviewsCount, tint: '#f59e0b' },
+    { key: 'favorites', icon: 'heart', value: favoritesCount, tint: '#ef4444' },
   ];
-  // ✅ CORRIGÉ : Toujours afficher les 3 premières statistiques principales même si elles sont à 0
-  const compactTopStats = topStatsData.slice(0, 3);
 
-  // ✅ CORRIGÉ: Toujours ouvrir le modal - amélioration robuste
+  // ✅ AMÉLIORATION: Utiliser onChatPress si fourni, sinon modal local
   const handleChatPress = () => {
-    // Appeler onChatPress si fourni (pour compatibilité)
     if (onChatPress) {
       onChatPress();
-    }
-
-    // Toujours ouvrir le modal - laisser ChatModalMobile gérer les cas manquants
-    // Essayer de récupérer prestataireUserId de plusieurs sources
-    const resolvedPrestataireUserId =
-      prestataireUserId ||
-      prestataire?.user_id ||
-      product?.prestataire?.user_id ||
-      service?.user_id ||
-      service?.data?.user_id ||
-      null;
-
-    if (!resolvedPrestataireUserId && !service?.id && !product?.service_id) {
-      Alert.alert(
-        'Information manquante',
-        'Impossible d\'ouvrir le chat : informations du service ou du prestataire manquantes.'
-      );
       return;
     }
 
-    // Toujours ouvrir le modal local avec les informations disponibles
     setChatContext({
       type: 'service',
-      targetUserId: resolvedPrestataireUserId ? Number(resolvedPrestataireUserId) : undefined,
-      targetUserName: prestataire.nom || prestataireName || 'Prestataire',
-      targetAvatar: prestataire.avatar_url || prestataireAvatar || null,
+      targetUserId: prestataire.user_id ? Number(prestataire.user_id) : undefined,
+      targetUserName: prestataire.nom,
+      targetAvatar: prestataire.avatar_url || null,
     });
     setPrivateConversationId(null);
     setShowChatModal(true);
@@ -1158,15 +394,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         console.log('[ProductCard] Produit partagé avec succès');
       }
     } catch (error) {
-      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      console.error('[ProductCard] Erreur partage:', {
-        message: errorMessage,
-        stack: errorStack,
-        product: product?.nom || product?.name,
-        error: error
-      });
+      console.error('[ProductCard] Erreur partage:', error);
       Alert.alert('Erreur', 'Impossible de partager le produit');
     }
   };
@@ -1178,36 +406,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
     try {
       setLoadingReactions(true);
       const response = await apiGet(`/api/products/${serviceId}/${resolvedProductId}/reactions`);
-      // ✅ CORRIGÉ: Vérifier que response.data existe et est un tableau avant d'appeler forEach
       if (response.success && response.data) {
         const reactionsMap: Record<string, { count: number; hasReacted: boolean }> = {};
-        // ✅ CORRIGÉ: Vérifier que data est un tableau avant d'appeler forEach
-        const reactionsArray = Array.isArray(response.data) ? response.data : [];
-        if (reactionsArray && typeof reactionsArray.forEach === 'function') {
-          reactionsArray.forEach((r: any) => {
-            if (r && r.reaction_type) {
-              reactionsMap[r.reaction_type] = {
-                count: typeof r.count === 'number' ? r.count : 0,
-                hasReacted: typeof r.has_reacted === 'boolean' ? r.has_reacted : false
-              };
-            }
-          });
-          setReactions(reactionsMap);
-        } else {
-          console.warn('[ProductCard] Réponse réactions invalide (pas un tableau):', response.data);
-        }
+        const reactionsArray = response.data as any[];
+        reactionsArray.forEach((r: any) => {
+          reactionsMap[r.reaction_type] = {
+            count: r.count,
+            hasReacted: r.has_reacted
+          };
+        });
+        setReactions(reactionsMap);
       }
     } catch (error) {
-      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      console.error('[ProductCard] Erreur chargement réactions:', {
-        message: errorMessage,
-        stack: errorStack,
-        serviceId,
-        resolvedProductId,
-        error: error
-      });
+      console.error('[ProductCard] Erreur chargement réactions:', error);
     } finally {
       setLoadingReactions(false);
     }
@@ -1216,39 +427,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   useEffect(() => {
     loadReactions();
   }, [loadReactions]);
-
-  // ✅ NOUVEAU : Charger les stats des commentaires (version compacte)
-  const loadCommentStats = useCallback(async () => {
-    if (!commentServiceId || commentServiceId <= 0) return;
-    try {
-      setLoadingComments(true);
-      const response = await commentsApi.getProductComments(commentServiceId);
-      if (response.success && response.data) {
-        const payload: any = response.data;
-        setCommentStats({
-          total_comments: payload.stats?.total_comments ?? payload.comments?.length ?? 0,
-          rating_count: payload.stats?.rating_count ?? 0,
-          average_rating: payload.stats?.average_rating ?? 0,
-        });
-      }
-    } catch (error) {
-      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      console.error('[ProductCard] Erreur chargement stats commentaires:', {
-        message: errorMessage,
-        stack: errorStack,
-        commentServiceId,
-        error: error
-      });
-    } finally {
-      setLoadingComments(false);
-    }
-  }, [commentServiceId]);
-
-  useEffect(() => {
-    loadCommentStats();
-  }, [loadCommentStats]);
 
   // ✅ NOUVEAU : Handler pour réagir
   const handleReaction = async (reactionType: string) => {
@@ -1271,18 +449,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
         await loadReactions();
       }
     } catch (error) {
-      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      console.error('[ProductCard] Erreur réaction:', {
-        message: errorMessage,
-        stack: errorStack,
-        serviceId,
-        resolvedProductId,
-        reactionType,
-        error: error
-      });
-      Alert.alert('Erreur', "Impossible d'enregistrer votre réaction pour le moment.");
+      console.error('[ProductCard] Erreur réaction:', error);
+      Alert.alert('Erreur', 'Impossible d’enregistrer votre réaction pour le moment.');
     } finally {
       setPendingReaction(null);
     }
@@ -1329,16 +497,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         Alert.alert('Information', "Impossible de créer une conversation privée pour le moment");
       }
     } catch (error) {
-      // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      console.error('[ProductCard] Erreur création conversation privée:', {
-        message: errorMessage,
-        stack: errorStack,
-        userId,
-        userName,
-        error: error
-      });
+      console.error('[ProductCard] Erreur création conversation privée:', error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de contacter cet utilisateur');
     }
   };
@@ -1358,7 +517,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <>
       <LinearGradient
-        colors={['rgba(79, 70, 229, 0.12)', 'rgba(14, 165, 233, 0.05)', 'rgba(255, 255, 255, 0.45)']}
+        colors={['rgba(79, 70, 229, 0.14)', 'rgba(14, 165, 233, 0.08)', 'rgba(255, 255, 255, 0.6)']}
         style={styles.cardGradient}
       >
         <NativeCard
@@ -1384,17 +543,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 />
 
                 {/* Badge pays (coin supérieur droit) */}
-                {showCountryBadge && (
+                {countryFlag && (
                   <View style={styles.countryBadge}>
                     <Text style={styles.countryFlag}>{countryFlag}</Text>
                   </View>
                 )}
 
                 {/* Badge distance (coin supérieur gauche) */}
-                {formattedDistance && (
+                {distanceKm !== undefined && distanceKm !== null && (
                   <View style={styles.distanceBadge}>
                     <SafeIcon name="navigation" size={12} color="#FFF" />
-                    <Text style={styles.distanceText}>{formattedDistance}</Text>
+                    <Text style={styles.distanceText}>
+                      {distanceKm < 1
+                        ? `${Math.round(distanceKm * 1000)}m`
+                        : `${distanceKm.toFixed(1)}km`}
+                    </Text>
                   </View>
                 )}
 
@@ -1417,35 +580,32 @@ const ProductCard: React.FC<ProductCardProps> = ({
             )}
 
             <View style={[styles.content, !hasMedia && styles.contentCompact]}>
-              {/* ✅ CORRIGÉ: Toujours afficher les statistiques principales avec icônes */}
-              <View style={styles.topStatsRow}>
-                {compactTopStats.map((stat) => (
-                  <View
-                    key={stat.key}
-                    style={[
-                      styles.topStatPillCompact,
-                      { backgroundColor: `${stat.tint}08` },
-                      { borderColor: `${stat.tint}30` },
-                    ]}
-                  >
-                    <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
-                    <Text style={[styles.topStatValueCompact, { color: stat.tint }]}>
-                      {formatCompactNumber(stat.value ?? 0)}
-                    </Text>
-                    <Text style={[styles.topStatLabelCompact, { color: stat.tint }]}>
-                      {stat.label}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+              {topStatsData.length > 0 && (
+                <View style={styles.topStatsRow}>
+                  {topStatsData.map((stat) => (
+                    <View
+                      key={stat.key}
+                      style={[
+                        styles.topStatPill,
+                        { backgroundColor: `${stat.tint}12` },
+                      ]}
+                    >
+                      <SafeIcon name={stat.icon as any} size={14} color={stat.tint} />
+                      <Text style={[styles.topStatValue, { color: stat.tint }]}>
+                        {formatCompactNumber(stat.value)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
 
               {/* Nom produit */}
               <Text style={styles.productName} numberOfLines={2}>
                 {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
               </Text>
 
-              {/* ✅ CORRIGÉ: Prestataire - Toujours afficher si disponible */}
-              {prestataireName && (
+              {/* Prestataire cliquable */}
+              {prestataire.nom && (
                 <TouchableOpacity
                   style={styles.prestataireRow}
                   onPress={() => {
@@ -1453,11 +613,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       navigation.navigate('ProfilePrestataire' as any, { userId: prestataire.user_id });
                     }
                   }}
-                  activeOpacity={0.7}
                 >
-                  {prestataireAvatar ? (
+                  {prestataire.avatar_url ? (
                     <Image
-                      source={{ uri: prestataireAvatar }}
+                      source={{ uri: prestataire.avatar_url }}
                       style={styles.avatar}
                     />
                   ) : (
@@ -1466,162 +625,34 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     </View>
                   )}
                   <Text style={styles.prestataireName} numberOfLines={1}>
-                    {prestataireName}
+                    {prestataire.nom}
                   </Text>
                   <SafeIcon name="chevron-right" size={14} color="#9CA3AF" />
                 </TouchableOpacity>
               )}
 
-              {/* ✅ AMÉLIORÉ 2025-11-29: Localisation hiérarchique détaillée - Toujours afficher si disponible */}
-              {(chosenLocation || locationVector.length > 0 || pays || product.adresse || product.ville || product.region || product.adresse_complete || service?.adresse || service?.adresse_complete || prestataire?.adresse) && (
+              {/* ✅ AMÉLIORATION: Localisation hiérarchique détaillée */}
+              {chosenLocation && (
                 <View style={styles.locationSection}>
                   <View style={styles.locationRow}>
                     <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
-                    <Text style={styles.locationTextPrimary} numberOfLines={2}>
-                      {chosenLocation ||
-                        locationVector[0] ||
-                        product.adresse_complete ||
-                        product.adresse ||
-                        product.ville ||
-                        product.region ||
-                        prestataire?.adresse || // ✅ NOUVEAU: Vérifier prestataire.adresse
-                        service?.adresse_complete ||
-                        service?.adresse ||
-                        'Localisation disponible'}
+                    <Text style={styles.locationTextPrimary} numberOfLines={1}>
+                      {chosenLocation}
                     </Text>
-                    {/* ✅ AMÉLIORÉ : Afficher le drapeau si disponible, même si générique */}
-                    {countryFlag && countryFlag !== '🌍' && (
-                      <Text style={styles.locationFlag} numberOfLines={1}>
-                        {countryFlag}
-                      </Text>
+                    {countryFlag && (
+                      <Text style={styles.locationFlag}>{countryFlag}</Text>
                     )}
                   </View>
-                  {/* Hiérarchie complète (quartier > ville > région > pays) */}
+                  {/* Hiérarchie complète (ville > région > pays) */}
                   {locationVector.length > 1 && (
                     <View style={styles.locationHierarchy}>
                       <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
-                      <Text style={styles.locationTextSecondary} numberOfLines={2}>
+                      <Text style={styles.locationTextSecondary} numberOfLines={1}>
                         {locationVector.slice(1).join(' › ')}
                       </Text>
                     </View>
                   )}
-                  {/* Affichage supplémentaire des adresses si disponibles */}
-                  {(!chosenLocation || locationVector.length === 0) && (
-                    <>
-                      {product.quartier && (
-                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
-                          📍 Quartier: {product.quartier}
-                        </Text>
-                      )}
-                      {product.ville && (
-                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
-                          🏙️ Ville: {product.ville}
-                        </Text>
-                      )}
-                      {product.region && (
-                        <Text style={styles.locationTextSecondary} numberOfLines={1}>
-                          🌍 Région: {product.region}
-                        </Text>
-                      )}
-                    </>
-                  )}
-                  {formattedDistance && (
-                    <View style={styles.locationDistanceChip}>
-                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
-                      <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
-                    </View>
-                  )}
-                  {/* ✅ CORRIGÉ: Afficher la distance même si pas dans locationSection */}
-                  {!formattedDistance && hasDistance && distanceKm !== undefined && (
-                    <View style={styles.locationDistanceChip}>
-                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
-                      <Text style={styles.locationDistanceText}>
-                        {distanceKm < 1
-                          ? `${Math.round(distanceKm * 1000)}m`
-                          : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)}km`}
-                      </Text>
-                    </View>
-                  )}
                 </View>
-              )}
-              {/* ✅ CORRIGÉ: Afficher la section localisation même si minimal, pour montrer distance/drapeau */}
-              {!chosenLocation && locationVector.length === 0 && !product.adresse && !product.ville && !product.region && !product.adresse_complete && !service?.adresse && !service?.adresse_complete && (formattedDistance || hasDistance || countryFlag) && (
-                <View style={styles.locationSection}>
-                  {formattedDistance && (
-                    <View style={styles.locationDistanceChip}>
-                      <SafeIcon name="navigation" size={12} color={modernColors.primary} />
-                      <Text style={styles.locationDistanceText}>{formattedDistance}</Text>
-                    </View>
-                  )}
-                  {countryFlag && countryFlag !== '🌍' && (
-                    <View style={styles.locationRow}>
-                      <Text style={styles.locationFlag} numberOfLines={1}>
-                        {countryFlag}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {(googleRating ||
-                googlePrimaryTag ||
-                googleCuisineBadges.length > 0 ||
-                googleOpenNow !== null) && (
-                  <View style={styles.googleMetaSection}>
-                    {googlePrimaryTag && (
-                      <View style={styles.googleMetaChip}>
-                        <SafeIcon name="sparkles" size={12} color="#4F46E5" />
-                        <Text style={styles.googleMetaText}>{googlePrimaryTag}</Text>
-                      </View>
-                    )}
-                    {googleRating && (
-                      <View style={styles.googleMetaChip}>
-                        <SafeIcon name="star" size={12} color="#F59E0B" />
-                        <Text style={styles.googleMetaText}>{googleRating.toFixed(1)}</Text>
-                        {typeof googleRatingCount === 'number' && googleRatingCount > 0 && (
-                          <Text style={styles.googleMetaSubText}>({googleRatingCount})</Text>
-                        )}
-                      </View>
-                    )}
-                    {googleOpenNow !== null && (
-                      <View
-                        style={[
-                          styles.googleMetaChip,
-                          googleOpenNow ? styles.googleMetaChipOpen : styles.googleMetaChipClosed,
-                        ]}
-                      >
-                        <SafeIcon
-                          name="clock"
-                          size={12}
-                          color={googleOpenNow ? '#047857' : '#B91C1C'}
-                        />
-                        <Text
-                          style={[
-                            styles.googleMetaText,
-                            googleOpenNow ? styles.googleMetaTextOpen : styles.googleMetaTextClosed,
-                          ]}
-                        >
-                          {googleOpenNow ? 'Ouvert' : 'Fermé'}
-                        </Text>
-                      </View>
-                    )}
-                    {googleCuisineBadges.map((cuisine) => (
-                      <View key={cuisine} style={styles.googleCuisineChip}>
-                        <Text style={styles.googleCuisineText}>🍽️ {cuisine}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              {googleOpeningHeadline && (
-                <Text style={styles.googleMetaSubInfo} numberOfLines={1}>
-                  {googleOpeningHeadline}
-                </Text>
-              )}
-
-              {googleEditorialSummary && (
-                <Text style={styles.googleEditorialText} numberOfLines={2}>
-                  {googleEditorialSummary}
-                </Text>
               )}
 
               {(totalReactions > 0 || usageCount > 0) && (
@@ -1661,16 +692,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.chipsScroll}
                   >
-                    {limitedProductVector.map((carac: string, i: number) => (
+                    {productVector.map((carac: string, i: number) => (
                       <View key={i} style={styles.chip}>
                         <Text style={styles.chipText}>{carac}</Text>
                       </View>
                     ))}
-                    {hasMoreCaracs && (
-                      <View style={styles.chipMore}>
-                        <Text style={styles.chipMoreText}>+{productVector.length - maxDisplayedCaracs}</Text>
-                      </View>
-                    )}
                   </ScrollView>
                 </View>
               )}
@@ -1717,7 +743,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         </View>
                         <View style={styles.cellPrice}>
                           <Text style={styles.variantPrice}>
-                            {formatPrice(variant.prix)}
+                            {variant.prix?.toLocaleString()}
                           </Text>
                           <Text style={styles.variantDevise}>{variant.devise || devise}</Text>
                         </View>
@@ -1745,7 +771,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   <View style={styles.priceFromContainer}>
                     <Text style={styles.priceFromLabel}>À partir de</Text>
                     <Text style={styles.priceFromValue}>
-                      {formatPrice(displayPrice)} {devise}
+                      {displayPrice.toLocaleString()} {devise}
                     </Text>
                   </View>
                 </View>
@@ -1754,47 +780,27 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   <Text style={styles.priceLabel}>Prix</Text>
                   <View style={styles.priceRow}>
                     <Text style={styles.price}>
-                      {formatPrice(displayPrice)}
+                      {displayPrice.toLocaleString()}
                     </Text>
                     <Text style={styles.priceDevise}>{devise}</Text>
                   </View>
                 </View>
               )}
 
-              {/* Actions - Design moderne et subtil */}
+              {/* Actions */}
               <View style={styles.actions}>
-                {/* ✅ AMÉLIORÉ: Bouton "Me livrer" - Style outline subtil */}
-                {serviceId && isProduct && (
-                  <TouchableOpacity
-                    style={[styles.actionButtonModern, styles.actionButtonDelivery]}
-                    onPress={() => setShowOrderModal(true)}
-                  >
-                    <SafeIcon name="truck" size={16} color="#10B981" />
-                    <Text style={[styles.actionButtonText, styles.actionButtonTextDelivery]} numberOfLines={1}>
-                      Me livrer
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.actionButtonModern, styles.actionButtonChat]}
+                <NativeButton
+                  title="💬 Chat"
+                  variant="primary"
                   onPress={handleChatPress}
-                >
-                  <SafeIcon name="message-circle" size={16} color={modernColors.primary} />
-                  <Text style={[styles.actionButtonText, styles.actionButtonTextChat]} numberOfLines={1}>
-                    Chat
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.actionButtonModern, styles.actionButtonView]}
+                  style={styles.actionButton}
+                />
+                <NativeButton
+                  title="👁️ Voir"
+                  variant="secondary"
                   onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
-                >
-                  <SafeIcon name="eye" size={16} color="#6B7280" />
-                  <Text style={[styles.actionButtonText, styles.actionButtonTextView]} numberOfLines={1}>
-                    Voir
-                  </Text>
-                </TouchableOpacity>
+                  style={styles.actionButton}
+                />
               </View>
 
               {/* ✅ NOUVEAU : Actions secondaires (Galerie, Partage) */}
@@ -1808,21 +814,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     <Text style={styles.secondaryActionText}>Galerie</Text>
                   </TouchableOpacity>
                 )}
-                {googleMapsUri && (
-                  <TouchableOpacity
-                    style={styles.secondaryActionButton}
-                    onPress={async () => {
-                      try {
-                        await Linking.openURL(googleMapsUri);
-                      } catch (error) {
-                        Alert.alert('Google Maps', 'Impossible d\'ouvrir la fiche Google Maps');
-                      }
-                    }}
-                  >
-                    <SafeIcon name="map" size={18} color={modernColors.primary} />
-                    <Text style={styles.secondaryActionText}>Google Maps</Text>
-                  </TouchableOpacity>
-                )}
                 <TouchableOpacity
                   style={styles.secondaryActionButton}
                   onPress={handleShare}
@@ -1832,33 +823,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* ✅ AMÉLIORÉ: Section commentaires ultra-compacte */}
               {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
-                <View style={styles.commentsCompactSection}>
-                  <View style={styles.commentsCompactRow}>
-                    <View style={styles.commentsCompactStats}>
-                      <SafeIcon name="message-circle" size={14} color="#6B7280" />
-                      <Text style={styles.commentsCompactText}>
-                        {loadingComments ? '...' : commentStats ? `${commentStats.rating_count} avis` : '0 avis'}
-                      </Text>
-                      {commentStats && commentStats.average_rating > 0 && (
-                        <>
-                          <Text style={styles.commentsCompactSeparator}>•</Text>
-                          <Text style={styles.commentsCompactRating}>
-                            {commentStats.average_rating.toFixed(1)}/5
-                          </Text>
-                        </>
-                      )}
-                    </View>
-                    <TouchableOpacity
-                      style={styles.commentsCompactButton}
-                      onPress={() => setShowCommentsModal(true)}
-                    >
-                      <SafeIcon name="corner-up-right" size={14} color={modernColors.primary} />
-                      <Text style={styles.commentsCompactButtonText}>Ouvrir le fil</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <ProductCommentsSection
+                  serviceId={commentServiceId}
+                  serviceTitle={serviceTitleForComments}
+                  onOpenChat={handleContactUser}
+                />
               )}
 
               {/* Footer info */}
@@ -1897,25 +867,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </NativeCard>
       </LinearGradient>
 
-      {/* ✅ CORRIGÉ: Modal Chat - Toujours rendre le composant, contrôler via visible */}
-      <ChatModalMobile
-        visible={showChatModal}
-        onClose={handleCloseChatModal}
-        service={service || {
-          id: product.service_id || service?.id,
-          data: { titre_service: { valeur: product.nom || service?.data?.titre_service?.valeur || 'Produit' } },
-          user_id: prestataireUserId || service?.user_id,
-        }}
-        prestataireInfo={activeChatPeer || prestataire || {
-          nom: prestataireName || 'Prestataire',
-          nom_complet: prestataireName || 'Prestataire',
-          user_id: prestataireUserId,
-          avatar_url: prestataireAvatar,
-        }}
-        user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
-        conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
-        isPrivateConversation={isPrivateChat}
-      />
+      {/* ✅ CORRIGÉ: Modal Chat avec props correctes */}
+      {showChatModal && !onChatPress && activeChatPeer?.user_id && (
+        <ChatModalMobile
+          visible={showChatModal}
+          onClose={handleCloseChatModal}
+          service={service || {
+            id: product.service_id,
+            data: { titre_service: { valeur: product.nom } }
+          }}
+          prestataireInfo={activeChatPeer}
+          user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
+          conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
+          isPrivateConversation={isPrivateChat}
+        />
+      )}
 
       {/* ✅ NOUVEAU : Modal Galerie du prestataire */}
       {showGallery && (
@@ -1931,46 +897,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
           onClose={() => setShowGallery(false)}
         />
       )}
-
-      {/* ✅ Modal commande livraison - Uniquement pour les produits */}
-      {serviceId && isProduct && (
-        <OrderDeliveryModal
-          visible={showOrderModal}
-          onClose={() => setShowOrderModal(false)}
-          serviceId={serviceId}
-          productIndex={productIndex}
-          productName={product.nom || product.name || 'Produit'}
-          onSuccess={(deliveryId) => {
-            console.log('Commande créée:', deliveryId);
-            // Optionnel : rediriger vers la page de suivi
-          }}
-        />
-      )}
-
-      {/* ✅ NOUVEAU: Modal commentaires complet */}
-      <Modal
-        visible={showCommentsModal}
-        animationType="slide"
-        onRequestClose={() => setShowCommentsModal(false)}
-        transparent={false}
-      >
-        {Number.isFinite(commentServiceId) && commentServiceId > 0 && (
-          <View style={styles.commentsModalContainer}>
-            <View style={styles.commentsModalHeader}>
-              <Text style={styles.commentsModalTitle}>Commentaires & Avis</Text>
-              <TouchableOpacity onPress={() => setShowCommentsModal(false)}>
-                <SafeIcon name="x" size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
-            <ProductCommentsSection
-              serviceId={commentServiceId}
-              serviceTitle={serviceTitleForComments}
-              onOpenChat={handleContactUser}
-              mode="full"
-            />
-          </View>
-        )}
-      </Modal>
     </>
   );
 };
@@ -1995,40 +921,32 @@ const formatDate = (dateStr: string): string => {
 
 const styles = StyleSheet.create({
   cardContainer: {
-    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement du contenu
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    overflow: 'hidden',
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.82)',
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.25)',
+    borderColor: 'rgba(148, 163, 184, 0.35)',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-    // ✅ CORRIGÉ 2025-11-29: S'assurer que la carte s'adapte à la largeur du conteneur parent (carousel)
-    width: '100%',
-    maxWidth: '100%',
-    alignSelf: 'stretch',
-    height: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
-    maxHeight: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 8,
   },
   cardContainerCompact: {
-    borderRadius: 20,
+    borderRadius: 24,
   },
   touchableContainer: {
     flex: 1,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    height: '100%', // ✅ AJOUTÉ: Prendre toute la hauteur disponible
-    maxHeight: 240, // ✅ RÉDUIT: 280 → 240 pour libérer de l'espace vertical
+    backgroundColor: 'rgba(255,255,255,0.72)',
   },
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 120, // ✅ RÉDUIT: 140 → 120 pour libérer de l'espace vertical
+    height: 220,
     overflow: 'hidden',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   countryBadge: {
     position: 'absolute',
@@ -2141,105 +1059,72 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   content: {
-    paddingHorizontal: 10, // ✅ RÉDUIT: 12 → 10 (encore plus compact)
-    paddingVertical: 8, // ✅ RÉDUIT: 10 → 8
-    gap: 4, // ✅ RÉDUIT: 6 → 4
-    backgroundColor: 'rgba(255, 255, 255, 0.94)',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    flex: 1, // ✅ AJOUTÉ: Prendre l'espace disponible
-    height: 140, // ✅ CORRIGÉ: Hauteur fixe (280px total - 140px image = 140px contenu)
-    maxHeight: 140, // ✅ AJOUTÉ: Hauteur maximale stricte
-    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
-    // ✅ NOTE: Le contenu est limité à 140px pour s'adapter à la hauteur fixe de 280px de la carte
-    // Si le contenu dépasse, il sera coupé (overflow: hidden) pour maintenir la cohérence visuelle
+    padding: 20,
+    gap: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   contentCompact: {
-    paddingTop: 8, // ✅ RÉDUIT: 10 → 8
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: 280, // ✅ AJOUTÉ: Hauteur fixe pour cartes sans médias (prend toute la hauteur disponible)
-    maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
-    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
-    // ✅ NOTE: Sans médias, le contenu prend toute la hauteur de 280px
+    paddingTop: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   topStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 3, // ✅ RÉDUIT: 4 → 3 (encore plus compact)
-    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
+    gap: 8,
+    marginBottom: 4,
   },
   topStatPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E0E7FF',
   },
-  // ✅ AMÉLIORÉ: Style compact pour indicateurs miniaturisés
-  topStatPillCompact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 4, // ✅ RÉDUIT: 5 → 4 (encore plus compact)
-    paddingVertical: 2,
-    borderRadius: 8, // ✅ RÉDUIT: 10 → 8
-    borderWidth: 1,
-    gap: 2,
-  },
   topStatValue: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    marginLeft: 4,
-  },
-  topStatValueCompact: {
-    fontSize: 9, // ✅ RÉDUIT: 10 → 9 (encore plus compact)
-    fontWeight: '600',
-  },
-  topStatLabelCompact: {
-    fontSize: 7, // ✅ RÉDUIT: 8 → 7
-    fontWeight: '500',
-    opacity: 0.8,
-    marginLeft: 1,
+    marginLeft: 6,
   },
   productName: {
-    fontSize: 14, // ✅ RÉDUIT: 15 → 14 (encore plus compact)
+    fontSize: 19,
     fontWeight: '700',
     color: '#1F2937',
-    lineHeight: 18, // ✅ RÉDUIT: 20 → 18
-    marginBottom: 2, // ✅ AJOUTÉ: Réduire espace après titre
+    lineHeight: 26,
   },
   prestataireRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4, // ✅ RÉDUIT: 5 → 4 (encore plus compact)
-    paddingVertical: 2,
-    paddingHorizontal: 4, // ✅ RÉDUIT: 5 → 4
-    backgroundColor: '#F8FAFC',
+    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#F9FAFB',
     borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
   },
   avatar: {
-    width: 22, // ✅ RÉDUIT: 26 → 22 (encore plus compact)
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
     borderColor: '#FFF',
   },
   avatarPlaceholder: {
-    width: 22, // ✅ RÉDUIT: 26 → 22
-    height: 22,
-    borderRadius: 11,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: modernColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   prestataireName: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#374151',
     fontWeight: '600',
     flex: 1,
@@ -2247,8 +1132,8 @@ const styles = StyleSheet.create({
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5, // ✅ RÉDUIT: 6 → 5
-    paddingVertical: 3, // ✅ RÉDUIT: 6 → 3
+    gap: 6,
+    paddingVertical: 6,
   },
   locationText: {
     fontSize: 14,
@@ -2264,7 +1149,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   characteristicsSection: {
-    gap: 5, // ✅ RÉDUIT: 8 → 5
+    gap: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -2293,23 +1178,10 @@ const styles = StyleSheet.create({
     color: modernColors.primary,
     fontWeight: '600',
   },
-  chipMore: {
-    backgroundColor: '#E5E7EB',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5F5',
-  },
-  chipMoreText: {
-    fontSize: 12,
-    color: '#4B5563',
-    fontWeight: '600',
-  },
   priceVariations: {
-    gap: 6, // ✅ RÉDUIT: 8 → 6
+    gap: 12,
     backgroundColor: '#F9FAFB',
-    padding: 8, // ✅ RÉDUIT: 10 → 8
+    padding: 12,
     borderRadius: 10,
   },
   priceTable: {
@@ -2331,7 +1203,7 @@ const styles = StyleSheet.create({
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
@@ -2423,73 +1295,34 @@ const styles = StyleSheet.create({
     color: modernColors.primary,
   },
   priceUniqueContainer: {
-    gap: 4,
+    gap: 6,
   },
   priceLabel: {
     fontSize: 13,
     color: '#6B7280',
   },
   price: {
-    fontSize: 18, // ✅ RÉDUIT: 20 → 18 (encore plus compact)
+    fontSize: 24,
     fontWeight: '800',
     color: modernColors.primary,
   },
   priceDevise: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#6B7280',
   },
   actions: {
     flexDirection: 'row',
-    gap: 4, // ✅ RÉDUIT: 6 → 4 (encore plus compact)
-    marginTop: 2,
+    gap: 12,
   },
   actionButton: {
     flex: 1,
-  },
-  // ✅ AMÉLIORÉ: Styles boutons d'action modernes et subtils
-  actionButtonModern: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3, // ✅ RÉDUIT: 4 → 3 (encore plus compact)
-    paddingVertical: 6, // ✅ RÉDUIT: 8 → 6
-    paddingHorizontal: 8, // ✅ RÉDUIT: 10 → 8
-    borderRadius: 8, // ✅ RÉDUIT: 10 → 8
-    borderWidth: 1.5,
-    backgroundColor: '#FFFFFF',
-  },
-  actionButtonDelivery: {
-    borderColor: '#D1FAE5',
-    backgroundColor: '#F0FDF4',
-  },
-  actionButtonChat: {
-    borderColor: '#DBEAFE',
-    backgroundColor: '#EFF6FF',
-  },
-  actionButtonView: {
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-  },
-  actionButtonText: {
-    fontSize: 12, // ✅ RÉDUIT: 13 → 12 (encore plus compact)
-    fontWeight: '600',
-  },
-  actionButtonTextDelivery: {
-    color: '#047857',
-  },
-  actionButtonTextChat: {
-    color: modernColors.primary,
-  },
-  actionButtonTextView: {
-    color: '#6B7280',
   },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingTop: 6, // ✅ RÉDUIT: 10 → 6
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -2504,25 +1337,25 @@ const styles = StyleSheet.create({
   },
   // ✅ NOUVEAU : Styles pour avis/ratings et actions secondaires
   metricsCard: {
-    marginTop: 4, // ✅ RÉDUIT: 6 → 4
-    borderRadius: 14,
-    paddingVertical: 6, // ✅ RÉDUIT: 8 → 6
-    paddingHorizontal: 8, // ✅ RÉDUIT: 10 → 8
+    marginTop: 12,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
   },
   compactStatsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6, // ✅ RÉDUIT: 8 → 6
-    marginTop: 6, // ✅ RÉDUIT: 10 → 6
-    marginBottom: 6, // ✅ RÉDUIT: 10 → 6
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 12,
   },
   compactStatPillMuted: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F4F4F5',
     borderRadius: 16,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#E4E4E7',
     gap: 6,
@@ -2540,213 +1373,64 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   locationSection: {
-    gap: 2, // ✅ RÉDUIT: 3 → 2 (encore plus compact)
-    backgroundColor: '#F8FAFC',
-    padding: 4, // ✅ RÉDUIT: 5 → 4
+    gap: 6,
+    backgroundColor: '#F9FAFB',
+    padding: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 2, // ✅ AJOUTÉ: Petit espacement
+    borderColor: '#E5E7EB',
   },
   locationTextPrimary: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: '#1F2937',
     flex: 1,
   },
   locationFlag: {
-    fontSize: 18,
-    marginLeft: 4,
-    lineHeight: 20,
+    fontSize: 16,
   },
   locationHierarchy: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingLeft: 16,
+    gap: 6,
+    paddingLeft: 20,
   },
   locationTextSecondary: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
     flex: 1,
     fontStyle: 'italic',
   },
-  locationDistanceChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1,
-    borderColor: '#CBD5F5',
-    marginTop: 4,
-  },
-  locationDistanceText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: modernColors.primary,
-  },
-  googleMetaSection: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  googleMetaChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#EEF2FF',
-  },
-  googleMetaChipOpen: {
-    backgroundColor: '#DCFCE7',
-  },
-  googleMetaChipClosed: {
-    backgroundColor: '#FEE2E2',
-  },
-  googleMetaText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#312E81',
-  },
-  googleMetaTextOpen: {
-    color: '#047857',
-  },
-  googleMetaTextClosed: {
-    color: '#991B1B',
-  },
-  googleMetaSubText: {
-    fontSize: 11,
-    color: '#6366F1',
-  },
-  googleCuisineChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#E0E7FF',
-  },
-  googleCuisineText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#3730A3',
-  },
-  googleMetaSubInfo: {
-    fontSize: 11,
-    color: '#4B5563',
-    marginTop: 6,
-  },
-  googleEditorialText: {
-    fontSize: 12,
-    color: '#1F2937',
-    marginTop: 8,
-    lineHeight: 16,
-  },
   secondaryActions: {
     flexDirection: 'row',
-    gap: 6, // ✅ RÉDUIT: 10 → 6
-    marginTop: 2, // ✅ RÉDUIT: 4 → 2
+    gap: 12,
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
   secondaryActionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4, // ✅ RÉDUIT: 6 → 4
-    paddingVertical: 6, // ✅ RÉDUIT: 8 → 6
-    paddingHorizontal: 8, // ✅ RÉDUIT: 10 → 8
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   secondaryActionText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: modernColors.primary,
   },
   cardGradient: {
-    borderRadius: 22,
+    borderRadius: 28,
     padding: 1,
-    marginBottom: 6, // ✅ RÉDUIT: 8 → 6 (encore plus compact)
-    height: 280, // ✅ AJOUTÉ: Hauteur fixe pour éviter le débordement
-    maxHeight: 280, // ✅ AJOUTÉ: Hauteur maximale stricte
-    overflow: 'hidden', // ✅ AJOUTÉ: Empêcher le débordement
-  },
-  // ✅ NOUVEAU: Styles section commentaires compacte
-  commentsCompactSection: {
-    marginTop: 4, // ✅ RÉDUIT: 8 → 4
-    paddingTop: 4, // ✅ RÉDUIT: 8 → 4
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  commentsCompactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 6, // ✅ RÉDUIT: 8 → 6
-  },
-  commentsCompactStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  commentsCompactText: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  commentsCompactSeparator: {
-    fontSize: 12,
-    color: '#D1D5DB',
-    marginHorizontal: 2,
-  },
-  commentsCompactRating: {
-    fontSize: 12,
-    color: '#F59E0B',
-    fontWeight: '600',
-  },
-  commentsCompactButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1,
-    borderColor: '#CBD5F5',
-  },
-  commentsCompactButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: modernColors.primary,
-  },
-  // ✅ NOUVEAU: Styles modal commentaires
-  commentsModalContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  commentsModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  commentsModalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
+    marginBottom: 20,
   },
 });
 

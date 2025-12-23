@@ -517,28 +517,40 @@ const CourierRegistrationScreen: React.FC = () => {
                 {/* Transport */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Moyen de transport</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.vehicleScroll}>
-                        {vehicleTypes.map((type) => (
-                            <TouchableOpacity
-                                key={type.value}
-                                style={[
-                                    styles.vehicleOption,
-                                    vehicleType === type.value && styles.vehicleOptionSelected,
-                                ]}
-                                onPress={() => setVehicleType(type.value)}
-                            >
-                                <Text style={styles.vehicleIcon}>{type.icon}</Text>
-                                <Text
+                    <View style={styles.vehicleContainer}>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={true}
+                            style={styles.vehicleScroll}
+                            contentContainerStyle={styles.vehicleListContent}
+                            nestedScrollEnabled={true}
+                            scrollEnabled={true}
+                            bounces={true}
+                        >
+                            {vehicleTypes.map((type) => (
+                                <TouchableOpacity
+                                    key={type.value}
                                     style={[
-                                        styles.vehicleLabel,
-                                        vehicleType === type.value && styles.vehicleLabelSelected,
+                                        styles.vehicleOption,
+                                        vehicleType === type.value && styles.vehicleOptionSelected,
                                     ]}
+                                    onPress={() => setVehicleType(type.value)}
+                                    activeOpacity={0.7}
                                 >
-                                    {type.label}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+                                    <Text style={styles.vehicleIcon}>{type.icon}</Text>
+                                    <Text
+                                        style={[
+                                            styles.vehicleLabel,
+                                            vehicleType === type.value && styles.vehicleLabelSelected,
+                                        ]}
+                                        numberOfLines={2}
+                                    >
+                                        {type.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
                     {vehicleType !== 'walking' && (
                         <>
                             <TextInput
@@ -809,18 +821,29 @@ const styles = StyleSheet.create({
         minHeight: 80,
         textAlignVertical: 'top',
     },
-    vehicleScroll: {
+    vehicleContainer: {
+        width: '100%',
         marginBottom: 16,
+        minHeight: 110,
+    },
+    vehicleScroll: {
+        width: '100%',
+    },
+    vehicleListContent: {
+        paddingHorizontal: 4,
+        paddingVertical: 8,
+        alignItems: 'center',
     },
     vehicleOption: {
         alignItems: 'center',
+        justifyContent: 'center',
         padding: 12,
-        marginRight: 12,
         borderRadius: 12,
         borderWidth: 2,
         borderColor: modernColors.border,
         backgroundColor: modernColors.surface,
-        minWidth: 80,
+        width: 90,
+        height: 90,
     },
     vehicleOptionSelected: {
         borderColor: modernColors.primary,

@@ -208,8 +208,17 @@ fn log_error_group(logs: &[MobileLogEntry], _batch_id: &str) {
             || log.message.contains("connection abort")
             || (log.message.contains("WebSocket") && log.message.contains("abort"));
 
+        // ✅ AMÉLIORÉ : Ne pas logger comme erreur critique les erreurs GPS normales
+        // (certains services n'ont simplement pas de GPS configuré, c'est normal)
+        let is_gps_error = log.message.contains("AUCUNE source GPS valide trouvée")
+            || log.message.contains("Aucune source GPS valide trouvée")
+            || (log.message.contains("useLocationDisplay") && log.message.contains("GPS"));
+
         if is_websocket_abort {
             log::warn!("{} {} (erreur WebSocket normale, ignorée)", log_prefix, log.message);
+        } else if is_gps_error {
+            // Logger en debug au lieu de error pour ne pas polluer les logs
+            log::debug!("{} {} (erreur GPS normale, ignorée)", log_prefix, log.message);
         } else {
             log::error!("{} {}", log_prefix, log.message);
             if let Some(data) = &log.data {
@@ -273,7 +282,18 @@ fn log_warn_group(logs: &[MobileLogEntry], _batch_id: &str) {
             client_timestamp
         );
 
-        log::warn!("{} {}", log_prefix, log.message);
+        // ✅ AMÉLIORÉ : Ne pas logger comme warning critique les warnings GPS normaux
+        // (certains services n'ont simplement pas de GPS configuré, c'est normal)
+        let is_gps_warning = log.message.contains("Aucune source GPS valide trouvée")
+            || log.message.contains("GPS valide trouvée")
+            || (log.message.contains("useLocationDisplay") && log.message.contains("GPS"));
+
+        if is_gps_warning {
+            // Logger en debug au lieu de warn pour ne pas polluer les logs
+            log::debug!("{} {} (warning GPS normal, ignoré)", log_prefix, log.message);
+        } else {
+            log::warn!("{} {}", log_prefix, log.message);
+        }
         if let Some(data) = &log.data {
             if let Ok(data_str) = serde_json::to_string(data) {
                 log::warn!("{} Data: {}", log_prefix, data_str);

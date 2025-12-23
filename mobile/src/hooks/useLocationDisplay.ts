@@ -317,10 +317,11 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
 
                 // Fallback final - Afficher uniquement si vraiment aucune donnée GPS disponible
                 if (!location) {
-                    console.error('❌ [useLocationDisplay] AUCUNE source GPS valide trouvée');
-                    console.error('   - GPS fixe service:', getFieldValue(service.data?.gps_fixe));
-                    console.error('   - GPS service:', service.gps);
-                    console.error('   - GPS prestataire:', serviceCreatorInfo?.gps);
+                    // ⚠️ Ce n'est pas une erreur critique - certains services n'ont pas de GPS configuré
+                    console.warn('⚠️ [useLocationDisplay] Aucune source GPS valide trouvée (normal si service sans localisation)');
+                    console.warn('   - GPS fixe service:', getFieldValue(service.data?.gps_fixe) || '(vide)');
+                    console.warn('   - GPS service:', service.gps || '(undefined)');
+                    console.warn('   - GPS prestataire:', serviceCreatorInfo?.gps || '(null)');
                     location = 'Localisation non disponible';
                 }
 

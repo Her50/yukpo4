@@ -3,10 +3,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 // Code corrigé (remplace @ts-ignore)
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  DeviceEventEmitter,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -34,7 +33,6 @@ import LocationSelector from '../components/LocationSelector';
 import PriceVariantSelector from '../components/PriceVariantSelector';
 // ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
 import ProductFieldSelector from '../components/ProductFieldSelector';
-import { applyPriceVariantToProduits, extractPriceVariant } from '../utils/priceVariant';
 import { getSuggestedProductCategories } from '../utils/suggestProductCategories';
 // Code corrigé (remplace @ts-ignore)
 import SafeIcon from '../components/SafeIcon';
@@ -62,29 +60,6 @@ interface MediaFiles {
   logo: any[];
   banner: any[];
 }
-
-const PRODUCT_BLOCK_FIELD_NAMES = [
-  'nom_produit',
-  'categorie_produit',
-  'description_produit',
-  'produits',
-  'product_labels',
-  'prix',
-  'prix_produit',
-  'devise',
-  'devise_produit',
-  'price_variant',
-  'variabilite_prix',
-  'variation_prix',
-  'lieu_produit',
-  'lieu_commercial',
-  'lieu_commercialisation',
-  '_product_media_manager',
-  'images',
-  'videos',
-  'audios',
-  'documents'
-];
 
 const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -119,64 +94,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const type = typeParam || '';
   const mode = modeParam || 'create'; // ✅ Par défaut 'create' au lieu de 'edit'
 
-  // ✅ CORRECTION CRITIQUE: Si on arrive avec mode='add_product' ou édition de produit, rediriger vers AjouterProduitSimpleScreen
-  // Ce formulaire est dédié à la création/modification de service, pas à l'ajout/édition de produit seul
-  React.useEffect(() => {
-    // Cas 1: Mode add_product (ajout de produit)
-    if ((mode === 'add_product' || routeAddProductFlag) && serviceId) {
-      console.log('[FormulaireYukpoIntelligentScreen] 🔄 Redirection vers AjouterProduitSimpleScreen (mode add_product détecté)');
-      (navigation as any).replace('AjouterProduitSimple', {
-        serviceId: serviceId,
-        suggestionIA: {
-          data: suggestion || {}
-        },
-        mediaData: mediaData,
-        gpsData: gpsData,
-        mode: duplicateProduct ? 'duplicate' : 'create',
-        prefill: duplicateProduct || editProductData || {}
-      });
-      return;
-    }
-
-    // Cas 2: Édition d'un produit spécifique (editProductData + focusProductId + serviceId)
-    // ✅ CORRECTION: L'édition de produit doit aussi utiliser AjouterProduitSimpleScreen
-    if (mode === 'edit' && editProductData && focusProductId && serviceId) {
-      console.log('[FormulaireYukpoIntelligentScreen] 🔄 Redirection vers AjouterProduitSimpleScreen (édition produit détectée)');
-
-      // Trouver l'index du produit si possible (sinon sera null)
-      let productIndex: number | null = null;
-      if (suggestion?.data?.produits?.valeur && Array.isArray(suggestion.data.produits.valeur)) {
-        const produitsArray = suggestion.data.produits.valeur;
-        productIndex = produitsArray.findIndex((p: any) =>
-          (p.id && p.id.toString() === focusProductId.toString()) ||
-          (p.nom && p.nom === editProductData.nom)
-        );
-        if (productIndex < 0) productIndex = null;
-      }
-
-      (navigation as any).replace('AjouterProduitSimple', {
-        mode: 'edit',
-        serviceId: serviceId,
-        productId: focusProductId,
-        productIndex: productIndex,
-        prefill: editProductData,
-        suggestionIA: {
-          data: suggestion || {}
-        }
-      });
-      return;
-    }
-  }, [mode, routeAddProductFlag, serviceId, navigation, duplicateProduct, editProductData, focusProductId, suggestion, mediaData, gpsData]);
-
   // ✅ Déterminer si on est en mode lecture seule
   const isReadonly = mode === 'readonly' || mode === 'view' || readonlyParam;
+
+  // ✅ Déterminer si on duplique un produit existant
+  const isAddingProduct = !!duplicateProduct && !!serviceId;
+
+  const explicitAddProductFlag = Boolean(routeAddProductFlag);
+  const isAddingProductToExistingService = explicitAddProductFlag || mode === 'add_product' || isAddingProduct;
 
   // ✅ NOUVEAU 2025-11-06: Mode édition des infos du service (sans toucher aux produits)
   const isEditingServiceInfo = mode === 'edit_service_info' && serviceId;
 
   // États locaux
-  // ✅ CORRECTION: Passer directement à l'étape 2 (grand formulaire) au lieu de l'étape 1 (mini formulaire)
-  const [activeStep, setActiveStep] = useState(2);
+  const [activeStep, setActiveStep] = useState(1);
   const [composants, setComposants] = useState<DynamicField[]>([]);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // ✅ NOUVEAU: Protection contre double soumission
@@ -274,7 +205,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [successData, setSuccessData] = useState<ServiceData | null>(null);
   // ✅ SUPPRIMÉ: products et setProducts - Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
-  const [suggestedProductCategories, setSuggestedProductCategories] = useState<Array<{ value: string; label: string; icon: string; confidence: number; reason?: string }>>([]); // ✅ NOUVEAU: Catégories produits suggérées
 
   // États pour la navigation par blocs
   const [currentBlock, setCurrentBlock] = useState(0);
@@ -286,24 +216,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   }[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [dynamicTextareaHeights, setDynamicTextareaHeights] = useState<Record<string, number>>({});
-  const [blockHorizontalScrollEnabled, setBlockHorizontalScrollEnabled] = useState(true);
-
-  const formatMultilineValue = React.useCallback((rawValue: any): string => {
-    if (typeof rawValue !== 'string') {
-      return '';
-    }
-    return rawValue
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .replace(/\\n/g, '\n');
-  }, []);
-  const handleMediaHorizontalScrollStart = useCallback(() => {
-    setBlockHorizontalScrollEnabled(false);
-  }, []);
-
-  const handleMediaHorizontalScrollEnd = useCallback(() => {
-    setBlockHorizontalScrollEnabled(true);
-  }, []);
 
   const displayedBlocks = useMemo(() => {
     if (!blocks || blocks.length === 0) {
@@ -399,7 +311,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     if (currentDisplayIndex === 0) {
       if (fromMesServices) {
         try {
-          (navigation as any).navigate('Main', { screen: 'Services' });
+          (navigation as any).navigate('MesServices');
         } catch (error) {
           console.error('Erreur navigation retour MesServices:', error);
           navigation.goBack();
@@ -413,190 +325,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   };
 
-  // ✅ CORRECTION: Fonction helper pour extraire les sous_caracteristiques depuis la COMBINAISON PRÉFÉRÉE de l'IA
-  // IMPORTANT: On veut afficher uniquement les valeurs de la combinaison préférée, pas toutes les valeurs possibles
-  // Cette fonction est maintenant au niveau du composant pour être accessible depuis renderProductsBlock
-  const getSousCaracteristiquesFromIA = (formValues?: Record<string, any>, suggestionData?: any): Record<string, string[]> => {
-    // Utiliser les paramètres fournis ou les valeurs du composant par défaut
-    const values = formValues || valeursFormulaire;
-    const suggestion = suggestionData || suggestion;
-
-    console.log('[getSousCaracteristiquesFromIA] 🔍 Début extraction, valeurs disponibles:', {
-      hasFormValues: !!formValues,
-      hasSuggestionData: !!suggestionData,
-      hasValues: !!values,
-      hasSuggestion: !!suggestion,
-      produitsField: values?.produits,
-      suggestionProduits: suggestion?.data?.produits,
-      suggestionDataProduits: suggestionData?.produits,
-      suggestionDataRoot: suggestionData?.sous_caracteristiques ? 'OUI' : 'NON',
-      suggestionDataProductVector: suggestionData?.product_vector ? suggestionData.product_vector.length : 0
-    });
-
-    // ✅ CORRIGÉ: Vérifier plusieurs sources pour produitsData
-    const produitsData = values.produits || suggestion?.data?.produits || suggestionData?.produits;
-
-    // ✅ NOUVEAU 2025-11-28: PRIORITÉ 0: Vérifier directement dans suggestion.data.produits (seeds depuis backend)
-    // Le backend inclut maintenant les seeds directement dans la réponse IA
-    if (suggestion?.data?.produits?.sous_caracteristiques &&
-      typeof suggestion.data.produits.sous_caracteristiques === 'object' &&
-      Object.keys(suggestion.data.produits.sous_caracteristiques).length > 0) {
-      const sousCaracsObj: Record<string, string[]> = {};
-      Object.entries(suggestion.data.produits.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
-        if (Array.isArray(vals) && vals.length > 0) {
-          const allValues = vals
-            .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
-            .map((v: string) => v.trim());
-          if (allValues.length > 0) {
-            sousCaracsObj[key] = allValues;
-          }
-        }
-      });
-
-      if (Object.keys(sousCaracsObj).length > 0) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques depuis seeds IA (suggestion.data.produits):', sousCaracsObj);
-        return sousCaracsObj;
-      }
-    }
-
-    // ✅ PRIORITÉ 1A: Si on a sous_caracteristiques complets, les utiliser directement
-    // (Ils contiennent toutes les valeurs possibles pour chaque dimension)
-    // ✅ CORRIGÉ: Vérifier aussi au niveau racine de suggestionData
-    const sousCaracsComplets = produitsData?.sous_caracteristiques
-      || suggestion?.data?.produits?.sous_caracteristiques
-      || suggestionData?.produits?.sous_caracteristiques
-      || suggestion?.data?.sous_caracteristiques
-      || suggestionData?.sous_caracteristiques;
-    if (sousCaracsComplets && typeof sousCaracsComplets === 'object' && Object.keys(sousCaracsComplets).length > 0) {
-      const sousCaracsObj: Record<string, string[]> = {};
-      Object.entries(sousCaracsComplets).forEach(([key, vals]: [string, any]) => {
-        if (Array.isArray(vals) && vals.length > 0) {
-          // ✅ Passer TOUTES les valeurs pour permettre l'affichage du tableau complet
-          const allValues = vals
-            .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
-            .map((v: string) => v.trim());
-          if (allValues.length > 0) {
-            sousCaracsObj[key] = allValues;
-          }
-        }
-      });
-
-      if (Object.keys(sousCaracsObj).length > 0) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques complets (TOUTES les valeurs):', sousCaracsObj);
-        return sousCaracsObj;
-      }
-    }
-
-    // ✅ PRIORITÉ 1B: Fallback vers product_vector/product_labels (combinaison préférée uniquement)
-    // Si on n'a pas sous_caracteristiques complets, utiliser la combinaison préférée
-    // ✅ CORRIGÉ: Vérifier plusieurs sources pour product_vector/product_labels
-    const productVector = produitsData?.product_vector
-      || suggestion?.data?.produits?.product_vector
-      || suggestionData?.produits?.product_vector
-      || suggestion?.data?.product_vector
-      || suggestionData?.product_vector;
-
-    const productLabels = produitsData?.product_labels
-      || suggestion?.data?.produits?.product_labels
-      || suggestionData?.produits?.product_labels
-      || suggestion?.data?.product_labels
-      || suggestionData?.product_labels;
-
-    if (productVector && Array.isArray(productVector) &&
-      productLabels && Array.isArray(productLabels) &&
-      productVector.length > 0 && productVector.length === productLabels.length) {
-
-      const sousCaracsFromPreferred: Record<string, string[]> = {};
-      productVector.forEach((value: string, index: number) => {
-        const label = productLabels[index];
-        if (label && typeof label === 'string' && value && typeof value === 'string') {
-          // ✅ CRITIQUE: La valeur préférée de l'IA doit être en PREMIÈRE position
-          // Si le label n'existe pas encore, créer un tableau avec la valeur préférée en premier
-          if (!sousCaracsFromPreferred[label]) {
-            sousCaracsFromPreferred[label] = [value];
-          } else {
-            // Si le label existe déjà, s'assurer que la valeur préférée est en première position
-            const existingValues = sousCaracsFromPreferred[label];
-            if (!existingValues.includes(value)) {
-              // Insérer la valeur préférée en première position
-              sousCaracsFromPreferred[label] = [value, ...existingValues];
-            } else {
-              // Si la valeur existe déjà mais n'est pas en première position, la déplacer
-              const filtered = existingValues.filter(v => v !== value);
-              sousCaracsFromPreferred[label] = [value, ...filtered];
-            }
-          }
-        }
-      });
-
-      if (Object.keys(sousCaracsFromPreferred).length > 0) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques depuis combinaison préférée (product_vector/product_labels):', sousCaracsFromPreferred);
-        return sousCaracsFromPreferred;
-      }
-    }
-
-    // 2. Fallback: Utiliser sous_caracteristiques si product_vector/product_labels non disponibles
-    // ✅ CORRIGÉ: Passer TOUTES les valeurs pour permettre l'affichage du tableau complet dans LinearAutocompleteEditor
-    // ✅ CORRIGÉ: Vérifier aussi dans suggestion.data.produits si pas dans values.produits
-    const sousCaracsSource = produitsData?.sous_caracteristiques || values.produits?.sous_caracteristiques;
-
-    if (sousCaracsSource && typeof sousCaracsSource === 'object' && Object.keys(sousCaracsSource).length > 0) {
-      const sousCaracsObj: Record<string, string[]> = {};
-      Object.entries(sousCaracsSource).forEach(([key, vals]: [string, any]) => {
-        if (Array.isArray(vals) && vals.length > 0) {
-          // ✅ CORRIGÉ: Passer TOUTES les valeurs, pas seulement la première
-          // Cela permet au tableau de s'afficher correctement dans LinearAutocompleteEditor
-          const allValues = vals
-            .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
-            .map((v: string) => v.trim());
-          if (allValues.length > 0) {
-            sousCaracsObj[key] = allValues;
-          }
-        }
-      });
-
-      if (Object.keys(sousCaracsObj).length > 0) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (TOUTES les valeurs) depuis produitsData:', sousCaracsObj);
-        return sousCaracsObj;
-      }
-    }
-
-    // 3. Fallback: Essayer depuis suggestionData.data.produits
-    // ✅ CORRIGÉ: Passer TOUTES les valeurs pour permettre l'affichage du tableau complet
-    if (suggestion?.data?.produits?.sous_caracteristiques && typeof suggestion.data.produits.sous_caracteristiques === 'object') {
-      const sousCaracsObj: Record<string, string[]> = {};
-      Object.entries(suggestion.data.produits.sous_caracteristiques).forEach(([key, vals]: [string, any]) => {
-        if (Array.isArray(vals) && vals.length > 0) {
-          // ✅ CORRIGÉ: Passer TOUTES les valeurs, pas seulement la première
-          // Cela permet au tableau de s'afficher correctement dans LinearAutocompleteEditor
-          const allValues = vals
-            .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
-            .map((v: string) => v.trim());
-          if (allValues.length > 0) {
-            sousCaracsObj[key] = allValues;
-          }
-        }
-      });
-
-      if (Object.keys(sousCaracsObj).length > 0) {
-        console.log('[getSousCaracteristiquesFromIA] ✅ Utilisation sous_caracteristiques (TOUTES les valeurs) depuis suggestion.data.produits:', sousCaracsObj);
-        return sousCaracsObj;
-      }
-    }
-
-    // 4. Dernier fallback: objet vide (pas de valeurs par défaut hardcodées)
-    // ✅ CORRECTION: Logger en WARN car c'est un vrai problème - les caractéristiques devraient être disponibles
-    console.warn('[getSousCaracteristiquesFromIA] ⚠️ PROBLÈME: Aucune combinaison préférée trouvée après vérification de toutes les sources. Vérifier que:');
-    console.warn('  - session_id est présent dans suggestion');
-    console.warn('  - L\'API /api/combinations/session/{session_id} retourne des données');
-    console.warn('  - suggestion.data.produits contient sous_caracteristiques ou product_vector/product_labels');
-    console.warn('  - Les données sont bien passées depuis le composant parent');
-    return {};
-  };
-
   // Fonction pour organiser les champs en blocs (alignée sur le frontend)
-  const organizeFieldsIntoBlocks = (fields: DynamicField[], formValues: Record<string, any> = {}, suggestionData?: any) => {
-    const initialBlocks = [
+  const organizeFieldsIntoBlocks = (fields: DynamicField[], formValues: Record<string, any> = {}) => {
+    const blocks = [
       {
         id: 'general',
         title: 'Informations générales',
@@ -646,15 +377,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // Bloc Informations générales
       if (['titre_service', 'category', 'description', 'is_tarissable', 'vitesse_tarissement', 'prix', 'devise'].includes(fieldName)) {
-        initialBlocks[0].fields.push(field);
+        blocks[0].fields.push(field);
       }
       // Bloc Contact
       else if (['whatsapp', 'telephone', 'email', 'website', 'adresse', 'horaires'].includes(fieldName)) {
-        initialBlocks[1].fields.push(field);
+        blocks[1].fields.push(field);
       }
       // Bloc Localisation (✅ NOUVEAU 2025-11-06: lieu_produit déplacé vers bloc Produits)
       else if (['gps_fixe', 'zone_intervention', 'localisation', 'pays', 'ville', 'quartier'].includes(fieldName)) {
-        initialBlocks[2].fields.push(field);
+        blocks[2].fields.push(field);
       }
       // Bloc Produits
       // ✅ NOUVEAU 2025-11-06: Inclure lieu_produit, images, videos dans le bloc produits
@@ -674,20 +405,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         field.typeDonnee === 'price_variant' ||
         field.typeDonnee === 'autocomplete'
       ) {
-        initialBlocks[3].fields.push(field);
-        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ ajouté au bloc produits/prestations: ${field.name} (typeDonnee: ${field.typeDonnee || 'non défini'})`);
+        blocks[3].fields.push(field);
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ ajouté au bloc produits/prestations: ${field.name} (typeDonnee: ${field.typeDonnee})`);
       }
       // Bloc Médias (✅ NOUVEAU 2025-11-06: images/videos déplacées vers bloc Produits, ne garder que audios/documents)
       else if (['audios', 'documents'].includes(fieldName)) {
-        initialBlocks[4].fields.push(field);
+        blocks[4].fields.push(field);
       }
       // Bloc Paiement
       else if (['mode_paiement', 'paiement', 'payment'].includes(fieldName)) {
-        initialBlocks[5].fields.push(field);
+        blocks[5].fields.push(field);
       }
       // Autres
       else {
-        initialBlocks[6].fields.push(field);
+        blocks[6].fields.push(field);
       }
     });
 
@@ -720,7 +451,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     // Ajouter les blocs fixes (produits, médias) même s'ils n'ont pas de champs dynamiques
     // Car ils utilisent des composants spécialisés
-    const blocksWithFixedOnes = [...initialBlocks];
+    const blocksWithFixedOnes = [...blocks];
 
     // ✅ CORRECTION: Le bloc produits doit TOUJOURS être présent, indépendamment de ce que génère l'IA
     // Car l'IA ne génère le champ produits que dans certains cas (tableaux, plusieurs produits visibles)
@@ -733,8 +464,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ NOUVEAU: Label dynamique selon type_offre de l'IA
       const typeOffre = formValues.type_offre || formValues.nature_offre || 'produit';
       const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
-
-      const sousCaracteristiquesIA = getSousCaracteristiquesFromIA(formValues, suggestionData);
 
       const defaultProductsFields: DynamicField[] = [
         {
@@ -775,7 +504,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
-          sousCaracteristiques: sousCaracteristiquesIA,
+          sousCaracteristiques: formValues.produits?.sous_caracteristiques || {
+            // Caractéristiques essentielles
+            marque: [],
+            modele: [],
+            couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
+
+            // Caractéristiques secondaires
+            annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
+            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
+            version: [],
+
+            // Caractéristiques prestations
+            competences: [],
+            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
+            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
+          },
           separateur: ',',
           filtrable: true,
           allowCustomModality: true
@@ -853,7 +597,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
-          sousCaracteristiques: sousCaracteristiquesIA,
+          sousCaracteristiques: formValues.produits?.sous_caracteristiques || {
+            // Caractéristiques essentielles
+            marque: [],
+            modele: [],
+            couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
+
+            // Caractéristiques secondaires
+            annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
+            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
+            version: [],
+
+            // Caractéristiques prestations
+            competences: [],
+            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
+            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
+          },
           separateur: ',',
           filtrable: true,
           allowCustomModality: true
@@ -952,7 +711,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           required: false,
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
-          sousCaracteristiques: getSousCaracteristiquesFromIA(formValues, suggestionData),
+          sousCaracteristiques: formValues.produits?.sous_caracteristiques || {
+            // Caractéristiques essentielles
+            marque: [],
+            modele: [],
+            couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
+            // Caractéristiques secondaires
+            annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
+            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
+            version: [],
+            // Caractéristiques prestations
+            competences: [],
+            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
+            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
+          },
           separateur: ',',
           filtrable: true,
           allowCustomModality: true,
@@ -1073,7 +845,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             label: fieldName === 'whatsapp' ? 'WhatsApp' :
               fieldName === 'telephone' ? 'Téléphone' :
                 fieldName === 'email' ? 'Email' : 'Site web',
-            required: fieldName === 'whatsapp', // ✅ CORRIGÉ 2025-11-28: WhatsApp est obligatoire (validation renforcée)
+            required: fieldName === 'whatsapp', // Seul WhatsApp obligatoire
             placeholder: fieldName === 'whatsapp' ? '+237 6XX XX XX XX' :
               fieldName === 'telephone' ? '+237 6XX XX XX XX' :
                 fieldName === 'email' ? 'contact@exemple.com' : 'https://...'
@@ -1227,21 +999,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // Fonctions de navigation entre blocs
   const goToNextBlock = () => {
-    // ✅ CORRIGÉ 2025-11-28: Validation spécifique pour WhatsApp (obligatoire) avant de quitter le bloc contact
-    const contactBlockIndex = blocks.findIndex(b => b.id === 'contact');
-    if (contactBlockIndex !== -1 && currentBlock === contactBlockIndex) {
-      const whatsappValue = valeursFormulaire['whatsapp'];
-      if (!whatsappValue || (typeof whatsappValue === 'string' && whatsappValue.trim() === '')) {
-        Alert.alert(
-          'Champ obligatoire',
-          'Le champ WhatsApp est obligatoire. Veuillez le renseigner avant de continuer.',
-          [{ text: 'OK' }]
-        );
-        setFieldErrors({ whatsapp: 'WhatsApp est obligatoire' });
-        return;
-      }
-    }
-
     // Valider le bloc actuel avant de passer au suivant
     const validation = validateCurrentBlock();
 
@@ -1264,7 +1021,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const nextVisible = currentVisibleIndex !== -1 ? displayedBlocks[currentVisibleIndex + 1] : null;
 
     if (nextVisible) {
-      setBlockHorizontalScrollEnabled(true);
       setCurrentBlock(nextVisible.index);
       const targetDisplayIndex = currentVisibleIndex + 1;
       if (targetDisplayIndex >= 0) {
@@ -1282,7 +1038,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const previousVisible = currentVisibleIndex > 0 ? displayedBlocks[currentVisibleIndex - 1] : null;
 
     if (previousVisible) {
-      setBlockHorizontalScrollEnabled(true);
       setCurrentBlock(previousVisible.index);
       const targetDisplayIndex = currentVisibleIndex - 1;
       if (targetDisplayIndex >= 0) {
@@ -1302,21 +1057,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       return;
     }
 
-    // ✅ CORRIGÉ 2025-11-28: Empêcher de quitter le bloc contact si WhatsApp est vide (obligatoire)
-    const contactBlockIndex = blocks.findIndex(b => b.id === 'contact');
-    if (contactBlockIndex !== -1 && currentBlock === contactBlockIndex && blockIndex !== contactBlockIndex) {
-      const whatsappValue = valeursFormulaire['whatsapp'];
-      if (!whatsappValue || (typeof whatsappValue === 'string' && whatsappValue.trim() === '')) {
-        Alert.alert(
-          'Champ obligatoire',
-          'Le champ WhatsApp est obligatoire. Veuillez le renseigner avant de continuer.',
-          [{ text: 'OK' }]
-        );
-        setFieldErrors({ whatsapp: 'WhatsApp est obligatoire' });
-        return;
-      }
-    }
-
     const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
 
     // ✅ CORRECTION: Empêcher de passer à un bloc après le bloc produits si le bloc produits n'a pas de produits
@@ -1334,7 +1074,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     setCurrentBlock(blockIndex);
-    setBlockHorizontalScrollEnabled(true);
 
     blockContentRef.current?.scrollTo({
       x: targetDisplayIndex * width,
@@ -1386,28 +1125,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // ✅ SUPPRIMÉ: Chargement produits - Les produits sont maintenant gérés via les champs dynamiques du formulaire
             // Les produits existants seront chargés automatiquement via les valeurs du formulaire
 
-            // ✅ CORRECTION: Préparer la suggestion pour le préchargement correct
-            const editSuggestion = {
-              data: serviceData.data || serviceData,
-              intention: 'modification_service_info',
-              confidence: 1.0
-            };
-
-            // ✅ CORRECTION: Traiter les données comme une suggestion pour pré-remplir correctement
-            // Cela va déclencher le useEffect qui traite suggestion.data
-            setSuggestion(editSuggestion);
-
             setValeursFormulaire(formValues);
             setActiveStep(2); // Aller directement au formulaire
-
-            // ✅ NOUVEAU: Trouver le bloc "Informations générales" et l'ouvrir automatiquement
-            setTimeout(() => {
-              const infoBlockIndex = blocks.findIndex(block => block.id === 'informations_generales' || block.id === 'informations-generales' || block.title?.toLowerCase().includes('information'));
-              if (infoBlockIndex !== -1) {
-                setCurrentBlock(infoBlockIndex);
-                console.log('[FormulaireYukpoIntelligentScreen] ✅ Bloc Informations générales ouvert automatiquement');
-              }
-            }, 500); // Petit délai pour s'assurer que les blocs sont organisés
           }
         } catch (error: any) {
           console.error('[FormulaireYukpoIntelligentScreen] Erreur chargement service:', error);
@@ -1532,36 +1251,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // ✅ NOUVEAU: Traitement spécial pour le champ produits (autocomplete)
             if (fieldName === 'produits' && typeDonnee === 'autocomplete') {
               // Pour autocomplete, garder toute la structure avec sous_caracteristiques
-              const rawValeur = Array.isArray(fieldData.valeur) ? fieldData.valeur : [fieldData.valeur];
-              let valeurReorganisee = rawValeur;
-
-              // ✅ NOUVEAU: Réorganiser selon ai_preferred_index pour mettre la combinaison préférée en premier
-              const aiPreferredIndex = typeof fieldData.ai_preferred_index === 'number'
-                ? fieldData.ai_preferred_index
-                : (typeof fieldData.ai_preferred_index === 'string'
-                  ? parseInt(fieldData.ai_preferred_index, 10)
-                  : 0);
-
-              if (aiPreferredIndex >= 0 && aiPreferredIndex < rawValeur.length && rawValeur.length > 1) {
-                const preferredValue = rawValeur[aiPreferredIndex];
-                valeurReorganisee = [preferredValue, ...rawValeur.filter((_, idx) => idx !== aiPreferredIndex)];
-                console.log(`[FormulaireYukpoIntelligentScreen] ✅ Combinaisons réorganisées selon ai_preferred_index=${aiPreferredIndex} lors du chargement initial`);
-              }
-
               initialValues[fieldName] = {
                 type_donnee: 'autocomplete',
-                valeur: valeurReorganisee,
+                valeur: Array.isArray(fieldData.valeur) ? fieldData.valeur : [],
                 separateur: fieldData.separateur || ',',
                 sous_caracteristiques: fieldData.sous_caracteristiques || {},
                 identifiant_base: fieldData.identifiant_base || 'produits',
                 filtrable: fieldData.filtrable !== false,
-                origine_champs: fieldData.origine_champs || 'ia',
-                ai_preferred_index: aiPreferredIndex, // ✅ Conserver ai_preferred_index
-                // ✅ Conserver product_vector et product_labels si disponibles
-                product_vector: Array.isArray(fieldData.product_vector) ? fieldData.product_vector : undefined,
-                product_labels: Array.isArray(fieldData.product_labels) ? fieldData.product_labels : undefined
+                origine_champs: fieldData.origine_champs || 'ia'
               };
-              console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ produits (autocomplete) pré-rempli avec combinaison préférée en premier:`, initialValues[fieldName]);
+              console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ produits (autocomplete) pré-rempli:`, initialValues[fieldName]);
             }
             // ✅ NOUVEAU: Traitement spécial pour price_variant (variabilite_prix)
             else if (typeDonnee === 'price_variant' || fieldName === 'variabilite_prix') {
@@ -1613,13 +1312,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             if (initialValues[field]) {
               console.log(`[FormulaireYukpoIntelligentScreen] ✅ ${field} chargé:`, initialValues[field]);
             } else {
-              // ✅ AMÉLIORATION: Réduire niveau log (comportement normal)
-              console.debug(`[FormulaireYukpoIntelligentScreen] ${field} NON trouvé dans les données IA`);
+              console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ ${field} NON trouvé dans les données IA`);
             }
           });
         } else {
-          // ✅ AMÉLIORATION: Réduire niveau log (comportement normal)
-          console.debug('[FormulaireYukpoIntelligentScreen] Aucun champ produit détecté depuis l\'IA');
+          console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Aucun champ produit détecté depuis l\'IA');
         }
 
         // CORRECTION: S'assurer que le champ category est bien chargé
@@ -1712,8 +1409,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
 
         // ✅ NOUVEAU: Charger les catégories de produits suggérées (matching local basé sur keywords + données IA)
-        // ✅ CORRECTION: Vérifier que setSuggestedProductCategories existe avant de l'utiliser
-        if (typeof setSuggestedProductCategories === 'function' && (initialValues.titre_service || initialValues.description || initialValues.category || suggestion?.data)) {
+        if (initialValues.titre_service || initialValues.description || initialValues.category || suggestion?.data) {
           try {
             const suggestions = getSuggestedProductCategories(
               initialValues.titre_service,
@@ -1725,26 +1421,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               console.log('[FormulaireYukpoIntelligentScreen] ✅ Catégories suggérées (matching local):', suggestions.length);
               setSuggestedProductCategories(suggestions); // Déjà limité à 3 par le matching local
             }
-          } catch (error: any) {
-            // ✅ CORRECTION 2025-11-28: Améliorer la gestion d'erreur pour voir le problème réel
-            console.warn('[FormulaireYukpoIntelligentScreen] Erreur chargement suggestions catégories:', {
-              error: error?.message || error,
-              stack: error?.stack,
-              titreService: initialValues.titre_service,
-              description: initialValues.description,
-              category: initialValues.category
-            });
-            // ✅ CORRECTION: Ne pas bloquer l'utilisateur, continuer sans suggestions
-            if (typeof setSuggestedProductCategories === 'function') {
-              setSuggestedProductCategories([]);
-            }
+          } catch (error) {
+            console.warn('[FormulaireYukpoIntelligentScreen] Erreur chargement suggestions catégories:', error);
           }
         }
 
         console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales automatiques:', initialValues);
 
         // ✅ CRITIQUE 2025-11-03: Organiser les blocs directement avec initialValues
-        const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues, suggestion);
+        const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues);
 
         // ✅ CORRECTION CRITIQUE 2025-11-06: Extraire aussi les field.value des composants générés
         // Les champs nom_produit, categorie_produit, description_produit ont leurs valeurs dans field.value
@@ -1768,10 +1453,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         setActiveStep(2); // Passer directement à l'étape 2 avec les données IA
         setCurrentBlock(0);
       } else {
-        // ✅ CORRECTION: Passer directement à l'étape 2 même sans données IA (suppression du mini formulaire)
-        console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, passer directement à l\'étape 2');
-        setActiveStep(2);
-        setCurrentBlock(0);
+        console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, rester à l\'étape 1');
       }
     } catch (error) {
       console.error('[FormulaireYukpoIntelligentScreen] ❌ ERREUR CRITIQUE dans useEffect suggestion:', error);
@@ -1785,11 +1467,53 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   }, [suggestion]); // Se déclenche quand suggestion change
 
 
+  // ✅ NOUVEAU 2025-11-01: Préremplir le formulaire en mode add_product
+  useEffect(() => {
+    if (isAddingProduct && duplicateProduct && suggestion?.data) {
+      console.log('[FormulaireYukpoIntelligentScreen] 📋 MODE ADD_PRODUCT détecté - Préremplissage...');
+      console.log('[FormulaireYukpoIntelligentScreen] Service data:', suggestion.data);
+      console.log('[FormulaireYukpoIntelligentScreen] Produit à dupliquer:', duplicateProduct);
+
+      // Préremplir avec les données du service + produit dupliqué
+      const produitValues: Record<string, any> = {
+        nom_produit: duplicateProduct.nom || '',
+        prix_produit: duplicateProduct.prix || '',
+        devise_produit: duplicateProduct.devise || 'XAF',
+        description_produit: duplicateProduct.description || '',
+        categorie_produit: duplicateProduct.type || '',
+      };
+
+      // Ajouter tous les autres champs du produit dupliqué
+      Object.keys(duplicateProduct).forEach(key => {
+        if (!['nom', 'prix', 'devise', 'description', 'type', 'id'].includes(key)) {
+          produitValues[key] = duplicateProduct[key];
+        }
+      });
+
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ Valeurs produit extraites:', produitValues);
+
+      setValeursFormulaire(prev => ({
+        ...suggestion.data, // Données service complètes
+        ...produitValues // Surcharger avec produit dupliqué
+      }));
+
+      setActiveStep(2); // Aller directement au formulaire
+
+      // Focus sur le bloc produits après un court délai
+      setTimeout(() => {
+        const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
+        if (productsBlockIndex >= 0) {
+          setCurrentBlock(productsBlockIndex);
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Focus sur bloc produits, index:', productsBlockIndex);
+        }
+      }, 500);
+    }
+  }, [isAddingProduct, duplicateProduct, suggestion, blocks]);
 
   // Organiser les champs en blocs quand les composants ou valeursFormulaire changent
   useEffect(() => {
     if (composants.length > 0) {
-      const organizedBlocks = organizeFieldsIntoBlocks(composants, valeursFormulaire, suggestion);
+      const organizedBlocks = organizeFieldsIntoBlocks(composants, valeursFormulaire);
       setBlocks(organizedBlocks);
       console.log('[FormulaireYukpoIntelligentScreen] Blocs organisés avec valeurs:', organizedBlocks);
     }
@@ -1867,44 +1591,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
           // ✅ CORRECTION: Gestion spéciale pour price_variant (variabilite_prix)
           // Pré-remplir la structure complète (variable + valeurs des modalités + prix si identifiés)
-          if (fieldName === 'variabilite_prix' || fieldName === 'price_variant' || (fieldData && typeof fieldData === 'object' && fieldData.type_donnee === 'price_variant')) {
+          if (fieldName === 'variabilite_prix' || (fieldData && typeof fieldData === 'object' && fieldData.type_donnee === 'price_variant')) {
             if (fieldData && typeof fieldData === 'object') {
-              // ✅ CORRIGÉ: Extraire les modalités depuis plusieurs sources possibles
-              const modalitesSource = fieldData.modalites || fieldData.valeur?.modalites || fieldData.valeur || [];
-              const modalitesAvecValeurs = (Array.isArray(modalitesSource) ? modalitesSource : []).map((mod: any) => {
-                // ✅ CORRIGÉ: Gérer différents formats de modalités
-                if (typeof mod === 'string') {
-                  return { valeur: mod, prix: 0, devise: 'XAF' };
-                }
-                if (typeof mod === 'number') {
-                  return { valeur: String(mod), prix: 0, devise: 'XAF' };
-                }
-                if (typeof mod === 'object' && mod !== null) {
-                  return {
-                    valeur: mod.valeur || mod.value || mod.modalite || mod.label || mod.name || '',
-                    prix: (mod.prix !== null && mod.prix !== undefined && mod.prix !== 0)
-                      ? mod.prix
-                      : ((mod.price !== null && mod.price !== undefined && mod.price !== 0) ? mod.price : 0),
-                    devise: mod.devise || mod.currency || 'XAF',
-                    stock: mod.stock || mod.quantite || mod.qty
-                  };
-                }
-                return { valeur: '', prix: 0, devise: 'XAF' };
-              }).filter((mod: any) => mod.valeur && mod.valeur.trim().length > 0);
+              // Pré-remplir la variable et les valeurs des modalités (ex: "38", "39", "M", "L")
+              // ✅ NOUVEAU: Pré-remplir aussi les prix s'ils sont identifiés par l'IA
+              const modalitesAvecValeurs = (fieldData.modalites || fieldData.valeur?.modalites || []).map((mod: any) => ({
+                valeur: mod.valeur || '', // ✅ PRÉ-REMPLI: Garder la valeur de la variante (ex: "38", "M", "Rouge")
+                prix: (mod.prix !== null && mod.prix !== undefined && mod.prix !== 0) ? mod.prix : 0, // ✅ PRÉ-REMPLI si identifié par l'IA, sinon 0
+                devise: mod.devise || 'XAF', // Garder la devise suggérée
+                stock: mod.stock // Garder le stock si présent
+              }));
 
               initialValues[fieldName] = {
                 type_donnee: 'price_variant',
-                variable: fieldData.variable || fieldData.dimension || fieldData.name || fieldData.label || 'variante',
-                modalites: modalitesAvecValeurs,
+                variable: fieldData.variable || 'variante', // ✅ PRÉ-REMPLI: variable (ex: "pointure", "taille")
+                modalites: modalitesAvecValeurs, // ✅ PRÉ-REMPLI: valeurs des variantes + prix si identifiés
                 filtrable: fieldData.filtrable !== false,
-                origine_champs: fieldData.origine_champs || 'ia'
+                origine_champs: 'ia'
               };
-              // ✅ CORRIGÉ: Aussi stocker dans l'alias pour compatibilité
-              if (fieldName === 'variabilite_prix') {
-                initialValues['price_variant'] = initialValues[fieldName];
-              } else if (fieldName === 'price_variant') {
-                initialValues['variabilite_prix'] = initialValues[fieldName];
-              }
               console.log(`[FormulaireYukpoIntelligentScreen] ✅ Price variant structure pré-remplie pour ${fieldName}:`, initialValues[fieldName]);
             }
           } else if (fieldData && typeof fieldData === 'object' && 'valeur' in fieldData) {
@@ -1915,78 +1619,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             console.log(`[FormulaireYukpoIntelligentScreen] Valeur directe pour ${fieldName}:`, fieldData);
           }
         });
-
-        // ✅ NOUVEAU: Extraire les variations de prix imbriquées dans le champ produits
-        const iaProduitsNode = suggestion.data.produits;
-
-        // ✅ CORRECTION: S'assurer que produits est chargé même sans variante de prix
-        if (iaProduitsNode && !initialValues.produits) {
-          // Si produits n'a pas été chargé dans la boucle précédente, le charger maintenant
-          if (typeof iaProduitsNode === 'object' && 'valeur' in iaProduitsNode) {
-            const typeDonnee = iaProduitsNode.type_donnee || 'autocomplete';
-            if (typeDonnee === 'autocomplete') {
-              const rawValeur = Array.isArray(iaProduitsNode.valeur) ? iaProduitsNode.valeur : [iaProduitsNode.valeur];
-              let valeurReorganisee = rawValeur;
-
-              // ✅ NOUVEAU: Réorganiser selon ai_preferred_index pour mettre la combinaison préférée en premier
-              const aiPreferredIndex = typeof iaProduitsNode.ai_preferred_index === 'number'
-                ? iaProduitsNode.ai_preferred_index
-                : (typeof iaProduitsNode.ai_preferred_index === 'string'
-                  ? parseInt(iaProduitsNode.ai_preferred_index, 10)
-                  : 0);
-
-              if (aiPreferredIndex >= 0 && aiPreferredIndex < rawValeur.length && rawValeur.length > 1) {
-                const preferredValue = rawValeur[aiPreferredIndex];
-                valeurReorganisee = [preferredValue, ...rawValeur.filter((_, idx) => idx !== aiPreferredIndex)];
-                console.log(`[FormulaireYukpoIntelligentScreen] ✅ Combinaisons réorganisées selon ai_preferred_index=${aiPreferredIndex} lors du chargement depuis iaProduitsNode`);
-              }
-
-              initialValues.produits = {
-                type_donnee: 'autocomplete',
-                valeur: valeurReorganisee,
-                separateur: iaProduitsNode.separateur || ',',
-                sous_caracteristiques: iaProduitsNode.sous_caracteristiques || {},
-                identifiant_base: iaProduitsNode.identifiant_base || 'produits',
-                filtrable: iaProduitsNode.filtrable !== false,
-                origine_champs: iaProduitsNode.origine_champs || 'ia',
-                ai_preferred_index: aiPreferredIndex, // ✅ Conserver ai_preferred_index
-                // ✅ Conserver product_vector et product_labels si disponibles
-                product_vector: Array.isArray(iaProduitsNode.product_vector) ? iaProduitsNode.product_vector : undefined,
-                product_labels: Array.isArray(iaProduitsNode.product_labels) ? iaProduitsNode.product_labels : undefined
-              };
-              console.log('[FormulaireYukpoIntelligentScreen] ✅ Champ produits (autocomplete) chargé depuis iaProduitsNode avec combinaison préférée en premier:', initialValues.produits);
-            } else {
-              // Si ce n'est pas autocomplete, charger la valeur directement
-              initialValues.produits = iaProduitsNode;
-              console.log('[FormulaireYukpoIntelligentScreen] ✅ Champ produits chargé depuis iaProduitsNode (non-autocomplete):', initialValues.produits);
-            }
-          } else {
-            // Si c'est un tableau ou une string, le charger directement
-            initialValues.produits = iaProduitsNode;
-            console.log('[FormulaireYukpoIntelligentScreen] ✅ Champ produits chargé depuis iaProduitsNode (direct):', initialValues.produits);
-          }
-        }
-
-        const priceVariantFromProduits = extractPriceVariant(
-          iaProduitsNode,
-          iaProduitsNode?.origine_champs || 'ia'
-        );
-        if (priceVariantFromProduits) {
-          initialValues.variabilite_prix = priceVariantFromProduits;
-          initialValues.price_variant = priceVariantFromProduits;
-          const inferredCurrencyFromVariant = getCurrencyFromVariant(priceVariantFromProduits);
-          if (inferredCurrencyFromVariant && (!initialValues.devise_produit || initialValues.devise_produit.length === 0)) {
-            initialValues.devise_produit = inferredCurrencyFromVariant;
-            initialValues.devise = inferredCurrencyFromVariant;
-          }
-          console.log('[FormulaireYukpoIntelligentScreen] ✅ Variabilité prix récupérée depuis produits:', priceVariantFromProduits);
-
-          if (initialValues.produits) {
-            initialValues.produits = applyPriceVariantToProduits(initialValues.produits, priceVariantFromProduits);
-          } else if (iaProduitsNode) {
-            initialValues.produits = applyPriceVariantToProduits(iaProduitsNode, priceVariantFromProduits);
-          }
-        }
 
         // CORRECTION: S'assurer que le champ category est bien chargé
         if (suggestion.data.category) {
@@ -1999,114 +1631,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales:', initialValues);
 
-        // ✅ NOUVEAU 2025-11-21: Charger les combinaisons préférées par l'IA via session_id
-        // ✅ CORRIGÉ: Charger aussi si sous_caracteristiques est vide (pour afficher les caractéristiques)
-        const hasProduits = initialValues.produits?.valeur && Array.isArray(initialValues.produits.valeur) && initialValues.produits.valeur.length > 0;
-        const hasSousCaracs = initialValues.produits?.sous_caracteristiques && typeof initialValues.produits.sous_caracteristiques === 'object' && Object.keys(initialValues.produits.sous_caracteristiques).length > 0;
-
-        // ✅ CORRECTION: Charger les combinaisons IA avec retry logic pour garantir la disponibilité
-        if (suggestion?.session_id && (!hasProduits || !hasSousCaracs)) {
-          let loadedSuccessfully = false;
-          const maxRetries = 3;
-          let retryCount = 0;
-
-          while (!loadedSuccessfully && retryCount < maxRetries) {
-            try {
-              const combinationsResponse = await apiGet(`/api/combinations/session/${suggestion.session_id}`);
-              if (combinationsResponse?.combinations && Array.isArray(combinationsResponse.combinations)) {
-                // Trouver la combinaison préférée par l'IA (is_ai_preferred = true)
-                const preferred = combinationsResponse.combinations.find((c: any) => c.is_ai_preferred);
-
-                if (preferred && preferred.product_vector && Array.isArray(preferred.product_vector) && preferred.product_vector.length > 0) {
-                  // Construire la valeur au format attendu (string concaténée avec séparateur)
-                  const separateur = preferred.separateur || ',';
-                  const combinationString = preferred.product_vector.join(separateur);
-
-                  // ✅ CORRECTION: Convertir product_labels (tableau) en objet pour sous_caracteristiques
-                  // product_labels est un tableau qui correspond à l'ordre de product_vector
-                  // On doit le convertir en objet { dimension: [valeurs] } pour sous_caracteristiques
-                  const sousCaracsObj: Record<string, string[]> = {};
-                  if (Array.isArray(preferred.product_labels) && preferred.product_labels.length > 0) {
-                    // Grouper les labels par dimension
-                    preferred.product_vector.forEach((value: string, index: number) => {
-                      const label = preferred.product_labels[index];
-                      if (label && typeof label === 'string') {
-                        if (!sousCaracsObj[label]) {
-                          sousCaracsObj[label] = [];
-                        }
-                        if (!sousCaracsObj[label].includes(value)) {
-                          sousCaracsObj[label].push(value);
-                        }
-                      }
-                    });
-                  }
-
-                  // Mettre à jour initialValues.produits avec la combinaison préférée
-                  const produitsData = {
-                    type_donnee: 'autocomplete',
-                    valeur: [combinationString],
-                    separateur: separateur,
-                    sous_caracteristiques: Object.keys(sousCaracsObj).length > 0 ? sousCaracsObj : (preferred.product_labels || {}),
-                    // ✅ NOUVEAU: Stocker product_vector et product_labels (tableaux) pour l'ordre correct
-                    product_vector: preferred.product_vector,
-                    product_labels: preferred.product_labels || [],
-                    identifiant_base: 'produits',
-                    filtrable: true,
-                    origine_champs: 'ia'
-                  };
-                  initialValues.produits = produitsData;
-
-                  // ✅ CORRECTION CRITIQUE: Mettre à jour valeursFormulaire pour déclencher le re-render
-                  // Cela garantit que LinearAutocompleteEditor reçoit les sousCaracteristiques à l'ouverture
-                  setValeursFormulaire(prev => ({
-                    ...prev,
-                    produits: produitsData
-                  }));
-
-                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Combinaison préférée IA chargée et valeursFormulaire mis à jour:', {
-                    combinationString,
-                    product_vector: preferred.product_vector,
-                    product_labels: preferred.product_labels,
-                    sous_caracteristiques: Object.keys(sousCaracsObj).length > 0 ? Object.keys(sousCaracsObj) : Object.keys(preferred.product_labels || {}),
-                    valeursFormulaireUpdated: true,
-                    retryCount
-                  });
-                  loadedSuccessfully = true;
-                } else {
-                  // Pas de combinaison préférée trouvée dans la réponse
-                  console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Aucune combinaison préférée trouvée dans la réponse API (tentative ' + (retryCount + 1) + '/' + maxRetries + ')');
-                  retryCount++;
-                  if (retryCount < maxRetries) {
-                    // Exponential backoff
-                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
-                  }
-                }
-              } else {
-                // Réponse invalide
-                console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Réponse API invalide (tentative ' + (retryCount + 1) + '/' + maxRetries + ')');
-                retryCount++;
-                if (retryCount < maxRetries) {
-                  await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
-                }
-              }
-            } catch (error) {
-              retryCount++;
-              console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur chargement combinaisons IA (tentative ' + retryCount + '/' + maxRetries + '):', error);
-              if (retryCount < maxRetries) {
-                // Exponential backoff
-                await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
-              } else {
-                // Toutes les tentatives ont échoué - essayer fallback depuis suggestion.data
-                console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Toutes les tentatives ont échoué, utilisation fallback depuis suggestion.data');
-                // Le fallback sera géré par getSousCaracteristiquesFromIA
-              }
-            }
-          }
-        }
-
         // ✅ CRITIQUE 2025-11-03: Organiser les blocs directement avec initialValues
         // Au lieu d'attendre que useEffect se déclenche avec valeursFormulaire vide
-        const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues, suggestion);
+        const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues);
 
         // ✅ CORRECTION CRITIQUE 2025-11-06: Extraire aussi les field.value des composants générés
         const componentValues: Record<string, any> = {};
@@ -2118,32 +1645,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         });
 
         // Mettre à jour les states
-        const mergedInitialValues: Record<string, any> = {
+        setValeursFormulaire({
           ...initialValues,
           ...componentValues // ✅ NOUVEAU: Les valeurs des field.value
-        };
-
-        const normalizedMergedVariant =
-          extractPriceVariant(mergedInitialValues.variabilite_prix || mergedInitialValues.price_variant) ||
-          extractPriceVariant(mergedInitialValues.produits);
-
-        if (normalizedMergedVariant) {
-          mergedInitialValues.variabilite_prix = normalizedMergedVariant;
-          mergedInitialValues.price_variant = normalizedMergedVariant;
-          const inferredCurrencyFromMergedVariant = getCurrencyFromVariant(normalizedMergedVariant);
-          if (inferredCurrencyFromMergedVariant && (!mergedInitialValues.devise_produit || mergedInitialValues.devise_produit.length === 0)) {
-            mergedInitialValues.devise_produit = inferredCurrencyFromMergedVariant;
-            mergedInitialValues.devise = inferredCurrencyFromMergedVariant;
-          }
-          if (mergedInitialValues.produits) {
-            mergedInitialValues.produits = applyPriceVariantToProduits(
-              mergedInitialValues.produits,
-              normalizedMergedVariant
-            );
-          }
-        }
-
-        setValeursFormulaire(mergedInitialValues);
+        });
         setComposants(components);
         setDynamicTextareaHeights({});
         setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
@@ -2190,38 +1695,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   };
 
-  const getCurrencyFromVariant = (variant: any): string | undefined => {
-    if (!variant) {
-      return undefined;
-    }
-
-    const modalitesSource = Array.isArray(variant?.modalites)
-      ? variant.modalites
-      : Array.isArray(variant)
-        ? variant
-        : Array.isArray(variant?.valeur?.modalites)
-          ? variant.valeur.modalites
-          : [];
-
-    for (const entry of modalitesSource) {
-      if (!entry || typeof entry !== 'object') {
-        continue;
-      }
-
-      const currencyRaw = typeof entry.devise === 'string' && entry.devise.trim().length > 0
-        ? entry.devise.trim()
-        : typeof entry.currency === 'string' && entry.currency.trim().length > 0
-          ? entry.currency.trim()
-          : undefined;
-
-      if (currencyRaw) {
-        return currencyRaw.toUpperCase();
-      }
-    }
-
-    return undefined;
-  };
-
   // Gérer les changements de champs
   const handleFieldChange = (fieldName: string, value: any) => {
     // Convertir automatiquement les prix en nombres
@@ -2231,76 +1704,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       if (!isNaN(numericValue)) {
         processedValue = numericValue;
       }
-    }
-
-    if (fieldName === 'produits') {
-      setValeursFormulaire(prev => {
-        const normalizedPriceVariant = extractPriceVariant(
-          processedValue,
-          processedValue?.origine_champs || prev?.produits?.origine_champs
-        );
-
-        const nextState: Record<string, any> = {
-          ...prev
-        };
-
-        if (normalizedPriceVariant) {
-          nextState.variabilite_prix = normalizedPriceVariant;
-          nextState.price_variant = normalizedPriceVariant;
-          nextState.produits = applyPriceVariantToProduits(processedValue, normalizedPriceVariant);
-          const inferredCurrency = getCurrencyFromVariant(normalizedPriceVariant);
-          if (inferredCurrency) {
-            nextState.devise_produit = inferredCurrency;
-            nextState.devise = inferredCurrency;
-          }
-        } else {
-          nextState.produits = applyPriceVariantToProduits(
-            processedValue,
-            prev.variabilite_prix ? extractPriceVariant(prev.variabilite_prix) : null
-          );
-          if (!nextState.produits?.variation_prix && !nextState.produits?.variabilite_prix) {
-            delete nextState.variabilite_prix;
-            delete nextState.price_variant;
-          }
-        }
-
-        return nextState;
-      });
-      return;
-    }
-
-    if (fieldName === 'variabilite_prix' || fieldName === 'price_variant') {
-      const normalizedPriceVariant = extractPriceVariant(processedValue, processedValue?.origine_champs || 'formulaire');
-      setValeursFormulaire(prev => {
-        const nextState: Record<string, any> = {
-          ...prev,
-          [fieldName]: processedValue
-        };
-
-        if (normalizedPriceVariant) {
-          const existingProduits = prev.produits
-            ? applyPriceVariantToProduits(prev.produits, normalizedPriceVariant)
-            : undefined;
-
-          if (existingProduits) {
-            nextState.produits = existingProduits;
-          }
-          nextState.variabilite_prix = normalizedPriceVariant;
-          nextState.price_variant = normalizedPriceVariant;
-          const inferredCurrency = getCurrencyFromVariant(normalizedPriceVariant);
-          if (inferredCurrency) {
-            nextState.devise_produit = inferredCurrency;
-            nextState.devise = inferredCurrency;
-          }
-        } else if (prev.produits) {
-          nextState.produits = applyPriceVariantToProduits(prev.produits, null);
-          delete nextState.variabilite_prix;
-          delete nextState.price_variant;
-        }
-
-        return nextState;
-      });
-      return;
     }
 
     setValeursFormulaire(prev => ({
@@ -2417,454 +1820,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     return examples[categorieNormalized] || 'Marque,Modèle,Couleur,Localisation,Année,État';
   };
 
-  const renderProductsBlock = () => {
-    const extractStringValue = (fieldName: string): string => {
-      const raw = valeursFormulaire[fieldName];
-      if (raw && typeof raw === 'object' && raw !== null && 'valeur' in raw) {
-        const inner = raw.valeur;
-        if (inner === null || inner === undefined) {
-          return '';
-        }
-        if (typeof inner === 'string') {
-          return inner;
-        }
-        if (typeof inner === 'number' || typeof inner === 'boolean') {
-          return String(inner);
-        }
-        return '';
-      }
-      if (raw === null || raw === undefined) {
-        return '';
-      }
-      if (typeof raw === 'string') {
-        return raw;
-      }
-      if (typeof raw === 'number' || typeof raw === 'boolean') {
-        return String(raw);
-      }
-      return '';
-    };
-
-    const typeOffreRaw = extractStringValue('type_offre') || extractStringValue('nature_offre') || 'produit';
-    const typeOffreNormalized = typeOffreRaw.toLowerCase();
-    const isPrestation = ['prestation', 'service', 'services'].includes(typeOffreNormalized);
-
-    const nomProduit = extractStringValue('nom_produit');
-    const categorieProduit = extractStringValue('categorie_produit');
-    const descriptionProduit = extractStringValue('description_produit');
-    const descriptionService = extractStringValue('description');
-    const titreService = extractStringValue('titre_service');
-
-    const prixProduitValue = extractStringValue('prix_produit') || extractStringValue('prix');
-
-    const produitsField = valeursFormulaire.produits;
-    let produitsValues: string[] = [];
-    let sousCaracteristiques =
-      (produitsField && typeof produitsField === 'object' && produitsField !== null && produitsField.sous_caracteristiques)
-        ? produitsField.sous_caracteristiques
-        : (valeursFormulaire.sous_caracteristiques && typeof valeursFormulaire.sous_caracteristiques === 'object'
-          ? valeursFormulaire.sous_caracteristiques
-          : null);
-    let safeSeparateur = ',';
-    let productVector: string[] | undefined = undefined;
-    let productLabels: string[] | undefined = undefined;
-
-    if (produitsField && typeof produitsField === 'object' && produitsField !== null && 'valeur' in produitsField) {
-      const rawValues = Array.isArray(produitsField.valeur) ? produitsField.valeur : [produitsField.valeur];
-      produitsValues = rawValues
-        .filter((item) => item !== null && item !== undefined)
-        .map((item) => (typeof item === 'string' ? item : JSON.stringify(item)));
-      if (typeof produitsField.separateur === 'string' && produitsField.separateur.trim().length > 0) {
-        safeSeparateur = produitsField.separateur;
-      }
-
-      // ✅ NOUVEAU: Extraire et utiliser ai_preferred_index pour réorganiser les combinaisons
-      // La combinaison préférée par l'IA doit être en première position pour être affichée
-      const aiPreferredIndex = typeof produitsField.ai_preferred_index === 'number'
-        ? produitsField.ai_preferred_index
-        : (typeof produitsField.ai_preferred_index === 'string'
-          ? parseInt(produitsField.ai_preferred_index, 10)
-          : 0);
-
-      if (aiPreferredIndex >= 0 && aiPreferredIndex < produitsValues.length && produitsValues.length > 1) {
-        // Réorganiser pour mettre la combinaison préférée en premier
-        const preferredValue = produitsValues[aiPreferredIndex];
-        produitsValues = [preferredValue, ...produitsValues.filter((_, idx) => idx !== aiPreferredIndex)];
-        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Combinaison préférée IA (index ${aiPreferredIndex}) mise en premier position`, {
-          originalIndex: aiPreferredIndex,
-          preferredValue: preferredValue,
-          reorderedValues: produitsValues
-        });
-
-        // ✅ Réorganiser aussi product_vector et product_labels si disponibles
-        if (Array.isArray(produitsField.product_vector) && produitsField.product_vector.length > 0) {
-          const preferredVector = produitsField.product_vector[aiPreferredIndex];
-          productVector = [preferredVector, ...produitsField.product_vector.filter((_, idx) => idx !== aiPreferredIndex)];
-        } else {
-          productVector = Array.isArray(produitsField.product_vector) ? produitsField.product_vector : undefined;
-        }
-
-        if (Array.isArray(produitsField.product_labels) && produitsField.product_labels.length > 0) {
-          const preferredLabel = produitsField.product_labels[aiPreferredIndex];
-          productLabels = [preferredLabel, ...produitsField.product_labels.filter((_, idx) => idx !== aiPreferredIndex)];
-        } else {
-          productLabels = Array.isArray(produitsField.product_labels) ? produitsField.product_labels : undefined;
-        }
-      } else {
-        // Pas de réorganisation nécessaire (une seule combinaison ou index invalide)
-        productVector = Array.isArray(produitsField.product_vector) ? produitsField.product_vector : undefined;
-        productLabels = Array.isArray(produitsField.product_labels) ? produitsField.product_labels : undefined;
-      }
-
-      // ✅ NOUVEAU 2025-11-28: Si produitsValues est vide mais qu'on a product_vector, construire la valeur initiale
-      // Cela garantit que la combinaison préférée de l'IA est affichée dès l'ouverture du formulaire
-      if (produitsValues.length === 0 && productVector && productVector.length > 0 && safeSeparateur) {
-        const combinationString = productVector.join(safeSeparateur);
-        produitsValues = [combinationString];
-        console.log('[FormulaireYukpoIntelligentScreen] ✅ Valeur initiale construite depuis product_vector (combinaison préférée IA):', combinationString);
-      }
-    } else if (Array.isArray(produitsField)) {
-      produitsValues = produitsField
-        .filter((item) => item !== null && item !== undefined)
-        .map((item) => (typeof item === 'string' ? item : String(item)));
-    } else if (typeof produitsField === 'string') {
-      produitsValues = [produitsField];
-    }
-
-    // ✅ NOUVEAU 2025-11-28: Si produitsValues est toujours vide, construire depuis sous_caracteristiques
-    // En prenant la PREMIÈRE valeur de chaque dimension (valeur préférée par l'IA)
-    if (produitsValues.length === 0) {
-      // Essayer d'abord depuis les sous_caracteristiques déjà chargés
-      if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0) {
-        const firstValues: string[] = [];
-        Object.entries(sousCaracteristiques).forEach(([label, values]) => {
-          if (Array.isArray(values) && values.length > 0 && typeof values[0] === 'string') {
-            // ✅ CRITIQUE: Prendre la PREMIÈRE valeur (valeur préférée par l'IA)
-            firstValues.push(values[0]);
-          }
-        });
-        if (firstValues.length > 0) {
-          produitsValues = [firstValues.join(safeSeparateur)];
-          console.log('[FormulaireYukpoIntelligentScreen] ✅ Valeur initiale construite depuis sous_caracteristiques (premières valeurs = préférées IA):', produitsValues[0]);
-        }
-      }
-    }
-
-    // ✅ CORRIGÉ: Toujours réextraire depuis valeursFormulaire pour garantir que les données sont à jour
-    // Cela garantit que même si les combinaisons IA sont chargées de manière asynchrone,
-    // elles seront utilisées dès qu'elles sont disponibles
-    const sousCaracsFromIA = getSousCaracteristiquesFromIA(valeursFormulaire, suggestion);
-
-    // ✅ PRIORITÉ: Utiliser sousCaracteristiques depuis valeursFormulaire s'il existe et n'est pas vide
-    // Sinon, utiliser le résultat de getSousCaracteristiquesFromIA
-    if (sousCaracteristiques && typeof sousCaracteristiques === 'object' && Object.keys(sousCaracteristiques).length > 0) {
-      // Utiliser les données déjà disponibles
-      console.log('[FormulaireYukpoIntelligentScreen] ✅ sousCaracteristiques déjà disponibles depuis valeursFormulaire:', {
-        keys: Object.keys(sousCaracteristiques),
-        count: Object.keys(sousCaracteristiques).length
-      });
-    } else if (sousCaracsFromIA && typeof sousCaracsFromIA === 'object' && Object.keys(sousCaracsFromIA).length > 0) {
-      // Utiliser les données extraites depuis l'IA
-      sousCaracteristiques = sousCaracsFromIA;
-      console.log('[FormulaireYukpoIntelligentScreen] ✅ Utilisation caractéristiques préférées IA depuis getSousCaracteristiquesFromIA:', {
-        keys: Object.keys(sousCaracteristiques),
-        count: Object.keys(sousCaracteristiques).length
-      });
-
-      // ✅ NOUVEAU 2025-11-28: Si produitsValues est toujours vide, construire depuis sousCaracsFromIA
-      // En prenant la PREMIÈRE valeur de chaque dimension (valeur préférée par l'IA)
-      if (produitsValues.length === 0) {
-        const firstValues: string[] = [];
-        Object.entries(sousCaracsFromIA).forEach(([label, values]) => {
-          if (Array.isArray(values) && values.length > 0 && typeof values[0] === 'string') {
-            // ✅ CRITIQUE: Prendre la PREMIÈRE valeur (valeur préférée par l'IA)
-            firstValues.push(values[0]);
-          }
-        });
-        if (firstValues.length > 0) {
-          produitsValues = [firstValues.join(safeSeparateur)];
-          console.log('[FormulaireYukpoIntelligentScreen] ✅ Valeur initiale construite depuis sousCaracsFromIA (premières valeurs = préférées IA):', produitsValues[0]);
-        }
-      }
-    } else {
-      // Dernier fallback: objet vide
-      sousCaracteristiques = sousCaracteristiques || {};
-      console.log('[FormulaireYukpoIntelligentScreen] 🔍 getSousCaracteristiquesFromIA appelé dans renderProductsBlock:', {
-        hasFormValues: !!valeursFormulaire,
-        hasSuggestion: !!suggestion,
-        produitsField: valeursFormulaire.produits,
-        suggestionData: suggestion?.data,
-        result: sousCaracsFromIA,
-        finalSousCaracs: sousCaracteristiques,
-        note: 'Les combinaisons IA peuvent être en cours de chargement. Le tableau s\'affichera automatiquement une fois les données disponibles.'
-      });
-    }
-
-    const variantsSource = valeursFormulaire.variabilite_prix || valeursFormulaire.price_variant;
-    let currentModalites: any[] = [];
-    if (variantsSource) {
-      if (Array.isArray(variantsSource?.modalites)) {
-        currentModalites = variantsSource.modalites;
-      } else if (Array.isArray(variantsSource)) {
-        currentModalites = variantsSource;
-      }
-    }
-    const variantCurrency = getCurrencyFromVariant(variantsSource);
-    const deviseProduitValue = extractStringValue('devise_produit') || extractStringValue('devise') || variantCurrency || 'XAF';
-    const hasExistingVariants = currentModalites.length > 0;
-
-    const locationField = valeursFormulaire.lieu_produit;
-    const locationValue = locationField && typeof locationField === 'object' && locationField !== null && 'valeur' in locationField
-      ? locationField.valeur
-      : locationField || null;
-
-    const contextValues = [
-      descriptionProduit,
-      descriptionService
-    ].filter((item) => item && item.length > 0);
-
-    const modaliteCurrencies = currentModalites
-      .map((mod: any) => {
-        if (!mod || typeof mod !== 'object') {
-          return undefined;
-        }
-        if (typeof mod.devise === 'string' && mod.devise.trim().length > 0) {
-          return mod.devise.trim().toUpperCase();
-        }
-        if (typeof mod.currency === 'string' && mod.currency.trim().length > 0) {
-          return mod.currency.trim().toUpperCase();
-        }
-        return undefined;
-      })
-      .filter((currency?: string) => Boolean(currency)) as string[];
-
-    const defaultCurrencyPool = [
-      'XAF', 'XOF', 'USD', 'EUR', 'NGN', 'GHS', 'KES', 'TZS', 'UGX', 'RWF', 'BIF', 'CDF', 'ZMW', 'ZAR',
-      'MAD', 'DZD', 'TND', 'EGP', 'LYD', 'MUR', 'MGA', 'MZN', 'AOA', 'SCR', 'KMF', 'SOS', 'SDG', 'SSP',
-      'DJF', 'MRU', 'ERN', 'STN'
-    ];
-
-    const availableVariantCurrencies = Array.from(
-      new Set(
-        [
-          ...modaliteCurrencies,
-          variantCurrency,
-          deviseProduitValue,
-          ...defaultCurrencyPool
-        ]
-          .filter((currency): currency is string => Boolean(currency))
-          .map((currency) => currency.toUpperCase())
-      )
-    );
-
-    return (
-      <View style={styles.productBlockContent}>
-        <View style={styles.productIntroRow}>
-          <View style={styles.productIntroIcon}>
-            <SafeIcon name={isPrestation ? 'briefcase' : 'package-plus'} size={24} color="#FFFFFF" />
-          </View>
-          <View style={styles.productIntroTextWrapper}>
-            <Text style={styles.productIntroTitle}>
-              {isPrestation ? 'Informations prestation' : 'Informations produit'}
-            </Text>
-            <Text style={styles.productIntroSubtitle}>
-              {isPrestation
-                ? 'Décrivez votre prestation avec précision pour convaincre vos futurs clients.'
-                : 'Présentez clairement les atouts de votre produit pour maximiser vos ventes.'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.productFieldGroup}>
-          <Text style={styles.fieldLabel}>
-            {isPrestation ? 'Nom de la prestation' : 'Nom du produit / prestation'}
-          </Text>
-          <NativeInput
-            placeholder={isPrestation
-              ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
-              : 'Ex: iPhone 14 Pro Max 256GB, Toyota RAV4 2018 4x4...'
-            }
-            value={nomProduit}
-            onChangeText={(text) => handleFieldChange('nom_produit', text)}
-            multiline
-            minLines={1}
-            style={[styles.fieldInput, styles.autoGrowingInput]}
-          />
-          {fieldErrors['nom_produit'] && (
-            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['nom_produit'])}</Text>
-          )}
-        </View>
-
-        <View style={styles.productFieldGroup}>
-          <Text style={styles.fieldLabel}>Catégorie du produit / prestation</Text>
-          <NativeInput
-            placeholder="Ex: Smartphone, Cours particulier, Service de réparation..."
-            value={categorieProduit}
-            onChangeText={(text) => handleFieldChange('categorie_produit', text)}
-            multiline
-            minLines={1}
-            style={[styles.fieldInput, styles.autoGrowingInput]}
-          />
-          {fieldErrors['categorie_produit'] && (
-            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['categorie_produit'])}</Text>
-          )}
-        </View>
-
-        <View style={styles.productFieldGroup}>
-          <Text style={styles.fieldLabel}>Description du produit / prestation</Text>
-          <NativeInput
-            placeholder="Décrivez les caractéristiques spécifiques du produit / prestation..."
-            value={descriptionProduit}
-            onChangeText={(text) => handleFieldChange('description_produit', text)}
-            multiline
-            minLines={2}
-            style={[styles.fieldInput, styles.textareaInputProduct]}
-            inputStyle={styles.productDescriptionText}
-          />
-          {fieldErrors['description_produit'] && (
-            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['description_produit'])}</Text>
-          )}
-        </View>
-
-        <View style={styles.productFieldGroup}>
-          <LinearAutocompleteEditor
-            label={isPrestation ? 'Caractéristiques prestations' : 'Caractéristiques produits / prestations'}
-            identifiantBase="produits"
-            value={produitsValues}
-            contextValues={contextValues}
-            categoryValue={categorieProduit}
-            // ✅ CORRIGÉ: Passer product_vector et product_labels réorganisés (combinaison préférée en premier)
-            productVector={productVector || (Array.isArray(produitsField?.product_vector) ? produitsField.product_vector : undefined)}
-            productLabels={productLabels || (Array.isArray(produitsField?.product_labels) ? produitsField.product_labels : undefined)}
-            onChange={(values, updatedSousCaracs) => {
-              const nextSousCaracs = updatedSousCaracs || sousCaracteristiques || {};
-              handleFieldChange('produits', {
-                type_donnee: 'autocomplete',
-                valeur: values,
-                separateur: safeSeparateur,
-                sous_caracteristiques: nextSousCaracs,
-                identifiant_base: 'produits',
-                filtrable: true,
-                origine_champs: 'formulaire'
-              });
-              if (updatedSousCaracs) {
-                handleFieldChange('sous_caracteristiques', updatedSousCaracs);
-              }
-            }}
-            sousCaracteristiques={(() => {
-              // ✅ NOUVEAU: Log détaillé pour tracer le passage de sous_caracteristiques
-              const finalSousCaracs = sousCaracteristiques || {};
-              console.log('[FormulaireYukpoIntelligentScreen] 🔍 [BACKEND_TRACE] Passage sousCaracteristiques à LinearAutocompleteEditor:', {
-                hasValue: !!sousCaracteristiques,
-                type: typeof sousCaracteristiques,
-                keys: Object.keys(finalSousCaracs),
-                count: Object.keys(finalSousCaracs).length,
-                sample: JSON.stringify(finalSousCaracs).substring(0, 300),
-                productVector: productVector?.slice(0, 3),
-                productLabels: productLabels?.slice(0, 3)
-              });
-              return finalSousCaracs;
-            })()}
-            separateur={safeSeparateur}
-            allowCustomModality
-            filtrable
-            placeholder="Tapez pour voir les suggestions..."
-          />
-          {fieldErrors['produits'] && (
-            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['produits'])}</Text>
-          )}
-        </View>
-
-        {!hasExistingVariants && (
-          <View style={styles.productFieldGroup}>
-            <Text style={styles.fieldLabel}>Prix du produit / prestation</Text>
-            <NativeInput
-              placeholder="Ex: 150000"
-              value={prixProduitValue}
-              onChangeText={(value) => {
-                handleFieldChange('prix_produit', value);
-                handleFieldChange('prix', value);
-              }}
-              keyboardType="numeric"
-              style={styles.fieldInput}
-            />
-            <View style={styles.productCurrencyInfo}>
-              <Text style={styles.productCurrencyInfoLabel}>Devise estimée</Text>
-              <Text style={styles.productCurrencyInfoValue}>
-                {deviseProduitValue ? `${deviseProduitValue} (automatique)` : 'Déterminée automatiquement selon le lieu'}
-              </Text>
-            </View>
-            {fieldErrors['prix_produit'] && (
-              <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['prix_produit'])}</Text>
-            )}
-          </View>
-        )}
-
-        {hasExistingVariants && (
-          <View style={styles.productFieldGroup}>
-            <PriceVariantSelector
-              label={isPrestation ? 'Variantes prestation' : 'Variantes produit'}
-              variable={isPrestation ? 'formule' : 'option'}
-              modalites={currentModalites}
-              onChange={(modalites) => {
-                handleFieldChange('variabilite_prix', {
-                  type_donnee: 'price_variant',
-                  variable: isPrestation ? 'formule' : 'option',
-                  modalites,
-                  filtrable: true,
-                  origine_champs: 'formulaire'
-                });
-              }}
-              defaultCurrency={deviseProduitValue}
-              availableCurrencies={availableVariantCurrencies}
-              helperText="Modifiez les variations détectées par l'IA (prix, stock, image)."
-              showEmptyStateDetails={false}
-            />
-          </View>
-        )}
-
-        <View style={styles.productFieldGroup}>
-          <LocationSelector
-            label="Lieu de commercialisation"
-            value={locationValue}
-            onSelect={(value) => {
-              handleFieldChange('lieu_produit', {
-                type_donnee: 'location',
-                valeur: value,
-                composants: { lieu: value },
-                filtrable: true,
-                origine_champs: 'formulaire'
-              });
-            }}
-            placeholder="Ville, quartier, pays..."
-            enrichWithBackend
-            required
-          />
-          {fieldErrors['lieu_produit'] && (
-            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors['lieu_produit'])}</Text>
-          )}
-        </View>
-
-        <View style={styles.productFieldGroup}>
-          <Text style={styles.fieldLabel}>Photos et vidéos</Text>
-          <MediaUploadManager
-            images={mediaFiles.images}
-            videos={mediaFiles.videos}
-            onImagesChange={updateProductImages}
-            onVideosChange={updateProductVideos}
-            maxImages={MAX_PRODUCT_IMAGES}
-            maxVideos={3}
-            onHorizontalScrollStart={handleMediaHorizontalScrollStart}
-            onHorizontalScrollEnd={handleMediaHorizontalScrollEnd}
-          />
-          <Text style={styles.productHint}>
-            Ajoutez des visuels de haute qualité pour inspirer confiance et mettre votre offre en valeur.
-          </Text>
-        </View>
-      </View>
-    );
-  };
-
   // Rendu d'un champ (aligné sur le frontend avec tous les types)
   const renderField = (field: DynamicField) => {
     // ✅ Log de debug pour chaque champ rendu
@@ -2895,8 +1850,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           if (typeof v === 'string') {
             return v;
           } else if (v && typeof v === 'object') {
-            // ✅ AMÉLIORATION: Réduire niveau log (conversion normale)
-            console.debug('[FormulaireYukpoIntelligentScreen] Élément value n\'est pas string, conversion:', v);
+            console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Élément value n\'est pas string, conversion:', v);
             return JSON.stringify(v);
           } else if (v !== null && v !== undefined) {
             return String(v);
@@ -2915,8 +1869,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           if (typeof v === 'string') {
             return v;
           } else if (v && typeof v === 'object') {
-            // ✅ AMÉLIORATION: Réduire niveau log (conversion normale)
-            console.debug('[FormulaireYukpoIntelligentScreen] Élément array n\'est pas string, conversion:', v);
+            console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Élément array n\'est pas string, conversion:', v);
             return JSON.stringify(v);
           } else if (v !== null && v !== undefined) {
             return String(v);
@@ -2925,42 +1878,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }).filter(v => v.length > 0);
       }
 
-      // ✅ CORRIGÉ: Si currentSousCaracs est vide, réessayer avec getSousCaracteristiquesFromIA
-      // Cela garantit que les sous-caractéristiques sont toujours extraites même si elles n'étaient pas disponibles au moment de la création du champ
-      if (!currentSousCaracs || typeof currentSousCaracs !== 'object' || Object.keys(currentSousCaracs).length === 0) {
-        // Réessayer avec les valeurs actuelles du formulaire
-        const sousCaracsFromIA = getSousCaracteristiquesFromIA(valeursFormulaire, suggestion);
-        if (sousCaracsFromIA && typeof sousCaracsFromIA === 'object' && Object.keys(sousCaracsFromIA).length > 0) {
-          currentSousCaracs = sousCaracsFromIA;
-          console.log('[FormulaireYukpoIntelligentScreen] ✅ Sous-caractéristiques réextraites depuis IA pour', field.name, {
-            count: Object.keys(currentSousCaracs).length,
-            keys: Object.keys(currentSousCaracs)
-          });
-        } else {
-          // Dernier fallback: utiliser field.sousCaracteristiques même s'il est vide
-          currentSousCaracs = field.sousCaracteristiques || {};
-          // ✅ AMÉLIORATION: Réduire niveau log (comportement normal)
-          console.debug('[FormulaireYukpoIntelligentScreen] Aucune sous-caractéristique trouvée pour', field.name);
-        }
+      // ✅ PROTECTION CRITIQUE: S'assurer que currentSousCaracs est un objet valide
+      if (!currentSousCaracs || typeof currentSousCaracs !== 'object') {
+        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ sousCaracteristiques invalide pour', field.name);
+        currentSousCaracs = {};
       }
 
       // ✅ PROTECTION CRITIQUE 2025-11-06: S'assurer que separateur est une string valide
       const safeSeparateur = (field.separateur && typeof field.separateur === 'string') ? field.separateur : ',';
       if (!field.separateur || typeof field.separateur !== 'string') {
-        // ✅ AMÉLIORATION: Réduire niveau log (fallback normal)
-        console.debug('[FormulaireYukpoIntelligentScreen] field.separateur manquant/invalide pour', field.name, '- utilisation fallback ","');
-      }
-
-      // ✅ NOUVEAU: Extraire product_vector et product_labels si disponibles (pour l'ordre correct)
-      let productVector: string[] | undefined;
-      let productLabels: string[] | undefined;
-      if (fieldValue && typeof fieldValue === 'object' && 'product_vector' in fieldValue) {
-        productVector = Array.isArray(fieldValue.product_vector) ? fieldValue.product_vector : undefined;
-        productLabels = Array.isArray(fieldValue.product_labels) ? fieldValue.product_labels : undefined;
-        console.log('[FormulaireYukpoIntelligentScreen] ✅ product_vector et product_labels extraits pour', field.name, {
-          product_vector: productVector?.length,
-          product_labels: productLabels?.length
-        });
+        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ field.separateur manquant/invalide pour', field.name, '- utilisation fallback ","');
       }
 
       const nbModalites = currentValues.length;
@@ -2971,9 +1898,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         nbCaracteristiques,
         currentValues,
         nbSousCaracsDisponibles: Object.keys(currentSousCaracs).length,
-        separateur: safeSeparateur,
-        hasProductVector: !!productVector,
-        hasProductLabels: !!productLabels
+        separateur: safeSeparateur
       });
 
       return (
@@ -2992,33 +1917,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             </View>
           )}
 
-          {/*
-           * ✅ Ajustement 2025-11-09 :
-           * - Pour les caractéristiques produits/prestations, on ne rapproche plus que via la description.
-           */}
           <LinearAutocompleteEditor
             label={field.label}
             identifiantBase={field.identifiantBase || field.name || 'produit'}
             sousCaracteristiques={currentSousCaracs || {}} // ✅ PROTECTION: Garantir objet valide
             separateur={safeSeparateur} // ✅ PROTECTION ULTIME: Garantit string valide
             value={currentValues || []} // ✅ PROTECTION: Garantir array de strings valides
-            productVector={productVector} // ✅ NOUVEAU: Passer product_vector pour l'ordre correct
-            productLabels={productLabels} // ✅ NOUVEAU: Passer product_labels pour l'ordre correct
-            contextValues={
-              (field.identifiantBase || field.name) === 'produits'
-                ? [
-                  valeursFormulaire.description_produit,
-                  valeursFormulaire.description,
-                ]
-                : [
-                  valeursFormulaire.categorie_produit,
-                  valeursFormulaire.category,
-                  valeursFormulaire.description_produit,
-                  valeursFormulaire.description,
-                  valeursFormulaire.nom_produit,
-                  valeursFormulaire.titre_service,
-                ]
-            }
+            contextValues={[
+              valeursFormulaire.categorie_produit,
+              valeursFormulaire.category,
+              valeursFormulaire.description_produit,
+              valeursFormulaire.description,
+              valeursFormulaire.nom_produit,
+              valeursFormulaire.titre_service,
+            ]}
             categoryValue={valeursFormulaire.categorie_produit || valeursFormulaire.category || ''}
             onChange={(values, updatedSousCaracs) => {
               // ✅ NOUVEAU 2025-11-04: Mettre à jour aussi sous-caractéristiques si modifiées
@@ -3059,22 +1971,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     if (field.typeDonnee === 'price_variant') {
-      // ✅ CORRIGÉ: Extraire les modalités depuis plusieurs sources
       const iaModalites = Array.isArray(field.modalites) ? field.modalites : [];
       const userModalites = valeursFormulaire[field.name]?.modalites;
       const modalitesFromUser = Array.isArray(userModalites) ? userModalites : [];
-      // ✅ CORRIGÉ: Vérifier aussi dans variabilite_prix et price_variant au niveau racine
-      const rootVariabilitePrix = valeursFormulaire['variabilite_prix'] || valeursFormulaire['price_variant'];
-      const rootModalites = rootVariabilitePrix && typeof rootVariabilitePrix === 'object' && 'modalites' in rootVariabilitePrix
-        ? (Array.isArray(rootVariabilitePrix.modalites) ? rootVariabilitePrix.modalites : [])
-        : [];
+      const modalitesToRender = modalitesFromUser.length > 0 ? modalitesFromUser : iaModalites;
 
-      // ✅ CORRIGÉ: Prioriser userModalites > rootModalites > iaModalites
-      const modalitesToRender = modalitesFromUser.length > 0
-        ? modalitesFromUser
-        : (rootModalites.length > 0 ? rootModalites : iaModalites);
-
-      // ✅ CORRIGÉ: Ne pas afficher si aucune modalité (afficher uniquement le champ prix simple dans ce cas)
       if (!Array.isArray(modalitesToRender) || modalitesToRender.length === 0) {
         return null;
       }
@@ -3247,8 +2148,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             readonly={isReadonly}
             maxImages={MAX_PRODUCT_IMAGES}
             maxVideos={3}
-            onHorizontalScrollStart={handleMediaHorizontalScrollStart}
-            onHorizontalScrollEnd={handleMediaHorizontalScrollEnd}
           />
         </View>
       );
@@ -3371,9 +2270,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
       case 'textarea':
         const isProductDescField = field.name === 'description_produit';
-        // ✅ CORRECTION: Réduire la hauteur pour description_produit (2 lignes au lieu de 3)
-        const linesMinimum = isProductDescField ? 2 : 3;
-        const normalizedValue = formatMultilineValue(valeursFormulaire[field.name] || '');
+        const linesMinimum = isProductDescField ? 6 : 3;
         return (
           <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
@@ -3381,8 +2278,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             </Text>
             <NativeInput
               placeholder={field.placeholder}
-              value={normalizedValue}
-              onChangeText={(text) => handleFieldChange(field.name, text.replace(/\r/g, ''))}
+              value={valeursFormulaire[field.name] || ''}
+              onChangeText={(text) => handleFieldChange(field.name, text)}
               multiline
               minLines={linesMinimum}
               inputStyle={isProductDescField ? styles.productDescriptionText : undefined}
@@ -3396,8 +2293,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               }}
               style={[
                 styles.fieldInput,
-                isProductDescField ? styles.textareaInputProduct : styles.textareaInput,
-                // ✅ CORRECTION: Utiliser textareaInputProduct pour description_produit (hauteur réduite)
+                styles.textareaInput,
+                isProductDescField && styles.productDescriptionInput,
                 dynamicTextareaHeights[field.name] ? { minHeight: dynamicTextareaHeights[field.name] } : null
               ]}
             />
@@ -3422,12 +2319,29 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               </View>
               <View style={[styles.fieldContainer, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>Devise</Text>
-                <View style={styles.readonlyCurrencyChip}>
-                  <SafeIcon name="info" size={14} color="#0F172A" />
-                  <Text style={styles.readonlyCurrencyText}>
-                    {(valeursFormulaire.devise || deviseProduitValue || 'Auto')} (déterminée automatiquement)
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => {
+                    Alert.alert(
+                      'Sélectionner la devise',
+                      'Choisissez la devise du prix',
+                      [
+                        { text: 'XAF (Franc CFA)', onPress: () => handleFieldChange('devise', 'XAF') },
+                        { text: 'EUR (Euro)', onPress: () => handleFieldChange('devise', 'EUR') },
+                        { text: 'USD (Dollar)', onPress: () => handleFieldChange('devise', 'USD') },
+                        { text: 'GBP (Livre)', onPress: () => handleFieldChange('devise', 'GBP') },
+                        { text: 'CAD (Dollar canadien)', onPress: () => handleFieldChange('devise', 'CAD') },
+                        { text: 'CHF (Franc suisse)', onPress: () => handleFieldChange('devise', 'CHF') },
+                        { text: 'Annuler', style: 'cancel' }
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={styles.pickerButtonText}>
+                    {valeursFormulaire.devise || 'XAF'}
                   </Text>
-                </View>
+                  <SafeIcon name="chevron-down" size={16} color="#666" />
+                </TouchableOpacity>
               </View>
             </View>
           );
@@ -3584,8 +2498,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const soumettreFormulaire = async () => {
     // ✅ Protection contre double soumission
     if (loading || isSubmitting) {
-      // ✅ AMÉLIORATION: Réduire niveau log (comportement normal)
-      console.debug('[FormulaireYukpoIntelligentScreen] Soumission déjà en cours, ignorée');
+      console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Soumission déjà en cours, ignorée');
       return;
     }
 
@@ -3660,8 +2573,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
               return (safeOptions as any)[key];
             } catch (error) {
-              // ✅ AMÉLIORATION: Réduire niveau log (erreur non bloquante)
-              console.debug('[FormulaireYukpoIntelligentScreen] Lecture option impossible (non bloquant):', key, error);
+              console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Lecture option impossible:', key, error);
               return undefined;
             }
           };
@@ -3858,6 +2770,192 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
       };
 
+      // ✅ SI MODE DUPLICATION PRODUIT (ancienne fonctionnalité)
+      if (isAddingProduct && serviceId) {
+        console.log('[FormulaireYukpoIntelligentScreen] 🛍️ MODE DUPLICATION - Ajout produit au service', serviceId);
+
+        // ✅ CORRECTION 2025-11-06: Construire les données COMPLÈTES du nouveau produit
+        // Inclure TOUS les champs produits + médias (images, vidéos, prix variant, etc.)
+        const nouveauProduit: any = {};
+
+        // Champs du bloc produits à extraire
+        const PRODUCT_FIELDS = [
+          'nom_produit',
+          'categorie_produit',
+          'description_produit',
+          'produits',
+          'prix',
+          'prix_produit',
+          'devise',
+          'lieu_produit',
+          'lieu_commercial',
+          'lieu_commercialisation',
+          'price_variant',   // ✅ NOUVEAU : Variations de prix
+          'variabilite_prix', // Alias de price_variant
+          'product_labels',   // ✅ NOUVEAU : Labels/tags
+          'images',           // ✅ NOUVEAU : Images produit
+          'videos',           // ✅ NOUVEAU : Vidéos produit
+          'audios',           // Éventuellement
+          'documents'         // Éventuellement
+        ];
+
+        PRODUCT_FIELDS.forEach(key => {
+          const value = valeursFormulaire[key];
+          if (value !== undefined && value !== null && value !== '') {
+            nouveauProduit[key] = value;
+          }
+        });
+
+        const compressedMedia = await getCompressedMedia();
+
+        if (compressedMedia?.images?.length) {
+          const mergedImages = mergeMediaArrays(nouveauProduit.images, compressedMedia.images);
+          if (mergedImages.length > 0) {
+            nouveauProduit.images = mergedImages;
+            nouveauProduit.base64_image = mergedImages;
+          }
+        }
+
+        if (compressedMedia?.videos?.length) {
+          const mergedVideos = mergeMediaArrays(nouveauProduit.videos, compressedMedia.videos);
+          if (mergedVideos.length > 0) {
+            nouveauProduit.videos = mergedVideos;
+            nouveauProduit.video_base64 = mergedVideos;
+          }
+        }
+
+        if (compressedMedia?.audios?.length) {
+          const mergedAudios = mergeMediaArrays(nouveauProduit.audio_base64, compressedMedia.audios);
+          if (mergedAudios.length > 0) {
+            nouveauProduit.audio_base64 = mergedAudios;
+          }
+        }
+
+        if (compressedMedia?.documents?.length) {
+          const mergedDocs = mergeMediaArrays(nouveauProduit.doc_base64, compressedMedia.documents);
+          if (mergedDocs.length > 0) {
+            nouveauProduit.doc_base64 = mergedDocs;
+          }
+        }
+
+        if (compressedMedia?.excel?.length) {
+          const mergedExcel = mergeMediaArrays(nouveauProduit.excel_base64, compressedMedia.excel);
+          if (mergedExcel.length > 0) {
+            nouveauProduit.excel_base64 = mergedExcel;
+          }
+        }
+
+        console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit (complètes):', {
+          ...nouveauProduit,
+          images: compressedMedia?.images?.length || 0,
+          videos: compressedMedia?.videos?.length || 0
+        });
+
+        // 💰 ÉTAPE 1 : Vérifier le solde (coût fixe : 3000 FCFA pour ajout produit)
+        const COUT_AJOUT_PRODUIT = 3000;
+
+        console.log('💰 [FormulaireYukpoIntelligentScreen] Vérification du solde pour ajout produit...');
+        const balanceResponse = await apiGet<{ tokens_balance: number }>('/api/users/balance');
+
+        if (!balanceResponse.success) {
+          const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
+          console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Erreur vérification solde:', errorMsg);
+
+          // Si problème d'authentification, rediriger vers login
+          if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('authentification')) {
+            Alert.alert(
+              'Session expirée',
+              'Votre session a expiré. Veuillez vous reconnecter.',
+              [{ text: 'OK', onPress: () => logout() }]
+            );
+            return;
+          }
+
+          throw new Error(errorMsg);
+        }
+
+        if (!balanceResponse.data || typeof balanceResponse.data.tokens_balance === 'undefined') {
+          console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Données solde invalides:', balanceResponse.data);
+          throw new Error('Données de solde invalides reçues du serveur');
+        }
+
+        const soldeActuel = balanceResponse.data.tokens_balance || 0;
+        console.log('💰 [FormulaireYukpoIntelligentScreen] ✅ Solde actuel récupéré:', soldeActuel);
+
+        // Vérifier si le solde est suffisant
+        if (soldeActuel < COUT_AJOUT_PRODUIT) {
+          Alert.alert(
+            '💸 Solde insuffisant',
+            `Coût d'ajout de produit : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
+            [{ text: 'OK' }]
+          );
+          return; // ❌ BLOQUE si solde insuffisant
+        }
+
+        // 💰 ÉTAPE 2 : Demander confirmation avec affichage du coût
+        Alert.alert(
+          '💰 Ajout de produit',
+          `Coût : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après ajout : ${(soldeActuel - COUT_AJOUT_PRODUIT).toLocaleString()} FCFA\n\nConfirmez-vous l'ajout de ce produit à votre service ?`,
+          [
+            {
+              text: 'Annuler',
+              style: 'cancel'
+            },
+            {
+              text: 'Confirmer',
+              onPress: async () => {
+                try {
+                  // Appeler /api/services/{serviceId}/products
+                  const userId = parseInt(user?.id || '0', 10);
+                  const response = await apiPost(`/api/services/${serviceId}/products`, {
+                    user_id: userId,
+                    product_data: nouveauProduit
+                  });
+
+                  if (!response.success) {
+                    throw new Error(response.error || 'Erreur lors de l\'ajout du produit');
+                  }
+
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', response);
+
+                  const responseData: any = response.data ?? {};
+                  const costPaid = Number(responseData.cost ?? response.cost ?? COUT_AJOUT_PRODUIT);
+                  const newBalanceValue = Number(
+                    responseData.new_balance ?? response.new_balance ?? (soldeActuel - COUT_AJOUT_PRODUIT)
+                  );
+                  const productIndexResult =
+                    responseData.product_index ??
+                    response.product_index ??
+                    (typeof responseData === 'object' && responseData.data
+                      ? responseData.data.product_index
+                      : undefined);
+
+                  Alert.alert(
+                    '✅ Produit créé',
+                    `Votre nouveau produit a été ajouté au service avec succès !\n\n` +
+                    `💰 Coût: ${costPaid.toLocaleString('fr-FR')} FCFA\n` +
+                    `💳 Nouveau solde: ${newBalanceValue.toLocaleString('fr-FR')} FCFA\n` +
+                    `📦 Index produit: ${productIndexResult ?? 'non communiqué'}`,
+                    [
+                      {
+                        text: 'OK',
+                        onPress: () => {
+                          // Retour vers management du service
+                          navigation.goBack();
+                        }
+                      }
+                    ]
+                  );
+                } catch (error: any) {
+                  handleAPIError(error, 'Ajout produit', () => soumettreFormulaire());
+                }
+              }
+            }
+          ]
+        );
+
+        return; // ✅ Sortir sans exécuter la logique de création de service
+      }
 
       // ✅ SI MODE MODIFICATION (edit OU edit_service_info) : Pas d'appel IA, pas de coût
       if ((mode === 'edit' || isEditingServiceInfo) && serviceId) {
@@ -3954,12 +3052,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               onPress: () => {
                 setSuccessData({ serviceId, cout: 0 });
                 setShowSuccessToast(true);
-                DeviceEventEmitter.emit('service:refresh');
                 if (fromMesProduits || isEditingServiceInfo) {
                   // Retour vers Mes Produits
                   navigation.goBack();
                 } else if (fromMesServices) {
-                  (navigation as any).navigate('Main', { screen: 'Services' });
+                  (navigation as any).navigate('MesServices');
                 } else {
                   navigation.goBack();
                 }
@@ -3971,6 +3068,82 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return; // ✅ Sortir ici pour éviter le flux de création
       }
 
+      // ✅ NOUVEAU 2025-11-01: SI MODE ADD_PRODUCT : Appeler route ajout produit incrémental
+      if (isAddingProduct && serviceId) {
+        console.log('[FormulaireYukpoIntelligentScreen] 📦 MODE ADD_PRODUCT - Ajout produit au service', serviceId);
+
+        try {
+          setIsSubmitting(true);
+
+          // Construire les données du nouveau produit uniquement
+          const nouveauProduit: Record<string, any> = {};
+
+          // Champs produits principaux
+          if (valeursFormulaire.nom_produit) nouveauProduit.nom = valeursFormulaire.nom_produit;
+          if (valeursFormulaire.prix_produit) nouveauProduit.prix = valeursFormulaire.prix_produit;
+          if (valeursFormulaire.devise_produit) nouveauProduit.devise = valeursFormulaire.devise_produit;
+          if (valeursFormulaire.description_produit) nouveauProduit.description = valeursFormulaire.description_produit;
+          if (valeursFormulaire.categorie_produit) nouveauProduit.categorie = valeursFormulaire.categorie_produit;
+
+          // Copier tous les autres champs du formulaire qui concernent le produit
+          Object.keys(valeursFormulaire).forEach(key => {
+            if (key.includes('produit') || key === 'produits') {
+              nouveauProduit[key] = valeursFormulaire[key];
+            }
+          });
+
+          console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit:', nouveauProduit);
+
+          // ✅ Appel route POST /api/services/{serviceId}/products
+          const userId = parseInt(user?.id || '0', 10);
+          const response = await apiPost(`/api/services/${serviceId}/products`, {
+            user_id: userId,
+            product_data: nouveauProduit
+          });
+
+          if (!response.success) {
+            throw new Error(response.error || 'Erreur ajout produit');
+          }
+
+          const { cost, new_balance, product_index } = response.data;
+
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', {
+            cost,
+            new_balance,
+            product_index
+          });
+
+          Alert.alert(
+            '✅ Produit ajouté',
+            `Votre produit a été ajouté avec succès au service.\n\n💰 Coût: ${cost.toLocaleString()} FCFA\n💳 Nouveau solde: ${new_balance.toLocaleString()} FCFA`,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  setSuccessData({ serviceId, cout: cost });
+                  setShowSuccessToast(true);
+
+                  if (fromMesProduits) {
+                    (navigation as any).navigate('MesProduits');
+                  } else if (fromMesServices) {
+                    (navigation as any).navigate('MesServices');
+                  } else {
+                    navigation.goBack();
+                  }
+                }
+              }
+            ]
+          );
+
+          return; // ✅ Sortir ici
+        } catch (error: any) {
+          handleAPIError(error, 'Ajout produit', () => soumettreFormulaire());
+          return;
+        } finally {
+          setIsSubmitting(false);
+          setLoading(false);
+        }
+      }
 
       // ✅ MODE CRÉATION : Vérification solde + Coût (SANS appel IA - déjà fait lors de la génération du formulaire)
       console.log('[FormulaireYukpoIntelligentScreen] 🆕 MODE CRÉATION - Utilisation des données du formulaire');
@@ -4024,8 +3197,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         const texteLength = JSON.stringify(valeursFormulaire).length;
         const imageCount = compressedMedia.images.length;
         tokensEstimes = Math.ceil(texteLength / 4) + (imageCount * 170); // ~170 tokens par image (GPT-4 Vision)
-        // ✅ AMÉLIORATION: Réduire niveau log (comportement normal)
-        console.debug('[FormulaireYukpoIntelligentScreen] Aucun token trouvé dans suggestion, estimation:', tokensEstimes);
+        console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Aucun token trouvé dans suggestion, estimation:', tokensEstimes);
       }
       const coutTokenOpenAIFCFA = 0.004;
       // Utiliser tokensEstimes si tokensIAExterne est 0
@@ -4073,13 +3245,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         Alert.alert(
           '💸 Solde insuffisant',
           `Coût réel : ${coutReel.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte avant de créer ce service.`,
-          [{
-            text: 'OK',
-            onPress: () => {
-              setLoading(false); // ✅ Remettre loading à false
-              setIsSubmitting(false);
-            }
-          }]
+          [{ text: 'OK' }]
         );
         return;
       }
@@ -4094,26 +3260,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             style: 'cancel',
             onPress: () => {
               setLoading(false); // ✅ Remettre loading à false si annulé
-              setIsSubmitting(false);
             }
           },
           {
             text: 'Confirmer',
             onPress: async () => {
-              // ✅ Protection : Réinitialiser loading si l'utilisateur ferme l'alerte sans action
-              // (ne devrait pas arriver mais sécurité)
-              const timeoutId = setTimeout(() => {
-                // ✅ AMÉLIORATION: Réduire niveau log (sécurité, cas rare)
-                console.debug('[FormulaireYukpoIntelligentScreen] Timeout sécurité - réinitialisation loading');
-                setLoading(false);
-                setIsSubmitting(false);
-              }, 300000); // 5 minutes max
-
               // ✅ Protection contre double-clic sur le bouton Confirmer
               if (isSubmitting) {
-                clearTimeout(timeoutId);
-                // ✅ AMÉLIORATION: Réduire niveau log (comportement normal)
-                console.debug('[FormulaireYukpoIntelligentScreen] Création déjà en cours, ignorée');
+                console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Création déjà en cours, ignorée');
                 return;
               }
 
@@ -4137,8 +3291,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   finalServiceData = JSON.parse(JSON.stringify(suggestion.service_data.data));
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ Structure depuis suggestion.service_data.data:', Object.keys(finalServiceData));
                 } else {
-                  // ✅ AMÉLIORATION: Réduire niveau log (comportement normal)
-                  console.debug('[FormulaireYukpoIntelligentScreen] Aucune structure initiale trouvée, construction depuis formulaire uniquement');
+                  console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Aucune structure initiale trouvée, construction depuis formulaire uniquement');
                 }
 
                 // ✅ Mettre à jour avec les valeurs du formulaire (les vraies valeurs saisies par l'utilisateur)
@@ -4168,7 +3321,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                 // ✅ ALERTE si payload trop gros (> 100MB)
                 if (payloadSizeMB > 100) {
-                  // ✅ AMÉLIORATION: Garder WARN car c'est une vraie alerte (risque d'erreur 413)
                   console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ Payload très volumineux: ${payloadSizeMB.toFixed(2)} MB - Risque d'erreur 413`);
                   Alert.alert(
                     '⚠️ Données volumineuses',
@@ -4190,8 +3342,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   };
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ GPS FIXE ajouté:', valeursFormulaire.gps_fixe);
                 } else {
-                  // ✅ AMÉLIORATION: Réduire niveau log (comportement normal, GPS temps réel OK)
-                  console.debug('[FormulaireYukpoIntelligentScreen] AUCUN GPS FIXE - Le service utilisera le GPS en temps réel');
+                  console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ AUCUN GPS FIXE - Le service utilisera le GPS en temps réel!');
                 }
 
                 // 🔧 ÉTAPE 5 : Créer le service avec les données structurées par l'IA
@@ -4402,21 +3553,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     origine_champs: autocompleteData.origine_champs || 'formulaire'
                   };
 
-                  // ✅ NOUVEAU: Ajouter les variations de prix dans produitObj si disponibles
-                  // Le backend transformera variation_prix en variants/has_variant
-                  if (autocompleteData.variation_prix) {
-                    produitObj.variation_prix = autocompleteData.variation_prix;
-                    produitObj.variabilite_prix = autocompleteData.variation_prix;
-                    produitObj.price_variant = autocompleteData.variation_prix;
-                  }
-                  // Vérifier aussi dans valeursFormulaire (saisie manuelle)
-                  const manualVariation = valeursFormulaire.variabilite_prix || valeursFormulaire.price_variant;
-                  if (manualVariation && !produitObj.variation_prix) {
-                    produitObj.variation_prix = manualVariation;
-                    produitObj.variabilite_prix = manualVariation;
-                    produitObj.price_variant = manualVariation;
-                  }
-
                   if (compressedMedia?.images?.length) {
                     const mergedImages = mergeMediaArrays(produitObj.images, compressedMedia.images);
                     if (mergedImages.length > 0) {
@@ -4533,141 +3669,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   }
                 );
 
-                // ✅ NOUVEAU: Upload préalable des médias pour éviter payload trop volumineux
-                console.log('[FormulaireYukpoIntelligentScreen] 📤 Début upload préalable des médias...');
-                try {
-                  const { uploadFiles } = await import('../services/uploadApi');
-
-                  // Collecter tous les médias à uploader
-                  const filesToUpload: Array<{ uri: string; type: string; name?: string }> = [];
-
-                  // Images globales du service
-                  if (compressedMedia?.images?.length) {
-                    compressedMedia.images.forEach((img: string, idx: number) => {
-                      if (img.startsWith('data:') || img.startsWith('file://')) {
-                        const mimeType = img.startsWith('data:')
-                          ? img.split(',')[0].split(':')[1].split(';')[0]
-                          : 'image/jpeg';
-                        filesToUpload.push({
-                          uri: img,
-                          type: mimeType,
-                          name: `service_image_${idx}.jpg`
-                        });
-                      }
-                    });
-                  }
-
-                  // Médias des produits
-                  if (finalServiceData.produits?.valeur) {
-                    finalServiceData.produits.valeur.forEach((prod: any, prodIdx: number) => {
-                      // Images produit
-                      if (prod.base64_image || prod.images) {
-                        const prodImages = Array.isArray(prod.base64_image || prod.images)
-                          ? (prod.base64_image || prod.images)
-                          : [prod.base64_image || prod.images];
-                        prodImages.forEach((img: string, idx: number) => {
-                          if (img && (img.startsWith('data:') || img.startsWith('file://'))) {
-                            const mimeType = img.startsWith('data:')
-                              ? img.split(',')[0].split(':')[1].split(';')[0]
-                              : 'image/jpeg';
-                            filesToUpload.push({
-                              uri: img,
-                              type: mimeType,
-                              name: `prod_${prodIdx}_image_${idx}.jpg`
-                            });
-                          }
-                        });
-                      }
-
-                      // Vidéos produit
-                      if (prod.video_base64 || prod.videos) {
-                        const prodVideos = Array.isArray(prod.video_base64 || prod.videos)
-                          ? (prod.video_base64 || prod.videos)
-                          : [prod.video_base64 || prod.videos];
-                        prodVideos.forEach((vid: string, idx: number) => {
-                          if (vid && (vid.startsWith('data:') || vid.startsWith('file://'))) {
-                            const mimeType = vid.startsWith('data:')
-                              ? vid.split(',')[0].split(':')[1].split(';')[0]
-                              : 'video/mp4';
-                            filesToUpload.push({
-                              uri: vid,
-                              type: mimeType,
-                              name: `prod_${prodIdx}_video_${idx}.mp4`
-                            });
-                          }
-                        });
-                      }
-                    });
-                  }
-
-                  // Uploader tous les fichiers
-                  if (filesToUpload.length > 0) {
-                    console.log(`[FormulaireYukpoIntelligentScreen] 📤 Upload de ${filesToUpload.length} fichier(s)...`);
-                    const uploadedFiles = await uploadFiles(filesToUpload);
-                    console.log('[FormulaireYukpoIntelligentScreen] ✅ Upload réussi:', uploadedFiles.length, 'fichier(s)');
-
-                    // ✅ Remplacer base64 par URLs dans le payload
-                    // Images globales
-                    if (compressedMedia?.images?.length && uploadedFiles.length > 0) {
-                      const imageUrls = uploadedFiles
-                        .filter(f => f.media_type === 'image')
-                        .map(f => f.url);
-                      if (imageUrls.length > 0) {
-                        finalServiceData.imageUrls = imageUrls;
-                        // Garder base64_image pour rétrocompatibilité si URLs échouent
-                        console.log('[FormulaireYukpoIntelligentScreen] ✅ Images globales uploadées:', imageUrls.length);
-                      }
-                    }
-
-                    // Médias des produits
-                    if (finalServiceData.produits?.valeur && uploadedFiles.length > 0) {
-                      let fileIndex = 0;
-                      finalServiceData.produits.valeur.forEach((prod: any, prodIdx: number) => {
-                        // Images produit
-                        if (prod.base64_image || prod.images) {
-                          const imageCount = Array.isArray(prod.base64_image || prod.images)
-                            ? (prod.base64_image || prod.images).length
-                            : 1;
-                          const prodImageUrls = uploadedFiles
-                            .slice(fileIndex, fileIndex + imageCount)
-                            .filter(f => f.media_type === 'image')
-                            .map(f => f.url);
-                          if (prodImageUrls.length > 0) {
-                            prod.imageUrls = prodImageUrls;
-                            console.log(`[FormulaireYukpoIntelligentScreen] ✅ Images produit ${prodIdx} uploadées:`, prodImageUrls.length);
-                          }
-                          fileIndex += imageCount;
-                        }
-
-                        // Vidéos produit
-                        if (prod.video_base64 || prod.videos) {
-                          const videoCount = Array.isArray(prod.video_base64 || prod.videos)
-                            ? (prod.video_base64 || prod.videos).length
-                            : 1;
-                          const prodVideoUrls = uploadedFiles
-                            .slice(fileIndex, fileIndex + videoCount)
-                            .filter(f => f.media_type === 'video')
-                            .map(f => f.url);
-                          if (prodVideoUrls.length > 0) {
-                            prod.videoUrls = prodVideoUrls;
-                            console.log(`[FormulaireYukpoIntelligentScreen] ✅ Vidéos produit ${prodIdx} uploadées:`, prodVideoUrls.length);
-                          }
-                          fileIndex += videoCount;
-                        }
-                      });
-                    }
-                  } else {
-                    console.log('[FormulaireYukpoIntelligentScreen] ℹ️ Aucun média à uploader (déjà URLs ou vide)');
-                  }
-                } catch (uploadError: any) {
-                  console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur upload préalable, fallback base64:', uploadError.message);
-                  // Fallback: continuer avec base64 si upload échoue (rétrocompatibilité)
-                }
-
                 // Le backend attend : { user_id: number, data: {...} }
                 const servicePayload = {
                   user_id: userId,
-                  data: finalServiceData, // Les données avec imageUrls/videoUrls OU base64_image/video_base64 (rétrocompatibilité)
+                  data: finalServiceData, // Les données avec tokens_ia_externe inclus
                 };
 
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Payload envoyé au backend:', JSON.stringify(servicePayload, null, 2));
@@ -4685,10 +3690,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Data:', response.data);
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Response complet:', JSON.stringify(response, null, 2));
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Payload qui a causé l\'erreur:', JSON.stringify(servicePayload, null, 2));
-
-                  // ✅ CORRECTION : Réinitialiser le loading AVANT l'Alert pour éviter que le bouton tourne indéfiniment
-                  setIsSubmitting(false);
-                  setLoading(false);
 
                   // ✅ AMÉLIORATION : Construire un log d'erreur détaillé copiable
                   const errorLog = {
@@ -4748,7 +3749,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       { text: 'OK', style: 'cancel' }
                     ]
                   );
-                  return; // ✅ CORRECTION : Retourner au lieu de throw pour éviter le catch
+                  throw new Error(`Erreur création service: ${errorMessage}`);
                 }
 
                 const result: any = response.data;
@@ -4764,25 +3765,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                 setSuccessData({ serviceId: result?.id || result?.service_id || 'nouveau', cout: coutReel });
                 setShowSuccessToast(true);
-                DeviceEventEmitter.emit('service:refresh');
 
                 // ✅ Marquer la soumission comme terminée
-                clearTimeout(timeoutId);
                 setIsSubmitting(false);
                 setLoading(false);
 
                 // Redirection après 3 secondes
                 setTimeout(() => {
                   if (fromMesServices) {
-                    (navigation as any).navigate('Main', { screen: 'Services' });
+                    (navigation as any).navigate('MesServices');
                   } else {
                     (navigation as any).navigate('Home');
                   }
                 }, 3000);
 
               } catch (innerError: any) {
-                // ✅ Nettoyer le timeout en cas d'erreur
-                clearTimeout(timeoutId);
                 console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur création:', innerError);
 
                 // ✅ AMÉLIORATION : Log d'erreur détaillé avec copie automatique
@@ -4891,8 +3888,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       <View style={styles.scrollView}>
         {/* Étape 1: Génération du formulaire */}
-        {/* ✅ SUPPRIMÉ: Étape 1 (mini formulaire) - On passe directement à l'étape 2 (grand formulaire) */}
-        {false && activeStep === 1 && (
+        {activeStep === 1 && (
           <ScrollView
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
@@ -4921,15 +3917,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 {suggestion.data && Object.keys(suggestion.data).length > 0 ? (
                   <View style={styles.dataContainer}>
                     {Object.entries(suggestion.data || {}).map(([key, value], index) => {
-                      // ✅ CORRIGÉ: Protection contre undefined/null pour éviter les erreurs de rendu
-                      let fieldValue: string = '';
-                      if (value == null) {
-                        fieldValue = '';
-                      } else if (typeof value === 'object') {
-                        fieldValue = (value as any)?.valeur != null ? String((value as any).valeur) : JSON.stringify(value);
-                      } else {
-                        fieldValue = String(value);
-                      }
+                      const fieldValue = typeof value === 'object' && value !== null ? (value as any).valeur || JSON.stringify(value) : value;
                       const fieldLabel = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
                       return (
@@ -4940,7 +3928,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                           <View style={styles.dataContent}>
                             <Text style={styles.dataLabel}>{fieldLabel}</Text>
                             <Text style={styles.dataText} numberOfLines={2}>
-                              {fieldValue.length > 100 ? fieldValue.substring(0, 100) + '...' : fieldValue}
+                              {String(fieldValue).substring(0, 100)}
+                              {String(fieldValue).length > 100 ? '...' : ''}
                             </Text>
                           </View>
                         </View>
@@ -5088,7 +4077,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   ref={blockContentRef}
                   horizontal
                   pagingEnabled
-                  scrollEnabled={blockHorizontalScrollEnabled}
+                  scrollEnabled={true}
                   showsHorizontalScrollIndicator={false}
                   style={styles.contentScrollViewHorizontal}
                   contentContainerStyle={styles.contentContainerHorizontal}
@@ -5128,18 +4117,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                           </LinearGradient>
 
                           <NativeCard style={styles.sectionContent}>
-                            {block.id === 'products' ? (
-                              <>
-                                {renderProductsBlock()}
-                                {(block.fields || [])
-                                  .filter((field) => !PRODUCT_BLOCK_FIELD_NAMES.includes(field.name))
-                                  .map((field) => renderField(field))}
-                              </>
-                            ) : (
-                              (block.fields || [])
-                                .filter(field => field.name !== 'devise')
-                                .map((field) => renderField(field))
-                            )}
+                            {(block.fields || [])
+                              .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
+                              .map((field, index) => renderField(field))}
                           </NativeCard>
 
                           {!isReadonly && block.id === 'payment' && (
@@ -5162,10 +4142,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                                 >
                                   <Text style={styles.finalActionButtonText}>
                                     {(loading || isSubmitting)
-                                      ? (isEditingServiceInfo ? 'Mise à jour...' :
-                                        mode === 'edit' ? 'Modification...' : 'Création...')
-                                      : (isEditingServiceInfo ? 'Modifier les données du service' :
-                                        mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
+                                      ? (isAddingProductToExistingService ? 'Création du produit...' :
+                                        isEditingServiceInfo ? 'Mise à jour...' :
+                                          mode === 'edit' ? 'Modification...' : 'Création...')
+                                      : (isAddingProductToExistingService ? 'Créer le produit' :
+                                        isEditingServiceInfo ? 'Modifier les données du service' :
+                                          mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
                                   </Text>
                                   <SafeIcon name="check" size={20} color="#FFFFFF" />
                                 </LinearGradient>
@@ -5257,6 +4239,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         title="Sélection de localisation GPS"
         allowZoneSelection={true}
       />
+
 
       {/* ✅ SUPPRIMÉ: Modal de duplication de produit - Les produits sont maintenant gérés via les champs dynamiques */}
     </View>
@@ -5506,68 +4489,6 @@ const styles = StyleSheet.create({
   variantCalloutTextHighlighted: {
     color: '#E0E7FF',
   },
-  productBlockContent: {
-    gap: 24,
-  },
-  productIntroRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(99, 102, 241, 0.08)',
-  },
-  productIntroIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: modernColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  productIntroTextWrapper: {
-    flex: 1,
-  },
-  productIntroTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: modernColors.text,
-  },
-  productIntroSubtitle: {
-    fontSize: 12,
-    color: modernColors.textSecondary,
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  productFieldGroup: {
-    marginBottom: 20,
-  },
-  productCurrencyInfo: {
-    marginTop: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E0E7FF',
-    backgroundColor: '#EEF2FF',
-  },
-  productCurrencyInfoLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#312E81',
-    marginBottom: 4,
-  },
-  productCurrencyInfoValue: {
-    fontSize: 13,
-    color: '#1E1B4B',
-    fontWeight: '600',
-  },
-  productHint: {
-    fontSize: 12,
-    color: modernColors.textSecondary,
-    marginTop: 8,
-  },
   productFieldContainer: {
     marginBottom: 12,
   },
@@ -5622,25 +4543,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   textareaInput: {
-    minHeight: 220,
-    paddingTop: 16,
-  },
-  textareaInputProduct: {
-    // ✅ CORRIGÉ : Hauteur réduite pour le champ description_produit
-    minHeight: 100,
-    paddingTop: 12,
+    minHeight: 200,
+    paddingTop: 14,
   },
   productDescriptionInput: {
-    // ✅ CORRECTION: Utiliser la même hauteur que textareaInput (220px au lieu de 300px)
-    minHeight: 220,
-    paddingTop: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
+    minHeight: 240,
+    lineHeight: 22,
   },
   productDescriptionText: {
-    lineHeight: 24,
-    fontSize: 15,
+    lineHeight: 22,
   },
   navigationButtons: {
     flexDirection: 'row',
@@ -5862,23 +4773,6 @@ const styles = StyleSheet.create({
   },
   pickerButtonTextActive: {
     color: '#FFFFFF',
-  },
-  readonlyCurrencyChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#CBD5F5',
-    marginTop: 8,
-  },
-  readonlyCurrencyText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#312E81',
   },
   hintBox: {
     backgroundColor: modernColors.background,
