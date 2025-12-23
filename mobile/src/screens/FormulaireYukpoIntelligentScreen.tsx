@@ -5392,6 +5392,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                             <View style={styles.navButtonPlaceholder} />
                           )}
                         </View>
+                        </View>
                       </ScrollView>
                     </View>
                   ))}
