@@ -753,19 +753,46 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 const selectedBrief = briefVariants[0]; // Utiliser le premier brief
                 setIsGeneratingTimeline(true);
                 try {
-                    // Préparer les médias disponibles
+                    // ✅ CORRIGÉ: Préparer les médias disponibles avec validation
                     const availableMedia = [
-                        ...productMedia.map(m => ({
-                            id: m.id.toString(),
-                            url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,
-                            media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
-                        })),
-                        ...serviceMedia.map(m => ({
-                            id: m.id.toString(),
-                            url: m.path ? `${config.API_BASE_URL}/${m.path}` : undefined,
-                            media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
-                        })),
+                        ...productMedia
+                            .filter(m => m.path && m.path.trim().length > 0) // Filtrer les médias sans path
+                            .map(m => {
+                                const mediaUrl = m.path ? buildMediaUrl(m.path) : undefined;
+                                return {
+                                    id: m.id.toString(),
+                                    url: mediaUrl,
+                                    media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
+                                };
+                            })
+                            .filter(m => m.url && m.url.trim().length > 0), // Filtrer les médias sans URL valide
+                        ...serviceMedia
+                            .filter(m => m.path && m.path.trim().length > 0) // Filtrer les médias sans path
+                            .map(m => {
+                                const mediaUrl = m.path ? buildMediaUrl(m.path) : undefined;
+                                return {
+                                    id: m.id.toString(),
+                                    url: mediaUrl,
+                                    media_type: (m.type || m.media_type || 'image') === 'image' ? 'image' : 'video',
+                                };
+                            })
+                            .filter(m => m.url && m.url.trim().length > 0), // Filtrer les médias sans URL valide
                     ];
+
+                    // ✅ CORRIGÉ: Log pour diagnostic
+                    console.log('[ProductVideoCreationModal] Médias disponibles pour timeline:', {
+                        productMediaCount: productMedia.length,
+                        serviceMediaCount: serviceMedia.length,
+                        availableMediaCount: availableMedia.length,
+                        availableMedia: availableMedia.map(m => ({ id: m.id, url: m.url?.substring(0, 50) + '...', media_type: m.media_type })),
+                    });
+
+                    // ✅ CORRIGÉ: Vérifier qu'il y a des médias disponibles
+                    if (availableMedia.length === 0) {
+                        console.warn('[ProductVideoCreationModal] ⚠️ Aucun média disponible pour générer la timeline');
+                        // Ne pas générer la timeline si aucun média n'est disponible
+                        return;
+                    }
 
                     const timelineResponse = await mediaApi.generateVideoTimeline({
                         brief: {
@@ -788,16 +815,28 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     if (timelineResponse.success && timelineResponse.data) {
                         const responseData = timelineResponse.data as { success?: boolean; timeline?: VideoTimelineType };
                         if (responseData.timeline) {
-                            console.log('[ProductVideoCreationModal] ✅ Timeline générée:', responseData.timeline);
-                            setGeneratedTimeline(responseData.timeline);
-                            // ✅ NOUVEAU: Mettre à jour scriptNotes avec le texte des scènes si vide
-                            if (!scriptNotes.trim() && responseData.timeline.scenes.length > 0) {
-                                const scriptFromTimeline = responseData.timeline.scenes
-                                    .map(s => s.text)
-                                    .filter((t): t is string => t !== undefined && t.trim().length > 0)
-                                    .join('\n');
-                                if (scriptFromTimeline) {
-                                    setScriptNotes(scriptFromTimeline);
+                            // ✅ CORRIGÉ: Vérifier que la timeline contient des médias valides
+                            const hasValidMedia = responseData.timeline.scenes.some((scene: any) => {
+                                return (scene.media_url && typeof scene.media_url === 'string' && scene.media_url.trim().length > 0) ||
+                                       (scene.media_id !== null && scene.media_id !== undefined);
+                            });
+
+                            if (!hasValidMedia) {
+                                console.warn('[ProductVideoCreationModal] ⚠️ Timeline générée sans médias valides:', responseData.timeline);
+                                // Ne pas définir la timeline si elle n'a pas de médias
+                                // L'utilisateur devra utiliser le storyboard texte à la place
+                            } else {
+                                console.log('[ProductVideoCreationModal] ✅ Timeline générée avec médias:', responseData.timeline);
+                                setGeneratedTimeline(responseData.timeline);
+                                // ✅ NOUVEAU: Mettre à jour scriptNotes avec le texte des scènes si vide
+                                if (!scriptNotes.trim() && responseData.timeline.scenes.length > 0) {
+                                    const scriptFromTimeline = responseData.timeline.scenes
+                                        .map(s => s.text)
+                                        .filter((t): t is string => t !== undefined && t.trim().length > 0)
+                                        .join('\n');
+                                    if (scriptFromTimeline) {
+                                        setScriptNotes(scriptFromTimeline);
+                                    }
                                 }
                             }
                         } else {

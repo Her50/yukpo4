@@ -1,12 +1,12 @@
-// @ts-nocheck
 import { useNavigation, useRoute } from '@react-navigation/native';
 // Code corrigé (remplace @ts-ignore)
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -33,8 +33,6 @@ import LocationSelector from '../components/LocationSelector';
 import PriceVariantSelector from '../components/PriceVariantSelector';
 // ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
 import ProductFieldSelector from '../components/ProductFieldSelector';
-import { getSuggestedProductCategories } from '../utils/suggestProductCategories';
-// Code corrigé (remplace @ts-ignore)
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 // TODO: Fix TypeScript type issue
@@ -65,8 +63,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, logout } = useAuth();
-  const blockNavigationRef = React.useRef(null);
-  const blockContentRef = React.useRef(null);
+  const blockNavigationRef = React.useRef<ScrollView>(null);
+  const blockContentRef = React.useRef<FlatList>(null);
 
   const params = ((route || {})?.params || {}) as any;
 
@@ -255,8 +253,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     if (!isCurrentVisible) {
       setCurrentBlock(displayedBlocks[0].index);
-      if (blockContentRef.current && typeof blockContentRef.current.scrollTo === 'function') {
-        blockContentRef.current.scrollTo({ x: 0, y: 0, animated: true });
+      if (blockContentRef.current && typeof blockContentRef.current.scrollToIndex === 'function') {
+        blockContentRef.current.scrollToIndex({ index: 0, animated: true, viewPosition: 0 });
       }
     }
   }, [displayedBlocks, currentBlock]);
@@ -1026,10 +1024,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       if (targetDisplayIndex >= 0) {
         // ✅ OPTIMISÉ: Utiliser requestAnimationFrame pour éviter les conflits
         requestAnimationFrame(() => {
-          blockContentRef.current?.scrollTo({
-            x: targetDisplayIndex * width,
-            y: 0,
-            animated: true
+          blockContentRef.current?.scrollToIndex({
+            index: targetDisplayIndex,
+            animated: true,
+            viewPosition: 0
           });
         });
       }
@@ -1046,10 +1044,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       if (targetDisplayIndex >= 0) {
         // ✅ OPTIMISÉ: Utiliser requestAnimationFrame pour éviter les conflits
         requestAnimationFrame(() => {
-          blockContentRef.current?.scrollTo({
-            x: targetDisplayIndex * width,
-            y: 0,
-            animated: true
+          blockContentRef.current?.scrollToIndex({
+            index: targetDisplayIndex,
+            animated: true,
+            viewPosition: 0
           });
         });
       }
@@ -1083,10 +1081,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     // ✅ OPTIMISÉ: Utiliser requestAnimationFrame pour éviter les conflits avec le scroll manuel
     requestAnimationFrame(() => {
-      blockContentRef.current?.scrollTo({
-        x: targetDisplayIndex * width,
-        y: 0,
-        animated: true
+      blockContentRef.current?.scrollToIndex({
+        index: targetDisplayIndex,
+        animated: true,
+        viewPosition: 0
       });
     });
   };
@@ -1414,24 +1412,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             const lng = parseFloat(firstPoint[1]);
             setSelectedLocation({ lat, lng });
             console.log('[FormulaireYukpoIntelligentScreen] ✅ Position GPS définie:', { lat, lng });
-          }
-        }
-
-        // ✅ NOUVEAU: Charger les catégories de produits suggérées (matching local basé sur keywords + données IA)
-        if (initialValues.titre_service || initialValues.description || initialValues.category || suggestion?.data) {
-          try {
-            const suggestions = getSuggestedProductCategories(
-              initialValues.titre_service,
-              initialValues.description,
-              initialValues.category,
-              suggestion?.data
-            );
-            if (suggestions.length > 0) {
-              console.log('[FormulaireYukpoIntelligentScreen] ✅ Catégories suggérées (matching local):', suggestions.length);
-              setSuggestedProductCategories(suggestions); // Déjà limité à 3 par le matching local
-            }
-          } catch (error) {
-            console.warn('[FormulaireYukpoIntelligentScreen] Erreur chargement suggestions catégories:', error);
           }
         }
 
@@ -3527,9 +3507,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     if (typeof autocompleteData?.separateur === 'string' && autocompleteData.separateur.trim().length > 0) {
                       return autocompleteData.separateur;
                     }
-                    if (typeof separateur === 'string' && separateur.trim().length > 0) {
-                      return separateur;
-                    }
                     return ',';
                   })();
 
@@ -4083,101 +4060,110 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   </ScrollView>
                 </View>
 
-                {/* ✅ NOUVEAU 2025-11-06: Contenu scrollable HORIZONTAL entre blocs */}
-                <ScrollView
-                  ref={blockContentRef}
-                  horizontal
-                  pagingEnabled={true}
-                  scrollEnabled={true}
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.contentScrollViewHorizontal}
-                  contentContainerStyle={styles.contentContainerHorizontal}
-                  keyboardShouldPersistTaps="handled"
-                  removeClippedSubviews={true}
-                  decelerationRate="fast"
-                  snapToInterval={width}
-                  snapToAlignment="start"
-                  onMomentumScrollEnd={(event) => {
-                    // ✅ Détecter le bloc affiché après scroll horizontal manuel
-                    const scrollX = event.nativeEvent.contentOffset.x;
-                    const displayIndex = Math.round(scrollX / width);
-                    const blockInfo = displayedBlocks[displayIndex];
-                    if (blockInfo && blockInfo.index !== currentBlock) {
-                      console.log('[FormulaireYukpoIntelligent] 📱 Scroll manuel vers bloc', blockInfo.index);
-                      setCurrentBlock(blockInfo.index);
-                    }
-                  }}
-                  scrollEventThrottle={100}
-                >
-                  {/* Affichage de TOUS les blocs côte à côte */}
-                  {displayedBlocks.map(({ block, index: blockIndex }) => (
-                    <View key={block.id} style={[styles.blockPanel, { width }]}>
-                      <ScrollView
-                        style={styles.blockPanelScroll}
-                        contentContainerStyle={styles.blockPanelContent}
-                        showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
-                        keyboardDismissMode="on-drag"
-                        nestedScrollEnabled={true}
-                        removeClippedSubviews={true}
-                        scrollEventThrottle={100}
-                        bounces={Platform.OS === 'ios'}
-                        maintainVisibleContentPosition={null}
-                      >
-                        <View style={styles.sectionContainer}>
-                          <LinearGradient
-                            colors={['#3B82F6', '#1D4ED8']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.sectionHeader}
-                          >
-                            <Text style={styles.sectionHeaderText}>
-                              {block.icon} {block.title}
-                            </Text>
-                          </LinearGradient>
-
-                          <NativeCard style={styles.sectionContent}>
-                            {(block.fields || [])
-                              .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
-                              .map((field, index) => renderField(field))}
-                          </NativeCard>
-
-                          {!isReadonly && block.id === 'payment' && (
-                            <View style={styles.finalActionContainer}>
-                              <Text style={styles.finalActionTitle}>Finaliser le service</Text>
-                              <Text style={styles.finalActionSubtitle}>
-                                Vérifiez vos informations puis validez la création du service.
+                {/* ✅ CORRIGÉ 2025-01-XX: FlatList horizontale pour corriger le scroll imbriqué */}
+                <View style={{ flex: 1 }}>
+                  <FlatList
+                    ref={blockContentRef}
+                    data={displayedBlocks}
+                    horizontal
+                    pagingEnabled={true}
+                    scrollEnabled={true}
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(item) => item.block.id}
+                    renderItem={({ item: { block, index: blockIndex } }) => (
+                      <View style={[styles.blockPanel, { width }]}>
+                        <ScrollView
+                          style={styles.blockPanelScroll}
+                          contentContainerStyle={styles.blockPanelContent}
+                          showsVerticalScrollIndicator={false}
+                          keyboardShouldPersistTaps="handled"
+                          keyboardDismissMode="on-drag"
+                          nestedScrollEnabled={true}
+                          removeClippedSubviews={true}
+                          scrollEventThrottle={100}
+                          bounces={Platform.OS === 'ios'}
+                          maintainVisibleContentPosition={null}
+                        >
+                          <View style={styles.sectionContainer}>
+                            <LinearGradient
+                              colors={['#3B82F6', '#1D4ED8']}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={styles.sectionHeader}
+                            >
+                              <Text style={styles.sectionHeaderText}>
+                                {block.icon} {block.title}
                               </Text>
+                            </LinearGradient>
 
-                              <TouchableOpacity
-                                style={[styles.finalActionButton, (loading || isSubmitting) && styles.finalActionButtonDisabled]}
-                                onPress={soumettreFormulaire}
-                                disabled={loading || isSubmitting}
-                              >
-                                <LinearGradient
-                                  colors={modernColors.primaryGradient}
-                                  style={styles.finalActionButtonGradient}
-                                  start={{ x: 0, y: 0 }}
-                                  end={{ x: 1, y: 0 }}
+                            <NativeCard style={styles.sectionContent}>
+                              {(block.fields || [])
+                                .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
+                                .map((field, index) => renderField(field))}
+                            </NativeCard>
+
+                            {!isReadonly && block.id === 'payment' && (
+                              <View style={styles.finalActionContainer}>
+                                <Text style={styles.finalActionTitle}>Finaliser le service</Text>
+                                <Text style={styles.finalActionSubtitle}>
+                                  Vérifiez vos informations puis validez la création du service.
+                                </Text>
+
+                                <TouchableOpacity
+                                  style={[styles.finalActionButton, (loading || isSubmitting) && styles.finalActionButtonDisabled]}
+                                  onPress={soumettreFormulaire}
+                                  disabled={loading || isSubmitting}
                                 >
-                                  <Text style={styles.finalActionButtonText}>
-                                    {(loading || isSubmitting)
-                                      ? (isAddingProductToExistingService ? 'Création du produit...' :
-                                        isEditingServiceInfo ? 'Mise à jour...' :
-                                          mode === 'edit' ? 'Modification...' : 'Création...')
-                                      : (isAddingProductToExistingService ? 'Créer le produit' :
-                                        isEditingServiceInfo ? 'Modifier les données du service' :
-                                          mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
-                                  </Text>
-                                  <SafeIcon name="check" size={20} color="#FFFFFF" />
-                                </LinearGradient>
-                              </TouchableOpacity>
-                            </View>
-                          )}
-                        </View>
-                      </ScrollView>
-                    </View>
-                  ))}
+                                  <LinearGradient
+                                    colors={modernColors.primaryGradient}
+                                    style={styles.finalActionButtonGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                  >
+                                    <Text style={styles.finalActionButtonText}>
+                                      {(loading || isSubmitting)
+                                        ? (isAddingProductToExistingService ? 'Création du produit...' : 
+                                          isEditingServiceInfo ? 'Mise à jour...' :
+                                            mode === 'edit' ? 'Modification...' : 'Création...')
+                                        : (isAddingProductToExistingService ? 'Créer le produit' :
+                                          isEditingServiceInfo ? 'Modifier les données du service' :
+                                            mode === 'edit' ? 'Modifier le service' : 'Créer le service')}
+                                    </Text>
+                                    <SafeIcon name="check" size={20} color="#FFFFFF" />
+                                  </LinearGradient>
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                          </View>
+                        </ScrollView>
+                      </View>
+                    )}
+                    onViewableItemsChanged={({ viewableItems }) => {
+                      if (viewableItems.length > 0) {
+                        const visibleItem = viewableItems[0];
+                        if (visibleItem && visibleItem.index !== null) {
+                          const blockInfo = displayedBlocks[visibleItem.index];
+                          if (blockInfo && blockInfo.index !== currentBlock) {
+                            console.log('[FormulaireYukpoIntelligent] 📱 Scroll manuel vers bloc', blockInfo.index);
+                            setCurrentBlock(blockInfo.index);
+                          }
+                        }
+                      }
+                    }}
+                    viewabilityConfig={{
+                      itemVisiblePercentThreshold: 50
+                    }}
+                    getItemLayout={(data, index) => ({
+                      length: width,
+                      offset: width * index,
+                      index,
+                    })}
+                    keyboardShouldPersistTaps="handled"
+                    removeClippedSubviews={true}
+                    decelerationRate="fast"
+                    snapToInterval={width}
+                    snapToAlignment="start"
+                  />
 
                   {/* Boutons de navigation */}
                   <View style={styles.navigationButtons}>
@@ -4206,7 +4192,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       <View style={styles.navButtonPlaceholder} />
                     )}
                   </View>
-                </ScrollView>
+                </View>
               </>
             )}
           </KeyboardAvoidingView>

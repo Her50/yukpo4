@@ -1,7 +1,6 @@
 /**
- * ProductCard v3.0 - Version optimale moderne (2025-11-02)
- * Toutes fonctionnalités : vecteurs, variations, chat, distance, drapeau pays
- * Sauvegarde : ProductCard.backup.tsx
+ * ProductCard - Version reconstruite intégralement
+ * Toutes fonctionnalités : vecteurs, variations, chat, distance, drapeau pays, réactions, livraison
  */
 
 import { useNavigation } from '@react-navigation/native';
@@ -33,13 +32,12 @@ const { width } = Dimensions.get('window');
 interface ProductCardProps {
   product: any;
   service: any;
-  prestataire?: any; // ✅ NOUVEAU: Prestataire déjà fourni depuis MixedContentCarousel
+  prestataire?: any;
   userLocation?: { latitude: number; longitude: number } | null;
   onPress?: () => void;
-  onChatPress?: () => void; // ✅ NOUVEAU: Handler chat personnalisé
+  onChatPress?: () => void;
 }
 
-// ✅ NOUVEAU : Constantes pour réactions
 const REACTIONS = [
   { type: 'love', emoji: '❤️', label: 'J\'adore' },
   { type: 'like', emoji: '👍', label: 'J\'aime' },
@@ -97,7 +95,6 @@ const splitWithFallback = (input: any, primary?: string): string[] => {
   return [cleaned];
 };
 
-// Mapper codes pays → drapeaux emoji
 const getCountryFlag = (country?: string): string => {
   const countryMap: Record<string, string> = {
     'Cameroun': '🇨🇲',
@@ -131,6 +128,23 @@ const getCountryFlag = (country?: string): string => {
   return '🌍';
 };
 
+const formatDate = (dateStr: string): string => {
+  try {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Aujourd'hui";
+    if (diffDays === 1) return 'Hier';
+    if (diffDays < 7) return `Il y a ${diffDays}j`;
+    if (diffDays < 30) return `Il y a ${Math.floor(diffDays / 7)}sem`;
+    return `Il y a ${Math.floor(diffDays / 30)}mois`;
+  } catch {
+    return '';
+  }
+};
+
 const ProductCard: React.FC<ProductCardProps> = ({
   product,
   service,
@@ -143,7 +157,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
-  // ✅ NOUVEAU : États pour contact privé
   const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
   const [chatContext, setChatContext] = useState<{
     type: 'service' | 'private';
@@ -151,17 +164,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
     targetUserName?: string;
     targetAvatar?: string | null;
   } | null>(null);
-  // ✅ NOUVEAU : États pour avis/ratings et galerie
   const [showGallery, setShowGallery] = useState(false);
-  // ✅ NOUVEAU : États pour réactions
   const [reactions, setReactions] = useState<Record<string, { count: number; hasReacted: boolean }>>({});
-  const [hoveredReaction, setHoveredReaction] = useState<string | null>(null);
   const [loadingReactions, setLoadingReactions] = useState(false);
   const [pendingReaction, setPendingReaction] = useState<string | null>(null);
-  // ✅ NOUVEAU : État pour modal de livraison
   const [showOrderModal, setShowOrderModal] = useState(false);
 
-  // Données produit
   const productVector = Array.isArray(product.product_vector)
     ? product.product_vector
     : Array.isArray(product.characteristic_vector)
@@ -177,9 +185,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
       ? splitWithFallback(rawLocationVector, ',')
       : [];
 
-  // ✅ AMÉLIORATION: Afficher quartier en priorité, puis ville, puis région
   const chosenLocation = product.chosen_location ||
-    locationVector[0] || // Premier élément = lieu exact choisi par prestataire
+    locationVector[0] ||
     product.adresse ||
     product.address ||
     service?.data?.adresse?.valeur ||
@@ -249,16 +256,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
     user_id: prestataireUserId,
   };
 
-  // ✅ NOUVEAU : Popularité (usage_count de autocomplete_characteristics)
   const usageCount = product.usage_count || 0;
-  const isPopular = usageCount >= 5;  // Populaire si recherché 5+ fois
-  const isTrending = usageCount >= 10; // Tendance si recherché 10+ fois
+  const isPopular = usageCount >= 5;
+  const isTrending = usageCount >= 10;
 
-  // Images et vidéos
   const images = product.images || service?.images || [];
   const videos = product.videos || service?.videos || [];
 
-  // Image de la variation sélectionnée (si existe)
   const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
     ? variants[selectedVariantIndex]
     : null;
@@ -277,23 +281,23 @@ const ProductCard: React.FC<ProductCardProps> = ({
     product.id ||
     (serviceId ? `${serviceId}_${productIndex}` : null);
 
-  // ✅ NOUVEAU : Déterminer si c'est un produit (et non une prestation de service)
-  const isProduct = product.type !== 'prestation_service' && product.type !== 'service';
-  
-  // ✅ NOUVEAU : Vérifier si la livraison est activée pour ce produit
-  const deliveryEnabled = product.delivery_enabled !== false && 
-                         product.livraison !== false &&
-                         service?.data?.livraison?.valeur !== false &&
-                         service?.data?.delivery_enabled !== false;
+  const isProduct = product.type !== 'prestation_service' &&
+    product.type !== 'service' &&
+    product.type !== 'service_prestation';
 
-  // Prix
+  const deliveryEnabled = product.delivery_enabled !== false &&
+    product.livraison !== false &&
+    product.delivery_enabled !== 'false' &&
+    product.livraison !== 'false' &&
+    (service?.data?.livraison?.valeur !== false && service?.data?.livraison?.valeur !== 'false') &&
+    (service?.data?.delivery_enabled !== false && service?.data?.delivery_enabled !== 'false');
+
   const displayPrice = hasVariant && variants.length > 0
     ? Math.min(...variants.map((v: any) => v.prix || 0))
     : product.prix || 0;
 
   const devise = product.devise || variants[0]?.devise || 'XAF';
 
-  // Distance
   const rawDistance = product.distance_km ?? product.distanceKm ?? product.distance ?? product.distance_client;
   const distanceKm = typeof rawDistance === 'string'
     ? parseFloat(rawDistance)
@@ -302,7 +306,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
       : undefined;
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm);
 
-  // Pays (pour drapeau)
   const pays = locationVector[locationVector.length - 1] ||
     product.pays ||
     service?.data?.pays?.valeur;
@@ -366,7 +369,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
     { key: 'favorites', icon: 'heart', value: favoritesCount, tint: '#ef4444' },
   ];
 
-  // ✅ AMÉLIORATION: Utiliser onChatPress si fourni, sinon modal local
   const handleChatPress = () => {
     if (onChatPress) {
       onChatPress();
@@ -383,7 +385,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
     setShowChatModal(true);
   };
 
-  // ✅ NOUVEAU : Handler partage produit
   const handleShare = async () => {
     try {
       const productName = product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
@@ -411,7 +412,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
-  // ✅ NOUVEAU : Charger réactions du produit
   const loadReactions = useCallback(async () => {
     if (!serviceId || !resolvedProductId) return;
 
@@ -440,7 +440,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
     loadReactions();
   }, [loadReactions]);
 
-  // ✅ NOUVEAU : Handler pour réagir
   const handleReaction = async (reactionType: string) => {
     if (!serviceId || !resolvedProductId) {
       Alert.alert(
@@ -462,16 +461,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
       }
     } catch (error) {
       console.error('[ProductCard] Erreur réaction:', error);
-      Alert.alert('Erreur', 'Impossible d’enregistrer votre réaction pour le moment.');
+      Alert.alert('Erreur', 'Impossible d\'enregistrer votre réaction pour le moment.');
     } finally {
       setPendingReaction(null);
     }
   };
 
-  // ✅ NOUVEAU : Handler pour contacter un utilisateur en privé
   const handleContactUser = async (userId: number, userName: string, userAvatar?: string | null) => {
     try {
-      // Vérifier si une conversation existe déjà
       const checkResponse = await apiGet(`/api/conversations/private/${userId}`);
 
       let conversationId: string | null = null;
@@ -482,7 +479,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
       }
 
       if (!conversationId) {
-        // Créer une nouvelle conversation privée
         const createResponse = await apiPost('/api/conversations/create-private', {
           target_user_id: userId,
           context: 'product_review',
@@ -541,7 +537,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
             activeOpacity={0.9}
             onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
           >
-            {/* Carousel d'images/vidéos avec support variation */}
             {hasMedia && (
               <View style={styles.imageContainer}>
                 <ProductMediaCarousel
@@ -549,19 +544,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   videos={videos}
                   variantImage={variantImage}
                   onImagePress={() => {
-                    // ✅ NOUVEAU : Ouvrir galerie complète du prestataire
                     setShowGallery(true);
                   }}
                 />
 
-                {/* Badge pays (coin supérieur droit) */}
                 {countryFlag && (
                   <View style={styles.countryBadge}>
                     <Text style={styles.countryFlag}>{countryFlag}</Text>
                   </View>
                 )}
 
-                {/* Badge distance (coin supérieur gauche) */}
                 {distanceKm !== undefined && distanceKm !== null && (
                   <View style={styles.distanceBadge}>
                     <SafeIcon name="navigation" size={12} color="#FFF" />
@@ -573,7 +565,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   </View>
                 )}
 
-                {/* ✅ NOUVEAU : Badge popularité (coin inférieur gauche) */}
                 {isTrending && (
                   <View style={styles.trendingBadge}>
                     <Text style={styles.trendingEmoji}>🔥🔥</Text>
@@ -611,12 +602,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </View>
               )}
 
-              {/* Nom produit */}
               <Text style={styles.productName} numberOfLines={2}>
                 {product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit'}
               </Text>
 
-              {/* Prestataire cliquable */}
               {prestataire.nom && (
                 <TouchableOpacity
                   style={styles.prestataireRow}
@@ -643,7 +632,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </TouchableOpacity>
               )}
 
-              {/* ✅ AMÉLIORATION: Localisation hiérarchique détaillée */}
               {chosenLocation && (
                 <View style={styles.locationSection}>
                   <View style={styles.locationRow}>
@@ -655,7 +643,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       <Text style={styles.locationFlag}>{countryFlag}</Text>
                     )}
                   </View>
-                  {/* Hiérarchie complète (ville > région > pays) */}
                   {locationVector.length > 1 && (
                     <View style={styles.locationHierarchy}>
                       <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
@@ -692,7 +679,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </LinearGradient>
               )}
 
-              {/* Caractéristiques (vecteur produit) en chips */}
               {productVector.length > 0 && (
                 <View style={styles.characteristicsSection}>
                   <View style={styles.sectionHeader}>
@@ -713,7 +699,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </View>
               )}
 
-              {/* Prix avec variations */}
               {hasVariant && variants.length > 0 ? (
                 <View style={styles.priceVariations}>
                   <View style={styles.sectionHeader}>
@@ -738,12 +723,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
                           selectedVariantIndex === i && styles.priceRowSelected
                         ]}
                         onPress={() => {
-                          // Sélectionner la variation pour afficher son image
                           setSelectedVariantIndex(selectedVariantIndex === i ? null : i);
                         }}
                       >
                         <View style={styles.cellVariant}>
-                          {/* Image de la variation si existe */}
                           {variant.image && (
                             <Image
                               source={{ uri: variant.image.startsWith('data:') ? variant.image : `data:image/jpeg;base64,${variant.image}` }}
@@ -799,30 +782,49 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </View>
               )}
 
-              {/* Actions */}
               <View style={styles.actions}>
-                {/* ✅ NOUVEAU: Bouton "Me livrer" - S'affiche uniquement pour les produits avec livraison activée */}
-                {serviceId && isProduct && deliveryEnabled && (
+                {serviceId && isProduct && (
                   <TouchableOpacity
-                    style={[styles.actionButtonDelivery, styles.actionButton]}
+                    style={[
+                      styles.actionButtonDelivery,
+                      styles.actionButton,
+                      !deliveryEnabled && styles.actionButtonDeliveryDisabled
+                    ]}
                     onPress={() => {
                       if (!serviceId) {
                         Alert.alert('Erreur', 'Service non disponible');
                         return;
                       }
+                      if (!deliveryEnabled) {
+                        Alert.alert(
+                          'Livraison non disponible',
+                          'La livraison n\'est pas activée pour ce produit. Contactez le prestataire pour plus d\'informations.'
+                        );
+                        return;
+                      }
                       setShowOrderModal(true);
                     }}
+                    disabled={!deliveryEnabled}
                   >
-                    <SafeIcon name="truck" size={18} color="#10B981" />
-                    <Text style={styles.actionButtonDeliveryText}>Me livrer</Text>
+                    <SafeIcon
+                      name="truck"
+                      size={18}
+                      color={deliveryEnabled ? "#10B981" : "#9CA3AF"}
+                    />
+                    <Text style={[
+                      styles.actionButtonDeliveryText,
+                      !deliveryEnabled && styles.actionButtonDeliveryTextDisabled
+                    ]}>
+                      Me livrer
+                    </Text>
                   </TouchableOpacity>
                 )}
-                
+
                 <NativeButton
                   title="💬 Chat"
                   variant="primary"
                   onPress={handleChatPress}
-                  style={[styles.actionButton, !(serviceId && isProduct && deliveryEnabled) && styles.actionButtonFullWidth]}
+                  style={[styles.actionButton, !(serviceId && isProduct) && styles.actionButtonFullWidth]}
                 />
                 <NativeButton
                   title="👁️ Voir"
@@ -832,7 +834,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 />
               </View>
 
-              {/* ✅ NOUVEAU : Actions secondaires (Galerie, Partage) */}
               <View style={styles.secondaryActions}>
                 {hasMedia && (
                   <TouchableOpacity
@@ -860,7 +861,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 />
               )}
 
-              {/* Footer info */}
               <View style={styles.footer}>
                 {hasDistance && (
                   <View style={styles.footerItem}>
@@ -896,7 +896,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </NativeCard>
       </LinearGradient>
 
-      {/* ✅ CORRIGÉ: Modal Chat avec props correctes */}
       {showChatModal && !onChatPress && activeChatPeer?.user_id && (
         <ChatModalMobile
           visible={showChatModal}
@@ -906,13 +905,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
             data: { titre_service: { valeur: product.nom } }
           }}
           prestataireInfo={activeChatPeer}
-          user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
+          user={null}
           conversationId={isPrivateChat ? privateConversationId || undefined : undefined}
           isPrivateConversation={isPrivateChat}
         />
       )}
 
-      {/* ✅ NOUVEAU : Modal de commande de livraison */}
       {showOrderModal && serviceId && (
         <OrderDeliveryModal
           visible={showOrderModal}
@@ -928,7 +926,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
         />
       )}
 
-      {/* ✅ NOUVEAU : Modal Galerie du prestataire */}
       {showGallery && (
         <ServiceGalleryModal
           visible={showGallery}
@@ -944,24 +941,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
       )}
     </>
   );
-};
-
-// Helper formatage date
-const formatDate = (dateStr: string): string => {
-  try {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return "Aujourd'hui";
-    if (diffDays === 1) return 'Hier';
-    if (diffDays < 7) return `Il y a ${diffDays}j`;
-    if (diffDays < 30) return `Il y a ${Math.floor(diffDays / 7)}sem`;
-    return `Il y a ${Math.floor(diffDays / 30)}mois`;
-  } catch {
-    return '';
-  }
 };
 
 const styles = StyleSheet.create({
@@ -1086,23 +1065,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     opacity: 0.9,
   },
-  imageCountBadge: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  imageCountText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#FFF',
-  },
   content: {
     padding: 20,
     gap: 16,
@@ -1185,13 +1147,70 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     flex: 1,
   },
-  hierarchyHint: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+  locationSection: {
+    gap: 6,
+    backgroundColor: '#F9FAFB',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  locationTextPrimary: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+    flex: 1,
+  },
+  locationFlag: {
+    fontSize: 16,
+  },
+  locationHierarchy: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 20,
+  },
+  locationTextSecondary: {
+    fontSize: 12,
+    color: '#6B7280',
+    flex: 1,
+    fontStyle: 'italic',
+  },
+  metricsCard: {
+    marginTop: 12,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  compactStatsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  compactStatPillMuted: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F4F4F5',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+    gap: 6,
+  },
+  compactStatEmoji: {
+    fontSize: 14,
+  },
+  compactStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  compactStatLabel: {
+    fontSize: 12,
+    color: '#6B7280',
   },
   characteristicsSection: {
     gap: 8,
@@ -1359,14 +1378,18 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: 12,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    minHeight: 48,
   },
   actionButton: {
     flex: 1,
+    minWidth: 100,
   },
   actionButtonFullWidth: {
     flex: 1,
+    minWidth: '100%',
   },
-  // ✅ NOUVEAU: Styles pour le bouton "Me livrer"
   actionButtonDelivery: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1378,11 +1401,20 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#059669',
+    minWidth: 100,
+  },
+  actionButtonDeliveryDisabled: {
+    backgroundColor: '#E5E7EB',
+    borderColor: '#D1D5DB',
+    opacity: 0.6,
   },
   actionButtonDeliveryText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  actionButtonDeliveryTextDisabled: {
+    color: '#9CA3AF',
   },
   footer: {
     flexDirection: 'row',
@@ -1400,72 +1432,6 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 11,
     color: '#9CA3AF',
-  },
-  // ✅ NOUVEAU : Styles pour avis/ratings et actions secondaires
-  metricsCard: {
-    marginTop: 12,
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  compactStatsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-    marginBottom: 12,
-  },
-  compactStatPillMuted: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F4F4F5',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#E4E4E7',
-    gap: 6,
-  },
-  compactStatEmoji: {
-    fontSize: 14,
-  },
-  compactStatValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  compactStatLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  locationSection: {
-    gap: 6,
-    backgroundColor: '#F9FAFB',
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  locationTextPrimary: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1F2937',
-    flex: 1,
-  },
-  locationFlag: {
-    fontSize: 16,
-  },
-  locationHierarchy: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingLeft: 20,
-  },
-  locationTextSecondary: {
-    fontSize: 12,
-    color: '#6B7280',
-    flex: 1,
-    fontStyle: 'italic',
   },
   secondaryActions: {
     flexDirection: 'row',

@@ -29,6 +29,37 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
     const [preview, setPreview] = useState<QuickPreviewResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // ✅ CORRIGÉ: Fonction pour vérifier si la timeline est valide
+    const isTimelineValid = (): boolean => {
+        if (!timeline || !timeline.scenes || !Array.isArray(timeline.scenes) || timeline.scenes.length === 0) {
+            return false;
+        }
+
+        // Vérifier qu'au moins une scène a un média valide
+        const hasValidMedia = timeline.scenes.some((scene: any) => {
+            // Vérifier media_url
+            if (scene.media_url && typeof scene.media_url === 'string' && scene.media_url.trim().length > 0) {
+                if (scene.media_url.startsWith('http://') || scene.media_url.startsWith('https://') || scene.media_url.startsWith('file://')) {
+                    return true;
+                }
+            }
+            
+            // Vérifier media_id
+            if (scene.media_id !== null && scene.media_id !== undefined) {
+                const mediaId = typeof scene.media_id === 'string' ? parseInt(scene.media_id, 10) : scene.media_id;
+                if (!isNaN(mediaId) && mediaId > 0) {
+                    return true;
+                }
+            }
+            
+            return false;
+        });
+
+        return hasValidMedia;
+    };
+
+    const timelineIsValid = isTimelineValid();
+
     const handleGeneratePreview = async () => {
         // ✅ CORRIGÉ: Validation de la timeline avant d'appeler l'API
         if (!timeline) {
@@ -40,30 +71,77 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
             return;
         }
 
-        // ✅ CORRIGÉ: Vérifier que la timeline contient des médias
-        const hasMedia = timeline.scenes && Array.isArray(timeline.scenes) && timeline.scenes.length > 0;
-        if (!hasMedia) {
+        // ✅ CORRIGÉ: Vérifier que la timeline contient des scènes
+        if (!timeline.scenes || !Array.isArray(timeline.scenes) || timeline.scenes.length === 0) {
             Alert.alert(
                 'Timeline vide',
-                'La timeline ne contient aucun média.\n\nVeuillez ajouter des médias (images, vidéos) à la timeline avant de générer le preview.',
+                'La timeline ne contient aucune scène.\n\nVeuillez d\'abord générer une timeline avec des scènes.',
                 [{ text: 'OK' }]
             );
             return;
         }
 
-        // ✅ CORRIGÉ: Vérifier que les scènes ont des médias valides
+        // ✅ CORRIGÉ: Vérifier que les scènes ont des médias valides (validation stricte)
         const scenesWithMedia = timeline.scenes.filter((scene: any) => {
-            return scene.media_url || scene.media_id || scene.assets?.video_url || scene.assets?.image_url;
+            // Vérifier media_url (non vide, non null, non undefined)
+            if (scene.media_url && typeof scene.media_url === 'string' && scene.media_url.trim().length > 0) {
+                // Vérifier que l'URL est valide (http, https, ou file)
+                if (scene.media_url.startsWith('http://') || scene.media_url.startsWith('https://') || scene.media_url.startsWith('file://')) {
+                    return true;
+                }
+            }
+            
+            // Vérifier media_id (non null, non undefined, nombre valide)
+            if (scene.media_id !== null && scene.media_id !== undefined) {
+                const mediaId = typeof scene.media_id === 'string' ? parseInt(scene.media_id, 10) : scene.media_id;
+                if (!isNaN(mediaId) && mediaId > 0) {
+                    return true;
+                }
+            }
+            
+            // Vérifier assets.video_url ou assets.image_url
+            if (scene.assets) {
+                if (scene.assets.video_url && typeof scene.assets.video_url === 'string' && scene.assets.video_url.trim().length > 0) {
+                    return true;
+                }
+                if (scene.assets.image_url && typeof scene.assets.image_url === 'string' && scene.assets.image_url.trim().length > 0) {
+                    return true;
+                }
+            }
+            
+            return false;
         });
 
         if (scenesWithMedia.length === 0) {
+            // ✅ CORRIGÉ: Log détaillé pour diagnostic
+            console.error('[QuickPreview] Timeline invalide - Détails:', {
+                totalScenes: timeline.scenes.length,
+                scenes: timeline.scenes.map((s: any, idx: number) => ({
+                    index: idx,
+                    media_url: s.media_url,
+                    media_id: s.media_id,
+                    assets: s.assets,
+                })),
+            });
+            
             Alert.alert(
                 'Aucun média valide',
-                'Aucun média valide trouvé dans la timeline.\n\nVeuillez ajouter des médias avec des URLs valides.',
+                'Aucun média valide trouvé dans la timeline.\n\n' +
+                'Veuillez :\n' +
+                '• Ajouter des médias (images, vidéos) à la timeline\n' +
+                '• Vérifier que les médias ont des URLs valides\n' +
+                '• Régénérer la timeline si nécessaire',
                 [{ text: 'OK' }]
             );
             return;
         }
+
+        // ✅ CORRIGÉ: Log pour diagnostic
+        console.log('[QuickPreview] Validation OK:', {
+            totalScenes: timeline.scenes.length,
+            scenesWithMedia: scenesWithMedia.length,
+            firstScene: scenesWithMedia[0],
+        });
 
         setLoading(true);
         setError(null);
@@ -122,16 +200,21 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                     </Text>
                 </View>
                 <TouchableOpacity
-                    style={styles.generateButton}
+                    style={[
+                        styles.generateButton,
+                        (!timelineIsValid || loading) && styles.generateButtonDisabled
+                    ]}
                     onPress={handleGeneratePreview}
-                    disabled={loading}
+                    disabled={!timelineIsValid || loading}
                 >
                     {loading ? (
                         <ActivityIndicator color="#FFF" size="small" />
                     ) : (
                         <>
                             <SafeIcon name="play" size={16} color="#FFF" />
-                            <Text style={styles.generateButtonText}>Générer</Text>
+                            <Text style={styles.generateButtonText}>
+                                {timelineIsValid ? 'Générer' : 'Médias requis'}
+                            </Text>
                         </>
                     )}
                 </TouchableOpacity>
@@ -141,6 +224,15 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
                     <Text style={styles.loadingText}>Génération du preview...</Text>
+                </View>
+            )}
+
+            {!timelineIsValid && !loading && !preview && (
+                <View style={styles.warningContainer}>
+                    <SafeIcon name="alert-circle" size={20} color={modernColors.warning || '#F59E0B'} />
+                    <Text style={styles.warningText}>
+                        Ajoutez des médias à la timeline pour générer le preview
+                    </Text>
                 </View>
             )}
 
@@ -230,6 +322,10 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         backgroundColor: modernColors.primary,
     },
+    generateButtonDisabled: {
+        backgroundColor: modernColors.textSecondary || '#9CA3AF',
+        opacity: 0.6,
+    },
     generateButtonText: {
         fontSize: 13,
         fontWeight: '600',
@@ -243,6 +339,20 @@ const styles = StyleSheet.create({
         marginTop: 12,
         fontSize: 13,
         color: modernColors.textSecondary,
+    },
+    warningContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: '#FEF3C7',
+        marginTop: 8,
+    },
+    warningText: {
+        fontSize: 13,
+        color: modernColors.warning || '#F59E0B',
+        flex: 1,
     },
     errorContainer: {
         flexDirection: 'row',

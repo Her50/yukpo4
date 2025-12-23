@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    FlatList,
     ScrollView,
     StyleSheet,
     Text,
@@ -13,6 +14,7 @@ import {
     View,
 } from 'react-native';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
+import PaymentMethodSelector from '../../components/PaymentMethodSelector';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { VEHICLE_TRANSPORT_OPTIONS, type VehicleType } from '../../config/deliveryConfig';
@@ -35,7 +37,20 @@ const CourierRegistrationScreen: React.FC = () => {
     const [applicationStatus, setApplicationStatus] = useState<'none' | 'draft' | 'submitted' | 'approved' | 'rejected'>('none');
 
     // Informations personnelles
-    const [fullName, setFullName] = useState(user?.name || '');
+    const getCleanName = (name: string | undefined): string => {
+        if (!name) return '';
+        const cleaned = name.trim().replace(/\s+/g, ' ');
+        const parts = cleaned.split(' ');
+        if (parts.length >= 4) {
+            const firstHalf = parts.slice(0, Math.floor(parts.length / 2)).join(' ');
+            const secondHalf = parts.slice(Math.floor(parts.length / 2)).join(' ');
+            if (firstHalf === secondHalf) {
+                return firstHalf;
+            }
+        }
+        return cleaned;
+    };
+    const [fullName, setFullName] = useState(getCleanName(user?.name));
     const [phone, setPhone] = useState('');
     const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
@@ -64,9 +79,50 @@ const CourierRegistrationScreen: React.FC = () => {
     const [bio, setBio] = useState('');
     const [experience, setExperience] = useState('');
 
+    // Comptes de paiement
+    const [paymentMethod, setPaymentMethod] = useState<any>(null);
+
     useEffect(() => {
         checkApplicationStatus();
+        loadUserPhoneFromServices();
     }, [user]);
+
+    const hasInitializedNameRef = React.useRef(false);
+    useEffect(() => {
+        if (user?.name && !hasInitializedNameRef.current) {
+            const cleanedName = getCleanName(user.name);
+            setFullName(cleanedName);
+            hasInitializedNameRef.current = true;
+        }
+    }, [user?.name]);
+
+    const loadUserPhoneFromServices = async () => {
+        if (!user?.id || phone) return;
+
+        try {
+            const { apiGet } = require('../../services/api');
+            const response = await apiGet('/api/prestataire/services');
+            const services = response.data || response;
+
+            if (Array.isArray(services) && services.length > 0) {
+                for (const service of services) {
+                    const serviceData = service.data || service;
+                    const whatsapp = serviceData.whatsapp || 
+                                   serviceData.whatsapp_contact?.valeur ||
+                                   serviceData.contact?.whatsapp ||
+                                   serviceData.contact_whatsapp?.valeur ||
+                                   serviceData.telephone_whatsapp?.valeur;
+
+                    if (whatsapp && typeof whatsapp === 'string' && whatsapp.trim().length > 0) {
+                        setPhone(whatsapp.trim());
+                        return;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('[CourierRegistrationScreen] Erreur chargement téléphone depuis services:', error);
+        }
+    };
 
     const checkApplicationStatus = async () => {
         if (!user?.id) {
@@ -92,7 +148,6 @@ const CourierRegistrationScreen: React.FC = () => {
                 }
             }
             if (data.is_courier && data.courier) {
-                // L'utilisateur est déjà coursier approuvé
                 setApplicationStatus('approved');
             }
             setCheckingStatus(false);
@@ -147,7 +202,6 @@ const CourierRegistrationScreen: React.FC = () => {
                 return;
             }
 
-            // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
             if (!ImagePicker || !ImagePicker.MediaType) {
                 console.error('[CourierRegistrationScreen] ImagePicker ou MediaType est undefined');
                 Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
@@ -256,7 +310,6 @@ const CourierRegistrationScreen: React.FC = () => {
 
         setLoading(true);
         try {
-            // Convertir les documents en base64
             const documents: Record<string, any> = {};
             if (idDocument) {
                 documents.id_document = {
@@ -310,6 +363,15 @@ const CourierRegistrationScreen: React.FC = () => {
                 },
                 bio,
                 experience,
+                paymentMethod: paymentMethod ? {
+                    type: paymentMethod.type,
+                    phoneNumber: paymentMethod.phoneNumber,
+                    cardNumber: paymentMethod.cardNumber,
+                    cardExpiry: paymentMethod.cardExpiry,
+                    cardCVV: paymentMethod.cardCVV,
+                    cardHolder: paymentMethod.cardHolder,
+                    taxId: paymentMethod.taxId,
+                } : null,
             };
 
             const response = await deliveryApi.submitCourierApplication({
@@ -355,7 +417,6 @@ const CourierRegistrationScreen: React.FC = () => {
         { value: 'sunday', label: 'Dim' },
     ];
 
-    // ✅ CORRECTION : Utiliser la constante partagée pour aligner avec les options de commande
     const vehicleTypes = VEHICLE_TRANSPORT_OPTIONS;
 
     if (checkingStatus) {
@@ -428,6 +489,28 @@ const CourierRegistrationScreen: React.FC = () => {
 
     const selectedVehicle = vehicleTypes.find(v => v.value === vehicleType);
     const requiresLicense = selectedVehicle?.requiresLicense ?? false;
+
+    const renderVehicleOption = ({ item }: { item: typeof vehicleTypes[0] }) => (
+        <TouchableOpacity
+            style={[
+                styles.vehicleOption,
+                vehicleType === item.value && styles.vehicleOptionSelected,
+            ]}
+            onPress={() => setVehicleType(item.value)}
+            activeOpacity={0.7}
+        >
+            <Text style={styles.vehicleIcon}>{item.icon}</Text>
+            <Text
+                style={[
+                    styles.vehicleLabel,
+                    vehicleType === item.value && styles.vehicleLabelSelected,
+                ]}
+                numberOfLines={2}
+            >
+                {item.label}
+            </Text>
+        </TouchableOpacity>
+    );
 
     return (
         <SafeNativeView style={styles.container}>
@@ -524,46 +607,20 @@ const CourierRegistrationScreen: React.FC = () => {
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Moyen de transport</Text>
                     <View style={styles.vehicleContainer}>
-                        <ScrollView
+                        <FlatList
+                            data={vehicleTypes}
                             horizontal
                             showsHorizontalScrollIndicator={true}
-                            style={styles.vehicleScroll}
+                            keyExtractor={(item) => item.value}
+                            renderItem={renderVehicleOption}
                             contentContainerStyle={styles.vehicleListContent}
-                            nestedScrollEnabled={true}
+                            ItemSeparatorComponent={() => <View style={styles.vehicleSeparator} />}
                             scrollEnabled={true}
                             bounces={true}
                             decelerationRate="fast"
-                            scrollEventThrottle={16}
                             removeClippedSubviews={false}
-                            alwaysBounceHorizontal={false}
-                            pagingEnabled={false}
-                            snapToInterval={0}
-                            snapToAlignment="start"
                             keyboardShouldPersistTaps="handled"
-                        >
-                            {vehicleTypes.map((type) => (
-                                <TouchableOpacity
-                                    key={type.value}
-                                    style={[
-                                        styles.vehicleOption,
-                                        vehicleType === type.value && styles.vehicleOptionSelected,
-                                    ]}
-                                    onPress={() => setVehicleType(type.value)}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={styles.vehicleIcon}>{type.icon}</Text>
-                                    <Text
-                                        style={[
-                                            styles.vehicleLabel,
-                                            vehicleType === type.value && styles.vehicleLabelSelected,
-                                        ]}
-                                        numberOfLines={2}
-                                    >
-                                        {type.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+                        />
                     </View>
                     {vehicleType !== 'walking' && (
                         <>
@@ -748,6 +805,18 @@ const CourierRegistrationScreen: React.FC = () => {
                     />
                 </NativeCard>
 
+                {/* Comptes de paiement */}
+                <NativeCard style={styles.card}>
+                    <Text style={styles.sectionTitle}>Comptes de paiement</Text>
+                    <Text style={styles.helperText}>
+                        Renseignez votre compte pour recevoir vos paiements de livraison. L'argent transite toujours dans le compte de l'application avant reversement.
+                    </Text>
+                    <PaymentMethodSelector
+                        onPaymentChange={setPaymentMethod}
+                        readonly={false}
+                    />
+                </NativeCard>
+
                 {/* Actions */}
                 <View style={styles.actions}>
                     <NativeButton
@@ -803,6 +872,12 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.textSecondary,
     },
+    helperText: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        marginBottom: 12,
+        lineHeight: 18,
+    },
     card: {
         marginBottom: 16,
         padding: 16,
@@ -839,18 +914,14 @@ const styles = StyleSheet.create({
         width: '100%',
         marginBottom: 16,
         minHeight: 110,
-        maxHeight: 120,
-    },
-    vehicleScroll: {
-        width: '100%',
-        flexGrow: 0,
     },
     vehicleListContent: {
         paddingHorizontal: 4,
         paddingVertical: 8,
         alignItems: 'center',
-        paddingRight: 16,
-        gap: 12,
+    },
+    vehicleSeparator: {
+        width: 12,
     },
     vehicleOption: {
         alignItems: 'center',
@@ -862,8 +933,6 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.surface,
         width: 90,
         height: 90,
-        marginRight: 8,
-        flexShrink: 0,
     },
     vehicleOptionSelected: {
         borderColor: modernColors.primary,
@@ -877,6 +946,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         color: modernColors.text,
+        textAlign: 'center',
     },
     vehicleLabelSelected: {
         color: modernColors.primary,
@@ -975,4 +1045,3 @@ const styles = StyleSheet.create({
 });
 
 export default CourierRegistrationScreen;
-

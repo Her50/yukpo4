@@ -1,3 +1,8 @@
+/**
+ * ProductCommentsSection - Version reconstruite intégralement
+ * Toutes fonctionnalités : commentaires, avis, réactions, mentions, audio, emojis
+ */
+
 import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -72,12 +77,12 @@ interface ProductCommentsSectionProps {
 }
 
 const REACTION_OPTIONS = [
-    { type: 'like', label: 'J’aime', emoji: '👍' },
-    { type: 'love', label: 'J’adore', emoji: '❤️' },
+    { type: 'like', label: 'J\'aime', emoji: '👍' },
+    { type: 'love', label: 'J\'adore', emoji: '❤️' },
     { type: 'insightful', label: 'Pertinent', emoji: '💡' },
     { type: 'support', label: 'Soutien', emoji: '🤝' },
     { type: 'funny', label: 'Drôle', emoji: '😄' },
-    { type: 'angry', label: 'Pas d’accord', emoji: '😠' },
+    { type: 'angry', label: 'Pas d\'accord', emoji: '😠' },
 ];
 
 const formatDate = (iso: string): string => {
@@ -191,15 +196,13 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     const [mentionQuery, setMentionQuery] = useState('');
     const [showMentionPicker, setShowMentionPicker] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    
-    // ✅ NOUVEAU: États pour audio
+
     const [composerAudio, setComposerAudio] = useState<string | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [recording, setRecording] = useState<Audio.Recording | null>(null);
     const [recordingDuration, setRecordingDuration] = useState(0);
     const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-    
-    // ✅ NOUVEAU: États pour emojis
+
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
     const isFullMode = mode === 'full' || modalVisible;
@@ -233,7 +236,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         loadComments();
     }, [loadComments]);
 
-    // ✅ NOUVEAU: Fonction pour convertir un fichier en base64
     const convertFileToBase64 = async (uri: string): Promise<string> => {
         try {
             const response = await fetch(uri);
@@ -253,7 +255,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         }
     };
 
-    // ✅ NOUVEAU: Démarrer l'enregistrement audio
     const startAudioRecording = useCallback(async () => {
         try {
             const permission = await Audio.requestPermissionsAsync();
@@ -292,8 +293,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             setRecording(newRecording);
             setIsRecording(true);
             setRecordingDuration(0);
-            
-            // Timer pour la durée
+
             recordingTimerRef.current = setInterval(() => {
                 setRecordingDuration(prev => prev + 1);
             }, 1000);
@@ -304,7 +304,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         }
     }, []);
 
-    // ✅ NOUVEAU: Arrêter l'enregistrement audio
     const stopAudioRecording = useCallback(async () => {
         if (!recording) return;
 
@@ -314,7 +313,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 clearInterval(recordingTimerRef.current);
                 recordingTimerRef.current = null;
             }
-            
+
             await recording.stopAndUnloadAsync();
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: false,
@@ -334,7 +333,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         }
     }, [recording]);
 
-    // ✅ NOUVEAU: Annuler l'enregistrement audio
     const cancelAudioRecording = useCallback(async () => {
         if (recording) {
             try {
@@ -353,13 +351,11 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         }
     }, [recording]);
 
-    // ✅ NOUVEAU: Insérer un emoji dans le texte
     const insertEmoji = useCallback((emoji: string) => {
         setComposerContent(prev => prev + emoji);
         setShowEmojiPicker(false);
     }, []);
 
-    // ✅ NOUVEAU: Emojis populaires
     const popularEmojis = ['😀', '😂', '❤️', '👍', '👎', '😊', '😍', '🤔', '😮', '😢', '😡', '🎉', '🔥', '💯', '✨', '🙏', '👏', '🎯', '💪', '🚀'];
 
     const resetComposer = useCallback(() => {
@@ -370,7 +366,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         setSelectedMentions([]);
         setMentionQuery('');
         setShowMentionPicker(false);
-        // ✅ NOUVEAU: Réinitialiser audio et emojis
         setComposerAudio(null);
         if (recording) {
             recording.stopAndUnloadAsync().catch(console.error);
@@ -392,20 +387,12 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         }
 
         const trimmed = composerContent.trim();
-        const hasAudio = !!composerAudio; // ✅ NOUVEAU: Vérifier si un audio est présent
-        
-        // ✅ CORRIGÉ: Permettre la soumission si :
-        // 1. Un commentaire texte est saisi, OU
-        // 2. Un audio est enregistré, OU
-        // 3. Une note est sélectionnée (pour les avis principaux)
+        const hasAudio = !!composerAudio;
+
         if (!trimmed && !hasAudio && !replyTarget && (composerRating === null || composerRating === undefined)) {
             Alert.alert('Champ requis', 'Veuillez saisir un commentaire, enregistrer un audio ou sélectionner une note');
             return;
         }
-        
-        // ✅ CORRIGÉ: Pour les avis principaux (sans réponse), permettre commentaire/audio sans note
-        // La note n'est requise que si on veut donner un avis avec note
-        // Mais on peut aussi juste commenter ou envoyer un audio
 
         if (replyTarget && composerRating !== null) {
             setComposerRating(null);
@@ -433,7 +420,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     mentions: selectedMentions.map((mention) => mention.id),
                     parent_comment_id: replyTarget?.id,
                 };
-                // ✅ NOUVEAU: Ajouter l'audio si présent
                 if (composerAudio) {
                     payload.audio_base64 = composerAudio;
                 }
@@ -447,13 +433,14 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             }
         } catch (err) {
             console.error('[ProductCommentsSection] handleSubmitComment error', err);
-            Alert.alert('Erreur', 'Une erreur est survenue lors de l’envoi du commentaire');
+            Alert.alert('Erreur', 'Une erreur est survenue lors de l\'envoi du commentaire');
         } finally {
             setSubmitting(false);
         }
     }, [
         composerContent,
         composerRating,
+        composerAudio,
         loadComments,
         replyTarget,
         resetComposer,
@@ -510,7 +497,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
             try {
                 const response = await commentsApi.toggleCommentReaction(comment.id, reactionType);
                 if (!response.success) {
-                    Alert.alert('Erreur', response.error || 'Impossible d’enregistrer la réaction');
+                    Alert.alert('Erreur', response.error || 'Impossible d\'enregistrer la réaction');
                 } else {
                     await loadComments();
                 }
@@ -772,7 +759,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 </View>
             )}
 
-            {/* ✅ NOUVEAU: Affichage audio enregistré */}
             {composerAudio && !isRecording && (
                 <View style={styles.audioPreviewContainer}>
                     <SafeIcon name="mic" size={20} color={modernColors.primary} />
@@ -790,7 +776,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 </View>
             )}
 
-            {/* ✅ NOUVEAU: Indicateur d'enregistrement */}
             {isRecording && (
                 <View style={styles.recordingIndicator}>
                     <View style={styles.recordingDot} />
@@ -826,16 +811,15 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     style={styles.composerInput}
                     maxLength={1000}
                 />
-                {/* ✅ NOUVEAU: Boutons audio et emoji */}
                 <View style={styles.composerInputActions}>
                     <TouchableOpacity
                         style={[styles.composerActionButton, isRecording && styles.composerActionButtonActive]}
                         onPress={isRecording ? stopAudioRecording : startAudioRecording}
                     >
-                        <SafeIcon 
-                            name={isRecording ? "mic-off" : "mic"} 
-                            size={20} 
-                            color={isRecording ? modernColors.error : modernColors.primary} 
+                        <SafeIcon
+                            name={isRecording ? "mic-off" : "mic"}
+                            size={20}
+                            color={isRecording ? modernColors.error : modernColors.primary}
                         />
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -847,7 +831,6 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                 </View>
             </View>
 
-            {/* ✅ NOUVEAU: Picker d'emojis */}
             {showEmojiPicker && (
                 <View style={styles.emojiPickerContainer}>
                     <View style={styles.emojiPickerHeader}>
@@ -947,7 +930,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         !loading && (
                             <View style={styles.emptyState}>
                                 <SafeIcon name="message-circle" size={48} color={modernColors.textSecondary} />
-                                <Text style={styles.emptyTitle}>Aucun commentaire pour l’instant</Text>
+                                <Text style={styles.emptyTitle}>Aucun commentaire pour l'instant</Text>
                                 <Text style={styles.emptySubtitle}>
                                     Soyez le premier à partager votre expérience !
                                 </Text>
@@ -1018,7 +1001,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                             <View style={styles.emptyStatePreview}>
                                 <SafeIcon name="message-circle" size={32} color={modernColors.textSecondary} />
                                 <Text style={styles.emptyPreviewText}>
-                                    Aucun commentaire pour l’instant. Lancez la discussion !
+                                    Aucun commentaire pour l'instant. Lancez la discussion !
                                 </Text>
                             </View>
                         ) : (
@@ -1489,12 +1472,6 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: modernColors.textSecondary,
     },
-    fullHeaderText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    // ✅ NOUVEAU: Styles pour audio
     audioPreviewContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1551,7 +1528,6 @@ const styles = StyleSheet.create({
     cancelRecordingButton: {
         padding: 4,
     },
-    // ✅ NOUVEAU: Styles pour emojis
     composerInputActions: {
         flexDirection: 'row',
         gap: 8,
@@ -1614,4 +1590,3 @@ const styles = StyleSheet.create({
 });
 
 export default ProductCommentsSection;
-
