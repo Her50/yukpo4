@@ -84,6 +84,7 @@ pub mod shopping_routes;
 pub mod social_features_routes;
 pub mod specialized_services_routes;
 pub mod stock_media_routes;
+pub mod studio_routes; // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
 pub mod system_health_routes;
 pub mod upload_routes;
 pub mod video_hls_routes;

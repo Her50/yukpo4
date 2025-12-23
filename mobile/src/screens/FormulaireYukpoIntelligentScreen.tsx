@@ -4075,14 +4075,36 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         <ScrollView
                           style={styles.blockPanelScroll}
                           contentContainerStyle={styles.blockPanelContent}
-                          showsVerticalScrollIndicator={false}
+                          showsVerticalScrollIndicator={true}
                           keyboardShouldPersistTaps="handled"
                           keyboardDismissMode="on-drag"
                           nestedScrollEnabled={true}
-                          removeClippedSubviews={true}
-                          scrollEventThrottle={100}
+                          removeClippedSubviews={false}
+                          scrollEventThrottle={16}
                           bounces={Platform.OS === 'ios'}
-                          maintainVisibleContentPosition={null}
+                          {...(Platform.OS === 'android' && { overScrollMode: 'never' as const })}
+                          {...(Platform.OS === 'ios' && { directionalLockEnabled: false })}
+                          scrollEnabled={true}
+                          alwaysBounceVertical={false}
+                          decelerationRate="normal"
+                          onScrollBeginDrag={() => {
+                            // Désactiver temporairement le scroll horizontal pendant le scroll vertical
+                            if (blockContentRef.current) {
+                              blockContentRef.current.setNativeProps({ scrollEnabled: false });
+                            }
+                          }}
+                          onScrollEndDrag={() => {
+                            // Réactiver le scroll horizontal après le scroll vertical
+                            if (blockContentRef.current) {
+                              blockContentRef.current.setNativeProps({ scrollEnabled: true });
+                            }
+                          }}
+                          onMomentumScrollEnd={() => {
+                            // S'assurer que le scroll horizontal est réactivé
+                            if (blockContentRef.current) {
+                              blockContentRef.current.setNativeProps({ scrollEnabled: true });
+                            }
+                          }}
                         >
                           <View style={styles.sectionContainer}>
                             <LinearGradient
@@ -4159,10 +4181,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       index,
                     })}
                     keyboardShouldPersistTaps="handled"
-                    removeClippedSubviews={true}
+                    removeClippedSubviews={false}
                     decelerationRate="fast"
                     snapToInterval={width}
                     snapToAlignment="start"
+                    scrollEventThrottle={16}
+                    disableIntervalMomentum={true}
                   />
 
                   {/* Boutons de navigation */}

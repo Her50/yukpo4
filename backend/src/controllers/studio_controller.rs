@@ -31,11 +31,30 @@ pub async fn create_session(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateStudioSessionPayload>,
 ) -> AppResult<Json<StudioSessionAggregate>> {
-    let session = state
-        .studio_service
-        .create_session(user.id, payload)
-        .await?;
-    Ok(Json(session))
+    log::info!(
+        "[Studio] create_session - user_id: {}, service_id: {:?}, brief: {:?}",
+        user.id,
+        payload.service_id,
+        payload.brief
+    );
+    
+    match state.studio_service.create_session(user.id, payload).await {
+        Ok(session) => {
+            log::info!(
+                "[Studio] ✅ Session créée avec succès - session_id: {}",
+                session.session.id
+            );
+            Ok(Json(session))
+        }
+        Err(e) => {
+            log::error!(
+                "[Studio] ❌ Erreur création session - user_id: {}, erreur: {:?}",
+                user.id,
+                e
+            );
+            Err(e)
+        }
+    }
 }
 
 pub async fn list_sessions(

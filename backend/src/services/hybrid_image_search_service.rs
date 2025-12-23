@@ -33,6 +33,76 @@ impl HybridImageSearchService {
         Self { pool }
     }
 
+    /// ✅ NOUVEAU: Valider la structure JSON générée par l'IA
+    fn validate_ia_json(data_obj: &Value) -> AppResult<()> {
+        // Vérifier les 5 champs obligatoires
+        let required_fields = ["titre_service", "category", "description", "is_tarissable", "type_offre"];
+        let mut missing_fields = Vec::new();
+        
+        for field in &required_fields {
+            if !data_obj.get(field).is_some() {
+                missing_fields.push(*field);
+            }
+        }
+        
+        if !missing_fields.is_empty() {
+            return Err(AppError::Internal(format!(
+                "Champs obligatoires manquants dans JSON IA: {}",
+                missing_fields.join(", ")
+            )));
+        }
+        
+        // Vérifier que type_offre a la bonne structure
+        if let Some(type_offre) = data_obj.get("type_offre") {
+            let valeur = if let Some(obj) = type_offre.as_object() {
+                obj.get("valeur").and_then(|v| v.as_str())
+            } else {
+                type_offre.as_str()
+            };
+            
+            if let Some(val) = valeur {
+                if val != "produit" && val != "prestation" {
+                    return Err(AppError::Internal(format!(
+                        "type_offre invalide: '{}' (attendu: 'produit' ou 'prestation')",
+                        val
+                    )));
+                }
+            }
+        }
+        
+        // Vérifier structure produits si présent
+        if let Some(produits) = data_obj.get("produits") {
+            if let Some(prod_obj) = produits.as_object() {
+                // Vérifier type_donnee
+                if let Some(type_donnee) = prod_obj.get("type_donnee").and_then(|t| t.as_str()) {
+                    if type_donnee != "autocomplete" {
+                        log_warn(&format!(
+                            "[HybridImageSearch] ⚠️ produits.type_donnee = '{}' (attendu: 'autocomplete')",
+                            type_donnee
+                        ));
+                    }
+                }
+                
+                // Vérifier sous_caracteristiques
+                if let Some(sous_caracs) = prod_obj.get("sous_caracteristiques") {
+                    if let Some(obj) = sous_caracs.as_object() {
+                        let count = obj.len();
+                        if count < 6 {
+                            log_warn(&format!(
+                                "[HybridImageSearch] ⚠️ sous_caracteristiques a seulement {} caractéristiques (minimum recommandé: 6-8)",
+                                count
+                            ));
+                        }
+                    }
+                } else {
+                    log_warn("[HybridImageSearch] ⚠️ produits.sous_caracteristiques manquant");
+                }
+            }
+        }
+        
+        Ok(())
+    }
+
     /// Stocker une analyse d'image en base de données
     pub async fn store_image_analysis(
         &self,
@@ -107,17 +177,27 @@ impl HybridImageSearchService {
         
         log_info("[HybridImageSearch] 🔍 Analyse image avec prompt de recherche dédié...");
         
-        // ✅ NOUVEAU 2025-11-01: Charger le prompt dédié recherche_image_prompt.md
-        // Ce prompt est IDENTIQUE au prompt de création pour assurer compatibilité du JSON
-        let search_prompt = match tokio::fs::read_to_string("backend/ia_prompts/recherche_image_prompt.md").await {
+        // ✅ OPTIMISATION 2025-12-23: Utiliser prompt optimisé (100 lignes vs 1178) pour réduire temps traitement IA
+        // Le prompt optimisé garde toutes les règles essentielles mais élimine les répétitions
+        let search_prompt = match tokio::fs::read_to_string("backend/ia_prompts/recherche_image_prompt_optimized.md").await {
             Ok(content) => {
-                log_info("[HybridImageSearch] ✅ Prompt de recherche chargé depuis fichier (1169 lignes)");
+                log_info("[HybridImageSearch] ✅ Prompt optimisé chargé depuis fichier (~100 lignes)");
                 content
             },
-            Err(e) => {
-                log_warn(&format!("[HybridImageSearch] ⚠️ Impossible de charger prompt fichier: {}, utilisation embedded", e));
-                // Fallback vers prompt embedded (identique au fichier)
-                include_str!("../../ia_prompts/recherche_image_prompt.md").to_string()
+            Err(_) => {
+                // Fallback vers prompt optimisé embedded
+                match include_str!("../../ia_prompts/recherche_image_prompt_optimized.md") {
+                    embedded if !embedded.is_empty() => {
+                        log_info("[HybridImageSearch] ✅ Prompt optimisé chargé depuis embedded");
+                        embedded.to_string()
+                    },
+                    _ => {
+                        log_warn("[HybridImageSearch] ⚠️ Prompt optimisé non trouvé, fallback vers prompt complet");
+                        // Dernier fallback vers prompt complet si optimisé non disponible
+                        tokio::fs::read_to_string("backend/ia_prompts/recherche_image_prompt.md").await
+                            .unwrap_or_else(|_| include_str!("../../ia_prompts/recherche_image_prompt.md").to_string())
+                    }
+                }
             }
         };
 
@@ -151,10 +231,23 @@ impl HybridImageSearchService {
             .to_string();
         
         let parsed_json: serde_json::Value = serde_json::from_str(&cleaned_json)
-            .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur parsing JSON: {}", e)))?;
+            .map_err(|e| {
+                log_error(&format!("[HybridImageSearch] ❌ Erreur parsing JSON brut: {}", e));
+                log_error(&format!("[HybridImageSearch] JSON reçu (premiers 500 chars): {}", &cleaned_json.chars().take(500).collect::<String>()));
+                crate::core::types::AppError::Internal(format!("Erreur parsing JSON: {}", e))
+            })?;
 
         // ✅ NOUVEAU 2025-11-01: Parser le JSON au format création (avec data ou directement)
         let data_obj = parsed_json.get("data").unwrap_or(&parsed_json);
+        
+        // ✅ NOUVEAU 2025-12-23: Valider la structure JSON avant extraction
+        if let Err(e) = Self::validate_ia_json(data_obj) {
+            log_error(&format!("[HybridImageSearch] ❌ Validation JSON échouée: {}", e));
+            // Continue quand même avec des valeurs par défaut, mais log l'erreur
+            log_warn("[HybridImageSearch] ⚠️ Continuation avec valeurs par défaut malgré erreur validation");
+        } else {
+            log_info("[HybridImageSearch] ✅ Validation JSON réussie");
+        }
         
         // Extraire category (au niveau service)
         let category_str = data_obj.get("category")
@@ -232,6 +325,8 @@ impl HybridImageSearchService {
                         tags.extend(vals.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
                     }
                 }
+            } else {
+                log_warn("[HybridImageSearch] ⚠️ produits.sous_caracteristiques manquant - tags limités");
             }
         }
 
@@ -597,4 +692,3 @@ impl HybridImageSearchService {
         Ok(serde_json::json!({ "analyses": stats_json }))
     }
 }
-

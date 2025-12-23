@@ -21,14 +21,25 @@ type ApiResponse<T> = {
 const BASE = '/api/studio';
 
 const ensureSuccess = <T>(response: ApiResponse<T>, fallback?: T): T => {
+    // ✅ AMÉLIORÉ: Gestion d'erreur plus détaillée avec codes HTTP
     if (response.success === false) {
-        throw new Error(response.error ?? 'Erreur API Studio');
+        const errorMessage = response.error ?? 'Erreur API Studio';
+        const error = new Error(errorMessage) as any;
+        error.status = response.status;
+        error.code = response.code;
+        error.response = response;
+        throw error;
     }
     if (response.data === undefined || response.data === null) {
         if (fallback !== undefined) {
             return fallback;
         }
-        throw new Error(response?.error ?? 'Réponse Studio vide');
+        const errorMessage = response?.error ?? 'Réponse Studio vide';
+        const error = new Error(errorMessage) as any;
+        error.status = response.status;
+        error.code = response.code;
+        error.response = response;
+        throw error;
     }
     return response.data;
 };
@@ -119,8 +130,30 @@ export const studioService = {
     },
 
     async createSession(payload: CreateStudioSessionPayload): Promise<StudioSessionAggregate> {
-        const response = await apiPost<StudioSessionAggregate>(`${BASE}/sessions`, payload);
-        return ensureSuccess(response);
+        try {
+            console.log('[studioService] createSession: Création session avec payload:', {
+                service_id: payload.service_id,
+                brief: payload.brief,
+                metadata: payload.metadata,
+            });
+            const response = await apiPost<StudioSessionAggregate>(`${BASE}/sessions`, payload);
+            console.log('[studioService] createSession: Réponse reçue:', {
+                success: response.success,
+                hasData: !!response.data,
+                error: response.error,
+                status: response.status,
+            });
+            return ensureSuccess(response);
+        } catch (error: any) {
+            console.error('[studioService] createSession: Erreur détaillée', {
+                message: error?.message,
+                status: error?.status,
+                code: error?.code,
+                response: error?.response,
+                stack: error?.stack,
+            });
+            throw error;
+        }
     },
 
     async getSession(sessionId: string): Promise<StudioSessionAggregate> {

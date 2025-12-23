@@ -1158,9 +1158,30 @@ async fn create_client_order(
     // ✅ 2. Vérifier si configuration complète
     if let Some(config) = &delivery_config {
         if !config.is_configured.unwrap_or(false) {
-            return Err(crate::core::types::AppError::BadRequest(
-                "Configuration de livraison incomplète pour ce produit. Le prestataire doit compléter la configuration.".into(),
-            ));
+            // ✅ AMÉLIORATION : Message d'erreur plus détaillé avec informations manquantes
+            let mut missing_fields = Vec::new();
+            if config.pickup_address.is_none() || config.pickup_latitude.is_none() || config.pickup_longitude.is_none() {
+                missing_fields.push("adresse de pickup");
+            }
+            if config.required_vehicle_type_id.is_none() {
+                missing_fields.push("type de véhicule requis");
+            }
+            
+            let error_msg = if !missing_fields.is_empty() {
+                format!(
+                    "Configuration de livraison incomplète pour ce produit. Champs manquants : {}. Le prestataire doit compléter la configuration via l'interface d'administration.",
+                    missing_fields.join(", ")
+                )
+            } else {
+                "Configuration de livraison incomplète pour ce produit. Le prestataire doit compléter la configuration via l'interface d'administration.".to_string()
+            };
+            
+            log::warn!(
+                "[create_client_order] Configuration incomplète pour service_id={}, product_index={:?}, missing_fields={:?}",
+                payload.service_id, payload.product_index, missing_fields
+            );
+            
+            return Err(crate::core::types::AppError::BadRequest(error_msg));
         }
     }
 

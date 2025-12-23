@@ -1629,27 +1629,65 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return studioSessionId;
         }
         if (!selectedProduct || typeof selectedProduct.serviceId === 'undefined') {
+            console.warn('[ProductVideoCreationModal] ensureStudioSession: selectedProduct ou serviceId manquant', {
+                selectedProduct: selectedProduct ? { serviceId: selectedProduct.serviceId } : null,
+            });
             return undefined;
         }
         try {
+            // ✅ AMÉLIORÉ: Logging détaillé pour diagnostic
+            console.log('[ProductVideoCreationModal] ensureStudioSession: Vérification sessions existantes...');
             const existing = await studioService.listSessions();
+            console.log('[ProductVideoCreationModal] ensureStudioSession: Sessions existantes:', existing.length);
+            
             if (existing.length > 0) {
-                setStudioSessionId(existing[0].id);
-                return existing[0].id;
+                const sessionId = existing[0].id;
+                console.log('[ProductVideoCreationModal] ensureStudioSession: Réutilisation session existante:', sessionId);
+                setStudioSessionId(sessionId);
+                return sessionId;
             }
+            
+            // ✅ AMÉLIORÉ: Créer une nouvelle session avec payload complet
             const payload: import('../services/studioService').CreateStudioSessionPayload = {
                 service_id: Number(selectedProduct.serviceId),
                 brief: { raw: scriptNotes || headline || normalizeProductName(selectedProduct) },
                 metadata: {
                     product_name: normalizeProductName(selectedProduct),
+                    product_index: selectedProduct.product_index,
                 },
                 distribution_plan: [],
             };
+            
+            console.log('[ProductVideoCreationModal] ensureStudioSession: Création nouvelle session avec payload:', {
+                service_id: payload.service_id,
+                brief: payload.brief,
+            });
+            
             const aggregate = await studioService.createSession(payload);
-            setStudioSessionId(aggregate.session.id);
-            return aggregate.session.id;
-        } catch (error) {
-            console.warn('[ProductVideoCreationModal] session Studio indisponible', error);
+            
+            if (!aggregate || !aggregate.session || !aggregate.session.id) {
+                console.error('[ProductVideoCreationModal] ensureStudioSession: Réponse invalide de createSession:', aggregate);
+                throw new Error('Réponse invalide de l\'API Studio');
+            }
+            
+            const sessionId = aggregate.session.id;
+            console.log('[ProductVideoCreationModal] ensureStudioSession: ✅ Session créée avec succès:', sessionId);
+            setStudioSessionId(sessionId);
+            return sessionId;
+        } catch (error: any) {
+            // ✅ AMÉLIORÉ: Logging détaillé de l'erreur
+            console.error('[ProductVideoCreationModal] ensureStudioSession: ❌ Erreur création session Studio', {
+                error: error?.message || String(error),
+                stack: error?.stack,
+                response: error?.response?.data,
+                status: error?.response?.status,
+                serviceId: selectedProduct?.serviceId,
+            });
+            
+            // ✅ AMÉLIORÉ: Message d'erreur plus informatif pour l'utilisateur
+            const errorMessage = error?.response?.data?.error || error?.message || 'Erreur inconnue';
+            console.warn('[ProductVideoCreationModal] session Studio indisponible:', errorMessage);
+            
             return undefined;
         }
     }, [selectedProduct, scriptNotes, headline, studioSessionId]);
@@ -1660,6 +1698,20 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer un storyboard.');
             return;
         }
+        
+        // ✅ AMÉLIORÉ: Vérifier que le serviceId est valide
+        if (!selectedProduct.serviceId || typeof selectedProduct.serviceId !== 'number') {
+            Alert.alert(
+                'Erreur',
+                'Le service associé au produit est invalide. Veuillez sélectionner un autre produit.'
+            );
+            console.error('[ProductVideoCreationModal] handleGenerateStoryboard: serviceId invalide', {
+                serviceId: selectedProduct.serviceId,
+                product: selectedProduct,
+            });
+            return;
+        }
+        
         const startedAt = Date.now();
         trackUxEvent('storyboard_generate_click', {
             device: 'mobile',
@@ -1668,9 +1720,25 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             sessionId: studioSessionId,
             step: activeStep,
         });
-        const sessionId = await ensureStudioSession();
+        
+        // ✅ AMÉLIORÉ: Gestion d'erreur plus détaillée
+        let sessionId: string | undefined;
+        try {
+            sessionId = await ensureStudioSession();
+        } catch (error: any) {
+            console.error('[ProductVideoCreationModal] handleGenerateStoryboard: Erreur ensureStudioSession', error);
+            Alert.alert(
+                'Erreur de session',
+                `Impossible de créer une session Studio: ${error?.message || 'Erreur inconnue'}. Vérifiez votre connexion et réessayez.`
+            );
+            return;
+        }
+        
         if (!sessionId) {
-            Alert.alert('Erreur', 'Impossible de créer une session Studio. Vérifiez votre connexion.');
+            Alert.alert(
+                'Erreur de session',
+                'Impossible de créer une session Studio. Vérifiez que:\n• Votre connexion internet est active\n• Le service est valide\n• Vous avez les permissions nécessaires'
+            );
             return;
         }
         setStoryboardLoading(true);

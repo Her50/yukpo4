@@ -97,6 +97,7 @@ use crate::routes::{
     social_features_routes::social_features_routes, // ✅ NOUVEAU: Routes fonctionnalités sociales avancées
     specialized_services_routes::specialized_services_routes,
     stock_media_routes::stock_media_routes, // ✅ NOUVEAU Phase 2: Routes Stock Media Integration
+    studio_routes::studio_routes, // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
     system_health_routes::system_health_routes,
     token_pack_routes::token_pack_routes,
     token_stats_routes::token_stats_routes,
@@ -288,6 +289,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let ar_routes = ar_routes(state.clone()); // ✅ NOUVEAU Phase 3.2: Routes pour preview AR/VR
     let stock_media = stock_media_routes(state.clone()); // ✅ NOUVEAU Phase 2: Routes Stock Media Integration
     let plugins = plugin_routes(state.clone()); // ✅ NOUVEAU Phase 2: Routes gestion des plugins
+    let studio = studio_routes(state.clone()); // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
 
     let app = Router::new()
         .route("/healthz", get(healthz))
@@ -354,6 +356,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(export_routes) // ✅ NOUVEAU Phase 2.3: Routes pour jobs d'export vidéo
         .merge(generative_routes) // ✅ NOUVEAU Phase 3.1: Routes pour génération vidéo IA
         .merge(ar_routes) // ✅ NOUVEAU Phase 3.2: Routes pour preview AR/VR
+        .merge(studio) // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
         .merge(mobile_logs)
         .merge(delivery_external)
         .merge(negotiated_prices)

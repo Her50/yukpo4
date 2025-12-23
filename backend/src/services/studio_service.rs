@@ -192,6 +192,20 @@ impl StudioService {
         user_id: i32,
         payload: CreateStudioSessionPayload,
     ) -> AppResult<StudioSessionAggregate> {
+        log::info!(
+            "[StudioService] create_session - user_id: {}, service_id: {:?}",
+            user_id,
+            payload.service_id
+        );
+        
+        log::debug!(
+            "[StudioService] create_session - Payload: brief: {:?}, metadata: {:?}, timeline_settings: {:?}, distribution_plan: {:?}",
+            payload.brief,
+            payload.metadata,
+            payload.timeline_settings,
+            payload.distribution_plan
+        );
+        
         let record = sqlx::query_as::<_, StudioSessionRecord>(
             r#"
             INSERT INTO studio_sessions (
@@ -200,9 +214,11 @@ impl StudioService {
                 brief,
                 metadata,
                 timeline_settings,
-                distribution_plan
+                distribution_plan,
+                status,
+                preview_status
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4, $5, $6, 'draft', 'pending')
             RETURNING *
             "#,
         )
@@ -213,7 +229,23 @@ impl StudioService {
         .bind(payload.timeline_settings)
         .bind(payload.distribution_plan)
         .fetch_one(&self.pool)
-        .await?;
+        .await
+        .map_err(|e| {
+            log::error!(
+                "[StudioService] ❌ Erreur SQL création session - user_id: {}, service_id: {:?}, erreur: {:?}",
+                user_id,
+                payload.service_id,
+                e
+            );
+            AppError::Internal(format!("Erreur création session Studio: {}", e))
+        })?;
+
+        log::info!(
+            "[StudioService] ✅ Session créée - id: {}, user_id: {}, service_id: {:?}",
+            record.id,
+            user_id,
+            record.service_id
+        );
 
         let timeline = Vec::new();
         let assets = Vec::new();

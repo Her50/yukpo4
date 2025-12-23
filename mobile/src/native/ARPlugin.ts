@@ -163,14 +163,32 @@ export function createARCorePlugin() {
 
 /**
  * ✅ Factory pour créer le plugin AR selon la plateforme
+ * NOTE: Cette fonction doit être appelée EN DEHORS d'un worklet car elle utilise Platform.OS
+ * Le plugin retourné peut ensuite être utilisé dans un worklet
  */
 export function createARPlugin() {
+    // ✅ CORRIGÉ: Créer le plugin selon la plateforme en dehors du worklet
+    // Les fonctions createARKitPlugin et createARCorePlugin sont des worklets,
+    // mais elles sont créées ici et stockées pour être utilisées dans le frameProcessor
+    
     if (Platform.OS === 'ios') {
+        // Note: createARKitPlugin() retourne un objet avec detectPlanes qui est un worklet
+        // On peut stocker cet objet et l'utiliser dans le worklet
         return createARKitPlugin();
     } else if (Platform.OS === 'android') {
         return createARCorePlugin();
     } else {
-        throw new Error('AR non supporté sur cette plateforme');
+        // Fallback pour plateformes non supportées
+        return {
+            detectPlanes: (frame: Frame): ARTrackingResult => {
+                'worklet';
+                return {
+                    hasPlane: false,
+                    planes: [],
+                    trackingQuality: 'none',
+                };
+            },
+        };
     }
 }
 

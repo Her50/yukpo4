@@ -323,7 +323,12 @@ async fn handle_direct_search(
                 
                 let hybrid_service = HybridImageSearchService::new(_state.pg.clone());
                 
-                let analysis_result = hybrid_service.search_by_image(
+                // ✅ OPTIMISATION: Timeout de 20 secondes pour l'analyse IA (éviter 28s+ de latence)
+                // L'IA externe peut prendre jusqu'à 60s selon config, mais on limite à 20s pour UX mobile
+                let start_time = std::time::Instant::now();
+                log_info("[DIRECT_SEARCH] 🖼️ Début analyse IA par image...");
+                
+                let search_future = hybrid_service.search_by_image(
                     &_state.ia,
                     &image_base64,
                     user.id,
@@ -332,7 +337,37 @@ async fn handle_direct_search(
                     gps_lng,
                     Some(50),  // Rayon 50km
                     20   // Max 20 résultats
-                ).await;
+                );
+                
+                let analysis_result = match tokio::time::timeout(
+                    std::time::Duration::from_secs(20), // 20 secondes max pour analyse IA
+                    search_future
+                ).await {
+                    Ok(Ok(result)) => {
+                        let elapsed = start_time.elapsed();
+                        log_info(&format!(
+                            "[DIRECT_SEARCH] ✅ Analyse IA complétée en {:.2}s",
+                            elapsed.as_secs_f64()
+                        ));
+                        Ok(result)
+                    },
+                    Ok(Err(e)) => {
+                        let elapsed = start_time.elapsed();
+                        log_error(&format!(
+                            "[DIRECT_SEARCH] ❌ Erreur analyse IA après {:.2}s: {:?}",
+                            elapsed.as_secs_f64(), e
+                        ));
+                        Err(e)
+                    },
+                    Err(_) => {
+                        let elapsed = start_time.elapsed();
+                        log_warn(&format!(
+                            "[DIRECT_SEARCH] ⏱️ Timeout analyse IA après {:.2}s (limite 20s) - Fallback vers recherche générique",
+                            elapsed.as_secs_f64()
+                        ));
+                        Err(AppError::Internal("Timeout analyse IA".to_string()))
+                    }
+                };
                 
                 match analysis_result {
                     Ok((hybrid_results, analysis, ai_cost)) => {

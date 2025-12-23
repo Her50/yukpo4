@@ -181,16 +181,20 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
     
     useEffect(() => {
         try {
+            // ✅ CORRIGÉ: Créer le plugin en dehors du worklet (Platform.OS ne peut pas être utilisé dans un worklet)
             arPluginRef.current = createARPlugin();
         } catch (error) {
             console.error('[ARVideoEditor] Erreur création plugin AR:', error);
             // En cas d'erreur, créer un plugin minimal qui retourne toujours "pas de plan"
             arPluginRef.current = {
-                detectPlanes: () => ({
-                    hasPlane: false,
-                    planes: [],
-                    trackingQuality: 'none' as const,
-                }),
+                detectPlanes: (frame: Frame): ARTrackingResult => {
+                    'worklet';
+                    return {
+                        hasPlane: false,
+                        planes: [],
+                        trackingQuality: 'none',
+                    };
+                },
             };
         }
     }, []);
