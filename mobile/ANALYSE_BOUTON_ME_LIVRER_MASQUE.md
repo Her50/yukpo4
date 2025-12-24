@@ -288,3 +288,4 @@ console.log('[ProductCard] Service data:', {
 4. Vérifier que le bouton s'affiche correctement sur différents écrans
 
 
+

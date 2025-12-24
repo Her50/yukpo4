@@ -40,8 +40,8 @@ import { ColorGradingPanel } from './ColorGradingPanel';
 import { EffectPreviewCarousel } from './EffectPreviewCarousel';
 import { QuickPreview } from './QuickPreview';
 import { TimelineVariantSelector } from './TimelineVariantSelector';
-// ✅ NOUVEAU Phase 3.2: Éditeur AR immersif
-import ARVideoEditor from './ARVideoEditor';
+// ✅ NOUVEAU Phase 3.2: Éditeur AR immersif - Import dynamique pour éviter les crashes
+// Note: L'import est fait dynamiquement dans le Modal pour gérer les erreurs
 
 type VideoStylePreset = 'tiktok' | 'story' | 'cinematic' | 'carousel';
 type MusicMode = 'pulse' | 'lofi' | 'ambient' | 'cinematic' | 'none';
@@ -2085,21 +2085,23 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         variant="primary"
                         size="medium"
                         onPress={async () => {
-                            // ✅ CORRIGÉ 2025-12-24: Vérifier les permissions avant d'ouvrir AR
+                            // ✅ CORRIGÉ 2025-12-24: Vérifier les permissions avant d'ouvrir AR avec gestion d'erreur robuste
                             try {
                                 if (!selectedProduct) {
                                     Alert.alert('Erreur', 'Veuillez d\'abord sélectionner un produit');
                                     return;
                                 }
                                 
-                                // Vérifier que react-native-vision-camera est disponible
+                                // ✅ CORRIGÉ: Vérifier que react-native-vision-camera est disponible avec try-catch robuste
+                                let CameraModule: any = null;
                                 try {
-                                    const { Camera } = await import('react-native-vision-camera');
-                                    if (!Camera) {
+                                    const visionCameraModule = await import('react-native-vision-camera');
+                                    CameraModule = visionCameraModule?.Camera || visionCameraModule?.default?.Camera;
+                                    if (!CameraModule) {
                                         throw new Error('Camera module not available');
                                     }
-                                } catch (error) {
-                                    console.error('[ProductVideoCreationModal] Camera module not available:', error);
+                                } catch (importError: any) {
+                                    console.error('[ProductVideoCreationModal] Camera module not available:', importError);
                                     Alert.alert(
                                         'Fonctionnalité non disponible',
                                         'L\'éditeur AR nécessite react-native-vision-camera. Veuillez mettre à jour l\'application.'
@@ -2107,9 +2109,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     return;
                                 }
                                 
-                                setShowAREditor(true);
+                                // ✅ CORRIGÉ: Vérifier que le composant ARVideoEditor peut être chargé
+                                try {
+                                    setShowAREditor(true);
+                                } catch (arError: any) {
+                                    console.error('[ProductVideoCreationModal] Erreur ouverture AR:', arError);
+                                    Alert.alert(
+                                        'Erreur',
+                                        `Impossible d'ouvrir l'éditeur AR: ${arError?.message || 'Erreur inconnue'}`
+                                    );
+                                }
                             } catch (error: any) {
-                                console.error('[ProductVideoCreationModal] Erreur ouverture AR:', error);
+                                console.error('[ProductVideoCreationModal] Erreur générale ouverture AR:', error);
                                 Alert.alert(
                                     'Erreur',
                                     `Impossible d'ouvrir l'éditeur AR: ${error?.message || 'Erreur inconnue'}`
@@ -2119,6 +2130,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         style={styles.arButton}
                         disabled={!selectedProduct}
                     />
+                    {/* ✅ CORRIGÉ: Protection contre l'affichage de booléens comme texte */}
                     <Text style={styles.arButtonHint}>
                         Capturez votre produit en réalité augmentée avec effets 3D
                     </Text>
@@ -4433,7 +4445,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             {renderStepContent()}
                         </ScrollView>
 
-                        {/* ✅ NOUVEAU Phase 3.2: Modal AR Video Editor */}
+                        {/* ✅ NOUVEAU Phase 3.2: Modal AR Video Editor avec gestion d'erreur robuste */}
                         <Modal
                             visible={showAREditor}
                             animationType="slide"
@@ -4444,17 +4456,48 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 }
                             }}
                         >
-                            <ARVideoEditor
-                                productName={normalizeProductName(selectedProduct)}
-                                serviceId={selectedProduct ? Number(selectedProduct.serviceId) : undefined}
-                                productIndex={selectedProduct?.product_index}
-                                onVideoCaptured={handleARVideoCaptured}
-                                onClose={() => {
-                                    if (!isUploadingARVideo) {
-                                        setShowAREditor(false);
+                            {(() => {
+                                try {
+                                    // ✅ CORRIGÉ: Rendre l'import dynamique pour éviter les crashes
+                                    const ARVideoEditorComponent = require('./ARVideoEditor').ARVideoEditor || require('./ARVideoEditor').default;
+                                    if (!ARVideoEditorComponent) {
+                                        throw new Error('ARVideoEditor component not found');
                                     }
-                                }}
-                            />
+                                    return (
+                                        <ARVideoEditorComponent
+                                            productName={normalizeProductName(selectedProduct)}
+                                            serviceId={selectedProduct ? Number(selectedProduct.serviceId) : undefined}
+                                            productIndex={selectedProduct?.product_index}
+                                            onVideoCaptured={handleARVideoCaptured}
+                                            onClose={() => {
+                                                if (!isUploadingARVideo) {
+                                                    setShowAREditor(false);
+                                                }
+                                            }}
+                                        />
+                                    );
+                                } catch (error: any) {
+                                    console.error('[ProductVideoCreationModal] Erreur chargement ARVideoEditor:', error);
+                                    return (
+                                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                                            <SafeIcon name="camera-off" size={64} color={modernColors.error} />
+                                            <Text style={{ fontSize: 18, fontWeight: '600', marginTop: 16, textAlign: 'center' }}>
+                                                Éditeur AR non disponible
+                                            </Text>
+                                            <Text style={{ fontSize: 14, color: modernColors.textSecondary, marginTop: 8, textAlign: 'center' }}>
+                                                {error?.message || 'L\'éditeur AR nécessite react-native-vision-camera. Veuillez mettre à jour l\'application.'}
+                                            </Text>
+                                            <NativeButton
+                                                title="Fermer"
+                                                variant="primary"
+                                                size="medium"
+                                                onPress={() => setShowAREditor(false)}
+                                                style={{ marginTop: 24 }}
+                                            />
+                                        </View>
+                                    );
+                                }
+                            })()}
                         </Modal>
 
                         {/* ✅ NOUVEAU: Boutons de navigation par étape */}

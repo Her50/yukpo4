@@ -139,3 +139,4 @@ Avant de valider la version compacte, vérifier que :
 **Note importante** : Même si la version est compacte, elle DOIT rester aussi complète en termes d'instructions. La compaction vient de la suppression des redondances et des exemples répétitifs, PAS de la suppression de règles importantes.
 
 
+

@@ -34,3 +34,4 @@ COMMENT ON FUNCTION update_service_products IS 'Mise à jour optimisée des prod
 
 
 
+

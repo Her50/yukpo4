@@ -29,3 +29,4 @@ ON CONFLICT (slug) DO UPDATE SET
 SELECT id, slug, display_name, description FROM parcel_types ORDER BY id;
 
 
+

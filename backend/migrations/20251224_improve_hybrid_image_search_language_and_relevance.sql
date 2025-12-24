@@ -4,7 +4,10 @@
 -- Solution: Ajouter paramètre langue + améliorer scoring pour prioriser ILIKE
 -- Date: 2025-12-24
 
-CREATE OR REPLACE FUNCTION hybrid_image_search(
+-- Supprimer l'ancienne fonction si elle existe (toutes les signatures)
+DROP FUNCTION IF EXISTS hybrid_image_search CASCADE;
+
+CREATE FUNCTION hybrid_image_search(
     search_tags TEXT[],
     search_category TEXT DEFAULT NULL,
     search_marque TEXT DEFAULT NULL,
@@ -307,4 +310,5 @@ END;
 $$ LANGUAGE plpgsql STABLE;
 
 COMMENT ON FUNCTION hybrid_image_search IS 'Recherche hybride améliorée avec langue dynamique et scoring priorisant ILIKE (gestion accents) - 2025-12-24';
+
 

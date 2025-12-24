@@ -105,3 +105,4 @@ scrollsToTop={false}                // Évite les conflits
 4. ✅ Tester sur différents appareils (Android/iOS)
 5. ✅ Tester avec le clavier ouvert
 
+

@@ -325,3 +325,4 @@ console.log('[ProductVideoCreationModal] Available Media:', availableMedia);
 4. Améliorer la génération de timeline pour s'assurer qu'elle assigne toujours des médias
 
 
+

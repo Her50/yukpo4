@@ -97,3 +97,4 @@ Si UN SEUL produit/prestation détecté → générer TOUJOURS :
 - [ ] Extraction exacte de l'image (pas d'invention)
 
 
+

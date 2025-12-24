@@ -20,3 +20,4 @@ ON live_sessions(id, host_user_id, service_id)
 WHERE id IS NOT NULL;
 
 
+
