@@ -7011,6 +7011,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Ok(_) => info!("✅ Migration auto: hybrid_image_search_language_and_relevance OK"),
         Err(e) => error!("❌ Erreur migration auto hybrid_image_search_language_and_relevance: {}", e),
     }
+    
+    // ✅ 2025-12-24 : Correction pertinence et performance recherche par image (seuil strict 150.0)
+    match ensure_hybrid_image_search_relevance_and_performance(pool).await {
+        Ok(_) => info!("✅ Migration auto: hybrid_image_search_relevance_and_performance OK"),
+        Err(e) => error!("❌ Erreur migration auto hybrid_image_search_relevance_and_performance: {}", e),
+    }
 
     // ✅ 2025-12-24 : Optimisation critique des requêtes lentes (pharmacies, deliveries, delivery_matching_queue, find_nearby_couriers)
     match ensure_optimize_slow_queries_critical(pool).await {
@@ -10385,6 +10391,16 @@ pub async fn ensure_hybrid_image_search_language_and_relevance(pool: &PgPool) ->
     let migration_sql = include_str!("../../migrations/20251224_improve_hybrid_image_search_language_and_relevance.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_language_and_relevance appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-24 : Correction pertinence et performance recherche par image (seuil strict 150.0, scoring plus strict)
+/// Migration: 20251224_fix_image_search_relevance_and_performance.sql
+pub async fn ensure_hybrid_image_search_relevance_and_performance(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration hybrid_image_search_relevance_and_performance...");
+    let migration_sql = include_str!("../../migrations/20251224_fix_image_search_relevance_and_performance.sql");
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    info!("✅ Migration hybrid_image_search_relevance_and_performance appliquée");
     Ok(())
 }
 

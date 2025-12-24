@@ -240,6 +240,12 @@ impl HybridImageSearchService {
         // ✅ NOUVEAU 2025-11-01: Parser le JSON au format création (avec data ou directement)
         let data_obj = parsed_json.get("data").unwrap_or(&parsed_json);
         
+        // ✅ NOUVEAU 2025-12-24: Logs détaillés pour debug pertinence
+        log_info(&format!(
+            "[HybridImageSearch] 📋 JSON IA reçu (premiers 1000 chars): {}",
+            &serde_json::to_string(data_obj).unwrap_or_default().chars().take(1000).collect::<String>()
+        ));
+        
         // ✅ NOUVEAU 2025-12-23: Valider la structure JSON avant extraction
         if let Err(e) = Self::validate_ia_json(data_obj) {
             log_error(&format!("[HybridImageSearch] ❌ Validation JSON échouée: {}", e));
@@ -363,16 +369,16 @@ impl HybridImageSearchService {
         // Construire ImageAnalysis compatible
         let analysis = ImageAnalysis {
             description,
-            tags,
-            category_detected: categorie,
-            marque,
-            couleurs,
+            tags: tags.clone(),
+            category_detected: categorie.clone(),
+            marque: marque.clone(),
+            couleurs: couleurs.clone(),
             caracteristiques_cles: std::collections::HashMap::new(),
             confiance: 0.95,
             search_query: search_query_exact.clone(),
-            search_query_exact,
-            search_query_broad,
-            search_query_semantic,
+            search_query_exact: search_query_exact.clone(),
+            search_query_broad: search_query_broad.clone(),
+            search_query_semantic: search_query_semantic.clone(),
         };
 
         // Calculer le coût
@@ -384,10 +390,18 @@ impl HybridImageSearchService {
             model_used: model_name,
         };
 
+        // ✅ NOUVEAU 2025-12-24: Logs détaillés pour debug pertinence
         log_info(&format!(
-            "[HybridImageSearch] ✅ Analyse avec système création: '{}' (confiance: {:.2})",
-            &analysis.description[..analysis.description.len().min(50)],
-            analysis.confiance
+            "[HybridImageSearch] ✅ Analyse complétée:\n  - Description: '{}'\n  - Catégorie: '{}'\n  - Marque: {:?}\n  - Couleurs: {:?}\n  - Tags ({}): {:?}\n  - Query exact: '{}'\n  - Query broad: '{}'\n  - Query semantic: '{}'",
+            &analysis.description[..analysis.description.len().min(100)],
+            categorie,
+            marque,
+            couleurs,
+            tags.len(),
+            &tags.iter().take(10).map(|s| s.as_str()).collect::<Vec<_>>().join(", "),
+            &search_query_exact[..search_query_exact.len().min(60)],
+            &search_query_broad[..search_query_broad.len().min(80)],
+            &search_query_semantic[..search_query_semantic.len().min(100)]
         ));
 
         Ok((analysis, cost))
@@ -442,10 +456,25 @@ impl HybridImageSearchService {
             )
             .await?;
 
-        log_info(&format!(
-            "[HybridImageSearch] ✅ Trouvé {} résultats (seuil: 10.0)",
-            results.len()
-        ));
+        // ✅ NOUVEAU 2025-12-24: Logs détaillés des résultats pour debug pertinence
+        if !results.is_empty() {
+            log_info(&format!(
+                "[HybridImageSearch] ✅ Trouvé {} résultats (seuil: 150.0)",
+                results.len()
+            ));
+            for (i, result) in results.iter().take(5).enumerate() {
+                log_info(&format!(
+                    "[HybridImageSearch]   {}. Service {} - Score: {:.2}, Distance: {:?}km, Description: '{}'",
+                    i + 1,
+                    result.service_id,
+                    result.match_score,
+                    result.distance_km,
+                    &result.product_description.chars().take(60).collect::<String>()
+                ));
+            }
+        } else {
+            log_warn("[HybridImageSearch] ⚠️ Aucun résultat trouvé (seuil: 150.0) - peut-être trop strict ?");
+        }
 
         Ok((results, analysis, cost))
     }
@@ -515,12 +544,19 @@ impl HybridImageSearchService {
             _ => "simple",  // Fallback pour langues non supportées
         };
         
+        // ✅ NOUVEAU 2025-12-24: Logs détaillés pour debug pertinence
         log_info(&format!(
-            "[HybridImageSearch] 🔍 Recherche avec {} tags, catégorie: {:?}, marque: {:?}, query: '{}'",
+            "[HybridImageSearch] 🔍 Paramètres recherche:\n  - Tags ({}): {:?}\n  - Catégorie: {:?}\n  - Marque: {:?}\n  - Couleur: {:?}\n  - Query semantic: '{}'\n  - GPS: lat={:?}, lng={:?}, radius={}km\n  - Max résultats: {}",
             analysis.tags.len(),
+            &analysis.tags.iter().take(10).map(|s| s.as_str()).collect::<Vec<_>>().join(", "),
             category_filter,
             analysis.marque,
-            &search_query.chars().take(50).collect::<String>()
+            couleur_principale,
+            &search_query.chars().take(80).collect::<String>(),
+            gps_lat,
+            gps_lng,
+            search_radius_km.unwrap_or(50),
+            max_results
         ));
         log_info(&format!(
             "[HybridImageSearch] 🌐 Langue: user_pref={:?}, detected={}, final={} -> PostgreSQL: '{}'",
@@ -593,6 +629,26 @@ impl HybridImageSearchService {
                 distance_km: distance_km.map(|d| d as f32),
                 service_data,
             });
+        }
+
+        // ✅ NOUVEAU 2025-12-24: Logs détaillés des résultats pour debug pertinence
+        if !results.is_empty() {
+            log_info(&format!(
+                "[HybridImageSearch] ✅ Trouvé {} résultats (seuil: 150.0)",
+                results.len()
+            ));
+            for (i, result) in results.iter().take(5).enumerate() {
+                log_info(&format!(
+                    "[HybridImageSearch]   {}. Service {} - Score: {:.2}, Distance: {:?}km, Description: '{}'",
+                    i + 1,
+                    result.service_id,
+                    result.match_score,
+                    result.distance_km,
+                    &result.product_description.chars().take(60).collect::<String>()
+                ));
+            }
+        } else {
+            log_warn("[HybridImageSearch] ⚠️ Aucun résultat trouvé (seuil: 150.0) - peut-être trop strict ?");
         }
 
         Ok(results)

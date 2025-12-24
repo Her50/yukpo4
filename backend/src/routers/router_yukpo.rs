@@ -336,8 +336,8 @@ async fn handle_direct_search(
                 
                 let hybrid_service = HybridImageSearchService::new(_state.pg.clone());
                 
-                // ✅ OPTIMISATION: Timeout de 20 secondes pour l'analyse IA (éviter 28s+ de latence)
-                // L'IA externe peut prendre jusqu'à 60s selon config, mais on limite à 20s pour UX mobile
+                // ✅ OPTIMISATION: Timeout réduit à 15 secondes pour l'analyse IA (éviter 22-25s de latence)
+                // L'IA externe peut prendre jusqu'à 60s selon config, mais on limite à 15s pour UX mobile
                 let start_time = std::time::Instant::now();
                 log_info("[DIRECT_SEARCH] 🖼️ Début analyse IA par image...");
                 
@@ -353,7 +353,7 @@ async fn handle_direct_search(
                 );
                 
                 let analysis_result = match tokio::time::timeout(
-                    std::time::Duration::from_secs(20), // 20 secondes max pour analyse IA
+                    std::time::Duration::from_secs(15), // ✅ RÉDUIT: 15 secondes max pour analyse IA (était 20s)
                     search_future
                 ).await {
                     Ok(Ok(result)) => {
@@ -375,7 +375,7 @@ async fn handle_direct_search(
                     Err(_) => {
                         let elapsed = start_time.elapsed();
                         log_warn(&format!(
-                            "[DIRECT_SEARCH] ⏱️ Timeout analyse IA après {:.2}s (limite 20s) - Fallback vers recherche générique",
+                            "[DIRECT_SEARCH] ⏱️ Timeout analyse IA après {:.2}s (limite 15s) - Fallback vers recherche générique",
                             elapsed.as_secs_f64()
                         ));
                         Err(AppError::Internal("Timeout analyse IA".to_string()))
