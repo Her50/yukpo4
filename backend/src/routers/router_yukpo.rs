@@ -192,14 +192,23 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/media/product/{service_id}/{product_index}/videos", get(media_product_controller::get_product_videos))
         .route("/api/media/set-main/{media_id}", post(media_product_controller::set_main_image))
         // ✅ NOUVEAU: Routes pour génération vidéo produit (mobile utilise ces endpoints)
+        // ✅ CORRIGÉ 2025-12-24: Ajouter middleware JWT pour ces routes qui nécessitent authentification
         .route(
             "/api/media/product/{service_id}/{product_index}/generate-video",
             post(product_video_controller::generate_video_for_product)
                 .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // 200 MB
+                .layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    jwt_auth,
+                ))
         )
         .route(
             "/api/media/product/{service_id}/{product_index}/estimate-video",
             post(product_video_controller::estimate_video_cost_for_product)
+                .layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    jwt_auth,
+                ))
         );
         // ✅ Note: Route /api/content/mixed est définie dans recommendation_routes.rs
     

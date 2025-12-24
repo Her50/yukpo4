@@ -423,8 +423,62 @@ const CourierRegistrationScreen: React.FC = () => {
         { value: 'sunday', label: 'Dim' },
     ];
 
+    // ✅ CRITIQUE 2025-12-24: Déplacer TOUS les hooks AVANT les early returns
+    // pour éviter l'erreur "Rendered more hooks than during the previous render"
     const vehicleTypes = VEHICLE_TRANSPORT_OPTIONS;
+    const selectedVehicle = vehicleTypes.find(v => v.value === vehicleType);
+    const requiresLicense = selectedVehicle?.requiresLicense ?? false;
 
+    const handleVehicleSelect = useCallback((vehicle: VehicleType) => {
+        setVehicleType(vehicle);
+        // ✅ CORRIGÉ: Utiliser setTimeout pour éviter les conflits de rendu
+        setTimeout(() => {
+            setShowVehicleModal(false);
+        }, 100);
+    }, []);
+    
+    // ✅ OPTIMISÉ: Mémoriser les options de transport (constante, mais pour cohérence)
+    const vehicleTypesMemo = useMemo(() => vehicleTypes, []);
+    
+    // ✅ OPTIMISÉ: Render item pour FlatList
+    const renderVehicleOption = useCallback(({ item: vehicle }: { item: VehicleOption }) => {
+        const isSelected = vehicleType === vehicle.value;
+        return (
+            <Pressable
+                style={[
+                    styles.vehicleModalOption,
+                    isSelected && styles.vehicleModalOptionSelected,
+                ]}
+                onPress={() => handleVehicleSelect(vehicle.value)}
+                android_ripple={{ color: modernColors.primary + '20' }}
+            >
+                <Text style={styles.vehicleModalIcon}>{vehicle.icon}</Text>
+                <View style={styles.vehicleModalTextContainer}>
+                    <Text
+                        style={[
+                            styles.vehicleModalLabel,
+                            isSelected && styles.vehicleModalLabelSelected,
+                        ]}
+                    >
+                        {vehicle.label}
+                    </Text>
+                    {vehicle.requiresLicense && (
+                        <Text style={styles.vehicleModalHint}>
+                            Permis de conduire requis
+                        </Text>
+                    )}
+                </View>
+                {isSelected && (
+                    <SafeIcon name="check" size={20} color={modernColors.primary} />
+                )}
+            </Pressable>
+        );
+    }, [vehicleType, handleVehicleSelect]);
+    
+    // ✅ OPTIMISÉ: Key extractor pour FlatList
+    const keyExtractor = useCallback((item: VehicleOption) => item.value, []);
+
+    // ✅ CRITIQUE 2025-12-24: Early returns APRÈS tous les hooks
     if (checkingStatus) {
         return (
             <SafeNativeView style={styles.container}>
@@ -492,58 +546,6 @@ const CourierRegistrationScreen: React.FC = () => {
             </SafeNativeView>
         );
     }
-
-    const selectedVehicle = vehicleTypes.find(v => v.value === vehicleType);
-    const requiresLicense = selectedVehicle?.requiresLicense ?? false;
-
-    const handleVehicleSelect = useCallback((vehicle: VehicleType) => {
-        setVehicleType(vehicle);
-        // ✅ CORRIGÉ: Utiliser setTimeout pour éviter les conflits de rendu
-        setTimeout(() => {
-            setShowVehicleModal(false);
-        }, 100);
-    }, []);
-    
-    // ✅ OPTIMISÉ: Mémoriser les options de transport
-    const vehicleTypesMemo = useMemo(() => vehicleTypes, [vehicleTypes]);
-    
-    // ✅ OPTIMISÉ: Render item pour FlatList
-    const renderVehicleOption = useCallback(({ item: vehicle }: { item: VehicleOption }) => {
-        const isSelected = vehicleType === vehicle.value;
-        return (
-            <Pressable
-                style={[
-                    styles.vehicleModalOption,
-                    isSelected && styles.vehicleModalOptionSelected,
-                ]}
-                onPress={() => handleVehicleSelect(vehicle.value)}
-                android_ripple={{ color: modernColors.primary + '20' }}
-            >
-                <Text style={styles.vehicleModalIcon}>{vehicle.icon}</Text>
-                <View style={styles.vehicleModalTextContainer}>
-                    <Text
-                        style={[
-                            styles.vehicleModalLabel,
-                            isSelected && styles.vehicleModalLabelSelected,
-                        ]}
-                    >
-                        {vehicle.label}
-                    </Text>
-                    {vehicle.requiresLicense && (
-                        <Text style={styles.vehicleModalHint}>
-                            Permis de conduire requis
-                        </Text>
-                    )}
-                </View>
-                {isSelected && (
-                    <SafeIcon name="check" size={20} color={modernColors.primary} />
-                )}
-            </Pressable>
-        );
-    }, [vehicleType, handleVehicleSelect]);
-    
-    // ✅ OPTIMISÉ: Key extractor pour FlatList
-    const keyExtractor = useCallback((item: VehicleOption) => item.value, []);
 
     return (
         <SafeNativeView style={styles.container}>

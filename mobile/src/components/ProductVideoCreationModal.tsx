@@ -382,6 +382,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+    // ✅ CORRIGÉ 2025-12-24: Ref pour le ScrollView principal pour scroller vers le haut lors du changement d'étape
+    const mainScrollViewRef = useRef<ScrollView>(null);
+
     // ✅ NOUVEAU Phase 3.2: Gérer la vidéo AR capturée
     const handleARVideoCaptured = useCallback(async (videoUri: string) => {
         if (!selectedProduct || typeof selectedProduct.product_index !== 'number') {
@@ -502,48 +505,111 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setMediaLoading(true);
 
             try {
+                // ✅ CORRIGÉ 2025-12-24: Convertir serviceId en nombre pour l'API
+                const serviceIdNum = Number(product.serviceId);
+                if (isNaN(serviceIdNum) || serviceIdNum <= 0) {
+                    console.error('[ProductVideoCreationModal] serviceId invalide:', product.serviceId);
+                    throw new Error('Service ID invalide');
+                }
+
+                const productIndexNum = Number(product.product_index);
+                if (isNaN(productIndexNum) || productIndexNum < 0) {
+                    console.error('[ProductVideoCreationModal] product_index invalide:', product.product_index);
+                    throw new Error('Product index invalide');
+                }
+
+                console.log('[ProductVideoCreationModal] Chargement médias pour serviceId:', serviceIdNum, 'productIndex:', productIndexNum);
+
                 const [productMediaResponse, serviceMediaResponse] = await Promise.all([
-                    mediaApi.getProductMedia(product.serviceId, product.product_index),
-                    mediaApi.getServiceMediaDetailed(product.serviceId),
+                    mediaApi.getProductMedia(serviceIdNum, productIndexNum),
+                    mediaApi.getServiceMediaDetailed(serviceIdNum),
                 ]);
 
+                console.log('[ProductVideoCreationModal] Réponse productMedia:', {
+                    success: productMediaResponse.success,
+                    hasData: !!productMediaResponse.data,
+                    dataType: typeof productMediaResponse.data,
+                    dataKeys: productMediaResponse.data ? Object.keys(productMediaResponse.data) : [],
+                });
+
                 if (!productMediaResponse.success) {
+                    console.error('[ProductVideoCreationModal] Erreur productMediaResponse:', productMediaResponse.error);
                     throw new Error(
                         productMediaResponse.error || 'Impossible de récupérer les médias du produit.'
                     );
                 }
 
                 if (!serviceMediaResponse.success) {
-                    throw new Error(
-                        serviceMediaResponse.error || 'Impossible de récupérer la médiathèque du prestataire.'
-                    );
+                    console.warn('[ProductVideoCreationModal] Erreur serviceMediaResponse:', serviceMediaResponse.error);
+                    // Ne pas faire échouer si serviceMedia échoue, on continue avec productMedia
                 }
 
-                const productMediaItems: MediaLibraryItem[] = Array.isArray((productMediaResponse.data as any)?.data)
-                    ? (productMediaResponse.data as any).data
-                        .map((item: any) => ({
-                            id: ensureNumber(item.id, -1),
-                            path: item.path,
-                            type: item.media_type ?? item.type ?? 'image',
-                            media_type: item.media_type ?? item.type ?? 'image',
-                            product_index: item.product_index ?? null,
-                            ai_description: item.ai_description ?? null,
-                        }))
-                        .filter((item: MediaLibraryItem) => item.id > 0)
-                    : [];
+                // ✅ CORRIGÉ 2025-12-24: Vérifier plusieurs structures de réponse possibles
+                let productMediaData: any[] = [];
+                
+                // Structure 1: response.data.data (tableau)
+                if (Array.isArray((productMediaResponse.data as any)?.data)) {
+                    productMediaData = (productMediaResponse.data as any).data;
+                }
+                // Structure 2: response.data directement (tableau)
+                else if (Array.isArray(productMediaResponse.data)) {
+                    productMediaData = productMediaResponse.data;
+                }
+                // Structure 3: response.data.images ou response.data.videos
+                else if (productMediaResponse.data && typeof productMediaResponse.data === 'object') {
+                    const images = (productMediaResponse.data as any).images || (productMediaResponse.data as any).Images || [];
+                    const videos = (productMediaResponse.data as any).videos || (productMediaResponse.data as any).Videos || [];
+                    productMediaData = [...(Array.isArray(images) ? images : []), ...(Array.isArray(videos) ? videos : [])];
+                }
 
-                const serviceMediaItems: MediaLibraryItem[] = Array.isArray(serviceMediaResponse.data)
-                    ? serviceMediaResponse.data
-                        .map((item: any) => ({
-                            id: ensureNumber(item.id, -1),
-                            path: item.path,
-                            type: item.media_type ?? item.type ?? 'image',
-                            media_type: item.media_type ?? item.type ?? 'image',
+                console.log('[ProductVideoCreationModal] Médias extraits:', productMediaData.length, 'items');
+
+                const productMediaItems: MediaLibraryItem[] = productMediaData
+                    .map((item: any, index: number) => {
+                        // ✅ CORRIGÉ: Gérer différents formats de réponse
+                        const mediaId = ensureNumber(item.id, item.media_id, index + 1);
+                        const mediaPath = item.path || item.url || item.uri || item.image_url || item.video_url;
+                        
+                        return {
+                            id: mediaId,
+                            path: mediaPath,
+                            type: item.media_type ?? item.type ?? (mediaPath?.includes('video') ? 'video' : 'image'),
+                            media_type: item.media_type ?? item.type ?? (mediaPath?.includes('video') ? 'video' : 'image'),
+                            product_index: item.product_index ?? productIndexNum,
+                            ai_description: item.ai_description ?? item.description ?? null,
+                        };
+                    })
+                    .filter((item: MediaLibraryItem) => item.id > 0 && item.path && item.path.trim().length > 0);
+
+                console.log('[ProductVideoCreationModal] Médias filtrés:', productMediaItems.length, 'items valides');
+
+                // ✅ CORRIGÉ 2025-12-24: Gérer serviceMedia même si l'API échoue (non bloquant)
+                let serviceMediaData: any[] = [];
+                if (serviceMediaResponse.success) {
+                    if (Array.isArray(serviceMediaResponse.data)) {
+                        serviceMediaData = serviceMediaResponse.data;
+                    } else if (serviceMediaResponse.data && typeof serviceMediaResponse.data === 'object') {
+                        const images = (serviceMediaResponse.data as any).images || (serviceMediaResponse.data as any).Images || [];
+                        const videos = (serviceMediaResponse.data as any).videos || (serviceMediaResponse.data as any).Videos || [];
+                        serviceMediaData = [...(Array.isArray(images) ? images : []), ...(Array.isArray(videos) ? videos : [])];
+                    }
+                }
+
+                const serviceMediaItems: MediaLibraryItem[] = serviceMediaData
+                    .map((item: any, index: number) => {
+                        const mediaId = ensureNumber(item.id, item.media_id, index + 1);
+                        const mediaPath = item.path || item.url || item.uri || item.image_url || item.video_url;
+                        
+                        return {
+                            id: mediaId,
+                            path: mediaPath,
+                            type: item.media_type ?? item.type ?? (mediaPath?.includes('video') ? 'video' : 'image'),
+                            media_type: item.media_type ?? item.type ?? (mediaPath?.includes('video') ? 'video' : 'image'),
                             product_index: item.product_index ?? null,
-                            ai_description: item.ai_description ?? null,
-                        }))
-                        .filter((item: MediaLibraryItem) => item.id > 0)
-                    : [];
+                            ai_description: item.ai_description ?? item.description ?? null,
+                        };
+                    })
+                    .filter((item: MediaLibraryItem) => item.id > 0 && item.path && item.path.trim().length > 0);
 
                 setProductMedia(productMediaItems);
                 setServiceMedia(serviceMediaItems);
@@ -1123,6 +1189,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             });
         }
     }, [visible, selectedProduct, activeStep]);
+
+    // ✅ CORRIGÉ 2025-12-24: Scroller vers le haut automatiquement lors du changement d'étape
+    useEffect(() => {
+        if (visible && mainScrollViewRef.current) {
+            // Petit délai pour s'assurer que le contenu est rendu
+            setTimeout(() => {
+                if (mainScrollViewRef.current) {
+                    mainScrollViewRef.current.scrollTo({ y: 0, animated: true });
+                }
+            }, 150);
+        }
+    }, [activeStep, visible]);
 
     useEffect(() => {
         coachPrefetchDoneRef.current = false;
@@ -2006,8 +2084,40 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         title="🎬 Créer vidéo AR immersive"
                         variant="primary"
                         size="medium"
-                        onPress={() => setShowAREditor(true)}
+                        onPress={async () => {
+                            // ✅ CORRIGÉ 2025-12-24: Vérifier les permissions avant d'ouvrir AR
+                            try {
+                                if (!selectedProduct) {
+                                    Alert.alert('Erreur', 'Veuillez d\'abord sélectionner un produit');
+                                    return;
+                                }
+                                
+                                // Vérifier que react-native-vision-camera est disponible
+                                try {
+                                    const { Camera } = await import('react-native-vision-camera');
+                                    if (!Camera) {
+                                        throw new Error('Camera module not available');
+                                    }
+                                } catch (error) {
+                                    console.error('[ProductVideoCreationModal] Camera module not available:', error);
+                                    Alert.alert(
+                                        'Fonctionnalité non disponible',
+                                        'L\'éditeur AR nécessite react-native-vision-camera. Veuillez mettre à jour l\'application.'
+                                    );
+                                    return;
+                                }
+                                
+                                setShowAREditor(true);
+                            } catch (error: any) {
+                                console.error('[ProductVideoCreationModal] Erreur ouverture AR:', error);
+                                Alert.alert(
+                                    'Erreur',
+                                    `Impossible d'ouvrir l'éditeur AR: ${error?.message || 'Erreur inconnue'}`
+                                );
+                            }
+                        }}
                         style={styles.arButton}
+                        disabled={!selectedProduct}
                     />
                     <Text style={styles.arButtonHint}>
                         Capturez votre produit en réalité augmentée avec effets 3D
@@ -2336,16 +2446,28 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         </View>
                         {storyboard && storyboard.scenes.length > 0 && (
                             <View style={styles.storyboardList}>
-                                {storyboard.scenes.slice(0, 4).map((scene) => (
-                                    <View key={scene.index} style={styles.storyboardItem}>
-                                        <Text style={styles.storyboardSceneType}>
-                                            {scene.sceneType}
-                                        </Text>
-                                        <Text style={styles.storyboardSceneText} numberOfLines={2}>
-                                            {scene.headline || scene.body || 'Scène générée'}
-                                        </Text>
-                                    </View>
-                                ))}
+                                {storyboard.scenes.slice(0, 4).map((scene) => {
+                                    // ✅ CORRIGÉ 2025-12-24: Nettoyer et formater le texte pour un meilleur rendu
+                                    const sceneText = (scene.headline || scene.body || 'Scène générée')
+                                        .replace(/\n+/g, ' ') // Remplacer les retours à la ligne multiples par un espace
+                                        .replace(/\s+/g, ' ') // Remplacer les espaces multiples par un seul espace
+                                        .trim(); // Supprimer les espaces en début/fin
+                                    
+                                    return (
+                                        <View key={scene.index} style={styles.storyboardItem}>
+                                            <Text style={styles.storyboardSceneType}>
+                                                {scene.sceneType}
+                                            </Text>
+                                            <Text 
+                                                style={styles.storyboardSceneText} 
+                                                numberOfLines={2}
+                                                ellipsizeMode="tail"
+                                            >
+                                                {sceneText}
+                                            </Text>
+                                        </View>
+                                    );
+                                })}
                             </View>
                         )}
                     </NativeCard>
@@ -3341,6 +3463,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return;
         }
         setActiveStep(newStep);
+        
+        // ✅ CORRIGÉ 2025-12-24: Scroller vers le haut lors du changement d'étape
+        setTimeout(() => {
+            if (mainScrollViewRef.current) {
+                mainScrollViewRef.current.scrollTo({ y: 0, animated: true });
+            }
+        }, 100);
     };
 
     // ✅ CORRIGÉ: Fonction wrapper pour applyBriefVariant avec les setters du composant
@@ -3987,8 +4116,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 <Text style={styles.sectionSubtitle}>
                     Choisissez un service puis un produit pour lancer la création automatique de votre vidéo verticale.
                 </Text>
-                {/* ✅ CORRECTION: Remplacer ScrollView imbriqué par View pour éviter les problèmes de toucher */}
-                <View style={styles.productSelectionList}>
+                {/* ✅ CORRIGÉ 2025-12-24: Utiliser ScrollView pour permettre le scroll vertical */}
+                <ScrollView
+                    style={styles.productSelectionList}
+                    contentContainerStyle={styles.productSelectionListContent}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
+                    keyboardShouldPersistTaps="handled"
+                >
                     {Array.isArray(groupedProducts) && groupedProducts.length > 0 ? (
                         groupedProducts.map((group) => {
                             // ✅ CORRIGÉ: Vérifier que group et group.items sont définis
@@ -4066,7 +4201,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <Text style={styles.emptyStateText}>Aucun produit disponible</Text>
                         </View>
                     )}
-                </View>
+                </ScrollView>
             </NativeCard>
         );
     };
@@ -4265,6 +4400,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         </View>
 
                         <ScrollView
+                            ref={mainScrollViewRef}
                             style={styles.modalBody}
                             contentContainerStyle={getStepContentStyle()}
                             showsVerticalScrollIndicator={false}
@@ -4648,7 +4784,10 @@ const styles = StyleSheet.create({
     },
     productSelectionList: {
         marginTop: 12,
-        // ✅ Pas de maxHeight car le ScrollView parent gère le scroll
+        maxHeight: 400, // ✅ CORRIGÉ 2025-12-24: Limiter la hauteur pour permettre le scroll
+    },
+    productSelectionListContent: {
+        paddingBottom: 16, // ✅ CORRIGÉ 2025-12-24: Padding en bas pour le scroll
     },
     productGroup: {
         marginBottom: 16,
@@ -5511,18 +5650,25 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         borderWidth: 1,
         borderColor: '#E2E8F0',
+        // ✅ CORRIGÉ 2025-12-24: Améliorer l'affichage du texte avec retours à la ligne
+        minHeight: 60,
+        justifyContent: 'flex-start',
     },
     storyboardSceneType: {
         fontSize: 11,
         fontWeight: '700',
         color: modernColors.primary,
         textTransform: 'uppercase',
-        marginBottom: 4,
+        marginBottom: 6,
+        letterSpacing: 0.5,
     },
     storyboardSceneText: {
         fontSize: 13,
         color: modernColors.text,
         lineHeight: 18,
+        // ✅ CORRIGÉ 2025-12-24: Améliorer le rendu du texte avec retours à la ligne
+        flexShrink: 1,
+        textAlign: 'left',
     },
     // ✅ NOUVEAU: Styles pour short preview
     shortPreviewContainer: {

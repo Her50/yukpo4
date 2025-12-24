@@ -128,15 +128,28 @@ pub async fn trigger_preview(
     Ok(Json(preview))
 }
 
+#[axum::debug_handler]
 pub async fn trigger_short_preview(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(session_id): Path<Uuid>,
 ) -> AppResult<Json<PreviewResponse>> {
+    log::info!(
+        "[StudioController] ✅ Route trigger_short_preview appelée - user_id={}, session_id={}",
+        user.id, session_id
+    );
+    
     let preview = state
         .studio_service
         .trigger_short_preview(session_id, user.id)
-        .await?;
+        .await
+        .map_err(|e| {
+            log::error!(
+                "[StudioController] ❌ Erreur trigger_short_preview - user_id={}, session_id={}: {}",
+                user.id, session_id, e
+            );
+            e
+        })?;
     Ok(Json(preview))
 }
 

@@ -94,7 +94,18 @@ const LoginScreen: React.FC = () => {
       console.error('[LoginScreen] Erreur de connexion:', error);
       console.error('[LoginScreen] Type d\'erreur:', typeof error);
       console.error('[LoginScreen] Message d\'erreur:', error.message);
-      setError(error.message || 'Erreur de connexion');
+      
+      // ✅ CORRIGÉ 2025-12-24: Améliorer le message d'erreur pour l'utilisateur
+      let errorMessage = error.message || 'Erreur de connexion';
+      
+      // ✅ Messages plus clairs pour les erreurs d'authentification
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('Identifiants')) {
+        errorMessage = 'Email ou mot de passe incorrect';
+      } else if (errorMessage.includes('Network') || errorMessage.includes('fetch')) {
+        errorMessage = 'Erreur de connexion au serveur. Vérifiez votre connexion internet.';
+      }
+      
+      setError(errorMessage);
     } finally {
       console.log('[LoginScreen] Fin de handleLogin, setFormLoading(false)');
       setFormLoading(false);

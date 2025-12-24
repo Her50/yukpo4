@@ -2,6 +2,8 @@ use crate::core::types::AppResult;
 use crate::utils::log::{log_error, log_info};
 use crate::config::search_config::SearchConfig;
 use crate::services::scheduling_search_service::SchedulingSearchService;
+use crate::services::creer_service::detect_lang;
+use crate::services::orchestration_ia::extract_keywords_from_text;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{PgPool, Row};
@@ -78,29 +80,87 @@ impl NativeSearchService {
         search_query: &str,
         category_filter: Option<&str>,
         location_filter: Option<&str>,
-        _user_id: Option<i32>,
+        user_id: Option<i32>,
         gps_zone: Option<&str>,  // Nouveau paramètre GPS
         search_radius_km: Option<i32>,  // Nouveau paramètre rayon
     ) -> AppResult<Vec<SearchResult>> {
         let start_time = std::time::Instant::now();
-        log_info(&format!("[NativeSearch] Début recherche: '{}' (GPS: {:?}, Rayon: {:?}km)", 
-            search_query, gps_zone, search_radius_km));
+        log_info(&format!("[NativeSearch] Début recherche: '{}' (GPS: {:?}, Rayon: {:?}km, User: {:?})", 
+            search_query, gps_zone, search_radius_km, user_id));
 
-        // Normaliser la requête
-        let normalized_query = self.normalize_query_advanced(search_query);
-        log_info(&format!("[NativeSearch] Requête normalisée: '{}' -> '{}'", search_query, normalized_query));
+        // ✅ AMÉLIORÉ 2025-12-24: Combiner user.preferred_lang avec détection automatique
+        let user_preferred_lang: Option<String> = if let Some(uid) = user_id {
+            // Récupérer preferred_lang depuis la base de données
+            match sqlx::query_scalar::<_, Option<String>>(
+                "SELECT preferred_lang FROM users WHERE id = $1"
+            )
+            .bind(uid)
+            .fetch_optional(&self.pool)
+            .await
+            {
+                Ok(Some(Some(lang))) if !lang.is_empty() && lang != "auto" => Some(lang),
+                Ok(Some(None)) | Ok(None) => None,
+                Err(_) => None,
+                _ => None,
+            }
+        } else {
+            None
+        };
         
-        // Recherche full-text principale avec filtrage GPS
-        let mut fulltext_results = self.fulltext_search_with_gps(
+        // Détecter la langue de la requête
+        let detected_lang = detect_lang(search_query);
+        
+        // Combiner: préférence utilisateur > détection automatique > fallback "simple"
+        let final_lang = user_preferred_lang
+            .as_deref()
+            .unwrap_or(&detected_lang);
+        
+        let pg_lang = self.map_language_to_postgres(final_lang);
+        log_info(&format!(
+            "[NativeSearch] Langue: user_pref={:?}, detected={}, final={} -> PostgreSQL: '{}'", 
+            user_preferred_lang, detected_lang, final_lang, pg_lang
+        ));
+
+        // ✅ AMÉLIORÉ 2025-12-24: Extraire les mots-clés pour filtrer les stop words
+        let keywords = extract_keywords_from_text(search_query);
+        let query_with_keywords = if keywords.is_empty() {
+            search_query.to_string()
+        } else {
+            keywords.join(" ")
+        };
+        log_info(&format!("[NativeSearch] Mots-clés extraits: '{}' -> '{}'", search_query, query_with_keywords));
+        
+        // Normaliser la requête (variantes accents, gestion mots tronqués)
+        let (normalized_query, has_wildcards) = self.normalize_query_advanced(&query_with_keywords);
+        log_info(&format!("[NativeSearch] Requête normalisée: '{}' -> '{}' (wildcards: {})", 
+            query_with_keywords, normalized_query, has_wildcards));
+        
+        // Recherche full-text principale avec filtrage GPS et langue détectée
+        let mut fulltext_results = self.fulltext_search_with_gps_and_lang(
             &normalized_query, 
             category_filter, 
             location_filter,
             gps_zone,
-            search_radius_km
+            search_radius_km,
+            &pg_lang,
+            has_wildcards
         ).await?;
         
-        // Recherche trigram de fallback si pas assez de résultats
-        if fulltext_results.len() < self.config.max_results as usize {
+        // ✅ AMÉLIORÉ 2025-12-24: Fallback trigram se déclenche plus tôt
+        // Seuil basé sur nombre de résultats ET score moyen
+        let avg_score = if !fulltext_results.is_empty() {
+            fulltext_results.iter().map(|r| r.total_score).sum::<f32>() / fulltext_results.len() as f32
+        } else {
+            0.0
+        };
+        
+        // Déclencher trigram si: peu de résultats OU scores faibles (< 5.0)
+        let should_use_trigram = fulltext_results.len() < (self.config.max_results as usize / 2).max(10)
+            || avg_score < 5.0;
+        
+        if should_use_trigram {
+            log_info(&format!("[NativeSearch] Déclenchement fallback trigram (résultats: {}, score moyen: {:.2})", 
+                fulltext_results.len(), avg_score));
             let trigram_results = self.trigram_search_with_gps(
                 &normalized_query, 
                 category_filter, 
@@ -169,8 +229,24 @@ impl NativeSearchService {
         category_filter: Option<&str>,
         location_filter: Option<&str>,
     ) -> AppResult<Vec<SearchResult>> {
-        // Appeler la nouvelle méthode avec GPS désactivé
-        self.fulltext_search_with_gps(query, category_filter, location_filter, None, None).await
+        // Appeler la nouvelle méthode avec GPS désactivé, langue par défaut, et pas de wildcards
+        let (normalized, has_wildcards) = self.normalize_query_advanced(query);
+        self.fulltext_search_with_gps(&normalized, category_filter, location_filter, None, None, "french", has_wildcards).await
+    }
+
+    /// ✅ NOUVEAU 2025-12-24: Recherche full-text avec langue détectée
+    async fn fulltext_search_with_gps_and_lang(
+        &self,
+        query: &str,
+        category_filter: Option<&str>,
+        location_filter: Option<&str>,
+        gps_zone: Option<&str>,
+        search_radius_km: Option<i32>,
+        pg_lang: &str,
+        has_wildcards: bool,
+    ) -> AppResult<Vec<SearchResult>> {
+        // ✅ CORRIGÉ 2025-12-24: Passer la langue détectée et les wildcards à la méthode de recherche
+        self.fulltext_search_with_gps(query, category_filter, location_filter, gps_zone, search_radius_km, pg_lang, has_wildcards).await
     }
 
     /// Recherche full-text intelligente avec filtrage GPS et planifications
@@ -181,6 +257,8 @@ impl NativeSearchService {
         location_filter: Option<&str>,
         gps_zone: Option<&str>,
         search_radius_km: Option<i32>,
+        pg_lang: &str,
+        has_wildcards: bool,
     ) -> AppResult<Vec<SearchResult>> {
         // Analyser l'intention de recherche pour détecter les planifications
         let scheduling_service = SchedulingSearchService::new(self.pool.clone());
@@ -325,17 +403,36 @@ impl NativeSearchService {
         }
         
         // ✅ OPTIMISÉ 2025-12-23: Requête ULTRA-OPTIMISÉE pour performance instantanée (< 100ms)
+        // ✅ AMÉLIORÉ 2025-12-24: Support multi-langue (détection automatique)
         // Problèmes identifiés dans les logs:
         // 1. LEFT JOIN LATERAL cause 1.27s de latence (SUPPRIMÉ - remplacé par CTE)
         // 2. plainto_tsquery peut ne pas matcher les mots avec accents (AJOUT fallback ILIKE)
         // 3. Pool de connexions saturé (requête optimisée pour libérer connexions plus vite)
+        // 4. Langue codée en dur 'french' (✅ CORRIGÉ 2025-12-24 - utilise langue détectée)
         // 
         // Stratégie:
         // 1. Pré-calculer les données autocomplete dans une CTE (évite LEFT JOIN LATERAL)
         // 2. Ajouter fallback ILIKE pour correspondances exactes (gère les accents)
         // 3. Utiliser les index GIN tsvector créés dans les migrations
         // 4. Scoring amélioré avec bonus pour matches exacts et usage_count
-        let sql = r#"
+        // 5. Détection automatique de langue pour to_tsvector/plainto_tsquery
+        // 
+        // ✅ CORRIGÉ 2025-12-24: La langue détectée est maintenant passée en paramètre
+        // ✅ AMÉLIORÉ 2025-12-24: Gestion générique des wildcards * dans SQL
+        // Construire le pattern wildcard pour LIKE (remplacer * par %)
+        let wildcard_like_score = if has_wildcards {
+            format!("CASE WHEN ac.valeur LIKE '{}' THEN 50.0 ELSE 0.0 END", query.replace('*', "%"))
+        } else {
+            "0.0".to_string()
+        };
+        
+        let wildcard_like_condition = if has_wildcards {
+            format!("OR ac.valeur LIKE '{}'", query.replace('*', "%"))
+        } else {
+            String::new()
+        };
+        
+        let sql = format!(r#"
 WITH autocomplete_matches AS (
     -- ✅ ÉTAPE 1: Pré-calculer les matches autocomplete avec scoring (évite LEFT JOIN LATERAL)
     SELECT 
@@ -346,13 +443,17 @@ WITH autocomplete_matches AS (
         ac.full_vector,
         -- Score combiné pour ce match autocomplete
         (
-            ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) * 15.0 +
-            COALESCE(ts_rank(characteristic_vector_to_tsvector(ac.characteristic_vector), plainto_tsquery('french', $1)), 0.0) * 10.0 +
-            COALESCE(ts_rank(full_vector_to_tsvector(ac.full_vector), plainto_tsquery('french', $1)), 0.0) * 8.0 +
-            -- ✅ CRITIQUE 2025-12-23: Fallback ILIKE pour correspondances exactes (gère les accents)
-            CASE WHEN ac.valeur ILIKE '%' || $1 || '%' THEN 25.0 ELSE 0.0 END +
-            CASE WHEN ac.valeur ILIKE $1 || '%' THEN 15.0 ELSE 0.0 END +
-            CASE WHEN LOWER(ac.valeur) = LOWER($1) THEN 50.0 ELSE 0.0 END +
+            -- ✅ CRITIQUE 2025-12-24: PRIORISER ILIKE pour gérer accents (générique, pas spécifique)
+            CASE WHEN LOWER(ac.valeur) = LOWER($1) THEN 100.0 ELSE 0.0 END +
+            CASE WHEN ac.valeur ILIKE $1 || '%' THEN 60.0 ELSE 0.0 END +
+            CASE WHEN ac.valeur ILIKE '%' || $1 || '%' THEN 40.0 ELSE 0.0 END +
+            -- ✅ NOUVEAU 2025-12-24: Support wildcards * avec LIKE (générique)
+            {} +
+            -- Recherche full-text (moins prioritaire car peut rater les accents)
+            -- ✅ AMÉLIORÉ 2025-12-24: Utiliser langue détectée au lieu de 'french' en dur
+            ts_rank(to_tsvector('{}', ac.valeur), plainto_tsquery('{}', $1)) * 15.0 +
+            COALESCE(ts_rank(characteristic_vector_to_tsvector(ac.characteristic_vector), plainto_tsquery('{}', $1)), 0.0) * 10.0 +
+            COALESCE(ts_rank(full_vector_to_tsvector(ac.full_vector), plainto_tsquery('{}', $1)), 0.0) * 8.0 +
             (ac.usage_count::REAL * 1.0)
         )::REAL as ac_score
     FROM autocomplete_characteristics ac
@@ -361,15 +462,17 @@ WITH autocomplete_matches AS (
     AND ac.identifiant_base = 'produits'
     AND ac.is_real_product = TRUE
     AND (
-        -- Recherche dans valeur (index GIN tsvector)
-        to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
-        -- OU dans characteristic_vector (index GIN tsvector)
-        OR characteristic_vector_to_tsvector(ac.characteristic_vector) @@ plainto_tsquery('french', $1)
-        -- OU dans full_vector (index GIN tsvector)
-        OR full_vector_to_tsvector(ac.full_vector) @@ plainto_tsquery('french', $1)
-        -- ✅ CRITIQUE 2025-12-23: Fallback ILIKE pour correspondances exactes (gère les accents et majuscules)
+        -- ✅ CRITIQUE 2025-12-24: PRIORISER ILIKE pour gérer accents (générique, pas spécifique)
+        LOWER(ac.valeur) = LOWER($1)
+        OR ac.valeur ILIKE $1 || '%'
         OR ac.valeur ILIKE '%' || $1 || '%'
-        OR LOWER(ac.valeur) = LOWER($1)
+        -- ✅ NOUVEAU 2025-12-24: Support wildcards * avec LIKE (générique)
+        {}
+        -- Recherche full-text (fallback si ILIKE ne trouve rien)
+        -- ✅ AMÉLIORÉ 2025-12-24: Utiliser langue détectée
+        OR to_tsvector('{}', ac.valeur) @@ plainto_tsquery('{}', $1)
+        OR characteristic_vector_to_tsvector(ac.characteristic_vector) @@ plainto_tsquery('{}', $1)
+        OR full_vector_to_tsvector(ac.full_vector) @@ plainto_tsquery('{}', $1)
     )
 ),
 best_autocomplete_per_service AS (
@@ -390,18 +493,44 @@ matched_services AS (
     
     UNION
     
-    -- ✅ ÉTAPE 4: Fallback léger pour titre/description service (sans jsonb_array_elements)
+    -- ✅ ÉTAPE 4: Fallback pour titre/description service + recherche directe dans produits
     SELECT DISTINCT s.id as service_id
     FROM services s
     WHERE s.is_active = true
     AND (
-        to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-        OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-        -- ✅ CRITIQUE 2025-12-23: Fallback ILIKE pour correspondances exactes
+        -- Recherche full-text dans titre/description
+        -- ✅ AMÉLIORÉ 2025-12-24: Utiliser langue détectée
+        to_tsvector('{}', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('{}', $1)
+        OR to_tsvector('{}', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('{}', $1)
+        -- ✅ CRITIQUE 2025-12-24: Fallback ILIKE PRIORITAIRE pour correspondances exactes (gère accents)
         OR COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%'
         OR COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%'
+        -- ✅ NOUVEAU 2025-12-24: Recherche directe dans produits (nom_produit, description_produit)
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(
+                CASE 
+                    WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                    THEN s.data->'produits'
+                    WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                    THEN s.data->'produits'->'valeur'
+                    ELSE '[]'::jsonb
+                END
+            ) AS product
+            WHERE (
+                -- Recherche dans nom_produit (priorité haute)
+                COALESCE(product->>'nom_produit', product->>'nom', '') ILIKE '%' || $1 || '%'
+                OR COALESCE(product->>'nom_produit', product->>'nom', '') ILIKE $1 || '%'
+                OR LOWER(COALESCE(product->>'nom_produit', product->>'nom', '')) = LOWER($1)
+                -- Recherche dans description_produit
+                OR COALESCE(product->>'description_produit', product->>'description', '') ILIKE '%' || $1 || '%'
+                -- Recherche full-text dans nom_produit
+                -- ✅ AMÉLIORÉ 2025-12-24: Utiliser langue détectée
+                OR to_tsvector('{}', COALESCE(product->>'nom_produit', product->>'nom', '')) @@ plainto_tsquery('{}', $1)
+            )
+        )
     )
-    LIMIT 50  -- Limiter le fallback pour éviter la lenteur
+    LIMIT 100  -- Augmenté pour inclure plus de résultats produits
 )
 SELECT 
     ranked.id,
@@ -425,10 +554,15 @@ FROM (
             COALESCE(ac.ac_score, 0.0),
             -- Score depuis titre/description service (priorité basse)
             COALESCE(
-                ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 5.0 +
-                ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
-                -- ✅ CRITIQUE 2025-12-23: Fallback ILIKE pour correspondances exactes
-                CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 10.0 ELSE 0.0 END,
+                -- ✅ CRITIQUE 2025-12-24: PRIORISER ILIKE pour gérer accents
+                CASE WHEN LOWER(COALESCE(s.data->'titre_service'->>'valeur', '')) = LOWER($1) THEN 30.0 ELSE 0.0 END +
+                CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE $1 || '%' THEN 20.0 ELSE 0.0 END +
+                CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 15.0 ELSE 0.0 END +
+                CASE WHEN COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 8.0 ELSE 0.0 END +
+                -- Recherche full-text (fallback)
+                -- ✅ AMÉLIORÉ 2025-12-24: Utiliser langue détectée
+                ts_rank(to_tsvector('{}', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('{}', $1)) * 5.0 +
+                ts_rank(to_tsvector('{}', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('{}', $1)) * 2.0,
                 0.0
             )
         )::REAL as fulltext_score
@@ -441,7 +575,21 @@ FROM (
 ) ranked
 ORDER BY ranked.fulltext_score DESC
 LIMIT 100
-        "#;
+        "#, 
+            wildcard_like_score,  // ligne 441: wildcard LIKE score
+            wildcard_like_condition,  // ligne 459: wildcard LIKE condition
+            pg_lang, pg_lang,  // ligne 444: ts_rank to_tsvector + plainto_tsquery (2)
+            pg_lang,           // ligne 445: plainto_tsquery seulement (1)
+            pg_lang,           // ligne 446: plainto_tsquery seulement (1)
+            pg_lang, pg_lang,  // ligne 461: to_tsvector + plainto_tsquery (2)
+            pg_lang,           // ligne 462: plainto_tsquery seulement (1)
+            pg_lang,           // ligne 463: plainto_tsquery seulement (1)
+            pg_lang, pg_lang,  // ligne 481: titre_service (2)
+            pg_lang, pg_lang,  // ligne 482: description (2)
+            pg_lang, pg_lang,  // ligne 507: nom_produit (2)
+            pg_lang, pg_lang,  // ligne 542: titre_service ts_rank (2)
+            pg_lang, pg_lang   // ligne 543: description ts_rank (2)
+        );
 
         // ✅ OPTIMISÉ 2025-12-19: Requête avec retry pour gérer les problèmes de connexion DB
         let mut results = Vec::new();
@@ -848,10 +996,31 @@ LIMIT 100
             FROM services s
             WHERE s.is_active = true
             AND (
-                -- ✅ OPTIMISÉ: Utiliser index GIN au lieu de ILIKE (utilise idx_services_fulltext_combined_gin)
-                to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+                -- ✅ CRITIQUE 2025-12-24: PRIORISER ILIKE pour gérer accents (générique, pas spécifique)
+                COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%'
+                OR COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%'
+                OR COALESCE(s.data->'category'->>'valeur', '') ILIKE '%' || $1 || '%'
+                -- Recherche full-text (fallback)
+                OR to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
                 OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
                 OR to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+                -- ✅ NOUVEAU 2025-12-24: Recherche directe dans produits
+                OR EXISTS (
+                    SELECT 1
+                    FROM jsonb_array_elements(
+                        CASE 
+                            WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                            THEN s.data->'produits'
+                            WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                            THEN s.data->'produits'->'valeur'
+                            ELSE '[]'::jsonb
+                        END
+                    ) AS product
+                    WHERE (
+                        COALESCE(product->>'nom_produit', product->>'nom', '') ILIKE '%' || $1 || '%'
+                        OR COALESCE(product->>'description_produit', product->>'description', '') ILIKE '%' || $1 || '%'
+                    )
+                )
             )
             AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
             AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
@@ -912,20 +1081,46 @@ LIMIT 100
     }
 
     /// Normalisation avancée avec gestion des accents et variantes
-    fn normalize_query_advanced(&self, query: &str) -> String {
+    /// ✅ NOUVEAU 2025-12-24: Mapper code langue (fr, en, etc.) vers nom PostgreSQL (french, english, simple)
+    fn map_language_to_postgres(&self, lang_code: &str) -> String {
+        match lang_code.to_lowercase().as_str() {
+            "fra" | "fr" => "french",
+            "eng" | "en" => "english",
+            "por" | "pt" => "portuguese",
+            "ara" | "ar" => "arabic",
+            "ful" | "ff" => "simple", // Fula n'a pas de config spécifique, utiliser simple
+            _ => "simple", // Langue inconnue ou non supportée -> utiliser 'simple' (langue neutre)
+        }.to_string()
+    }
+
+    /// ✅ AMÉLIORÉ 2025-12-24: Normalisation avancée avec gestion mots tronqués
+    /// Retourne (query_normalized, has_wildcards) pour permettre l'utilisation de LIKE dans SQL
+    fn normalize_query_advanced(&self, query: &str) -> (String, bool) {
         // Normalisation de base
         let normalized = query
             .to_lowercase()
             .trim()
-            .replace(|c: char| !c.is_alphanumeric() && c != ' ', " ");
+            .replace(|c: char| !c.is_alphanumeric() && c != ' ' && c != '*', " ");
         
-        // Créer des variantes avec et sans accents
+        // ✅ AMÉLIORÉ 2025-12-24: Détecter les wildcards * (générique, pas spécifique à un mot)
+        let has_wildcards = normalized.contains('*');
+        
+        // Traiter les mots tronqués (ex: "gate*" -> "gate")
         let words: Vec<String> = normalized
             .split_whitespace()
-            .flat_map(|word| self.create_word_variants(word))
+            .flat_map(|word| {
+                // Si le mot se termine par *, c'est un mot tronqué
+                let word_clean = word.trim_end_matches('*');
+                if word_clean.len() >= 2 {
+                    // Créer variantes avec/sans accents pour le mot tronqué
+                    self.create_word_variants(word_clean)
+                } else {
+                    vec![word.to_string()]
+                }
+            })
             .collect();
         
-        words.join(" ")
+        (words.join(" "), has_wildcards)
     }
 
     /// Créer des variantes de mots avec et sans accents

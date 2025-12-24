@@ -109,6 +109,39 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // ✅ NOUVEAU: Protection contre double soumission
   const [valeursFormulaire, setValeursFormulaire] = useState<Record<string, any>>({});
+
+  // ✅ FONCTION HELPER: Extraire devise depuis variante de prix (comme dans AjouterProduitSimpleScreen)
+  const getCurrencyFromVariant = (variant: any): string | undefined => {
+    if (!variant) {
+      return undefined;
+    }
+
+    const modalitesSource = Array.isArray(variant?.modalites)
+      ? variant.modalites
+      : Array.isArray(variant)
+        ? variant
+        : Array.isArray(variant?.valeur?.modalites)
+          ? variant.valeur.modalites
+          : [];
+
+    for (const entry of modalitesSource) {
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+
+      const currencyRaw = typeof entry.devise === 'string' && entry.devise.trim().length > 0
+        ? entry.devise.trim()
+        : typeof entry.currency === 'string' && entry.currency.trim().length > 0
+          ? entry.currency.trim()
+          : undefined;
+
+      if (currencyRaw) {
+        return currencyRaw.toUpperCase();
+      }
+    }
+
+    return undefined;
+  };
   const [showGPSModal, setShowGPSModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   // ✅ SUPPRIMÉ: Duplication produits - Les produits sont maintenant gérés via les champs dynamiques
@@ -356,18 +389,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     fields.forEach(field => {
       const fieldName = field.name.toLowerCase();
+      let fieldAssigned = false; // ✅ NOUVEAU 2025-12-23: Tracker pour éviter les duplications
 
-      // Bloc Informations générales
-      if (['titre_service', 'category', 'description', 'is_tarissable', 'vitesse_tarissement', 'prix', 'devise'].includes(fieldName)) {
+      // ✅ CORRIGÉ 2025-12-23: Retirer 'prix' et 'devise' du bloc Informations générales
+      // car ils peuvent être des champs produits. Seuls les champs spécifiques au SERVICE vont ici.
+      // Bloc Informations générales (UNIQUEMENT champs SERVICE, pas produits)
+      if (['titre_service', 'category', 'description', 'is_tarissable', 'vitesse_tarissement'].includes(fieldName)) {
         blocks[0].fields.push(field);
+        fieldAssigned = true;
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ "${field.name}" → Bloc 0 (Informations générales)`);
       }
       // Bloc Contact
       else if (['whatsapp', 'telephone', 'email', 'website', 'adresse', 'horaires'].includes(fieldName)) {
         blocks[1].fields.push(field);
+        fieldAssigned = true;
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ "${field.name}" → Bloc 1 (Contact)`);
       }
       // Bloc Localisation (✅ NOUVEAU 2025-11-06: lieu_produit déplacé vers bloc Produits)
       else if (['gps_fixe', 'zone_intervention', 'localisation', 'pays', 'ville', 'quartier'].includes(fieldName)) {
         blocks[2].fields.push(field);
+        fieldAssigned = true;
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ "${field.name}" → Bloc 2 (Localisation)`);
       }
       // Bloc Produits
       // ✅ NOUVEAU 2025-11-06: Inclure lieu_produit, images, videos dans le bloc produits
@@ -377,30 +419,43 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ IMPORTANT: Les champs spécifiques au produit (nom_produit, categorie_produit, description_produit, prix_produit, devise_produit)
       //    vont dans le bloc Produits, PAS dans Informations générales (qui contient titre_service, category, description)
       // ✅ CORRECTION CRITIQUE: Détecter aussi les champs par leur typeDonnee (autocomplete, price_variant)
+      // ✅ CORRIGÉ 2025-12-23: 'prix' et 'devise' vont dans Produits (pas Informations générales) car ils sont généralement liés aux produits
       else if (
         ['liste_produits', 'produits', 'listeproduit', 'variabilite_prix', 'price_variant',
           'nom_produit', 'categorie_produit', 'description_produit', 'prix_produit', 'devise_produit',
           'lieu_produit', 'lieu_commercial', 'lieu_commercialisation', // ✅ NOUVEAU: Lieu dans produits
-          'prix', 'devise', // ✅ Prix et devise dans produits
+          'prix', 'devise', // ✅ CORRIGÉ: Prix et devise dans produits (retirés de Informations générales)
           'images', 'videos' // ✅ NOUVEAU: Médias dans produits
         ].includes(fieldName) ||
         field.typeDonnee === 'price_variant' ||
         field.typeDonnee === 'autocomplete'
       ) {
         blocks[3].fields.push(field);
-        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ ajouté au bloc produits/prestations: ${field.name} (typeDonnee: ${field.typeDonnee})`);
+        fieldAssigned = true;
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ "${field.name}" → Bloc 3 (Produits/ Prestations) (typeDonnee: ${field.typeDonnee})`);
       }
       // Bloc Médias (✅ NOUVEAU 2025-11-06: images/videos déplacées vers bloc Produits, ne garder que audios/documents)
       else if (['audios', 'documents'].includes(fieldName)) {
         blocks[4].fields.push(field);
+        fieldAssigned = true;
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ "${field.name}" → Bloc 4 (Médias)`);
       }
       // Bloc Paiement
       else if (['mode_paiement', 'paiement', 'payment'].includes(fieldName)) {
         blocks[5].fields.push(field);
+        fieldAssigned = true;
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ "${field.name}" → Bloc 5 (Paiement)`);
       }
       // Autres
       else {
         blocks[6].fields.push(field);
+        fieldAssigned = true;
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ "${field.name}" → Bloc 6 (Autres)`);
+      }
+
+      // ✅ CRITIQUE 2025-12-23: Vérifier qu'un champ n'est pas ajouté deux fois
+      if (!fieldAssigned) {
+        console.error(`[FormulaireYukpoIntelligentScreen] ❌ ERREUR: Champ "${field.name}" n'a pas été assigné à un bloc !`);
       }
     });
 
@@ -731,17 +786,28 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           value: formValues.prix_produit || ''
         } as DynamicField);
       }
+      // ✅ CORRIGÉ 2025-12-24: Ne pas afficher le champ devise (gestion automatique comme dans AjouterProduitSimpleScreen)
+      // La devise est déterminée automatiquement depuis la variante de prix ou les données IA
+      // Elle sera définie dans initialValues mais ne sera pas affichée comme un champ select
       if (!hasDeviseProduit && !hasVariationPrix) {
-        productsBlock.fields.splice((hasNomProduit ? 1 : 0) + (hasCategorieProduit ? 1 : 0) + (hasDescriptionProduit ? 1 : 0) + (hasPrixProduit ? 1 : 0), 0, {
-          name: 'devise_produit',
-          type: 'select',
-          typeDonnee: 'select',
-          label: 'Devise',
-          required: false,
-          placeholder: 'Sélectionnez une devise',
-          options: ['XAF', 'EUR', 'USD', 'GBP', 'CAD', 'CHF'],
-          value: formValues.devise_produit || 'XAF'
-        } as DynamicField);
+        // ✅ Déterminer la devise automatiquement
+        const priceVariantData = formValues.variabilite_prix || formValues.variation_prix || formValues.price_variant;
+        const variantCurrency = getCurrencyFromVariant(priceVariantData);
+        const deviseFromForm = formValues.devise_produit || formValues.devise;
+        const autoCurrency = (
+          (typeof deviseFromForm === 'string' && deviseFromForm.trim().length > 0
+            ? deviseFromForm.trim().toUpperCase()
+            : undefined) ||
+          variantCurrency ||
+          'XAF'
+        );
+        
+        // ✅ Mettre à jour formValues avec la devise automatique (sans afficher le champ)
+        if (!formValues.devise_produit) {
+          formValues.devise_produit = autoCurrency;
+        }
+        
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ Devise déterminée automatiquement:', autoCurrency);
       }
 
       // ✅ NOUVEAU: Ajouter le champ lieu_produit après les caractéristiques produit
@@ -842,6 +908,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       blocksWithFixedOnes[productsBlockIndex].fields = sortProductFields(blocksWithFixedOnes[productsBlockIndex].fields);
       console.log('[FormulaireYukpoIntelligentScreen] ✅ Champs du bloc Produits triés:', blocksWithFixedOnes[productsBlockIndex].fields.map(f => f.name));
     }
+
+    // ✅ CRITIQUE 2025-12-23: Log final pour vérifier la distribution des champs
+    console.log('[FormulaireYukpoIntelligentScreen] 📊 RÉSUMÉ DISTRIBUTION DES BLOCS:');
+    blocksWithFixedOnes.forEach((block, index) => {
+      console.log(`  Bloc ${index} (${block.id}): ${block.fields.length} champs - ${block.fields.map(f => f.name).join(', ')}`);
+    });
 
     return blocksWithFixedOnes.filter(block => block.fields.length > 0);
   };
@@ -1267,12 +1339,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ price_variant pré-rempli:`, initialValues[fieldName]);
             }
             // ✅ NOUVEAU: Pré-remplir les prix s'ils sont identifiés
-            else if (fieldName === 'prix_produit' || fieldName === 'devise_produit') {
+            else if (fieldName === 'prix_produit') {
               const valeur = fieldData.valeur;
               if (valeur !== null && valeur !== undefined && valeur !== '') {
                 initialValues[fieldName] = valeur;
                 console.log(`[FormulaireYukpoIntelligentScreen] ✅ Prix pré-rempli depuis l'IA pour ${fieldName}:`, valeur);
               }
+            }
+            // ✅ CORRIGÉ 2025-12-24: Devise déterminée automatiquement (comme dans AjouterProduitSimpleScreen)
+            else if (fieldName === 'devise_produit') {
+              // Ne pas pré-remplir ici, la devise sera déterminée automatiquement plus tard
             }
             else {
               // Pour les autres champs, extraire juste la valeur
@@ -4123,7 +4199,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   </View>
                 </View>
 
-                {/* ✅ RECONSTRUIT: Un seul ScrollView vertical pour tous les blocs */}
+                {/* ✅ CORRIGÉ 2025-12-23: Afficher UNIQUEMENT le bloc actif (currentBlock) */}
                 <ScrollView
                   ref={mainScrollViewRef}
                   style={{ flex: 1 }}
@@ -4134,7 +4210,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   nestedScrollEnabled={false}
                   bounces={Platform.OS === 'ios'}
                 >
-                  {displayedBlocks.map(({ block, index: blockIndex }) => (
+                  {displayedBlocks
+                    .filter(({ index: blockIndex }) => blockIndex === currentBlock) // ✅ CRITIQUE: Filtrer pour n'afficher que le bloc actif
+                    .map(({ block, index: blockIndex }) => (
                     <View
                       key={block.id}
                       ref={(ref) => {

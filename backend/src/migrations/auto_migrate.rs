@@ -7005,6 +7005,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Ok(_) => info!("✅ Migration auto: hybrid_image_search_relevance OK"),
         Err(e) => error!("❌ Erreur migration auto hybrid_image_search_relevance: {}", e),
     }
+    
+    // ✅ 2025-12-24 : Amélioration langue dynamique et pertinence hybrid_image_search
+    match ensure_hybrid_image_search_language_and_relevance(pool).await {
+        Ok(_) => info!("✅ Migration auto: hybrid_image_search_language_and_relevance OK"),
+        Err(e) => error!("❌ Erreur migration auto hybrid_image_search_language_and_relevance: {}", e),
+    }
 
     // ✅ 2025-11-25 : Fonctions de recherche avec planification (pharmacie/hôpital)
     match ensure_scheduling_search_functions(pool).await {
@@ -10363,6 +10369,16 @@ pub async fn ensure_hybrid_image_search_relevance(pool: &PgPool) -> Result<(), s
     let migration_sql = include_str!("../../migrations/20251223_improve_hybrid_image_search_relevance.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_relevance appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-24 : Améliore hybrid_image_search avec langue dynamique et scoring priorisant ILIKE
+/// Migration: 20251224_improve_hybrid_image_search_language_and_relevance.sql
+pub async fn ensure_hybrid_image_search_language_and_relevance(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration hybrid_image_search_language_and_relevance...");
+    let migration_sql = include_str!("../../migrations/20251224_improve_hybrid_image_search_language_and_relevance.sql");
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    info!("✅ Migration hybrid_image_search_language_and_relevance appliquée");
     Ok(())
 }
 

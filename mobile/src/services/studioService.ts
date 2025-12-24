@@ -204,8 +204,9 @@ export const studioService = {
     async requestShortPreview(sessionId: string): Promise<StudioPreviewResponse> {
         console.log('[studioService] requestShortPreview called with sessionId:', sessionId);
 
+        // ✅ CORRIGÉ 2025-12-24: Utiliser le bon endpoint (preview/short au lieu de preview-short)
         const response = await apiPost<StudioPreviewResponse>(
-            `${BASE}/sessions/${sessionId}/preview-short`,
+            `${BASE}/sessions/${sessionId}/preview/short`,
             {},
         );
 

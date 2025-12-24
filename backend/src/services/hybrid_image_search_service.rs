@@ -438,6 +438,7 @@ impl HybridImageSearchService {
                 gps_lng,
                 search_radius_km,
                 max_results,
+                Some(user_id),  // ✅ NOUVEAU: Passer user_id pour récupérer preferred_lang
             )
             .await?;
 
@@ -451,6 +452,7 @@ impl HybridImageSearchService {
 
     /// ✅ CORRECTION: Recherche SQL hybride améliorée utilisant la fonction PostgreSQL
     /// Cherche dans image_analyses ET media.ai_* pour matching complet
+    /// ✅ AMÉLIORÉ 2025-12-24: Détection automatique de langue (cohérent avec recherche textuelle)
     async fn hybrid_sql_search(
         &self,
         analysis: &ImageAnalysis,
@@ -459,6 +461,7 @@ impl HybridImageSearchService {
         gps_lng: Option<f64>,
         search_radius_km: Option<i32>,
         max_results: i32,
+        user_id: Option<i32>,  // ✅ NOUVEAU: Pour récupérer user.preferred_lang
     ) -> AppResult<Vec<HybridSearchResult>> {
         let couleur_principale = analysis.couleurs.first().map(|s| s.as_str());
         
@@ -471,12 +474,57 @@ impl HybridImageSearchService {
             &analysis.description
         };
 
+        // ✅ AMÉLIORÉ 2025-12-24: Détecter la langue (cohérent avec native_search_service)
+        use crate::services::creer_service::detect_lang;
+        
+        // Récupérer user.preferred_lang si user_id fourni
+        let user_preferred_lang: Option<String> = if let Some(uid) = user_id {
+            match sqlx::query_scalar::<_, Option<String>>(
+                "SELECT preferred_lang FROM users WHERE id = $1"
+            )
+            .bind(uid)
+            .fetch_optional(&self.pool)
+            .await
+            {
+                Ok(Some(Some(lang))) if !lang.is_empty() && lang != "auto" => Some(lang),
+                Ok(Some(Some(_))) => None,  // Langue vide ou "auto"
+                Ok(Some(None)) => None,
+                Ok(None) => None,
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+        
+        // Détecter la langue de la requête
+        let detected_lang = detect_lang(search_query);
+        
+        // Combiner: préférence utilisateur > détection automatique > fallback "simple"
+        let final_lang = user_preferred_lang
+            .as_deref()
+            .unwrap_or(&detected_lang);
+        
+        // Mapper vers configuration PostgreSQL (même logique que native_search_service)
+        let pg_lang = match final_lang {
+            "fr" | "fra" => "french",
+            "en" | "eng" => "english",
+            "es" | "spa" => "spanish",
+            "de" | "deu" => "german",
+            "it" | "ita" => "italian",
+            "pt" | "por" => "portuguese",
+            _ => "simple",  // Fallback pour langues non supportées
+        };
+        
         log_info(&format!(
             "[HybridImageSearch] 🔍 Recherche avec {} tags, catégorie: {:?}, marque: {:?}, query: '{}'",
             analysis.tags.len(),
             category_filter,
             analysis.marque,
             &search_query.chars().take(50).collect::<String>()
+        ));
+        log_info(&format!(
+            "[HybridImageSearch] 🌐 Langue: user_pref={:?}, detected={}, final={} -> PostgreSQL: '{}'",
+            user_preferred_lang, detected_lang, final_lang, pg_lang
         ));
 
         let rows = sqlx::query(
@@ -490,7 +538,8 @@ impl HybridImageSearchService {
                 $6::FLOAT,
                 $7::FLOAT,
                 $8::INTEGER,
-                $9::INTEGER
+                $9::INTEGER,
+                $10::TEXT
             )
             "#,
         )
@@ -503,6 +552,7 @@ impl HybridImageSearchService {
         .bind(gps_lng)
         .bind(search_radius_km.unwrap_or(50))
         .bind(max_results)
+        .bind(pg_lang)  // ✅ NOUVEAU: Langue détectée pour PostgreSQL
         .fetch_all(&self.pool)
         .await
         .map_err(|e| {

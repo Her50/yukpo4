@@ -143,6 +143,7 @@ pub async fn generate_video_for_product(
 }
 
 /// Estime le coût de génération d'une vidéo immersive sans lancer le rendu.
+#[axum::debug_handler]
 pub async fn estimate_video_cost_for_product(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
@@ -150,9 +151,17 @@ pub async fn estimate_video_cost_for_product(
     Json(payload): Json<VideoGenerationPayload>,
 ) -> AppResult<Json<crate::services::cost_service::CostEstimation>> {
     info!(
-        "[ProductVideoController] Estimation coût vidéo - user_id={}, service_id={}, product_index={}",
+        "[ProductVideoController] ✅ Route estimate_video_cost_for_product appelée - user_id={}, service_id={}, product_index={}",
         user.id, service_id, product_index
     );
+    
+    // ✅ CORRIGÉ 2025-12-24: Valider les paramètres
+    if service_id <= 0 {
+        return Err(AppError::BadRequest(format!("Service ID invalide: {}", service_id)));
+    }
+    if product_index < 0 {
+        return Err(AppError::BadRequest(format!("Product index invalide: {}", product_index)));
+    }
 
     let estimation = estimate_video_cost(state, &user, service_id, product_index, payload)
         .await

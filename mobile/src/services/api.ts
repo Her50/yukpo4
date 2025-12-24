@@ -447,9 +447,23 @@ const apiCallInternal = async <T>(
         // L'utilisateur devra se reconnecter manuellement
       }
 
+      // ✅ CORRIGÉ 2025-12-24: Améliorer l'extraction du message d'erreur
+      // Le backend peut retourner error, message, ou les deux
+      let errorMessage = data?.message || data?.error;
+      
+      // ✅ Si c'est une erreur 401 et qu'on n'a pas de message, utiliser un message par défaut
+      if (response.status === 401 && !errorMessage) {
+        errorMessage = 'Identifiants incorrects';
+      }
+      
+      // ✅ Dernier recours : message générique avec le status
+      if (!errorMessage) {
+        errorMessage = `Erreur ${response.status}`;
+      }
+
       return {
         success: false,
-        error: data?.message || data?.error || `Erreur ${response.status}`,
+        error: errorMessage,
         data: data,
         status: response.status, // ✅ NOUVEAU: Inclure le status pour gestion spécifique
       };
