@@ -3746,6 +3746,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 style_overlay_tips: selectedOverlayTips.size > 0 ? Array.from(selectedOverlayTips) : undefined,
                 style_color_palette: colorPalette.trim().length > 0 ? colorPalette.trim() : undefined,
                 style_music_hint: styleMusicHint.trim().length > 0 ? styleMusicHint.trim() : undefined,
+                // ✅ CORRIGÉ: Activer auto_generate_images par défaut si aucun média n'est disponible
+                auto_generate_images: true,
                 // ✅ NOTE: linked_session_ids retiré car non supporté dans VideoGenerationPayload
             };
 
@@ -3958,12 +3960,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
 
         // ✅ CORRIGÉ: Vérifier qu'il y a des médias disponibles si nécessaire
+        // Si auto_generate_images est activé, on permet la génération même sans médias
+        const autoGenerateImages = payload.auto_generate_images !== false; // true par défaut
         const hasSelectedMedia = payload.selected_media_ids && Array.isArray(payload.selected_media_ids) && payload.selected_media_ids.length > 0;
         const useProductGallery = payload.use_product_gallery === true;
         const useServiceMediatech = payload.use_service_mediatech === true;
         const hasTimelineMedia = hasTimeline && payload.timeline.scenes.some((scene: any) => scene.media_id || scene.media_url);
 
-        if (!hasSelectedMedia && !useProductGallery && !useServiceMediatech && !hasTimelineMedia) {
+        if (!autoGenerateImages && !hasSelectedMedia && !useProductGallery && !useServiceMediatech && !hasTimelineMedia) {
             Alert.alert(
                 'Médias requis',
                 'Aucun média disponible pour générer la vidéo.\n\n' +
@@ -3971,24 +3975,34 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 '• Sélectionnez des médias dans la médiathèque\n' +
                 '• Activez "Utiliser galerie produit"\n' +
                 '• Activez "Utiliser médiathèque service"\n' +
-                '• Ajoutez des médias à la timeline',
+                '• Ajoutez des médias à la timeline\n' +
+                '• La génération automatique d\'images IA sera activée automatiquement',
                 [{ text: 'OK' }]
             );
-            return;
+            // ✅ CORRIGÉ: Activer auto_generate_images automatiquement si aucun média n'est disponible
+            payload.auto_generate_images = true;
         }
 
         setIsSubmitting(true);
 
         try {
+            // ✅ CORRIGÉ: S'assurer que le payload contient tous les champs requis
+            const finalPayload: VideoGenerationPayload = {
+                ...payload,
+                duration_seconds: durationSeconds,
+                // ✅ S'assurer que auto_generate_images est activé si aucun média n'est disponible
+                auto_generate_images: payload.auto_generate_images !== false,
+            };
+            
             // ✅ DEBUG: Log du payload pour diagnostic
-            console.log('[ProductVideoCreationModal] 🎬 Génération vidéo - Payload:', JSON.stringify(payload, null, 2));
+            console.log('[ProductVideoCreationModal] 🎬 Génération vidéo - Payload:', JSON.stringify(finalPayload, null, 2));
             console.log('[ProductVideoCreationModal] 🎬 Service ID:', serviceId);
             console.log('[ProductVideoCreationModal] 🎬 Product Index:', productIndex);
             
             const response = await mediaApi.generateProductVideo(
                 serviceId,
                 productIndex,
-                payload
+                finalPayload
             );
             
             // ✅ DEBUG: Log de la réponse
@@ -4016,28 +4030,39 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             if (error?.message) {
                 const msg = error.message.toLowerCase();
-                if (msg.includes('aucune image') || msg.includes('image trouvée') || msg.includes('no media')) {
+                if (msg.includes('aucune image') || msg.includes('image trouvée') || msg.includes('no media') || msg.includes('aucun média')) {
                     errorMessage = 'Aucun média disponible pour générer la vidéo.\n\n' +
                         'Solutions :\n' +
                         '• Ajoutez des images dans la médiathèque du service\n' +
                         '• Ajoutez des images au produit\n' +
                         '• Activez "Utiliser galerie produit" ou "Utiliser médiathèque service"\n' +
-                        '• La génération automatique d\'images IA sera activée lors de la prochaine tentative';
-                } else if (msg.includes('400') || msg.includes('bad request') || msg.includes('invalide')) {
+                        '• La génération automatique d\'images IA sera activée automatiquement lors de la prochaine tentative';
+                } else if (msg.includes('400') || msg.includes('bad request') || msg.includes('invalide') || msg.includes('demande invalide')) {
+                    // ✅ AMÉLIORÉ: Extraire les détails du message d'erreur du backend si disponible
+                    const backendDetails = error.message.includes('Solutions possibles') 
+                        ? '\n\n' + error.message.split('Solutions possibles')[1] 
+                        : '';
                     errorMessage = 'Demande invalide.\n\n' +
                         'Vérifiez que tous les champs sont correctement remplis et réessayez.\n\n' +
                         'Champs requis :\n' +
                         '• Durée (10-90 secondes)\n' +
                         '• Script, storyboard ou timeline\n' +
-                        '• Au moins un média disponible';
-                } else if (msg.includes('500') || msg.includes('internal') || msg.includes('erreur 500')) {
-                    errorMessage = 'Erreur serveur temporaire.\n\n' +
-                        'Le serveur a rencontré une erreur lors de la génération.\n\n' +
-                        'Veuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.';
+                        '• Au moins un média disponible ou génération IA activée' +
+                        backendDetails;
+                } else if (msg.includes('500') || msg.includes('internal') || msg.includes('erreur 500') || msg.includes('renderer vidéo indisponible')) {
+                    if (msg.includes('renderer') || msg.includes('prévisualisation')) {
+                        errorMessage = 'Service de prévisualisation temporairement indisponible.\n\n' +
+                            'La génération de la vidéo principale peut toujours fonctionner.\n\n' +
+                            'Veuillez réessayer la prévisualisation plus tard.';
+                    } else {
+                        errorMessage = 'Erreur serveur temporaire.\n\n' +
+                            'Le serveur a rencontré une erreur lors de la génération.\n\n' +
+                            'Veuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.';
+                    }
                 } else if (msg.includes('timeout') || msg.includes('timed out')) {
                     errorMessage = 'La génération prend plus de temps que prévu.\n\n' +
                         'La vidéo est peut-être en cours de création. Vérifiez vos vidéos dans quelques instants.';
-                } else if (msg.includes('solde') || msg.includes('balance') || msg.includes('tokens')) {
+                } else if (msg.includes('solde') || msg.includes('balance') || msg.includes('tokens') || msg.includes('insuffisant')) {
                     errorMessage = 'Solde insuffisant.\n\n' +
                         'Veuillez recharger vos tokens avant de générer la vidéo.';
                 } else {

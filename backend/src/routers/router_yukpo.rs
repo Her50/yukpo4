@@ -123,7 +123,11 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)))
         // Routes de cr?ation de service (gestion des tokens dans le contrôleur)
         .route("/api/services/draft", post(handle_brouillon_service))
-        .route("/api/services/create", post(handle_creer_service))
+        .route(
+            "/api/services/create",
+            post(handle_creer_service)
+                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // ✅ 200 MB - pour supporter médias base64 volumineux
+        )
         // Route pour r?cup?rer tous les services du prestataire connect?
         .route("/api/prestataire/services", get(get_services_for_prestataire))
         // Route pour activer/d?sactiver un service

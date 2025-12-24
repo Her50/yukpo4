@@ -636,10 +636,20 @@ impl StudioService {
         user_id: i32,
     ) -> AppResult<PreviewResponse> {
         let preview_start = Instant::now();
-        let renderer = self
-            .video_renderer
-            .clone()
-            .ok_or_else(|| AppError::Internal("Renderer vidéo indisponible.".into()))?;
+        
+        // ✅ CORRIGÉ: Gérer gracieusement l'absence du renderer
+        let renderer = match self.video_renderer.clone() {
+            Some(r) => r,
+            None => {
+                warn!(
+                    "[StudioService] Renderer vidéo indisponible pour session {} - Retour d'erreur gracieux",
+                    session_id
+                );
+                return Err(AppError::BadRequest(
+                    "Le service de prévisualisation vidéo est temporairement indisponible. Veuillez réessayer plus tard.".into()
+                ));
+            }
+        };
 
         let session = self.get_session(session_id, user_id).await?;
         if session.timeline.is_empty() {

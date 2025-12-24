@@ -1076,15 +1076,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     if (nextVisible) {
       setCurrentBlock(nextVisible.index);
-      // Scroller vers le bloc avec un offset pour la navigation sticky
-      const blockY = blockPositions.current[nextVisible.index];
-      if (blockY !== undefined && mainScrollViewRef.current) {
-        mainScrollViewRef.current.scrollTo({
-          x: 0,
-          y: Math.max(0, blockY - 120),
-          animated: true
+      
+      // ✅ CORRIGÉ: Puisque seul le bloc actif est rendu, chaque bloc a y=0 dans onLayout
+      // Il faut scroller vers le début du ScrollView (y: 0) pour afficher le début du nouveau bloc
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
+          if (mainScrollViewRef.current) {
+            // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
+            mainScrollViewRef.current.scrollTo({
+              x: 0,
+              y: 0, // Début du ScrollView = début du nouveau bloc
+              animated: true
+            });
+          }
         });
-      }
+      });
     }
   };
 
@@ -1094,15 +1101,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     if (previousVisible) {
       setCurrentBlock(previousVisible.index);
-      // Scroller vers le bloc avec un offset pour la navigation sticky
-      const blockY = blockPositions.current[previousVisible.index];
-      if (blockY !== undefined && mainScrollViewRef.current) {
-        mainScrollViewRef.current.scrollTo({
-          x: 0,
-          y: Math.max(0, blockY - 120),
-          animated: true
+      
+      // ✅ CORRIGÉ: Puisque seul le bloc actif est rendu, chaque bloc a y=0 dans onLayout
+      // Il faut scroller vers le début du ScrollView (y: 0) pour afficher le début du nouveau bloc
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
+          if (mainScrollViewRef.current) {
+            // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
+            mainScrollViewRef.current.scrollTo({
+              x: 0,
+              y: 0, // Début du ScrollView = début du nouveau bloc
+              animated: true
+            });
+          }
         });
-      }
+      });
     }
   };
 
@@ -1128,15 +1142,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
 
     setCurrentBlock(blockIndex);
-    // Scroller vers le bloc avec un offset pour la navigation sticky
-    const blockY = blockPositions.current[blockIndex];
-    if (blockY !== undefined && mainScrollViewRef.current) {
-      mainScrollViewRef.current.scrollTo({
-        x: 0,
-        y: Math.max(0, blockY - 120),
-        animated: true
+    
+    // ✅ CORRIGÉ: Puisque seul le bloc actif est rendu, chaque bloc a y=0 dans onLayout
+    // Il faut scroller vers le début du ScrollView (y: 0) pour afficher le début du nouveau bloc
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // Double requestAnimationFrame pour s'assurer que le layout est complètement mis à jour
+        if (mainScrollViewRef.current) {
+          // Scroller vers le début du ScrollView (le nouveau bloc est maintenant le premier élément)
+          mainScrollViewRef.current.scrollTo({
+            x: 0,
+            y: 0, // Début du ScrollView = début du nouveau bloc
+            animated: true
+          });
+        }
       });
-    }
+    });
   };
 
   // ✅ NOUVEAU: Charger les données du service en mode édition

@@ -7012,6 +7012,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto hybrid_image_search_language_and_relevance: {}", e),
     }
 
+    // ✅ 2025-12-24 : Optimisation critique des requêtes lentes (pharmacies, deliveries, delivery_matching_queue, find_nearby_couriers)
+    match ensure_optimize_slow_queries_critical(pool).await {
+        Ok(_) => info!("✅ Migration auto: optimize_slow_queries_critical OK"),
+        Err(e) => error!("❌ Erreur migration auto optimize_slow_queries_critical: {}", e),
+    }
+
     // ✅ 2025-11-25 : Fonctions de recherche avec planification (pharmacie/hôpital)
     match ensure_scheduling_search_functions(pool).await {
         Ok(_) => info!("✅ Migration auto: scheduling search functions OK"),
@@ -10379,6 +10385,17 @@ pub async fn ensure_hybrid_image_search_language_and_relevance(pool: &PgPool) ->
     let migration_sql = include_str!("../../migrations/20251224_improve_hybrid_image_search_language_and_relevance.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_language_and_relevance appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-24 : Optimisation critique des requêtes lentes identifiées dans les logs
+/// Migration: 20251224_optimize_slow_queries_critical.sql
+/// Problèmes corrigés: pharmacies JOIN (1.68s), delivery_matching_queue (1.37s), deliveries SELECT (1.4-2.3s), find_nearby_couriers (2.1s)
+pub async fn ensure_optimize_slow_queries_critical(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration optimize_slow_queries_critical...");
+    let migration_sql = include_str!("../../migrations/20251224_optimize_slow_queries_critical.sql");
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    info!("✅ Migration optimize_slow_queries_critical appliquée");
     Ok(())
 }
 

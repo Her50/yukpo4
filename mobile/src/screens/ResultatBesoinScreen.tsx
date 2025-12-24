@@ -18,6 +18,7 @@ import ChatModalMobile from '../components/ChatModalMobile';
 import ModernGPSModal from '../components/ModernGPSModal';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
+import { SafeNativeView } from '../components/SafeNativeView';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import UltraModernServiceCard from '../components/UltraModernServiceCard';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
@@ -1165,12 +1166,16 @@ const ResultatBesoinScreen: React.FC = () => {
     }
 
     return (
-        <ScrollView
-            style={styles.container}
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-        >
+        <SafeNativeView style={styles.container}>
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+            >
             {/* Header avec bouton retour */}
             <View style={styles.header}>
                 <TouchableOpacity
@@ -1521,7 +1526,8 @@ const ResultatBesoinScreen: React.FC = () => {
                     setSelectedService(null);
                 }}
             />
-        </ScrollView>
+            </ScrollView>
+        </SafeNativeView>
     );
 };
 
@@ -1529,6 +1535,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colors.background,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
     },
     loadingContainer: {
         flex: 1,

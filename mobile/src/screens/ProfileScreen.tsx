@@ -6,6 +6,7 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
+import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { apiPatch, servicesApi, userApi } from '../services/api';
 import { theme } from '../theme/theme';
@@ -365,7 +366,13 @@ const ProfileScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 120 }}>
+    <SafeNativeView style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={{ paddingBottom: 120 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
       {/* Header avec photo de profil */}
       <View style={styles.header}>
         <View style={styles.profileSection}>
@@ -490,7 +497,8 @@ const ProfileScreen: React.FC = () => {
           <Text style={{ color: "#DC2626" }}>Se déconnecter</Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeNativeView>
   );
 };
 
@@ -498,6 +506,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,

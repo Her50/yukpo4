@@ -14,6 +14,7 @@ import { NativeButton } from '../components/SafeNativeDesign';
 import ProductGalleryModal from '../components/ProductGalleryModal';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
+import { SafeNativeView } from '../components/SafeNativeView';
 import ServiceCardModern from '../components/ServiceCardModern';
 import ServiceProductSelector from '../components/ServiceProductSelector';
 import ServiceTeamManager from '../components/ServiceTeamManager';
@@ -1099,7 +1100,7 @@ const MesServicesScreen: React.FC = () => {
         loadServices(true);
       }}
     >
-      <View style={dynamicStyles.container}>
+      <SafeNativeView style={dynamicStyles.container}>
         {/* Header moderne avec gradient */}
         <LinearGradient
           colors={[colors.primary, colors.primaryDark || colors.primary]}
@@ -2060,7 +2061,7 @@ const MesServicesScreen: React.FC = () => {
             },
           ]}
         />
-      </View>
+      </SafeNativeView>
     </ErrorBoundaryWithRetry>
   );
 };

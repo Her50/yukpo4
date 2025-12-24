@@ -511,9 +511,10 @@ pub async fn validate_video_generation_prerequisites(
     }
 
     if !has_images {
-        // Si génération IA activée, on permet la génération (les images seront créées pendant le processus)
-        if payload.auto_generate_images.unwrap_or(false) {
-            info!("[VideoGeneration] ⚠️ Aucune image locale trouvée, mais génération IA activée - Génération d'images prévue");
+        // ✅ CORRIGÉ: Activer auto_generate_images par défaut si aucun média n'est trouvé
+        // Cela permet de générer des images avec l'IA pendant le processus de génération vidéo
+        if payload.auto_generate_images.unwrap_or(true) {
+            info!("[VideoGeneration] ⚠️ Aucune image locale trouvée, génération IA activée automatiquement - Génération d'images prévue");
             return Ok(()); // Permettre la génération, les images seront créées plus tard
         } else {
             // ✅ Message d'erreur détaillé avec les sources vérifiées

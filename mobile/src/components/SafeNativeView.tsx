@@ -2,10 +2,11 @@
  * ✅ RÉÉCRIT COMPLÈTEMENT - SafeNativeView
  * Composant SafeAreaView natif pour remplacer react-native-safe-area-context
  * Version simplifiée et sûre sans cleanChildren problématique
+ * ✅ NOUVEAU 2025-12-24: Inclut KeyboardAvoidingView pour gérer le clavier automatiquement
  */
 
 import React from 'react';
-import { Dimensions, Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { Dimensions, KeyboardAvoidingView, Platform, StatusBar, StyleSheet, View } from 'react-native';
 
 const { height, width } = Dimensions.get('window');
 
@@ -16,6 +17,10 @@ interface SafeNativeViewProps {
     backgroundColor?: string;
     testID?: string;
     pointerEvents?: 'auto' | 'none' | 'box-none' | 'box-only';
+    /** ✅ NOUVEAU: Désactiver KeyboardAvoidingView si nécessaire (par défaut: activé) */
+    enableKeyboardAvoiding?: boolean;
+    /** ✅ NOUVEAU: Offset vertical pour le clavier (par défaut: calculé automatiquement) */
+    keyboardVerticalOffset?: number;
 }
 
 export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
@@ -25,6 +30,8 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
     backgroundColor = '#FFFFFF',
     testID,
     pointerEvents,
+    enableKeyboardAvoiding = true, // ✅ NOUVEAU: Activé par défaut
+    keyboardVerticalOffset, // ✅ NOUVEAU: Calculé automatiquement si non fourni
 }) => {
     const getStatusBarHeight = () => {
         if (Platform.OS === 'android') {
@@ -48,6 +55,13 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
 
     const insets = getSafeAreaInsets();
 
+    // ✅ NOUVEAU: Calculer l'offset du clavier automatiquement si non fourni
+    const calculatedKeyboardOffset = keyboardVerticalOffset !== undefined
+        ? keyboardVerticalOffset
+        : Platform.OS === 'ios' 
+            ? insets.top + 20 // iOS: status bar + marge
+            : 0; // Android: pas besoin d'offset généralement
+
     const containerStyle = [
         styles.container,
         {
@@ -62,6 +76,22 @@ export const SafeNativeView: React.FC<SafeNativeViewProps> = ({
 
     // ✅ CRITIQUE: Rendre directement les children sans nettoyage problématique
     // React Native gère déjà les children invalides
+    
+    // ✅ NOUVEAU: Wrapper avec KeyboardAvoidingView si activé
+    if (enableKeyboardAvoiding) {
+        return (
+            <KeyboardAvoidingView
+                style={containerStyle}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={calculatedKeyboardOffset}
+                testID={testID}
+                pointerEvents={pointerEvents}
+            >
+                {children}
+            </KeyboardAvoidingView>
+        );
+    }
+
     return (
         <View style={containerStyle} testID={testID} pointerEvents={pointerEvents}>
             {children}

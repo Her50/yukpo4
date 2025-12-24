@@ -3,12 +3,19 @@ import * as React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Card, Title, Paragraph, Button } from 'react-native-paper';
+import { SafeNativeView } from '../components/SafeNativeView';
 
 const StartScreen = () => {
   const navigation = useNavigation();
 
   return (
-    <ScrollView style={styles.container}>
+    <SafeNativeView style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
       <View style={styles.content}>
         <Text style={styles.title}>
           ?? D�marrer avec Yukpo
@@ -55,7 +62,8 @@ const StartScreen = () => {
           </Card>
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeNativeView>
   );
 };
 
@@ -63,6 +71,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     padding: 20,

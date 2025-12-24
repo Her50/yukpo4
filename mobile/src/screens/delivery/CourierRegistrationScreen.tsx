@@ -425,58 +425,15 @@ const CourierRegistrationScreen: React.FC = () => {
 
     // ✅ CRITIQUE 2025-12-24: Déplacer TOUS les hooks AVANT les early returns
     // pour éviter l'erreur "Rendered more hooks than during the previous render"
-    const vehicleTypes = VEHICLE_TRANSPORT_OPTIONS;
-    const selectedVehicle = vehicleTypes.find(v => v.value === vehicleType);
+    // ✅ CONSTANTE: VEHICLE_TRANSPORT_OPTIONS est une constante importée, pas besoin de useMemo
+    const selectedVehicle = VEHICLE_TRANSPORT_OPTIONS.find(v => v.value === vehicleType);
     const requiresLicense = selectedVehicle?.requiresLicense ?? false;
 
-    const handleVehicleSelect = useCallback((vehicle: VehicleType) => {
+    // ✅ SIMPLIFIÉ: Pas besoin de useCallback pour une fonction simple
+    const handleVehicleSelect = (vehicle: VehicleType) => {
         setVehicleType(vehicle);
-        // ✅ CORRIGÉ: Utiliser setTimeout pour éviter les conflits de rendu
-        setTimeout(() => {
-            setShowVehicleModal(false);
-        }, 100);
-    }, []);
-    
-    // ✅ OPTIMISÉ: Mémoriser les options de transport (constante, mais pour cohérence)
-    const vehicleTypesMemo = useMemo(() => vehicleTypes, []);
-    
-    // ✅ OPTIMISÉ: Render item pour FlatList
-    const renderVehicleOption = useCallback(({ item: vehicle }: { item: VehicleOption }) => {
-        const isSelected = vehicleType === vehicle.value;
-        return (
-            <Pressable
-                style={[
-                    styles.vehicleModalOption,
-                    isSelected && styles.vehicleModalOptionSelected,
-                ]}
-                onPress={() => handleVehicleSelect(vehicle.value)}
-                android_ripple={{ color: modernColors.primary + '20' }}
-            >
-                <Text style={styles.vehicleModalIcon}>{vehicle.icon}</Text>
-                <View style={styles.vehicleModalTextContainer}>
-                    <Text
-                        style={[
-                            styles.vehicleModalLabel,
-                            isSelected && styles.vehicleModalLabelSelected,
-                        ]}
-                    >
-                        {vehicle.label}
-                    </Text>
-                    {vehicle.requiresLicense && (
-                        <Text style={styles.vehicleModalHint}>
-                            Permis de conduire requis
-                        </Text>
-                    )}
-                </View>
-                {isSelected && (
-                    <SafeIcon name="check" size={20} color={modernColors.primary} />
-                )}
-            </Pressable>
-        );
-    }, [vehicleType, handleVehicleSelect]);
-    
-    // ✅ OPTIMISÉ: Key extractor pour FlatList
-    const keyExtractor = useCallback((item: VehicleOption) => item.value, []);
+        setShowVehicleModal(false);
+    };
 
     // ✅ CRITIQUE 2025-12-24: Early returns APRÈS tous les hooks
     if (checkingStatus) {
@@ -554,6 +511,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 contentContainerStyle={styles.scrollContent}
                 nestedScrollEnabled={true}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
                 showsVerticalScrollIndicator={true}
             >
                 <View style={styles.header}>
@@ -898,44 +856,67 @@ const CourierRegistrationScreen: React.FC = () => {
                 transparent={true}
                 animationType="slide"
                 onRequestClose={() => setShowVehicleModal(false)}
-                hardwareAccelerated={true}
-                statusBarTranslucent={true}
             >
-                <Pressable
-                    style={styles.modalOverlay}
-                    onPress={() => setShowVehicleModal(false)}
-                    activeOpacity={1}
-                >
-                    <Pressable
-                        style={styles.modalContent}
-                        onPress={(e) => e.stopPropagation()}
-                    >
+                <View style={styles.modalOverlay}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        activeOpacity={1}
+                        onPress={() => setShowVehicleModal(false)}
+                    />
+                    <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Sélectionner un moyen de transport</Text>
-                            <Pressable
+                            <TouchableOpacity
                                 onPress={() => setShowVehicleModal(false)}
                                 style={styles.modalCloseButton}
-                                android_ripple={{ color: modernColors.textSecondary + '20', borderless: true }}
+                                activeOpacity={0.7}
                             >
                                 <SafeIcon name="x" size={24} color={modernColors.text} />
-                            </Pressable>
+                            </TouchableOpacity>
                         </View>
-                        <FlatList
-                            data={vehicleTypesMemo}
-                            renderItem={renderVehicleOption}
-                            keyExtractor={keyExtractor}
+                        <ScrollView 
                             style={styles.modalScrollView}
                             contentContainerStyle={styles.modalScrollContent}
                             showsVerticalScrollIndicator={true}
-                            removeClippedSubviews={false}
-                            initialNumToRender={10}
-                            maxToRenderPerBatch={10}
-                            windowSize={5}
                             keyboardShouldPersistTaps="handled"
-                            nestedScrollEnabled={true}
-                        />
-                    </Pressable>
-                </Pressable>
+                        >
+                            {VEHICLE_TRANSPORT_OPTIONS.map((vehicle) => {
+                                const isSelected = vehicleType === vehicle.value;
+                                return (
+                                    <TouchableOpacity
+                                        key={vehicle.value}
+                                        style={[
+                                            styles.vehicleModalOption,
+                                            isSelected && styles.vehicleModalOptionSelected,
+                                        ]}
+                                        onPress={() => handleVehicleSelect(vehicle.value)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={styles.vehicleModalIcon}>{vehicle.icon}</Text>
+                                        <View style={styles.vehicleModalTextContainer}>
+                                            <Text
+                                                style={[
+                                                    styles.vehicleModalLabel,
+                                                    isSelected && styles.vehicleModalLabelSelected,
+                                                ]}
+                                            >
+                                                {vehicle.label}
+                                            </Text>
+                                            {vehicle.requiresLicense && (
+                                                <Text style={styles.vehicleModalHint}>
+                                                    Permis de conduire requis
+                                                </Text>
+                                            )}
+                                        </View>
+                                        {isSelected && (
+                                            <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                </View>
             </Modal>
         </SafeNativeView>
     );
@@ -1048,7 +1029,6 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.surface,
         marginBottom: 12,
         gap: 12,
-        // ✅ CORRIGÉ: Améliorer la réactivité du touch
         minHeight: 64,
     },
     vehicleModalOptionSelected: {
@@ -1086,7 +1066,6 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 20,
         maxHeight: '80%',
         paddingBottom: 32,
-        // ✅ CORRIGÉ: Empêcher les conflits de gestes
         overflow: 'hidden',
     },
     modalHeader: {
