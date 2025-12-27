@@ -8,36 +8,26 @@ use axum::{
     body::Body,
 };
 use serde_json::{json, Value};
-use sqlx::Row;
 use log::{info, error, warn};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
-use crate::utils::log::{log_error, log_warn};
+use crate::utils::log::log_error;
 
 use crate::{
     controllers::{
         interaction_controller::{post_message, post_review, get_service_interactions, get_service_reviews, get_service_score, get_service_stats, post_audio, post_call, post_share, post_review_helpful},
         service_controller::{get_services_for_prestataire, toggle_service_status, modifier_service, supprimer_service, get_service_by_id},
         intelligent_service_controller::{process_services_intelligently, get_services_pending_processing, reactivate_service_intelligent},
-        product_addition_controller::add_product_to_service, // ✅ NOUVEAU 2025-11-01
-        product_lifecycle_controller::{deactivate_product, reactivate_product}, // ✅ NOUVEAU 2025-11-01
     },
-    routes::products_management::update_product,
     routes::{
         weather_routes::weather_routes,
         nearby_services_routes::nearby_services_routes,
         ai_chat_routes::ai_chat_routes,
-        health_structure_routes::health_structure_routes,
-        vehicle_model_routes::vehicle_model_routes,
-        appliance_model_routes::appliance_model_routes,
-        phone_model_routes::phone_model_routes,
-        places_routes::autocomplete_places,
     },
     core::types::{AppResult, AppError},
     services::creer_service,
     state::AppState,
-    middlewares::{request_size_limit, hide_headers, monitoring, audit_log, jwt::jwt_auth, check_tokens::check_tokens, service_interaction::track_service_interaction},
-    routers::router_modalities,
+    middlewares::{request_size_limit, hide_headers, rate_limit, monitoring, audit_log, jwt::jwt_auth, check_tokens::check_tokens, service_interaction::track_service_interaction},
 };
 use crate::models::input_model::MultiModalInput;
 use axum::response::IntoResponse;
@@ -65,11 +55,11 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let public_routes = Router::new()
         .route("/api/test/ping", get(handle_ping))
         .route("/api/geocoding/reverse", post(handle_reverse_geocode))
-        .route("/api/places/autocomplete", get(autocomplete_places))
+        // Route pour servir les fichiers média
+        .route("/api/media/{*file_path}", get(serve_media_file))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
         .layer(axum::middleware::from_fn(audit_log::audit_log))
-        // TODO: réactiver rate_limit quand le middleware sera stabilisé
-        // .layer(axum::middleware::from_fn(rate_limit))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), rate_limit))
         .layer(axum::middleware::from_fn(hide_headers::hide_headers))
         .layer(axum::middleware::from_fn(request_size_limit::request_size_limit));
     
@@ -85,7 +75,6 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/ia/creation-service",
             post(handle_creation_service_direct)
-                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // ✅ 200 MB - pour supporter médias base64 volumineux
                 .layer(axum::middleware::from_fn_with_state(
                     state.clone(), check_tokens
                 ))
@@ -123,11 +112,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)))
         // Routes de cr?ation de service (gestion des tokens dans le contrôleur)
         .route("/api/services/draft", post(handle_brouillon_service))
-        .route(
-            "/api/services/create",
-            post(handle_creer_service)
-                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // ✅ 200 MB - pour supporter médias base64 volumineux
-        )
+        .route("/api/services/create", post(handle_creer_service))
         // Route pour r?cup?rer tous les services du prestataire connect?
         .route("/api/prestataire/services", get(get_services_for_prestataire))
         // Route pour activer/d?sactiver un service
@@ -136,18 +121,6 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/services/{service_id}/update", put(modifier_service))
         // Route pour supprimer un service
         .route("/api/services/{service_id}/delete", delete(supprimer_service))
-        // ✅ NOUVEAU: Route pour modifier un produit spécifique (avec historique)
-        .route("/api/products/{product_id}/update", patch(update_product))
-        // ✅ NOUVEAU 2025-11-01: Route pour ajouter un produit incrémental (coût fixe 2000 FCFA)
-        // ✅ CORRECTION 2025-12-19: Limite augmentée à 200 MB pour supporter les médias base64 volumineux
-        .route(
-            "/api/services/{service_id}/products",
-            post(add_product_to_service)
-                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // ✅ 200 MB - pour supporter médias base64 volumineux
-        )
-        // ✅ NOUVEAU 2025-11-01: Routes pour cycle de vie produits (désactivation/réactivation)
-        .route("/api/services/{service_id}/products/{product_index}/deactivate", post(deactivate_product))
-        .route("/api/services/{service_id}/products/{product_index}/reactivate", post(reactivate_product))
         // Route pour r?cup?rer un service par ID (public)
         .route("/api/services/{service_id}", get(get_service_by_id))
         // Route pour récupérer les médias d'un service
@@ -163,8 +136,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(axum::middleware::from_fn(jwt_auth))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
         .layer(axum::middleware::from_fn(audit_log::audit_log))
-        // TODO: réactiver rate_limit quand le middleware sera stabilisé
-        // .layer(axum::middleware::from_fn(rate_limit))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), rate_limit))
         .layer(axum::middleware::from_fn(hide_headers::hide_headers))
         .layer(axum::middleware::from_fn(request_size_limit::request_size_limit));
     
@@ -172,16 +144,25 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let mobile_routes = Router::<Arc<AppState>>::new()
         .merge(weather_routes(state.clone()))
         .merge(nearby_services_routes(state.clone()))
-        .merge(ai_chat_routes(state.clone()))
-        .merge(health_structure_routes(state.clone()))
-        .merge(vehicle_model_routes(state.clone()))
-        .merge(appliance_model_routes(state.clone()))
-        .merge(phone_model_routes(state.clone()));
+        .merge(ai_chat_routes(state.clone()));
+    
+    // ✅ NOUVEAU: Routes pour @mentions et multi-participants conversations
+    let conversation_routes_merged = crate::routes::conversation_routes::conversation_routes(state.clone());
+    
+    // ✅ NOUVEAU: Routes pour signalements
+    let signalement_routes_merged = crate::routes::signalement_routes::signalement_routes(state.clone());
+    
+    // ✅ NOUVEAU: Routes pour recherche avec planifications
+    let scheduling_search_routes_merged = crate::routes::scheduling_search_routes::scheduling_search_routes(state.clone());
+    
+    // ✅ NOUVEAU: Routes pour gestion d'équipe des services
+    let service_team_routes_merged = crate::routes::service_team_routes::service_team_routes(state.clone());
+    
+    // ✅ NOUVEAU: Routes pour recherche par image
+    let image_search_routes_merged = crate::routes::image_search_routes::image_search_routes(state.clone());
     
     // ✅ NOUVEAU: Routes pour système de publicité (intégrées directement)
     use crate::controllers::publicite_controller;
-    use crate::controllers::media_product_controller;
-    use crate::controllers::product_video_controller;
     let publicite_routes_inline = Router::new()
         .route("/api/publicites/create", post(publicite_controller::create_publicite))
         .route("/api/publicites/{id}/update", post(publicite_controller::update_publicite))
@@ -189,47 +170,18 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/publicites/actives", get(publicite_controller::get_active_publicites))
         .route("/api/publicites/dashboard", get(publicite_controller::get_publicite_dashboard))
         .route("/api/publicites/track-click", post(publicite_controller::track_publicite_click))
-        .route("/api/publicites/track-view", post(publicite_controller::track_publicite_view))
-        // ✅ NOUVEAU: Routes pour médias par produit spécifique
-        .route("/api/media/product/{service_id}/{product_index}", get(media_product_controller::get_product_media))
-        .route("/api/media/product/{service_id}/{product_index}/images", get(media_product_controller::get_product_images))
-        .route("/api/media/product/{service_id}/{product_index}/videos", get(media_product_controller::get_product_videos))
-        .route("/api/media/set-main/{media_id}", post(media_product_controller::set_main_image))
-        // ✅ NOUVEAU: Routes pour génération vidéo produit (mobile utilise ces endpoints)
-        // ✅ CORRIGÉ 2025-12-24: Ajouter middleware JWT pour ces routes qui nécessitent authentification
-        .route(
-            "/api/media/product/{service_id}/{product_index}/generate-video",
-            post(product_video_controller::generate_video_for_product)
-                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // 200 MB
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    jwt_auth,
-                ))
-        )
-        .route(
-            "/api/media/product/{service_id}/{product_index}/estimate-video",
-            post(product_video_controller::estimate_video_cost_for_product)
-                .layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    jwt_auth,
-                ))
-        );
-        // ✅ Note: Route /api/content/mixed est définie dans recommendation_routes.rs
-    
-    // Routes pour product_modalities (modalités réutilisables)
-    let modality_routes = router_modalities::modality_routes(state.clone());
-    
-    // ⚠️ Route générique wildcard - DOIT être mergée EN DERNIER pour éviter les conflits
-    let media_fallback_route = Router::new()
-        .route("/api/media/{*file_path}", get(serve_media_file));
+        .route("/api/publicites/track-view", post(publicite_controller::track_publicite_view));
     
     // Combinaison des routes
     public_routes
         .merge(protected_routes)
         .merge(mobile_routes)
+        .merge(conversation_routes_merged)
+        .merge(signalement_routes_merged)
+        .merge(scheduling_search_routes_merged)
+        .merge(service_team_routes_merged)
+        .merge(image_search_routes_merged)
         .merge(publicite_routes_inline)
-        .merge(modality_routes)
-        .merge(media_fallback_route) // ⚠️ Route wildcard en dernier
         .with_state(state)
 }
 
@@ -247,265 +199,255 @@ async fn handle_direct_search(
     log_info(&format!("[DIRECT_SEARCH] Recherche directe pour utilisateur {} (GPS: {:?})", 
         user.id, input.gps_mobile));
     
-    // ✅ NOUVEAU: Transcrire l'audio en texte si présent
-    let mut user_text = input.texte.clone().unwrap_or_default();
-    let has_audios = input.audio_base64.as_ref().map(|audios| !audios.is_empty()).unwrap_or(false);
-    
-    if has_audios {
-        use crate::services::audio_transcription_service::AudioTranscriptionService;
-        log_info("[DIRECT_SEARCH] 🎤 Audio détecté - Transcription en cours...");
-        
-        if let Some(audios) = &input.audio_base64 {
-            for (i, audio_base64) in audios.iter().enumerate() {
-                match AudioTranscriptionService::transcribe_audio_base64(audio_base64).await {
-                    Ok(transcription) => {
-                        let transcribed_text = transcription.text.trim();
-                        log_info(&format!(
-                            "[DIRECT_SEARCH] ✅ Audio {} transcrit: '{}' (langue: {:?}, durée: {:?}s)",
-                            i + 1,
-                            &transcribed_text.chars().take(50).collect::<String>(),
-                            transcription.language,
-                            transcription.duration
-                        ));
-                        
-                        // Ajouter le texte transcrit au texte existant
-                        if !transcribed_text.is_empty() {
-                            if !user_text.is_empty() {
-                                user_text.push_str(" ");
-                            }
-                            user_text.push_str(transcribed_text);
-                        }
-                    },
-                    Err(e) => {
-                        log_error(&format!(
-                            "[DIRECT_SEARCH] ❌ Erreur transcription audio {}: {:?}",
-                            i + 1, e
-                        ));
-                        // Continuer même si une transcription échoue
-                    }
-                }
-            }
-        }
-    }
-    
-    // Extraire le texte de l'input (peut maintenant inclure du texte transcrit)
+    // Extraire le texte de l'input
+    let user_text = input.texte.clone().unwrap_or_default();
     let has_text = !user_text.trim().is_empty();
     let has_images = input.base64_image.as_ref().map(|imgs| !imgs.is_empty()).unwrap_or(false);
     
-    log_info(&format!("[DIRECT_SEARCH] Contenu: texte={}, images={}, audios={}", has_text, has_images, has_audios));
+    log_info(&format!("[DIRECT_SEARCH] Contenu: texte={}, images={}", has_text, has_images));
     
-    // ✅ NOUVELLE LOGIQUE: Si image présente (avec ou sans texte), utiliser recherche HYBRIDE
+    // ✅ NOUVELLE LOGIQUE: Si image présente (avec ou sans texte), utiliser analyse IA
     if has_images {
-        use crate::services::hybrid_image_search_service::HybridImageSearchService;
+        use crate::services::intelligent_image_analysis_service::IntelligentImageAnalysisService;
         
-        log_info("[DIRECT_SEARCH] 🖼️ Image détectée - Recherche HYBRIDE activée");
+        log_info("[DIRECT_SEARCH] 🖼️ Image détectée - Analyse IA activée");
         
         let images = input.base64_image.as_ref().unwrap();
         let first_image = &images[0];
         
-        // ✅ Préparation image : Accepte URL, data URI ou base64 pur
-        let image_base64 = if first_image.starts_with("http://") || first_image.starts_with("https://") {
-            // URL directe (ex: Cloudinary)
-            log_info(&format!("[DIRECT_SEARCH] URL d'image détectée: {}", &first_image[..first_image.len().min(60)]));
-            first_image.clone()
-        } else if first_image.contains("base64,") {
-            // Data URI - extraire le base64 pur
+        // Extraire le base64 pur
+        let image_base64 = if first_image.contains("base64,") {
             first_image.split("base64,").nth(1).unwrap_or(first_image).to_string()
         } else {
-            // Base64 pur
             first_image.clone()
         };
         
-                // ✅ RECHERCHE HYBRIDE: Analyse + Matching (GRATUITE - facturation annulée)
-                log_info("[DIRECT_SEARCH] ⚡ Lancement recherche hybride multi-critères...");
+                // 1️⃣ Vérifier le solde utilisateur AVANT l'analyse (sqlx::query pour offline)
+                let user_balance_result = sqlx::query(
+                    "SELECT credits, devise FROM users WHERE id = $1"
+                )
+                .bind(user.id)
+                .fetch_one(&_state.pg)
+                .await;
+        
+        match user_balance_result {
+            Ok(user_row) => {
+                use sqlx::Row;
                 
-                // Extraire GPS si disponible
-                let (gps_lat, gps_lng) = if let Some(gps_str) = input.gps_mobile.as_deref() {
-                    let coords: Vec<&str> = gps_str.split(',').collect();
-                    if coords.len() == 2 {
-                        (
-                            coords[0].trim().parse::<f64>().ok(),
-                            coords[1].trim().parse::<f64>().ok()
-                        )
-                    } else {
-                        (None, None)
-                    }
-                } else {
-                    (None, None)
+                let current_balance: i64 = user_row.try_get("credits").unwrap_or(0);
+                let user_devise: String = user_row.try_get("devise").unwrap_or_else(|_| "XAF".to_string());
+                
+                // Coût estimé minimum (sera ajusté après analyse)
+                let estimated_cost = match user_devise.as_str() {
+                    "XAF" | "FCFA" => 50,  // ~50 XAF minimum
+                    "EUR" => 1,             // ~0.10 EUR
+                    "USD" => 10,            // ~0.10 USD (centimes)
+                    _ => 50
                 };
                 
-                let hybrid_service = HybridImageSearchService::new(_state.pg.clone());
+                if current_balance < estimated_cost {
+                    let response = serde_json::json!({
+                        "status": "error",
+                        "error": "insufficient_credits",
+                        "message": format!("Solde insuffisant pour recherche par image. Requis: {} {}, Disponible: {} {}", 
+                                         estimated_cost, user_devise, current_balance, user_devise),
+                        "required": estimated_cost,
+                        "available": current_balance,
+                        "currency": user_devise
+                    });
+                    return Ok(Json(response));
+                }
                 
-                // ✅ OPTIMISATION: Timeout réduit à 15 secondes pour l'analyse IA (éviter 22-25s de latence)
-                // L'IA externe peut prendre jusqu'à 60s selon config, mais on limite à 15s pour UX mobile
-                let start_time = std::time::Instant::now();
-                log_info("[DIRECT_SEARCH] 🖼️ Début analyse IA par image...");
+                // 2️⃣ Analyser l'image avec IA multi-modèles
+                log_info("[DIRECT_SEARCH] Analyse IA de l'image...");
                 
-                let search_future = hybrid_service.search_by_image(
+                let analysis_result = IntelligentImageAnalysisService::analyze_image_multimodel(
                     &_state.ia,
                     &image_base64,
-                    user.id,
                     None,  // Catégorie auto-détectée
-                    gps_lat,
-                    gps_lng,
-                    Some(50),  // Rayon 50km
-                    20   // Max 20 résultats
-                );
-                
-                let analysis_result = match tokio::time::timeout(
-                    std::time::Duration::from_secs(15), // ✅ RÉDUIT: 15 secondes max pour analyse IA (était 20s)
-                    search_future
-                ).await {
-                    Ok(Ok(result)) => {
-                        let elapsed = start_time.elapsed();
-                        log_info(&format!(
-                            "[DIRECT_SEARCH] ✅ Analyse IA complétée en {:.2}s",
-                            elapsed.as_secs_f64()
-                        ));
-                        Ok(result)
-                    },
-                    Ok(Err(e)) => {
-                        let elapsed = start_time.elapsed();
-                        log_error(&format!(
-                            "[DIRECT_SEARCH] ❌ Erreur analyse IA après {:.2}s: {:?}",
-                            elapsed.as_secs_f64(), e
-                        ));
-                        Err(e)
-                    },
-                    Err(_) => {
-                        let elapsed = start_time.elapsed();
-                        log_warn(&format!(
-                            "[DIRECT_SEARCH] ⏱️ Timeout analyse IA après {:.2}s (limite 15s) - Fallback vers recherche générique",
-                            elapsed.as_secs_f64()
-                        ));
-                        Err(AppError::Internal("Timeout analyse IA".to_string()))
-                    }
-                };
+                    true   // Mode recherche
+                ).await;
                 
                 match analysis_result {
-                    Ok((hybrid_results, analysis, ai_cost)) => {
-                        let results_count = hybrid_results.len();
-                        
+                    Ok((analysis, ai_cost)) => {
                         log_info(&format!(
-                            "[DIRECT_SEARCH] ✅ Recherche hybride réussie: {} résultats trouvés",
-                            results_count
-                        ));
-                        log_info(&format!(
-                            "[DIRECT_SEARCH] 📊 Analyse: '{}' (confiance: {:.2}, tokens: {})",
+                            "[DIRECT_SEARCH] ✅ Analyse IA réussie: '{}' (confiance: {}, tokens: {})",
                             &analysis.description.chars().take(50).collect::<String>(),
                             analysis.confiance,
                             ai_cost.total_tokens
                         ));
-                        log_info(&format!(
-                            "[DIRECT_SEARCH] 🎯 Queries générées:\n  - Exact: '{}'\n  - Broad: '{}'\n  - Semantic: '{}'",
-                            &analysis.search_query_exact.chars().take(40).collect::<String>(),
-                            &analysis.search_query_broad.chars().take(60).collect::<String>(),
-                            &analysis.search_query_semantic.chars().take(80).collect::<String>()
-                        ));
                         
-                        // ✅ FACTURATION ANNULÉE - Recherche par image GRATUITE
-                        let billing_info = serde_json::json!({
-                            "charged": false,
-                            "amount": 0,
-                            "message": "Recherche par image gratuite",
-                            "ai_cost_usd": ai_cost.cost_usd,
-                            "ai_tokens": ai_cost.total_tokens,
-                            "results_found": results_count
-                        });
+                        // 3️⃣ Rechercher avec l'analyse IA + GPS
+                        let gps_zone = input.gps_mobile.as_deref();
+                        let search_radius_km = Some(50);
                         
-                        log_info(&format!(
-                            "[DIRECT_SEARCH] 🆓 Recherche par image GRATUITE pour user {} ({} résultats)",
-                            user.id, results_count
-                        ));
+                        // Extraire lat/lng si GPS disponible
+                        let (gps_lat, gps_lng) = if let Some(gps_str) = gps_zone {
+                            let coords: Vec<&str> = gps_str.split(',').collect();
+                            if coords.len() == 2 {
+                                (
+                                    coords[0].trim().parse::<f64>().ok(),
+                                    coords[1].trim().parse::<f64>().ok()
+                                )
+                            } else {
+                                (None, None)
+                            }
+                        } else {
+                            (None, None)
+                        };
                         
-                        // Construire la réponse avec résultats hybrides
-                        let results_json: Vec<Value> = hybrid_results.iter().map(|result| {
-                            json!({
-                                "service_id": result.service_id,
-                                "data": result.service_data,
-                                "product_description": result.product_description,
-                                "product_tags": result.product_tags,
-                                "product_marque": result.product_marque,
-                                "match_score": result.match_score,
-                                "distance_km": result.distance_km,
-                                "media_id": result.media_id,
-                                "analysis_id": result.analysis_id,
-                            })
-                        }).collect();
+                        // Utiliser sqlx::query() pour compatibilité offline
+                        let search_results = sqlx::query(
+                            r#"SELECT * FROM search_images_by_ai_analysis(
+                                $1::TEXT,
+                                $2::TEXT[],
+                                $3::TEXT,
+                                $4::TEXT,
+                                $5::TEXT,
+                                $6::FLOAT,
+                                $7::FLOAT,
+                                $8::INTEGER,
+                                $9::INTEGER
+                            )"#
+                        )
+                        .bind(&analysis.search_query)
+                        .bind(&analysis.tags)
+                        .bind(analysis.category_detected.as_str())
+                        .bind(analysis.marque.as_deref())
+                        .bind(analysis.couleurs.first().map(|s| s.as_str()))
+                        .bind(gps_lat)
+                        .bind(gps_lng)
+                        .bind(search_radius_km.unwrap_or(50) as i32)
+                        .bind(20i32)
+                        .fetch_all(&_state.pg)
+                        .await;
                         
-                        let response = serde_json::json!({
-                            "status": "success",
-                            "intention": "recherche_besoin",
-                            "resultats": results_json,
-                            "tokens_consumed": ai_cost.total_tokens,
-                            "message": format!("Recherche hybride par image: {} résultats", results_count),
-                            "search_method": "hybrid_image_ai",
-                            "image_analysis": {
-                                "description": analysis.description,
-                                "tags": analysis.tags,
-                                "category": analysis.category_detected,
-                                "marque": analysis.marque,
-                                "couleurs": analysis.couleurs,
-                                "confiance": analysis.confiance,
-                                "search_query_exact": analysis.search_query_exact,
-                                "search_query_broad": analysis.search_query_broad,
-                                "search_query_semantic": analysis.search_query_semantic,
-                                "model_used": ai_cost.model_used
+                        match search_results {
+                            Ok(rows) => {
+                                use sqlx::Row;
+                                
+                                let results_count = rows.len();
+                                log_info(&format!("[DIRECT_SEARCH] Trouvé {} résultats", results_count));
+                                
+                                // 4️⃣ FACTURATION CONDITIONNELLE
+                                let mut billing_info = serde_json::json!({
+                                    "charged": false,
+                                    "amount": 0,
+                                    "currency": user_devise,
+                                    "ai_cost_usd": ai_cost.cost_usd,
+                                    "ai_tokens": ai_cost.total_tokens,
+                                    "results_found": results_count
+                                });
+                                
+                                // Facturer UNIQUEMENT si résultats trouvés
+                                if results_count > 0 {
+                                    let user_cost = IntelligentImageAnalysisService::calculate_user_cost(
+                                        &ai_cost,
+                                        &user_devise
+                                    );
+                                    
+                                    // Débiter le solde (sqlx::query pour offline)
+                                    let debit_result = sqlx::query(
+                                        "UPDATE users SET credits = credits - $1 WHERE id = $2 AND credits >= $1 RETURNING credits"
+                                    )
+                                    .bind(user_cost)
+                                    .bind(user.id)
+                                    .fetch_optional(&_state.pg)
+                                    .await;
+                                    
+                                    match debit_result {
+                                        Ok(Some(updated_row)) => {
+                                            let new_balance: i64 = updated_row.try_get("credits").unwrap_or(0);
+                                            billing_info["charged"] = json!(true);
+                                            billing_info["amount"] = json!(user_cost);
+                                            billing_info["new_balance"] = json!(new_balance);
+                                            billing_info["message"] = json!(format!(
+                                                "{} résultats trouvés - {} {} débités",
+                                                results_count, user_cost, user_devise
+                                            ));
+                                            
+                                            log_info(&format!(
+                                                "[DIRECT_SEARCH] User {} facturé {} {} ({} résultats)",
+                                                user.id, user_cost, user_devise, results_count
+                                            ));
+                                        },
+                                        Ok(None) => {
+                                            // Solde insuffisant au moment du débit
+                                            billing_info["error"] = json!("Solde insuffisant au moment du débit");
+                                        },
+                                        Err(e) => {
+                                            log_error(&format!("[DIRECT_SEARCH] Erreur débit: {}", e));
+                                            billing_info["error"] = json!(format!("Erreur débit: {}", e));
+                                        }
+                                    }
+                                } else {
+                                    billing_info["message"] = json!("Aucun résultat - Recherche gratuite");
+                                    log_info(&format!("[DIRECT_SEARCH] User {} NON facturé (0 résultat)", user.id));
+                                }
+                                
+                                // 5️⃣ Construire la réponse (extraire manuellement les champs)
+                                let results_json: Vec<Value> = rows.iter().map(|row| {
+                                    json!({
+                                        "service_id": row.try_get::<i32, _>("service_id").ok(),
+                                        "data": row.try_get::<Value, _>("service_data").ok(),
+                                        "product_name": row.try_get::<String, _>("product_name").ok(),
+                                        "match_score": row.try_get::<f64, _>("match_score").ok(),
+                                        "distance_km": row.try_get::<Option<f64>, _>("distance_km").ok().flatten(),
+                                        "media_path": row.try_get::<String, _>("media_path").ok(),
+                                        "ai_description": row.try_get::<Option<String>, _>("ai_description").ok().flatten(),
+                                    })
+                                }).collect();
+                                
+                                let response = serde_json::json!({
+                                    "status": "success",
+                                    "intention": "recherche_besoin",
+                                    "resultats": results_json,
+                                    "tokens_consumed": ai_cost.total_tokens,
+                                    "message": format!("Recherche par image: {} résultats", results_count),
+                                    "search_method": "image_ai",
+                                    "image_analysis": {
+                                        "description": analysis.description,
+                                        "tags": analysis.tags,
+                                        "category": analysis.category_detected,
+                                        "marque": analysis.marque,
+                                        "couleurs": analysis.couleurs,
+                                        "confiance": analysis.confiance,
+                                        "search_query": analysis.search_query,
+                                        "model_used": ai_cost.model_used
+                                    },
+                                    "billing": billing_info,
+                                    "gps_filtered": gps_zone.is_some(),
+                                    "search_radius_km": search_radius_km
+                                });
+                                
+                                return Ok(Json(response));
                             },
-                            "billing": billing_info,
-                            "gps_filtered": gps_lat.is_some() && gps_lng.is_some(),
-                            "search_radius_km": 50
-                        });
-                        
-                        return Ok(Json(response));
+                            Err(e) => {
+                                log_error(&format!("[DIRECT_SEARCH] Erreur recherche SQL: {}", e));
+                                // Continuer vers recherche textuelle en fallback
+                            }
+                        }
                     },
                     Err(e) => {
                         log_error(&format!("[DIRECT_SEARCH] Erreur analyse IA: {:?}", e));
                         
-                        // ✅ CORRECTION: Au lieu de retourner erreur, faire fallback vers recherche générique
+                        // Retourner erreur si image sans texte
                         if !has_text {
-                            log_warn("[DIRECT_SEARCH] ⚠️ Analyse IA échouée sans texte - Fallback vers recherche générique");
-                            
-                            // Recherche générique avec tous les produits récents
-                            let fallback_result = sqlx::query_as::<_, (i32, Value, Option<String>)>(
-                                r#"
-                                SELECT id, data, gps
-                                FROM services
-                                WHERE is_active = true
-                                AND data IS NOT NULL
-                                ORDER BY created_at DESC
-                                LIMIT 20
-                                "#
-                            )
-                            .fetch_all(&_state.pg)
-                            .await
-                            .map_err(|e| AppError::Internal(format!("Erreur recherche fallback: {}", e)))?;
-                            
-                            let fallback_json: Vec<Value> = fallback_result.iter().map(|(id, data, gps)| {
-                                json!({
-                                    "service_id": id,
-                                    "data": data,
-                                    "gps": gps,
-                                    "score": 0.5,
-                                    "match_reason": "Fallback - recherche générique"
-                                })
-                            }).collect();
-                            
-                            let response = json!({
-                                "status": "success",
-                                "intention": "recherche_besoin",
-                                "resultats": fallback_json,
-                                "tokens_consumed": 0,
-                                "message": format!("Recherche générique (analyse image échouée): {} résultats", fallback_json.len()),
-                                "search_method": "fallback_generic",
-                                "image_analysis_error": format!("{}", e)
+                            let response = serde_json::json!({
+                                "status": "error",
+                                "message": format!("Erreur analyse d'image: {}", e),
+                                "error": "image_analysis_failed"
                             });
-                            
                             return Ok(Json(response));
                         }
                         // Sinon, continuer vers recherche textuelle
                     }
                 }
+            },
+            Err(e) => {
+                log_error(&format!("[DIRECT_SEARCH] Erreur vérification solde: {}", e));
+            }
+        }
     }
     
     // ✅ Recherche textuelle normale ou fallback
@@ -515,61 +457,20 @@ async fn handle_direct_search(
     log_info(&format!("[DIRECT_SEARCH] Paramètres GPS extraits: zone={:?}, rayon={:?}km", 
         gps_zone, search_radius_km));
     
-    // ✅ OPTIMISÉ 2025-12-18: Cache pour recherche textuelle (TTL: 2 minutes)
-    let cache_key = format!(
-        "direct_search:{}:{}:{}",
-        user.id,
-        user_text.trim(),
-        gps_zone.unwrap_or("")
-    );
-    
-    // Vérifier le cache
-    if let Ok(cached) = _state.cache_service.get::<serde_json::Value>(&cache_key).await {
-        if let Some(cached_data) = cached {
-            log_info("[DIRECT_SEARCH] ✅ Résultats depuis cache");
-            return Ok(Json(cached_data));
-        }
-    }
-    
-    // ✅ OPTIMISÉ 2025-12-19: Timeout augmenté à 25 secondes pour permettre les requêtes SQL complexes
-    // Les requêtes avec LIKE '%...%' et tsvector peuvent prendre 3-6 secondes, et avec les problèmes de connexion DB,
-    // il faut plus de marge pour éviter les timeouts prématurés
-    let search_future = rechercher_besoin_direct(
+    // Recherche directe sans détection d'intention, avec filtrage GPS
+    let (mut result, tokens_consumed) = rechercher_besoin_direct(
         &_state.pg,
         Some(_state.cache_service.clone()),
         _state.geographic_matching.clone(),
         Some(_state.search_metrics.clone()),
         Some(_state.scalability.clone()),
-        Some(_state.media_storage.clone()), // ✅ NOUVEAU: Passer media_storage pour URLs CDN
-        Some(user.id),
+        Some(_state.media_storage.clone()),
+        Some(user.id), 
         &user_text,
         gps_zone,
         search_radius_km,
-        None,
-    );
-    
-    let (mut result, tokens_consumed) = match tokio::time::timeout(
-        std::time::Duration::from_secs(25), // ✅ AUGMENTÉ: De 10s à 25s pour permettre les requêtes SQL complexes
-        search_future
-    ).await {
-        Ok(Ok(res)) => res,
-        Ok(Err(e)) => {
-            log_error(&format!("[DIRECT_SEARCH] Erreur recherche: {}", e));
-            return Err(AppError::Internal(format!("Erreur recherche: {}", e)).into());
-        }
-        Err(_) => {
-            log_error("[DIRECT_SEARCH] ⏱️ Timeout recherche (25s) - Retour résultats partiels");
-            // Retourner résultats partiels depuis cache ou vide
-            return Ok(Json(serde_json::json!({
-                "status": "partial",
-                "intention": "recherche_besoin",
-                "resultats": [],
-                "tokens_consumed": 0,
-                "message": "Recherche timeout - Veuillez réessayer avec des termes plus spécifiques",
-                "search_method": "timeout_fallback"
-            })));
-        }
-    };
+        None, // Pas de specialized_type pour cette recherche
+    ).await?;
     
     // ✅ ENRICHIR avec données de publicité et booster scores
     if let Some(resultats) = result.get_mut("resultats").and_then(|r| r.as_array_mut()) {
@@ -585,15 +486,12 @@ async fn handle_direct_search(
             }
         });
 
-        let pub_service =
-            crate::services::publicite_search_service::PubliciteSearchService::new(Some(
-                _state.cache_service.clone(),
-            ));
-
-        if let Err(e) = pub_service
-            .enrich_search_results_with_promotion(&_state.pg, resultats, user_coords)
-            .await
-        {
+        let publicite_service = crate::services::publicite_search_service::PubliciteSearchService::new(None);
+        if let Err(e) = publicite_service.enrich_search_results_with_promotion(
+            &_state.pg,
+            resultats,
+            user_coords
+        ).await {
             log_error(&format!("[DIRECT_SEARCH] Erreur enrichissement promotion: {}", e));
             // Continuer même si erreur
         }
@@ -617,13 +515,6 @@ async fn handle_direct_search(
         "gps_filtered": gps_zone.is_some(),
         "search_radius_km": search_radius_km
     });
-    
-    // ✅ OPTIMISÉ 2025-12-18: Mettre en cache les résultats (TTL: 2 minutes)
-    let _ = _state.cache_service.set_with_ttl(
-        &cache_key,
-        &response,
-        std::time::Duration::from_secs(120)
-    ).await;
     
     Ok(Json(response))
 }
@@ -783,25 +674,17 @@ async fn handle_brouillon_service(
 async fn handle_creer_service(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
-    Json(payload): Json<Value>,
+    Json(data): Json<Value>,
 ) -> Result<axum::response::Response, axum::http::StatusCode> {
     let user_id = user.id;
     
     // ?? LOGS DE D?BOGAGE
     eprintln!("[DEBUG][HANDLE_CREER_SERVICE] ?? REQU?TE RE?UE SUR /api/services/create");
     eprintln!("[DEBUG][HANDLE_CREER_SERVICE] User ID: {}", user_id);
-    eprintln!("[DEBUG][HANDLE_CREER_SERVICE] Payload re?u: {}", serde_json::to_string(&payload).unwrap_or_default());
+    eprintln!("[DEBUG][HANDLE_CREER_SERVICE] Donn?es re?ues: {}", serde_json::to_string(&data).unwrap_or_default());
     info!("[handle_creer_service] ?? ==== Requ?te re?ue sur /api/services/create ====");
     info!("[handle_creer_service] User ID: {}", user_id);
-    info!("[handle_creer_service] Payload re?u: {}", serde_json::to_string(&payload).unwrap_or_default());
-    
-    // ?? CORRECTION : Extraire le champ 'data' du payload pour ?viter le double embo?tement
-    // Le frontend envoie { user_id, data: {...} }
-    // On extrait data pour le passer au contr?leur
-    let data = payload.get("data").cloned().unwrap_or(payload.clone());
-    
-    eprintln!("[DEBUG][HANDLE_CREER_SERVICE] Donn?es extraites: {}", serde_json::to_string(&data).unwrap_or_default());
-    info!("[handle_creer_service] Donn?es extraites: {}", serde_json::to_string(&data).unwrap_or_default());
+    info!("[handle_creer_service] Donn?es re?ues: {}", serde_json::to_string(&data).unwrap_or_default());
     
     // Cr?er la structure attendue par creer_service
     let service_request = crate::controllers::service_controller::NewServiceRequest {
@@ -858,45 +741,13 @@ async fn handle_creation_service_direct(
     log::info!("[handle_creation_service_direct] Fichiers détectés: images={}, audios={}, vidéos={}, docs={}, excels={}", 
         has_images, has_audios, has_videos, has_docs, has_excels);
     
-    // ✅ NOUVEAU : Validation de taille des fichiers avant traitement
-    const MAX_IMAGE_SIZE: usize = 10 * 1024 * 1024; // 10 MB par image
-    const MAX_TOTAL_PAYLOAD_SIZE: usize = 150 * 1024 * 1024; // 150 MB total (laisser marge pour le reste)
-    
-    // Vérifier la taille des images
+    // ?? NOUVEAU : Log détaillé des images pour debugging
     if has_images {
         if let Some(images) = &input.base64_image {
             log::info!("[handle_creation_service_direct] Images détectées: {} image(s)", images.len());
-            let mut total_images_size = 0;
             for (i, img) in images.iter().enumerate() {
-                let img_size = img.len();
-                total_images_size += img_size;
-                log::info!("[handle_creation_service_direct] Image {}: {} bytes ({:.2} MB)", 
-                    i + 1, img_size, img_size as f64 / 1_000_000.0);
-                
-                if img_size > MAX_IMAGE_SIZE {
-                    let error_msg = format!(
-                        "Image {} trop volumineuse: {:.2} MB (max: {} MB). Veuillez compresser ou réduire la taille de l'image.",
-                        i + 1,
-                        img_size as f64 / 1_000_000.0,
-                        MAX_IMAGE_SIZE / 1024 / 1024
-                    );
-                    log::warn!("[handle_creation_service_direct] {}", error_msg);
-                    return Err(AppError::BadRequest(error_msg));
-                }
+                log::info!("[handle_creation_service_direct] Image {}: {} bytes", i + 1, img.len());
             }
-            
-            if total_images_size > MAX_TOTAL_PAYLOAD_SIZE {
-                let error_msg = format!(
-                    "Taille totale des images trop importante: {:.2} MB (max: {} MB). Veuillez réduire le nombre ou la taille des images.",
-                    total_images_size as f64 / 1_000_000.0,
-                    MAX_TOTAL_PAYLOAD_SIZE / 1024 / 1024
-                );
-                log::warn!("[handle_creation_service_direct] {}", error_msg);
-                return Err(AppError::BadRequest(error_msg));
-            }
-            
-            log::info!("[handle_creation_service_direct] ✅ Taille totale des images: {:.2} MB", 
-                total_images_size as f64 / 1_000_000.0);
         }
     }
     
@@ -959,8 +810,7 @@ Format JSON attendu :
     
     // Appeler l'IA avec le prompt de création de service
     // ?? CORRECTION : Utiliser predict_multimodal pour analyser les images
-    // ✅ CORRECTION CRITIQUE : L'ordre de retour est (model_name, response, tokens)
-    let (model_name, response, tokens_consumed) = if has_images {
+    let (response, model_name, tokens_consumed) = if has_images {
         log::info!("[handle_creation_service_direct] Appel multimodal avec {} image(s)", 
             input.base64_image.as_ref().map_or(0, |v| v.len()));
         app_ia.predict_multimodal(&prompt, input.base64_image.clone()).await?
@@ -989,45 +839,12 @@ Format JSON attendu :
     log::info!("[handle_creation_service_direct] Réponse brute: {}", response);
     log::info!("[handle_creation_service_direct] JSON extrait: {}", json_response);
     
-    // Parser la réponse JSON - Gérer le cas où la réponse est juste une string (nom de modèle)
-    let data: Value = if json_response.trim().starts_with('{') || json_response.trim().starts_with('[') {
-        // C'est un JSON valide, parser normalement
-        serde_json::from_str(json_response).map_err(|e| {
-            log::error!("[handle_creation_service_direct] Erreur parsing JSON: {}", e);
-            log::error!("[handle_creation_service_direct] JSON reçu: {}", json_response);
-            format!("Erreur parsing JSON: {}", e)
-        })?
-    } else {
-        // C'est probablement juste une string (ex: nom de modèle), créer un JSON wrapper
-        log::warn!("[handle_creation_service_direct] Réponse n'est pas un JSON valide, reçu: {}", json_response);
-        // Retourner un JSON par défaut avec la réponse comme message d'erreur
-        json!({
-            "error": "Réponse IA invalide",
-            "raw_response": json_response,
-            "data": {
-                "titre_service": {
-                    "type_donnee": "string",
-                    "valeur": "",
-                    "origine_champs": "ia"
-                },
-                "category": {
-                    "type_donnee": "string",
-                    "valeur": "",
-                    "origine_champs": "ia"
-                },
-                "description": {
-                    "type_donnee": "string",
-                    "valeur": format!("Réponse IA invalide: {}", json_response),
-                    "origine_champs": "ia"
-                },
-                "is_tarissable": {
-                    "type_donnee": "boolean",
-                    "valeur": false,
-                    "origine_champs": "ia"
-                }
-            }
-        })
-    };
+    // Parser la réponse JSON
+    let data: Value = serde_json::from_str(json_response).map_err(|e| {
+        log::error!("[handle_creation_service_direct] Erreur parsing JSON: {}", e);
+        log::error!("[handle_creation_service_direct] JSON reçu: {}", json_response);
+        format!("Erreur parsing JSON: {}", e)
+    })?;
     
     log::info!("[handle_creation_service_direct] JSON parsé avec succès: {}", data);
     
@@ -1112,13 +929,12 @@ async fn handle_optimization_metrics(
     info!("[optimization_metrics] Consultation des m?triques pour utilisateur {}", user_id);
     
     // R?cup?rer le solde actuel de l'utilisateur
-    let solde_result = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
-        .bind(user_id)
+    let solde_result = sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user_id)
         .fetch_one(&state.pg)
         .await;
     
     let solde_actuel = match solde_result {
-        Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
+        Ok(user_data) => user_data.tokens_balance,
         Err(_) => 0,
     };
     

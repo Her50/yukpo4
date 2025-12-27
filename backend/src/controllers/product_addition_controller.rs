@@ -9,7 +9,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
 use std::sync::Arc;
-use crate::services::creer_service::{save_autocomplete_combination, clean_media_recursive_final};
+use std::path::PathBuf;
+use chrono::Utc;
+use crate::services::creer_service::{
+    save_autocomplete_combination, 
+    clean_media_recursive_final,
+    process_single_image_for_product,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct AddProductRequest {
@@ -147,9 +153,46 @@ pub async fn add_product_to_service(
     log_info(&format!("[add_product_to_service] ✅ Solde débité: {} FCFA (ancien: {}, nouveau: {})", 
         cout_ajout, current_balance, new_balance));
     
-    // ✅ CRITIQUE 2025-12-27: Nettoyer les médias base64 AVANT l'UPDATE (comme dans creer_service)
+    // ✅ CRITIQUE 2025-12-27: Extraire et sauvegarder les médias AVANT de nettoyer le JSON
     // Les médias doivent être uploadés vers Wasabi et stockés dans la table media, PAS dans services.data
     // Sinon le JSONB devient énorme, causant des UPDATE lents (7-12s) et des timeouts
+    
+    // Extraire les images du produit AVANT nettoyage
+    let product_data_original = request.product_data.clone();
+    let mut images_to_process: Vec<String> = Vec::new();
+    
+    // Chercher les images dans différents champs (comme dans creer_service)
+    if let Some(prod_obj) = product_data_original.as_object() {
+        if let Some(image_urls) = prod_obj.get("imageUrls").and_then(|v| v.as_array()) {
+            images_to_process.extend(
+                image_urls.iter().filter_map(|v| v.as_str().map(|s| s.to_string()))
+            );
+        }
+        if let Some(product_images) = prod_obj.get("images").and_then(|v| v.as_array()) {
+            images_to_process.extend(
+                product_images.iter().filter_map(|v| v.as_str().map(|s| s.to_string()))
+            );
+        }
+        if let Some(base64_image) = prod_obj.get("base64_image") {
+            if let Some(base64_array) = base64_image.as_array() {
+                images_to_process.extend(
+                    base64_array.iter().filter_map(|v| v.as_str().map(|s| s.to_string()))
+                );
+            } else if let Some(base64_str) = base64_image.as_str() {
+                images_to_process.push(base64_str.to_string());
+            }
+        }
+        if let Some(images_base64) = prod_obj.get("images_base64").and_then(|v| v.as_array()) {
+            images_to_process.extend(
+                images_base64.iter().filter_map(|v| v.as_str().map(|s| s.to_string()))
+            );
+        }
+        if let Some(image_base64) = prod_obj.get("image_base64").and_then(|v| v.as_str()) {
+            images_to_process.push(image_base64.to_string());
+        }
+    }
+    
+    // ✅ Nettoyer les médias du JSON (seront sauvegardés séparément)
     let mut product_data_cleaned = request.product_data.clone();
     let mut removed_count = 0;
     clean_media_recursive_final(&mut product_data_cleaned, &mut removed_count);
@@ -184,7 +227,7 @@ pub async fn add_product_to_service(
                 .await
             })
         },
-        5, // ✅ AUGMENTÉ 2025-12-20: 5 tentatives max pour plus de robustesse avec Render DB instable
+        7, // ✅ AUGMENTÉ 2025-12-27: 7 tentatives max pour gérer les erreurs TLS de Render DB
     )
     .await;
     
@@ -193,6 +236,79 @@ pub async fn add_product_to_service(
         Ok(index) => {
             let idx = index as usize;
             log_info(&format!("[add_product_to_service] ✅ Produit ajouté au service {} (index: {})", service_id, idx));
+            
+            // ✅ CRITIQUE 2025-12-27: Traiter et sauvegarder les médias du produit
+            if !images_to_process.is_empty() {
+                log_info(&format!("[add_product_to_service] 🖼️ Traitement de {} image(s) pour le produit (index: {})", images_to_process.len(), idx));
+                
+                // Obtenir le storage_root et product_id
+                let storage_root = std::env::var("UPLOAD_STORAGE_PATH")
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|_| PathBuf::from("uploads"));
+                
+                let product_id = product_data_cleaned
+                    .as_object()
+                    .and_then(|obj| obj.get("id"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| format!("prod_{}", idx));
+                
+                // Traiter chaque image
+                for (image_index, image_data) in images_to_process.iter().enumerate() {
+                    if image_data.is_empty() {
+                        continue;
+                    }
+                    
+                    match process_single_image_for_product(
+                        &storage_root,
+                        service_id,
+                        &product_id,
+                        idx,
+                        image_index,
+                        image_data,
+                        state.media_storage.clone(),
+                    ).await {
+                        Ok(Some(processed)) => {
+                            // Insérer dans la table media
+                            if let Err(e) = sqlx::query(
+                                r#"
+                                INSERT INTO media (
+                                    service_id, product_id, product_index, type, path,
+                                    is_main_image, display_order, uploaded_at,
+                                    image_signature, image_hash, image_metadata
+                                )
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                                "#
+                            )
+                            .bind(service_id)
+                            .bind(&product_id)
+                            .bind(idx as i32)
+                            .bind("image")
+                            .bind(&processed.file_path)
+                            .bind(image_index == 0)
+                            .bind(image_index as i32)
+                            .bind(Utc::now().naive_utc())
+                            .bind(&processed.image_signature)
+                            .bind(&processed.image_hash)
+                            .bind(&processed.image_metadata)
+                            .execute(&pool)
+                            .await {
+                                log_error(&format!("[add_product_to_service] ❌ Erreur insertion media produit {} (index {}): {}", product_id, idx, e));
+                            } else {
+                                log_info(&format!("[add_product_to_service] ✅ Image {} sauvegardée pour produit {} (index: {})", image_index, product_id, idx));
+                            }
+                        }
+                        Ok(None) => {
+                            log_info(&format!("[add_product_to_service] ⚠️ Image {} ignorée pour produit {} (format non supporté)", image_index, product_id));
+                        }
+                        Err(e) => {
+                            log_error(&format!("[add_product_to_service] ❌ Erreur traitement image {} pour produit {}: {}", image_index, product_id, e));
+                            // Ne pas faire échouer la requête si une image échoue
+                        }
+                    }
+                }
+            }
+            
             idx
         },
         Err(e) => {
@@ -295,7 +411,7 @@ pub async fn add_product_to_service(
                             .await
                         })
                     },
-                    5,
+                    7, // ✅ AUGMENTÉ 2025-12-27: 7 tentatives max pour gérer les erreurs TLS
                 )
                 .await;
                 

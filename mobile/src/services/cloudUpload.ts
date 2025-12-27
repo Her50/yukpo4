@@ -5,6 +5,7 @@
 
 import * as FileSystem from 'expo-file-system';
 import { API_BASE_URL } from '../config/api.config';
+import SafeStorage from '../utils/safeStorage';
 
 // ✅ CORRIGÉ: Utilise la configuration centralisée depuis .env
 
@@ -119,12 +120,29 @@ export const uploadToCloud = async (
         // Upload vers l'API
         const uploadUrl = `${API_BASE_URL}/api/upload`;
 
+        // ✅ CORRIGÉ 2025-12-27: Récupérer le token d'authentification
+        const token = await SafeStorage.getItem('auth_token');
+        const isDevMode = await SafeStorage.getItem('__DEV_FAKE_USER__') === 'true';
+
+        // Préparer les headers
+        const headers: any = {};
+        
+        // Ajouter le token d'autorisation si disponible
+        if (token) {
+            headers.Authorization = `Bearer ${token}`;
+        } else if (isDevMode) {
+            // En mode dev, utiliser un token JWT de développement
+            console.warn('[CloudUpload] 🧪 Mode développement : aucun token trouvé');
+        } else {
+            console.warn('[CloudUpload] ⚠️ Aucun token d\'authentification trouvé');
+        }
+
+        // Ne pas définir Content-Type pour FormData, le navigateur le fera avec boundary
+
         const response = await fetch(uploadUrl, {
             method: 'POST',
             body: formData,
-            headers: {
-                // Ne pas définir Content-Type, le navigateur le fera avec boundary
-            }
+            headers
         });
 
         if (!response.ok) {

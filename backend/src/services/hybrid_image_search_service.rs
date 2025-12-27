@@ -143,9 +143,9 @@ impl HybridImageSearchService {
         .bind(&analysis.marque)
         .bind(&analysis.couleurs)
         .bind(caracteristiques_json)
-        .bind(&analysis.search_query_exact)
-        .bind(&analysis.search_query_broad)
-        .bind(&analysis.search_query_semantic)
+        .bind(&analysis.search_query)
+        .bind(&analysis.search_query)
+        .bind(&analysis.search_query)
         .bind(analysis.confiance)
         .bind(&cost.model_used)
         .bind(cost.total_tokens as i32)
@@ -459,9 +459,6 @@ impl HybridImageSearchService {
             caracteristiques_cles: std::collections::HashMap::new(),
             confiance: 0.95,
             search_query: search_query_exact.clone(),
-            search_query_exact: search_query_exact.clone(),
-            search_query_broad: search_query_broad.clone(),
-            search_query_semantic: search_query_semantic.clone(),
         };
 
         // Calculer le coût
@@ -585,11 +582,9 @@ impl HybridImageSearchService {
     ) -> AppResult<Vec<HybridSearchResult>> {
         let couleur_principale = analysis.couleurs.first().map(|s| s.as_str());
         
-        // ✅ CORRECTION: Utiliser search_query_semantic OU search_query_broad pour meilleur matching
-        let search_query = if !analysis.search_query_semantic.is_empty() {
-            &analysis.search_query_semantic
-        } else if !analysis.search_query_broad.is_empty() {
-            &analysis.search_query_broad
+        // ✅ CORRECTION: Utiliser search_query pour meilleur matching
+        let search_query = if !analysis.search_query.is_empty() {
+            &analysis.search_query
         } else {
             &analysis.description
         };
@@ -852,8 +847,8 @@ impl HybridImageSearchService {
             let couleurs: Vec<String> = row.get("couleurs");
             let confiance: Option<f64> = row.get("confiance");
             let search_query_exact: Option<String> = row.get("search_query_exact");
-            let search_query_broad: Option<String> = row.get("search_query_broad");
-            let search_query_semantic: Option<String> = row.get("search_query_semantic");
+            let _search_query_broad: Option<String> = row.get("search_query_broad");
+            let _search_query_semantic: Option<String> = row.get("search_query_semantic");
 
             history.push(ImageAnalysis {
                 description,
@@ -864,9 +859,6 @@ impl HybridImageSearchService {
                 caracteristiques_cles,
                 confiance: confiance.unwrap_or(0.0) as f32,
                 search_query: search_query_exact.clone().unwrap_or_default(),
-                search_query_exact: search_query_exact.unwrap_or_default(),
-                search_query_broad: search_query_broad.unwrap_or_default(),
-                search_query_semantic: search_query_semantic.unwrap_or_default(),
             });
         }
 

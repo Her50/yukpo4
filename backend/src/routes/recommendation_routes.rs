@@ -12,6 +12,7 @@ pub fn recommendation_routes() -> Router<Arc<AppState>> {
     Router::new()
         .route("/produits/recommandes", get(get_recommended_products))
         .route("/content/mixed", get(get_mixed_content))
+        .route("/api/content/mixed", get(get_mixed_content)) // ✅ Alias pour compatibilité mobile
         .route("/visibility/track", post(track_visibility))
         .route("/api/visibility/track", post(track_visibility)) // ✅ Alias pour compatibilité mobile
         .route("/visibility/stats", get(get_fairness_stats))

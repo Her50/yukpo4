@@ -18,10 +18,6 @@ pub struct ImageAnalysis {
     pub caracteristiques_cles: HashMap<String, String>,
     pub confiance: f32,
     pub search_query: String,
-    // ✅ NOUVEAU: 3 variantes de recherche pour matching optimal
-    pub search_query_exact: String,
-    pub search_query_broad: String,
-    pub search_query_semantic: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,127 +35,70 @@ impl IntelligentImageAnalysisService {
     /// Construire le prompt d'analyse adapté à la catégorie de produit
     fn build_analysis_prompt(category: Option<&str>, is_search_mode: bool) -> String {
         let mode_instruction = if is_search_mode {
-            r#"L'utilisateur CHERCHE ce produit. 
-            
-OBJECTIF: Extraire le MAXIMUM de détails pour un matching ULTRA-PRÉCIS.
-
-ANALYSE CRITIQUE REQUISE:
-1. Identifie TOUS les détails visibles (marque, modèle, référence, série)
-2. Extrais le TEXTE visible (étiquettes, prix, codes, numéros)
-3. Décris l'ÉTAT apparent (neuf, bon état, usagé, vintage)
-4. Note les DÉFAUTS ou particularités visibles
-5. Identifie le CONTEXTE (environnement, échelle, usage)
-
-GÉNÈRE 3 VARIANTES DE RECHERCHE:
-- search_query_exact: Mots-clés ULTRA-PRÉCIS (marque + modèle + couleur + caractéristique unique)
-- search_query_broad: Recherche LARGE avec synonymes et variantes (ex: "baskets" → "chaussures sport running sneakers")
-- search_query_semantic: Description NATURELLE complète pour matching sémantique (phrase descriptive détaillée)"#
+            "L'utilisateur CHERCHE ce produit. Extrais les caractéristiques pour MATCHER avec des produits similaires en base."
         } else {
-            r#"Le prestataire CATALOGUE ce produit pour vente/location.
-
-OBJECTIF: Créer une fiche produit COMPLÈTE et OPTIMISÉE pour recherche future.
-
-EXTRACTION COMPLÈTE REQUISE:
-1. Description MARKETING détaillée et attractive
-2. TOUS les mots-clés pertinents (synonymes inclus)
-3. Caractéristiques TECHNIQUES visibles
-4. Points de VENTE uniques (USP)
-5. Termes de recherche POPULAIRES pour ce type de produit
-
-GÉNÈRE 3 VARIANTES:
-- search_query_exact: Termes précis du produit
-- search_query_broad: Tous les synonymes et variantes possibles
-- search_query_semantic: Description complète vendeuse"#
+            "Le prestataire CATALOGUE ce produit. Extrais les caractéristiques pour une recherche future optimale."
         };
 
         let category_instruction = match category {
-            Some("vetement") => {
-                r#"
+            Some("vetement") => r#"
 TYPE: Vêtement
-EXTRAIRE: type exact (veste/t-shirt/pantalon/chemise/pull/robe), marque visible, couleur(s), taille si visible, style (sport/casual/formel), matière apparente, état, motifs/logos distinctifs"#
-            }
+EXTRAIRE: type exact (veste/t-shirt/pantalon/chemise/pull/robe), marque visible, couleur(s), taille si visible, style (sport/casual/formel), matière apparente, état, motifs/logos distinctifs"#,
 
-            Some("chaussure") => {
-                r#"
+            Some("chaussure") => r#"
 TYPE: Chaussure
-EXTRAIRE: type (baskets/sandales/bottes/mocassins), marque, couleur(s), pointure si visible, style, matière, état, semelle visible"#
-            }
+EXTRAIRE: type (baskets/sandales/bottes/mocassins), marque, couleur(s), pointure si visible, style, matière, état, semelle visible"#,
 
-            Some("automobile") => {
-                r#"
+            Some("automobile") => r#"
 TYPE: Véhicule
-EXTRAIRE: marque, modèle, couleur carrosserie, année approximative, type (berline/SUV/pick-up/moto), état apparent, immatriculation si lisible, options visibles (jantes/spoiler)"#
-            }
+EXTRAIRE: marque, modèle, couleur carrosserie, année approximative, type (berline/SUV/pick-up/moto), état apparent, immatriculation si lisible, options visibles (jantes/spoiler)"#,
 
-            Some("immobilier_batiment") | Some("immobilier_terrain") => {
-                r#"
+            Some("immobilier_batiment") | Some("immobilier_terrain") => r#"
 TYPE: Immobilier
-EXTRAIRE: type (appartement/villa/studio/terrain), architecture, nombre de pièces estimé, état (neuf/rénové/ancien), environnement (urbain/rural), éléments distinctifs"#
-            }
+EXTRAIRE: type (appartement/villa/studio/terrain), architecture, nombre de pièces estimé, état (neuf/rénové/ancien), environnement (urbain/rural), éléments distinctifs"#,
 
-            Some("electromenager") => {
-                r#"
+            Some("electromenager") => r#"
 TYPE: Électroménager
-EXTRAIRE: type appareil (frigo/cuisinière/micro-ondes/machine), marque, modèle, couleur, état, capacité visible, options/fonctionnalités visibles"#
-            }
+EXTRAIRE: type appareil (frigo/cuisinière/micro-ondes/machine), marque, modèle, couleur, état, capacité visible, options/fonctionnalités visibles"#,
 
-            Some("mobilier") => {
-                r#"
+            Some("mobilier") => r#"
 TYPE: Mobilier
-EXTRAIRE: type (canapé/table/chaise/lit/armoire), style (moderne/classique/rustique), matière, couleur, dimensions approximatives, état, nombre de places si applicable"#
-            }
+EXTRAIRE: type (canapé/table/chaise/lit/armoire), style (moderne/classique/rustique), matière, couleur, dimensions approximatives, état, nombre de places si applicable"#,
 
-            Some("aliments") => {
-                r#"
+            Some("aliments") => r#"
 TYPE: Produit Alimentaire
-EXTRAIRE: type produit, marque, conditionnement, poids/volume visible, fraîcheur apparente, origine si indiquée, labels qualité visibles"#
-            }
+EXTRAIRE: type produit, marque, conditionnement, poids/volume visible, fraîcheur apparente, origine si indiquée, labels qualité visibles"#,
 
-            Some("pharmacie") => {
-                r#"
+            Some("pharmacie") => r#"
 TYPE: Produit Pharmaceutique
-EXTRAIRE: type (médicament/équipement), nom du produit, marque/laboratoire, conditionnement, dosage si visible, date péremption si visible"#
-            }
+EXTRAIRE: type (médicament/équipement), nom du produit, marque/laboratoire, conditionnement, dosage si visible, date péremption si visible"#,
 
-            Some("bijoux") => {
-                r#"
+            Some("bijoux") => r#"
 TYPE: Bijou
-EXTRAIRE: type (bague/collier/bracelet/boucles), matière (or/argent/acier), couleur, style, pierres précieuses visibles, état, design distinctif"#
-            }
+EXTRAIRE: type (bague/collier/bracelet/boucles), matière (or/argent/acier), couleur, style, pierres précieuses visibles, état, design distinctif"#,
 
-            Some("cosmetique_parfum") => {
-                r#"
+            Some("cosmetique_parfum") => r#"
 TYPE: Cosmétique/Parfum
-EXTRAIRE: type (parfum/crème/huile), marque, volume, packaging, gamme de produit, usage indiqué (peau/cheveux)"#
-            }
+EXTRAIRE: type (parfum/crème/huile), marque, volume, packaging, gamme de produit, usage indiqué (peau/cheveux)"#,
 
-            Some("coiffure_beaute") => {
-                r#"
+            Some("coiffure_beaute") => r#"
 TYPE: Produit Capillaire
-EXTRAIRE: type (mèches/perruque/tissage/extension), longueur approximative, couleur, texture (lisse/bouclé/crépu), marque, origine, conditionnement"#
-            }
+EXTRAIRE: type (mèches/perruque/tissage/extension), longueur approximative, couleur, texture (lisse/bouclé/crépu), marque, origine, conditionnement"#,
 
-            Some("hopital_clinique") => {
-                r#"
+            Some("hopital_clinique") => r#"
 TYPE: Établissement Médical
-EXTRAIRE: type (clinique/hôpital/centre), spécialités visibles (panneaux/enseignes), taille estimée, équipements visibles, environnement"#
-            }
+EXTRAIRE: type (clinique/hôpital/centre), spécialités visibles (panneaux/enseignes), taille estimée, équipements visibles, environnement"#,
 
-            Some("quincaillerie") => {
-                r#"
+            Some("quincaillerie") => r#"
 TYPE: Quincaillerie/Matériaux
-EXTRAIRE: type produit (outil/matériau/électrique/plomberie), marque, référence visible, dimensions/calibre, matière, état, conditionnement"#
-            }
+EXTRAIRE: type produit (outil/matériau/électrique/plomberie), marque, référence visible, dimensions/calibre, matière, état, conditionnement"#,
 
-            None | Some("autre") | Some(_) => {
-                r#"
+            None | Some("autre") | Some(_) => r#"
 TYPE: Produit Général
-EXTRAIRE: catégorie principale, type produit, marque, couleur(s), caractéristiques distinctives, état, usage apparent"#
-            }
+EXTRAIRE: catégorie principale, type produit, marque, couleur(s), caractéristiques distinctives, état, usage apparent"#,
         };
 
-        format!(
-            r#"Tu es un expert en identification de produits pour le marché africain (CEMAC).
+        format!(r#"Tu es un expert en identification de produits pour le marché africain (CEMAC).
 
 {}
 
@@ -186,35 +125,10 @@ FORMAT DE SORTIE (JSON STRICT - PAS DE MARKDOWN):
         "champ2": "valeur2"
     }},
     "confiance": 0.95,
-    "search_query": "requête principale héritée (rétrocompatibilité)",
-    "search_query_exact": "marque modele couleur caracteristique-unique",
-    "search_query_broad": "type-produit synonyme1 synonyme2 variante1 variante2 marque modele couleur",
-    "search_query_semantic": "Description naturelle complète et détaillée du produit avec contexte pour matching sémantique intelligent"
+    "search_query": "requête de recherche optimisée avec mots-clés pertinents"
 }}
 
-CONTRAINTES:
-- description: string détaillée (50-500 caractères)
-- tags: tableau de strings (minimum 3, maximum 20)
-- category_detected: string (catégorie valide)
-- marque: string ou null
-- couleurs: tableau de strings (minimum 1)
-- caracteristiques_cles: objet avec clés string et valeurs string
-- confiance: nombre entre 0.0 et 1.0
-- search_query_exact: string (3-5 mots)
-- search_query_broad: string (8-15 mots)
-- search_query_semantic: string (15-30 mots)
-
-CRITÈRES DE QUALITÉ:
-- search_query_exact: 3-5 mots ultra-précis, unique au produit
-- search_query_broad: 8-15 mots incluant TOUS les synonymes pertinents
-- search_query_semantic: Phrase complète de 15-30 mots, naturelle et descriptive
-
-IMPORTANT:
-- Retourne UNIQUEMENT du JSON valide
-- Pas de texte avant ou après le JSON
-- Pas de markdown (```json```)
-- Pas de commentaires dans le JSON
-- Tous les nombres doivent être des nombres (pas de strings)"#,
+IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#,
             mode_instruction,
             category_instruction,
             category.unwrap_or("detection_auto")
@@ -231,11 +145,7 @@ IMPORTANT:
         log_info(&format!(
             "[ImageAnalysis] Analyse image - Catégorie: {:?}, Mode: {}",
             category,
-            if is_search_mode {
-                "Recherche"
-            } else {
-                "Catalogage"
-            }
+            if is_search_mode { "Recherche" } else { "Catalogage" }
         ));
 
         // Construire le prompt adapté
@@ -252,15 +162,9 @@ IMPORTANT:
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": if image_base64.starts_with("http://") || image_base64.starts_with("https://") {
-                            // ✅ URL directe (Cloudinary, etc.) - OpenAI les accepte
-                            log_info(&format!("[ImageAnalysis] URL d'image détectée: {}", &image_base64[..image_base64.len().min(60)]));
-                            image_base64.to_string()
-                        } else if image_base64.starts_with("data:") {
-                            // Data URI complet
+                        "url": if image_base64.starts_with("data:") {
                             image_base64.to_string()
                         } else {
-                            // Base64 pur - préfixer
                             format!("data:image/jpeg;base64,{}", image_base64)
                         }
                     }
@@ -291,14 +195,17 @@ IMPORTANT:
                 Ok((analysis, cost)) => {
                     log_info(&format!(
                         "[ImageAnalysis] ✅ Succès avec {} - Coût: ${:.4} ({} tokens)",
-                        model.name, cost.cost_usd, cost.total_tokens
+                        model.name,
+                        cost.cost_usd,
+                        cost.total_tokens
                     ));
                     return Ok((analysis, cost));
                 }
                 Err(e) => {
                     log_warn(&format!(
                         "[ImageAnalysis] ❌ Échec {} : {:?} - Essai modèle suivant",
-                        model.name, e
+                        model.name,
+                        e
                     ));
                     continue;
                 }
@@ -347,7 +254,10 @@ IMPORTANT:
         };
 
         let duration = start_time.elapsed();
-        log_info(&format!("[ImageAnalysis] Réponse reçue en {:?}", duration));
+        log_info(&format!(
+            "[ImageAnalysis] Réponse reçue en {:?}",
+            duration
+        ));
 
         // Parser la réponse JSON
         let analysis = Self::parse_ai_response(&response_text)?;
@@ -398,10 +308,9 @@ IMPORTANT:
             return Err(AppError::Internal(format!("OpenAI Error: {}", error_text)));
         }
 
-        let response_json: Value = response
-            .json()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur parsing réponse: {}", e)))?;
+        let response_json: Value = response.json().await.map_err(|e| {
+            AppError::Internal(format!("Erreur parsing réponse: {}", e))
+        })?;
 
         let content = response_json["choices"][0]["message"]["content"]
             .as_str()
@@ -415,7 +324,9 @@ IMPORTANT:
             completion_tokens: response_json["usage"]["completion_tokens"]
                 .as_u64()
                 .unwrap_or(0) as u32,
-            total_tokens: response_json["usage"]["total_tokens"].as_u64().unwrap_or(0) as u32,
+            total_tokens: response_json["usage"]["total_tokens"]
+                .as_u64()
+                .unwrap_or(0) as u32,
         };
 
         Ok((content, usage))
@@ -447,10 +358,9 @@ IMPORTANT:
             .await
             .map_err(|e| AppError::Internal(format!("Erreur Claude: {}", e)))?;
 
-        let response_json: Value = response
-            .json()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur parsing: {}", e)))?;
+        let response_json: Value = response.json().await.map_err(|e| {
+            AppError::Internal(format!("Erreur parsing: {}", e))
+        })?;
 
         let content = response_json["content"][0]["text"]
             .as_str()
@@ -458,11 +368,15 @@ IMPORTANT:
             .to_string();
 
         let usage = TokensUsage {
-            prompt_tokens: response_json["usage"]["input_tokens"].as_u64().unwrap_or(0) as u32,
+            prompt_tokens: response_json["usage"]["input_tokens"]
+                .as_u64()
+                .unwrap_or(0) as u32,
             completion_tokens: response_json["usage"]["output_tokens"]
                 .as_u64()
                 .unwrap_or(0) as u32,
-            total_tokens: (response_json["usage"]["input_tokens"].as_u64().unwrap_or(0)
+            total_tokens: (response_json["usage"]["input_tokens"]
+                .as_u64()
+                .unwrap_or(0)
                 + response_json["usage"]["output_tokens"]
                     .as_u64()
                     .unwrap_or(0)) as u32,
@@ -483,9 +397,9 @@ IMPORTANT:
         );
 
         // Adapter le format pour Gemini
-        let content = messages[0]["content"]
-            .as_array()
-            .ok_or_else(|| AppError::Internal("Format messages invalide".to_string()))?;
+        let content = messages[0]["content"].as_array().ok_or_else(|| {
+            AppError::Internal("Format messages invalide".to_string())
+        })?;
 
         let text_part = content
             .iter()
@@ -522,10 +436,9 @@ IMPORTANT:
             .await
             .map_err(|e| AppError::Internal(format!("Erreur Gemini: {}", e)))?;
 
-        let response_json: Value = response
-            .json()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur parsing: {}", e)))?;
+        let response_json: Value = response.json().await.map_err(|e| {
+            AppError::Internal(format!("Erreur parsing: {}", e))
+        })?;
 
         let content = response_json["candidates"][0]["content"]["parts"][0]["text"]
             .as_str()
@@ -565,7 +478,10 @@ IMPORTANT:
         })?;
 
         // Extraire les champs
-        let description = parsed["description"].as_str().unwrap_or("").to_string();
+        let description = parsed["description"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
 
         let tags: Vec<String> = parsed["tags"]
             .as_array()
@@ -611,47 +527,6 @@ IMPORTANT:
             .unwrap_or(&description)
             .to_string();
 
-        // ✅ NOUVEAU: Extraire les 3 variantes de recherche avec fallbacks intelligents
-        let search_query_exact = parsed["search_query_exact"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| {
-                // Fallback: construire exact à partir de marque + couleur + tags principaux
-                let mut parts = Vec::new();
-                if let Some(ref m) = marque {
-                    parts.push(m.clone());
-                }
-                if let Some(first_color) = couleurs.first() {
-                    parts.push(first_color.clone());
-                }
-                if let Some(first_tag) = tags.first() {
-                    parts.push(first_tag.clone());
-                }
-                parts.join(" ")
-            });
-
-        let search_query_broad = parsed["search_query_broad"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| {
-                // Fallback: combiner tags + marque + couleurs
-                let mut parts = Vec::new();
-                parts.extend(tags.iter().take(5).cloned());
-                if let Some(ref m) = marque {
-                    parts.push(m.clone());
-                }
-                parts.extend(couleurs.iter().take(2).cloned());
-                parts.join(" ")
-            });
-
-        let search_query_semantic = parsed["search_query_semantic"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| {
-                // Fallback: utiliser la description complète
-                description.clone()
-            });
-
         Ok(ImageAnalysis {
             description,
             tags,
@@ -661,29 +536,29 @@ IMPORTANT:
             caracteristiques_cles,
             confiance,
             search_query,
-            search_query_exact,
-            search_query_broad,
-            search_query_semantic,
         })
     }
 
     /// Calculer le coût pour l'utilisateur (×10 du coût IA)
-    pub fn calculate_user_cost(ai_cost: &AICost, user_currency: &str) -> i64 {
+    pub fn calculate_user_cost(
+        ai_cost: &AICost,
+        user_currency: &str,
+    ) -> i64 {
         // Coût utilisateur = Coût IA × 10
         let user_cost_usd = ai_cost.cost_usd * 10.0;
 
-        // Conversion en devise locale (en sous-unités pour éviter les flottants)
+        // Conversion en devise locale
         let exchange_rate = match user_currency {
-            "XAF" | "FCFA" => 600.0, // 1 USD = 600 FCFA
-            "EUR" => 92.0,           // 1 USD ≈ 0.92 EUR => 92 centimes
-            "USD" => 100.0,          // Centimes
-            _ => 600.0,
+            "XAF" | "FCFA" => 600.0,  // 1 USD = 600 XAF
+            "EUR" => 0.92,             // 1 USD = 0.92 EUR
+            "USD" => 100.0,            // Centimes
+            _ => 600.0,                // Défaut FCFA
         };
 
-        let base_amount = (user_cost_usd * exchange_rate).ceil() as i64;
+        let cost_in_currency = (user_cost_usd * exchange_rate) as i64;
 
-        // Arrondir systématiquement au multiple de 10 supérieur
-        ((base_amount + 9) / 10) * 10
+        // Arrondir au multiple de 10
+        ((cost_in_currency + 5) / 10) * 10
     }
 }
 
@@ -730,3 +605,4 @@ mod tests {
         ));
     }
 }
+

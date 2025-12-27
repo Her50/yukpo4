@@ -61,14 +61,26 @@ pub async fn creer_service(
             info!("[creer_service] Calcul coût: {} tokens × {} FCFA × {} = {} FCFA", 
                   tokens_consumed, base_token_cost, multiplier, cost_xaf);
             
-            // ?? NOUVEAU : Déduire le coût du solde de l'utilisateur
+            // ✅ NOUVEAU : Déduire le coût du solde de l'utilisateur (avec retry pour gérer erreurs TLS)
             let cost_in_tokens = cost_xaf as i64; // 1 FCFA = 1 token dans le système
-            let deduction_result = sqlx::query(
-                "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 AND tokens_balance >= $1 RETURNING tokens_balance"
+            let deduction_result = crate::utils::db_retry::retry_query(
+                &state.pg,
+                || {
+                    let cost_clone = cost_in_tokens;
+                    let user_id_clone = payload.user_id;
+                    let pool_clone = state.pg.clone();
+                    Box::pin(async move {
+                        sqlx::query(
+                            "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 AND tokens_balance >= $1 RETURNING tokens_balance"
+                        )
+                        .bind(cost_clone)
+                        .bind(user_id_clone)
+                        .fetch_optional(&pool_clone)
+                        .await
+                    })
+                },
+                5, // 5 tentatives max pour gérer les erreurs TLS
             )
-            .bind(cost_in_tokens)
-            .bind(payload.user_id)
-            .fetch_optional(&state.pg)
             .await;
             
             match deduction_result {
@@ -900,6 +912,75 @@ pub async fn get_service_by_id(
             }))).into_response()
         }
     }
+}
+
+/// Récupère plusieurs services par leurs IDs en une seule requête (batch)
+#[derive(Debug, serde::Deserialize)]
+pub struct BatchServicesRequest {
+    pub service_ids: Vec<i32>,
+}
+
+pub async fn get_services_batch(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<BatchServicesRequest>,
+) -> axum::response::Response {
+    let pg_pool = &state.pg;
+    
+    if payload.service_ids.is_empty() {
+        return (StatusCode::BAD_REQUEST, Json(json!({
+            "error": "service_ids ne peut pas être vide"
+        }))).into_response();
+    }
+    
+    // Limiter à 100 services par requête pour éviter les surcharges
+    let service_ids: Vec<i32> = payload.service_ids.into_iter().take(100).collect();
+    
+    info!("[get_services_batch] Récupération de {} services", service_ids.len());
+    
+    // Utiliser ANY pour filtrer par liste d'IDs (plus efficace que plusieurs requêtes)
+    let rows = match sqlx::query(
+        r#"SELECT id, data, is_active, created_at, user_id, gps FROM services WHERE id = ANY($1) AND is_active = true ORDER BY id"#,
+    )
+    .bind(&service_ids)
+    .fetch_all(pg_pool)
+    .await {
+        Ok(rows) => rows,
+        Err(e) => {
+            error!("[get_services_batch] Erreur SQL: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                "error": format!("Erreur lors de la récupération: {}", e)
+            }))).into_response();
+        }
+    };
+    
+    let result: Vec<_> = rows
+        .into_iter()
+        .map(|r| {
+            let id: i32 = r.try_get("id").unwrap_or_default();
+            let data: Value = r.try_get("data").unwrap_or(Value::Null);
+            let is_active: bool = r.try_get("is_active").unwrap_or(false);
+            let created_at = r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok();
+            let user_id_val: i32 = r.try_get("user_id").unwrap_or_default();
+            let gps: Option<String> = r.try_get("gps").ok();
+            
+            json!({
+                "id": id,
+                "data": data,
+                "is_active": is_active,
+                "created_at": created_at,
+                "user_id": user_id_val,
+                "gps": gps
+            })
+        })
+        .collect();
+    
+    info!("[get_services_batch] {} services trouvés sur {} demandés", result.len(), service_ids.len());
+    
+    (StatusCode::OK, Json(json!({
+        "services": result,
+        "count": result.len(),
+        "requested": service_ids.len()
+    }))).into_response()
 }
 
 /// R?cup?re tous les services du prestataire connect?

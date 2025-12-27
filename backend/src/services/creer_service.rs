@@ -48,7 +48,7 @@ mod service_costs {
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-struct StoredMedia {
+pub struct StoredMedia {
     path: String,
     bytes: Vec<u8>,
 }
@@ -91,7 +91,7 @@ fn infer_extension_from_data(data: &str, default_ext: &str) -> String {
 
 /// ✅ AMÉLIORATION: Détection améliorée des formats base64
 /// Vérifie si une chaîne est probablement du base64 ou une URL
-fn is_probable_base64(data: &str) -> bool {
+pub fn is_probable_base64(data: &str) -> bool {
     // 1. Format data: URI (data:image/png;base64,...)
     if data.starts_with("data:") {
         return true;
@@ -126,24 +126,24 @@ fn is_probable_base64(data: &str) -> bool {
 }
 
 /// ✅ NOUVEAU: Vérifie si une chaîne est une URL HTTP/HTTPS
-fn is_url(data: &str) -> bool {
+pub fn is_url(data: &str) -> bool {
     data.starts_with("http://") || data.starts_with("https://")
 }
 
 // ✅ OPTIMISÉ: Structure pour stocker les résultats du traitement parallèle d'une image
 #[allow(dead_code)]
-struct ProcessedImageResult {
-    image_index: usize,
-    is_main: bool,
-    file_path: String,
-    image_signature: serde_json::Value,
-    image_hash: String,
-    image_metadata: serde_json::Value,
+pub struct ProcessedImageResult {
+    pub image_index: usize,
+    pub is_main: bool,
+    pub file_path: String,
+    pub image_signature: serde_json::Value,
+    pub image_hash: String,
+    pub image_metadata: serde_json::Value,
 }
 
 // ✅ OPTIMISÉ: Fonction helper pour traiter une seule image en parallèle (sans transaction)
 #[allow(dead_code)]
-async fn process_single_image_for_product(
+pub async fn process_single_image_for_product(
     storage_root: &PathBuf,
     service_id: i32,
     _product_id: &str,
@@ -165,19 +165,26 @@ async fn process_single_image_for_product(
         is_main
     );
 
-    // Sauvegarder l'image (opération I/O lourde - peut être parallélisée)
+    // ✅ CORRIGÉ 2025-12-27: Sauvegarder l'image avec timeout pour éviter blocage
+    // Timeout de 30s par image (suffisant pour fichiers jusqu'à ~10MB)
+    let timeout_duration = std::time::Duration::from_secs(30);
     let stored = if is_url(image_data) {
-        download_and_save_image(storage_root.as_path(), service_id, image_data, "images").await
+        tokio::time::timeout(
+            timeout_duration,
+            download_and_save_image(storage_root.as_path(), service_id, image_data, "images", media_storage.clone())
+        ).await.map_err(|_| AppError::Internal(format!("Timeout téléchargement image (>{})", timeout_duration.as_secs())))?
     } else if is_probable_base64(image_data) {
-        persist_base64_media(
-            storage_root.as_path(),
-            service_id,
-            "images",
-            image_data,
-            "jpg",
-            media_storage,
-        )
-        .await
+        tokio::time::timeout(
+            timeout_duration,
+            persist_base64_media(
+                storage_root.as_path(),
+                service_id,
+                "images",
+                image_data,
+                "jpg",
+                media_storage,
+            )
+        ).await.map_err(|_| AppError::Internal(format!("Timeout sauvegarde image base64 (>{})", timeout_duration.as_secs())))?
     } else {
         log::warn!(
             "[process_single_image_for_product] Image ignorée (format non supporté) pour produit {}",
@@ -325,8 +332,7 @@ fn produits_array_mut(data_obj: &mut serde_json::Value) -> Option<&mut Vec<serde
 /// ✅ OPTIMISÉ 2025-12-01: Sauvegarde streaming pour médias volumineux
 /// Utilise un buffer chunked pour éviter de charger tout en mémoire
 /// ✅ CORRIGÉ 2025-01-XX: Upload vers S3/Wasabi via MediaStorageService
-#[allow(dead_code)]
-async fn persist_base64_media(
+pub async fn persist_base64_media(
     storage_root: &Path,
     service_id: i32,
     subdir: &str,
@@ -417,33 +423,30 @@ async fn persist_base64_media(
             .join(&file_name);
         let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
 
-        // ✅ OPTIMISÉ: Upload S3 en arrière-plan (non-bloquant)
-        if media_storage.is_remote() {
+        // ✅ CORRIGÉ: Upload S3 synchrone pour garantir storage_path CDN dans DB
+        let final_path = if media_storage.is_remote() {
             let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
-            let disk_path_for_upload = disk_path.clone();
-            let media_storage_clone = media_storage.clone();
-            let content_type_clone = content_type.map(|s| s.to_string());
-            
-            tokio::spawn(async move {
-                match media_storage_clone.store_file(&disk_path_for_upload, &storage_key, content_type_clone.as_deref()).await {
-                    Ok(location) => {
-                        log::info!(
-                            "[persist_base64_media] ✅ Upload S3 asynchrone réussi pour fichier volumineux: {}",
-                            location.storage_path
-                        );
-                    }
-                    Err(e) => {
-                        log::warn!(
-                            "[persist_base64_media] ⚠️ Erreur upload S3 asynchrone pour fichier volumineux: {} (le fichier reste disponible localement)",
-                            e
-                        );
-                    }
+            match media_storage.store_file(&disk_path, &storage_key, content_type.as_deref()).await {
+                Ok(location) => {
+                    log::info!(
+                        "[persist_base64_media] ✅ Upload S3 réussi pour fichier volumineux: {}",
+                        location.storage_path
+                    );
+                    location.storage_path // ✅ Utilise storage_path CDN
                 }
-            });
-        }
+                Err(e) => {
+                    log::warn!(
+                        "[persist_base64_media] ⚠️ Erreur upload S3 pour fichier volumineux: {} (fallback local)",
+                        e
+                    );
+                    relative_path_str // Fallback local si S3 échoue
+                }
+            }
+        } else {
+            relative_path_str // Stockage local uniquement
+        };
 
-        // Retourner immédiatement le chemin local (S3 upload en arrière-plan)
-        (Vec::new(), relative_path_str)
+        (Vec::new(), final_path)
     } else {
         // ✅ Méthode standard pour petits fichiers (< 5 MB)
         let decoded = STANDARD
@@ -461,33 +464,30 @@ async fn persist_base64_media(
             .join(&file_name);
         let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
 
-        // ✅ OPTIMISÉ: Upload S3 en arrière-plan (non-bloquant)
-        if media_storage.is_remote() {
+        // ✅ CORRIGÉ: Upload S3 synchrone pour garantir storage_path CDN dans DB
+        let final_path = if media_storage.is_remote() {
             let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
-            let decoded_for_upload = decoded.clone();
-            let media_storage_clone = media_storage.clone();
-            let content_type_clone = content_type.map(|s| s.to_string());
-            
-            tokio::spawn(async move {
-                match media_storage_clone.store_bytes(&decoded_for_upload, &storage_key, content_type_clone.as_deref()).await {
-                    Ok(location) => {
-                        log::debug!(
-                            "[persist_base64_media] ✅ Upload S3 asynchrone réussi: {}",
-                            location.storage_path
-                        );
-                    }
-                    Err(e) => {
-                        log::warn!(
-                            "[persist_base64_media] ⚠️ Erreur upload S3 asynchrone: {} (le fichier reste disponible localement)",
-                            e
-                        );
-                    }
+            match media_storage.store_bytes(&decoded, &storage_key, content_type.as_deref()).await {
+                Ok(location) => {
+                    log::info!(
+                        "[persist_base64_media] ✅ Upload S3 réussi: {}",
+                        location.storage_path
+                    );
+                    location.storage_path // ✅ Utilise storage_path CDN
                 }
-            });
-        }
+                Err(e) => {
+                    log::warn!(
+                        "[persist_base64_media] ⚠️ Erreur upload S3: {} (fallback local)",
+                        e
+                    );
+                    relative_path_str // Fallback local si S3 échoue
+                }
+            }
+        } else {
+            relative_path_str // Stockage local uniquement
+        };
 
-        // Retourner immédiatement le chemin local (S3 upload en arrière-plan)
-        (decoded, relative_path_str)
+        (decoded, final_path)
     };
 
     Ok(StoredMedia {
@@ -497,12 +497,13 @@ async fn persist_base64_media(
 }
 
 /// ✅ NOUVEAU: Télécharge et sauvegarde une image depuis une URL HTTP/HTTPS
-#[allow(dead_code)]
-async fn download_and_save_image(
+/// ✅ CORRIGÉ 2025-12-27: Utilise MediaStorageService pour upload vers S3/Wasabi
+pub async fn download_and_save_image(
     storage_root: &Path,
     service_id: i32,
     image_url: &str,
     subdir: &str,
+    media_storage: Arc<MediaStorageService>,
 ) -> AppResult<StoredMedia> {
     log::info!(
         "[creer_service] 📥 Téléchargement image depuis URL: {}",
@@ -604,15 +605,38 @@ async fn download_and_save_image(
         .join(service_id.to_string())
         .join(subdir)
         .join(&file_name);
-    let path_str = relative_path.to_string_lossy().replace('\\', "/");
+    let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
+
+    // ✅ CORRIGÉ 2025-12-27: Upload S3 synchrone pour garantir storage_path CDN dans DB
+    let final_path = if media_storage.is_remote() {
+        let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
+        match media_storage.store_file(&disk_path, &storage_key, content_type.as_deref()).await {
+            Ok(location) => {
+                log::info!(
+                    "[download_and_save_image] ✅ Upload S3 réussi: {}",
+                    location.storage_path
+                );
+                location.storage_path // ✅ Utilise storage_path CDN
+            }
+            Err(e) => {
+                log::warn!(
+                    "[download_and_save_image] ⚠️ Erreur upload S3: {} (fallback local)",
+                    e
+                );
+                relative_path_str // Fallback local si S3 échoue
+            }
+        }
+    } else {
+        relative_path_str // Stockage local uniquement
+    };
 
     log::info!(
         "[creer_service] ✅ Image téléchargée et sauvegardée: {}",
-        path_str
+        final_path
     );
 
     Ok(StoredMedia {
-        path: path_str,
+        path: final_path, // ✅ Chemin CDN ou local selon config
         bytes,
     })
 }
@@ -2282,17 +2306,20 @@ pub async fn creer_service(
                     "[creer_service] 🖼️ Sauvegarde du logo pour le service {}",
                     service_id
                 );
-                match persist_base64_media(
-                    storage_root.as_path(),
-                    service_id,
-                    "images",
-                    logo_str,
-                    "png",
-                    media_storage.clone(),
-                )
-                .await
-                {
-                    Ok(stored) => {
+                // ✅ CORRIGÉ 2025-12-27: Timeout pour sauvegarde logo (30s)
+                let timeout_duration = std::time::Duration::from_secs(30);
+                match tokio::time::timeout(
+                    timeout_duration,
+                    persist_base64_media(
+                        storage_root.as_path(),
+                        service_id,
+                        "images",
+                        logo_str,
+                        "png",
+                        media_storage.clone(),
+                    )
+                ).await {
+                    Ok(Ok(stored)) => {
                         let file_path = stored.path;
                         #[cfg(feature = "image_search")]
                         let image_bytes = stored.bytes;
@@ -2350,8 +2377,13 @@ pub async fn creer_service(
                             files_saved += 1;
                         }
                     }
-                    Err(e) => {
+                    Ok(Err(e)) => {
                         log::error!("[creer_service] Erreur sauvegarde logo: {}", e);
+                        // ✅ Ne pas faire échouer la création du service si logo échoue
+                    }
+                    Err(_) => {
+                        log::error!("[creer_service] ❌ Timeout sauvegarde logo (>{})", timeout_duration.as_secs());
+                        // ✅ Ne pas faire échouer la création du service si timeout logo
                     }
                 }
             }
@@ -2886,12 +2918,14 @@ pub async fn creer_service(
                         product_index
                     );
 
-                    // Traiter les images en batch (hors transaction car parallèle)
-                    match processor
-                        .process_media_batch(service_id, Some(product_index), media_items)
-                        .await
-                    {
-                        Ok(processed) => {
+                    // ✅ CORRIGÉ 2025-12-27: Traiter les images en batch avec timeout pour éviter blocage
+                    // Timeout de 30s par image (max 5 images = 150s total, mais timeout global de 60s)
+                    let timeout_duration = std::time::Duration::from_secs(60);
+                    match tokio::time::timeout(
+                        timeout_duration,
+                        processor.process_media_batch(service_id, Some(product_index), media_items)
+                    ).await {
+                        Ok(Ok(processed)) => {
                             // Insérer dans la transaction par batch
                             for (image_index, media) in processed.iter().enumerate() {
                                 let is_main = image_index == 0;
@@ -2942,12 +2976,21 @@ pub async fn creer_service(
                                 product_index
                             );
                         }
-                        Err(e) => {
+                        Ok(Err(e)) => {
                             log::error!(
                                 "[creer_service] ❌ Erreur traitement batch images produit {}: {}",
                                 product_index,
                                 e
                             );
+                            // ✅ Ne pas faire échouer la création du service si les médias échouent
+                        }
+                        Err(_) => {
+                            log::error!(
+                                "[creer_service] ❌ Timeout traitement batch images produit {} (>{}s)",
+                                product_index,
+                                timeout_duration.as_secs()
+                            );
+                            // ✅ Ne pas faire échouer la création du service si timeout médias
                         }
                     }
                 }
@@ -3577,7 +3620,7 @@ pub async fn creer_service(
         for (idx, audio_data) in audio_strings.iter().enumerate() {
             // ✅ AMÉLIORATION: Gérer URLs et base64
             let stored = if is_url(audio_data) {
-                download_and_save_image(storage_root.as_path(), service_id, audio_data, "audio")
+                download_and_save_image(storage_root.as_path(), service_id, audio_data, "audio", media_storage.clone())
                     .await
             } else if is_probable_base64(audio_data) {
                 persist_base64_media(
@@ -3671,7 +3714,7 @@ pub async fn creer_service(
         for (idx, video_data) in video_strings.iter().enumerate() {
             // ✅ AMÉLIORATION: Gérer URLs et base64
             let stored = if is_url(video_data) {
-                download_and_save_image(storage_root.as_path(), service_id, video_data, "videos")
+                download_and_save_image(storage_root.as_path(), service_id, video_data, "videos", media_storage.clone())
                     .await
             } else if is_probable_base64(video_data) {
                 persist_base64_media(
@@ -3766,7 +3809,7 @@ pub async fn creer_service(
         for (idx, doc_data) in doc_strings.iter().enumerate() {
             // ✅ AMÉLIORATION: Gérer URLs et base64
             let stored = if is_url(doc_data) {
-                download_and_save_image(storage_root.as_path(), service_id, doc_data, "documents")
+                download_and_save_image(storage_root.as_path(), service_id, doc_data, "documents", media_storage.clone())
                     .await
             } else if is_probable_base64(doc_data) {
                 persist_base64_media(

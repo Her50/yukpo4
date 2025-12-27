@@ -5,9 +5,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
-    Modal,
-    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -62,7 +59,7 @@ const CourierRegistrationScreen: React.FC = () => {
     const [idNumber, setIdNumber] = useState('');
 
     // Transport
-    const [vehicleType, setVehicleType] = useState<VehicleType>('motorcycle');
+    const [vehicleType, setVehicleType] = useState<VehicleType | null>(null);
     const [vehicleBrand, setVehicleBrand] = useState('');
     const [vehicleModel, setVehicleModel] = useState('');
     const [licensePlate, setLicensePlate] = useState('');
@@ -84,9 +81,6 @@ const CourierRegistrationScreen: React.FC = () => {
 
     // Comptes de paiement
     const [paymentMethod, setPaymentMethod] = useState<any>(null);
-
-    // Modal de sélection du moyen de transport
-    const [showVehicleModal, setShowVehicleModal] = useState(false);
 
     useEffect(() => {
         checkApplicationStatus();
@@ -300,6 +294,10 @@ const CourierRegistrationScreen: React.FC = () => {
             Alert.alert('Erreur', 'La pièce d\'identité est requise');
             return false;
         }
+        if (!vehicleType) {
+            Alert.alert('Erreur', 'Veuillez sélectionner un moyen de transport');
+            return false;
+        }
         if (vehicleType !== 'walking' && !driverLicense) {
             Alert.alert('Erreur', 'Le permis de conduire est requis');
             return false;
@@ -358,7 +356,7 @@ const CourierRegistrationScreen: React.FC = () => {
                     idNumber,
                 },
                 transport: {
-                    vehicleType,
+                    vehicleType: vehicleType || 'motorcycle', // Fallback par sécurité
                     vehicleBrand,
                     vehicleModel,
                     licensePlate,
@@ -425,15 +423,8 @@ const CourierRegistrationScreen: React.FC = () => {
 
     // ✅ CRITIQUE 2025-12-24: Déplacer TOUS les hooks AVANT les early returns
     // pour éviter l'erreur "Rendered more hooks than during the previous render"
-    // ✅ CONSTANTE: VEHICLE_TRANSPORT_OPTIONS est une constante importée, pas besoin de useMemo
-    const selectedVehicle = VEHICLE_TRANSPORT_OPTIONS.find(v => v.value === vehicleType);
+    const selectedVehicle = vehicleType ? VEHICLE_TRANSPORT_OPTIONS.find(v => v.value === vehicleType) : null;
     const requiresLicense = selectedVehicle?.requiresLicense ?? false;
-
-    // ✅ SIMPLIFIÉ: Pas besoin de useCallback pour une fonction simple
-    const handleVehicleSelect = (vehicle: VehicleType) => {
-        setVehicleType(vehicle);
-        setShowVehicleModal(false);
-    };
 
     // ✅ CRITIQUE 2025-12-24: Early returns APRÈS tous les hooks
     if (checkingStatus) {
@@ -620,44 +611,65 @@ const CourierRegistrationScreen: React.FC = () => {
 
                 {/* Transport */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>Moyen de transport</Text>
-                    <TouchableOpacity
-                        style={styles.vehicleSelector}
-                        onPress={() => setShowVehicleModal(true)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={styles.vehicleSelectorContent}>
-                            <Text style={styles.vehicleSelectorIcon}>
-                                {selectedVehicle?.icon || '🚗'}
-                            </Text>
-                            <View style={styles.vehicleSelectorTextContainer}>
-                                <Text style={styles.vehicleSelectorLabel}>
-                                    {selectedVehicle?.label || 'Sélectionner un moyen de transport'}
-                                </Text>
-                            </View>
-                            <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
-                        </View>
-                    </TouchableOpacity>
-                    {vehicleType !== 'walking' && (
+                    <Text style={styles.sectionTitle}>Moyen de transport *</Text>
+                    <View style={styles.vehicleOptionsContainer}>
+                        {VEHICLE_TRANSPORT_OPTIONS.map((option) => {
+                            const isSelected = vehicleType === option.value;
+                            return (
+                                <TouchableOpacity
+                                    key={option.value}
+                                    style={[
+                                        styles.vehicleOption,
+                                        isSelected && styles.vehicleOptionSelected,
+                                    ]}
+                                    onPress={() => setVehicleType(option.value)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.vehicleOptionIcon}>{option.icon}</Text>
+                                    <Text
+                                        style={[
+                                            styles.vehicleOptionLabel,
+                                            isSelected && styles.vehicleOptionLabelSelected,
+                                        ]}
+                                    >
+                                        {option.label}
+                                    </Text>
+                                    {isSelected && (
+                                        <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                    {vehicleType && vehicleType !== 'walking' && (
                         <>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Marque"
-                                value={vehicleBrand}
-                                onChangeText={setVehicleBrand}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Modèle"
-                                value={vehicleModel}
-                                onChangeText={setVehicleModel}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Plaque d'immatriculation"
-                                value={licensePlate}
-                                onChangeText={setLicensePlate}
-                            />
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Marque</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Ex: Yamaha, Toyota"
+                                    value={vehicleBrand}
+                                    onChangeText={setVehicleBrand}
+                                />
+                            </View>
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Modèle</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Ex: MT-07, Corolla"
+                                    value={vehicleModel}
+                                    onChangeText={setVehicleModel}
+                                />
+                            </View>
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Plaque d'immatriculation</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Ex: AB-123-CD"
+                                    value={licensePlate}
+                                    onChangeText={setLicensePlate}
+                                />
+                            </View>
                         </>
                     )}
                 </NativeCard>
@@ -707,7 +719,7 @@ const CourierRegistrationScreen: React.FC = () => {
                             </View>
                         </View>
                     )}
-                    {vehicleType !== 'walking' && (
+                    {vehicleType && vehicleType !== 'walking' && (
                         <>
                             <View style={styles.documentRow}>
                                 <View style={styles.documentInfo}>
@@ -731,7 +743,7 @@ const CourierRegistrationScreen: React.FC = () => {
                                     />
                                 </View>
                             </View>
-                            {(vehicleType === 'car' || vehicleType === 'pickup' || vehicleType === 'van' || vehicleType === 'truck') && (
+                            {vehicleType && (vehicleType === 'car' || vehicleType === 'pickup' || vehicleType === 'van' || vehicleType === 'truck') && (
                                 <View style={styles.documentRow}>
                                     <View style={styles.documentInfo}>
                                         <Text style={styles.documentLabel}>Assurance</Text>
@@ -849,81 +861,6 @@ const CourierRegistrationScreen: React.FC = () => {
                     />
                 </View>
             </ScrollView>
-
-            {/* Modal de sélection du moyen de transport */}
-            <Modal
-                visible={showVehicleModal}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setShowVehicleModal(false)}
-            >
-                <Pressable
-                    style={styles.modalOverlay}
-                    onPress={() => setShowVehicleModal(false)}
-                >
-                    {/* Contenu du modal - doit intercepter les touches pour permettre le scroll */}
-                    <Pressable
-                        style={styles.modalContent}
-                        onPress={(e) => {
-                            // Empêcher la propagation vers l'overlay
-                            e.stopPropagation();
-                        }}
-                    >
-                        <View style={styles.modalHeaderContent}>
-                            <Text style={styles.modalTitle}>Sélectionner un moyen de transport</Text>
-                            <TouchableOpacity
-                                onPress={() => setShowVehicleModal(false)}
-                                style={styles.modalCloseButton}
-                                activeOpacity={0.7}
-                            >
-                                <SafeIcon name="x" size={24} color={modernColors.text} />
-                            </TouchableOpacity>
-                        </View>
-                        <FlatList
-                            data={VEHICLE_TRANSPORT_OPTIONS}
-                            keyExtractor={(item) => item.value}
-                            renderItem={({ item: vehicle }) => {
-                                const isSelected = vehicleType === vehicle.value;
-                                return (
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.vehicleModalOption,
-                                            isSelected && styles.vehicleModalOptionSelected,
-                                        ]}
-                                        onPress={() => handleVehicleSelect(vehicle.value)}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={styles.vehicleModalIcon}>{vehicle.icon}</Text>
-                                        <View style={styles.vehicleModalTextContainer}>
-                                            <Text
-                                                style={[
-                                                    styles.vehicleModalLabel,
-                                                    isSelected && styles.vehicleModalLabelSelected,
-                                                ]}
-                                            >
-                                                {vehicle.label}
-                                            </Text>
-                                            {vehicle.requiresLicense && (
-                                                <Text style={styles.vehicleModalHint}>
-                                                    Permis de conduire requis
-                                                </Text>
-                                            )}
-                                        </View>
-                                        {isSelected && (
-                                            <SafeIcon name="check" size={20} color={modernColors.primary} />
-                                        )}
-                                    </TouchableOpacity>
-                                );
-                            }}
-                            style={styles.modalScrollView}
-                            contentContainerStyle={styles.modalScrollContent}
-                            showsVerticalScrollIndicator={true}
-                            keyboardShouldPersistTaps="handled"
-                            nestedScrollEnabled={true}
-                        />
-                    </Pressable>
-                </Pressable>
-            </Modal>
         </SafeNativeView>
     );
 };
@@ -1001,31 +938,11 @@ const styles = StyleSheet.create({
         minHeight: 80,
         textAlignVertical: 'top',
     },
-    vehicleSelector: {
-        borderWidth: 2,
-        borderColor: modernColors.border,
-        borderRadius: 12,
-        backgroundColor: modernColors.surface,
+    vehicleOptionsContainer: {
+        gap: 12,
         marginBottom: 16,
     },
-    vehicleSelectorContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        gap: 12,
-    },
-    vehicleSelectorIcon: {
-        fontSize: 32,
-    },
-    vehicleSelectorTextContainer: {
-        flex: 1,
-    },
-    vehicleSelectorLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    vehicleModalOption: {
+    vehicleOption: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
@@ -1033,71 +950,24 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: modernColors.border,
         backgroundColor: modernColors.surface,
-        marginBottom: 12,
         gap: 12,
         minHeight: 64,
     },
-    vehicleModalOptionSelected: {
+    vehicleOptionSelected: {
         borderColor: modernColors.primary,
         backgroundColor: modernColors.primary + '15',
     },
-    vehicleModalIcon: {
+    vehicleOptionIcon: {
         fontSize: 32,
     },
-    vehicleModalTextContainer: {
+    vehicleOptionLabel: {
         flex: 1,
-    },
-    vehicleModalLabel: {
         fontSize: 16,
         fontWeight: '600',
         color: modernColors.text,
-        marginBottom: 4,
     },
-    vehicleModalLabelSelected: {
+    vehicleOptionLabelSelected: {
         color: modernColors.primary,
-    },
-    vehicleModalHint: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        fontStyle: 'italic',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: modernColors.background,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        maxHeight: '80%',
-        width: '100%',
-        overflow: 'hidden',
-    },
-    modalHeaderContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
-        backgroundColor: modernColors.background,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: modernColors.text,
-        flex: 1,
-    },
-    modalCloseButton: {
-        padding: 4,
-    },
-    modalScrollView: {
-        flex: 1,
-    },
-    modalScrollContent: {
-        padding: 16,
-        paddingBottom: 32,
     },
     documentRow: {
         flexDirection: 'row',
