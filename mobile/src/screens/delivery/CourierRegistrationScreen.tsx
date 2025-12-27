@@ -857,14 +857,19 @@ const CourierRegistrationScreen: React.FC = () => {
                 animationType="slide"
                 onRequestClose={() => setShowVehicleModal(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <TouchableOpacity
-                        style={StyleSheet.absoluteFill}
-                        activeOpacity={1}
-                        onPress={() => setShowVehicleModal(false)}
-                    />
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
+                <Pressable
+                    style={styles.modalOverlay}
+                    onPress={() => setShowVehicleModal(false)}
+                >
+                    {/* Contenu du modal - doit intercepter les touches pour permettre le scroll */}
+                    <Pressable
+                        style={styles.modalContent}
+                        onPress={(e) => {
+                            // Empêcher la propagation vers l'overlay
+                            e.stopPropagation();
+                        }}
+                    >
+                        <View style={styles.modalHeaderContent}>
                             <Text style={styles.modalTitle}>Sélectionner un moyen de transport</Text>
                             <TouchableOpacity
                                 onPress={() => setShowVehicleModal(false)}
@@ -874,17 +879,13 @@ const CourierRegistrationScreen: React.FC = () => {
                                 <SafeIcon name="x" size={24} color={modernColors.text} />
                             </TouchableOpacity>
                         </View>
-                        <ScrollView 
-                            style={styles.modalScrollView}
-                            contentContainerStyle={styles.modalScrollContent}
-                            showsVerticalScrollIndicator={true}
-                            keyboardShouldPersistTaps="handled"
-                        >
-                            {VEHICLE_TRANSPORT_OPTIONS.map((vehicle) => {
+                        <FlatList
+                            data={VEHICLE_TRANSPORT_OPTIONS}
+                            keyExtractor={(item) => item.value}
+                            renderItem={({ item: vehicle }) => {
                                 const isSelected = vehicleType === vehicle.value;
                                 return (
                                     <TouchableOpacity
-                                        key={vehicle.value}
                                         style={[
                                             styles.vehicleModalOption,
                                             isSelected && styles.vehicleModalOptionSelected,
@@ -913,10 +914,15 @@ const CourierRegistrationScreen: React.FC = () => {
                                         )}
                                     </TouchableOpacity>
                                 );
-                            })}
-                        </ScrollView>
-                    </View>
-                </View>
+                            }}
+                            style={styles.modalScrollView}
+                            contentContainerStyle={styles.modalScrollContent}
+                            showsVerticalScrollIndicator={true}
+                            keyboardShouldPersistTaps="handled"
+                            nestedScrollEnabled={true}
+                        />
+                    </Pressable>
+                </Pressable>
             </Modal>
         </SafeNativeView>
     );
@@ -1065,16 +1071,17 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         maxHeight: '80%',
-        paddingBottom: 32,
+        width: '100%',
         overflow: 'hidden',
     },
-    modalHeader: {
+    modalHeaderContent: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 20,
         borderBottomWidth: 1,
         borderBottomColor: modernColors.border,
+        backgroundColor: modernColors.background,
     },
     modalTitle: {
         fontSize: 18,
@@ -1090,6 +1097,7 @@ const styles = StyleSheet.create({
     },
     modalScrollContent: {
         padding: 16,
+        paddingBottom: 32,
     },
     documentRow: {
         flexDirection: 'row',

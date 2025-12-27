@@ -7018,6 +7018,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto hybrid_image_search_relevance_and_performance: {}", e),
     }
 
+    // ✅ 2025-12-27 : Adaptation recherche par image pour produits génériques (sans marque/couleur)
+    match ensure_hybrid_image_search_generic_products(pool).await {
+        Ok(_) => info!("✅ Migration auto: hybrid_image_search_generic_products OK"),
+        Err(e) => error!("❌ Erreur migration auto hybrid_image_search_generic_products: {}", e),
+    }
+
     // ✅ 2025-12-24 : Optimisation critique des requêtes lentes (pharmacies, deliveries, delivery_matching_queue, find_nearby_couriers)
     match ensure_optimize_slow_queries_critical(pool).await {
         Ok(_) => info!("✅ Migration auto: optimize_slow_queries_critical OK"),
@@ -10401,6 +10407,18 @@ pub async fn ensure_hybrid_image_search_relevance_and_performance(pool: &PgPool)
     let migration_sql = include_str!("../../migrations/20251224_fix_image_search_relevance_and_performance.sql");
     execute_multiple_sql_commands(pool, migration_sql).await?;
     info!("✅ Migration hybrid_image_search_relevance_and_performance appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-27 : Adaptation recherche par image pour produits génériques (sans marque/couleur)
+/// Migration: 20251227_fix_image_search_strict_matching.sql
+/// Problème: Produits génériques (services, prestations) n'ont pas de marque/couleur
+/// Solution: 1 tag suffit (au lieu de 2), marque/couleur optionnels, priorité à search_query_semantic
+pub async fn ensure_hybrid_image_search_generic_products(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration hybrid_image_search_generic_products...");
+    let migration_sql = include_str!("../../migrations/20251227_fix_image_search_strict_matching.sql");
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+    info!("✅ Migration hybrid_image_search_generic_products appliquée");
     Ok(())
 }
 

@@ -1,15 +1,40 @@
 import React, { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { config } from '../config/environment';
 
 interface Product {
     serviceId: number;
     productIndex: number;
     productName: string;
     serviceName: string;
+    productImage?: string | null; // ✅ NOUVEAU: Image du produit (première image ou image principale)
 }
+
+// ✅ Fonction pour construire l'URL des médias (similaire à ProductVideoCreationModal)
+const buildMediaUrl = (path: string | undefined | null): string => {
+    if (!path) {
+        return '';
+    }
+
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:image')) {
+        return path;
+    }
+
+    // Utiliser /api/media/files pour les chemins uploads/
+    if (path.startsWith('uploads/') || path.startsWith('/uploads/')) {
+        const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+        const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+        return base ? `${base}/api/media/files/${cleanPath}` : cleanPath;
+    }
+
+    // Pour les autres chemins, utiliser aussi /api/media/files
+    const cleanPath = path.replace(/^\//, '');
+    const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+    return base ? `${base}/api/media/files/${cleanPath}` : cleanPath;
+};
 
 interface ServiceProductSelectorProps {
     visible: boolean;
@@ -238,6 +263,11 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                                                 return null;
                                             }
 
+                                            // ✅ Construire l'URL de l'image du produit
+                                            const productImageUrl = product.productImage 
+                                                ? buildMediaUrl(product.productImage)
+                                                : null;
+
                                             return (
                                                 <TouchableOpacity
                                                     key={`product-${String(product.serviceId || '')}-${String(product.productIndex ?? productIndex)}`}
@@ -249,11 +279,31 @@ const ServiceProductSelector: React.FC<ServiceProductSelectorProps> = ({
                                                     activeOpacity={0.7}
                                                 >
                                                     <View style={styles.productContent}>
-                                                        <SafeIcon
-                                                            name={isSelected ? 'check-circle' : 'circle'}
-                                                            size={20}
-                                                            color={isSelected ? modernColors.primary : modernColors.textSecondary}
-                                                        />
+                                                        {/* ✅ Afficher l'image du produit ou une icône par défaut */}
+                                                        {productImageUrl ? (
+                                                            <View style={styles.productImageContainer}>
+                                                                <Image
+                                                                    source={{ uri: productImageUrl }}
+                                                                    style={styles.productImage}
+                                                                    resizeMode="cover"
+                                                                />
+                                                                {isSelected && (
+                                                                    <View style={styles.productImageOverlay}>
+                                                                        <SafeIcon
+                                                                            name="check-circle"
+                                                                            size={20}
+                                                                            color="#FFFFFF"
+                                                                        />
+                                                                    </View>
+                                                                )}
+                                                            </View>
+                                                        ) : (
+                                                            <SafeIcon
+                                                                name={isSelected ? 'check-circle' : 'circle'}
+                                                                size={20}
+                                                                color={isSelected ? modernColors.primary : modernColors.textSecondary}
+                                                            />
+                                                        )}
                                                         <Text
                                                             style={[
                                                                 styles.productName,
@@ -385,6 +435,28 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
+    },
+    productImageContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 8,
+        overflow: 'hidden',
+        backgroundColor: modernColors.border,
+        position: 'relative',
+    },
+    productImage: {
+        width: '100%',
+        height: '100%',
+    },
+    productImageOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     productName: {
         fontSize: 15,

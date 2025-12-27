@@ -328,13 +328,22 @@ const VideoCreationIntroScreen: React.FC = () => {
                 return;
             }
 
-            // Trouver le produit principal (celui sélectionné)
-            const primaryProduct = managedProducts.find(
+            // Trouver le produit principal (celui sélectionné) et le placer en premier
+            const primaryProductIndex = managedProducts.findIndex(
                 (p) => p.product_index === selectedProduct.productIndex
-            ) || managedProducts[0];
+            );
+            
+            // Réorganiser le tableau pour que le produit sélectionné soit en premier
+            const reorderedProducts = primaryProductIndex >= 0
+                ? [
+                    managedProducts[primaryProductIndex],
+                    ...managedProducts.slice(0, primaryProductIndex),
+                    ...managedProducts.slice(primaryProductIndex + 1)
+                ]
+                : managedProducts;
 
-            // Ouvrir le modal
-            setProductsForVideoCreation(managedProducts);
+            // Ouvrir le modal avec le produit sélectionné en premier
+            setProductsForVideoCreation(reorderedProducts);
             setShowVideoCreationModal(true);
         } catch (error) {
             console.error('[VideoCreationIntroScreen] Erreur ouverture modal:', error);
@@ -416,18 +425,58 @@ const VideoCreationIntroScreen: React.FC = () => {
                                 // ✅ CORRECTION: Utiliser extractProductName pour éviter l'affichage de JSON
                                 const productName = extractProductName(product, `Produit ${index + 1}`);
 
+                                // ✅ NOUVEAU: Extraire la première image du produit
+                                const extractFirstImage = (productData: any): string | null => {
+                                    // Essayer plusieurs sources possibles pour les images
+                                    let productImages = productData?.images || productData?.data?.images || productData?.image || [];
+                                    
+                                    // Si c'est un objet avec valeur (format normalisé)
+                                    if (productImages && typeof productImages === 'object' && !Array.isArray(productImages)) {
+                                        if (productImages.valeur && Array.isArray(productImages.valeur)) {
+                                            productImages = productImages.valeur;
+                                        } else if (typeof productImages.valeur === 'string') {
+                                            return productImages.valeur;
+                                        }
+                                    }
+                                    
+                                    if (Array.isArray(productImages) && productImages.length > 0) {
+                                        // Prendre la première image
+                                        const firstImg = productImages[0];
+                                        if (typeof firstImg === 'string') {
+                                            return firstImg;
+                                        }
+                                        if (typeof firstImg === 'object' && firstImg !== null) {
+                                            // Gérer les objets avec 'valeur' ou 'url' ou 'path'
+                                            return firstImg.valeur || firstImg.url || firstImg.path || firstImg.uri || firstImg.image_url || null;
+                                        }
+                                    }
+                                    
+                                    // Essayer aussi les formats base64
+                                    const base64Image = productData?.base64_image || productData?.image_base64 || productData?.data?.base64_image;
+                                    if (base64Image && typeof base64Image === 'string') {
+                                        return base64Image;
+                                    }
+                                    
+                                    return null;
+                                };
+
+                                const productData = product.data || product;
+                                const firstImage = extractFirstImage(productData);
+
                                 console.log('[VideoCreationIntroScreen] ✅ Produit extrait:', {
                                     serviceId: Number(serviceId),
                                     productIndex: index,
                                     productName: productName,
-                                    serviceName: serviceName
+                                    serviceName: serviceName,
+                                    hasImage: !!firstImage
                                 });
 
                                 allProducts.push({
                                     serviceId: Number(serviceId),
                                     productIndex: index,
                                     productName: productName,
-                                    serviceName: serviceName
+                                    serviceName: serviceName,
+                                    productImage: firstImage || null // ✅ NOUVEAU: Ajouter l'image du produit
                                 });
                             } catch (productError) {
                                 console.error('[VideoCreationIntroScreen] ❌ Erreur extraction produit', index, ':', productError);
@@ -470,50 +519,10 @@ const VideoCreationIntroScreen: React.FC = () => {
                 return;
             }
 
-            // ✅ CORRECTION 2025-12-01: Toujours ouvrir directement ProductVideoCreationModal
-            // L'étape 1 du modal permet déjà de sélectionner le produit, pas besoin du sélecteur intermédiaire
-            // Charger tous les produits de tous les services en ManagedProduct
-            const allManagedProducts: ManagedProduct[] = [];
-
-            userServices.forEach((service: any) => {
-                try {
-                    const serviceId = service.id || service.service_id;
-                    if (!serviceId) return;
-
-                    const produitsRaw = service.data?.produits ||
-                        service.produits ||
-                        service.data?.data?.produits ||
-                        (service.data && typeof service.data === 'object' && (service.data as any).produits);
-
-                    const produits = normalizeServiceProducts(produitsRaw);
-
-                    if (Array.isArray(produits) && produits.length > 0) {
-                        produits.forEach((product: any, index: number) => {
-                            const managedProduct = convertToManagedProduct(service, product, index);
-                            if (managedProduct) {
-                                allManagedProducts.push(managedProduct);
-                            }
-                        });
-                    }
-                } catch (serviceError) {
-                    console.error('[VideoCreationIntroScreen] ❌ Erreur traitement service pour modal:', serviceError);
-                }
-            });
-
-            if (allManagedProducts.length > 0) {
-                // Ouvrir directement le modal avec tous les produits disponibles
-                // L'utilisateur pourra sélectionner le produit à l'étape 1 du modal
-                setProductsForVideoCreation(allManagedProducts);
-                setShowVideoCreationModal(true);
-                return;
-            }
-
-            // Fallback: Si on ne peut pas charger les produits, afficher une erreur
-            Alert.alert(
-                'Erreur',
-                'Impossible de charger les produits. Veuillez réessayer.',
-                [{ text: 'OK' }]
-            );
+            // ✅ CORRIGÉ: Afficher d'abord la liste des produits avec ServiceProductSelector
+            // Exactement comme dans MesServicesScreen - l'utilisateur choisit le produit avant de continuer
+            setAvailableProducts(allProducts);
+            setShowProductSelector(true);
             return;
         }
 
@@ -652,23 +661,15 @@ const VideoCreationIntroScreen: React.FC = () => {
                 </Animated.View>
             </ScrollView>
 
-            {/* ✅ NOUVEAU: Sélecteur de produit avec sélection multiple */}
+            {/* ✅ CORRIGÉ: Sélecteur de produit - Mode unique pour création vidéo (comme dans MesServicesScreen) */}
             <ServiceProductSelector
                 visible={showProductSelector}
                 products={availableProducts}
-                allowMultiple={true} // ✅ Permettre sélection multiple
+                allowMultiple={false} // ✅ Mode unique pour vidéo (comme dans MesServicesScreen)
                 onSelect={(product) => {
-                    // ✅ UNIFIÉ: Ouvrir le modal au lieu de naviguer vers wizard
+                    // ✅ Ouvrir le modal de création vidéo avec le produit sélectionné
                     openVideoCreationModal(product);
                     setShowProductSelector(false);
-                }}
-                onSelectMultiple={(selectedProducts) => {
-                    // ✅ UNIFIÉ: Pour l'instant, utiliser le premier produit sélectionné
-                    // TODO: Adapter ProductVideoCreationModal pour gérer plusieurs produits
-                    if (selectedProducts.length > 0) {
-                        openVideoCreationModal(selectedProducts[0]);
-                        setShowProductSelector(false);
-                    }
                 }}
                 onClose={() => {
                     setShowProductSelector(false);

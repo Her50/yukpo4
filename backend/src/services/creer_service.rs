@@ -765,7 +765,7 @@ fn parse_lat_lng_from_str(input: &str) -> Option<(f64, f64)> {
 }
 
 /// Fonction utilitaire pour détecter si une string est du base64 (média)
-fn is_base64_media(s: &str) -> bool {
+pub fn is_base64_media(s: &str) -> bool {
     // Détecter les strings base64 de médias (très longues, commençant par data:)
     (s.starts_with("data:image/")
         || s.starts_with("data:video/")
@@ -776,7 +776,7 @@ fn is_base64_media(s: &str) -> bool {
 
 /// Fonction récursive pour nettoyer tous les médias base64 dans une structure JSON
 /// Supprime les clés médias directes, les objets avec type_donnee médias, et les strings base64 longues
-fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mut usize) {
+pub fn clean_media_recursive_final(value: &mut serde_json::Value, removed_count: &mut usize) {
     match value {
         serde_json::Value::Object(obj) => {
             // Liste des clés à supprimer complètement (médias bruts)

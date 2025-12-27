@@ -532,11 +532,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     dataKeys: productMediaResponse.data ? Object.keys(productMediaResponse.data) : [],
                 });
 
+                // ✅ NOUVEAU: Ne pas throw si l'API échoue, on utilisera le fallback
                 if (!productMediaResponse.success) {
-                    console.error('[ProductVideoCreationModal] Erreur productMediaResponse:', productMediaResponse.error);
-                    throw new Error(
-                        productMediaResponse.error || 'Impossible de récupérer les médias du produit.'
-                    );
+                    console.warn('[ProductVideoCreationModal] ⚠️ API productMedia échouée, utilisation fallback depuis product:', productMediaResponse.error);
+                    // Ne pas throw, on continuera avec productMediaData vide et utiliserons le fallback
                 }
 
                 if (!serviceMediaResponse.success) {
@@ -583,6 +582,125 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 console.log('[ProductVideoCreationModal] Médias filtrés:', productMediaItems.length, 'items valides');
 
+                // ✅ NOUVEAU: Fallback - Utiliser les images du produit directement si l'API ne retourne rien
+                if (productMediaItems.length === 0 && product) {
+                    console.log('[ProductVideoCreationModal] ⚠️ Aucun média depuis API, utilisation fallback depuis product.images');
+                    
+                    // Extraire les images du produit (gérer différents formats)
+                    const extractImagesFromProduct = (product: ManagedProduct): string[] => {
+                        const images: string[] = [];
+                        
+                        // Format 1: product.images (tableau de strings)
+                        if (Array.isArray(product.images)) {
+                            product.images.forEach((img: any) => {
+                                if (typeof img === 'string' && img.trim().length > 0) {
+                                    images.push(img);
+                                } else if (typeof img === 'object' && img !== null) {
+                                    // Gérer les objets avec valeur, url, path, etc.
+                                    const imgUrl = img.valeur || img.url || img.path || img.uri || img.image_url;
+                                    if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim().length > 0) {
+                                        images.push(imgUrl);
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // Format 2: product.data?.images
+                        if (product.data && typeof product.data === 'object') {
+                            const dataImages = (product.data as any).images;
+                            if (Array.isArray(dataImages)) {
+                                dataImages.forEach((img: any) => {
+                                    if (typeof img === 'string' && img.trim().length > 0) {
+                                        images.push(img);
+                                    } else if (typeof img === 'object' && img !== null) {
+                                        const imgUrl = img.valeur || img.url || img.path || img.uri || img.image_url;
+                                        if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim().length > 0) {
+                                            images.push(imgUrl);
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                        
+                        // Format 3: product.base64_image (uniquement si pas déjà dans images)
+                        if (product.base64_image && typeof product.base64_image === 'string' && !images.includes(product.base64_image)) {
+                            images.push(product.base64_image);
+                        }
+                        
+                        // Dédupliquer
+                        return Array.from(new Set(images));
+                    };
+                    
+                    const fallbackImages = extractImagesFromProduct(product);
+                    console.log('[ProductVideoCreationModal] ✅ Images extraites depuis produit (fallback):', fallbackImages.length);
+                    
+                    if (fallbackImages.length > 0) {
+                        // Créer des MediaLibraryItem depuis les images du produit
+                        const fallbackMediaItems: MediaLibraryItem[] = fallbackImages.map((imgUrl: string, index: number) => ({
+                            id: 10000 + index, // IDs temporaires élevés pour éviter conflits
+                            path: imgUrl,
+                            type: 'image',
+                            media_type: 'image',
+                            product_index: product.product_index || 0,
+                            ai_description: null,
+                        }));
+                        
+                        productMediaItems.push(...fallbackMediaItems);
+                        console.log('[ProductVideoCreationModal] ✅ Médias fallback ajoutés:', fallbackMediaItems.length);
+                    }
+                    
+                    // Faire de même pour les vidéos
+                    const extractVideosFromProduct = (product: ManagedProduct): string[] => {
+                        const videos: string[] = [];
+                        
+                        if (Array.isArray(product.videos)) {
+                            product.videos.forEach((vid: any) => {
+                                if (typeof vid === 'string' && vid.trim().length > 0) {
+                                    videos.push(vid);
+                                } else if (typeof vid === 'object' && vid !== null) {
+                                    const vidUrl = vid.valeur || vid.url || vid.path || vid.uri || vid.video_url;
+                                    if (vidUrl && typeof vidUrl === 'string' && vidUrl.trim().length > 0) {
+                                        videos.push(vidUrl);
+                                    }
+                                }
+                            });
+                        }
+                        
+                        if (product.data && typeof product.data === 'object') {
+                            const dataVideos = (product.data as any).videos;
+                            if (Array.isArray(dataVideos)) {
+                                dataVideos.forEach((vid: any) => {
+                                    if (typeof vid === 'string' && vid.trim().length > 0) {
+                                        videos.push(vid);
+                                    } else if (typeof vid === 'object' && vid !== null) {
+                                        const vidUrl = vid.valeur || vid.url || vid.path || vid.uri || vid.video_url;
+                                        if (vidUrl && typeof vidUrl === 'string' && vidUrl.trim().length > 0) {
+                                            videos.push(vidUrl);
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                        
+                        return Array.from(new Set(videos));
+                    };
+                    
+                    const fallbackVideos = extractVideosFromProduct(product);
+                    if (fallbackVideos.length > 0) {
+                        const fallbackVideoItems: MediaLibraryItem[] = fallbackVideos.map((vidUrl: string, index: number) => ({
+                            id: 20000 + index,
+                            path: vidUrl,
+                            type: 'video',
+                            media_type: 'video',
+                            product_index: product.product_index || 0,
+                            ai_description: null,
+                        }));
+                        
+                        productMediaItems.push(...fallbackVideoItems);
+                        console.log('[ProductVideoCreationModal] ✅ Vidéos fallback ajoutées:', fallbackVideoItems.length);
+                    }
+                }
+
                 // ✅ CORRIGÉ 2025-12-24: Gérer serviceMedia même si l'API échoue (non bloquant)
                 let serviceMediaData: any[] = [];
                 if (serviceMediaResponse.success) {
@@ -627,6 +745,97 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 return audioTracks;
             } catch (error) {
                 console.error('[ProductVideoCreationModal] Erreur chargement médias:', error);
+                
+                // ✅ NOUVEAU: Fallback en cas d'erreur - Utiliser les images du produit directement
+                if (product) {
+                    console.log('[ProductVideoCreationModal] ⚠️ Erreur API, utilisation fallback depuis product.images');
+                    
+                    try {
+                        const extractImagesFromProduct = (product: ManagedProduct): string[] => {
+                            const images: string[] = [];
+                            if (Array.isArray(product.images)) {
+                                product.images.forEach((img: any) => {
+                                    if (typeof img === 'string' && img.trim().length > 0) {
+                                        images.push(img);
+                                    } else if (typeof img === 'object' && img !== null) {
+                                        const imgUrl = img.valeur || img.url || img.path || img.uri || img.image_url;
+                                        if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim().length > 0) {
+                                            images.push(imgUrl);
+                                        }
+                                    }
+                                });
+                            }
+                            if (product.data && typeof product.data === 'object') {
+                                const dataImages = (product.data as any).images;
+                                if (Array.isArray(dataImages)) {
+                                    dataImages.forEach((img: any) => {
+                                        if (typeof img === 'string' && img.trim().length > 0) {
+                                            images.push(img);
+                                        } else if (typeof img === 'object' && img !== null) {
+                                            const imgUrl = img.valeur || img.url || img.path || img.uri || img.image_url;
+                                            if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim().length > 0) {
+                                                images.push(imgUrl);
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                            return Array.from(new Set(images));
+                        };
+                        
+                        const extractVideosFromProduct = (product: ManagedProduct): string[] => {
+                            const videos: string[] = [];
+                            if (Array.isArray(product.videos)) {
+                                product.videos.forEach((vid: any) => {
+                                    if (typeof vid === 'string' && vid.trim().length > 0) {
+                                        videos.push(vid);
+                                    } else if (typeof vid === 'object' && vid !== null) {
+                                        const vidUrl = vid.valeur || vid.url || vid.path || vid.uri || vid.video_url;
+                                        if (vidUrl && typeof vidUrl === 'string' && vidUrl.trim().length > 0) {
+                                            videos.push(vidUrl);
+                                        }
+                                    }
+                                });
+                            }
+                            return Array.from(new Set(videos));
+                        };
+                        
+                        const fallbackImages = extractImagesFromProduct(product);
+                        const fallbackVideos = extractVideosFromProduct(product);
+                        
+                        if (fallbackImages.length > 0 || fallbackVideos.length > 0) {
+                            const fallbackItems: MediaLibraryItem[] = [
+                                ...fallbackImages.map((imgUrl: string, index: number) => ({
+                                    id: 10000 + index,
+                                    path: imgUrl,
+                                    type: 'image' as const,
+                                    media_type: 'image' as const,
+                                    product_index: product.product_index || 0,
+                                    ai_description: null,
+                                })),
+                                ...fallbackVideos.map((vidUrl: string, index: number) => ({
+                                    id: 20000 + index,
+                                    path: vidUrl,
+                                    type: 'video' as const,
+                                    media_type: 'video' as const,
+                                    product_index: product.product_index || 0,
+                                    ai_description: null,
+                                })),
+                            ];
+                            
+                            setProductMedia(fallbackItems);
+                            const defaultIds = new Set<number>();
+                            fallbackItems.slice(0, 4).forEach((item) => defaultIds.add(item.id));
+                            setSelectedMediaIds(defaultIds);
+                            console.log('[ProductVideoCreationModal] ✅ Fallback appliqué:', fallbackItems.length, 'médias');
+                            return [];
+                        }
+                    } catch (fallbackError) {
+                        console.error('[ProductVideoCreationModal] Erreur fallback:', fallbackError);
+                    }
+                }
+                
+                // Seulement afficher l'alerte si le fallback n'a rien trouvé
                 Alert.alert(
                     'Erreur récupération médias',
                     'Impossible de récupérer vos images et vidéos pour le moment. Réessayez plus tard.'
@@ -1542,6 +1751,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         void refreshMedia(selectedProduct);
     }, [visible, selectedProduct, refreshMedia]);
 
+    // ✅ NOUVEAU: Rafraîchir les médias quand on arrive à l'étape 4 pour s'assurer qu'ils sont disponibles
+    useEffect(() => {
+        if (visible && selectedProduct && activeStep === 3) { // activeStep est 0-indexed, étape 4 = index 3
+            console.log('[ProductVideoCreationModal] Rafraîchissement des médias pour l\'étape 4');
+            void refreshMedia(selectedProduct);
+        }
+    }, [visible, selectedProduct, activeStep, refreshMedia]);
+
     useEffect(() => {
         if (!visible) {
             return;
@@ -1949,7 +2166,19 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 durationMs,
                 extra: { error: error?.message ?? 'unknown' },
             });
-            Alert.alert('Erreur', error?.message || 'Impossible de générer la prévisualisation.');
+            
+            // ✅ CORRIGÉ: Message d'erreur plus informatif selon le type d'erreur
+            let errorMessage = error?.message || 'Impossible de générer la prévisualisation.';
+            
+            if (errorMessage.includes('temporairement indisponible') || errorMessage.includes('indisponible')) {
+                errorMessage = 'Le service de prévisualisation vidéo est temporairement indisponible.\n\n' +
+                    'Vous pouvez utiliser le "Preview Rapide" ci-dessus pour avoir un aperçu de votre vidéo.';
+            } else if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
+                errorMessage = 'Erreur lors de la génération de la prévisualisation.\n\n' +
+                    'Vérifiez que votre timeline contient des médias et réessayez.';
+            }
+            
+            Alert.alert('Erreur', errorMessage);
         } finally {
             setShortPreviewLoading(false);
         }
@@ -2427,23 +2656,21 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {/* ✅ Storyboard IA via Studio (déplacé depuis étape 1) */}
                 {selectedProduct && (
                     <NativeCard style={styles.sectionCard}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>🎬 Storyboard IA</Text>
-                            <TouchableOpacity
-                                style={styles.linkButton}
-                                onPress={handleGenerateStoryboard}
-                                disabled={storyboardLoading}
-                            >
-                                {storyboardLoading ? (
-                                    <ActivityIndicator size="small" color={modernColors.primary} />
-                                ) : (
-                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                                )}
-                                <Text style={styles.linkButtonText}>
-                                    {storyboardLoading ? 'Génération…' : 'Générer storyboard'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+                        <Text style={[styles.sectionTitle, { marginBottom: 12 }]} numberOfLines={1}>🎬 Storyboard IA</Text>
+                        <TouchableOpacity
+                            style={[styles.linkButton, { alignSelf: 'flex-start' }]}
+                            onPress={handleGenerateStoryboard}
+                            disabled={storyboardLoading}
+                        >
+                            {storyboardLoading ? (
+                                <ActivityIndicator size="small" color={modernColors.primary} />
+                            ) : (
+                                <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                            )}
+                            <Text style={styles.linkButtonText}>
+                                {storyboardLoading ? 'Génération…' : 'Générer storyboard'}
+                            </Text>
+                        </TouchableOpacity>
                         <Text style={styles.sectionSubtitle}>
                             Génère une proposition de scènes (intro, bénéfices, preuves, CTA) à partir de ton brief.
                         </Text>
@@ -2680,27 +2907,55 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 )}
 
                 {/* ✅ NOUVEAU: Color grading automatique */}
-                {selectedMediaIds.size > 0 && Array.from(selectedMediaIds).length > 0 && (
-                    <ColorGradingPanel
-                        mediaUrl={Array.from(selectedMediaIds)[0]?.toString() || ''}
-                        onGradingComplete={(gradedUrl) => {
-                            console.log('[ProductVideoCreationModal] Color grading appliqué:', gradedUrl);
-                        }}
-                    />
-                )}
+                {selectedMediaIds.size > 0 && Array.from(selectedMediaIds).length > 0 && (() => {
+                    // ✅ CORRIGÉ: Convertir l'ID du média en URL
+                    const firstMediaId = Array.from(selectedMediaIds)[0];
+                    const firstMedia = productMedia.find(m => m.id === firstMediaId) || 
+                                      serviceMedia.find(m => m.id === firstMediaId);
+                    const mediaUrl = firstMedia ? buildMediaUrl(firstMedia.path) : '';
+                    
+                    // ✅ Ne pas afficher si aucune URL n'est disponible
+                    if (!mediaUrl) {
+                        console.warn('[ProductVideoCreationModal] Aucune URL média trouvée pour ColorGradingPanel, mediaId:', firstMediaId);
+                        return null;
+                    }
+                    
+                    return (
+                        <ColorGradingPanel
+                            mediaUrl={mediaUrl}
+                            onGradingComplete={(gradedUrl) => {
+                                console.log('[ProductVideoCreationModal] Color grading appliqué:', gradedUrl);
+                            }}
+                        />
+                    );
+                })()}
 
                 {/* ✅ NOUVEAU: Carousel de previews d'effets */}
-                {styleSuggestion && styleSuggestion.effects && styleSuggestion.effects.length > 0 && selectedMediaIds.size > 0 && (
-                    <EffectPreviewCarousel
-                        effectNames={styleSuggestion.effects}
-                        sampleMediaUrl={Array.from(selectedMediaIds)[0]?.toString() || ''}
-                        onEffectSelected={(effectName, preview) => {
-                            console.log('[ProductVideoCreationModal] Effet sélectionné:', effectName, preview.preview_url);
-                            // Ajouter l'effet sélectionné
-                            setSelectedEffects(prev => new Set(prev).add(effectName));
-                        }}
-                    />
-                )}
+                {styleSuggestion && styleSuggestion.effects && styleSuggestion.effects.length > 0 && selectedMediaIds.size > 0 && (() => {
+                    // ✅ CORRIGÉ: Convertir l'ID du média en URL
+                    const firstMediaId = Array.from(selectedMediaIds)[0];
+                    const firstMedia = productMedia.find(m => m.id === firstMediaId) || 
+                                      serviceMedia.find(m => m.id === firstMediaId);
+                    const sampleMediaUrl = firstMedia ? buildMediaUrl(firstMedia.path) : '';
+                    
+                    // ✅ Ne pas afficher si aucune URL n'est disponible
+                    if (!sampleMediaUrl) {
+                        console.warn('[ProductVideoCreationModal] Aucune URL média trouvée pour EffectPreviewCarousel, mediaId:', firstMediaId);
+                        return null;
+                    }
+                    
+                    return (
+                        <EffectPreviewCarousel
+                            effectNames={styleSuggestion.effects}
+                            sampleMediaUrl={sampleMediaUrl}
+                            onEffectSelected={(effectName, preview) => {
+                                console.log('[ProductVideoCreationModal] Effet sélectionné:', effectName, preview.preview_url);
+                                // Ajouter l'effet sélectionné
+                                setSelectedEffects(prev => new Set(prev).add(effectName));
+                            }}
+                        />
+                    );
+                })()}
 
                 {/* ✅ NOUVEAU: Sous-titres automatiques */}
                 {generatedTimeline && !isEditingTimeline && (
@@ -4026,14 +4281,40 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 throw new Error(backendError);
             }
 
-            const result = response.data as GeneratedVideoResponse;
+            const result = response.data as any;
             
-            // ✅ CORRIGÉ: Valider la réponse
-            if (!result || !result.video_url) {
-                throw new Error('Réponse invalide : URL de la vidéo manquante');
+            // ✅ CORRIGÉ: Le backend retourne maintenant un job_id (génération asynchrone)
+            // Si job_id est présent, la génération est en cours
+            if (result.job_id) {
+                console.log('[ProductVideoCreationModal] ✅ Génération démarrée, job_id:', result.job_id);
+                
+                // Afficher un message informatif et fermer le modal
+                Alert.alert(
+                    'Génération en cours',
+                    'Votre vidéo est en cours de génération.\n\n' +
+                    'Vous recevrez une notification une fois la vidéo prête.\n\n' +
+                    'Vous pouvez suivre la progression dans la section "Vidéos" de l\'application.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => {
+                                onClose();
+                            }
+                        }
+                    ]
+                );
+                return;
             }
-
-            await onSuccess(result);
+            
+            // ✅ Fallback: Si video_url est présent (ancienne version synchrone)
+            if (result.video_url) {
+                const videoResult = result as GeneratedVideoResponse;
+                await onSuccess(videoResult);
+                return;
+            }
+            
+            // ✅ Si ni job_id ni video_url, c'est une erreur
+            throw new Error('Réponse invalide : ni job_id ni video_url reçu');
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur génération vidéo:', error);
 

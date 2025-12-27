@@ -257,6 +257,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return acc;
       }
 
+      // ✅ Masquer le dernier bloc "Autres informations" (type service/produit) - 6 étapes au lieu de 7
+      if (block.id === 'other') {
+        return acc;
+      }
+
       acc.push({ block, index });
       return acc;
     }, []);
@@ -465,12 +470,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         'nom_produit', // 1. Nom du produit
         'categorie_produit', // 2. Catégorie
         'description_produit', // 3. Description
-        'produits', // 4. Caractéristiques (autocomplete)
-        'lieu_produit', 'lieu_commercial', 'lieu_commercialisation', // 5. Lieu
-        'prix', 'prix_produit', // 6. Prix
-        'devise', 'devise_produit', // 7. Devise (sera affichée inline avec prix)
-        'price_variant', 'variabilite_prix', // 8. Variations prix
-        'images', 'videos', '_product_media_manager' // 9. Médias
+        'quantite_disponible', // 4. Quantité disponible
+        'produits', // 5. Caractéristiques (autocomplete)
+        'lieu_produit', 'lieu_commercial', 'lieu_commercialisation', // 6. Lieu
+        'prix', 'prix_produit', // 7. Prix
+        'devise', 'devise_produit', // 8. Devise (sera affichée inline avec prix)
+        'price_variant', 'variabilite_prix', // 9. Variations prix
+        'images', 'videos', '_product_media_manager' // 10. Médias
       ];
 
       return fields.sort((a, b) => {
@@ -531,7 +537,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'string',
           label: 'Description du produit / prestation',
           required: false,
-          placeholder: 'Décrivez les caractéristiques spécifiques du produit...'
+          placeholder: 'Décrivez les caractéristiques spécifiques du produit...',
+          multiline: true,
+          minLines: 3
+        },
+        {
+          name: 'quantite_disponible',
+          type: 'number',
+          typeDonnee: 'number',
+          label: 'Quantité disponible',
+          required: false,
+          placeholder: 'Ex: 50'
         },
         {
           name: 'produits',
@@ -624,7 +640,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'string',
           label: 'Description du produit / prestation',
           required: false,
-          placeholder: 'Décrivez les caractéristiques spécifiques du produit...'
+          placeholder: 'Décrivez les caractéristiques spécifiques du produit...',
+          multiline: true,
+          minLines: 3
+        },
+        {
+          name: 'quantite_disponible',
+          type: 'number',
+          typeDonnee: 'number',
+          label: 'Quantité disponible',
+          required: false,
+          placeholder: 'Ex: 50'
         },
         {
           name: 'produits',
@@ -728,7 +754,25 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'string',
           label: 'Description du produit/prestation',
           required: false,
-          placeholder: 'Décrivez les caractéristiques spécifiques du produit/prestation...'
+          placeholder: 'Décrivez les caractéristiques spécifiques du produit/prestation...',
+          multiline: true,
+          minLines: 3
+        } as DynamicField);
+      }
+
+      // ✅ NOUVEAU: Ajouter le champ quantité disponible (comme dans AjouterProduitSimpleScreen)
+      const hasQuantiteDisponible = productsBlock.fields.some(f => f.name === 'quantite_disponible' || f.name === 'quantity' || f.name === 'stock');
+      if (!hasQuantiteDisponible) {
+        // Insérer après description_produit
+        const insertIndex = (hasNomProduit ? 1 : 0) + (hasCategorieProduit ? 1 : 0) + (hasDescriptionProduit ? 1 : 0);
+        productsBlock.fields.splice(insertIndex, 0, {
+          name: 'quantite_disponible',
+          type: 'number',
+          typeDonnee: 'number',
+          label: 'Quantité disponible',
+          required: false,
+          placeholder: 'Ex: 50',
+          value: formValues.quantite_disponible || ''
         } as DynamicField);
       }
 

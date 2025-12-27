@@ -2,7 +2,7 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 // @ts-ignore
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 // @ts-ignore
 import {
   Alert,
@@ -92,6 +92,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     icon: string;
     fields: DynamicField[];
   }[]>([]);
+
+  // ✅ Masquer le dernier bloc "Autres informations" (type service/produit) - 6 étapes au lieu de 7
+  const displayedBlocks = useMemo(() => {
+    if (!blocks || blocks.length === 0) {
+      return [];
+    }
+    return blocks.filter(block => block.id !== 'other');
+  }, [blocks]);
 
   // Fonction de gestion du retour
   const handleGoBack = () => {
@@ -258,9 +266,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     return blocksWithFixedOnes.filter(block => block.fields.length > 0);
   };
 
-  // Fonctions de navigation entre blocs
+  // Fonctions de navigation entre blocs (utilise displayedBlocks)
   const goToNextBlock = () => {
-    if (currentBlock < blocks.length - 1) {
+    if (currentBlock < displayedBlocks.length - 1) {
       setCurrentBlock(currentBlock + 1);
     }
   };
@@ -272,7 +280,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   };
 
   const goToBlock = (blockIndex: number) => {
-    if (blockIndex >= 0 && blockIndex < blocks.length) {
+    if (blockIndex >= 0 && blockIndex < displayedBlocks.length) {
       setCurrentBlock(blockIndex);
     }
   };
@@ -362,6 +370,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, rester à l\'étape 1');
     }
   }, [suggestion]); // Se déclenche quand suggestion change
+
+  // ✅ S'assurer que currentBlock reste valide lorsque displayedBlocks change
+  useEffect(() => {
+    if (displayedBlocks.length > 0 && currentBlock >= displayedBlocks.length) {
+      setCurrentBlock(0);
+    }
+  }, [displayedBlocks, currentBlock]);
 
   // Organiser les champs en blocs quand les composants changent
   useEffect(() => {
@@ -1146,7 +1161,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         {activeStep === 2 && (
           <View style={styles.stepContainer}>
             {/* Navigation par blocs */}
-            {blocks.length > 0 && (
+            {displayedBlocks.length > 0 && (
               <>
                 {/* Indicateur de progression */}
                 <View style={styles.progressContainer}>
@@ -1154,19 +1169,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     <View
                       style={[
                         styles.progressFill,
-                        { width: `${((currentBlock + 1) / blocks.length) * 100}%` }
+                        { width: `${((currentBlock + 1) / displayedBlocks.length) * 100}%` }
                       ]}
                     />
                   </View>
                   <Text style={styles.progressText}>
-                    {currentBlock + 1} / {blocks.length}
+                    {currentBlock + 1} / {displayedBlocks.length}
                   </Text>
                 </View>
 
                 {/* Navigation entre blocs (tabs horizontales scrollables) */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.blockNavigationScrollView}>
                   <View style={styles.blockNavigation}>
-                    {blocks.map((block, index) => (
+                    {displayedBlocks.map((block, index) => (
                       <TouchableOpacity
                         key={block.id}
                         style={[
@@ -1188,7 +1203,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 </ScrollView>
 
                 {/* Affichage du bloc actuel uniquement */}
-                {blocks[currentBlock] && (
+                {displayedBlocks[currentBlock] && (
                   <View style={styles.sectionContainer}>
                     <LinearGradient
                       colors={['#3B82F6', '#1D4ED8']}
@@ -1197,12 +1212,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       style={styles.sectionHeader}
                     >
                       <Text style={styles.sectionHeaderText}>
-                        {blocks[currentBlock].icon} {blocks[currentBlock].title}
+                        {displayedBlocks[currentBlock].icon} {displayedBlocks[currentBlock].title}
                       </Text>
                     </LinearGradient>
 
                     <NativeCard style={styles.sectionContent}>
-                      {blocks[currentBlock].fields.map((field, index) => renderField(field))}
+                      {displayedBlocks[currentBlock].fields.map((field, index) => renderField(field))}
                     </NativeCard>
                   </View>
                 )}
@@ -1222,7 +1237,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     <Text style={styles.navButtonTextSecondary}>Précédent</Text>
                   </TouchableOpacity>
 
-                  {currentBlock < blocks.length - 1 ? (
+                  {currentBlock < displayedBlocks.length - 1 ? (
                     <TouchableOpacity
                       style={[styles.navButton, styles.navButtonPrimary]}
                       onPress={goToNextBlock}

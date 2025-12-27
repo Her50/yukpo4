@@ -15,6 +15,8 @@ import { modernColors } from '../theme/modernTheme';
 import { VideoTimeline } from '../types/VideoGeneration';
 import { NativeCard } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
+import { apiGet } from '../services/api';
+import { config } from '../config/environment';
 
 interface QuickPreviewProps {
     timeline: VideoTimeline;
@@ -59,6 +61,69 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
     };
 
     const timelineIsValid = isTimelineValid();
+
+    // ✅ NOUVEAU: Fonction pour enrichir la timeline en convertissant media_id en media_url
+    const enrichTimelineWithMediaUrls = async (timeline: VideoTimeline): Promise<VideoTimeline> => {
+        const enrichedScenes = await Promise.all(
+            timeline.scenes.map(async (scene: any) => {
+                // Si la scène a déjà un media_url, on la garde telle quelle
+                if (scene.media_url && typeof scene.media_url === 'string' && scene.media_url.trim().length > 0) {
+                    return scene;
+                }
+
+                // Si la scène a un media_id, récupérer l'URL depuis l'API
+                if (scene.media_id !== null && scene.media_id !== undefined) {
+                    try {
+                        const mediaId = typeof scene.media_id === 'string' ? parseInt(scene.media_id, 10) : scene.media_id;
+                        if (!isNaN(mediaId) && mediaId > 0) {
+                            const response = await apiGet(`/api/media/${mediaId}`);
+                            if (response.success && response.data?.path) {
+                                const mediaPath = response.data.path;
+                                const base = (config.API_BASE_URL || config.UPLOAD_BASE_URL || '').replace(/\/$/, '');
+                                const mediaUrl = mediaPath.startsWith('http')
+                                    ? mediaPath
+                                    : base
+                                    ? `${base}/api/media/files/${mediaPath.replace(/^\//, '')}`
+                                    : mediaPath;
+
+                                return {
+                                    ...scene,
+                                    media_url: mediaUrl,
+                                };
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`[QuickPreview] Erreur récupération média ${scene.media_id}:`, error);
+                        // En cas d'erreur, on garde la scène telle quelle
+                    }
+                }
+
+                // Si la scène a assets, utiliser video_url ou image_url
+                if (scene.assets) {
+                    if (scene.assets.video_url) {
+                        return {
+                            ...scene,
+                            media_url: scene.assets.video_url,
+                        };
+                    }
+                    if (scene.assets.image_url) {
+                        return {
+                            ...scene,
+                            media_url: scene.assets.image_url,
+                        };
+                    }
+                }
+
+                // Si aucune URL n'a pu être trouvée, retourner la scène telle quelle
+                return scene;
+            })
+        );
+
+        return {
+            ...timeline,
+            scenes: enrichedScenes,
+        };
+    };
 
     const handleGeneratePreview = async () => {
         // ✅ CORRIGÉ: Validation de la timeline avant d'appeler l'API
@@ -147,8 +212,11 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
         setError(null);
 
         try {
+            // ✅ NOUVEAU: Enrichir la timeline en convertissant media_id en media_url
+            const enrichedTimeline = await enrichTimelineWithMediaUrls(timeline);
+            
             const response = await quickPreviewService.generatePreview({
-                timeline,
+                timeline: enrichedTimeline,
                 quality: 'low',
                 max_duration: 10.0,
             });

@@ -294,6 +294,27 @@ impl HybridImageSearchService {
         let mut couleurs: Vec<String> = Vec::new();
         let mut tags: Vec<String> = Vec::new();
 
+        // ✅ NOUVEAU: Fonction helper pour normaliser les tags (minuscules, trim, suppression accents partielle)
+        fn normalize_tag(tag: &str) -> String {
+            tag.trim()
+                .to_lowercase()
+                .chars()
+                .map(|c| match c {
+                    'à' | 'á' | 'â' | 'ã' | 'ä' => 'a',
+                    'è' | 'é' | 'ê' | 'ë' => 'e',
+                    'ì' | 'í' | 'î' | 'ï' => 'i',
+                    'ò' | 'ó' | 'ô' | 'õ' | 'ö' => 'o',
+                    'ù' | 'ú' | 'û' | 'ü' => 'u',
+                    'ç' => 'c',
+                    'ñ' => 'n',
+                    _ => c,
+                })
+                .collect::<String>()
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+        }
+
         // Parser l'autocomplete si présent
         if let Some(prod_obj) = produits_autocomplete.and_then(|p| p.as_object()) {
             // Extraire valeur autocomplete
@@ -301,44 +322,99 @@ impl HybridImageSearchService {
                 if let Some(first_val) = valeur_arr.first().and_then(|v| v.as_str()) {
                     // Parser "Logitech,MX Master 3,Sans fil,Noir"
                     let parts: Vec<&str> = first_val.split(',').map(|s| s.trim()).collect();
-                    tags.extend(parts.iter().map(|s| s.to_string()));
+                    for part in parts {
+                        let normalized = normalize_tag(part);
+                        if !normalized.is_empty() && !tags.contains(&normalized) {
+                            tags.push(normalized);
+                        }
+                    }
                 }
             }
             
             // ✅ CRITIQUE: Extraire depuis sous_caracteristiques
             if let Some(sous_caracs) = prod_obj.get("sous_caracteristiques").and_then(|sc| sc.as_object()) {
+                log_info(&format!(
+                    "[HybridImageSearch] 📦 sous_caracteristiques trouvé avec {} clés",
+                    sous_caracs.len()
+                ));
+                
                 // Marque
                 if let Some(marques_arr) = sous_caracs.get("marque").or_else(|| sous_caracs.get("brand")).and_then(|m| m.as_array()) {
-                    marque = marques_arr.first().and_then(|v| v.as_str()).map(|s| s.to_string());
-                    tags.extend(marques_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
+                    marque = marques_arr.first().and_then(|v| v.as_str()).map(|s| normalize_tag(s));
+                    for val in marques_arr.iter().filter_map(|v| v.as_str()) {
+                        let normalized = normalize_tag(val);
+                        if !normalized.is_empty() && !tags.contains(&normalized) {
+                            tags.push(normalized.clone());
+                        }
+                    }
                 }
                 
                 // Modèle
                 if let Some(modeles_arr) = sous_caracs.get("modele").or_else(|| sous_caracs.get("model")).and_then(|m| m.as_array()) {
-                    _modele = modeles_arr.first().and_then(|v| v.as_str()).map(|s| s.to_string());
-                    tags.extend(modeles_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
+                    _modele = modeles_arr.first().and_then(|v| v.as_str()).map(|s| normalize_tag(s));
+                    for val in modeles_arr.iter().filter_map(|v| v.as_str()) {
+                        let normalized = normalize_tag(val);
+                        if !normalized.is_empty() && !tags.contains(&normalized) {
+                            tags.push(normalized);
+                        }
+                    }
                 }
                 
                 // Couleurs
                 if let Some(couleurs_arr) = sous_caracs.get("couleur").or_else(|| sous_caracs.get("color")).and_then(|c| c.as_array()) {
-                    couleurs = couleurs_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
-                    tags.extend(couleurs.clone());
+                    couleurs = couleurs_arr.iter()
+                        .filter_map(|v| v.as_str())
+                        .map(|s| normalize_tag(s))
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                    for couleur in &couleurs {
+                        if !tags.contains(couleur) {
+                            tags.push(couleur.clone());
+                        }
+                    }
                 }
                 
                 // Ajouter toutes les autres caractéristiques aux tags
                 for (_key, value) in sous_caracs.iter() {
                     if let Some(vals) = value.as_array() {
-                        tags.extend(vals.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
+                        for val in vals.iter().filter_map(|v| v.as_str()) {
+                            let normalized = normalize_tag(val);
+                            if !normalized.is_empty() && !tags.contains(&normalized) {
+                                tags.push(normalized);
+                            }
+                        }
                     }
                 }
             } else {
-                log_warn("[HybridImageSearch] ⚠️ produits.sous_caracteristiques manquant - tags limités");
+                log_warn("[HybridImageSearch] ⚠️ produits.sous_caracteristiques manquant - extraction depuis autres sources");
+                
+                // ✅ FALLBACK: Extraire depuis description_produit et nom_produit si sous_caracteristiques manquant
+                if !description_produit.is_empty() {
+                    // Extraire mots-clés de la description
+                    let words: Vec<&str> = description_produit.split_whitespace().collect();
+                    for word in words.iter().take(10) { // Limiter à 10 mots pour éviter trop de tags
+                        let normalized = normalize_tag(word);
+                        if normalized.len() > 2 && !tags.contains(&normalized) { // Ignorer mots trop courts
+                            tags.push(normalized);
+                        }
+                    }
+                }
             }
+        } else {
+            log_warn("[HybridImageSearch] ⚠️ produits manquant dans JSON IA");
         }
 
-        let nom = if !nom_produit.is_empty() { nom_produit.to_string() } else { "Produit recherché".to_string() };
-        let description = if !description_produit.is_empty() { description_produit.to_string() } else { nom.clone() };
-        let categorie = category_str.to_string();
+        let nom = if !nom_produit.is_empty() { 
+            normalize_tag(&nom_produit)
+        } else { 
+            "produit recherche".to_string() 
+        };
+        let description = if !description_produit.is_empty() { 
+            description_produit.to_string() 
+        } else { 
+            nom.clone() 
+        };
+        let categorie = normalize_tag(&category_str);
 
         // ✅ Tags déjà construits lors du parsing autocomplete ci-dessus
         // Ajouter nom et catégorie si pas déjà présents
@@ -348,6 +424,13 @@ impl HybridImageSearchService {
         if !tags.contains(&categorie) {
             tags.push(categorie.clone());
         }
+        
+        // ✅ NOUVEAU: Logs détaillés des tags extraits
+        log_info(&format!(
+            "[HybridImageSearch] 🏷️ Tags extraits ({}): {:?}",
+            tags.len(),
+            &tags.iter().take(15).map(|s| s.as_str()).collect::<Vec<_>>().join(", ")
+        ));
 
         // Construire les requêtes de recherche
         let search_query_exact = format!("{} {} {}", 
@@ -398,11 +481,19 @@ impl HybridImageSearchService {
             marque,
             couleurs,
             tags.len(),
-            &tags.iter().take(10).map(|s| s.as_str()).collect::<Vec<_>>().join(", "),
+            &tags.iter().take(15).map(|s| s.as_str()).collect::<Vec<_>>().join(", "),
             &search_query_exact[..search_query_exact.len().min(60)],
             &search_query_broad[..search_query_broad.len().min(80)],
             &search_query_semantic[..search_query_semantic.len().min(100)]
         ));
+        
+        // ✅ NOUVEAU: Logs supplémentaires pour debug matching
+        if tags.len() < 3 {
+            log_warn(&format!(
+                "[HybridImageSearch] ⚠️ ATTENTION: Seulement {} tags extraits (minimum recommandé: 3-5 pour bon matching)",
+                tags.len()
+            ));
+        }
 
         Ok((analysis, cost))
     }
@@ -548,7 +639,7 @@ impl HybridImageSearchService {
         log_info(&format!(
             "[HybridImageSearch] 🔍 Paramètres recherche:\n  - Tags ({}): {:?}\n  - Catégorie: {:?}\n  - Marque: {:?}\n  - Couleur: {:?}\n  - Query semantic: '{}'\n  - GPS: lat={:?}, lng={:?}, radius={}km\n  - Max résultats: {}",
             analysis.tags.len(),
-            &analysis.tags.iter().take(10).map(|s| s.as_str()).collect::<Vec<_>>().join(", "),
+            &analysis.tags.iter().take(15).map(|s| s.as_str()).collect::<Vec<_>>().join(", "),
             category_filter,
             analysis.marque,
             couleur_principale,
@@ -558,9 +649,34 @@ impl HybridImageSearchService {
             search_radius_km.unwrap_or(50),
             max_results
         ));
+        
+        // ✅ NOUVEAU: Vérifier que les tags ne sont pas vides et ajouter fallback
+        let tags_to_search = if analysis.tags.is_empty() {
+            log_error("[HybridImageSearch] ❌ ERREUR CRITIQUE: Aucun tag extrait - la recherche ne pourra pas matcher correctement");
+            log_warn("[HybridImageSearch] ⚠️ Fallback: Utilisation de la description comme tag unique");
+            // Extraire mots-clés de la description comme fallback
+            let fallback_tags: Vec<String> = search_query
+                .split_whitespace()
+                .take(5)
+                .map(|s| s.to_lowercase())
+                .collect();
+            log_info(&format!(
+                "[HybridImageSearch] 🔄 Tags fallback générés: {:?}",
+                fallback_tags
+            ));
+            fallback_tags
+        } else {
+            analysis.tags.clone()
+        };
+        
         log_info(&format!(
             "[HybridImageSearch] 🌐 Langue: user_pref={:?}, detected={}, final={} -> PostgreSQL: '{}'",
             user_preferred_lang, detected_lang, final_lang, pg_lang
+        ));
+        log_info(&format!(
+            "[HybridImageSearch] 📤 Envoi à SQL: {} tags, query: '{}'",
+            tags_to_search.len(),
+            &search_query.chars().take(100).collect::<String>()
         ));
 
         let rows = sqlx::query(
@@ -579,7 +695,7 @@ impl HybridImageSearchService {
             )
             "#,
         )
-        .bind(&analysis.tags)
+        .bind(&tags_to_search)
         .bind(category_filter)
         .bind(&analysis.marque)
         .bind(couleur_principale)

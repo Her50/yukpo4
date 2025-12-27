@@ -576,19 +576,19 @@ FROM (
 ORDER BY ranked.fulltext_score DESC
 LIMIT 100
         "#, 
-            wildcard_like_score,  // ligne 441: wildcard LIKE score
-            wildcard_like_condition,  // ligne 459: wildcard LIKE condition
-            pg_lang, pg_lang,  // ligne 444: ts_rank to_tsvector + plainto_tsquery (2)
-            pg_lang,           // ligne 445: plainto_tsquery seulement (1)
-            pg_lang,           // ligne 446: plainto_tsquery seulement (1)
-            pg_lang, pg_lang,  // ligne 461: to_tsvector + plainto_tsquery (2)
-            pg_lang,           // ligne 462: plainto_tsquery seulement (1)
-            pg_lang,           // ligne 463: plainto_tsquery seulement (1)
-            pg_lang, pg_lang,  // ligne 481: titre_service (2)
-            pg_lang, pg_lang,  // ligne 482: description (2)
-            pg_lang, pg_lang,  // ligne 507: nom_produit (2)
-            pg_lang, pg_lang,  // ligne 542: titre_service ts_rank (2)
-            pg_lang, pg_lang   // ligne 543: description ts_rank (2)
+            wildcard_like_score,      // ligne 451: wildcard LIKE score
+            pg_lang, pg_lang,         // ligne 454: ts_rank to_tsvector + plainto_tsquery (2)
+            pg_lang,                  // ligne 455: plainto_tsquery seulement (1)
+            pg_lang,                  // ligne 456: plainto_tsquery seulement (1)
+            wildcard_like_condition,  // ligne 470: wildcard LIKE condition
+            pg_lang, pg_lang,         // ligne 473: to_tsvector + plainto_tsquery (2)
+            pg_lang,                  // ligne 474: plainto_tsquery seulement (1)
+            pg_lang,                  // ligne 475: plainto_tsquery seulement (1)
+            pg_lang, pg_lang,         // ligne 503: titre_service (2)
+            pg_lang, pg_lang,         // ligne 504: description (2)
+            pg_lang, pg_lang,         // ligne 529: nom_produit (2)
+            pg_lang, pg_lang,         // ligne 564: titre_service ts_rank (2)
+            pg_lang, pg_lang          // ligne 565: description ts_rank (2)
         );
 
         // ✅ OPTIMISÉ 2025-12-19: Requête avec retry pour gérer les problèmes de connexion DB
