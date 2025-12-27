@@ -31,6 +31,7 @@ use crate::{
 };
 use crate::models::input_model::MultiModalInput;
 use axum::response::IntoResponse;
+use sqlx::Row;
 
 // Routes temporairement comment?es pour ?viter les warnings
 // use crate::routes::{
@@ -929,12 +930,13 @@ async fn handle_optimization_metrics(
     info!("[optimization_metrics] Consultation des m?triques pour utilisateur {}", user_id);
     
     // R?cup?rer le solde actuel de l'utilisateur
-    let solde_result = sqlx::query!("SELECT tokens_balance FROM users WHERE id = $1", user_id)
+    let solde_result = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user_id)
         .fetch_one(&state.pg)
         .await;
     
     let solde_actuel = match solde_result {
-        Ok(user_data) => user_data.tokens_balance,
+        Ok(row) => row.get::<i32, _>("tokens_balance"),
         Err(_) => 0,
     };
     
