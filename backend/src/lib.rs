@@ -38,7 +38,7 @@ use crate::routes::{
     chat_routes::chat_routes,
     combination_routes::combination_routes,
     content_routes::content_routes,
-    conversation_routes::conversation_routes,
+    // conversation_routes::conversation_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (conversation_routes_merged)
     creator_analytics_routes::creator_analytics_routes, // ✅ NOUVEAU: Routes analytics créateurs
     // ✅ Routes supplémentaires importantes
     debug_routes::debug_routes,
@@ -88,12 +88,12 @@ use crate::routes::{
     publicite_pixel_routes::publicite_pixel_routes, // ✅ NOUVEAU: Routes tracking pixel avancé
     push_routes::push_routes,
     recommendation_routes::recommendation_routes,
-    scheduling_search_routes::scheduling_search_routes,
+    // scheduling_search_routes::scheduling_search_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (scheduling_search_routes_merged)
     search_history_routes::search_history_routes,
     service_routes::service_routes,
-    service_team_routes::service_team_routes,
+    // service_team_routes::service_team_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (service_team_routes_merged)
     shopping_routes::shopping_routes,
-    signalement_routes::signalement_routes,
+    // signalement_routes::signalement_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (signalement_routes_merged)
     social_features_routes::social_features_routes, // ✅ NOUVEAU: Routes fonctionnalités sociales avancées
     specialized_services_routes::specialized_services_routes,
     stock_media_routes::stock_media_routes, // ✅ NOUVEAU Phase 2: Routes Stock Media Integration
@@ -259,10 +259,10 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
 
     // ✅ Routes supplémentaires importantes
     let debug = debug_routes(state.clone());
-    let conversations = conversation_routes(state.clone());
-    let signalements = signalement_routes(state.clone());
-    let scheduling_search = scheduling_search_routes(state.clone());
-    let service_team = service_team_routes(state.clone());
+    // let conversations = conversation_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (conversation_routes_merged)
+    // let signalements = signalement_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (signalement_routes_merged)
+    // let scheduling_search = scheduling_search_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (scheduling_search_routes_merged)
+    // let service_team = service_team_routes(state.clone()); // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (service_team_routes_merged)
     let product_reactions = product_reactions_routes(state.clone());
     let recommendations = recommendation_routes(); // Ne prend pas state
     let token_stats = token_stats_routes(); // Ne prend pas state
@@ -366,10 +366,10 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(chat_media.with_state(state.clone()))
         // ✅ Routes supplémentaires importantes
         .merge(debug)
-        .merge(conversations)
-        .merge(signalements)
-        .merge(scheduling_search)
-        .merge(service_team)
+        // .merge(conversations) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (conversation_routes_merged)
+        // .merge(signalements) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (signalement_routes_merged)
+        // .merge(scheduling_search) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (scheduling_search_routes_merged)
+        // .merge(service_team) // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (service_team_routes_merged)
         .merge(product_reactions)
         .merge(recommendations)
         .merge(token_stats)
