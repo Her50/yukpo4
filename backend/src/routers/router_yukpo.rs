@@ -741,27 +741,87 @@ Format JSON attendu :
     log::info!("[handle_creation_service_direct] Response length: {}", response.len());
     log::info!("[handle_creation_service_direct] Response preview: {}", &response[0..response.len().min(200)]);
     
-    // Extraire le JSON des backticks si présent
+    // ✅ CORRECTION: Extraire le JSON des backticks si présent, avec validation
     let json_response = if response.contains("```json") {
         let start = response.find("```json").unwrap_or(0) + 7;
         let end = response.rfind("```").unwrap_or(response.len());
-        response[start..end].trim()
+        let extracted = response[start..end].trim();
+        // Vérifier que ce n'est pas juste le nom du modèle
+        if extracted == model_name || extracted.len() < 10 {
+            log::warn!("[handle_creation_service_direct] JSON extrait semble invalide (nom modèle?), utiliser réponse complète");
+            response.trim()
+        } else {
+            extracted
+        }
     } else if response.contains("```") {
         let start = response.find("```").unwrap_or(0) + 3;
         let end = response.rfind("```").unwrap_or(response.len());
-        response[start..end].trim()
+        let extracted = response[start..end].trim();
+        // Vérifier que ce n'est pas juste le nom du modèle
+        if extracted == model_name || extracted.len() < 10 {
+            log::warn!("[handle_creation_service_direct] JSON extrait semble invalide (nom modèle?), utiliser réponse complète");
+            response.trim()
+        } else {
+            extracted
+        }
     } else {
         response.trim()
+    };
+    
+    // ✅ CORRECTION: Chercher un objet JSON valide dans la réponse si nécessaire
+    let json_response = if json_response == model_name || (!json_response.starts_with('{') && !json_response.starts_with('[')) {
+        log::warn!("[handle_creation_service_direct] JSON extrait invalide, chercher objet JSON dans réponse");
+        // Chercher le premier { ou [ dans la réponse
+        if let Some(start) = response.find('{') {
+            if let Some(end) = response.rfind('}') {
+                if end > start {
+                    let candidate = response[start..=end].trim();
+                    log::info!("[handle_creation_service_direct] JSON candidat trouvé: {}", &candidate[0..candidate.len().min(200)]);
+                    candidate
+                } else {
+                    json_response
+                }
+            } else {
+                json_response
+            }
+        } else if let Some(start) = response.find('[') {
+            if let Some(end) = response.rfind(']') {
+                if end > start {
+                    response[start..=end].trim()
+                } else {
+                    json_response
+                }
+            } else {
+                json_response
+            }
+        } else {
+            log::error!("[handle_creation_service_direct] Aucun JSON trouvé dans la réponse");
+            json_response
+        }
+    } else {
+        json_response
     };
     
     log::info!("[handle_creation_service_direct] Réponse brute: {}", response);
     log::info!("[handle_creation_service_direct] JSON extrait: {}", json_response);
     
+    // ✅ CORRECTION: Vérifier que json_response n'est pas vide ou juste le nom du modèle
+    if json_response.is_empty() || json_response == model_name {
+        log::error!("[handle_creation_service_direct] JSON extrait invalide: '{}' (nom modèle: '{}')", json_response, model_name);
+        log::error!("[handle_creation_service_direct] Réponse complète: {}", response);
+        return Err(AppError::Internal(format!(
+            "Réponse IA invalide: le JSON extrait est vide ou correspond au nom du modèle '{}'. Réponse complète: {}",
+            model_name,
+            &response[0..response.len().min(500)]
+        )));
+    }
+    
     // Parser la réponse JSON
     let data: Value = serde_json::from_str(json_response).map_err(|e| {
         log::error!("[handle_creation_service_direct] Erreur parsing JSON: {}", e);
         log::error!("[handle_creation_service_direct] JSON reçu: {}", json_response);
-        format!("Erreur parsing JSON: {}", e)
+        log::error!("[handle_creation_service_direct] Réponse complète: {}", response);
+        format!("Erreur parsing JSON: {} - Réponse IA invalide ou mal formatée", e)
     })?;
     
     log::info!("[handle_creation_service_direct] JSON parsé avec succès: {}", data);
