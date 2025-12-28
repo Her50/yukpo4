@@ -1271,6 +1271,9 @@ LIMIT 100
             crate::core::types::AppError::Internal("Échec recherche par mots clés après retries".to_string())
         })?;
 
+        // ✅ CORRIGÉ: Stocker la longueur avant de déplacer results dans la boucle
+        let total_results_count = results.len();
+
         let mut search_results = Vec::new();
         // ✅ CORRIGÉ 2025-12-28: Seuil minimum de pertinence pour filtrer résultats non pertinents
         // Score < 8.0 = correspondance uniquement dans description (non pertinent)
@@ -1316,7 +1319,7 @@ LIMIT 100
             "[NativeSearch] Recherche par mots-clés terminée: {} résultats pertinents (score >= {}) sur {} résultats bruts",
             search_results.len(),
             MIN_RELEVANCE_SCORE,
-            results.len()
+            total_results_count
         ));
 
         Ok(search_results)
