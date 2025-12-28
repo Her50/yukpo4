@@ -667,7 +667,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                 products={availableProducts}
                 allowMultiple={false} // ✅ Mode unique pour vidéo (comme dans MesServicesScreen)
                 onSelect={(product) => {
-                    // ✅ Ouvrir le modal de création vidéo avec le produit sélectionné
+                    // ✅ CORRIGÉ: Ouvrir le modal de création vidéo qui ouvrira automatiquement l'AR
                     openVideoCreationModal(product);
                     setShowProductSelector(false);
                 }}
@@ -716,6 +716,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                     await SafeStorage.setItem('video_creation_tutorial_seen', 'true');
                 }}
             />
+
         </SafeNativeView>
     );
 };

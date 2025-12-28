@@ -161,9 +161,8 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
                         clearInterval(recordingTimerRef.current);
                         recordingTimerRef.current = null;
                     }
-                    if (onVideoCaptured) {
-                        onVideoCaptured(video.path);
-                    }
+                    // ✅ CORRIGÉ: Ne pas appeler onVideoCaptured automatiquement
+                    // L'utilisateur doit cliquer sur "Utiliser cette vidéo" pour continuer
                 },
                 onRecordingError: (error) => {
                     console.error('[ARVideoEditor] Erreur enregistrement:', error);
@@ -246,16 +245,17 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
 
     return (
         <View style={styles.container}>
-            {/* Vue caméra AR avec VisionCamera */}
-            <Camera
-                ref={cameraRef}
-                style={styles.camera}
-                device={device}
-                isActive={arMode === 'preview' || arMode === 'recording'}
-                frameProcessor={frameProcessor}
-                video={true}
-                audio={true}
-            >
+            {/* Vue caméra AR avec VisionCamera - Masquée après capture */}
+            {!videoUri && (
+                <Camera
+                    ref={cameraRef}
+                    style={styles.camera}
+                    device={device}
+                    isActive={arMode === 'preview' || arMode === 'recording'}
+                    frameProcessor={frameProcessor}
+                    video={true}
+                    audio={true}
+                >
                 {/* Overlay AR */}
                 <View style={styles.overlay}>
                     {/* Indicateur de tracking AR */}
@@ -301,7 +301,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
 
                     {/* Contrôles */}
                     <View style={styles.controls}>
-                        {!isRecording ? (
+                        {!videoUri && !isRecording ? (
                             <NativeButton
                                 title="Démarrer l'enregistrement"
                                 variant="primary"
@@ -320,6 +320,60 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
                             </View>
                         )}
 
+                        {!videoUri && onClose && (
+                            <NativeButton
+                                title="Fermer"
+                                variant="secondary"
+                                size="medium"
+                                onPress={onClose}
+                                style={styles.closeButton}
+                            />
+                        )}
+                    </View>
+                </View>
+                </Camera>
+            )}
+            
+            {/* ✅ Interface post-capture */}
+            {videoUri && (
+                <View style={styles.postCaptureOverlay}>
+                    <LinearGradient
+                        colors={['#667eea', '#764ba2']}
+                        style={StyleSheet.absoluteFill}
+                    />
+                    <View style={styles.postCaptureContent}>
+                        <NativeCard style={styles.videoPreviewCard}>
+                            <SafeIcon name="check-circle" size={64} color={modernColors.success} />
+                            <Text style={styles.successText}>Vidéo enregistrée avec succès !</Text>
+                            <Text style={styles.successSubtext}>Prêt pour l'étape suivante</Text>
+                        </NativeCard>
+                        
+                        <View style={styles.actionButtons}>
+                            <NativeButton
+                                title="✅ Utiliser cette vidéo"
+                                variant="primary"
+                                size="large"
+                                onPress={() => {
+                                    if (onVideoCaptured && videoUri) {
+                                        onVideoCaptured(videoUri);
+                                    }
+                                }}
+                                style={styles.continueButton}
+                            />
+                            
+                            <NativeButton
+                                title="🔄 Réenregistrer"
+                                variant="secondary"
+                                size="medium"
+                                onPress={() => {
+                                    setVideoUri(null);
+                                    setArMode('preview');
+                                    setRecordingDuration(0);
+                                }}
+                                style={styles.retryButton}
+                            />
+                        </View>
+
                         {onClose && (
                             <NativeButton
                                 title="Fermer"
@@ -331,7 +385,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
                         )}
                     </View>
                 </View>
-            </Camera>
+            )}
         </View>
     );
 };
@@ -390,6 +444,51 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         marginTop: 12,
+    },
+    postCaptureControls: {
+        width: '100%',
+        alignItems: 'center',
+        gap: 16,
+    },
+    videoPreviewCard: {
+        padding: 24,
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: 16,
+    },
+    successText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: modernColors.text,
+        textAlign: 'center',
+    },
+    successSubtext: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+    },
+    actionButtons: {
+        width: '100%',
+        alignItems: 'center',
+        gap: 12,
+    },
+    continueButton: {
+        width: '100%',
+    },
+    retryButton: {
+        width: '100%',
+    },
+    postCaptureOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    postCaptureContent: {
+        width: '100%',
+        padding: 24,
+        alignItems: 'center',
+        gap: 24,
     },
     loadingText: {
         color: '#ffffff',

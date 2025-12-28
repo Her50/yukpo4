@@ -4,6 +4,9 @@ use crate::core::types::{AppError, AppResult};
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
+use base64::{Engine as _, engine::general_purpose};
+use std::fs;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EffectPreviewRequest {
@@ -329,6 +332,14 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
             description: "Ralenti pour effet dramatique".to_string(),
         },
     );
+    // ✅ CORRIGÉ 2025-12-28: Ajouter alias "ralenti dramatique"
+    m.insert(
+        "ralenti dramatique",
+        EffectDefinition {
+            ffmpeg_filter: "setpts=2.0*PTS".to_string(),
+            description: "Ralenti pour effet dramatique".to_string(),
+        },
+    );
 
     // ✅ CORRIGÉ 2025-12-18: Ajouter alias "éclat lumineux" (alias de glow)
     m.insert(
@@ -509,26 +520,74 @@ pub async fn generate_effect_preview(
         _ => ("libx264", "28", "ultrafast"), // low quality, rapide
     };
 
-    // ✅ CORRIGÉ: Vérifier que le fichier d'entrée existe avant d'appeler FFmpeg
-    let input_path = &request.sample_media_url;
-    if !std::path::Path::new(input_path).exists() && !input_path.starts_with("http") {
-        return Err(AppError::BadRequest(format!(
-            "Fichier d'entrée introuvable: {}. Vérifiez que le chemin est correct ou utilisez une URL HTTP/HTTPS.",
-            input_path
-        )));
-    }
+    // ✅ CORRIGÉ 2025-12-28: Gérer les data URIs en créant un fichier temporaire
+    let (input_path, is_temp_file, temp_file_path) = if request.sample_media_url.starts_with("data:") {
+        // Extraire le base64 depuis le data URI
+        let base64_data = if let Some(idx) = request.sample_media_url.find(',') {
+            &request.sample_media_url[idx + 1..]
+        } else {
+            return Err(AppError::BadRequest(
+                "Format data URI invalide. Format attendu: data:image/jpeg;base64,...".to_string(),
+            ));
+        };
+
+        // Déterminer l'extension depuis le MIME type
+        let extension = if request.sample_media_url.starts_with("data:image/") {
+            if request.sample_media_url.contains("png") {
+                "png"
+            } else if request.sample_media_url.contains("gif") {
+                "gif"
+            } else {
+                "jpg"
+            }
+        } else if request.sample_media_url.starts_with("data:video/") {
+            "mp4"
+        } else {
+            "tmp"
+        };
+
+        // Décoder le base64
+        let decoded_data = general_purpose::STANDARD.decode(base64_data)
+            .map_err(|e| AppError::BadRequest(format!("Erreur décodage base64: {}", e)))?;
+
+        // Créer un fichier temporaire
+        let temp_dir = std::env::temp_dir();
+        let temp_file = temp_dir.join(format!("effect_preview_{}_{}.{}", 
+            normalized_effect_name, 
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+            extension));
+        
+        // Écrire les données dans le fichier temporaire
+        fs::write(&temp_file, decoded_data)
+            .map_err(|e| AppError::Internal(format!("Erreur création fichier temporaire: {}", e)))?;
+
+        let path_str = temp_file.to_string_lossy().to_string();
+        (path_str.clone(), true, Some(temp_file))
+    } else {
+        // Vérifier que le fichier d'entrée existe (pour les chemins locaux)
+        let input_path = &request.sample_media_url;
+        if !PathBuf::from(input_path).exists() && !input_path.starts_with("http") {
+            return Err(AppError::BadRequest(format!(
+                "Fichier d'entrée introuvable: {}. Vérifiez que le chemin est correct ou utilisez une URL HTTP/HTTPS.",
+                input_path
+            )));
+        }
+        (input_path.to_string(), false, None)
+    };
 
     // Générer le nom du fichier de sortie
     let output_path = format!(
         "{}_preview_{}_{}.mp4",
-        request.sample_media_url, normalized_effect_name, quality
+        normalized_effect_name, 
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+        quality
     );
 
     // ✅ CORRIGÉ: Appliquer l'effet avec FFmpeg avec meilleure gestion d'erreur
     let ffmpeg_result = Command::new("ffmpeg")
         .args(&[
             "-i",
-            input_path,
+            &input_path,
             "-vf",
             &effect_def.ffmpeg_filter,
             "-t",
@@ -549,7 +608,8 @@ pub async fn generate_effect_preview(
 
     let processing_time = start_time.elapsed().as_millis() as u64;
 
-    match ffmpeg_result {
+    // ✅ CORRIGÉ 2025-12-28: Nettoyer le fichier temporaire à la fin (succès ou échec)
+    let result = match ffmpeg_result {
         Ok(output) => {
             if output.status.success() {
                 info!("[EffectPreview] ✅ Preview généré: {}", output_path);
@@ -614,7 +674,20 @@ pub async fn generate_effect_preview(
                 e
             )))
         }
+    };
+
+    // Nettoyer le fichier temporaire si nécessaire
+    if is_temp_file {
+        if let Some(temp_path) = temp_file_path {
+            if let Err(e) = fs::remove_file(&temp_path) {
+                warn!("[EffectPreview] ⚠️ Impossible de supprimer le fichier temporaire {:?}: {}", temp_path, e);
+            } else {
+                info!("[EffectPreview] Fichier temporaire supprimé: {:?}", temp_path);
+            }
+        }
     }
+
+    result
 }
 
 /// Génère plusieurs previews d'effets en batch

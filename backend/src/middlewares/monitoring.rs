@@ -63,10 +63,22 @@ pub async fn monitoring(req: Request<Body>, next: Next) -> Response {
             || path.contains("/services/create") 
             || path.contains("/products");
         
+        // ✅ CORRIGÉ 2025-12-28: Recherche directe peut prendre jusqu'à 15s (requêtes SQL complexes)
+        let is_search_endpoint = path.contains("/search/direct") || path.contains("/search/");
+        
         if is_image_endpoint && elapsed_ms < 15000 {
             // Pour les endpoints avec images, 7-15s est acceptable (traitement IA + upload)
             log::warn!(
                 "⏱️ [SlowImageRequest] {} {} -> {} ({} ms) - Requête avec images (acceptable pour traitement IA)",
+                method,
+                path,
+                status.as_u16(),
+                elapsed_ms
+            );
+        } else if is_search_endpoint && elapsed_ms < 15000 {
+            // Pour les endpoints de recherche, 10-15s est acceptable (requêtes SQL complexes avec GPS, cache, etc.)
+            log::warn!(
+                "⏱️ [SlowSearchRequest] {} {} -> {} ({} ms) - Requête de recherche (acceptable pour recherches complexes avec GPS)",
                 method,
                 path,
                 status.as_u16(),

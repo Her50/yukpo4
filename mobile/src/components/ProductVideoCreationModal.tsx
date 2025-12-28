@@ -269,6 +269,42 @@ const applyBriefVariant = (
 
 type ModalStep = 1 | 2 | 3 | 4 | 5 | 6;
 
+// ✅ CORRIGÉ: Composant wrapper pour chargement dynamique de ARVideoEditorVisionCamera
+const ARVideoEditorWrapper: React.FC<{
+    product: ManagedProduct;
+    onVideoCaptured: (videoUri: string) => void;
+    onClose: () => void;
+}> = ({ product, onVideoCaptured, onClose }) => {
+    const [ARComponent, setARComponent] = useState<React.ComponentType<any> | null>(null);
+    
+    useEffect(() => {
+        const loadAREditor = async () => {
+            try {
+                const module = await import('./ARVideoEditorVisionCamera');
+                const ARVideoEditorVisionCamera = module.ARVideoEditorVisionCamera;
+                setARComponent(() => ARVideoEditorVisionCamera);
+            } catch (error) {
+                console.error('[ProductVideoCreationModal] Erreur chargement ARVideoEditorVisionCamera:', error);
+                Alert.alert('Erreur', 'Impossible de charger l\'éditeur AR');
+                onClose();
+            }
+        };
+        loadAREditor();
+    }, [onClose]);
+
+    if (!ARComponent || !product) return null;
+
+    return (
+        <ARComponent
+            onVideoCaptured={onVideoCaptured}
+            onClose={onClose}
+            productName={normalizeProductName(product)}
+            serviceId={Number(product.serviceId)}
+            productIndex={product.product_index || 0}
+        />
+    );
+};
+
 const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     visible,
     primaryProduct,
@@ -379,6 +415,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU Phase 3.2: État pour l'éditeur AR
     const [showAREditor, setShowAREditor] = useState<boolean>(false);
     const [isUploadingARVideo, setIsUploadingARVideo] = useState<boolean>(false);
+    // ✅ CORRIGÉ: Flag pour éviter l'ouverture auto multiple fois
+    const arAutoOpenedRef = useRef<boolean>(false);
 
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -1375,6 +1413,20 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         };
         loadAvailableSessions();
     }, [visible, showVideoChaining]);
+
+    // ✅ CORRIGÉ: Ouvrir automatiquement l'éditeur AR quand le modal s'ouvre avec un produit
+    useEffect(() => {
+        if (visible && selectedProduct && !arAutoOpenedRef.current) {
+            // Ouvrir directement l'éditeur AR
+            setShowAREditor(true);
+            arAutoOpenedRef.current = true;
+        }
+        if (!visible) {
+            // Réinitialiser le flag quand le modal se ferme
+            arAutoOpenedRef.current = false;
+            setShowAREditor(false);
+        }
+    }, [visible, selectedProduct]);
 
     useEffect(() => {
         if (!visible) {
@@ -4946,6 +4998,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     }}
                 />
             )}
+
+            {/* ✅ CORRIGÉ: Éditeur AR - S'affiche automatiquement à l'ouverture du modal */}
+            {showAREditor && selectedProduct && <ARVideoEditorWrapper 
+                product={selectedProduct}
+                onVideoCaptured={handleARVideoCaptured}
+                onClose={() => setShowAREditor(false)}
+            />}
         </>
     );
 };

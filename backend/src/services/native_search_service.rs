@@ -977,6 +977,45 @@ LIMIT 100
         // Le problème: ILIKE '%...%' ne peut pas utiliser d'index et scanne toute la table
         // Solution: Utiliser to_tsvector + plainto_tsquery avec index GIN (créé dans migration 20251217)
         let sql = r#"
+            WITH autocomplete_matches AS (
+                -- ✅ NOUVEAU 2025-12-28: Matches depuis autocomplete_characteristics (priorité très haute)
+                SELECT 
+                    ac.service_id,
+                    ac.valeur,
+                    ac.usage_count,
+                    ac.characteristic_vector,
+                    ac.full_vector,
+                    (
+                        -- Score combiné pour match autocomplete
+                        CASE WHEN LOWER(ac.valeur) = LOWER($1) THEN 100.0 ELSE 0.0 END +
+                        CASE WHEN ac.valeur ILIKE $1 || '%' THEN 80.0 ELSE 0.0 END +
+                        CASE WHEN ac.valeur ILIKE '%' || $1 || '%' THEN 60.0 ELSE 0.0 END +
+                        ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) * 20.0 +
+                        COALESCE(ts_rank(characteristic_vector_to_tsvector(ac.characteristic_vector), plainto_tsquery('french', $1)), 0.0) * 15.0 +
+                        COALESCE(ts_rank(full_vector_to_tsvector(ac.full_vector), plainto_tsquery('french', $1)), 0.0) * 12.0 +
+                        (ac.usage_count::REAL * 0.5)
+                    )::REAL as ac_score
+                FROM autocomplete_characteristics ac
+                INNER JOIN services s ON s.id = ac.service_id
+                WHERE s.is_active = true
+                AND ac.identifiant_base = 'produits'
+                AND ac.is_real_product = TRUE
+                AND (
+                    LOWER(ac.valeur) = LOWER($1)
+                    OR ac.valeur ILIKE $1 || '%'
+                    OR ac.valeur ILIKE '%' || $1 || '%'
+                    OR to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
+                    OR characteristic_vector_to_tsvector(ac.characteristic_vector) @@ plainto_tsquery('french', $1)
+                    OR full_vector_to_tsvector(ac.full_vector) @@ plainto_tsquery('french', $1)
+                )
+            ),
+            best_autocomplete_per_service AS (
+                SELECT DISTINCT ON (service_id)
+                    service_id,
+                    ac_score
+                FROM autocomplete_matches
+                ORDER BY service_id, ac_score DESC, usage_count DESC NULLS LAST
+            )
             SELECT 
                 s.id,
                 s.data,
@@ -984,28 +1023,152 @@ LIMIT 100
                 s.user_id,
                 s.gps,
                 s.category,
-                -- ✅ OPTIMISÉ: Utiliser ts_rank avec index GIN au lieu de ILIKE
-                (
-                    -- Score basé sur tsvector (utilise index GIN créé dans migration)
-                    (
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 3.0 +
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.5
-                    ) * 0.5
+                -- ✅ CORRIGÉ 2025-12-28: Scoring amélioré avec autocomplete_characteristics en priorité
+                GREATEST(
+                    -- PRIORITÉ 0: Score depuis autocomplete_characteristics (priorité très haute)
+                    COALESCE(ac.ac_score, 0.0),
+                    -- PRIORITÉ 1: Correspondance exacte dans nom_produit (score très élevé: 100)
+                    CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product
+                        WHERE LOWER(COALESCE(product->>'nom_produit', product->>'nom', '')) = LOWER($1)
+                    ) THEN 100.0
+                    -- PRIORITÉ 2: Correspondance début dans nom_produit (score élevé: 80)
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product
+                        WHERE COALESCE(product->>'nom_produit', product->>'nom', '') ILIKE $1 || '%'
+                    ) THEN 80.0
+                    -- PRIORITÉ 3: Correspondance exacte dans titre_service (score élevé: 70)
+                    WHEN LOWER(COALESCE(s.data->'titre_service'->>'valeur', '')) = LOWER($1) THEN 70.0
+                    -- PRIORITÉ 4: Correspondance début dans titre_service (score moyen-élevé: 60)
+                    WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE $1 || '%' THEN 60.0
+                    -- PRIORITÉ 5: Correspondance exacte dans description_produit (score moyen-élevé: 55)
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product
+                        WHERE LOWER(COALESCE(product->>'description_produit', product->>'description', '')) = LOWER($1)
+                    ) THEN 55.0
+                    -- PRIORITÉ 6: Correspondance début dans description_produit (score moyen: 45)
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product
+                        WHERE COALESCE(product->>'description_produit', product->>'description', '') ILIKE $1 || '%'
+                    ) THEN 45.0
+                    -- PRIORITÉ 7: Correspondance dans category (score moyen: 50)
+                    WHEN COALESCE(s.data->'category'->>'valeur', s.category, '') ILIKE '%' || $1 || '%' THEN 50.0
+                    -- PRIORITÉ 8: Correspondance dans nom_produit (partielle, score moyen: 40)
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product
+                        WHERE COALESCE(product->>'nom_produit', product->>'nom', '') ILIKE '%' || $1 || '%'
+                    ) THEN 40.0
+                    -- PRIORITÉ 9: Correspondance dans description_produit (partielle, score moyen: 35)
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product
+                        WHERE COALESCE(product->>'description_produit', product->>'description', '') ILIKE '%' || $1 || '%'
+                    ) THEN 35.0
+                    -- PRIORITÉ 10: Correspondance dans titre_service (partielle, score moyen: 30)
+                    WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 30.0
+                    -- PRIORITÉ 11: Full-text search dans nom_produit/titre (score moyen: 25)
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product
+                        WHERE to_tsvector('french', COALESCE(product->>'nom_produit', product->>'nom', '')) @@ plainto_tsquery('french', $1)
+                    ) OR to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+                    THEN 25.0
+                    -- PRIORITÉ 12: Full-text search dans description_produit (score moyen: 20)
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product
+                        WHERE to_tsvector('french', COALESCE(product->>'description_produit', product->>'description', '')) @@ plainto_tsquery('french', $1)
+                    ) THEN 20.0
+                    -- PRIORITÉ 13: Full-text search dans category (score faible: 15)
+                    WHEN to_tsvector('french', COALESCE(s.data->'category'->>'valeur', s.category, '')) @@ plainto_tsquery('french', $1)
+                    THEN 15.0
+                    -- PRIORITÉ 14: Correspondance dans description service (score très faible: 5) - FILTRÉ plus bas
+                    WHEN COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 5.0
+                    -- FALLBACK: Full-text dans description (score très faible: 2) - FILTRÉ plus bas
+                    WHEN to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+                    THEN 2.0
+                    ELSE 0.0
+                    END
                 )::REAL as keyword_score
             FROM services s
+            LEFT JOIN best_autocomplete_per_service ac ON ac.service_id = s.id
             WHERE s.is_active = true
+            -- ✅ NOUVEAU 2025-12-28: Inclure services matchés via autocomplete_characteristics
             AND (
-                -- ✅ CRITIQUE 2025-12-24: PRIORISER ILIKE pour gérer accents (générique, pas spécifique)
-                COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%'
-                OR COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%'
-                OR COALESCE(s.data->'category'->>'valeur', '') ILIKE '%' || $1 || '%'
-                -- Recherche full-text (fallback)
-                OR to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-                OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-                OR to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-                -- ✅ NOUVEAU 2025-12-24: Recherche directe dans produits
-                OR EXISTS (
+                ac.service_id IS NOT NULL
+                OR
+                -- ✅ CORRIGÉ 2025-12-28: Recherche avec priorité (nom_produit > titre > category > description)
+                -- Correspondance dans produits (priorité haute)
+                EXISTS (
                     SELECT 1
                     FROM jsonb_array_elements(
                         CASE 
@@ -1017,29 +1180,102 @@ LIMIT 100
                         END
                     ) AS product
                     WHERE (
-                        COALESCE(product->>'nom_produit', product->>'nom', '') ILIKE '%' || $1 || '%'
+                        LOWER(COALESCE(product->>'nom_produit', product->>'nom', '')) = LOWER($1)
+                        OR COALESCE(product->>'nom_produit', product->>'nom', '') ILIKE $1 || '%'
+                        OR COALESCE(product->>'nom_produit', product->>'nom', '') ILIKE '%' || $1 || '%'
+                        OR to_tsvector('french', COALESCE(product->>'nom_produit', product->>'nom', '')) @@ plainto_tsquery('french', $1)
+                        OR LOWER(COALESCE(product->>'description_produit', product->>'description', '')) = LOWER($1)
+                        OR COALESCE(product->>'description_produit', product->>'description', '') ILIKE $1 || '%'
                         OR COALESCE(product->>'description_produit', product->>'description', '') ILIKE '%' || $1 || '%'
+                        OR to_tsvector('french', COALESCE(product->>'description_produit', product->>'description', '')) @@ plainto_tsquery('french', $1)
                     )
+                )
+                -- Correspondance dans titre_service
+                OR LOWER(COALESCE(s.data->'titre_service'->>'valeur', '')) = LOWER($1)
+                OR COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE $1 || '%'
+                OR COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%'
+                OR to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')) @@ plainto_tsquery('french', $1)
+                -- Correspondance dans category
+                OR COALESCE(s.data->'category'->>'valeur', s.category, '') ILIKE '%' || $1 || '%'
+                OR to_tsvector('french', COALESCE(s.data->'category'->>'valeur', s.category, '')) @@ plainto_tsquery('french', $1)
+                -- Correspondance dans description (priorité basse)
+                OR COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%'
+                OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
                 )
             )
             AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
-            AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
+            AND ($3::text IS NULL OR s.gps IS NULL OR s.gps ILIKE '%' || $3 || '%')
             ORDER BY keyword_score DESC
-            LIMIT 100
+            LIMIT 50
         "#;
 
-        let results = sqlx::query(sql)
-            .bind(query)
-            .bind(category_filter)
-            .bind(location_filter)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| {
-                log_error(&format!("[NativeSearch] Erreur recherche par mots clés: {}", e));
-                crate::core::types::AppError::Internal(format!("Erreur recherche par mots clés: {}", e))
-            })?;
+        // ✅ CORRIGÉ 2025-12-28: Retry avec gestion d'erreur TLS et timeout
+        let mut results = None;
+        let max_retries = 3;
+        let query_timeout = std::time::Duration::from_secs(12); // Timeout de 12s pour éviter dépassement TLS
+        
+        for attempt in 1..=max_retries {
+            match tokio::time::timeout(query_timeout, sqlx::query(sql)
+                .bind(query)
+                .bind(category_filter)
+                .bind(location_filter)
+                .fetch_all(&self.pool))
+                .await
+            {
+                Ok(Ok(rows)) => {
+                    results = Some(rows);
+                    break;
+                }
+                Ok(Err(e)) => {
+                    let error_msg = e.to_string();
+                    let is_tls_error = error_msg.contains("TLS")
+                        || error_msg.contains("close_notify")
+                        || error_msg.contains("Connection reset")
+                        || error_msg.contains("peer closed")
+                        || error_msg.contains("communicating with database");
+                    
+                    if is_tls_error && attempt < max_retries {
+                        let delay_ms = 200 * attempt; // Backoff: 200ms, 400ms, 600ms
+                        log::warn!(
+                            "[NativeSearch] Erreur DB TLS détectée (tentative {}/{}), retry dans {}ms: {}",
+                            attempt,
+                            max_retries,
+                            delay_ms,
+                            error_msg
+                        );
+                        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+                        continue;
+                    } else {
+                        log_error(&format!("[NativeSearch] Erreur recherche par mots clés: {}", e));
+                        if attempt == max_retries {
+                            return Err(crate::core::types::AppError::Internal(format!("Erreur recherche par mots clés après {} tentatives: {}", max_retries, e)));
+                        }
+                    }
+                }
+                Err(_) => {
+                    // Timeout
+                    log_error(&format!("[NativeSearch] Timeout recherche par mots clés ({}s dépassé)", query_timeout.as_secs()));
+                    if attempt < max_retries {
+                        let delay_ms = 200 * attempt;
+                        log::warn!("[NativeSearch] Retry après timeout (tentative {}/{}) dans {}ms", attempt, max_retries, delay_ms);
+                        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+                        continue;
+                    } else {
+                        return Err(crate::core::types::AppError::Internal(format!("Timeout recherche par mots clés après {} tentatives ({}s)", max_retries, query_timeout.as_secs())));
+                    }
+                }
+            }
+        }
+        
+        let results = results.ok_or_else(|| {
+            crate::core::types::AppError::Internal("Échec recherche par mots clés après retries".to_string())
+        })?;
 
         let mut search_results = Vec::new();
+        // ✅ CORRIGÉ 2025-12-28: Seuil minimum de pertinence pour filtrer résultats non pertinents
+        // Score < 8.0 = correspondance uniquement dans description (non pertinent)
+        const MIN_RELEVANCE_SCORE: f32 = 8.0;
+        
         for row in results {
             let service_id: i32 = row.get("id");
             let data: Value = row.get("data");
@@ -1049,6 +1285,17 @@ LIMIT 100
             let _category: Option<String> = row.get("category");
             // Gérer le cas où keyword_score peut être NULL
             let keyword_score: f32 = row.try_get("keyword_score").unwrap_or(0.0);
+            
+            // Filtrer les résultats avec score trop faible (correspondances non pertinentes)
+            if keyword_score < MIN_RELEVANCE_SCORE {
+                log::debug!(
+                    "[NativeSearch] Résultat filtré (score {} < {}): service_id={}",
+                    keyword_score,
+                    MIN_RELEVANCE_SCORE,
+                    service_id
+                );
+                continue;
+            }
 
             search_results.push(SearchResult {
                 service_id,
@@ -1064,6 +1311,13 @@ LIMIT 100
                 matched_fields: vec!["keywords".to_string()],
             });
         }
+        
+        log_info(&format!(
+            "[NativeSearch] Recherche par mots-clés terminée: {} résultats pertinents (score >= {}) sur {} résultats bruts",
+            search_results.len(),
+            MIN_RELEVANCE_SCORE,
+            results.len()
+        ));
 
         Ok(search_results)
     }

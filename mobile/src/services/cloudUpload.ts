@@ -9,6 +9,16 @@ import SafeStorage from '../utils/safeStorage';
 
 // ✅ CORRIGÉ: Utilise la configuration centralisée depuis .env
 
+// Fonction pour récupérer le token d'authentification
+const getAuthToken = async (): Promise<string | null> => {
+    try {
+        return await SafeStorage.getItem('auth_token');
+    } catch (error) {
+        console.error('[CloudUpload] Erreur récupération token:', error);
+        return null;
+    }
+};
+
 export interface UploadProgress {
     loaded: number;
     total: number;
@@ -120,23 +130,12 @@ export const uploadToCloud = async (
         // Upload vers l'API
         const uploadUrl = `${API_BASE_URL}/api/upload`;
 
-        // ✅ CORRIGÉ 2025-12-27: Récupérer le token d'authentification
-        const token = await SafeStorage.getItem('auth_token');
-        const isDevMode = await SafeStorage.getItem('__DEV_FAKE_USER__') === 'true';
-
-        // Préparer les headers
-        const headers: any = {};
-        
-        // Ajouter le token d'autorisation si disponible
+        // ✅ CORRIGÉ 2025-12-28: Ajouter le header Authorization
+        const token = await getAuthToken();
+        const headers: Record<string, string> = {};
         if (token) {
-            headers.Authorization = `Bearer ${token}`;
-        } else if (isDevMode) {
-            // En mode dev, utiliser un token JWT de développement
-            console.warn('[CloudUpload] 🧪 Mode développement : aucun token trouvé');
-        } else {
-            console.warn('[CloudUpload] ⚠️ Aucun token d\'authentification trouvé');
+            headers['Authorization'] = `Bearer ${token}`;
         }
-
         // Ne pas définir Content-Type pour FormData, le navigateur le fera avec boundary
 
         const response = await fetch(uploadUrl, {
