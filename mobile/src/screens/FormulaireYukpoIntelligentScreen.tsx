@@ -2896,7 +2896,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         PRODUCT_FIELDS.forEach(key => {
           const value = valeursFormulaire[key];
           if (value !== undefined && value !== null && value !== '') {
-            nouveauProduit[key] = value;
+            // ✅ CORRIGÉ: Convertir le prix en nombre au lieu de le garder comme chaîne
+            if (key === 'prix_produit' || key === 'prix') {
+              const trimmed = String(value).trim();
+              if (trimmed.length > 0 && !isNaN(Number(trimmed))) {
+                const prixNumber = Number(trimmed);
+                nouveauProduit[key] = isNaN(prixNumber) ? null : prixNumber;
+              }
+            } else {
+              nouveauProduit[key] = value;
+            }
           }
         });
 
@@ -3201,7 +3210,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               if (value !== undefined && value !== null && value !== '') {
                 const trimmed = String(value).trim();
                 if (trimmed.length > 0 && !isNaN(Number(trimmed))) {
-                  nouveauProduit[key] = trimmed;
+                  // ✅ CORRIGÉ: Convertir le prix en nombre au lieu de le garder comme chaîne
+                  const prixNumber = Number(trimmed);
+                  nouveauProduit[key] = isNaN(prixNumber) ? null : prixNumber;
                 }
               }
             } else if (value !== undefined && value !== null && value !== '') {
@@ -3696,7 +3707,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                   // Extraire les champs individuels du produit
                   const nomProduit = finalServiceData.nom_produit?.valeur || valeursFormulaire.nom_produit || '';
-                  const prixProduit = finalServiceData.prix_produit?.valeur || valeursFormulaire.prix_produit || 0;
+                  // ✅ CORRIGÉ: Convertir le prix en nombre (peut être une chaîne depuis le formulaire)
+                  const prixProduitRaw = finalServiceData.prix_produit?.valeur || valeursFormulaire.prix_produit || 0;
+                  const prixProduit = typeof prixProduitRaw === 'string' ? (prixProduitRaw.trim() ? Number(prixProduitRaw.trim()) : 0) : (prixProduitRaw || 0);
                   const categorieProduit = finalServiceData.categorie_produit?.valeur || valeursFormulaire.categorie_produit || '';
                   const descriptionProduit = finalServiceData.description_produit?.valeur || valeursFormulaire.description_produit || '';
                   const deviseProduit = finalServiceData.devise_produit?.valeur || valeursFormulaire.devise_produit || 'XAF';
