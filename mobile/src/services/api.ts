@@ -412,7 +412,10 @@ export const userApi = {
     return apiCall('/api/user/previous-contacts');
   },
   saveContact: async (contact: any) => {
-    return apiCall('/api/user/contacts', 'POST', contact);
+    return apiCall('/api/user/contacts', {
+      method: 'POST',
+      body: JSON.stringify(contact),
+    });
   },
   getCreditHistory: async (userId: string, period: string = '30d') => {
     return apiCall(`/api/users/consumption-history?period=${period}`);
@@ -421,13 +424,21 @@ export const userApi = {
     return apiCall(`/api/users/payment-history?period=${period}`);
   },
   toggleServiceStatus: async (serviceId: number, isActive: boolean) => {
-    return apiCall(`/api/services/${serviceId}/toggle-status`, 'PATCH', { actif: isActive });
+    return apiCall(`/api/services/${serviceId}/toggle-status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ actif: isActive }),
+    });
   },
   deleteService: async (serviceId: number) => {
-    return apiCall(`/api/services/${serviceId}/delete`, 'DELETE');
+    return apiCall(`/api/services/${serviceId}/delete`, {
+      method: 'DELETE',
+    });
   },
   updateServicePromotion: async (serviceId: number, promotionData: any) => {
-    return apiCall(`/api/services/${serviceId}/promotion`, 'PATCH', promotionData);
+    return apiCall(`/api/services/${serviceId}/promotion`, {
+      method: 'PATCH',
+      body: JSON.stringify(promotionData),
+    });
   },
 
   // Obtenir le budget utilisateur
@@ -585,16 +596,3 @@ export default {
   aiService,
   serviceService,
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
