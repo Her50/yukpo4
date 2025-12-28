@@ -1201,7 +1201,6 @@ LIMIT 100
                 -- Correspondance dans description (priorité basse)
                 OR COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%'
                 OR to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')) @@ plainto_tsquery('french', $1)
-                )
             )
             AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
             AND ($3::text IS NULL OR s.gps IS NULL OR s.gps ILIKE '%' || $3 || '%')

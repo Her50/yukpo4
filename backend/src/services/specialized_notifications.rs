@@ -359,10 +359,15 @@ pub async fn check_and_notify_pharmacies_on_duty(
         // Récupérer les coordonnées de la pharmacie depuis le service
         let pharmacy_coords: Option<(f64, f64)> = sqlx::query_as(
             r#"
-            SELECT s.latitude, s.longitude
+            SELECT 
+                COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0) as latitude,
+                COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0) as longitude
             FROM services s
             INNER JOIN pharmacies p ON p.service_id = s.id
             WHERE p.id = $1
+            AND s.gps IS NOT NULL
+            AND s.gps != ''
+            AND s.gps ~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
             "#,
         )
         .bind(pharmacy_id)

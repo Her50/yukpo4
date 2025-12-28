@@ -119,11 +119,15 @@ BEGIN
             -- Calcul distance GPS si coordonnées fournies
             CASE 
                 WHEN gps_lat IS NOT NULL AND gps_lng IS NOT NULL 
-                     AND s.latitude IS NOT NULL AND s.longitude IS NOT NULL
+                     AND s.gps IS NOT NULL AND s.gps != '' 
+                     AND s.gps ~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
                 THEN
                     ST_Distance(
                         ST_Point(gps_lng, gps_lat)::geography,
-                        ST_Point(s.longitude, s.latitude)::geography
+                        ST_Point(
+                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+                        )::geography
                     ) / 1000.0  -- Convertir en km
                 ELSE NULL
             END as distance_km,
@@ -152,11 +156,15 @@ BEGIN
             gps_lat IS NULL 
             OR gps_lng IS NULL
             OR search_radius_km IS NULL
-            OR s.latitude IS NULL
-            OR s.longitude IS NULL
+            OR s.gps IS NULL
+            OR s.gps = ''
+            OR s.gps !~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
             OR ST_Distance(
                 ST_Point(gps_lng, gps_lat)::geography,
-                ST_Point(s.longitude, s.latitude)::geography
+                ST_Point(
+                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+                )::geography
             ) / 1000.0 <= search_radius_km
         )
     )

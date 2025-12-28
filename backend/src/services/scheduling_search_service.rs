@@ -202,15 +202,18 @@ impl SchedulingSearchService {
                 SELECT DISTINCT
                     s.id as service_id,
                     s.data->'titre_service'->>'valeur' as service_title,
-                    s.latitude,
-                    s.longitude,
+                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0) as latitude,
+                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0) as longitude,
                     product->'prestationsMedicales' as available_services,
                     product->'planningHebdomadaire' as current_schedule,
                     (product->'planningHebdomadaire'->>'permanent')::boolean as is_24h,
                     (product->>'banqueSang')::boolean as has_blood_bank,
                     ST_Distance(
                         ST_Point($3, $2)::geography,
-                        ST_Point(s.longitude, s.latitude)::geography
+                        ST_Point(
+                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+                        )::geography
                     ) / 1000.0 as distance_km
                 FROM services s,
                 LATERAL jsonb_array_elements(
@@ -222,11 +225,17 @@ impl SchedulingSearchService {
                 ) AS product
                 WHERE 
                     s.is_active = true 
+                    AND s.gps IS NOT NULL
+                    AND s.gps != ''
+                    AND s.gps ~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
                     AND product->>'type' = 'hopital_clinique'
                     AND is_medical_service_available(product, $4, $1)
                     AND ST_DWithin(
                         ST_Point($3, $2)::geography,
-                        ST_Point(s.longitude, s.latitude)::geography,
+                        ST_Point(
+                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0),
+                            COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0)
+                        )::geography,
                         $5 * 1000
                     )
                 ORDER BY distance_km ASC
@@ -237,8 +246,8 @@ impl SchedulingSearchService {
                 SELECT DISTINCT
                     s.id as service_id,
                     s.data->'titre_service'->>'valeur' as service_title,
-                    s.latitude,
-                    s.longitude,
+                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0) as latitude,
+                    COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0) as longitude,
                     product->'prestationsMedicales' as available_services,
                     product->'planningHebdomadaire' as current_schedule,
                     (product->'planningHebdomadaire'->>'permanent')::boolean as is_24h,
