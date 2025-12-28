@@ -126,6 +126,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/services/{service_id}", get(get_service_by_id))
         // Route pour récupérer les médias d'un service
         .route("/api/services/{service_id}/media", get(crate::controllers::media_controller::get_service_media))
+        // Route pour ajouter un produit à un service existant
+        .route("/api/services/{service_id}/products", post(crate::controllers::product_addition_controller::add_product_to_service))
         // Route pour récupérer les informations d'un utilisateur par ID
         .route("/api/users/{user_id}", get(crate::controllers::user_controller::get_user_by_id))
         // Route pour récupérer le dernier service (pour préremplissage contact)
