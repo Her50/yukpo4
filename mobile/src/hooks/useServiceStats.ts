@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { API_ENDPOINTS } from '../config/api.config';
 import { apiGet } from '../services/api';
 
