@@ -209,9 +209,10 @@ pub async fn add_product_to_service(
         .map_err(|e| AppError::Internal(format!("Erreur sérialisation produit: {}", e)))?;
     
     // ✅ AMÉLIORÉ 2025-12-30: Timeout explicite pour éviter les requêtes trop longues
-    // Le timeout de 30s permet d'éviter que la requête ne bloque indéfiniment
+    // ✅ AUGMENTÉ 2025-12-30: 60s pour permettre le traitement des images (upload Wasabi peut prendre 20-40s)
+    // Le timeout de 60s permet d'éviter que la requête ne bloque indéfiniment tout en laissant le temps au traitement des images
     let update_result = tokio::time::timeout(
-        std::time::Duration::from_secs(30),
+        std::time::Duration::from_secs(60),
         crate::utils::db_retry::retry_query(
             &pool,
             || {
@@ -478,8 +479,8 @@ pub async fn add_product_to_service(
             }
         }
         Err(_) => {
-            // Timeout après 30s
-            log_error(&format!("[add_product_to_service] ⏱️ Timeout après 30s lors de l'ajout du produit"));
+            // Timeout après 60s
+            log_error(&format!("[add_product_to_service] ⏱️ Timeout après 60s lors de l'ajout du produit"));
             
             // ✅ ROLLBACK : Rembourser l'utilisateur en cas de timeout
             let pool = state.pg.clone();
@@ -503,7 +504,7 @@ pub async fn add_product_to_service(
             )
             .await;
             
-            return Err(AppError::Internal("Timeout lors de l'ajout du produit. Veuillez réessayer.".to_string()));
+            return Err(AppError::Internal("Timeout lors de l'ajout du produit après 60s. Le traitement des images peut prendre du temps. Veuillez réessayer avec moins d'images.".to_string()));
         }
     };
     
