@@ -4099,8 +4099,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           showHandle={false}
           density="compact"
           backIcon="back"
-          title={isReadonly ? 'Consultation' : mode === 'edit' ? 'Modification' : 'Formulaire Intelligent'}
-          subtitle={isReadonly ? 'Mode lecture seule' : mode === 'edit' ? 'Modification en cours' : 'Propulsé par l\'IA Yukpo'}
+          title={
+            activeStep === 2 && blocks.length > 0 && blocks[currentBlock]
+              ? `${blocks[currentBlock].icon} ${blocks[currentBlock].title}`
+              : isReadonly
+                ? 'Consultation'
+                : mode === 'edit'
+                  ? 'Modification'
+                  : 'Formulaire Intelligent'
+          }
+          subtitle={
+            activeStep === 2 && blocks.length > 0 && blocks[currentBlock]
+              ? `Bloc ${currentBlock + 1} / ${blocks.length}`
+              : isReadonly
+                ? 'Mode lecture seule'
+                : mode === 'edit'
+                  ? 'Modification en cours'
+                  : 'Propulsé par l\'IA Yukpo'
+          }
           onClose={handleGoBack}
         />
       </LinearGradient>

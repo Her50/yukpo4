@@ -216,11 +216,53 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const devise_produit = extractValue(suggestionData.devise_produit) || extractValue(suggestionData.devise) || 'XAF';
 
     // ✅ Variabilité de prix (normalisée, y compris si imbriquée dans produits)
-    const iaPriceVariant =
-        extractPriceVariant(suggestionData.variabilite_prix) ||
-        extractPriceVariant(suggestionData.variation_prix) ||
-        extractPriceVariant(suggestionData.price_variant) ||
-        extractPriceVariant(suggestionData.produits);
+    // ✅ CORRECTION: Extraire exactement comme dans FormulaireYukpoIntelligentScreen (lignes 1388-1405)
+    // Parcourir suggestionData comme Object.keys() et extraire depuis fieldData.modalites avec normalisation
+    let iaPriceVariant = null;
+    
+    // ✅ MÊME LOGIQUE QUE FormulaireYukpoIntelligentScreen: Parcourir les champs et extraire price_variant
+    Object.keys(suggestionData || {}).forEach(fieldName => {
+        const fieldData = suggestionData[fieldName];
+        
+        // ✅ IDENTIQUE À FormulaireYukpoIntelligentScreen (ligne 1388)
+        if (fieldData && typeof fieldData === 'object' && 'type_donnee' in fieldData) {
+            const typeDonnee = fieldData.type_donnee || 'string';
+            
+            // ✅ IDENTIQUE À FormulaireYukpoIntelligentScreen (ligne 1388): Traitement spécial pour price_variant
+            if (typeDonnee === 'price_variant' || fieldName === 'variabilite_prix') {
+                // ✅ IDENTIQUE À FormulaireYukpoIntelligentScreen (lignes 1390-1395): Normaliser les modalités
+                const modalitesAvecValeurs = (fieldData.modalites || []).map((mod: any) => ({
+                    valeur: mod.valeur || '',
+                    prix: (mod.prix !== null && mod.prix !== undefined && mod.prix !== 0) ? mod.prix : 0,
+                    devise: mod.devise || 'XAF',
+                    stock: mod.stock
+                }));
+                
+                // ✅ IDENTIQUE À FormulaireYukpoIntelligentScreen (lignes 1397-1403)
+                iaPriceVariant = {
+                    type_donnee: 'price_variant',
+                    variable: fieldData.variable || 'variante',
+                    modalites: modalitesAvecValeurs,
+                    filtrable: fieldData.filtrable !== false,
+                    origine_champs: fieldData.origine_champs || 'ia'
+                };
+                console.log('[AjouterProduitSimple] ✅ variabilite_prix extrait depuis IA (identique à FormulaireYukpoIntelligentScreen):', iaPriceVariant.modalites.length, 'modalités');
+            }
+        }
+    });
+    
+    // ✅ FALLBACK: Utiliser extractPriceVariant si aucune extraction directe n'a fonctionné (pour structures imbriquées)
+    if (!iaPriceVariant) {
+        iaPriceVariant =
+            extractPriceVariant(suggestionData.variabilite_prix) ||
+            extractPriceVariant(suggestionData.variation_prix) ||
+            extractPriceVariant(suggestionData.price_variant) ||
+            extractPriceVariant(suggestionData.produits);
+        if (iaPriceVariant) {
+            console.log('[AjouterProduitSimple] ✅ variabilite_prix extrait via extractPriceVariant (fallback):', iaPriceVariant.modalites?.length || 0, 'modalités');
+        }
+    }
+    
     const prefillPriceVariant =
         extractPriceVariant(prefill.variabilite_prix || prefill.price_variant) ||
         extractPriceVariant(prefill.produits);
@@ -1594,23 +1636,27 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                             />
                         </View>
 
-                        {/* Variabilité de prix - affichée uniquement si l’IA a détecté des variantes */}
+                        {/* Variabilité de prix - affichée uniquement si l'IA a détecté des variantes */}
                         {hasExistingVariants && (
                             <View style={styles.fieldGroup}>
                                 <PriceVariantSelector
                                     label={isPrestation ? 'Variantes prestation' : 'Variantes produit'}
-                                    variable={isPrestation ? 'formule' : 'option'}
+                                    variable={formValues.variabilite_prix?.variable || formValues.price_variant?.variable || (isPrestation ? 'formule' : 'option')}
                                     modalites={currentModalites}
-                                    onChange={(modalites) => handleFieldChange('variabilite_prix', {
-                                        type_donnee: 'price_variant',
-                                        variable: isPrestation ? 'formule' : 'option',
-                                        modalites,
-                                        filtrable: true,
-                                        origine_champs: 'formulaire'
-                                    })}
+                                    onChange={(modalites) => {
+                                        // ✅ CORRECTION: Conserver la variable existante depuis les données IA
+                                        const existingVariable = formValues.variabilite_prix?.variable || formValues.price_variant?.variable || (isPrestation ? 'formule' : 'option');
+                                        handleFieldChange('variabilite_prix', {
+                                            type_donnee: 'price_variant',
+                                            variable: existingVariable,
+                                            modalites,
+                                            filtrable: true,
+                                            origine_champs: 'formulaire'
+                                        });
+                                    }}
                                     defaultCurrency={formValues.devise_produit || variantCurrencyCurrent || initialCurrency}
                                     availableCurrencies={availableVariantCurrencies}
-                                    helperText="Modifiez les variations détectées par l’IA (prix, stock, image)."
+                                    helperText="Modifiez les variations détectées par l'IA (prix, stock, image)."
                                     showEmptyStateDetails={false}
                                 />
                             </View>

@@ -127,7 +127,11 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // Route pour récupérer les médias d'un service
         .route("/api/services/{service_id}/media", get(crate::controllers::media_controller::get_service_media))
         // Route pour ajouter un produit à un service existant
-        .route("/api/services/{service_id}/products", post(crate::controllers::product_addition_controller::add_product_to_service))
+        // ✅ CORRECTION 2025-12-30: Ajouter DefaultBodyLimit pour supporter les images base64 volumineuses
+        .route("/api/services/{service_id}/products", 
+            post(crate::controllers::product_addition_controller::add_product_to_service)
+                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // 200 MB
+        )
         // Route pour récupérer les informations d'un utilisateur par ID
         .route("/api/users/{user_id}", get(crate::controllers::user_controller::get_user_by_id))
         // Route pour récupérer le dernier service (pour préremplissage contact)
@@ -594,7 +598,7 @@ async fn handle_creer_service(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
     Json(data): Json<Value>,
-) -> Result<axum::response::Response, axum::http::StatusCode> {
+) -> axum::response::Response {
     let user_id = user.id;
     
     // ?? LOGS DE D?BOGAGE
@@ -614,7 +618,7 @@ async fn handle_creer_service(
     eprintln!("[DEBUG][HANDLE_CREER_SERVICE] Appel du contr?leur creer_service...");
     info!("[handle_creer_service] Appel du contr?leur creer_service...");
     
-    let response_result = crate::controllers::service_controller::creer_service(
+    let response = crate::controllers::service_controller::creer_service(
         State(state),
         Json(service_request)
     ).await;
@@ -622,18 +626,17 @@ async fn handle_creer_service(
     eprintln!("[DEBUG][HANDLE_CREER_SERVICE] R?ponse du contr?leur re?ue");
     info!("[handle_creer_service] R?ponse du contr?leur re?ue");
     
-    match response_result {
-        response if response.status().is_success() => {
-            eprintln!("[DEBUG][HANDLE_CREER_SERVICE] ? SUCC?S - Service cr??");
-            info!("[handle_creer_service] ? Service cr?? avec succ?s");
-            Ok(response)
-        },
-        _ => {
-            eprintln!("[DEBUG][HANDLE_CREER_SERVICE] ? ERREUR - ?chec cr?ation service");
-            error!("[handle_creer_service] ? Erreur cr?ation service");
-            Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
-        }
+    if response.status().is_success() {
+        eprintln!("[DEBUG][HANDLE_CREER_SERVICE] ? SUCC?S - Service cr??");
+        info!("[handle_creer_service] ? Service cr?? avec succ?s");
+    } else {
+        eprintln!("[DEBUG][HANDLE_CREER_SERVICE] ? ERREUR - ?chec cr?ation service (status: {})", response.status());
+        error!("[handle_creer_service] ? Erreur cr?ation service (status: {})", response.status());
     }
+    
+    // ✅ CORRIGÉ: Retourner la réponse complète (avec le JSON d'erreur si erreur)
+    // Le contrôleur creer_service retourne déjà une réponse avec le JSON d'erreur approprié
+    response
 }
 
 /// Endpoint pour création de service directe (sans détection d'intention)

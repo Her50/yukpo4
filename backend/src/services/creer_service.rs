@@ -2054,6 +2054,76 @@ pub async fn creer_service(
         );
     }
 
+    // ✅ NOUVEAU 2025-01-27 : Fonction utilitaire pour analyser les erreurs SQL
+    // Extrait les codes d'erreur PostgreSQL et fournit des messages plus précis
+    fn analyze_sql_error(e: &sqlx::Error) -> String {
+        if let sqlx::Error::Database(db_err) = e {
+            let code = db_err.code().and_then(|c| c.to_string().parse::<u32>().ok());
+            let message = db_err.message();
+            let constraint = db_err.constraint();
+            
+            match code {
+                Some(23502) => {
+                    // NOT NULL violation - extraire le nom de colonne depuis le message si possible
+                    let column_hint = if message.contains("null value in column") {
+                        // Essayer d'extraire le nom de colonne depuis le message PostgreSQL
+                        // Format typique: "null value in column \"column_name\" violates not-null constraint"
+                        if let Some(start) = message.find("column \"") {
+                            let start_idx = start + 8; // Début après "column \""
+                            if let Some(end) = message[start_idx..].find("\"") {
+                                message[start_idx..start_idx + end].to_string()
+                            } else {
+                                "unknown".to_string()
+                            }
+                        } else {
+                            "unknown".to_string()
+                        }
+                    } else {
+                        "unknown".to_string()
+                    };
+                    format!("Erreur de validation : le champ '{}' est obligatoire mais n'a pas été fourni.", column_hint)
+                },
+                Some(23503) => {
+                    // Foreign key violation
+                    let constraint_name = constraint.unwrap_or("foreign_key");
+                    format!("Erreur de référence : référence invalide ({})", constraint_name)
+                },
+                Some(23505) => {
+                    // Unique constraint violation
+                    let constraint_name = constraint.unwrap_or("unique_constraint");
+                    format!("Erreur de doublon : cette valeur existe déjà ({})", constraint_name)
+                },
+                Some(23514) => {
+                    // Check constraint violation
+                    format!("Erreur de validation : la valeur fournie ne respecte pas les contraintes de validation.")
+                },
+                Some(22001) => {
+                    // String data right truncated
+                    format!("Erreur de taille : les données fournies sont trop longues pour être stockées.")
+                },
+                Some(22007) => {
+                    // Invalid datetime format
+                    format!("Erreur de format : le format de date/heure est invalide.")
+                },
+                Some(22023) => {
+                    // Invalid parameter value
+                    format!("Erreur de paramètre : une valeur de paramètre est invalide.")
+                },
+                _ => {
+                    // Autres erreurs SQL
+                    if let Some(constraint_name) = constraint {
+                        format!("Erreur SQL (code {:?}, contrainte {}): {}", code, constraint_name, message)
+                    } else {
+                        format!("Erreur SQL (code {:?}): {}", code, message)
+                    }
+                }
+            }
+        } else {
+            // Erreur non liée à la base de données (connexion, timeout, etc.)
+            format!("Erreur lors de l'insertion du service : {}", e)
+        }
+    }
+
     // ✅ NOUVEAU 2025-01-27 : Démarrer une transaction globale AVANT le débit
     // Cela garantit l'atomicité de toutes les opérations (débit, insertion service, médias)
     // ✅ CORRIGÉ 2025-01-27 : Wrapper la transaction critique dans un retry pour gérer les erreurs de connexion DB
@@ -2170,12 +2240,22 @@ pub async fn creer_service(
                     .and_then(|m| m.get("base64_image"))
                     .is_some();
 
+                // ✅ AMÉLIORATION 2025-01-27 : Analyser l'erreur SQL pour extraire le code PostgreSQL
+                let error_message = analyze_sql_error(&e);
+                let error_code = if let sqlx::Error::Database(db_err) = &e {
+                    db_err.code().map(|c| c.to_string())
+                } else {
+                    None
+                };
+
                 log::error!(
-                    "[creer_service] Erreur SQL lors de l'insertion: {} | user_id={} | json_size={} bytes | has_base64_image={}",
+                    "[creer_service] Erreur SQL lors de l'insertion: {} | code={:?} | user_id={} | json_size={} bytes | has_base64_image={} | message={}",
                     e,
+                    error_code,
                     user_id,
                     json_size,
-                    has_base64_image
+                    has_base64_image,
+                    error_message
                 );
 
                 // ✅ AMÉLIORATION 2025-01-27 : Rollback automatique de la transaction
@@ -2183,10 +2263,8 @@ pub async fn creer_service(
                 let _ = tx.rollback().await;
                 log::error!("[creer_service] ❌ Transaction rollback - débit annulé automatiquement");
 
-                return Err(AppError::Internal(format!(
-                    "Échec insertion service: {}",
-                    e
-                )));
+                // ✅ AMÉLIORATION : Retourner un message d'erreur plus précis selon le type d'erreur
+                return Err(AppError::Internal(error_message));
             }
         };
 
