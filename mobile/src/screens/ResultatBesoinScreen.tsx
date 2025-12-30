@@ -806,7 +806,8 @@ const ResultatBesoinScreen: React.FC = () => {
         }
     }, [user, prestataires, services, navigation]);
 
-    const handleChat = async (service: Service) => {
+    // ✅ CORRIGÉ 2025-12-30: Mémoriser handleChat avec useCallback
+    const handleChat = useCallback(async (service: Service) => {
         if (!user) {
             Alert.alert(
                 "Connexion requise",
@@ -873,6 +874,13 @@ const ResultatBesoinScreen: React.FC = () => {
     const handleServicePress = useCallback((service: Service) => {
         console.log('Service pressé:', service.id);
     }, []);
+
+    const handleServiceClick = useCallback((serviceId: string) => {
+        const service = services.find(s => s.id === serviceId);
+        if (service) {
+            handleServicePress(service);
+        }
+    }, [services, handleServicePress]);
 
     // Fonction pour créer une notification de contact
     const createContactNotification = async (prestataireId: string, contactType: 'whatsapp' | 'call', service: any) => {
