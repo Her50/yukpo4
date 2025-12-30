@@ -11,6 +11,7 @@ use sqlx::Row;
 use std::sync::Arc;
 use std::path::PathBuf;
 use chrono::Utc;
+use futures::future::join_all;
 use crate::services::creer_service::{
     save_autocomplete_combination, 
     clean_media_recursive_final,
@@ -259,21 +260,38 @@ pub async fn add_product_to_service(
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| format!("prod_{}", idx));
                 
-                // Traiter chaque image
-                for (image_index, image_data) in images_to_process.iter().enumerate() {
-                    if image_data.is_empty() {
-                        continue;
-                    }
-                    
-                    match process_single_image_for_product(
-                        &storage_root,
-                        service_id,
-                        &product_id,
-                        idx,
-                        image_index,
-                        image_data,
-                        state.media_storage.clone(),
-                    ).await {
+                // ✅ OPTIMISÉ 2025-12-30: Traiter les images EN PARALLÈLE au lieu de séquentiellement
+                // Cela réduit le temps total de 3×30s=90s à ~30s (le temps de la plus lente)
+                let image_processing_futures: Vec<_> = images_to_process.iter()
+                    .enumerate()
+                    .filter(|(_, image_data)| !image_data.is_empty())
+                    .map(|(image_index, image_data)| {
+                        let storage_root_clone = storage_root.clone();
+                        let product_id_clone = product_id.clone();
+                        let media_storage_clone = state.media_storage.clone();
+                        
+                        async move {
+                            let result = process_single_image_for_product(
+                                &storage_root_clone,
+                                service_id,
+                                &product_id_clone,
+                                idx,
+                                image_index,
+                                image_data,
+                                media_storage_clone,
+                            ).await;
+                            
+                            (image_index, result)
+                        }
+                    })
+                    .collect();
+                
+                // Traiter toutes les images en parallèle
+                let processing_results = join_all(image_processing_futures).await;
+                
+                // Insérer les résultats dans la DB (on peut aussi paralléliser ça si nécessaire)
+                for (image_index, result) in processing_results {
+                    match result {
                         Ok(Some(processed)) => {
                             // Insérer dans la table media
                             if let Err(e) = sqlx::query(

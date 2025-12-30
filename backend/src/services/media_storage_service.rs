@@ -80,47 +80,71 @@ impl MediaStorageService {
         self.client.is_some()
     }
 
-    /// ✅ Phase 9 - Amélioration : Uploader directement depuis des bytes
-    /// Écrit les bytes dans un fichier temporaire puis utilise store_file
+    /// ✅ OPTIMISÉ 2025-12-30: Uploader directement depuis des bytes en mémoire vers S3
+    /// Évite la double écriture sur disque (gain de temps significatif)
     pub async fn store_bytes(
         &self,
         data: &[u8],
         storage_key: &str,
         content_type: Option<&str>,
     ) -> AppResult<StoredMediaLocation> {
-        use uuid::Uuid;
+        let normalized_key = storage_key.trim_start_matches('/');
+        let storage_path = self.storage_path_for(normalized_key);
+        let content_length = data.len() as u64;
 
-        // Créer un nom de fichier temporaire unique
-        let temp_filename = format!("temp_{}", Uuid::new_v4());
-        let temp_path = self.upload_root().join(&temp_filename);
-
-        // S'assurer que le répertoire existe
-        if let Some(parent) = temp_path.parent() {
-            fs::create_dir_all(parent).await.map_err(|e| {
-                AppError::Internal(format!("Erreur création répertoire temporaire: {}", e))
-            })?;
-        }
-
-        // Écrire les bytes dans le fichier temporaire
-        fs::write(&temp_path, data).await.map_err(|e| {
-            AppError::Internal(format!("Erreur écriture données temporaires: {}", e))
-        })?;
-
-        // Utiliser store_file avec le fichier temporaire
-        let result = self.store_file(&temp_path, storage_key, content_type).await;
-
-        // Nettoyer le fichier temporaire s'il existe encore
-        // (store_file peut le déplacer ou le supprimer selon la config)
-        if temp_path.exists() {
-            if let Err(err) = fs::remove_file(&temp_path).await {
-                warn!(
-                    "[MediaStorage] Impossible de supprimer le fichier temporaire ({:?}): {err}",
-                    temp_path
-                );
+        // Si stockage local uniquement, sauvegarder directement
+        if self.client.is_none() {
+            let local_target = self.local_path_for(normalized_key);
+            if let Some(parent) = local_target.parent() {
+                fs::create_dir_all(parent).await.map_err(|e| {
+                    AppError::Internal(format!("Erreur création répertoire: {}", e))
+                })?;
             }
+            fs::write(&local_target, data).await.map_err(|e| {
+                AppError::Internal(format!("Erreur écriture locale: {}", e))
+            })?;
+
+            let public_url = self.build_public_url(&storage_path);
+            return Ok(StoredMediaLocation {
+                storage_path,
+                public_url,
+                content_length: Some(content_length),
+            });
         }
 
-        result
+        // ✅ OPTIMISÉ: Upload directement depuis les bytes en mémoire vers S3 (pas de fichier temporaire)
+        if let Some(client) = &self.client {
+            let object_key = storage_path.clone();
+            
+            // Sauvegarder localement si keep_local_copy est activé
+            if self.config.keep_local_copy {
+                let local_target = self.local_path_for(normalized_key);
+                if let Some(parent) = local_target.parent() {
+                    fs::create_dir_all(parent).await.map_err(|e| {
+                        AppError::Internal(format!("Erreur création répertoire local: {}", e))
+                    })?;
+                }
+                // Écrire en parallèle avec l'upload S3 (ne bloque pas)
+                let local_target_clone = local_target.clone();
+                let data_clone = data.to_vec();
+                tokio::spawn(async move {
+                    if let Err(e) = fs::write(&local_target_clone, &data_clone).await {
+                        warn!("[MediaStorage] Erreur sauvegarde locale: {}", e);
+                    }
+                });
+            }
+
+            // Upload directement depuis les bytes vers S3
+            self.upload_bytes_to_s3(client, data, &object_key, content_type).await?;
+        }
+
+        let public_url = self.build_public_url(&storage_path);
+
+        Ok(StoredMediaLocation {
+            storage_path,
+            public_url,
+            content_length: Some(content_length),
+        })
     }
 
     pub async fn store_file<P: AsRef<Path>>(
@@ -238,6 +262,50 @@ impl MediaStorageService {
             })?;
             fs::remove_file(source).await.ok();
         }
+        Ok(())
+    }
+
+    /// ✅ NOUVEAU 2025-12-30: Upload directement depuis les bytes en mémoire vers S3
+    /// Évite l'écriture/lecture sur disque (gain de temps significatif)
+    async fn upload_bytes_to_s3(
+        &self,
+        client: &Client,
+        data: &[u8],
+        object_key: &str,
+        content_type: Option<&str>,
+    ) -> AppResult<()> {
+        let bucket = match &self.bucket {
+            Some(bucket) => bucket,
+            None => {
+                return Err(AppError::Internal(
+                    "Bucket S3 non configuré pour le stockage distant.".to_string(),
+                ))
+            }
+        };
+
+        // ✅ OPTIMISÉ: Utiliser ByteStream::from directement depuis les bytes (pas de fichier)
+        let body = ByteStream::from(data.to_vec());
+
+        let mut request = client
+            .put_object()
+            .bucket(bucket)
+            .key(object_key.to_string())
+            .body(body);
+
+        if let Some(ct) = content_type {
+            request = request.content_type(ct.to_string());
+        }
+
+        request
+            .send()
+            .await
+            .map_err(|err| AppError::Internal(format!("Upload S3 échoué: {err}")))?;
+
+        debug!(
+            "[MediaStorage] Bytes uploadés vers S3 (bucket={}, key={}, size={} bytes)",
+            bucket, object_key, data.len()
+        );
+
         Ok(())
     }
 

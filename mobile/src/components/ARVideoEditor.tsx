@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton } from './SafeNativeDesign';
@@ -35,6 +36,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
     productName = 'Produit',
 }) => {
     const [isCapturing, setIsCapturing] = useState(false);
+    const [capturedVideoUri, setCapturedVideoUri] = useState<string | null>(null);
 
     // Capturer une vidéo
     const handleCaptureVideo = useCallback(async () => {
@@ -79,14 +81,8 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                 const videoUri = result.assets[0].uri;
                 console.log('[ARVideoEditor] ✅ Vidéo capturée:', videoUri);
                 
-                if (onVideoCaptured) {
-                    onVideoCaptured(videoUri);
-                } else {
-                    // Si pas de callback, fermer le modal
-                    if (onClose) {
-                        onClose();
-                    }
-                }
+                // Stocker la vidéo capturée pour afficher l'aperçu
+                setCapturedVideoUri(videoUri);
             } else {
                 // L'utilisateur a annulé
                 console.log('[ARVideoEditor] Capture annulée par l\'utilisateur');
@@ -102,6 +98,23 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
         }
     }, [onVideoCaptured, onClose]);
 
+    // Utiliser la vidéo capturée
+    const handleUseVideo = useCallback(() => {
+        if (capturedVideoUri && onVideoCaptured) {
+            onVideoCaptured(capturedVideoUri);
+        } else if (capturedVideoUri) {
+            // Si pas de callback, fermer le modal
+            if (onClose) {
+                onClose();
+            }
+        }
+    }, [capturedVideoUri, onVideoCaptured, onClose]);
+
+    // Reprendre la capture
+    const handleRetake = useCallback(() => {
+        setCapturedVideoUri(null);
+    }, []);
+
     // Ouvrir les paramètres
     const openSettings = useCallback(() => {
         if (Platform.OS === 'ios') {
@@ -110,6 +123,61 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
             Linking.openSettings();
         }
     }, []);
+
+    // Si une vidéo a été capturée, afficher l'aperçu avec les boutons
+    if (capturedVideoUri) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.content}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <View style={styles.productInfo}>
+                            <Text style={styles.productName}>{productName}</Text>
+                            <Text style={styles.productHint}>
+                                Aperçu de votre vidéo
+                            </Text>
+                        </View>
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={onClose}
+                        >
+                            <SafeIcon name="x" size={24} color={modernColors.text} />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Aperçu vidéo */}
+                    <View style={styles.previewContainer}>
+                        <Video
+                            source={{ uri: capturedVideoUri }}
+                            style={styles.videoPreview}
+                            resizeMode={ResizeMode.CONTAIN}
+                            shouldPlay={true}
+                            isLooping={true}
+                            useNativeControls={true}
+                        />
+                    </View>
+
+                    {/* Boutons d'action */}
+                    <View style={styles.actionButtonsContainer}>
+                        <NativeButton
+                            title="🔄 Reprendre"
+                            variant="outline"
+                            size="large"
+                            onPress={handleRetake}
+                            style={styles.actionButton}
+                        />
+                        <NativeButton
+                            title="✅ Utiliser cette vidéo"
+                            variant="primary"
+                            size="large"
+                            onPress={handleUseVideo}
+                            style={styles.actionButton}
+                        />
+                    </View>
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -267,6 +335,26 @@ const styles = StyleSheet.create({
     infoText: {
         fontSize: 14,
         color: modernColors.textSecondary,
+    },
+    previewContainer: {
+        flex: 1,
+        marginVertical: 20,
+        borderRadius: 12,
+        overflow: 'hidden',
+        backgroundColor: modernColors.border,
+    },
+    videoPreview: {
+        width: '100%',
+        height: '100%',
+        minHeight: 300,
+    },
+    actionButtonsContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 20,
+    },
+    actionButton: {
+        flex: 1,
     },
 });
 

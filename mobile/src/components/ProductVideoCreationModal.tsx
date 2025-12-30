@@ -398,6 +398,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             const serviceId = Number(selectedProduct.serviceId);
             const productIndex = selectedProduct.product_index;
 
+            console.log('[ProductVideoCreationModal] 📤 Début upload vidéo AR:', {
+                serviceId,
+                productIndex,
+                videoUri: videoUri.substring(0, 50) + '...',
+            });
+
             // Upload vers le cloud
             const uploadResult = await uploadToCloud(
                 videoUri,
@@ -405,8 +411,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 `ar_video_${Date.now()}.mp4`
             );
 
+            console.log('[ProductVideoCreationModal] 📥 Résultat upload:', {
+                success: uploadResult.success,
+                hasUrl: !!uploadResult.url,
+                error: uploadResult.error,
+            });
+
             if (!uploadResult.success || !uploadResult.url) {
-                throw new Error(uploadResult.error || 'Erreur lors de l\'upload');
+                const errorMessage = uploadResult.error || 'Erreur lors de l\'upload';
+                console.error('[ProductVideoCreationModal] ❌ Erreur upload:', errorMessage);
+                throw new Error(errorMessage);
             }
 
             // Créer un item média temporaire (l'API backend gérera l'enregistrement)
@@ -428,14 +442,31 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setShowAREditor(false);
 
             // Rafraëchir les médias pour obtenir l'ID réel depuis le serveur
-            await refreshMedia(selectedProduct);
-            console.log('[ProductVideoCreationModal] Médias rafraëchis après upload AR');
+            try {
+                await refreshMedia(selectedProduct);
+                console.log('[ProductVideoCreationModal] ✅ Médias rafraëchis après upload AR');
+            } catch (refreshError: any) {
+                console.warn('[ProductVideoCreationModal] ⚠️ Erreur rafraîchissement médias:', refreshError);
+                // Ne pas bloquer l'utilisateur si le rafraîchissement échoue
+            }
         } catch (error: any) {
-            console.error('[ProductVideoCreationModal] Erreur upload vidéo AR:', error);
-            Alert.alert(
-                'Erreur',
-                error?.message || 'Impossible d\'ajouter la vidéo AR. Réessayez plus tard.'
-            );
+            console.error('[ProductVideoCreationModal] ❌ Erreur upload vidéo AR:', {
+                message: error?.message,
+                stack: error?.stack,
+                name: error?.name,
+                response: error?.response?.data,
+                status: error?.response?.status,
+            });
+            
+            // Afficher un message d'erreur plus détaillé
+            let errorMessage = 'Impossible d\'ajouter la vidéo AR. Réessayez plus tard.';
+            if (error?.response?.status === 500) {
+                errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
+            } else if (error?.message) {
+                errorMessage = error.message;
+            }
+            
+            Alert.alert('Erreur', errorMessage);
         } finally {
             setIsUploadingARVideo(false);
         }
@@ -484,6 +515,17 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setLoadingDeliveryConfig(false);
         }
     }, []);
+
+    // ✅ CORRIGÉ: Synchroniser selectedProduct avec primaryProduct quand le modal s'ouvre ou que primaryProduct change
+    useEffect(() => {
+        if (visible && primaryProduct) {
+            console.log('[ProductVideoCreationModal] Synchronisation selectedProduct avec primaryProduct:', primaryProduct);
+            setSelectedProduct(primaryProduct);
+        } else if (!visible) {
+            // Réinitialiser à l'étape 1 quand le modal se ferme
+            setActiveStep(1);
+        }
+    }, [visible, primaryProduct]);
 
     // ✅ Charger la config de livraison quand un produit est sélectionné
     useEffect(() => {

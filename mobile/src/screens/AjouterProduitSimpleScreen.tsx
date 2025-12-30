@@ -1323,8 +1323,25 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     ]
                                 );
                             } catch (error: any) {
-                                console.error('[AjouterProduitSimple] Erreur:', error);
-                                Alert.alert('Erreur', error.message || 'Impossible d\'ajouter le produit');
+                                console.error('[AjouterProduitSimple] ❌ Erreur:', {
+                                    message: error?.message,
+                                    stack: error?.stack,
+                                    name: error?.name,
+                                    response: error?.response?.data,
+                                    status: error?.response?.status,
+                                });
+                                
+                                // Afficher un message d'erreur plus détaillé
+                                let errorMessage = 'Impossible d\'ajouter le produit.';
+                                if (error?.response?.status === 500) {
+                                    errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
+                                } else if (error?.response?.data?.error) {
+                                    errorMessage = error.response.data.error;
+                                } else if (error?.message) {
+                                    errorMessage = error.message;
+                                }
+                                
+                                Alert.alert('Erreur', errorMessage);
                             } finally {
                                 setLoading(false);
                             }
@@ -1333,8 +1350,25 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                 ]
             );
         } catch (error: any) {
-            console.error('[AjouterProduitSimple] Erreur:', error);
-            Alert.alert('Erreur', error.message || 'Impossible d\'ajouter le produit');
+            console.error('[AjouterProduitSimple] ❌ Erreur générale:', {
+                message: error?.message,
+                stack: error?.stack,
+                name: error?.name,
+                response: error?.response?.data,
+                status: error?.response?.status,
+            });
+            
+            // Afficher un message d'erreur plus détaillé
+            let errorMessage = 'Impossible d\'ajouter le produit.';
+            if (error?.response?.status === 500) {
+                errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
+            } else if (error?.response?.data?.error) {
+                errorMessage = error.response.data.error;
+            } else if (error?.message) {
+                errorMessage = error.message;
+            }
+            
+            Alert.alert('Erreur', errorMessage);
             setLoading(false);
         }
     };

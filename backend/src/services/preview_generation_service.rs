@@ -65,11 +65,67 @@ pub async fn generate_quick_preview(
         _ => ("libx264", "28", "ultrafast", "640:360"), // low quality, très rapide
     };
 
-    // Construire le filtre complexe FFmpeg pour toutes les scènes
+    // ✅ CORRIGÉ: Collecter tous les médias uniques et créer un mapping
+    let media_count = preview_scenes
+        .iter()
+        .filter(|scene| scene.media_url.is_some())
+        .count();
+    
+    if media_count == 0 {
+        return Err(AppError::Internal(
+            format!(
+                "Aucun média trouvé dans la timeline pour générer le preview. Scènes: {}, Médias trouvés: {}",
+                preview_scenes.len(),
+                media_count
+            ),
+        ));
+    }
+    
+    // ✅ NOUVEAU: Créer un mapping média URL -> index d'input FFmpeg
+    let unique_media_urls: Vec<String> = preview_scenes
+        .iter()
+        .filter_map(|scene| scene.media_url.as_ref())
+        .map(|url| url.clone())
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect();
+    
+    // Créer un HashMap pour mapper chaque URL à son index d'input
+    let mut media_to_input_index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for (idx, url) in unique_media_urls.iter().enumerate() {
+        media_to_input_index.insert(url.clone(), idx);
+    }
+    
+    info!(
+        "[QuickPreview] {} médias uniques détectés pour {} scènes",
+        unique_media_urls.len(),
+        preview_scenes.len()
+    );
+
+    // ✅ CORRIGÉ: Vérifier que tous les fichiers existent (seulement pour chemins locaux)
+    for media_url in &unique_media_urls {
+        if !media_url.starts_with("http://") && !media_url.starts_with("https://") {
+            let path = std::path::Path::new(media_url);
+            if !path.exists() {
+                return Err(AppError::Internal(format!(
+                    "Le fichier vidéo source n'existe pas: {}",
+                    media_url
+                )));
+            }
+        }
+    }
+
+    // ✅ REFACTORISÉ: Construire le filtre complexe FFmpeg avec support multi-médias
     let mut filter_complex_parts = Vec::new();
     let mut concat_inputs = Vec::new();
 
     for (idx, scene) in preview_scenes.iter().enumerate() {
+        // Déterminer quel input utiliser pour cette scène
+        let input_index = scene.media_url.as_ref()
+            .and_then(|url| media_to_input_index.get(url))
+            .copied()
+            .unwrap_or(0); // Fallback sur le premier input si pas de média
+        
         // Pour chaque scène, on applique les effets et transitions
         let mut scene_filters: Vec<String> = Vec::new();
 
@@ -95,21 +151,33 @@ pub async fn generate_quick_preview(
             }
         }
 
-        // Scale pour qualité réduite
-        let scale_filter = format!("scale={}", scale);
+        // Scale pour qualité réduite + garantir largeur paire
+        let scale_filter = format!("scale=iw-mod(iw\\,2):ih:force_original_aspect_ratio=decrease,scale={}", scale);
         scene_filters.push(scale_filter);
 
         let filter_chain = if scene_filters.is_empty() {
-            format!("scale={}", scale)
+            format!("scale=iw-mod(iw\\,2):ih:force_original_aspect_ratio=decrease,scale={}", scale)
         } else {
             scene_filters.join(",")
         };
 
-        filter_complex_parts.push(format!(
-            "[0:v]trim=start={}:duration={},setpts=PTS-STARTPTS,{}[v{}]",
-            scene.start_time, scene.duration, filter_chain, idx
-        ));
+        // ✅ CORRIGÉ: Utiliser le bon input selon le média de la scène
+        // Si la scène a un start_time, on utilise trim, sinon on prend toute la vidéo
+        let input_label = format!("{}:v", input_index);
+        let scene_filter = if scene.start_time > 0.0 {
+            format!(
+                "[{}]trim=start={}:duration={},setpts=PTS-STARTPTS,{}[v{}]",
+                input_label, scene.start_time, scene.duration, filter_chain, idx
+            )
+        } else {
+            // Si start_time est 0, on peut juste prendre la durée depuis le début
+            format!(
+                "[{}]trim=duration={},setpts=PTS-STARTPTS,{}[v{}]",
+                input_label, scene.duration, filter_chain, idx
+            )
+        };
 
+        filter_complex_parts.push(scene_filter);
         concat_inputs.push(format!("[v{}]", idx));
     }
 
@@ -122,55 +190,46 @@ pub async fn generate_quick_preview(
 
     let full_filter = format!("{};{}", filter_complex_parts.join(";"), concat_filter);
 
-    // ✅ CORRIGÉ: Extraire le chemin du média depuis la timeline
-    let input_video_path = preview_scenes
-        .iter()
-        .find_map(|scene| scene.media_url.as_ref())
-        .ok_or_else(|| {
-            AppError::Internal(
-                "Aucun média trouvé dans la timeline pour générer le preview".to_string(),
-            )
-        })?;
-
-    // ✅ CORRIGÉ: Vérifier que le fichier existe avant de l'utiliser (seulement pour chemins locaux)
-    if !input_video_path.starts_with("http://") && !input_video_path.starts_with("https://") {
-        let path = std::path::Path::new(input_video_path);
-        if !path.exists() {
-            return Err(AppError::Internal(format!(
-                "Le fichier vidéo source n'existe pas: {}",
-                input_video_path
-            )));
-        }
-    }
-    // Pour les URLs HTTP/HTTPS, FFmpeg peut les lire directement, pas besoin de vérification
-
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_secs();
     let output_path = format!("preview_{}_{}.mp4", timestamp, quality);
 
-    // Générer le preview avec FFmpeg
+    // ✅ REFACTORISÉ: Construire les arguments FFmpeg avec plusieurs inputs
     let max_duration_str = max_duration.to_string();
-    let full_filter_str = full_filter;
-    let ffmpeg_args = vec![
-        "-i",
-        input_video_path,
-        "-filter_complex",
-        &full_filter_str,
-        "-map",
-        "[outv]",
-        "-c:v",
-        video_codec,
-        "-preset",
-        preset,
-        "-crf",
-        crf,
-        "-t",
-        &max_duration_str,
-        "-y",
-        &output_path,
-    ];
+    let mut ffmpeg_args = Vec::new();
+    
+    // Ajouter tous les inputs (-i pour chaque média unique)
+    for media_url in &unique_media_urls {
+        ffmpeg_args.push("-i".to_string());
+        ffmpeg_args.push(media_url.clone());
+    }
+    
+    // Ajouter le filtre complexe et les autres paramètres
+    ffmpeg_args.extend(vec![
+        "-filter_complex".to_string(),
+        full_filter,
+        "-map".to_string(),
+        "[outv]".to_string(),
+        "-c:v".to_string(),
+        video_codec.to_string(),
+        "-preset".to_string(),
+        preset.to_string(),
+        "-crf".to_string(),
+        crf.to_string(),
+        "-t".to_string(),
+        max_duration_str,
+        "-y".to_string(),
+        output_path.clone(),
+    ]);
+
+    info!(
+        "[QuickPreview] Exécution FFmpeg avec {} scènes, {} médias: {}",
+        preview_scenes.len(),
+        unique_media_urls.len(),
+        unique_media_urls.join(", ")
+    );
 
     let ffmpeg_result = Command::new("ffmpeg").args(&ffmpeg_args).output().await;
 

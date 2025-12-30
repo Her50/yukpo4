@@ -5,9 +5,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
-    Modal,
-    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -84,9 +81,6 @@ const CourierRegistrationScreen: React.FC = () => {
 
     // Comptes de paiement
     const [paymentMethod, setPaymentMethod] = useState<any>(null);
-
-    // Modal de sélection du moyen de transport
-    const [showVehicleModal, setShowVehicleModal] = useState(false);
 
     useEffect(() => {
         checkApplicationStatus();
@@ -432,7 +426,6 @@ const CourierRegistrationScreen: React.FC = () => {
     // ✅ SIMPLIFIÉ: Pas besoin de useCallback pour une fonction simple
     const handleVehicleSelect = (vehicle: VehicleType) => {
         setVehicleType(vehicle);
-        setShowVehicleModal(false);
     };
 
     // ✅ CRITIQUE 2025-12-24: Early returns APRÈS tous les hooks
@@ -621,23 +614,44 @@ const CourierRegistrationScreen: React.FC = () => {
                 {/* Transport */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Moyen de transport</Text>
-                    <TouchableOpacity
-                        style={styles.vehicleSelector}
-                        onPress={() => setShowVehicleModal(true)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={styles.vehicleSelectorContent}>
-                            <Text style={styles.vehicleSelectorIcon}>
-                                {selectedVehicle?.icon || '🚗'}
-                            </Text>
-                            <View style={styles.vehicleSelectorTextContainer}>
-                                <Text style={styles.vehicleSelectorLabel}>
-                                    {selectedVehicle?.label || 'Sélectionner un moyen de transport'}
-                                </Text>
-                            </View>
-                            <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
-                        </View>
-                    </TouchableOpacity>
+                    {/* Grille des options de transport en 3 colonnes */}
+                    <View style={styles.vehicleGrid}>
+                        {VEHICLE_TRANSPORT_OPTIONS.map((vehicle) => {
+                            const isSelected = vehicleType === vehicle.value;
+                            return (
+                                <TouchableOpacity
+                                    key={vehicle.value}
+                                    style={[
+                                        styles.vehicleGridItem,
+                                        isSelected && styles.vehicleGridItemSelected,
+                                    ]}
+                                    onPress={() => handleVehicleSelect(vehicle.value)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.vehicleGridIcon}>{vehicle.icon}</Text>
+                                    <Text
+                                        style={[
+                                            styles.vehicleGridLabel,
+                                            isSelected && styles.vehicleGridLabelSelected,
+                                        ]}
+                                        numberOfLines={2}
+                                    >
+                                        {vehicle.label}
+                                    </Text>
+                                    {vehicle.requiresLicense && (
+                                        <Text style={styles.vehicleGridHint} numberOfLines={1}>
+                                            Permis requis
+                                        </Text>
+                                    )}
+                                    {isSelected && (
+                                        <View style={styles.vehicleGridCheck}>
+                                            <SafeIcon name="check" size={16} color={modernColors.surface} />
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
                     {vehicleType !== 'walking' && (
                         <>
                             <TextInput
@@ -849,84 +863,6 @@ const CourierRegistrationScreen: React.FC = () => {
                     />
                 </View>
             </ScrollView>
-
-            {/* Modal de sélection du moyen de transport */}
-            <Modal
-                visible={showVehicleModal}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setShowVehicleModal(false)}
-            >
-                <Pressable
-                    style={styles.modalOverlay}
-                    onPress={() => setShowVehicleModal(false)}
-                >
-                    {/* Contenu du modal - doit intercepter les touches pour permettre le scroll */}
-                    <Pressable
-                        style={styles.modalContent}
-                        onPress={(e) => {
-                            // Empêcher la propagation vers l'overlay
-                            e.stopPropagation();
-                        }}
-                    >
-                        <View style={styles.modalHeaderContent}>
-                            <Text style={styles.modalTitle}>Sélectionner un moyen de transport</Text>
-                            <TouchableOpacity
-                                onPress={() => setShowVehicleModal(false)}
-                                style={styles.modalCloseButton}
-                                activeOpacity={0.7}
-                            >
-                                <SafeIcon name="x" size={24} color={modernColors.text} />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView
-                            style={styles.modalScrollView}
-                            contentContainerStyle={styles.modalScrollContent}
-                            showsVerticalScrollIndicator={true}
-                            keyboardShouldPersistTaps="handled"
-                            nestedScrollEnabled={true}
-                        >
-                            <View style={styles.vehicleGrid}>
-                                {VEHICLE_TRANSPORT_OPTIONS.map((vehicle) => {
-                                    const isSelected = vehicleType === vehicle.value;
-                                    return (
-                                        <TouchableOpacity
-                                            key={vehicle.value}
-                                            style={[
-                                                styles.vehicleGridItem,
-                                                isSelected && styles.vehicleGridItemSelected,
-                                            ]}
-                                            onPress={() => handleVehicleSelect(vehicle.value)}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Text style={styles.vehicleGridIcon}>{vehicle.icon}</Text>
-                                            <Text
-                                                style={[
-                                                    styles.vehicleGridLabel,
-                                                    isSelected && styles.vehicleGridLabelSelected,
-                                                ]}
-                                                numberOfLines={2}
-                                            >
-                                                {vehicle.label}
-                                            </Text>
-                                            {vehicle.requiresLicense && (
-                                                <Text style={styles.vehicleGridHint} numberOfLines={1}>
-                                                    Permis requis
-                                                </Text>
-                                            )}
-                                            {isSelected && (
-                                                <View style={styles.vehicleGridCheck}>
-                                                    <SafeIcon name="check" size={16} color={modernColors.surface} />
-                                                </View>
-                                            )}
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        </ScrollView>
-                    </Pressable>
-                </Pressable>
-            </Modal>
         </SafeNativeView>
     );
 };
@@ -1004,34 +940,11 @@ const styles = StyleSheet.create({
         minHeight: 80,
         textAlignVertical: 'top',
     },
-    vehicleSelector: {
-        borderWidth: 2,
-        borderColor: modernColors.border,
-        borderRadius: 12,
-        backgroundColor: modernColors.surface,
-        marginBottom: 16,
-    },
-    vehicleSelectorContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        gap: 12,
-    },
-    vehicleSelectorIcon: {
-        fontSize: 32,
-    },
-    vehicleSelectorTextContainer: {
-        flex: 1,
-    },
-    vehicleSelectorLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
     vehicleGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
+        marginBottom: 16,
     },
     vehicleGridItem: {
         width: '31%', // 3 colonnes avec espacement (31% × 3 = 93%, reste 7% pour les gaps)
@@ -1081,80 +994,6 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    vehicleModalOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: modernColors.border,
-        backgroundColor: modernColors.surface,
-        marginBottom: 12,
-        gap: 12,
-        minHeight: 64,
-    },
-    vehicleModalOptionSelected: {
-        borderColor: modernColors.primary,
-        backgroundColor: modernColors.primary + '15',
-    },
-    vehicleModalIcon: {
-        fontSize: 32,
-    },
-    vehicleModalTextContainer: {
-        flex: 1,
-    },
-    vehicleModalLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 4,
-    },
-    vehicleModalLabelSelected: {
-        color: modernColors.primary,
-    },
-    vehicleModalHint: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        fontStyle: 'italic',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: modernColors.background,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        maxHeight: '80%',
-        width: '100%',
-        overflow: 'hidden',
-    },
-    modalHeaderContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
-        backgroundColor: modernColors.background,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: modernColors.text,
-        flex: 1,
-    },
-    modalCloseButton: {
-        padding: 4,
-    },
-    modalScrollView: {
-        flex: 1,
-    },
-    modalScrollContent: {
-        padding: 16,
-        paddingBottom: 32,
     },
     documentRow: {
         flexDirection: 'row',

@@ -47,7 +47,12 @@ export const EffectPreviewCarousel: React.FC<EffectPreviewCarouselProps> = ({
 
                         setPreviews(prev => new Map(prev).set(effectName, preview));
                     } catch (error: any) {
-                        console.error(`[EffectPreviewCarousel] Erreur preview ${effectName}:`, error);
+                        console.error(`[EffectPreviewCarousel] Erreur preview ${effectName}:`, {
+                            message: error?.message,
+                            response: error?.response?.data,
+                            status: error?.response?.status,
+                        });
+                        // Ne pas bloquer l'interface, juste logger l'erreur
                     } finally {
                         setLoading(prev => {
                             const newSet = new Set(prev);

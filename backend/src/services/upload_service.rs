@@ -33,13 +33,20 @@ pub async fn store_uploaded_file(
     // Déterminer le type de média
     let media_type = infer_media_type(field_name, filename);
 
-    // Valider la taille (20 MB max par fichier)
-    const MAX_FILE_SIZE: usize = 20_000_000; // 20 MB
-    if bytes.len() > MAX_FILE_SIZE {
+    // ✅ CORRIGÉ: Limite différente selon le type de média
+    // Vidéos peuvent être plus volumineuses (200 MB)
+    let max_file_size = if media_type == "video" {
+        200_000_000 // 200 MB pour les vidéos
+    } else {
+        20_000_000 // 20 MB pour les autres fichiers
+    };
+    
+    if bytes.len() > max_file_size {
         return Err(AppError::BadRequest(format!(
-            "Fichier trop volumineux: {} bytes (max: {} bytes)",
+            "Fichier trop volumineux: {} bytes (max: {} bytes pour type {})",
             bytes.len(),
-            MAX_FILE_SIZE
+            max_file_size,
+            media_type
         )));
     }
 

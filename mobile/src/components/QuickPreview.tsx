@@ -211,9 +211,11 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
         setLoading(true);
         setError(null);
 
+        let enrichedTimeline: VideoTimeline | null = null;
+
         try {
             // ✅ NOUVEAU: Enrichir la timeline en convertissant media_id en media_url
-            const enrichedTimeline = await enrichTimelineWithMediaUrls(timeline);
+            enrichedTimeline = await enrichTimelineWithMediaUrls(timeline);
             
             const response = await quickPreviewService.generatePreview({
                 timeline: enrichedTimeline,
@@ -230,21 +232,44 @@ export const QuickPreview: React.FC<QuickPreviewProps> = ({
                 onPreviewReady(response);
             }
         } catch (err: any) {
-            console.error('[QuickPreview] Error:', err);
+            // ✅ CORRIGÉ: Logs détaillés pour diagnostic
+            console.error('[QuickPreview] ❌ Error:', {
+                message: err?.message,
+                name: err?.name,
+                stack: err?.stack,
+                response: err?.response?.data,
+                status: err?.response?.status,
+                timeline: {
+                    scenesCount: enrichedTimeline?.scenes?.length || timeline?.scenes?.length || 0,
+                    scenes: (enrichedTimeline?.scenes || timeline?.scenes || []).map((s: any, idx: number) => ({
+                        index: idx,
+                        media_url: s.media_url ? s.media_url.substring(0, 50) + '...' : null,
+                        media_id: s.media_id,
+                        start_time: s.start_time,
+                        duration: s.duration,
+                    })),
+                },
+            });
             
             // ✅ CORRIGÉ: Messages d'erreur plus clairs selon le type d'erreur
             let errorMessage = 'Erreur lors de la génération du preview';
             
-            if (err?.message) {
-                if (err.message.includes('500') || err.message.includes('Erreur 500')) {
-                    errorMessage = 'Erreur serveur : Le preview n\'a pas pu être généré.\n\nVérifiez que tous les médias de la timeline sont accessibles.';
-                } else if (err.message.includes('média') || err.message.includes('media') || err.message.includes('timeline')) {
-                    errorMessage = 'Aucun média trouvé dans la timeline.\n\nVeuillez ajouter des médias avant de générer le preview.';
-                } else if (err.message.includes('timeout') || err.message.includes('Timeout')) {
-                    errorMessage = 'Le traitement prend trop de temps.\n\nVeuillez réessayer avec moins de médias.';
+            if (err?.response?.status === 500 || err?.message?.includes('500') || err?.message?.includes('Erreur 500')) {
+                const serverError = err?.response?.data?.error || err?.response?.data?.message || '';
+                if (serverError.includes('média') || serverError.includes('media') || serverError.includes('timeline')) {
+                    errorMessage = `Erreur serveur : ${serverError || 'Aucun média trouvé dans la timeline'}\n\nVérifiez que tous les médias de la timeline sont accessibles.`;
                 } else {
-                    errorMessage = err.message;
+                    errorMessage = `Erreur serveur (500) : ${serverError || 'Le preview n\'a pas pu être généré'}\n\nVérifiez que tous les médias de la timeline sont accessibles.`;
                 }
+            } else if (err?.response?.status === 400) {
+                const badRequestError = err?.response?.data?.error || err?.response?.data?.message || '';
+                errorMessage = `Requête invalide : ${badRequestError || 'Vérifiez que la timeline est correctement formatée'}`;
+            } else if (err?.message?.includes('média') || err?.message?.includes('media') || err?.message?.includes('timeline')) {
+                errorMessage = 'Aucun média trouvé dans la timeline.\n\nVeuillez ajouter des médias avant de générer le preview.';
+            } else if (err?.message?.includes('timeout') || err?.message?.includes('Timeout')) {
+                errorMessage = 'Le traitement prend trop de temps.\n\nVeuillez réessayer avec moins de médias.';
+            } else if (err?.message) {
+                errorMessage = err.message;
             }
             
             setError(errorMessage);

@@ -453,10 +453,7 @@ pub async fn persist_base64_media(
             .decode(cleaned_payload.as_bytes())
             .map_err(|e| AppError::BadRequest(format!("Décodage base64 invalide: {}", e)))?;
 
-        // ✅ Sauvegarder localement d'abord (rapide)
-        fs::write(&disk_path, &decoded).await?;
-        
-        // ✅ Construire le chemin relatif local (retourné immédiatement)
+        // ✅ OPTIMISÉ 2025-12-30: Construire le chemin relatif (pour fallback si nécessaire)
         let relative_path = Path::new("uploads")
             .join("services")
             .join(service_id.to_string())
@@ -464,13 +461,13 @@ pub async fn persist_base64_media(
             .join(&file_name);
         let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
 
-        // ✅ CORRIGÉ: Upload S3 synchrone pour garantir storage_path CDN dans DB
+        // ✅ OPTIMISÉ 2025-12-30: Upload directement depuis les bytes vers S3 (pas d'écriture locale inutile)
         let final_path = if media_storage.is_remote() {
             let storage_key = format!("services/{}/{}/{}", service_id, subdir, file_name);
             match media_storage.store_bytes(&decoded, &storage_key, content_type.as_deref()).await {
                 Ok(location) => {
                     log::info!(
-                        "[persist_base64_media] ✅ Upload S3 réussi: {}",
+                        "[persist_base64_media] ✅ Upload S3 direct depuis mémoire réussi: {}",
                         location.storage_path
                     );
                     location.storage_path // ✅ Utilise storage_path CDN
@@ -480,11 +477,17 @@ pub async fn persist_base64_media(
                         "[persist_base64_media] ⚠️ Erreur upload S3: {} (fallback local)",
                         e
                     );
+                    // Fallback: sauvegarder localement si S3 échoue
+                    if let Err(disk_err) = fs::write(&disk_path, &decoded).await {
+                        log::error!("[persist_base64_media] ❌ Erreur fallback local: {}", disk_err);
+                    }
                     relative_path_str // Fallback local si S3 échoue
                 }
             }
         } else {
-            relative_path_str // Stockage local uniquement
+            // Stockage local uniquement: sauvegarder sur disque
+            fs::write(&disk_path, &decoded).await?;
+            relative_path_str
         };
 
         (decoded, final_path)

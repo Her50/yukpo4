@@ -435,10 +435,57 @@ fn get_effect_definitions() -> std::collections::HashMap<&'static str, EffectDef
     m
 }
 
-/// Récupère la définition d'un effet (fallback hardcodé si DB non disponible)
-/// ✅ CORRIGÉ: Normalisation du nom d'effet (lowercase, trim, etc.)
-fn get_effect_definition(effect_name: &str) -> Option<EffectDefinition> {
+/// ✅ NOUVEAU: Mapping des noms d'effets alternatifs vers les noms canoniques
+fn normalize_effect_name(effect_name: &str) -> String {
     let normalized = effect_name.trim().to_lowercase();
+    
+    // Mapping des noms alternatifs vers les noms canoniques
+    let mapping: std::collections::HashMap<&str, &str> = [
+        ("accélération", "speed ramp"),
+        ("acceleration", "speed ramp"),
+        ("zoom avant", "zoom"),
+        ("zoom rapide", "zoom rapide"),
+        ("zoom dynamique", "zoom dynamique"),
+        ("ralenti", "slow"),
+        ("slow motion", "slow motion"),
+        ("slowmotion", "slow motion"),
+        ("ralenti dramatique", "ralenti dramatique"),
+        ("flou artistique", "flou artistique"),
+        ("flou", "blur"),
+        ("focus blur", "focus blur"),
+        ("focusblur", "focus blur"),
+        ("depth of field", "depth of field"),
+        ("cinéma", "cinema"),
+        ("cinematic", "cinematic"),
+        ("ken burns", "kenburns"),
+        ("kenburns", "kenburns"),
+        ("ken", "kenburns"),
+        ("split screen", "splitscreen"),
+        ("splitscreen", "splitscreen"),
+        ("speed ramp", "speed ramp"),
+        ("speed-ramp", "speed ramp"),
+        ("speedramp", "speed ramp"),
+        ("glitch effect", "glitch"),
+        ("glitch", "glitch"),
+        ("overlay élégant", "overlay élégant"),
+        ("overlay", "overlay"),
+    ]
+    .iter()
+    .cloned()
+    .collect();
+    
+    // Vérifier si le nom normalisé existe dans le mapping
+    if let Some(canonical_name) = mapping.get(normalized.as_str()) {
+        canonical_name.to_string()
+    } else {
+        normalized
+    }
+}
+
+/// Récupère la définition d'un effet (fallback hardcodé si DB non disponible)
+/// ✅ CORRIGÉ: Normalisation du nom d'effet (lowercase, trim, etc.) + mapping alternatifs
+fn get_effect_definition(effect_name: &str) -> Option<EffectDefinition> {
+    let normalized = normalize_effect_name(effect_name);
     get_effect_definitions().get(normalized.as_str()).cloned()
 }
 
@@ -584,12 +631,21 @@ pub async fn generate_effect_preview(
     );
 
     // ✅ CORRIGÉ: Appliquer l'effet avec FFmpeg avec meilleure gestion d'erreur
+    // ✅ CORRIGÉ 2025-12-30: Ajouter un filtre de redimensionnement pour garantir une largeur paire
+    // FFmpeg/libx264 nécessite que la largeur soit divisible par 2
+    // On utilise scale=iw-mod(iw\\,2):ih pour arrondir la largeur à un nombre pair
+    let video_filter = if effect_def.ffmpeg_filter.is_empty() {
+        "scale=iw-mod(iw\\,2):ih".to_string()
+    } else {
+        format!("scale=iw-mod(iw\\,2):ih,{}", effect_def.ffmpeg_filter)
+    };
+    
     let ffmpeg_result = Command::new("ffmpeg")
         .args(&[
             "-i",
             &input_path,
             "-vf",
-            &effect_def.ffmpeg_filter,
+            &video_filter,
             "-t",
             &duration.to_string(),
             "-c:v",
