@@ -1,11 +1,14 @@
 // 🎤 Service de transcription audio
 // Utilise OpenAI Whisper API ou une alternative pour transcrire l'audio en texte
+// ✅ 2025-12-30: Ajout cache de transcriptions et post-traitement des erreurs
 
 use crate::core::types::{AppError, AppResult};
 use crate::utils::log::{log_error, log_info, log_warn};
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use std::env;
+use md5;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TranscriptionResult {
@@ -18,7 +21,116 @@ pub struct TranscriptionResult {
 pub struct AudioTranscriptionService;
 
 impl AudioTranscriptionService {
-    /// Transcrire un audio base64 en texte en utilisant OpenAI Whisper
+    /// ✅ NOUVEAU 2025-12-30: Transcrire avec cache et post-traitement
+    pub async fn transcribe_audio_base64_with_cache(
+        pool: &PgPool,
+        audio_base64: &str,
+    ) -> AppResult<TranscriptionResult> {
+        // Calculer hash MD5 de l'audio
+        let audio_data = if audio_base64.contains("base64,") {
+            audio_base64.split("base64,").nth(1).unwrap_or(audio_base64)
+        } else {
+            audio_base64
+        };
+
+        let audio_bytes = general_purpose::STANDARD.decode(audio_data).map_err(|e| {
+            log_error(&format!("[AudioTranscription] Erreur décodage base64: {}", e));
+            AppError::Internal(format!("Erreur décodage audio: {}", e))
+        })?;
+
+        let audio_hash = format!("{:x}", md5::compute(&audio_bytes));
+
+        log_info(&format!("[AudioTranscription] Hash audio: {}", audio_hash));
+
+        // Vérifier le cache
+        let cached_result = sqlx::query_as::<_, (String, Option<String>, Option<f32>, Option<f32>)>(
+            r#"
+            SELECT transcribed_text, language, confidence, duration
+            FROM audio_transcription_cache
+            WHERE audio_hash = $1
+            "#,
+        )
+        .bind(&audio_hash)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            log_error(&format!("[AudioTranscription] Erreur cache: {}", e));
+            AppError::Internal(format!("Erreur cache: {}", e))
+        })?;
+
+        if let Some((cached_text, cached_lang, cached_conf, cached_dur)) = cached_result {
+            log_info("[AudioTranscription] ✅ Transcription trouvée dans le cache");
+
+            // Mettre à jour last_used_at et usage_count
+            let _ = sqlx::query(
+                r#"
+                UPDATE audio_transcription_cache
+                SET last_used_at = NOW(), usage_count = usage_count + 1
+                WHERE audio_hash = $1
+                "#,
+            )
+            .bind(&audio_hash)
+            .execute(pool)
+            .await;
+
+            // Appliquer corrections via fonction PostgreSQL
+            let corrected_text = sqlx::query_scalar::<_, String>(
+                "SELECT correct_transcription_errors($1)"
+            )
+            .bind(&cached_text)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(cached_text);
+
+            return Ok(TranscriptionResult {
+                text: corrected_text,
+                language: cached_lang,
+                confidence: cached_conf,
+                duration: cached_dur,
+            });
+        }
+
+        // Pas dans le cache : transcrire
+        log_info("[AudioTranscription] Transcription non trouvée dans cache, appel API...");
+        let result = Self::transcribe_audio_base64(audio_base64).await?;
+
+        // Sauvegarder dans le cache
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO audio_transcription_cache (
+                audio_hash, transcribed_text, language, confidence, duration, model_used
+            ) VALUES ($1, $2, $3, $4, $5, 'whisper-1')
+            ON CONFLICT (audio_hash) DO UPDATE SET
+                last_used_at = NOW(),
+                usage_count = audio_transcription_cache.usage_count + 1
+            "#,
+        )
+        .bind(&audio_hash)
+        .bind(&result.text)
+        .bind(&result.language)
+        .bind(&result.confidence)
+        .bind(&result.duration)
+        .execute(pool)
+        .await;
+
+        // Appliquer corrections
+        let corrected_text = sqlx::query_scalar::<_, String>(
+            "SELECT correct_transcription_errors($1)"
+        )
+        .bind(&result.text)
+        .fetch_one(pool)
+        .await
+        .unwrap_or(result.text);
+
+        Ok(TranscriptionResult {
+            text: corrected_text,
+            language: result.language,
+            confidence: result.confidence,
+            duration: result.duration,
+        })
+    }
+
+    /// Transcrire un audio base64 en texte en utilisant OpenAI Whisper (sans cache)
     pub async fn transcribe_audio_base64(audio_base64: &str) -> AppResult<TranscriptionResult> {
         log_info(&format!(
             "[AudioTranscription] Début transcription audio ({} caractères)",

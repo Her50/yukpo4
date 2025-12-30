@@ -654,6 +654,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
     });
 
+    // ✅ NOUVEAU 2025-12-30: Nettoyage automatique du cache audio (tous les jours)
+    let pool_clone_audio = Arc::new(app_state.pg.clone());
+    let _ = tokio::spawn(async move {
+        yukpomnang_backend::tasks::audio_cache_cleanup::start_audio_cache_cleanup_task(
+            pool_clone_audio,
+        )
+        .await;
+    });
+
     // ✅ Lancer le nettoyage périodique des rooms/ingress LiveKit/SRS
     tasks::livekit_cleanup::start_livekit_cleanup_task(app_state.clone());
     // ✅ Lancer la synchronisation des analytics LiveKit

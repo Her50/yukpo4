@@ -270,7 +270,19 @@ async fn handle_direct_search(
                     (None, None)
                 };
                 
-                // Utiliser sqlx::query() pour compatibilité offline
+                // ✅ AMÉLIORÉ 2025-12-30: Détecter langue depuis analyse IA
+                // Mapper les langues détectées par l'IA vers les langues PostgreSQL
+                let search_lang = match analysis.description.to_lowercase().as_str() {
+                    s if s.contains("english") || s.contains("anglais") => "english",
+                    s if s.contains("spanish") || s.contains("espagnol") => "spanish",
+                    s if s.contains("portuguese") || s.contains("portugais") => "portuguese",
+                    s if s.contains("arabic") || s.contains("arabe") => "arabic",
+                    _ => "french"  // Français par défaut
+                };
+                
+                log_info(&format!("[DIRECT_SEARCH] Langue détectée depuis analyse IA: {}", search_lang));
+                
+                // Utiliser sqlx::query() pour compatibilité offline avec langue dynamique
                 let search_results = sqlx::query(
                     r#"SELECT * FROM search_images_by_ai_analysis(
                         $1::TEXT,
@@ -281,7 +293,8 @@ async fn handle_direct_search(
                         $6::FLOAT,
                         $7::FLOAT,
                         $8::INTEGER,
-                        $9::INTEGER
+                        $9::INTEGER,
+                        $10::TEXT
                     )"#
                 )
                 .bind(&analysis.search_query)
@@ -293,6 +306,7 @@ async fn handle_direct_search(
                 .bind(gps_lng)
                 .bind(search_radius_km.unwrap_or(50) as i32)
                 .bind(20i32)
+                .bind(search_lang)  // ✅ NOUVEAU: Langue dynamique
                 .fetch_all(&_state.pg)
                 .await;
                 

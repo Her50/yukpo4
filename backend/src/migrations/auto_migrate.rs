@@ -3028,6 +3028,196 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
     Ok(())
 }
 
+/// ✅ 2025-12-30: Optimisation matching vectoriel avec similarité en une passe
+/// Crée les fonctions de normalisation, colonnes normalisées, index et fonction de scoring optimisée
+pub async fn ensure_vector_matching_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de l'optimisation matching vectoriel...");
+
+    // 1. Fonction de normalisation
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION normalize_word(word TEXT)
+        RETURNS TEXT AS $$
+        BEGIN
+            IF word IS NULL OR word = '' THEN
+                RETURN '';
+            END IF;
+            RETURN LOWER(
+                translate(
+                    word,
+                    'àâäéèêëîïôöùûüÿç',
+                    'aaaeeeeiiioouuuyc'
+                )
+            );
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 2. Fonction pour normaliser un array de mots
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION normalize_word_array(word_array TEXT[])
+        RETURNS TEXT[] AS $$
+        BEGIN
+            IF word_array IS NULL OR array_length(word_array, 1) IS NULL THEN
+                RETURN ARRAY[]::TEXT[];
+            END IF;
+            RETURN ARRAY(
+                SELECT normalize_word(unnest(word_array))
+            );
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 3. Colonnes calculées normalisées
+    sqlx::query(
+        r#"
+        ALTER TABLE autocomplete_characteristics 
+        ADD COLUMN IF NOT EXISTS normalized_characteristic_vector TEXT[] 
+        GENERATED ALWAYS AS (normalize_word_array(characteristic_vector)) STORED;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        ALTER TABLE autocomplete_characteristics 
+        ADD COLUMN IF NOT EXISTS normalized_full_vector TEXT[] 
+        GENERATED ALWAYS AS (normalize_word_array(full_vector)) STORED;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 4. Index GIN sur colonnes normalisées
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_autocomplete_normalized_characteristic_vector_gin 
+        ON autocomplete_characteristics USING GIN (normalized_characteristic_vector);
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_autocomplete_normalized_full_vector_gin 
+        ON autocomplete_characteristics USING GIN (normalized_full_vector);
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_autocomplete_normalized_filters 
+        ON autocomplete_characteristics (is_real_product, identifiant_base) 
+        WHERE is_real_product = TRUE AND identifiant_base = 'produits';
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 5. Fonction de matching vectoriel optimisée
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION calculate_vector_match_score_optimized(
+            product_vector_normalized TEXT[],
+            search_keywords_normalized TEXT[]
+        )
+        RETURNS REAL AS $$
+            SELECT COALESCE(
+                GREATEST(
+                    -- Score exact (100%) : Match exact normalisé
+                    (
+                        SELECT COUNT(*)::REAL
+                        FROM unnest(search_keywords_normalized) AS keyword
+                        WHERE keyword = ANY(product_vector_normalized)
+                    ) / NULLIF(array_length(search_keywords_normalized, 1), 0)::REAL * 100.0,
+                    -- Score partiel (70%) : Mots tronqués (LIKE)
+                    (
+                        SELECT COUNT(*)::REAL
+                        FROM unnest(search_keywords_normalized) AS keyword
+                        WHERE EXISTS (
+                            SELECT 1
+                            FROM unnest(product_vector_normalized) AS elem
+                            WHERE elem LIKE keyword || '%' OR keyword LIKE elem || '%'
+                        )
+                    ) / NULLIF(array_length(search_keywords_normalized, 1), 0)::REAL * 70.0,
+                    -- Score fuzzy (40%) : Fautes de frappe (similarity)
+                    (
+                        SELECT COUNT(*)::REAL
+                        FROM unnest(search_keywords_normalized) AS keyword
+                        WHERE EXISTS (
+                            SELECT 1
+                            FROM unnest(product_vector_normalized) AS elem
+                            WHERE similarity(keyword, elem) > 0.3
+                        )
+                    ) / NULLIF(array_length(search_keywords_normalized, 1), 0)::REAL * 40.0
+                ),
+                0.0
+            );
+        $$ LANGUAGE sql IMMUTABLE;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // 6. Analyser la table pour optimiser les statistiques
+    sqlx::query("ANALYZE autocomplete_characteristics")
+        .execute(pool)
+        .await?;
+
+    info!("✅ Optimisation matching vectoriel appliquée avec succès !");
+    Ok(())
+}
+
+/// ✅ 2025-12-30: Optimisation recherche image avec matching vectoriel normalisé
+pub async fn ensure_image_search_vector_matching_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration image search vector matching optimization...");
+    let migration_sql = include_str!("../../migrations/20251230_optimize_image_search_vector_matching.sql");
+    
+    sqlx::query(migration_sql)
+        .execute(pool)
+        .await?;
+    
+    info!("✅ Migration image search vector matching optimization appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-30: Optimisation recherche audio avec cache et post-traitement
+pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration audio search cache optimization...");
+    let migration_sql = include_str!("../../migrations/20251230_optimize_audio_search_cache.sql");
+    
+    sqlx::query(migration_sql)
+        .execute(pool)
+        .await?;
+    
+    info!("✅ Migration audio search cache optimization appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-30: Optimisation finale performance recherche (< 2s)
+pub async fn ensure_search_performance_final_optimization(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration search performance final optimization...");
+    let migration_sql = include_str!("../../migrations/20251230_optimize_search_performance_final.sql");
+    
+    sqlx::query(migration_sql)
+        .execute(pool)
+        .await?;
+    
+    info!("✅ Migration search performance final optimization appliquée");
+    Ok(())
+}
+
 /// Vérifie et crée la table autocomplete_combinations si elle n'existe pas
 pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table autocomplete_combinations...");
@@ -7494,6 +7684,30 @@ pub async fn run_auto_migrations(pool: &PgPool) {
             "❌ Erreur migration auto autocomplete_characteristics: {}",
             e
         ),
+    }
+
+    // ✅ 2025-12-30: Optimisation matching vectoriel avec similarité
+    match ensure_vector_matching_optimization(pool).await {
+        Ok(_) => info!("✅ Migration auto: vector matching optimization OK"),
+        Err(e) => error!("❌ Erreur migration auto vector matching optimization: {}", e),
+    }
+
+    // ✅ 2025-12-30: Optimisation recherche image avec matching vectoriel
+    match ensure_image_search_vector_matching_optimization(pool).await {
+        Ok(_) => info!("✅ Migration auto: image search vector matching optimization OK"),
+        Err(e) => error!("❌ Erreur migration auto image search vector matching: {}", e),
+    }
+
+    // ✅ 2025-12-30: Optimisation recherche audio avec cache
+    match ensure_audio_search_cache_optimization(pool).await {
+        Ok(_) => info!("✅ Migration auto: audio search cache optimization OK"),
+        Err(e) => error!("❌ Erreur migration auto audio search cache: {}", e),
+    }
+
+    // ✅ 2025-12-30: Optimisation finale performance recherche (< 2s)
+    match ensure_search_performance_final_optimization(pool).await {
+        Ok(_) => info!("✅ Migration auto: search performance final optimization OK"),
+        Err(e) => error!("❌ Erreur migration auto search performance final: {}", e),
     }
 
     // Migration 6: Table autocomplete_combinations (✅ NOUVEAU 2025-11-02)

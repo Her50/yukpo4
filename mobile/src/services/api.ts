@@ -164,13 +164,19 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 };
 
 const shouldRetry = (error: any, status?: number, config: RetryConfig = DEFAULT_RETRY_CONFIG): boolean => {
+  // ✅ NOUVEAU: Retry pour les codes d'erreur spécifiques (TIMEOUT, NETWORK_ERROR)
+  if (error?.code === 'TIMEOUT' || error?.code === 'NETWORK_ERROR') {
+    return true;
+  }
+
   // Ne pas retry pour les erreurs 4xx (sauf 408, 429)
   if (status && status >= 400 && status < 500 && !config.retryableStatuses?.includes(status)) {
     return false;
   }
 
-  // Retry pour les erreurs réseau
-  if (error?.message && config.retryableErrors?.some(err => error.message.includes(err))) {
+  // Retry pour les erreurs réseau (vérifier message et toString)
+  const errorMessage = error?.message || error?.error || error?.toString() || '';
+  if (config.retryableErrors?.some(err => errorMessage.includes(err))) {
     return true;
   }
 
@@ -207,10 +213,12 @@ const apiCallWithRetry = async <T>(
 
       // Si erreur, vérifier si on doit retry
       lastStatus = result.status;
-      if (attempt < maxRetries && shouldRetry(result.error || result, lastStatus, retryConfig)) {
+      // ✅ AMÉLIORÉ: Passer aussi le code d'erreur à shouldRetry
+      const errorToCheck = { ...result, error: result.error || result, code: result.code };
+      if (attempt < maxRetries && shouldRetry(errorToCheck, lastStatus, retryConfig)) {
         // Calculer le délai avec backoff exponentiel (1s, 2s, 4s)
         const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000); // Max 10s
-        console.log(`[Mobile API] Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint}`);
+        console.log(`[Mobile API] Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint} (code: ${result.code || 'N/A'})`);
         await delay(delayMs);
         continue;
       }
@@ -488,23 +496,51 @@ const apiCallInternal = async <T>(
   } catch (error: any) {
     console.error(`[Mobile API] Erreur pour ${endpoint}:`, error);
 
-    // Gérer les erreurs de timeout
-    if (error.name === 'AbortError') {
+    // ✅ AMÉLIORÉ: Gérer les erreurs de timeout (AbortError)
+    if (error.name === 'AbortError' || error.message === 'Aborted') {
       console.error(`[Mobile API] Timeout pour ${endpoint}`);
+      
+      // ✅ NOUVEAU: Message spécifique pour création de service avec payload volumineux
+      let errorMessage = 'La requête a expiré. Vérifiez votre connexion internet.';
+      if (endpoint.includes('/services/create')) {
+        errorMessage = 'La création du service a pris trop de temps. Cela peut être dû à un grand nombre de médias.\n\nConseils :\n- Réduisez le nombre d\'images par produit\n- Raccourcissez les vidéos\n- Vérifiez votre connexion internet';
+      }
+      
       return {
         success: false,
-        error: 'La requête a expiré. Vérifiez votre connexion internet.',
+        error: errorMessage,
         data: null,
+        code: 'TIMEOUT',
       };
     }
 
-    // Gérer les erreurs de réseau
-    if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
-      console.error(`[Mobile API] Erreur réseau pour ${endpoint}`);
+    // ✅ AMÉLIORÉ: Gérer les erreurs de réseau (plus de patterns)
+    const networkErrorPatterns = [
+      'Failed to fetch',
+      'NetworkError',
+      'Network request failed',
+      'TypeError: Network request failed',
+      'NetworkError when attempting to fetch',
+    ];
+    
+    const isNetworkError = networkErrorPatterns.some(pattern => 
+      error.message?.includes(pattern) || error.toString().includes(pattern)
+    );
+    
+    if (isNetworkError) {
+      console.error(`[Mobile API] Erreur réseau pour ${endpoint}:`, error.message || error.toString());
+      
+      // ✅ NOUVEAU: Message spécifique pour création de service
+      let errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.';
+      if (endpoint.includes('/services/create')) {
+        errorMessage = 'Impossible d\'envoyer la requête au serveur.\n\nCauses possibles :\n- Connexion internet instable\n- Payload trop volumineux\n- Serveur temporairement indisponible\n\nConseils :\n- Vérifiez votre connexion\n- Réduisez le nombre de médias\n- Réessayez dans quelques instants';
+      }
+      
       return {
         success: false,
-        error: 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.',
+        error: errorMessage,
         data: null,
+        code: 'NETWORK_ERROR',
       };
     }
 

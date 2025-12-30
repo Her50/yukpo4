@@ -1,6 +1,6 @@
 ﻿// @ts-nocheck
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -100,6 +100,10 @@ const ResultatBesoinScreen: React.FC = () => {
     // Récupérer les résultats depuis la navigation
     const routeParams = (route.params as any) || {};
     const initialResults = routeParams.results || [];
+    
+    // ✅ CORRECTION 2025-12-30: useRef pour éviter les re-renders infinis
+    const hasProcessedInitialResults = useRef(false);
+    const initialResultsLength = useRef(initialResults?.length || 0);
 
     // Déterminer la catégorie dominante des produits
     const dominantCategory = useMemo(() => {
@@ -614,11 +618,23 @@ const ResultatBesoinScreen: React.FC = () => {
     };
 
     // Traitement initial des résultats
+    // ✅ CORRECTION 2025-12-30: Utiliser useRef pour éviter les re-renders infinis
     useEffect(() => {
+        // Vérifier si on a déjà traité ces résultats (même longueur)
+        const currentLength = initialResults?.length || 0;
+        if (hasProcessedInitialResults.current && initialResultsLength.current === currentLength) {
+            console.log('⏭️ [ResultatBesoinScreen] Résultats déjà traités, skip');
+            return;
+        }
+
         const processResults = async () => {
             try {
                 if (initialResults && Array.isArray(initialResults) && initialResults.length > 0) {
                     console.log('🔄 Traitement des résultats initiaux:', initialResults.length);
+                    
+                    // Marquer comme traité AVANT le traitement asynchrone
+                    hasProcessedInitialResults.current = true;
+                    initialResultsLength.current = initialResults.length;
 
                     // Trier les résultats par score de pertinence et proximité
                     const sortedResults = await sortResultsByRelevanceAndProximity(initialResults);
@@ -639,6 +655,8 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 } else {
                     console.log('⚠️ Aucun résultat initial fourni');
+                    hasProcessedInitialResults.current = true;
+                    initialResultsLength.current = 0;
                     setLoading(false);
                     setPrestatairesLoaded(true);
                 }
@@ -661,7 +679,7 @@ const ResultatBesoinScreen: React.FC = () => {
         processResults();
 
         return () => clearTimeout(timeoutId);
-    }, [initialResults]);
+    }, [initialResults?.length]); // ✅ CORRECTION: Dépendre seulement de la longueur, pas de l'objet complet
 
     // ✅ CORRECTION: Gestionnaires pour les services
     const handleContactPress = (service: Service) => {

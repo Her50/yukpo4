@@ -3,6 +3,7 @@
 //! Regroupe tous les jobs planifi?s ou r?currents de votre application.
 
 pub mod archived_service_cleaner;
+pub mod audio_cache_cleanup; // ✅ NOUVEAU 2025-12-30: Nettoyage automatique du cache audio
 pub mod delivery_archive_worker; // ✅ Phase 2 : Archivage automatique des livraisons
 pub mod delivery_matching_worker;
 pub mod delivery_sla_monitor;

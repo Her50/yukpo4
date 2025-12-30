@@ -64,6 +64,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const mainScrollViewRef = React.useRef<ScrollView>(null);
   const blockRefs = React.useRef<Record<number, View | null>>({});
   const blockPositions = React.useRef<Record<number, number>>({});
+  const tabsScrollViewRef = React.useRef<ScrollView>(null);
+  const tabRefs = React.useRef<Record<number, View | null>>({});
 
   const params = ((route || {})?.params || {}) as any;
 
@@ -292,6 +294,30 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       setCurrentBlock(displayedBlocks[0].index);
     }
   }, [displayedBlocks, currentBlock]);
+
+  // ✅ NOUVEAU: Scroller automatiquement vers l'onglet actif dans la navigation horizontale
+  useEffect(() => {
+    if (!tabsScrollViewRef.current || !displayedBlocks || displayedBlocks.length === 0) {
+      return;
+    }
+
+    const activeTabIndex = displayedBlocks.findIndex((item) => item.index === currentBlock);
+    if (activeTabIndex === -1) {
+      return;
+    }
+
+    // Utiliser une estimation basée sur la largeur moyenne d'un onglet (minWidth 120 + gap 8 = ~128px)
+    // Centrer approximativement l'onglet actif
+    setTimeout(() => {
+      if (tabsScrollViewRef.current) {
+        const estimatedScrollX = activeTabIndex * 128 - 100; // 100 pour centrer approximativement
+        tabsScrollViewRef.current.scrollTo({
+          x: Math.max(0, estimatedScrollX),
+          animated: true,
+        });
+      }
+    }, 100);
+  }, [currentBlock, displayedBlocks]);
 
   useEffect(() => {
     const parseMediaValue = (value: any): any[] => {
@@ -3079,14 +3105,259 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           }
         });
 
+        // ✅ NOUVEAU: Upload préalable des médias (compressés) pour éviter payload trop volumineux
         const compressedMedia = await getCompressedMedia();
+        let uploadedMediaUrls: {
+          images?: string[];
+          videos?: string[];
+          audios?: string[];
+          documents?: string[];
+          excel?: string[];
+          logo?: string;
+          banner?: string;
+        } = {};
+
         if (compressedMedia) {
-          const attachMediaField = (fieldName: string, values: any[], options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
-            if (!values || !Array.isArray(values)) {
+          console.log('[FormulaireYukpoIntelligentScreen] 📤 Début upload préalable des médias (modification)...');
+          try {
+            const { uploadFiles } = await import('../services/uploadApi');
+
+            // Collecter tous les médias à uploader (après compression)
+            const filesToUpload: Array<{ uri: string; type: string; name?: string }> = [];
+            let logoIndex = -1;
+            let bannerIndex = -1;
+
+            // Images
+            if (compressedMedia.images && Array.isArray(compressedMedia.images)) {
+              compressedMedia.images.forEach((img: string, idx: number) => {
+                if (img && (img.startsWith('data:') || img.startsWith('file://'))) {
+                  const mimeType = img.startsWith('data:')
+                    ? img.split(',')[0].split(':')[1].split(';')[0]
+                    : 'image/jpeg';
+                  filesToUpload.push({
+                    uri: img,
+                    type: mimeType,
+                    name: `image_${idx}.jpg`
+                  });
+                }
+              });
+            }
+
+            // Vidéos
+            if (compressedMedia.videos && Array.isArray(compressedMedia.videos)) {
+              compressedMedia.videos.forEach((vid: string, idx: number) => {
+                if (vid && (vid.startsWith('data:') || vid.startsWith('file://'))) {
+                  const mimeType = vid.startsWith('data:')
+                    ? vid.split(',')[0].split(':')[1].split(';')[0]
+                    : 'video/mp4';
+                  filesToUpload.push({
+                    uri: vid,
+                    type: mimeType,
+                    name: `video_${idx}.mp4`
+                  });
+                }
+              });
+            }
+
+            // Audios
+            if (compressedMedia.audios && Array.isArray(compressedMedia.audios)) {
+              compressedMedia.audios.forEach((audio: string, idx: number) => {
+                if (audio && (audio.startsWith('data:') || audio.startsWith('file://'))) {
+                  const mimeType = audio.startsWith('data:')
+                    ? audio.split(',')[0].split(':')[1].split(';')[0]
+                    : 'audio/mpeg';
+                  filesToUpload.push({
+                    uri: audio,
+                    type: mimeType,
+                    name: `audio_${idx}.mp3`
+                  });
+                }
+              });
+            }
+
+            // Documents
+            if (compressedMedia.documents && Array.isArray(compressedMedia.documents)) {
+              compressedMedia.documents.forEach((doc: string, idx: number) => {
+                if (doc && (doc.startsWith('data:') || doc.startsWith('file://'))) {
+                  const mimeType = doc.startsWith('data:')
+                    ? doc.split(',')[0].split(':')[1].split(';')[0]
+                    : 'application/pdf';
+                  filesToUpload.push({
+                    uri: doc,
+                    type: mimeType,
+                    name: `document_${idx}.pdf`
+                  });
+                }
+              });
+            }
+
+            // Excel
+            if (compressedMedia.excel && Array.isArray(compressedMedia.excel)) {
+              compressedMedia.excel.forEach((excel: string, idx: number) => {
+                if (excel && (excel.startsWith('data:') || excel.startsWith('file://'))) {
+                  const mimeType = excel.startsWith('data:')
+                    ? excel.split(',')[0].split(':')[1].split(';')[0]
+                    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                  filesToUpload.push({
+                    uri: excel,
+                    type: mimeType,
+                    name: `excel_${idx}.xlsx`
+                  });
+                }
+              });
+            }
+
+            // Logo (première image seulement)
+            if (compressedMedia.logo && Array.isArray(compressedMedia.logo) && compressedMedia.logo.length > 0) {
+              const logo = compressedMedia.logo[0];
+              if (logo && (logo.startsWith('data:') || logo.startsWith('file://'))) {
+                const mimeType = logo.startsWith('data:')
+                  ? logo.split(',')[0].split(':')[1].split(';')[0]
+                  : 'image/jpeg';
+                logoIndex = filesToUpload.length;
+                filesToUpload.push({
+                  uri: logo,
+                  type: mimeType,
+                  name: 'logo.jpg'
+                });
+              }
+            }
+
+            // Banner (première image seulement)
+            if (compressedMedia.banner && Array.isArray(compressedMedia.banner) && compressedMedia.banner.length > 0) {
+              const banner = compressedMedia.banner[0];
+              if (banner && (banner.startsWith('data:') || banner.startsWith('file://'))) {
+                const mimeType = banner.startsWith('data:')
+                  ? banner.split(',')[0].split(':')[1].split(';')[0]
+                  : 'image/jpeg';
+                bannerIndex = filesToUpload.length;
+                filesToUpload.push({
+                  uri: banner,
+                  type: mimeType,
+                  name: 'banner.jpg'
+                });
+              }
+            }
+
+            // Uploader tous les fichiers
+            if (filesToUpload.length > 0) {
+              console.log(`[FormulaireYukpoIntelligentScreen] 📤 Upload de ${filesToUpload.length} fichier(s) (modification)...`);
+              const uploadedFiles = await uploadFiles(filesToUpload);
+              console.log('[FormulaireYukpoIntelligentScreen] ✅ Upload réussi (modification):', uploadedFiles.length, 'fichier(s)');
+
+              // Organiser les URLs par type de média
+              const imageFiles = uploadedFiles.filter(f => f.media_type === 'image');
+              uploadedMediaUrls.images = imageFiles
+                        .filter((_, idx) => idx !== logoIndex && idx !== bannerIndex)
+                        .map(f => f.url);
+              
+              uploadedMediaUrls.videos = uploadedFiles
+                .filter(f => f.media_type === 'video')
+                .map(f => f.url);
+              
+              uploadedMediaUrls.audios = uploadedFiles
+                .filter(f => f.media_type === 'audio')
+                .map(f => f.url);
+              
+              uploadedMediaUrls.documents = uploadedFiles
+                .filter(f => f.media_type === 'document' || f.media_type === 'file')
+                .map(f => f.url);
+              
+              uploadedMediaUrls.excel = uploadedFiles
+                .filter(f => f.url.includes('.xlsx') || f.url.includes('.xls'))
+                .map(f => f.url);
+
+              // Logo et Banner (utiliser les index pour trouver les bons fichiers)
+              if (logoIndex >= 0 && logoIndex < uploadedFiles.length) {
+                const logoFile = uploadedFiles.find((_, idx) => idx === logoIndex && filesToUpload[idx]?.name === 'logo.jpg');
+                if (logoFile) {
+                  uploadedMediaUrls.logo = logoFile.url;
+                }
+              }
+              
+              if (bannerIndex >= 0 && bannerIndex < uploadedFiles.length) {
+                const bannerFile = uploadedFiles.find((_, idx) => idx === bannerIndex && filesToUpload[idx]?.name === 'banner.jpg');
+                if (bannerFile) {
+                  uploadedMediaUrls.banner = bannerFile.url;
+                }
+              }
+
+              console.log('[FormulaireYukpoIntelligentScreen] ✅ URLs médias uploadées (modification):', {
+                images: uploadedMediaUrls.images?.length || 0,
+                videos: uploadedMediaUrls.videos?.length || 0,
+                audios: uploadedMediaUrls.audios?.length || 0,
+                documents: uploadedMediaUrls.documents?.length || 0,
+                excel: uploadedMediaUrls.excel?.length || 0,
+                logo: uploadedMediaUrls.logo ? 'oui' : 'non',
+                banner: uploadedMediaUrls.banner ? 'oui' : 'non'
+              });
+            } else {
+              console.log('[FormulaireYukpoIntelligentScreen] ℹ️ Aucun média à uploader (modification) - déjà URLs ou vide');
+            }
+          } catch (uploadError: any) {
+            console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur upload préalable (modification), fallback base64:', uploadError.message);
+            // Fallback: continuer avec base64 si upload échoue (rétrocompatibilité)
+          }
+        }
+
+        if (compressedMedia) {
+          const attachMediaField = (fieldName: string, values: any[] | string | undefined, options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
+            // Si on a des URLs uploadées, les utiliser en priorité
+            if (uploadedMediaUrls) {
+              let urlValue: string | string[] | undefined;
+
+              switch (fieldName) {
+                case 'base64_image':
+                  urlValue = uploadedMediaUrls.images;
+                  break;
+                case 'video_base64':
+                  urlValue = uploadedMediaUrls.videos;
+                  break;
+                case 'audio_base64':
+                  urlValue = uploadedMediaUrls.audios;
+                  break;
+                case 'doc_base64':
+                  urlValue = uploadedMediaUrls.documents;
+                  break;
+                case 'excel_base64':
+                  urlValue = uploadedMediaUrls.excel;
+                  break;
+                case 'logo':
+                  urlValue = uploadedMediaUrls.logo;
+                  break;
+                case 'banner':
+                  urlValue = uploadedMediaUrls.banner;
+                  break;
+              }
+
+              // Si on a une URL, l'utiliser
+              if (urlValue !== undefined) {
+                if (typeof urlValue === 'string' && urlValue.length > 0) {
+                  finalServiceData[fieldName] = {
+                    type_donnee: options.typeDonnee || 'string',
+                    valeur: urlValue,
+                    origine_champs: 'formulaire'
+                  };
+                  return;
+                } else if (Array.isArray(urlValue) && urlValue.length > 0) {
+                  const { takeFirst = false } = options;
+                  const valeur = takeFirst ? urlValue[0] : urlValue;
+                  finalServiceData[fieldName] = {
+                    type_donnee: options.typeDonnee || 'array',
+                    valeur,
+                    origine_champs: 'formulaire'
+                  };
+              return;
+                }
+              }
+            }
+
+            // Fallback: utiliser les valeurs base64 compressées
+            if (!values || (Array.isArray(values) && values.length === 0)) {
               return;
             }
 
-            const cleaned = values.filter(Boolean);
+            const cleaned = Array.isArray(values) ? values.filter(Boolean) : (values ? [values] : []);
             if (cleaned.length === 0) {
               return;
             }
@@ -3661,12 +3932,249 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ Mode de paiement ajouté:', paymentMethod);
                 }
 
-                const attachMediaField = (fieldName: string, values: any[], options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
-                  if (!values || !Array.isArray(values)) {
+                // ✅ NOUVEAU: Upload préalable des médias (compressés) pour éviter payload trop volumineux
+                let uploadedMediaUrls: {
+                  images?: string[];
+                  videos?: string[];
+                  audios?: string[];
+                  documents?: string[];
+                  excel?: string[];
+                  logo?: string;
+                  banner?: string;
+                } = {};
+
+                if (compressedMedia) {
+                  console.log('[FormulaireYukpoIntelligentScreen] 📤 Début upload préalable des médias...');
+                  try {
+                    const { uploadFiles } = await import('../services/uploadApi');
+
+                    // Collecter tous les médias à uploader (après compression)
+                    const filesToUpload: Array<{ uri: string; type: string; name?: string }> = [];
+                    let logoIndex = -1;
+                    let bannerIndex = -1;
+
+                    // Images (sans logo et banner)
+                    if (compressedMedia.images && Array.isArray(compressedMedia.images)) {
+                      compressedMedia.images.forEach((img: string, idx: number) => {
+                        if (img && (img.startsWith('data:') || img.startsWith('file://'))) {
+                          const mimeType = img.startsWith('data:')
+                            ? img.split(',')[0].split(':')[1].split(';')[0]
+                            : 'image/jpeg';
+                          filesToUpload.push({
+                            uri: img,
+                            type: mimeType,
+                            name: `image_${idx}.jpg`
+                          });
+                        }
+                      });
+                    }
+
+                    // Vidéos
+                    if (compressedMedia.videos && Array.isArray(compressedMedia.videos)) {
+                      compressedMedia.videos.forEach((vid: string, idx: number) => {
+                        if (vid && (vid.startsWith('data:') || vid.startsWith('file://'))) {
+                          const mimeType = vid.startsWith('data:')
+                            ? vid.split(',')[0].split(':')[1].split(';')[0]
+                            : 'video/mp4';
+                          filesToUpload.push({
+                            uri: vid,
+                            type: mimeType,
+                            name: `video_${idx}.mp4`
+                          });
+                        }
+                      });
+                    }
+
+                    // Audios
+                    if (compressedMedia.audios && Array.isArray(compressedMedia.audios)) {
+                      compressedMedia.audios.forEach((audio: string, idx: number) => {
+                        if (audio && (audio.startsWith('data:') || audio.startsWith('file://'))) {
+                          const mimeType = audio.startsWith('data:')
+                            ? audio.split(',')[0].split(':')[1].split(';')[0]
+                            : 'audio/mpeg';
+                          filesToUpload.push({
+                            uri: audio,
+                            type: mimeType,
+                            name: `audio_${idx}.mp3`
+                          });
+                        }
+                      });
+                    }
+
+                    // Documents
+                    if (compressedMedia.documents && Array.isArray(compressedMedia.documents)) {
+                      compressedMedia.documents.forEach((doc: string, idx: number) => {
+                        if (doc && (doc.startsWith('data:') || doc.startsWith('file://'))) {
+                          const mimeType = doc.startsWith('data:')
+                            ? doc.split(',')[0].split(':')[1].split(';')[0]
+                            : 'application/pdf';
+                          filesToUpload.push({
+                            uri: doc,
+                            type: mimeType,
+                            name: `document_${idx}.pdf`
+                          });
+                        }
+                      });
+                    }
+
+                    // Excel
+                    if (compressedMedia.excel && Array.isArray(compressedMedia.excel)) {
+                      compressedMedia.excel.forEach((excel: string, idx: number) => {
+                        if (excel && (excel.startsWith('data:') || excel.startsWith('file://'))) {
+                          const mimeType = excel.startsWith('data:')
+                            ? excel.split(',')[0].split(':')[1].split(';')[0]
+                            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                          filesToUpload.push({
+                            uri: excel,
+                            type: mimeType,
+                            name: `excel_${idx}.xlsx`
+                          });
+                        }
+                      });
+                    }
+
+                    // Logo (première image seulement)
+                    if (compressedMedia.logo && Array.isArray(compressedMedia.logo) && compressedMedia.logo.length > 0) {
+                      const logo = compressedMedia.logo[0];
+                      if (logo && (logo.startsWith('data:') || logo.startsWith('file://'))) {
+                        const mimeType = logo.startsWith('data:')
+                          ? logo.split(',')[0].split(':')[1].split(';')[0]
+                          : 'image/jpeg';
+                        logoIndex = filesToUpload.length;
+                        filesToUpload.push({
+                          uri: logo,
+                          type: mimeType,
+                          name: 'logo.jpg'
+                        });
+                      }
+                    }
+
+                    // Banner (première image seulement)
+                    if (compressedMedia.banner && Array.isArray(compressedMedia.banner) && compressedMedia.banner.length > 0) {
+                      const banner = compressedMedia.banner[0];
+                      if (banner && (banner.startsWith('data:') || banner.startsWith('file://'))) {
+                        const mimeType = banner.startsWith('data:')
+                          ? banner.split(',')[0].split(':')[1].split(';')[0]
+                          : 'image/jpeg';
+                        bannerIndex = filesToUpload.length;
+                        filesToUpload.push({
+                          uri: banner,
+                          type: mimeType,
+                          name: 'banner.jpg'
+                        });
+                      }
+                    }
+
+                    // Uploader tous les fichiers
+                    if (filesToUpload.length > 0) {
+                      console.log(`[FormulaireYukpoIntelligentScreen] 📤 Upload de ${filesToUpload.length} fichier(s)...`);
+                      const uploadedFiles = await uploadFiles(filesToUpload);
+                      console.log('[FormulaireYukpoIntelligentScreen] ✅ Upload réussi:', uploadedFiles.length, 'fichier(s)');
+
+                      // Organiser les URLs par type de média (uploadFiles retourne les fichiers dans le même ordre)
+                      const imageFiles = uploadedFiles.filter((f, idx) => f.media_type === 'image' && idx !== logoIndex && idx !== bannerIndex);
+                      uploadedMediaUrls.images = imageFiles.map(f => f.url);
+                      
+                      uploadedMediaUrls.videos = uploadedFiles
+                        .filter(f => f.media_type === 'video')
+                        .map(f => f.url);
+                      
+                      uploadedMediaUrls.audios = uploadedFiles
+                        .filter(f => f.media_type === 'audio')
+                        .map(f => f.url);
+                      
+                      uploadedMediaUrls.documents = uploadedFiles
+                        .filter(f => f.media_type === 'document' || f.media_type === 'file')
+                        .map(f => f.url);
+                      
+                      uploadedMediaUrls.excel = uploadedFiles
+                        .filter(f => f.url.includes('.xlsx') || f.url.includes('.xls'))
+                        .map(f => f.url);
+
+                      // Logo et Banner (utiliser les index pour trouver les bons fichiers)
+                      if (logoIndex >= 0 && logoIndex < uploadedFiles.length && uploadedFiles[logoIndex].media_type === 'image') {
+                        uploadedMediaUrls.logo = uploadedFiles[logoIndex].url;
+                      }
+                      
+                      if (bannerIndex >= 0 && bannerIndex < uploadedFiles.length && uploadedFiles[bannerIndex].media_type === 'image') {
+                        uploadedMediaUrls.banner = uploadedFiles[bannerIndex].url;
+                      }
+
+                      console.log('[FormulaireYukpoIntelligentScreen] ✅ URLs médias uploadées:', {
+                        images: uploadedMediaUrls.images?.length || 0,
+                        videos: uploadedMediaUrls.videos?.length || 0,
+                        audios: uploadedMediaUrls.audios?.length || 0,
+                        documents: uploadedMediaUrls.documents?.length || 0,
+                        excel: uploadedMediaUrls.excel?.length || 0,
+                        logo: uploadedMediaUrls.logo ? 'oui' : 'non',
+                        banner: uploadedMediaUrls.banner ? 'oui' : 'non'
+                      });
+                    } else {
+                      console.log('[FormulaireYukpoIntelligentScreen] ℹ️ Aucun média à uploader (déjà URLs ou vide)');
+                    }
+                  } catch (uploadError: any) {
+                    console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur upload préalable, fallback base64:', uploadError.message);
+                    // Fallback: continuer avec base64 si upload échoue (rétrocompatibilité)
+                  }
+                }
+
+                const attachMediaField = (fieldName: string, values: any[] | string | undefined, options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
+                  // Si on a des URLs uploadées, les utiliser en priorité
+                  if (uploadedMediaUrls) {
+                    let urlValue: string | string[] | undefined;
+
+                    switch (fieldName) {
+                      case 'base64_image':
+                        urlValue = uploadedMediaUrls.images;
+                        break;
+                      case 'video_base64':
+                        urlValue = uploadedMediaUrls.videos;
+                        break;
+                      case 'audio_base64':
+                        urlValue = uploadedMediaUrls.audios;
+                        break;
+                      case 'doc_base64':
+                        urlValue = uploadedMediaUrls.documents;
+                        break;
+                      case 'excel_base64':
+                        urlValue = uploadedMediaUrls.excel;
+                        break;
+                      case 'logo':
+                        urlValue = uploadedMediaUrls.logo;
+                        break;
+                      case 'banner':
+                        urlValue = uploadedMediaUrls.banner;
+                        break;
+                    }
+
+                    // Si on a une URL, l'utiliser
+                    if (urlValue !== undefined) {
+                      if (typeof urlValue === 'string' && urlValue.length > 0) {
+                        finalServiceData[fieldName] = {
+                          type_donnee: options.typeDonnee || 'string',
+                          valeur: urlValue,
+                          origine_champs: 'formulaire'
+                        };
+                        return;
+                      } else if (Array.isArray(urlValue) && urlValue.length > 0) {
+                        const { takeFirst = false } = options;
+                        const valeur = takeFirst ? urlValue[0] : urlValue;
+                        finalServiceData[fieldName] = {
+                          type_donnee: options.typeDonnee || 'array',
+                          valeur,
+                          origine_champs: 'formulaire'
+                        };
+                    return;
+                      }
+                    }
+                  }
+
+                  // Fallback: utiliser les valeurs base64 compressées
+                  if (!values || (Array.isArray(values) && values.length === 0)) {
                     return;
                   }
 
-                  const cleaned = values.filter(Boolean);
+                  const cleaned = Array.isArray(values) ? values.filter(Boolean) : (values ? [values] : []);
                   if (cleaned.length === 0) {
                     return;
                   }
@@ -3943,12 +4451,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   let alertTitle = '❌ Erreur de création';
                   let alertMessage = errorMessage;
 
-                  if (errorMessage.includes('Network request failed') || errorMessage.includes('Impossible de se connecter')) {
+                  // ✅ AMÉLIORÉ: Gérer les codes d'erreur spécifiques
+                  if (response.code === 'NETWORK_ERROR' || errorMessage.includes('Network request failed') || errorMessage.includes('Impossible de se connecter')) {
                     alertTitle = '🌐 Problème de connexion';
-                    alertMessage = `Problème de connexion réseau détecté.\n\n${errorMessage}\n\nVérifiez votre connexion internet et réessayez.`;
-                  } else if (errorMessage.includes('timeout') || errorMessage.includes('expiré')) {
+                    alertMessage = `Problème de connexion réseau détecté.\n\n${errorMessage}\n\nCauses possibles :\n- Connexion internet instable\n- Payload trop volumineux\n- Serveur temporairement indisponible\n\nConseils :\n- Vérifiez votre connexion\n- Réduisez le nombre de médias\n- Réessayez dans quelques instants`;
+                  } else if (response.code === 'TIMEOUT' || errorMessage.includes('timeout') || errorMessage.includes('expiré') || errorMessage.includes('La requête a expiré')) {
                     alertTitle = '⏱️ Timeout de requête';
-                    alertMessage = `La requête a pris trop de temps.\n\n${errorMessage}\n\nVotre service contient peut-être trop de données. Essayez de réduire le nombre de médias.`;
+                    alertMessage = `La création du service a pris trop de temps.\n\n${errorMessage}\n\nCela peut être dû à un grand nombre de médias.\n\nConseils :\n- Réduisez le nombre d'images par produit\n- Raccourcissez les vidéos\n- Vérifiez votre connexion internet`;
                   } else if (errorMessage.includes('413') || errorMessage.includes('trop volumineux')) {
                     alertTitle = '📦 Données trop volumineuses';
                     alertMessage = `Votre service contient trop de données.\n\n${errorMessage}\n\nConseils :\n- Réduisez le nombre d'images par produit\n- Raccourcissez les vidéos\n- Supprimez les produits non essentiels`;
@@ -4270,11 +4779,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     </Text>
                   </View>
 
-                  {/* Navigation entre blocs (tabs simples sans scroll horizontal) */}
-                  <View style={styles.blockNavigation}>
-                    {displayedBlocks.map(({ block, index: originalIndex }) => (
+                  {/* Navigation entre blocs (tabs avec scroll horizontal) */}
+                  <ScrollView
+                    ref={tabsScrollViewRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.blockNavigationScroll}
+                    contentContainerStyle={styles.blockNavigation}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {displayedBlocks.map(({ block, index: originalIndex }, tabIndex) => (
                       <TouchableOpacity
                         key={block.id}
+                        ref={(ref) => {
+                          tabRefs.current[tabIndex] = ref;
+                        }}
                         style={[
                           styles.blockTab,
                           currentBlock === originalIndex && styles.blockTabActive
@@ -4290,7 +4809,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         </Text>
                       </TouchableOpacity>
                     ))}
-                  </View>
+                  </ScrollView>
                 </View>
 
                 {/* ✅ CORRIGÉ 2025-12-23: Afficher UNIQUEMENT le bloc actif (currentBlock) */}
@@ -4602,6 +5121,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: modernColors.textSecondary,
     textAlign: 'center',
+  },
+  blockNavigationScroll: {
+    maxHeight: 80,
   },
   blockNavigation: {
     flexDirection: 'row',

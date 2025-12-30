@@ -417,22 +417,129 @@ impl NativeSearchService {
         // 4. Scoring amélioré avec bonus pour matches exacts et usage_count
         // 5. Détection automatique de langue pour to_tsvector/plainto_tsquery
         // 
-        // ✅ CORRIGÉ 2025-12-24: La langue détectée est maintenant passée en paramètre
-        // ✅ AMÉLIORÉ 2025-12-24: Gestion générique des wildcards * dans SQL
-        // Construire le pattern wildcard pour LIKE (remplacer * par %)
-        let wildcard_like_score = if has_wildcards {
-            format!("CASE WHEN ac.valeur LIKE '{}' THEN 50.0 ELSE 0.0 END", query.replace('*', "%"))
-        } else {
-            "0.0".to_string()
-        };
+        // ✅ NOUVEAU 2025-12-30: Matching vectoriel optimisé avec similarité en une seule passe
+        // Normaliser les mots-clés pour le matching vectoriel (supprimer accents)
+        let search_keywords_normalized: Vec<String> = query
+            .split_whitespace()
+            .filter(|w| w.len() >= 2)
+            .map(|w| self.normalize_word_for_vector_matching(w))
+            .collect();
         
-        let wildcard_like_condition = if has_wildcards {
-            format!("OR ac.valeur LIKE '{}'", query.replace('*', "%"))
-        } else {
-            String::new()
-        };
+        log_info(&format!("[NativeSearch] Mots-clés normalisés pour matching vectoriel: {:?}", search_keywords_normalized));
         
-        let sql = format!(r#"
+        // ✅ OPTIMISÉ 2025-12-30: Requête ULTRA-SIMPLIFIÉE pour performance < 2s
+        // Réduit de 5 CTE à 2 CTE, utilise calculate_best_vector_match_score (une seule passe)
+        let sql = if !search_keywords_normalized.is_empty() {
+            // Requête optimisée avec matching vectoriel simplifié
+            format!(r#"
+WITH autocomplete_matches AS (
+    -- ✅ ÉTAPE 1: Filtrage rapide + calcul score en UNE SEULE PASSE (évite CROSS JOIN)
+    SELECT 
+        ac.service_id,
+        ac.valeur,
+        ac.usage_count,
+        -- ✅ CALCUL SCORE EN UNE SEULE PASSE : Fonction optimisée calcule les deux scores
+        calculate_best_vector_match_score(
+            ac.normalized_characteristic_vector,
+            ac.normalized_full_vector,
+            $1::TEXT[]
+        ) + (ac.usage_count::REAL * 0.5) as final_score
+    FROM autocomplete_characteristics ac
+    INNER JOIN services s ON s.id = ac.service_id
+    WHERE s.is_active = true
+      AND ac.identifiant_base = 'produits'
+      AND ac.is_real_product = TRUE
+      -- ✅ FILTRE RAPIDE : && utilise index GIN sur colonnes normalisées
+      AND (
+          ac.normalized_characteristic_vector && $1::TEXT[]
+          OR ac.normalized_full_vector && $1::TEXT[]
+      )
+    -- ✅ LIMIT pour éviter de traiter trop de lignes
+    LIMIT 500
+),
+best_autocomplete_per_service AS (
+    -- ✅ ÉTAPE 2: Sélectionner le meilleur match par service
+    SELECT DISTINCT ON (service_id)
+        service_id,
+        valeur,
+        final_score
+    FROM autocomplete_matches
+    WHERE final_score > 0
+    ORDER BY service_id, final_score DESC, usage_count DESC NULLS LAST
+    -- ✅ LIMIT pour éviter trop de résultats
+    LIMIT 100
+)
+SELECT 
+    s.id,
+    s.data,
+    s.created_at,
+    s.user_id,
+    s.gps,
+    s.category,
+    -- ✅ SCORE FINAL : Priorité au score vectoriel, puis titre/description
+    GREATEST(
+        -- Score depuis matching vectoriel optimisé (priorité haute)
+        COALESCE(ac.final_score, 0.0),
+        -- Score depuis titre/description service (priorité basse) - seulement si pas de match vectoriel
+        CASE 
+            WHEN ac.final_score IS NULL THEN
+                COALESCE(
+                    CASE WHEN LOWER(COALESCE(s.data->'titre_service'->>'valeur', '')) = LOWER($2) THEN 50.0 ELSE 0.0 END +
+                    CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE $2 || '%' THEN 35.0 ELSE 0.0 END +
+                    CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $2 || '%' THEN 25.0 ELSE 0.0 END +
+                    CASE WHEN COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $2 || '%' THEN 15.0 ELSE 0.0 END +
+                    ts_rank(to_tsvector('{}', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('{}', $2)) * 10.0 +
+                    ts_rank(to_tsvector('{}', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('{}', $2)) * 5.0,
+                    0.0
+                )
+            ELSE 0.0
+        END
+    )::REAL as fulltext_score
+FROM best_autocomplete_per_service ac
+INNER JOIN services s ON s.id = ac.service_id
+WHERE ($3::text IS NULL OR s.category = $3 OR s.data->'category'->>'valeur' = $3)
+  AND ($4::text IS NULL OR s.gps IS NULL OR s.gps = $4 OR s.gps LIKE $4 || '%' OR s.gps LIKE '%' || $4)
+ORDER BY ac.final_score DESC
+LIMIT 100
+            "#,
+                pg_lang, pg_lang,  // ts_rank pour titre et description
+                pg_lang, pg_lang   // ts_rank pour titre et description
+            )
+        } else {
+            // Fallback vers l'ancienne méthode si pas de mots-clés valides
+            log_info("[NativeSearch] Aucun mot-clé valide, utilisation de l'ancienne méthode");
+            let words: Vec<&str> = query.split_whitespace().filter(|w| w.len() >= 2).collect();
+            let word_like_pattern = if words.len() > 1 {
+                format!("%{}%", words.join("%"))
+            } else {
+                String::new()
+            };
+            
+            let word_like_score = if !word_like_pattern.is_empty() {
+                format!("CASE WHEN ac.valeur ILIKE '{}' THEN 50.0 ELSE 0.0 END", word_like_pattern)
+            } else {
+                "0.0".to_string()
+            };
+            
+            let word_like_condition_sql = if !word_like_pattern.is_empty() {
+                format!("OR ac.valeur ILIKE '{}'", word_like_pattern)
+            } else {
+                String::new()
+            };
+            
+            let wildcard_like_score = if has_wildcards {
+                format!("CASE WHEN ac.valeur LIKE '{}' THEN 50.0 ELSE 0.0 END", query.replace('*', "%"))
+            } else {
+                "0.0".to_string()
+            };
+            
+            let wildcard_like_condition = if has_wildcards {
+                format!("OR ac.valeur LIKE '{}'", query.replace('*', "%"))
+            } else {
+                String::new()
+            };
+            
+            format!(r#"
 WITH autocomplete_matches AS (
     -- ✅ ÉTAPE 1: Pré-calculer les matches autocomplete avec scoring (évite LEFT JOIN LATERAL)
     SELECT 
@@ -444,17 +551,21 @@ WITH autocomplete_matches AS (
         -- Score combiné pour ce match autocomplete
         (
             -- ✅ CRITIQUE 2025-12-24: PRIORISER ILIKE pour gérer accents (générique, pas spécifique)
+            -- ✅ AMÉLIORÉ 2025-12-30: Scores augmentés pour recherches à un seul mot (meilleure pertinence)
             CASE WHEN LOWER(ac.valeur) = LOWER($1) THEN 100.0 ELSE 0.0 END +
-            CASE WHEN ac.valeur ILIKE $1 || '%' THEN 60.0 ELSE 0.0 END +
-            CASE WHEN ac.valeur ILIKE '%' || $1 || '%' THEN 40.0 ELSE 0.0 END +
+            CASE WHEN ac.valeur ILIKE $1 || '%' THEN 80.0 ELSE 0.0 END +
+            CASE WHEN ac.valeur ILIKE '%' || $1 || '%' THEN 60.0 ELSE 0.0 END +
+            -- ✅ NOUVEAU 2025-12-30: Recherche par mots individuels (gère mots manquants comme "en")
+            {} +
             -- ✅ NOUVEAU 2025-12-24: Support wildcards * avec LIKE (générique)
             {} +
             -- Recherche full-text (moins prioritaire car peut rater les accents)
             -- ✅ AMÉLIORÉ 2025-12-24: Utiliser langue détectée au lieu de 'french' en dur
-            ts_rank(to_tsvector('{}', ac.valeur), plainto_tsquery('{}', $1)) * 15.0 +
-            COALESCE(ts_rank(characteristic_vector_to_tsvector(ac.characteristic_vector), plainto_tsquery('{}', $1)), 0.0) * 10.0 +
-            COALESCE(ts_rank(full_vector_to_tsvector(ac.full_vector), plainto_tsquery('{}', $1)), 0.0) * 8.0 +
-            (ac.usage_count::REAL * 1.0)
+            -- ✅ AMÉLIORÉ 2025-12-30: Multiplicateurs augmentés pour meilleure pertinence
+            ts_rank(to_tsvector('{}', ac.valeur), plainto_tsquery('{}', $1)) * 25.0 +
+            COALESCE(ts_rank(characteristic_vector_to_tsvector(ac.characteristic_vector), plainto_tsquery('{}', $1)), 0.0) * 15.0 +
+            COALESCE(ts_rank(full_vector_to_tsvector(ac.full_vector), plainto_tsquery('{}', $1)), 0.0) * 12.0 +
+            (ac.usage_count::REAL * 2.0)
         )::REAL as ac_score
     FROM autocomplete_characteristics ac
     INNER JOIN services s ON s.id = ac.service_id
@@ -466,6 +577,8 @@ WITH autocomplete_matches AS (
         LOWER(ac.valeur) = LOWER($1)
         OR ac.valeur ILIKE $1 || '%'
         OR ac.valeur ILIKE '%' || $1 || '%'
+        -- ✅ NOUVEAU 2025-12-30: Recherche par mots individuels (gère mots manquants comme "en")
+        {}
         -- ✅ NOUVEAU 2025-12-24: Support wildcards * avec LIKE (générique)
         {}
         -- Recherche full-text (fallback si ILIKE ne trouve rien)
@@ -549,20 +662,23 @@ FROM (
         s.gps,
         s.category,
         -- ✅ OPTIMISÉ 2025-12-23: Score combiné depuis CTE (évite LEFT JOIN LATERAL)
+        -- ✅ AMÉLIORÉ 2025-12-30: Utiliser directement ac_score sans normalisation excessive
         GREATEST(
-            -- Score depuis autocomplete_characteristics (priorité haute)
+            -- Score depuis autocomplete_characteristics (priorité haute) - PAS de normalisation
             COALESCE(ac.ac_score, 0.0),
             -- Score depuis titre/description service (priorité basse)
             COALESCE(
                 -- ✅ CRITIQUE 2025-12-24: PRIORISER ILIKE pour gérer accents
-                CASE WHEN LOWER(COALESCE(s.data->'titre_service'->>'valeur', '')) = LOWER($1) THEN 30.0 ELSE 0.0 END +
-                CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE $1 || '%' THEN 20.0 ELSE 0.0 END +
-                CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 15.0 ELSE 0.0 END +
-                CASE WHEN COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 8.0 ELSE 0.0 END +
+                -- ✅ AMÉLIORÉ 2025-12-30: Scores augmentés pour meilleure pertinence
+                CASE WHEN LOWER(COALESCE(s.data->'titre_service'->>'valeur', '')) = LOWER($1) THEN 50.0 ELSE 0.0 END +
+                CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE $1 || '%' THEN 35.0 ELSE 0.0 END +
+                CASE WHEN COALESCE(s.data->'titre_service'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 25.0 ELSE 0.0 END +
+                CASE WHEN COALESCE(s.data->'description'->>'valeur', '') ILIKE '%' || $1 || '%' THEN 15.0 ELSE 0.0 END +
                 -- Recherche full-text (fallback)
                 -- ✅ AMÉLIORÉ 2025-12-24: Utiliser langue détectée
-                ts_rank(to_tsvector('{}', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('{}', $1)) * 5.0 +
-                ts_rank(to_tsvector('{}', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('{}', $1)) * 2.0,
+                -- ✅ AMÉLIORÉ 2025-12-30: Multiplicateurs augmentés
+                ts_rank(to_tsvector('{}', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('{}', $1)) * 10.0 +
+                ts_rank(to_tsvector('{}', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('{}', $1)) * 5.0,
                 0.0
             )
         )::REAL as fulltext_score
@@ -576,33 +692,50 @@ FROM (
 ORDER BY ranked.fulltext_score DESC
 LIMIT 100
         "#, 
-            wildcard_like_score,      // ligne 451: wildcard LIKE score
-            pg_lang, pg_lang,         // ligne 454: ts_rank to_tsvector + plainto_tsquery (2)
-            pg_lang,                  // ligne 455: plainto_tsquery seulement (1)
+            word_like_score,          // ligne 451: word LIKE score (recherche par mots individuels)
+            wildcard_like_score,      // ligne 452: wildcard LIKE score
+            pg_lang, pg_lang,         // ligne 455: ts_rank to_tsvector + plainto_tsquery (2)
             pg_lang,                  // ligne 456: plainto_tsquery seulement (1)
-            wildcard_like_condition,  // ligne 470: wildcard LIKE condition
-            pg_lang, pg_lang,         // ligne 473: to_tsvector + plainto_tsquery (2)
-            pg_lang,                  // ligne 474: plainto_tsquery seulement (1)
+            pg_lang,                  // ligne 457: plainto_tsquery seulement (1)
+            word_like_condition_sql,  // ligne 470: word LIKE condition (recherche par mots individuels)
+            wildcard_like_condition,  // ligne 471: wildcard LIKE condition
+            pg_lang, pg_lang,         // ligne 474: to_tsvector + plainto_tsquery (2)
             pg_lang,                  // ligne 475: plainto_tsquery seulement (1)
+            pg_lang,                  // ligne 476: plainto_tsquery seulement (1)
             pg_lang, pg_lang,         // ligne 503: titre_service (2)
             pg_lang, pg_lang,         // ligne 504: description (2)
             pg_lang, pg_lang,         // ligne 529: nom_produit (2)
             pg_lang, pg_lang,         // ligne 564: titre_service ts_rank (2)
             pg_lang, pg_lang          // ligne 565: description ts_rank (2)
-        );
+        )
+        };
 
         // ✅ OPTIMISÉ 2025-12-19: Requête avec retry pour gérer les problèmes de connexion DB
         let mut results = Vec::new();
         let max_retries = 3;
         
         for attempt in 1..=max_retries {
-            match sqlx::query(&sql)
-                .bind(query)
-                .bind(category_filter)
-                .bind(location_filter)
-                .fetch_all(&self.pool)
-                .await
-            {
+            let query_result = if !search_keywords_normalized.is_empty() {
+                // ✅ NOUVEAU 2025-12-30: Requête optimisée avec matching vectoriel
+                // Passer tableau de mots-clés normalisés comme premier paramètre
+                sqlx::query(&sql)
+                    .bind(&search_keywords_normalized[..])  // $1: tableau de mots-clés normalisés
+                    .bind(query)                            // $2: requête originale pour fallback
+                    .bind(category_filter)                  // $3: filtre catégorie
+                    .bind(location_filter)                  // $4: filtre localisation
+                    .fetch_all(&self.pool)
+                    .await
+            } else {
+                // Requête de fallback : paramètres classiques
+                sqlx::query(&sql)
+                    .bind(query)                            // $1: requête
+                    .bind(category_filter)                   // $2: filtre catégorie
+                    .bind(location_filter)                   // $3: filtre localisation
+                    .fetch_all(&self.pool)
+                    .await
+            };
+            
+            match query_result {
                 Ok(rows) => {
                     results = rows;
                     break;
@@ -634,17 +767,17 @@ LIMIT 100
             }
         }
 
-            // ✅ OPTIMISÉ: Les données sont déjà dans la requête principale (pas de N+1)
-            let mut search_results = Vec::new();
-            for row in results {
-                let service_id: i32 = row.get("id");
-                let data: Value = row.get("data");
-                let _created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
-                let _user_id: i32 = row.get("user_id");
-                let _gps: Option<String> = row.get("gps");
-                let _category: Option<String> = row.get("category");
-                // Gérer le cas où fulltext_score peut être NULL
-                let fulltext_score: f32 = row.try_get("fulltext_score").unwrap_or(0.0);
+        // ✅ OPTIMISÉ: Les données sont déjà dans la requête principale (pas de N+1)
+        let mut search_results = Vec::new();
+        for row in results {
+            let service_id: i32 = row.get("id");
+            let data: Value = row.get("data");
+            let _created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+            let _user_id: i32 = row.get("user_id");
+            let _gps: Option<String> = row.get("gps");
+            let _category: Option<String> = row.get("category");
+            // Gérer le cas où fulltext_score peut être NULL
+            let fulltext_score: f32 = row.try_get("fulltext_score").unwrap_or(0.0);
 
             search_results.push(SearchResult {
                 service_id,
@@ -1377,6 +1510,23 @@ LIMIT 100
             .collect();
         
         (words.join(" "), has_wildcards)
+    }
+
+    /// Normaliser un mot (supprimer accents, minuscules) - pour matching vectoriel optimisé
+    fn normalize_word_for_vector_matching(&self, word: &str) -> String {
+        word.to_lowercase()
+            .chars()
+            .map(|c| match c {
+                'à' | 'â' | 'ä' => 'a',
+                'é' | 'è' | 'ê' | 'ë' => 'e',
+                'î' | 'ï' => 'i',
+                'ô' | 'ö' => 'o',
+                'ù' | 'û' | 'ü' => 'u',
+                'ÿ' => 'y',
+                'ç' => 'c',
+                _ => c,
+            })
+            .collect::<String>()
     }
 
     /// Créer des variantes de mots avec et sans accents
