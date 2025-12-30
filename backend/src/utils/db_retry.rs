@@ -63,10 +63,11 @@ where
                         // Backoff plus long pour les crashes (500ms, 1000ms, 2000ms, 4000ms, 5000ms max)
                         500 * (1u64 << (attempt - 1)).min(5000)
                     } else if is_tls_error {
-                        // ✅ AMÉLIORÉ 2025-12-27: Backoff plus long pour erreurs TLS (1000ms, 2000ms, 3000ms, 4000ms, 5000ms max)
-                        // Les erreurs TLS nécessitent plus de temps pour que Render DB se stabilise
-                        // Minimum 1000ms pour laisser le temps à la connexion de se rétablir
-                        1000 + (500 * (attempt as u64 - 1)).min(4000)
+                        // ✅ AMÉLIORÉ 2025-12-30: Backoff encore plus long pour erreurs TLS (2000ms, 3000ms, 4000ms, 5000ms, 6000ms max)
+                        // Les erreurs TLS nécessitent beaucoup plus de temps pour que Render DB se stabilise
+                        // Minimum 2000ms pour laisser le temps à la connexion de se rétablir complètement
+                        // Le pool va créer une nouvelle connexion pendant ce temps
+                        2000 + (1000 * (attempt as u64 - 1)).min(4000)
                     } else {
                         // Backoff normal pour autres erreurs (200ms, 400ms, 800ms, 1600ms, 2000ms max)
                         200 * (1u64 << (attempt - 1)).min(2000)

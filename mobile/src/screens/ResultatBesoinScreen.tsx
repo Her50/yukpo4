@@ -593,13 +593,16 @@ const ResultatBesoinScreen: React.FC = () => {
             console.log(`📊 ${newPrestataires.size} prestataires chargés sur ${userIds.length} demandés`);
             setPrestataires(newPrestataires);
             
-            // ✅ Mettre à jour les produits avec les informations des prestataires maintenant chargés
+            // ✅ CORRIGÉ 2025-12-30: Mettre à jour les produits avec les informations des prestataires maintenant chargés
+            // Vérifier s'il y a réellement des changements avant de mettre à jour pour éviter les re-renders inutiles
             setProducts(prevProducts => {
-                return prevProducts.map(product => {
+                let hasChanges = false;
+                const updatedProducts = prevProducts.map(product => {
                     const service = product._service;
                     if (service && service.user_id) {
                         const prestataire = newPrestataires.get(service.user_id);
-                        if (prestataire) {
+                        if (prestataire && product._prestataire?.userId !== prestataire.userId) {
+                            hasChanges = true;
                             return {
                                 ...product,
                                 _prestataire: prestataire
@@ -608,6 +611,9 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                     return product;
                 });
+                
+                // Ne retourner un nouveau tableau que s'il y a des changements
+                return hasChanges ? updatedProducts : prevProducts;
             });
             
             setPrestatairesLoaded(true);
@@ -698,8 +704,9 @@ const ResultatBesoinScreen: React.FC = () => {
         handleContact(service.user_id, 'call');
     };
 
+    // ✅ CORRIGÉ 2025-12-30: Mémoriser les callbacks pour éviter les re-renders en boucle
     // Gestionnaires d'événements
-    const handleContact = (prestataireId: string, type: 'message' | 'call') => {
+    const handleContact = useCallback((prestataireId: string, type: 'message' | 'call') => {
         if (!user) {
             Alert.alert(
                 "Connexion requise",
@@ -797,7 +804,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 Alert.alert("Contact", "Aucune information de contact disponible pour ce prestataire");
             }
         }
-    };
+    }, [user, prestataires, services, navigation]);
 
     const handleChat = async (service: Service) => {
         if (!user) {
@@ -843,12 +850,29 @@ const ResultatBesoinScreen: React.FC = () => {
         } else {
             Alert.alert("Erreur", "Impossible de récupérer les informations du prestataire");
         }
-    };
+    }, [user, prestataires, services, navigation]);
 
-    const handleGallery = (service: Service) => {
+    // ✅ CORRIGÉ 2025-12-30: Mémoriser les callbacks pour éviter les re-renders en boucle
+    const handleGallery = useCallback((service: Service) => {
         setSelectedService(service);
         setShowGalleryModal(true);
-    };
+    }, []);
+
+    const handleShare = useCallback((service: Service) => {
+        Alert.alert('Partage', `Partager le service: ${service.titre || service.title || 'Service'}`);
+    }, []);
+
+    const handleFavorite = useCallback((service: Service) => {
+        Alert.alert('Favoris', `Service ${service.titre || service.title || 'Service'} ajouté aux favoris`);
+    }, []);
+
+    const handleReview = useCallback((service: Service) => {
+        Alert.alert('Avis', 'Ouverture du formulaire d\'avis');
+    }, []);
+
+    const handleServicePress = useCallback((service: Service) => {
+        console.log('Service pressé:', service.id);
+    }, []);
 
     // Fonction pour créer une notification de contact
     const createContactNotification = async (prestataireId: string, contactType: 'whatsapp' | 'call', service: any) => {
@@ -1477,24 +1501,12 @@ const ResultatBesoinScreen: React.FC = () => {
                                                 service={service}
                                                 prestataireInfo={prestataire}
                                                 user={user}
-                                                onPress={() => {
-                                                    // Navigation vers le détail du service si nécessaire
-                                                    console.log('Service pressé:', service.id);
-                                                }}
+                                                onPress={handleServicePress}
                                                 onContact={handleContact}
-                                                onShare={(service) => {
-                                                    Alert.alert('Partage', `Partager le service: ${service.titre}`);
-                                                }}
-                                                onFavorite={(service) => {
-                                                    Alert.alert('Favoris', `Service ${service.titre} ajouté aux favoris`);
-                                                }}
-                                                onGallery={(service) => {
-                                                    setSelectedService(service);
-                                                    setShowGalleryModal(true);
-                                                }}
-                                                onReview={(service) => {
-                                                    Alert.alert('Avis', 'Ouverture du formulaire d\'avis');
-                                                }}
+                                                onShare={handleShare}
+                                                onFavorite={handleFavorite}
+                                                onGallery={handleGallery}
+                                                onReview={handleReview}
                                             />
                                         );
                                     } else {

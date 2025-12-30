@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     StyleSheet,
     Text,
@@ -74,8 +74,16 @@ const ModernServiceCard: React.FC<ModernServiceCardProps> = ({
     const [showChatModal, setShowChatModal] = useState(false);
     const [showRatingModal, setShowRatingModal] = useState(false);
 
+    // ✅ CORRIGÉ 2025-12-30: Utiliser une valeur stable pour createdAt pour éviter les re-renders en boucle
+    // Mémoïser createdAt pour qu'il ne change pas à chaque rendu
+    // Utiliser une valeur par défaut stable au lieu de new Date() qui change à chaque rendu
+    const stableCreatedAt = useMemo(() => {
+        const fallbackDate = '2025-01-01T00:00:00.000Z'; // Valeur stable par défaut
+        return service.date_creation || service.created_at || service.data?.date_creation || fallbackDate;
+    }, [service.date_creation, service.created_at, service.data?.date_creation]);
+
     // Utiliser les hooks pour les données réelles
-    const { stats, loading: statsLoading } = useServiceStats(parseInt(service.id), service.date_creation);
+    const { stats, loading: statsLoading } = useServiceStats(parseInt(service.id), stableCreatedAt);
     const { reviews, stats: reviewsStats, submitReview } = useServiceReviews(parseInt(service.id));
     const { locationData, loading: locationLoading } = useLocationDisplay(service, prestataireInfo);
     // Fonction pour extraire la valeur d'un champ de service (comme le frontend)
@@ -541,4 +549,13 @@ const styles = StyleSheet.create({
     },
 });
 
-export default ModernServiceCard;
+// ✅ CORRIGÉ 2025-12-30: Mémoriser le composant pour éviter les re-renders inutiles
+export default React.memo(ModernServiceCard, (prevProps, nextProps) => {
+    // Comparaison personnalisée pour éviter les re-renders inutiles
+    return (
+        prevProps.service.id === nextProps.service.id &&
+        prevProps.service.data === nextProps.service.data &&
+        prevProps.prestataireInfo === nextProps.prestataireInfo &&
+        prevProps.user?.id === nextProps.user?.id
+    );
+});

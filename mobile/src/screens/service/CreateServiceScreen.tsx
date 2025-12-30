@@ -133,6 +133,20 @@ const CreateServiceScreen: React.FC = () => {
         gps_mobile: location ? `${location.coords.latitude},${location.coords.longitude}` : null,
       };
 
+      // ✅ NOUVEAU: Log de la taille du payload pour diagnostic
+      const payloadSize = JSON.stringify(serviceData).length;
+      const payloadSizeMB = (payloadSize / (1024 * 1024)).toFixed(2);
+      console.log(`[CreateServiceScreen] Taille du payload: ${payloadSize} bytes (${payloadSizeMB} MB)`);
+      
+      if (payloadSize > 50_000_000) {
+        Alert.alert(
+          'Payload trop volumineux',
+          `Le payload est trop volumineux (${payloadSizeMB} MB). La limite est de 50 MB.\n\nVeuillez réduire le nombre de médias ou leur taille.`
+        );
+        setLoading(false);
+        return;
+      }
+
       const response = await serviceService.createService(serviceData);
 
       if (response.success) {
@@ -150,13 +164,47 @@ const CreateServiceScreen: React.FC = () => {
           ]
         );
       } else {
-        Alert.alert('Erreur', response.message || 'Impossible de créer le service');
+        // ✅ AMÉLIORÉ: Utiliser le message d'erreur détaillé avec code
+        const errorMessage = response.error || response.message || 'Impossible de créer le service';
+        const errorCode = response.code || 'UNKNOWN_ERROR';
+        
+        console.error('[CreateServiceScreen] Erreur création service:', {
+          error: errorMessage,
+          code: errorCode,
+          status: response.status,
+          data: response.data,
+        });
+        
+        // ✅ NOUVEAU: Messages spécifiques selon le code d'erreur
+        let alertTitle = 'Erreur';
+        let alertMessage = errorMessage;
+        
+        if (errorCode === 'NETWORK_ERROR') {
+          alertTitle = 'Erreur de connexion';
+          alertMessage = errorMessage + '\n\nLe système va réessayer automatiquement. Si le problème persiste, vérifiez votre connexion internet.';
+        } else if (errorCode === 'TIMEOUT') {
+          alertTitle = 'Timeout';
+          alertMessage = errorMessage + '\n\nLa requête a pris trop de temps. Cela peut être dû à un grand nombre de médias ou à une connexion lente.';
+        }
+        
+        Alert.alert(alertTitle, alertMessage);
       }
 
       setLoading(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la création du service:', error);
-      Alert.alert('Erreur', 'Une erreur est survenue lors de la création du service');
+      
+      // ✅ AMÉLIORÉ: Message d'erreur plus détaillé
+      let errorMessage = 'Une erreur est survenue lors de la création du service';
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.code === 'NETWORK_ERROR') {
+        errorMessage = 'Erreur de connexion réseau. Vérifiez votre connexion internet et réessayez.';
+      } else if (error?.code === 'TIMEOUT') {
+        errorMessage = 'La requête a expiré. Cela peut être dû à un grand nombre de médias. Réessayez avec moins de médias.';
+      }
+      
+      Alert.alert('Erreur', errorMessage);
       setLoading(false);
     }
   };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { API_ENDPOINTS } from '../config/api.config';
 import { apiGet, apiPost } from '../services/api';
 
@@ -34,40 +34,79 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
     const [stats, setStats] = useState<ServiceReviewsStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    // ✅ CORRIGÉ 2025-12-30: Utiliser un ref pour tracker le dernier serviceId chargé et éviter les re-fetch en boucle
+    const lastLoadedServiceIdRef = useRef<number | null>(null);
 
     useEffect(() => {
+        // ✅ CORRIGÉ 2025-12-30: Ne pas re-fetch si déjà chargé pour ce serviceId
+        if (!serviceId) {
+            return;
+        }
+
+        // Vérifier si on a déjà chargé les reviews pour ce serviceId
+        if (lastLoadedServiceIdRef.current === serviceId && reviews.length > 0) {
+            return;
+        }
+
+        let cancelled = false;
+
         const fetchReviews = async () => {
+            if (cancelled) return;
+
             try {
                 setLoading(true);
 
                 // ✅ CORRIGÉ: Utilise apiGet au lieu de fetch hardcodé
                 const reviewsResponse = await apiGet(API_ENDPOINTS.SERVICES.REVIEWS(serviceId));
 
+                if (cancelled) return;
+
                 if (reviewsResponse.success && reviewsResponse.data) {
                     const reviewsData = reviewsResponse.data;
-                    setReviews(reviewsData.reviews || []);
+                    
+                    if (!cancelled) {
+                        setReviews(reviewsData.reviews || []);
 
-                    // Calculer les statistiques
-                    if (reviewsData.reviews && reviewsData.reviews.length > 0) {
-                        const totalReviews = reviewsData.reviews.length;
-                        const totalRating = reviewsData.reviews.reduce((sum: number, review: Review) => sum + review.rating, 0);
-                        const averageRating = totalRating / totalReviews;
+                        // Calculer les statistiques
+                        if (reviewsData.reviews && reviewsData.reviews.length > 0) {
+                            const totalReviews = reviewsData.reviews.length;
+                            const totalRating = reviewsData.reviews.reduce((sum: number, review: Review) => sum + review.rating, 0);
+                            const averageRating = totalRating / totalReviews;
 
-                        const ratingDistribution: { [key: number]: number } = {};
-                        for (let i = 1; i <= 5; i++) {
-                            ratingDistribution[i] = reviewsData.reviews.filter((r: Review) => r.rating === i).length;
+                            const ratingDistribution: { [key: number]: number } = {};
+                            for (let i = 1; i <= 5; i++) {
+                                ratingDistribution[i] = reviewsData.reviews.filter((r: Review) => r.rating === i).length;
+                            }
+
+                            setStats({
+                                average_rating: averageRating,
+                                total_reviews: totalReviews,
+                                rating_distribution: ratingDistribution,
+                                completion_rate: 0.85, // 85% de taux de completion
+                                response_time: 2.5 // 2.5h de temps de réponse moyen
+                            });
                         }
-
-                        setStats({
-                            average_rating: averageRating,
-                            total_reviews: totalReviews,
-                            rating_distribution: ratingDistribution,
-                            completion_rate: 0.85, // 85% de taux de completion
-                            response_time: 2.5 // 2.5h de temps de réponse moyen
-                        });
+                        lastLoadedServiceIdRef.current = serviceId;
                     }
                 } else {
-                    console.log(`📝 [useServiceReviews] API reviews non disponible pour service ${serviceId}`);
+                    if (!cancelled) {
+                        console.log(`📝 [useServiceReviews] API reviews non disponible pour service ${serviceId}`);
+                        setReviews([]);
+                        setStats({
+                            average_rating: 0,
+                            total_reviews: 0,
+                            rating_distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+                            completion_rate: 0,
+                            response_time: 0
+                        });
+                        lastLoadedServiceIdRef.current = serviceId;
+                    }
+                }
+            } catch (error) {
+                if (cancelled) return;
+                console.error('❌ [useServiceReviews] Erreur récupération avis:', error);
+                setError('Impossible de charger les avis');
+                if (!cancelled) {
                     setReviews([]);
                     setStats({
                         average_rating: 0,
@@ -76,27 +115,21 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
                         completion_rate: 0,
                         response_time: 0
                     });
+                    lastLoadedServiceIdRef.current = serviceId;
                 }
-            } catch (error) {
-                console.error('❌ [useServiceReviews] Erreur récupération avis:', error);
-                setError('Impossible de charger les avis');
-                setReviews([]);
-                setStats({
-                    average_rating: 0,
-                    total_reviews: 0,
-                    rating_distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-                    completion_rate: 0,
-                    response_time: 0
-                });
             } finally {
-                setLoading(false);
+                if (!cancelled) {
+                    setLoading(false);
+                }
             }
         };
 
-        if (serviceId) {
-            fetchReviews();
-        }
-    }, [serviceId]);
+        fetchReviews();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [serviceId]); // ✅ Ne dépend que de serviceId - stable
 
     const submitReview = async (rating: number, comment: string): Promise<boolean> => {
         try {

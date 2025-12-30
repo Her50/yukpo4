@@ -344,9 +344,15 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         {images.length > 0 && (
           <ScrollView
             horizontal
-            showsHorizontalScrollIndicator={false}
+            showsHorizontalScrollIndicator={true}
             style={styles.mediaScroll}
-            nestedScrollEnabled
+            contentContainerStyle={styles.mediaScrollContent}
+            nestedScrollEnabled={true}
+            scrollEnabled={true}
+            bounces={false}
+            decelerationRate="fast"
+            snapToInterval={132}
+            snapToAlignment="start"
             onScrollBeginDrag={() => onHorizontalScrollStart?.()}
             onMomentumScrollBegin={() => onHorizontalScrollStart?.()}
             onTouchStart={() => onHorizontalScrollStart?.()}
@@ -359,6 +365,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
                 <TouchableOpacity
                   style={styles.imagePreview}
                   onPress={() => setShowImagePreview(image)}
+                  activeOpacity={0.8}
                 >
                   <RNImage source={{ uri: image }} style={styles.imageThumb} />
                   {index === 0 && (
@@ -506,6 +513,12 @@ const styles = StyleSheet.create({
   mediaScroll: {
     marginHorizontal: -16,
     paddingHorizontal: 16,
+    maxHeight: 140,
+  },
+  mediaScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 16,
   },
   imageContainer: {
     position: 'relative',

@@ -141,6 +141,10 @@ impl AppState {
             Arc::new(mongo.clone()),
             "yukpo_history".to_string(),
         ));
+        
+        // ✅ NOUVEAU 2025-12-30: Créer les index MongoDB pour optimiser les requêtes stats/reviews
+        // ✅ 2025-12-30: Les index MongoDB seront créés dans main.rs après l'initialisation complète
+        // (on ne peut pas utiliser await dans une fonction non-async)
 
         // V?rifier si les optimisations IA sont activ?es
         let optimizations_enabled = env::var("ENABLE_AI_OPTIMIZATIONS")

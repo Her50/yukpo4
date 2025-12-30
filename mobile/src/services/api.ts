@@ -215,15 +215,20 @@ const apiCallWithRetry = async <T>(
       lastStatus = result.status;
       // ✅ AMÉLIORÉ: Passer aussi le code d'erreur à shouldRetry
       const errorToCheck = { ...result, error: result.error || result, code: result.code };
+      
+      // ✅ CORRIGÉ: Vérifier si on doit retry AVANT de retourner l'erreur
       if (attempt < maxRetries && shouldRetry(errorToCheck, lastStatus, retryConfig)) {
         // Calculer le délai avec backoff exponentiel (1s, 2s, 4s)
         const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000); // Max 10s
-        console.log(`[Mobile API] Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint} (code: ${result.code || 'N/A'})`);
+        console.log(`[Mobile API] ⚠️ Retry ${attempt + 1}/${maxRetries} après ${delayMs}ms pour ${endpoint} (code: ${result.code || 'N/A'}, status: ${result.status || 'N/A'})`);
         await delay(delayMs);
         continue;
       }
 
       // Ne pas retry, retourner l'erreur
+      if (attempt === maxRetries) {
+        console.error(`[Mobile API] ❌ Tous les retries ont échoué pour ${endpoint} (code: ${result.code || 'N/A'})`);
+      }
       return result;
     } catch (error: any) {
       lastError = error;
@@ -521,19 +526,33 @@ const apiCallInternal = async <T>(
       'Network request failed',
       'TypeError: Network request failed',
       'NetworkError when attempting to fetch',
+      'ERR_INTERNET_DISCONNECTED',
+      'ERR_NETWORK_CHANGED',
+      'ERR_CONNECTION_REFUSED',
+      'ERR_CONNECTION_TIMED_OUT',
+      'ERR_NAME_NOT_RESOLVED',
     ];
     
     const isNetworkError = networkErrorPatterns.some(pattern => 
-      error.message?.includes(pattern) || error.toString().includes(pattern)
+      error.message?.includes(pattern) || 
+      error.toString().includes(pattern) ||
+      error.code?.includes(pattern) ||
+      (error.name && networkErrorPatterns.some(p => error.name.includes(p)))
     );
     
     if (isNetworkError) {
       console.error(`[Mobile API] Erreur réseau pour ${endpoint}:`, error.message || error.toString());
+      console.error(`[Mobile API] Détails erreur:`, {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        stack: error.stack?.substring(0, 200),
+      });
       
       // ✅ NOUVEAU: Message spécifique pour création de service
       let errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.';
       if (endpoint.includes('/services/create')) {
-        errorMessage = 'Impossible d\'envoyer la requête au serveur.\n\nCauses possibles :\n- Connexion internet instable\n- Payload trop volumineux\n- Serveur temporairement indisponible\n\nConseils :\n- Vérifiez votre connexion\n- Réduisez le nombre de médias\n- Réessayez dans quelques instants';
+        errorMessage = 'Impossible d\'envoyer la requête au serveur.\n\nCauses possibles :\n- Connexion internet instable\n- Payload trop volumineux\n- Serveur temporairement indisponible (cold start)\n\nConseils :\n- Vérifiez votre connexion\n- Réduisez le nombre de médias\n- Réessayez dans quelques instants (le serveur peut être en veille)';
       }
       
       return {
@@ -541,6 +560,7 @@ const apiCallInternal = async <T>(
         error: errorMessage,
         data: null,
         code: 'NETWORK_ERROR',
+        status: 0, // Status 0 indique une erreur réseau
       };
     }
 
@@ -556,16 +576,23 @@ const apiCallInternal = async <T>(
   }
 };
 
-// ✅ NOUVEAU: Fonction principale avec retry par défaut (peut être désactivé)
+// ✅ NOUVEAU: Fonction principale avec retry par défaut (peut être désactivé ou configuré)
 export const apiCall = async <T>(
   endpoint: string,
   options: RequestInit = {},
-  useRetry: boolean = true
+  useRetry: boolean | RetryConfig = true
 ): Promise<ApiResponse<T>> => {
-  if (useRetry) {
-    return apiCallWithRetry<T>(endpoint, options);
+  if (useRetry === false) {
+    return apiCallInternal<T>(endpoint, options);
   }
-  return apiCallInternal<T>(endpoint, options);
+  
+  // Si useRetry est un objet RetryConfig, l'utiliser
+  if (typeof useRetry === 'object') {
+    return apiCallWithRetry<T>(endpoint, options, useRetry);
+  }
+  
+  // Sinon, utiliser la configuration par défaut
+  return apiCallWithRetry<T>(endpoint, options);
 };
 
 // ===== AUTHENTIFICATION =====
@@ -685,14 +712,22 @@ export const servicesApi = {
     // Retirer user_id de serviceData s'il existe pour éviter de le dupliquer
     const { user_id, ...dataOnly } = serviceData;
 
-    // ✅ CORRECTION: Timeout de 60s automatique pour /services/create
+    // ✅ NOUVEAU: Configuration de retry spécifique pour création de service
+    // Plus de retries (5 au lieu de 3) car le serveur Render peut être en veille (cold start)
+    const retryConfig: RetryConfig = {
+      maxRetries: 5, // ✅ AUGMENTÉ: 5 retries pour gérer les cold starts Render
+      retryableStatuses: [408, 429, 500, 502, 503, 504],
+      retryableErrors: ['Network request failed', 'Failed to fetch', 'AbortError', 'NETWORK_ERROR'],
+    };
+
+    // ✅ CORRECTION: Timeout de 180s automatique pour /services/create (déjà géré dans apiCallInternal)
     return apiCall('/api/services/create', {
       method: 'POST',
       body: JSON.stringify({
         user_id: userId,
         data: dataOnly // ✅ Encapsuler les données dans 'data'
       })
-    });
+    }, retryConfig); // ✅ Utiliser configuration de retry personnalisée
   },
 
   // Obtenir les services de l'utilisateur (prestataire)

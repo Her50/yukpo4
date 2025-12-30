@@ -605,6 +605,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         redis_available_for_ws,
     ));
 
+    // ✅ 2025-12-30: Créer les index MongoDB pour optimiser les requêtes /api/services/{id}/stats et /api/services/{id}/reviews
+    match yukpomnang_backend::migrations::auto_migrate::ensure_mongodb_indexes(app_state.mongo_history.clone()).await {
+        Ok(_) => log::info!("✅ Index MongoDB créés avec succès"),
+        Err(e) => log::warn!("⚠️ Erreur création index MongoDB (non bloquant): {}", e),
+    }
+
     social_distribution_service::start_distribution_worker(app_state.clone());
 
     // ?? Initialiser l'architecture cloud massive

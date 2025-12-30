@@ -1,13 +1,10 @@
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
-    Modal,
-    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -15,12 +12,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import { NativeButton, NativeCard } from '../../components/NativeDesign';
-import PaymentMethodSelector from '../../components/PaymentMethodSelector';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
-import { VEHICLE_TRANSPORT_OPTIONS, type VehicleOption, type VehicleType } from '../../config/deliveryConfig';
+import { VEHICLE_TRANSPORT_OPTIONS, type VehicleType } from '../../config/deliveryConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -40,20 +35,7 @@ const CourierRegistrationScreen: React.FC = () => {
     const [applicationStatus, setApplicationStatus] = useState<'none' | 'draft' | 'submitted' | 'approved' | 'rejected'>('none');
 
     // Informations personnelles
-    const getCleanName = (name: string | undefined): string => {
-        if (!name) return '';
-        const cleaned = name.trim().replace(/\s+/g, ' ');
-        const parts = cleaned.split(' ');
-        if (parts.length >= 4) {
-            const firstHalf = parts.slice(0, Math.floor(parts.length / 2)).join(' ');
-            const secondHalf = parts.slice(Math.floor(parts.length / 2)).join(' ');
-            if (firstHalf === secondHalf) {
-                return firstHalf;
-            }
-        }
-        return cleaned;
-    };
-    const [fullName, setFullName] = useState(getCleanName(user?.name));
+    const [fullName, setFullName] = useState(user?.name || '');
     const [phone, setPhone] = useState('');
     const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
@@ -82,53 +64,9 @@ const CourierRegistrationScreen: React.FC = () => {
     const [bio, setBio] = useState('');
     const [experience, setExperience] = useState('');
 
-    // Comptes de paiement
-    const [paymentMethod, setPaymentMethod] = useState<any>(null);
-
-    // Modal de sélection du moyen de transport
-    const [showVehicleModal, setShowVehicleModal] = useState(false);
-
     useEffect(() => {
         checkApplicationStatus();
-        loadUserPhoneFromServices();
     }, [user]);
-
-    const hasInitializedNameRef = React.useRef(false);
-    useEffect(() => {
-        if (user?.name && !hasInitializedNameRef.current) {
-            const cleanedName = getCleanName(user.name);
-            setFullName(cleanedName);
-            hasInitializedNameRef.current = true;
-        }
-    }, [user?.name]);
-
-    const loadUserPhoneFromServices = async () => {
-        if (!user?.id || phone) return;
-
-        try {
-            const { apiGet } = require('../../services/api');
-            const response = await apiGet('/api/prestataire/services');
-            const services = response.data || response;
-
-            if (Array.isArray(services) && services.length > 0) {
-                for (const service of services) {
-                    const serviceData = service.data || service;
-                    const whatsapp = serviceData.whatsapp || 
-                                   serviceData.whatsapp_contact?.valeur ||
-                                   serviceData.contact?.whatsapp ||
-                                   serviceData.contact_whatsapp?.valeur ||
-                                   serviceData.telephone_whatsapp?.valeur;
-
-                    if (whatsapp && typeof whatsapp === 'string' && whatsapp.trim().length > 0) {
-                        setPhone(whatsapp.trim());
-                        return;
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('[CourierRegistrationScreen] Erreur chargement téléphone depuis services:', error);
-        }
-    };
 
     const checkApplicationStatus = async () => {
         if (!user?.id) {
@@ -154,6 +92,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 }
             }
             if (data.is_courier && data.courier) {
+                // L'utilisateur est déjà coursier approuvé
                 setApplicationStatus('approved');
             }
             setCheckingStatus(false);
@@ -208,6 +147,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 return;
             }
 
+            // ✅ CORRIGÉ: Protection contre undefined pour MediaType.Images
             if (!ImagePicker || !ImagePicker.MediaType) {
                 console.error('[CourierRegistrationScreen] ImagePicker ou MediaType est undefined');
                 Alert.alert('Erreur', 'Impossible d\'accéder à la galerie. Veuillez réessayer.');
@@ -316,6 +256,7 @@ const CourierRegistrationScreen: React.FC = () => {
 
         setLoading(true);
         try {
+            // Convertir les documents en base64
             const documents: Record<string, any> = {};
             if (idDocument) {
                 documents.id_document = {
@@ -369,15 +310,6 @@ const CourierRegistrationScreen: React.FC = () => {
                 },
                 bio,
                 experience,
-                paymentMethod: paymentMethod ? {
-                    type: paymentMethod.type,
-                    phoneNumber: paymentMethod.phoneNumber,
-                    cardNumber: paymentMethod.cardNumber,
-                    cardExpiry: paymentMethod.cardExpiry,
-                    cardCVV: paymentMethod.cardCVV,
-                    cardHolder: paymentMethod.cardHolder,
-                    taxId: paymentMethod.taxId,
-                } : null,
             };
 
             const response = await deliveryApi.submitCourierApplication({
@@ -423,19 +355,9 @@ const CourierRegistrationScreen: React.FC = () => {
         { value: 'sunday', label: 'Dim' },
     ];
 
-    // ✅ CRITIQUE 2025-12-24: Déplacer TOUS les hooks AVANT les early returns
-    // pour éviter l'erreur "Rendered more hooks than during the previous render"
-    // ✅ CONSTANTE: VEHICLE_TRANSPORT_OPTIONS est une constante importée, pas besoin de useMemo
-    const selectedVehicle = VEHICLE_TRANSPORT_OPTIONS.find(v => v.value === vehicleType);
-    const requiresLicense = selectedVehicle?.requiresLicense ?? false;
+    // ✅ CORRECTION : Utiliser la constante partagée pour aligner avec les options de commande
+    const vehicleTypes = VEHICLE_TRANSPORT_OPTIONS;
 
-    // ✅ SIMPLIFIÉ: Pas besoin de useCallback pour une fonction simple
-    const handleVehicleSelect = (vehicle: VehicleType) => {
-        setVehicleType(vehicle);
-        setShowVehicleModal(false);
-    };
-
-    // ✅ CRITIQUE 2025-12-24: Early returns APRÈS tous les hooks
     if (checkingStatus) {
         return (
             <SafeNativeView style={styles.container}>
@@ -504,6 +426,9 @@ const CourierRegistrationScreen: React.FC = () => {
         );
     }
 
+    const selectedVehicle = vehicleTypes.find(v => v.value === vehicleType);
+    const requiresLicense = selectedVehicle?.requiresLicense ?? false;
+
     return (
         <SafeNativeView style={styles.container}>
             <ScrollView 
@@ -511,7 +436,6 @@ const CourierRegistrationScreen: React.FC = () => {
                 contentContainerStyle={styles.scrollContent}
                 nestedScrollEnabled={true}
                 keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="interactive"
                 showsVerticalScrollIndicator={true}
             >
                 <View style={styles.header}>
@@ -575,69 +499,72 @@ const CourierRegistrationScreen: React.FC = () => {
                 {/* Adresse */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Adresse de résidence</Text>
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>Adresse complète *</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Entrez votre adresse complète"
-                            value={address}
-                            onChangeText={setAddress}
-                            multiline
-                        />
-                    </View>
-                    <View style={styles.inputContainer}>
-                        <LocationSelector
-                            label="Ville *"
-                            value={city}
-                            onSelect={(location: LocationObject) => {
-                                const ville = location.components?.ville || location.place_name || '';
-                                setCity(ville);
-                                // Si le pays n'est pas encore défini, l'extraire aussi
-                                if (location.components?.pays && !country) {
-                                    setCountry(location.components.pays);
-                                }
-                            }}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
-                            required={true}
-                            enrichWithBackend={true}
-                        />
-                    </View>
-                    <View style={styles.inputContainer}>
-                        <LocationSelector
-                            label="Pays"
-                            value={country}
-                            onSelect={(location: LocationObject) => {
-                                const pays = location.components?.pays || location.place_name || '';
-                                setCountry(pays);
-                            }}
-                            placeholder="Rechercher un pays..."
-                            scope="all"
-                            enrichWithBackend={true}
-                        />
-                    </View>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Adresse complète *"
+                        value={address}
+                        onChangeText={setAddress}
+                        multiline
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Ville *"
+                        value={city}
+                        onChangeText={setCity}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Pays"
+                        value={country}
+                        onChangeText={setCountry}
+                    />
                 </NativeCard>
 
                 {/* Transport */}
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Moyen de transport</Text>
-                    <TouchableOpacity
-                        style={styles.vehicleSelector}
-                        onPress={() => setShowVehicleModal(true)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={styles.vehicleSelectorContent}>
-                            <Text style={styles.vehicleSelectorIcon}>
-                                {selectedVehicle?.icon || '🚗'}
-                            </Text>
-                            <View style={styles.vehicleSelectorTextContainer}>
-                                <Text style={styles.vehicleSelectorLabel}>
-                                    {selectedVehicle?.label || 'Sélectionner un moyen de transport'}
-                                </Text>
-                            </View>
-                            <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
-                        </View>
-                    </TouchableOpacity>
+                    <View style={styles.vehicleContainer}>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={true}
+                            style={styles.vehicleScroll}
+                            contentContainerStyle={styles.vehicleListContent}
+                            nestedScrollEnabled={true}
+                            scrollEnabled={true}
+                            bounces={true}
+                            decelerationRate="fast"
+                            scrollEventThrottle={16}
+                            removeClippedSubviews={false}
+                            alwaysBounceHorizontal={false}
+                            pagingEnabled={false}
+                            snapToInterval={0}
+                            snapToAlignment="start"
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            {vehicleTypes.map((type) => (
+                                <TouchableOpacity
+                                    key={type.value}
+                                    style={[
+                                        styles.vehicleOption,
+                                        vehicleType === type.value && styles.vehicleOptionSelected,
+                                    ]}
+                                    onPress={() => setVehicleType(type.value)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.vehicleIcon}>{type.icon}</Text>
+                                    <Text
+                                        style={[
+                                            styles.vehicleLabel,
+                                            vehicleType === type.value && styles.vehicleLabelSelected,
+                                        ]}
+                                        numberOfLines={2}
+                                    >
+                                        {type.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
                     {vehicleType !== 'walking' && (
                         <>
                             <TextInput
@@ -821,18 +748,6 @@ const CourierRegistrationScreen: React.FC = () => {
                     />
                 </NativeCard>
 
-                {/* Comptes de paiement */}
-                <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>Comptes de paiement</Text>
-                    <Text style={styles.helperText}>
-                        Renseignez votre compte pour recevoir vos paiements de livraison. L'argent transite toujours dans le compte de l'application avant reversement.
-                    </Text>
-                    <PaymentMethodSelector
-                        onPaymentChange={setPaymentMethod}
-                        readonly={false}
-                    />
-                </NativeCard>
-
                 {/* Actions */}
                 <View style={styles.actions}>
                     <NativeButton
@@ -849,84 +764,6 @@ const CourierRegistrationScreen: React.FC = () => {
                     />
                 </View>
             </ScrollView>
-
-            {/* Modal de sélection du moyen de transport */}
-            <Modal
-                visible={showVehicleModal}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setShowVehicleModal(false)}
-            >
-                <Pressable
-                    style={styles.modalOverlay}
-                    onPress={() => setShowVehicleModal(false)}
-                >
-                    {/* Contenu du modal - doit intercepter les touches pour permettre le scroll */}
-                    <Pressable
-                        style={styles.modalContent}
-                        onPress={(e) => {
-                            // Empêcher la propagation vers l'overlay
-                            e.stopPropagation();
-                        }}
-                    >
-                        <View style={styles.modalHeaderContent}>
-                            <Text style={styles.modalTitle}>Sélectionner un moyen de transport</Text>
-                            <TouchableOpacity
-                                onPress={() => setShowVehicleModal(false)}
-                                style={styles.modalCloseButton}
-                                activeOpacity={0.7}
-                            >
-                                <SafeIcon name="x" size={24} color={modernColors.text} />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView
-                            style={styles.modalScrollView}
-                            contentContainerStyle={styles.modalScrollContent}
-                            showsVerticalScrollIndicator={true}
-                            keyboardShouldPersistTaps="handled"
-                            nestedScrollEnabled={true}
-                        >
-                            <View style={styles.vehicleGrid}>
-                                {VEHICLE_TRANSPORT_OPTIONS.map((vehicle) => {
-                                    const isSelected = vehicleType === vehicle.value;
-                                    return (
-                                        <TouchableOpacity
-                                            key={vehicle.value}
-                                            style={[
-                                                styles.vehicleGridItem,
-                                                isSelected && styles.vehicleGridItemSelected,
-                                            ]}
-                                            onPress={() => handleVehicleSelect(vehicle.value)}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Text style={styles.vehicleGridIcon}>{vehicle.icon}</Text>
-                                            <Text
-                                                style={[
-                                                    styles.vehicleGridLabel,
-                                                    isSelected && styles.vehicleGridLabelSelected,
-                                                ]}
-                                                numberOfLines={2}
-                                            >
-                                                {vehicle.label}
-                                            </Text>
-                                            {vehicle.requiresLicense && (
-                                                <Text style={styles.vehicleGridHint} numberOfLines={1}>
-                                                    Permis requis
-                                                </Text>
-                                            )}
-                                            {isSelected && (
-                                                <View style={styles.vehicleGridCheck}>
-                                                    <SafeIcon name="check" size={16} color={modernColors.surface} />
-                                                </View>
-                                            )}
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        </ScrollView>
-                    </Pressable>
-                </Pressable>
-            </Modal>
         </SafeNativeView>
     );
 };
@@ -966,12 +803,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.textSecondary,
     },
-    helperText: {
-        fontSize: 13,
-        color: modernColors.textSecondary,
-        marginBottom: 12,
-        lineHeight: 18,
-    },
     card: {
         marginBottom: 16,
         padding: 16,
@@ -1004,157 +835,51 @@ const styles = StyleSheet.create({
         minHeight: 80,
         textAlignVertical: 'top',
     },
-    vehicleSelector: {
-        borderWidth: 2,
-        borderColor: modernColors.border,
-        borderRadius: 12,
-        backgroundColor: modernColors.surface,
-        marginBottom: 16,
-    },
-    vehicleSelectorContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        gap: 12,
-    },
-    vehicleSelectorIcon: {
-        fontSize: 32,
-    },
-    vehicleSelectorTextContainer: {
-        flex: 1,
-    },
-    vehicleSelectorLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    vehicleGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-    },
-    vehicleGridItem: {
-        width: '31%', // 3 colonnes avec espacement (31% × 3 = 93%, reste 7% pour les gaps)
-        aspectRatio: 1,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: modernColors.border,
-        backgroundColor: modernColors.surface,
-        padding: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        minHeight: 100,
-        marginBottom: 12,
-    },
-    vehicleGridItemSelected: {
-        borderColor: modernColors.primary,
-        backgroundColor: modernColors.primary,
-    },
-    vehicleGridIcon: {
-        fontSize: 32,
-        marginBottom: 8,
-    },
-    vehicleGridLabel: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.text,
-        textAlign: 'center',
-        marginBottom: 4,
-    },
-    vehicleGridLabelSelected: {
-        color: modernColors.surface,
-    },
-    vehicleGridHint: {
-        fontSize: 10,
-        color: modernColors.textSecondary,
-        textAlign: 'center',
-        fontStyle: 'italic',
-    },
-    vehicleGridCheck: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: modernColors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    vehicleModalOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: modernColors.border,
-        backgroundColor: modernColors.surface,
-        marginBottom: 12,
-        gap: 12,
-        minHeight: 64,
-    },
-    vehicleModalOptionSelected: {
-        borderColor: modernColors.primary,
-        backgroundColor: modernColors.primary + '15',
-    },
-    vehicleModalIcon: {
-        fontSize: 32,
-    },
-    vehicleModalTextContainer: {
-        flex: 1,
-    },
-    vehicleModalLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 4,
-    },
-    vehicleModalLabelSelected: {
-        color: modernColors.primary,
-    },
-    vehicleModalHint: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        fontStyle: 'italic',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: modernColors.background,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        maxHeight: '80%',
+    vehicleContainer: {
         width: '100%',
-        overflow: 'hidden',
+        marginBottom: 16,
+        minHeight: 110,
+        maxHeight: 120,
     },
-    modalHeaderContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    vehicleScroll: {
+        width: '100%',
+        flexGrow: 0,
+    },
+    vehicleListContent: {
+        paddingHorizontal: 4,
+        paddingVertical: 8,
         alignItems: 'center',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
-        backgroundColor: modernColors.background,
+        paddingRight: 16,
+        gap: 12,
     },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '700',
+    vehicleOption: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.surface,
+        width: 90,
+        height: 90,
+        marginRight: 8,
+        flexShrink: 0,
+    },
+    vehicleOptionSelected: {
+        borderColor: modernColors.primary,
+        backgroundColor: modernColors.primary + '20',
+    },
+    vehicleIcon: {
+        fontSize: 32,
+        marginBottom: 4,
+    },
+    vehicleLabel: {
+        fontSize: 12,
+        fontWeight: '600',
         color: modernColors.text,
-        flex: 1,
     },
-    modalCloseButton: {
-        padding: 4,
-    },
-    modalScrollView: {
-        flex: 1,
-    },
-    modalScrollContent: {
-        padding: 16,
-        paddingBottom: 32,
+    vehicleLabelSelected: {
+        color: modernColors.primary,
     },
     documentRow: {
         flexDirection: 'row',
@@ -1250,3 +975,4 @@ const styles = StyleSheet.create({
 });
 
 export default CourierRegistrationScreen;
+

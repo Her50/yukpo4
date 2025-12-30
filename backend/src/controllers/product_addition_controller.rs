@@ -208,32 +208,37 @@ pub async fn add_product_to_service(
     let product_json_value = serde_json::to_value(&product_data_cleaned)
         .map_err(|e| AppError::Internal(format!("Erreur sérialisation produit: {}", e)))?;
     
-    let update_result = crate::utils::db_retry::retry_query(
-        &pool,
-        || {
-            let product_json_clone = product_json_value.clone();
-            let service_id_clone = service_id;
-            let pool_clone = pool.clone();
-            Box::pin(async move {
-                // ✅ OPTIMISATION CRITIQUE: Utilise fonction PostgreSQL qui insère directement dans le tableau
-                // Évite de charger le JSONB en mémoire et fait tout en une seule opération atomique
-                // Réduit la latence de 7-12s à <1s
-                sqlx::query_scalar::<_, i32>(
-                    "SELECT add_product_to_service_jsonb($1, $2)"
-                )
-                .bind(service_id_clone)
-                .bind(&product_json_clone)
-                .fetch_one(&pool_clone)
-                .await
-            })
-        },
-        7, // ✅ AUGMENTÉ 2025-12-27: 7 tentatives max pour gérer les erreurs TLS de Render DB
+    // ✅ AMÉLIORÉ 2025-12-30: Timeout explicite pour éviter les requêtes trop longues
+    // Le timeout de 30s permet d'éviter que la requête ne bloque indéfiniment
+    let update_result = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        crate::utils::db_retry::retry_query(
+            &pool,
+            || {
+                let product_json_clone = product_json_value.clone();
+                let service_id_clone = service_id;
+                let pool_clone = pool.clone();
+                Box::pin(async move {
+                    // ✅ OPTIMISATION CRITIQUE: Utilise fonction PostgreSQL qui insère directement dans le tableau
+                    // Évite de charger le JSONB en mémoire et fait tout en une seule opération atomique
+                    // Réduit la latence de 7-12s à <1s
+                    sqlx::query_scalar::<_, i32>(
+                        "SELECT add_product_to_service_jsonb($1, $2)"
+                    )
+                    .bind(service_id_clone)
+                    .bind(&product_json_clone)
+                    .fetch_one(&pool_clone)
+                    .await
+                })
+            },
+            7, // ✅ AUGMENTÉ 2025-12-27: 7 tentatives max pour gérer les erreurs TLS de Render DB
+        )
     )
     .await;
     
     // ✅ Exécuter l'UPDATE avec la fonction PostgreSQL optimisée
     let product_index = match update_result {
-        Ok(index) => {
+        Ok(Ok(index)) => {
             let idx = index as usize;
             log_info(&format!("[add_product_to_service] ✅ Produit ajouté au service {} (index: {})", service_id, idx));
             
@@ -311,7 +316,7 @@ pub async fn add_product_to_service(
             
             idx
         },
-        Err(e) => {
+        Ok(Err(e)) => {
             log_error(&format!("[add_product_to_service] Erreur fonction PostgreSQL: {}", e));
             
             // ✅ Fallback: utiliser l'ancienne méthode si la fonction n'existe pas encore
@@ -471,6 +476,34 @@ pub async fn add_product_to_service(
                 
                 return Err(AppError::Internal(format!("Erreur mise à jour service: {}", e)));
             }
+        }
+        Err(_) => {
+            // Timeout après 30s
+            log_error(&format!("[add_product_to_service] ⏱️ Timeout après 30s lors de l'ajout du produit"));
+            
+            // ✅ ROLLBACK : Rembourser l'utilisateur en cas de timeout
+            let pool = state.pg.clone();
+            let _ = crate::utils::db_retry::retry_query(
+                &pool,
+                || {
+                    let cout_ajout_clone = cout_ajout;
+                    let user_id_clone = user.id;
+                    let pool_clone = pool.clone();
+                    Box::pin(async move {
+                        sqlx::query(
+                            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
+                        )
+                        .bind(cout_ajout_clone)
+                        .bind(user_id_clone)
+                        .execute(&pool_clone)
+                        .await
+                    })
+                },
+                3,
+            )
+            .await;
+            
+            return Err(AppError::Internal("Timeout lors de l'ajout du produit. Veuillez réessayer.".to_string()));
         }
     };
     

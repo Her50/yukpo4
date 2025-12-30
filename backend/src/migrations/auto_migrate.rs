@@ -6,6 +6,9 @@ use sqlx::PgPool;
 use std::env;
 use uuid::Uuid;
 
+use crate::services::mongo_history_service::MongoHistoryService;
+use std::sync::Arc;
+
 /// Vérifie et crée les tables media_engagement et media_distribution si elles n'existent pas
 pub async fn ensure_media_analytics_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification des tables media_engagement & media_distribution...");
@@ -3202,6 +3205,55 @@ pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(),
         .await?;
     
     info!("✅ Migration audio search cache optimization appliquée");
+    
+    // ✅ CORRIGÉ 2025-12-30: Fix de la fonction run_audio_cache_cleanup
+    // Corrige l'erreur "record result has no field deleted_count"
+    info!("🔧 Correction de la fonction run_audio_cache_cleanup...");
+    sqlx::query(
+        r#"
+        DROP FUNCTION IF EXISTS run_audio_cache_cleanup();
+
+        CREATE OR REPLACE FUNCTION run_audio_cache_cleanup()
+        RETURNS TABLE(
+            deleted_count INTEGER,
+            kept_count INTEGER,
+            total_before INTEGER,
+            total_after INTEGER
+        ) AS $$
+        DECLARE
+            deleted_count_var INTEGER;
+            kept_count_var INTEGER;
+            total_before_var INTEGER;
+            total_after_var INTEGER;
+        BEGIN
+            -- Exécuter le nettoyage et récupérer les résultats dans des variables explicites
+            SELECT 
+                deleted_count,
+                kept_count,
+                total_before,
+                total_after
+            INTO 
+                deleted_count_var,
+                kept_count_var,
+                total_before_var,
+                total_after_var
+            FROM cleanup_old_audio_transcriptions()
+            LIMIT 1;
+            
+            -- Log (peut être envoyé à un système de monitoring)
+            RAISE NOTICE 'Audio cache cleanup: deleted %, kept %, total before %, after %', 
+                deleted_count_var, kept_count_var, total_before_var, total_after_var;
+            
+            -- Retourner les résultats comme une table
+            RETURN QUERY SELECT deleted_count_var, kept_count_var, total_before_var, total_after_var;
+        END;
+        $$ LANGUAGE plpgsql;
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Fonction run_audio_cache_cleanup corrigée");
     Ok(())
 }
 
@@ -7113,6 +7165,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_optimize_product_creation_performance(pool).await {
         Ok(_) => info!("✅ Migration auto: optimize_product_creation_performance OK"),
         Err(e) => error!("❌ Erreur migration auto optimize_product_creation_performance: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-12-30 : Correction erreurs TLS lors de l'ajout de produit
+    match ensure_fix_add_product_tls_error(pool).await {
+        Ok(_) => info!("✅ Migration auto: fix_add_product_tls_error OK"),
+        Err(e) => error!("❌ Erreur migration auto fix_add_product_tls_error: {}", e),
     }
 
     // ✅ NOUVEAU 2025-12-21 : Optimisation des endpoints lents
@@ -12844,6 +12902,25 @@ pub async fn ensure_optimize_product_creation_performance(pool: &PgPool) -> Resu
     Ok(())
 }
 
+/// ✅ 2025-12-30 : Correction erreurs TLS lors de l'ajout de produit
+/// Migration: 20251230_fix_add_product_tls_error.sql
+/// Corrige:
+/// - Fermetures TLS inattendues lors de l'ajout de produit
+/// - Optimise la fonction add_product_to_service_jsonb
+/// - Améliore le retry avec backoff plus long pour erreurs TLS
+pub async fn ensure_fix_add_product_tls_error(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration fix_add_product_tls_error...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251230_fix_add_product_tls_error.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Migration fix_add_product_tls_error appliquée");
+    Ok(())
+}
+
 /// ✅ 2025-12-21 : Optimisation des endpoints lents
 /// Migration: 20251221_optimize_slow_endpoints.sql
 /// Optimise:
@@ -12906,4 +12983,21 @@ pub async fn ensure_optimize_services_update_performance(pool: &PgPool) -> Resul
 
     info!("✅ Migration optimize_services_update_performance appliquée");
     Ok(())
+}
+
+/// ✅ 2025-12-30 : Créer les index MongoDB pour optimiser les requêtes
+/// Index critiques pour /api/services/{id}/stats et /api/services/{id}/reviews
+pub async fn ensure_mongodb_indexes(mongo_history: Arc<MongoHistoryService>) -> Result<(), String> {
+    info!("🔍 Création des index MongoDB pour optimiser les requêtes...");
+    
+    match mongo_history.ensure_indexes().await {
+        Ok(_) => {
+            info!("✅ Index MongoDB créés avec succès");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Erreur création index MongoDB: {}", e);
+            Err(format!("Erreur création index MongoDB: {}", e))
+        }
+    }
 }

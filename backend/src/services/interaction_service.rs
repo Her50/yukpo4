@@ -125,11 +125,23 @@ pub async fn get_reviews(
     // ✅ OPTIMISÉ 2025-12-21: Limiter les résultats directement dans la requête MongoDB
     // Au lieu de récupérer tous les résultats puis tronquer, on limite à la source
     // Cela réduit la charge réseau et mémoire, surtout pour les services avec beaucoup d'avis
-    let effective_limit = limit.unwrap_or(50); // Limite par défaut de 50 avis
+    // ✅ OPTIMISÉ 2025-12-30: Limite réduite à 20 pour améliorer les performances
+    let effective_limit = limit.unwrap_or(20); // Limite par défaut de 20 avis (réduit de 50)
+    
+    // ✅ OPTIMISÉ 2025-12-30: Projection MongoDB pour ne charger que les champs nécessaires
+    let projection = mongodb::bson::doc! {
+        "user_id": 1,
+        "timestamp": 1,
+        "data.rating": 1,
+        "data.comment": 1,
+        "data.mentions": 1,
+        "data.interaction_type": 1
+    };
     
     let mut find_options = mongodb::options::FindOptions::default();
     find_options.limit = Some(effective_limit);
     find_options.sort = Some(mongodb::bson::doc! { "timestamp": -1 }); // Plus récent en premier
+    find_options.projection = Some(projection); // Ne charger que les champs nécessaires
     
     let mut cursor = collection
         .find(filter, find_options)
