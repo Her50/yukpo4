@@ -3,11 +3,11 @@ import { DefaultTheme } from 'react-native-paper';
 
 // Couleurs modernes 2024
 export const modernColors = {
-    // Gradients principaux
-    primaryGradient: ['#667eea', '#764ba2'],
-    secondaryGradient: ['#f093fb', '#f5576c'],
-    successGradient: ['#4facfe', '#00f2fe'],
-    warningGradient: ['#43e97b', '#38f9d7'],
+    // Gradients principaux (tuples pour LinearGradient)
+    primaryGradient: ['#667eea', '#764ba2'] as const,
+    secondaryGradient: ['#f093fb', '#f5576c'] as const,
+    successGradient: ['#4facfe', '#00f2fe'] as const,
+    warningGradient: ['#43e97b', '#38f9d7'] as const,
 
     // Couleurs de base modernes
     primary: '#667eea',
