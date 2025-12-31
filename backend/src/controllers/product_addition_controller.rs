@@ -459,38 +459,6 @@ pub async fn add_product_to_service(
                     }
                 }
             }
-            
-            (idx, produits_data, lieu_data)
-        },
-        Err(_) => {
-            // Timeout après 60s
-            log_error(&format!("[add_product_to_service] ⏱️ Timeout après 60s lors de l'ajout du produit"));
-            
-            // ✅ ROLLBACK : Rembourser l'utilisateur en cas de timeout
-            let pool = state.pg.clone();
-            let _ = crate::utils::db_retry::retry_query(
-                &pool,
-                || {
-                    let cout_ajout_clone = cout_ajout;
-                    let user_id_clone = user.id;
-                    let pool_clone = pool.clone();
-                    Box::pin(async move {
-                        sqlx::query(
-                            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
-                        )
-                        .bind(cout_ajout_clone)
-                        .bind(user_id_clone)
-                        .execute(&pool_clone)
-                        .await
-                    })
-                },
-                3,
-            )
-            .await;
-            
-            return Err(AppError::Internal("Timeout lors de l'ajout du produit après 60s. Le traitement des images peut prendre du temps. Veuillez réessayer avec moins d'images.".to_string()));
-        }
-    };
     
     // ✅ OPTIMISÉ 2025-12-31: Construire service_data minimal pour indexation
     // Les données nécessaires sont déjà retournées par la fonction PostgreSQL v2
