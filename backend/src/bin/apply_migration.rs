@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut db_url = env::var("DATABASE_URL")
         .map_err(|e| {
             eprintln!("❌ DATABASE_URL manquante: {}", e);
-            e
+            Box::new(e) as Box<dyn std::error::Error>
         })?;
 
     // Ajouter sslmode=require si nécessaire
@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(e) => {
             eprintln!("❌ Erreur lors de l'application de la migration: {}", e);
-            Err(Box::new(e))
+            Err(Box::new(e) as Box<dyn std::error::Error>)
         }
     }
 }
