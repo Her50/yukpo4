@@ -4,7 +4,7 @@
 use crate::core::types::{AppError, AppResult};
 use crate::services::app_ia::{TimelineScene, VideoTimeline};
 use crate::services::gpu_render_service::GPURenderService;
-use crate::services::immersive_timeline::{ImmersiveScene, ImmersiveTimeline};
+use crate::services::immersive_timeline::ImmersiveTimeline;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
