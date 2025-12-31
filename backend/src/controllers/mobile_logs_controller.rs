@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct MobileLogEntry {
     pub level: String,
     pub message: String,
@@ -20,7 +20,7 @@ pub struct MobileLogEntry {
     pub stack: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DeviceInfo {
     pub platform: Option<String>,
     pub version: Option<String>,
@@ -37,7 +37,7 @@ pub struct DeviceInfo {
     pub is_device: Option<bool>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct MobileLogsRequest {
     pub logs: Vec<MobileLogEntry>,
     pub batch_id: String,
