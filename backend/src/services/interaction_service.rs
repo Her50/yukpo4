@@ -389,7 +389,7 @@ pub async fn get_services_stats_batch(
         doc! {
             "$match": {
                 "event_type": "UserAction",
-                "service_id": { "$in": service_ids }
+                "service_id": { "$in": &service_ids }
             }
         },
         // Étape 2: Grouper par service_id et interaction_type, puis compter
@@ -477,7 +477,7 @@ pub async fn get_services_stats_batch(
         doc! {
             "$match": {
                 "event_type": "UserAction",
-                "service_id": { "$in": service_ids },
+                "service_id": { "$in": &service_ids },
                 "data.interaction_type": "review"
             }
         },
