@@ -1245,7 +1245,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     placeholder="Affiner votre recherche..."
                     onGPSPress={() => setShowGPSModal(true)}
                     showSendButton={true}
-                    showAutocomplete={true}
+                    showAutocomplete={false} // ✅ DÉSACTIVÉ: Autocomplete désactivée pour améliorer les performances
                     isSearchMode={true}
                     isCreateService={false}
                 />

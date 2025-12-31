@@ -438,8 +438,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             // Sélectionner automatiquement
             setSelectedMediaIds((prev) => new Set([...prev, newMediaItem.id]));
 
-            Alert.alert('Succès', 'Vidéo AR ajoutée à votre médiathèque');
+            console.log('[ProductVideoCreationModal] ✅ Vidéo AR ajoutée avec succès, fermeture du modal');
             setShowAREditor(false);
+            
+            // ✅ NOUVEAU: Afficher l'alerte après la fermeture du modal pour éviter les conflits
+            setTimeout(() => {
+                Alert.alert('Succès', 'Vidéo AR ajoutée à votre médiathèque');
+            }, 300);
 
             // Rafraëchir les médias pour obtenir l'ID réel depuis le serveur
             try {
@@ -458,6 +463,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 status: error?.response?.status,
             });
             
+            // ✅ CORRIGÉ: Fermer le modal même en cas d'erreur pour permettre à l'utilisateur de réessayer
+            setShowAREditor(false);
+            
             // Afficher un message d'erreur plus détaillé
             let errorMessage = 'Impossible d\'ajouter la vidéo AR. Réessayez plus tard.';
             if (error?.response?.status === 500) {
@@ -466,7 +474,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 errorMessage = error.message;
             }
             
-            Alert.alert('Erreur', errorMessage);
+            // ✅ NOUVEAU: Afficher l'alerte après la fermeture du modal
+            setTimeout(() => {
+                Alert.alert('Erreur', errorMessage);
+            }, 300);
         } finally {
             setIsUploadingARVideo(false);
         }
@@ -521,6 +532,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         if (visible && primaryProduct) {
             console.log('[ProductVideoCreationModal] Synchronisation selectedProduct avec primaryProduct:', primaryProduct);
             setSelectedProduct(primaryProduct);
+            // ✅ CORRIGÉ À LA RACINE: Passer automatiquement à l'étape 2 si un produit est déjà sélectionné
+            // Cela évite l'écran intermédiaire redondant où l'utilisateur doit re-choisir le produit
+            setActiveStep(2);
+            console.log('[ProductVideoCreationModal] ✅ Produit pré-sélectionné détecté, passage automatique à l\'étape 2');
         } else if (!visible) {
             // Réinitialiser à l'étape 1 quand le modal se ferme
             setActiveStep(1);
@@ -1145,6 +1160,79 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             } else {
                                 console.log('[ProductVideoCreationModal] ✅ Timeline générée avec médias:', responseData.timeline);
                                 setGeneratedTimeline(responseData.timeline);
+                                
+                                // ✅ CORRIGÉ À LA RACINE: Sauvegarder la timeline dans la session Studio
+                                try {
+                                    let sessionId = studioSessionId;
+                                    
+                                    // Créer la session si elle n'existe pas
+                                    if (!sessionId && selectedProduct?.serviceId) {
+                                        const serviceIdNum = Number(selectedProduct.serviceId);
+                                        if (Number.isFinite(serviceIdNum) && serviceIdNum > 0) {
+                                            try {
+                                                const existing = await studioService.listSessions();
+                                                if (existing.length > 0) {
+                                                    sessionId = existing[0].id;
+                                                    setStudioSessionId(sessionId);
+                                                } else {
+                                                    const payload: import('../services/studioService').CreateStudioSessionPayload = {
+                                                        service_id: serviceIdNum,
+                                                        brief: { raw: scriptNotes || headline || normalizeProductName(selectedProduct) },
+                                                        metadata: {
+                                                            product_name: normalizeProductName(selectedProduct),
+                                                            product_index: selectedProduct.product_index,
+                                                        },
+                                                        distribution_plan: [],
+                                                    };
+                                                    const aggregate = await studioService.createSession(payload);
+                                                    if (aggregate?.session?.id) {
+                                                        sessionId = aggregate.session.id;
+                                                        setStudioSessionId(sessionId);
+                                                    }
+                                                }
+                                            } catch (sessionError: any) {
+                                                console.warn('[ProductVideoCreationModal] ⚠️ Erreur création session pour timeline:', sessionError);
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (sessionId && responseData.timeline.scenes.length > 0) {
+                                        // Convertir les scènes en TimelineClipInput[]
+                                        const clips: import('../services/studioService').TimelineClipInput[] = responseData.timeline.scenes.map((scene) => ({
+                                            position: scene.scene_index,
+                                            lane: null,
+                                            duration_seconds: scene.duration,
+                                            payload: {
+                                                scene_index: scene.scene_index,
+                                                start_time: scene.start_time,
+                                                media_id: scene.media_id,
+                                                media_url: scene.media_url,
+                                                text: scene.text,
+                                                text_position: scene.text_position,
+                                                transition: scene.transition,
+                                                effects: scene.effects,
+                                                audio_cue: scene.audio_cue,
+                                            },
+                                        }));
+                                        
+                                        console.log('[ProductVideoCreationModal] 💾 Sauvegarde timeline dans session Studio:', {
+                                            sessionId,
+                                            clipsCount: clips.length,
+                                        });
+                                        
+                                        await studioService.saveTimeline(sessionId, clips);
+                                        console.log('[ProductVideoCreationModal] ✅ Timeline sauvegardée avec succès');
+                                    } else {
+                                        console.warn('[ProductVideoCreationModal] ⚠️ Impossible de sauvegarder timeline: sessionId manquant ou timeline vide', {
+                                            sessionId,
+                                            scenesCount: responseData.timeline.scenes.length,
+                                        });
+                                    }
+                                } catch (saveError: any) {
+                                    console.error('[ProductVideoCreationModal] ❌ Erreur sauvegarde timeline:', saveError);
+                                    // Ne pas bloquer l'utilisateur si la sauvegarde échoue
+                                }
+                                
                                 // ✅ NOUVEAU: Mettre à jour scriptNotes avec le texte des scènes si vide
                                 if (!scriptNotes.trim() && responseData.timeline.scenes.length > 0) {
                                     const scriptFromTimeline = responseData.timeline.scenes
@@ -1219,6 +1307,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         voiceoverLang,
         fetchWithRetry,
         getDefaultCoachData,
+        studioSessionId,
+        scriptNotes,
+        headline,
     ]);
 
     const handleRefreshCoach = useCallback(() => {
@@ -2175,6 +2266,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 });
                 return;
             }
+            
+            // ✅ NOUVEAU: Vérifier que la timeline existe avant d'appeler l'API
+            try {
+                const session = await studioService.getSession(studioSessionId);
+                if (!session || !session.timeline || session.timeline.length === 0) {
+                    throw new Error('La timeline est vide. Ajoutez d\'abord des médias à votre timeline.');
+                }
+            } catch (checkError: any) {
+                console.warn('[ProductVideoCreationModal] Vérification timeline:', checkError);
+                // Si la vérification échoue, on continue quand même (l'API retournera une erreur plus claire)
+            }
+            
             const response = await studioService.requestShortPreview(studioSessionId);
             if (response.preview_url) {
                 setShortPreviewUrl(response.preview_url);
@@ -2216,8 +2319,26 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 errorMessage = 'Le service de prévisualisation vidéo est temporairement indisponible.\n\n' +
                     'Vous pouvez utiliser le "Preview Rapide" ci-dessus pour avoir un aperçu de votre vidéo.';
             } else if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
-                errorMessage = 'Erreur lors de la génération de la prévisualisation.\n\n' +
-                    'Vérifiez que votre timeline contient des médias et réessayez.';
+                // ✅ CORRIGÉ: Message plus détaillé pour l'erreur 400
+                // Vérifier si le message d'erreur contient des détails du backend
+                const backendError = (error as any)?.response?.data?.error || 
+                                    (error as any)?.response?.data?.message || 
+                                    errorMessage;
+                
+                if (backendError.includes('timeline') || 
+                    backendError.includes('sans timeline') || 
+                    backendError.includes('Impossible de générer un aperçu sans timeline')) {
+                    errorMessage = 'Impossible de générer la prévisualisation : la timeline est vide.\n\n' +
+                        'Solutions :\n' +
+                        '• Générez d\'abord un storyboard (étape 1)\n' +
+                        '• Ajoutez des médias à votre timeline\n' +
+                        '• Utilisez le "Preview Rapide" ci-dessus pour avoir un aperçu';
+                } else {
+                    errorMessage = 'Erreur lors de la génération de la prévisualisation.\n\n' +
+                        (backendError !== errorMessage ? backendError + '\n\n' : '') +
+                        'Vérifiez que votre timeline contient des médias et réessayez.\n\n' +
+                        'Si le problème persiste, utilisez le "Preview Rapide" ci-dessus.';
+                }
             }
             
             Alert.alert('Erreur', errorMessage);
@@ -3991,15 +4112,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             : 0.28;
 
         // ✅ NOUVEAU 2025-11-30: Estimer le coût et afficher dans un toast avant de générer
-        try {
-            setCostLoading(true);
-            const serviceId = selectedProduct.serviceId;
-            if (!serviceId) {
-                Alert.alert('Service invalide', 'Impossible d\'estimer le coût.');
-                return;
-            }
-
-            const payloadForEstimation: VideoGenerationPayload = {
+        // ✅ CORRIGÉ: Ne pas bloquer la génération si l'estimation échoue
+        
+        // ✅ CORRIGÉ: Construire le payload AVANT les vérifications pour pouvoir l'utiliser en cas d'erreur
+        const payloadForEstimation: VideoGenerationPayload = {
                 style: stylePreset,
                 duration_seconds: durationSeconds,
                 headline: headline.trim(),
@@ -4060,48 +4176,59 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 // ✅ NOTE: linked_session_ids retiré car non supporté dans VideoGenerationPayload
             };
 
+        // ✅ NOUVEAU 2025-11-30: Estimer le coût et afficher dans un toast avant de générer
+        // ✅ CORRIGÉ: Ne pas bloquer la génération si l'estimation échoue
+        try {
+            setCostLoading(true);
+            const serviceId = selectedProduct.serviceId;
+            
             // ✅ CORRIGÉ: Validations avant l'appel d'estimation
             if (!serviceId || serviceId === null || serviceId === undefined) {
+                console.warn('[ProductVideoCreationModal] Service ID manquant, génération sans estimation de coût');
                 setCostLoading(false);
-                Alert.alert(
-                    'Service invalide',
-                    'Le service ID est manquant ou invalide.\n\nVeuillez sélectionner un produit valide.',
-                    [{ text: 'OK' }]
-                );
+                // ✅ CORRIGÉ: Continuer quand même avec la génération
+                await proceedWithVideoGeneration(payloadForEstimation);
                 return;
             }
 
             if (selectedProduct.product_index === null || selectedProduct.product_index === undefined || isNaN(Number(selectedProduct.product_index))) {
+                console.warn('[ProductVideoCreationModal] Index produit invalide, génération sans estimation de coût');
                 setCostLoading(false);
-                Alert.alert(
-                    'Index produit invalide',
-                    'L\'index du produit est manquant ou invalide.\n\nVeuillez sélectionner un produit valide.',
-                    [{ text: 'OK' }]
-                );
+                // ✅ CORRIGÉ: Continuer quand même avec la génération (l'index peut être optionnel selon le backend)
+                await proceedWithVideoGeneration(payloadForEstimation);
                 return;
             }
 
             // ✅ CORRIGÉ: Vérifier que le payload contient les données minimales
             if (!payloadForEstimation || !payloadForEstimation.duration_seconds) {
+                console.warn('[ProductVideoCreationModal] Payload incomplet, génération sans estimation de coût');
                 setCostLoading(false);
-                Alert.alert(
-                    'Données incomplètes',
-                    'Les données d\'estimation sont incomplètes.\n\nVeuillez remplir tous les champs requis.',
-                    [{ text: 'OK' }]
-                );
+                // ✅ CORRIGÉ: Continuer quand même avec la génération (le backend peut gérer les valeurs par défaut)
+                await proceedWithVideoGeneration(payloadForEstimation);
                 return;
             }
 
             const response = await iaApi.estimateVideoCost(serviceId, selectedProduct.product_index, payloadForEstimation);
             
-            // ✅ CORRIGÉ: Validation de la réponse
+            // ✅ CORRIGÉ: Validation de la réponse - Ne pas bloquer si l'estimation échoue
             if (!response || !response.success) {
                 setCostLoading(false);
                 const errorMsg = response?.error || 'Impossible d\'estimer le coût pour le moment.';
+                console.warn('[ProductVideoCreationModal] Erreur estimation coût:', errorMsg);
+                
+                // ✅ CORRIGÉ: Proposer de continuer quand même
                 Alert.alert(
-                    'Erreur d\'estimation',
-                    errorMsg + '\n\nVérifiez que tous les champs sont correctement remplis et réessayez.',
-                    [{ text: 'OK' }]
+                    'Estimation impossible',
+                    errorMsg + '\n\nSouhaitez-vous continuer avec la génération de la vidéo ?',
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        {
+                            text: 'Continuer quand même',
+                            onPress: async () => {
+                                await proceedWithVideoGeneration(payloadForEstimation);
+                            },
+                        },
+                    ]
                 );
                 return;
             }
@@ -4115,11 +4242,22 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setCostLoading(false);
 
             if (!estimation) {
+                setCostLoading(false);
+                console.warn('[ProductVideoCreationModal] Estimation vide, proposer de continuer quand même');
+                // ✅ CORRIGÉ: Proposer de continuer quand même
                 Alert.alert(
                     'Estimation impossible',
                     'Impossible d\'estimer le coût pour le moment.\n\n' +
-                    'Vérifiez que tous les champs sont correctement remplis et réessayez.',
-                    [{ text: 'OK' }]
+                    'Souhaitez-vous continuer avec la génération de la vidéo ?',
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        {
+                            text: 'Continuer quand même',
+                            onPress: async () => {
+                                await proceedWithVideoGeneration(payloadForEstimation);
+                            },
+                        },
+                    ]
                 );
                 return;
             }
@@ -4792,6 +4930,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                             serviceId={selectedProduct ? Number(selectedProduct.serviceId) : undefined}
                                             productIndex={selectedProduct?.product_index}
                                             onVideoCaptured={handleARVideoCaptured}
+                                            isUploading={isUploadingARVideo}
                                             onClose={() => {
                                                 if (!isUploadingARVideo) {
                                                     setShowAREditor(false);

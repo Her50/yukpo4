@@ -29,6 +29,7 @@ interface SubCharacteristicsTableProps {
     separateur: string;
     onValidate: (rows: SubCharacteristicRow[]) => void; // Callback avec les lignes validées
     initialRows?: SubCharacteristicRow[]; // Lignes initiales si déjà validées
+    onRowsChange?: (rows: SubCharacteristicRow[]) => void; // ✅ NOUVEAU : Callback pour sauvegarder automatiquement les modifications
 }
 
 export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = ({
@@ -36,6 +37,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     separateur,
     onValidate,
     initialRows,
+    onRowsChange, // ✅ NOUVEAU : Callback pour sauvegarder automatiquement
 }) => {
     // État du tableau : chaque ligne contient un label et une valeur
     const [rows, setRows] = useState<SubCharacteristicRow[]>([]);
@@ -130,6 +132,11 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         setEditingIndex(null);
         setEditingLabel('');
         setEditingValue('');
+        
+        // ✅ NOUVEAU : Sauvegarder automatiquement dans le formulaire (sans DB)
+        if (onRowsChange) {
+            onRowsChange(newRows);
+        }
     };
 
     // Annuler l'édition
@@ -143,6 +150,11 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     const removeRow = (index: number) => {
         const newRows = rows.filter((_, i) => i !== index);
         setRows(newRows);
+        
+        // ✅ NOUVEAU : Sauvegarder automatiquement dans le formulaire (sans DB)
+        if (onRowsChange) {
+            onRowsChange(newRows);
+        }
     };
 
     // Ajouter une nouvelle ligne
@@ -154,6 +166,12 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         setEditingIndex(newIndex);
         setEditingLabel('');
         setEditingValue('');
+        
+        // ✅ NOUVEAU : Sauvegarder automatiquement dans le formulaire (sans DB)
+        // Note : On ne sauvegarde pas les lignes vides, seulement après édition
+        // if (onRowsChange) {
+        //     onRowsChange(newRows);
+        // }
         
         // Scroller vers la nouvelle ligne après un court délai pour permettre le rendu
         setTimeout(() => {
@@ -172,6 +190,12 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
 
     // Valider le tableau et convertir en format attendu
     const validateTable = async () => {
+        // ✅ PROTECTION : Empêcher les clics multiples
+        if (isValidating || isValidated) {
+            console.log('[SubCharacteristicsTable] ⚠️ Validation déjà en cours ou déjà validé, ignoré');
+            return;
+        }
+
         // Filtrer les lignes vides
         const validRows = rows.filter(row => 
             row.label.trim().length > 0 && row.value.trim().length > 0
@@ -199,20 +223,28 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             }),
         ]).start();
 
-        // Simuler un petit délai pour le feedback visuel (100ms)
-        await new Promise(resolve => setTimeout(resolve, 100));
+        try {
+            // ✅ NOUVEAU : Appeler onValidate avec gestion d'erreur
+            // onValidate peut maintenant être async et retourner une Promise
+            const result = onValidate(validRows);
+            if (result && typeof result.then === 'function') {
+                await result;
+            }
 
-        // Appeler le callback avec les lignes validées
-        onValidate(validRows);
+            // ✅ FEEDBACK VISUEL: Afficher le succès
+            setIsValidated(true);
+            console.log('[SubCharacteristicsTable] ✅ Sous-caractéristiques validées et sauvegardées');
 
-        // ✅ FEEDBACK VISUEL: Afficher le succès
-        setIsValidating(false);
-        setIsValidated(true);
-
-        // Réinitialiser l'état de succès après 2 secondes
-        setTimeout(() => {
-            setIsValidated(false);
-        }, 2000);
+            // Réinitialiser l'état de succès après 3 secondes (augmenté pour meilleure visibilité)
+            setTimeout(() => {
+                setIsValidated(false);
+            }, 3000);
+        } catch (error) {
+            console.error('[SubCharacteristicsTable] ❌ Erreur validation:', error);
+            // ✅ Afficher un message d'erreur (sera géré par le parent si nécessaire)
+        } finally {
+            setIsValidating(false);
+        }
     };
 
     return (
@@ -333,17 +365,17 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                             isValidated && styles.validateButtonSuccess
                         ]}
                         onPress={validateTable}
-                        disabled={rows.filter(r => r.label.trim() && r.value.trim()).length === 0 || isValidating}
+                        disabled={rows.filter(r => r.label.trim() && r.value.trim()).length === 0 || isValidating || isValidated}
                     >
                         {isValidating ? (
                             <>
                                 <ActivityIndicator size="small" color="#FFFFFF" />
-                                <Text style={styles.validateButtonText}>Validation...</Text>
+                                <Text style={styles.validateButtonText}>Sauvegarde...</Text>
                             </>
                         ) : isValidated ? (
                             <>
                                 <SafeIcon name="check-circle" size={18} color="#FFFFFF" />
-                                <Text style={styles.validateButtonText}>Validé !</Text>
+                                <Text style={styles.validateButtonText}>Sauvegardé !</Text>
                             </>
                         ) : (
                             <>

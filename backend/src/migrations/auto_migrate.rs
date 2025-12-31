@@ -7173,6 +7173,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto fix_add_product_tls_error: {}", e),
     }
 
+    // ✅ NOUVEAU 2025-12-31 : Correction définitive performance création produit
+    match ensure_fix_product_creation_issues(pool).await {
+        Ok(_) => info!("✅ Migration auto: fix_product_creation_issues OK"),
+        Err(e) => error!("❌ Erreur migration auto fix_product_creation_issues: {}", e),
+    }
+
+    // ✅ NOUVEAU 2025-12-31 : Optimisation performance création produit v2
+    match ensure_fix_product_creation_performance_v2(pool).await {
+        Ok(_) => info!("✅ Migration auto: fix_product_creation_performance_v2 OK"),
+        Err(e) => error!("❌ Erreur migration auto fix_product_creation_performance_v2: {}", e),
+    }
+
     // ✅ NOUVEAU 2025-12-21 : Optimisation des endpoints lents
     match ensure_optimize_slow_endpoints(pool).await {
         Ok(_) => info!("✅ Migration auto: optimize_slow_endpoints OK"),
@@ -7490,6 +7502,24 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Ok(_) => info!("✅ Migration auto: search_services_gps_final optimization OK"),
         Err(e) => error!(
             "❌ Erreur migration auto search_services_gps_final optimization: {}",
+            e
+        ),
+    }
+
+    // ✅ 2025-01-01 : Alignement search_services_gps_final avec keyword_search_with_gps
+    match ensure_search_services_gps_final_alignment(pool).await {
+        Ok(_) => info!("✅ Migration auto: search_services_gps_final alignment OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto search_services_gps_final alignment: {}",
+            e
+        ),
+    }
+
+    // ✅ 2025-01-01 : Optimisation hybrid_image_search avec unaccent() et similarity()
+    match ensure_hybrid_image_search_optimization(pool).await {
+        Ok(_) => info!("✅ Migration auto: hybrid_image_search optimization OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto hybrid_image_search optimization: {}",
             e
         ),
     }
@@ -12221,6 +12251,44 @@ pub async fn ensure_search_services_gps_final_optimization(
     Ok(())
 }
 
+/// ✅ 2025-01-01 : Alignement de search_services_gps_final avec keyword_search_with_gps
+/// Utilise la même logique de recherche (autocomplete, produits, unaccent, similarity)
+/// Migration: 20250101_ALIGN_SEARCH_GPS_FINAL_WITH_KEYWORD_SEARCH.sql
+pub async fn ensure_search_services_gps_final_alignment(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
+    info!("🔍 Application de l'alignement de search_services_gps_final avec keyword_search_with_gps...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250101_ALIGN_SEARCH_GPS_FINAL_WITH_KEYWORD_SEARCH.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Alignement de search_services_gps_final avec keyword_search_with_gps appliqué");
+    Ok(())
+}
+
+/// ✅ 2025-01-01 : Optimisation de hybrid_image_search avec unaccent() et similarity()
+/// Aligne la recherche par image avec keyword_search_with_gps (gère accents, erreurs de saisie, troncature)
+/// Migration: 20250101_OPTIMIZE_HYBRID_IMAGE_SEARCH_WITH_UNACCENT_SIMILARITY.sql
+pub async fn ensure_hybrid_image_search_optimization(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
+    info!("🔍 Application de l'optimisation de hybrid_image_search avec unaccent() et similarity()...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql =
+        include_str!("../../migrations/20250101_OPTIMIZE_HYBRID_IMAGE_SEARCH_WITH_UNACCENT_SIMILARITY.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Optimisation de hybrid_image_search appliquée (unaccent + similarity)");
+    Ok(())
+}
+
 /// ✅ 2025-11-26 : Optimisation des index pour recherche de produits
 /// Crée des index sur les colonnes fréquemment recherchées pour améliorer les performances
 /// Migration: 20251126_optimize_search_indexes.sql
@@ -12918,6 +12986,44 @@ pub async fn ensure_fix_add_product_tls_error(pool: &PgPool) -> Result<(), sqlx:
     execute_multiple_sql_commands(pool, migration_sql).await?;
 
     info!("✅ Migration fix_add_product_tls_error appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-31 : Correction définitive performance création produit
+/// Migration: 20251231_fix_product_creation_issues.sql
+/// Corrige:
+/// - Contrainte UNIQUE manquante pour autocomplete_characteristics
+/// - Optimise la fonction add_product_to_service_jsonb
+/// - Améliore les index pour les requêtes fréquentes
+pub async fn ensure_fix_product_creation_issues(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration fix_product_creation_issues...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251231_fix_product_creation_issues.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Migration fix_product_creation_issues appliquée");
+    Ok(())
+}
+
+/// ✅ 2025-12-31 : Optimisation performance création produit v2
+/// Migration: 20251231_fix_product_creation_performance_v2.sql
+/// Optimise:
+/// - Fonction add_product_to_service_jsonb_v2 qui retourne directement les données nécessaires
+/// - Évite le SELECT complet du JSONB après UPDATE (gain de 1-3 secondes)
+/// - Index GIN pour accès rapide à data->'produits'->'valeur'
+pub async fn ensure_fix_product_creation_performance_v2(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Application migration fix_product_creation_performance_v2...");
+
+    // Lire le contenu de la migration SQL
+    let migration_sql = include_str!("../../migrations/20251231_fix_product_creation_performance_v2.sql");
+
+    // Exécuter la migration SQL en divisant en commandes individuelles
+    execute_multiple_sql_commands(pool, migration_sql).await?;
+
+    info!("✅ Migration fix_product_creation_performance_v2 appliquée");
     Ok(())
 }
 

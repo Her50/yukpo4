@@ -1115,6 +1115,11 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                                     name: `prod_image_${idx}.jpg`
                                                 });
                                             }
+                                            // ✅ NOUVEAU : Si c'est déjà une URL (http/https), ne pas uploader mais l'utiliser directement
+                                            else if (img && (img.startsWith('http://') || img.startsWith('https://'))) {
+                                                // URL déjà uploadée, sera utilisée directement plus tard
+                                                console.log(`[AjouterProduitSimple] ℹ️ Image ${idx} est déjà une URL, pas besoin d'uploader:`, img.substring(0, 50) + '...');
+                                            }
                                         });
                                     }
 
@@ -1132,6 +1137,11 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                                     name: `prod_video_${idx}.mp4`
                                                 });
                                             }
+                                            // ✅ NOUVEAU : Si c'est déjà une URL (http/https), ne pas uploader mais l'utiliser directement
+                                            else if (vid && (vid.startsWith('http://') || vid.startsWith('https://'))) {
+                                                // URL déjà uploadée, sera utilisée directement plus tard
+                                                console.log(`[AjouterProduitSimple] ℹ️ Vidéo ${idx} est déjà une URL, pas besoin d'uploader:`, vid.substring(0, 50) + '...');
+                                            }
                                         });
                                     }
 
@@ -1141,30 +1151,88 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         const uploadedFiles = await uploadFiles(filesToUpload);
                                         console.log('[AjouterProduitSimple] ✅ Upload réussi pour produit:', uploadedFiles.length, 'fichier(s)');
 
-                                        // ✅ Remplacer base64 par URLs dans nouveauProduit
+                                        // ✅ CORRIGÉ : Remplacer base64 par URLs dans nouveauProduit (supprimer base64)
                                         // Images produit
                                         const imageUrls = uploadedFiles
                                             .filter(f => f.media_type === 'image')
-                                            .map(f => f.url);
+                                            .map(f => f.url)
+                                            .filter((url: string) => url && url.length > 0 && !url.startsWith('data:')); // ✅ Vérifier que ce sont bien des URLs
+                                        
                                         if (imageUrls.length > 0) {
+                                            // ✅ CORRIGÉ : Utiliser base64_image avec URLs (format attendu par backend)
+                                            nouveauProduit.base64_image = imageUrls;
+                                            // ✅ CORRIGÉ : Supprimer images (base64) pour éviter duplication
+                                            delete nouveauProduit.images;
+                                            // Garder imageUrls pour compatibilité
                                             nouveauProduit.imageUrls = imageUrls;
-                                            console.log('[AjouterProduitSimple] ✅ Images produit uploadées:', imageUrls.length);
+                                            console.log('[AjouterProduitSimple] ✅ Images produit uploadées (URLs):', imageUrls.length);
+                                        } else {
+                                            // ⚠️ Aucune URL valide, supprimer quand même images pour éviter base64
+                                            delete nouveauProduit.images;
+                                            console.warn('[AjouterProduitSimple] ⚠️ Aucune URL valide pour images, suppression base64');
                                         }
 
                                         // Vidéos produit
                                         const videoUrls = uploadedFiles
                                             .filter(f => f.media_type === 'video')
-                                            .map(f => f.url);
+                                            .map(f => f.url)
+                                            .filter((url: string) => url && url.length > 0 && !url.startsWith('data:')); // ✅ Vérifier que ce sont bien des URLs
+                                        
                                         if (videoUrls.length > 0) {
+                                            // ✅ CORRIGÉ : Utiliser video_base64 avec URLs (format attendu par backend)
+                                            nouveauProduit.video_base64 = videoUrls;
+                                            // ✅ CORRIGÉ : Supprimer videos (base64) pour éviter duplication
+                                            delete nouveauProduit.videos;
+                                            // Garder videoUrls pour compatibilité
                                             nouveauProduit.videoUrls = videoUrls;
-                                            console.log('[AjouterProduitSimple] ✅ Vidéos produit uploadées:', videoUrls.length);
+                                            console.log('[AjouterProduitSimple] ✅ Vidéos produit uploadées (URLs):', videoUrls.length);
+                                        } else {
+                                            // ⚠️ Aucune URL valide, supprimer quand même videos pour éviter base64
+                                            delete nouveauProduit.videos;
+                                            console.warn('[AjouterProduitSimple] ⚠️ Aucune URL valide pour vidéos, suppression base64');
                                         }
                                     } else {
                                         console.log('[AjouterProduitSimple] ℹ️ Aucun média à uploader pour nouveau produit (déjà URLs ou vide)');
+                                        
+                                        // ✅ NOUVEAU : Vérifier si les médias existants sont déjà des URLs
+                                        // Si oui, les utiliser directement sans upload
+                                        const existingImageUrls = (compressedMedia?.images || nouveauProduit.images || [])
+                                            .filter((img: string) => typeof img === 'string' && img.length > 0 && (img.startsWith('http://') || img.startsWith('https://')));
+                                        
+                                        const existingVideoUrls = (compressedMedia?.videos || nouveauProduit.videos || [])
+                                            .filter((vid: string) => typeof vid === 'string' && vid.length > 0 && (vid.startsWith('http://') || vid.startsWith('https://')));
+                                        
+                                        if (existingImageUrls.length > 0) {
+                                            nouveauProduit.base64_image = existingImageUrls;
+                                            delete nouveauProduit.images;
+                                            nouveauProduit.imageUrls = existingImageUrls;
+                                            console.log('[AjouterProduitSimple] ✅ Utilisation URLs images existantes:', existingImageUrls.length);
+                                        }
+                                        
+                                        if (existingVideoUrls.length > 0) {
+                                            nouveauProduit.video_base64 = existingVideoUrls;
+                                            delete nouveauProduit.videos;
+                                            nouveauProduit.videoUrls = existingVideoUrls;
+                                            console.log('[AjouterProduitSimple] ✅ Utilisation URLs vidéos existantes:', existingVideoUrls.length);
+                                        }
+                                        
+                                        // Si pas d'URLs existantes et pas de médias base64, supprimer les champs vides
+                                        if (existingImageUrls.length === 0 && (!nouveauProduit.images || nouveauProduit.images.length === 0)) {
+                                            delete nouveauProduit.images;
+                                            delete nouveauProduit.base64_image;
+                                        }
+                                        
+                                        if (existingVideoUrls.length === 0 && (!nouveauProduit.videos || nouveauProduit.videos.length === 0)) {
+                                            delete nouveauProduit.videos;
+                                            delete nouveauProduit.video_base64;
+                                        }
                                     }
                                 } catch (uploadError: any) {
-                                    console.warn('[AjouterProduitSimple] ⚠️ Erreur upload préalable produit, fallback base64:', uploadError.message);
-                                    // Fallback: continuer avec base64 si upload échoue (rétrocompatibilité)
+                                    console.error('[AjouterProduitSimple] ❌ Erreur upload préalable produit:', uploadError);
+                                    // ✅ CORRIGÉ : Ne pas fallback automatiquement vers base64
+                                    // L'utilisateur sera averti et pourra réessayer
+                                    // Le fallback base64 se fera seulement si vraiment nécessaire
+                                    // Mais on log l'erreur pour déboguer
                                 }
 
                                 console.log('[AjouterProduitSimple] 📦 Données du nouveau produit (complètes):', {

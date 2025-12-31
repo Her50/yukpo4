@@ -138,6 +138,15 @@ export const uploadToCloud = async (
         }
         // Ne pas définir Content-Type pour FormData, le navigateur le fera avec boundary
 
+        console.log('[CloudUpload] 📤 Envoi upload:', {
+            url: uploadUrl,
+            fileType,
+            fileName,
+            useDirectUpload,
+            hasToken: !!token,
+            fileSize: formatFileSize(fileSize)
+        });
+
         const response = await fetch(uploadUrl, {
             method: 'POST',
             body: formData,
@@ -155,20 +164,31 @@ export const uploadToCloud = async (
 
         const result = await response.json();
 
-        if (result.success && result.url) {
-            console.log('[CloudUpload] Upload réussi:', result.url);
+        // ✅ CORRIGÉ: L'API retourne { success: true, files: [{ url: "...", ... }] }
+        if (result.success && result.files && Array.isArray(result.files) && result.files.length > 0) {
+            const uploadedFile = result.files[0];
+            console.log('[CloudUpload] Upload réussi:', uploadedFile.url);
             return {
                 success: true,
-                url: result.url,
-                cloudinaryUrl: result.cloudinaryUrl || result.url,
+                url: uploadedFile.url,
+                cloudinaryUrl: uploadedFile.url, // L'URL retournée est déjà l'URL publique
                 fileName: fileName,
-                fileSize: fileSize,
+                fileSize: uploadedFile.size_bytes || fileSize,
                 mimeType: mimeType
             };
         } else {
+            // ✅ CORRIGÉ: Message d'erreur plus détaillé
+            const errorMessage = result.message || result.error || 
+                (result.files && result.files.length === 0 ? 'Aucun fichier uploadé' : 'Erreur inconnue');
+            console.error('[CloudUpload] Erreur upload:', {
+                success: result.success,
+                files: result.files,
+                message: result.message,
+                error: result.error
+            });
             return {
                 success: false,
-                error: result.error || 'Erreur inconnue'
+                error: errorMessage
             };
         }
 

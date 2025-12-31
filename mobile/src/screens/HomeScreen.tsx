@@ -588,7 +588,7 @@ const HomeScreen: React.FC = () => {
                             }
                             onGPSPress={handleGPSPress}
                             showSendButton={true}
-                            showAutocomplete={!isCreateService}
+                            showAutocomplete={false} // ✅ DÉSACTIVÉ: Autocomplete désactivée pour améliorer les performances
                             isSearchMode={!isCreateService}
                             isCreateService={isCreateService}
                         />

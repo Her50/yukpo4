@@ -378,14 +378,32 @@ impl MediaStorageService {
             });
 
         if let Some(base) = candidate_base {
-            format!(
+            let url = format!(
                 "{}/{}",
                 base.trim_end_matches('/'),
                 storage_path.trim_start_matches('/')
-            )
+            );
+            
+            // ✅ Vérifier que c'est bien une URL complète (commence par http/https)
+            if url.starts_with("http://") || url.starts_with("https://") {
+                debug!("[MediaStorage] URL CDN construite: {}", url);
+                return url;
+            } else {
+                warn!(
+                    "[MediaStorage] ⚠️ Base URL configurée mais n'est pas une URL complète: {}",
+                    base
+                );
+            }
         } else {
-            storage_path.to_string()
+            warn!(
+                "[MediaStorage] ⚠️ Aucune base URL configurée (UPLOAD_BASE_URL ou PUBLIC_BASE_URL). Retour du chemin relatif: {}",
+                storage_path
+            );
         }
+        
+        // ⚠️ Fallback: Si pas de base URL ou URL invalide, retourner le chemin relatif
+        // Le client devra construire l'URL complète ou utiliser le chemin API
+        storage_path.to_string()
     }
 
     /// ✅ Génère une URL pré-signée pour un objet Wasabi/S3

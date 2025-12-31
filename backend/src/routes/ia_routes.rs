@@ -40,7 +40,12 @@ pub fn ia_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ✅ NOUVEAU: Génération automatique de sous-titres
         .route("/api/ia/video/auto-captions", post(handle_auto_captions))
         // ✅ NOUVEAU: Génération de previews d'effets
-        .route("/api/ia/effects/preview", post(handle_effect_preview))
+        .route(
+            "/api/ia/effects/preview",
+            post(handle_effect_preview).layer(
+                axum::extract::DefaultBodyLimit::max(100_000_000), // ✅ 100 MB pour vidéos d'effets
+            ),
+        )
         // ✅ NOUVEAU: Génération de variantes de timeline
         .route(
             "/api/ia/video/timeline-variants",

@@ -86,6 +86,23 @@ pub async fn store_uploaded_file(
                 bytes.len(),
                 media_type
             );
+            
+            // ✅ Vérifier que l'URL retournée est bien une URL CDN complète
+            if location.public_url.starts_with("http://") || location.public_url.starts_with("https://") {
+                info!(
+                    "[upload_service] ✅ URL CDN valide retournée: {}",
+                    location.public_url
+                );
+            } else {
+                warn!(
+                    "[upload_service] ⚠️ URL retournée n'est pas une URL CDN complète (pas de http/https): {}",
+                    location.public_url
+                );
+                warn!(
+                    "[upload_service] ⚠️ Vérifiez que UPLOAD_BASE_URL ou PUBLIC_BASE_URL est configuré avec une URL complète (ex: https://cdn.yukpomnang.com)"
+                );
+            }
+            
             // Utiliser l'URL publique S3/Wasabi
             location.public_url
         }

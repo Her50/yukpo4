@@ -3295,15 +3295,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               console.log('[FormulaireYukpoIntelligentScreen] ℹ️ Aucun média à uploader (modification) - déjà URLs ou vide');
             }
           } catch (uploadError: any) {
-            console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur upload préalable (modification), fallback base64:', uploadError.message);
-            // Fallback: continuer avec base64 si upload échoue (rétrocompatibilité)
+            console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur upload préalable (modification):', uploadError);
+            // ✅ CORRIGÉ : Ne pas fallback automatiquement vers base64
+            // L'utilisateur sera averti et pourra réessayer
+            // Le fallback base64 se fera dans attachMediaField si nécessaire
+            // Mais on log l'erreur pour déboguer
           }
         }
 
         if (compressedMedia) {
           const attachMediaField = (fieldName: string, values: any[] | string | undefined, options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
-            // Si on a des URLs uploadées, les utiliser en priorité
-            if (uploadedMediaUrls) {
+            // ✅ CORRIGÉ : Vérifier que uploadedMediaUrls existe ET contient des données
+            if (uploadedMediaUrls && Object.keys(uploadedMediaUrls).length > 0) {
               let urlValue: string | string[] | undefined;
 
               switch (fieldName) {
@@ -3330,33 +3333,67 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   break;
               }
 
-              // Si on a une URL, l'utiliser
+              // ✅ CORRIGÉ : Vérifier que urlValue existe ET n'est pas vide
               if (urlValue !== undefined) {
-                if (typeof urlValue === 'string' && urlValue.length > 0) {
+                if (typeof urlValue === 'string' && urlValue.length > 0 && !urlValue.startsWith('data:')) {
+                  // ✅ URL valide (pas base64)
                   finalServiceData[fieldName] = {
                     type_donnee: options.typeDonnee || 'string',
                     valeur: urlValue,
                     origine_champs: 'formulaire'
                   };
-                  return;
+                  console.log(`[attachMediaField] ✅ Utilisation URL pour ${fieldName}:`, urlValue.substring(0, 100) + '...');
+                  return; // ✅ IMPORTANT : Sortir pour éviter le fallback base64
                 } else if (Array.isArray(urlValue) && urlValue.length > 0) {
-                  const { takeFirst = false } = options;
-                  const valeur = takeFirst ? urlValue[0] : urlValue;
-                  finalServiceData[fieldName] = {
-                    type_donnee: options.typeDonnee || 'array',
-                    valeur,
-                    origine_champs: 'formulaire'
-                  };
-              return;
+                  // ✅ Vérifier que les URLs ne sont pas des base64
+                  const validUrls = urlValue.filter(url => typeof url === 'string' && url.length > 0 && !url.startsWith('data:'));
+                  if (validUrls.length > 0) {
+                    const { takeFirst = false } = options;
+                    const valeur = takeFirst ? validUrls[0] : validUrls;
+                    finalServiceData[fieldName] = {
+                      type_donnee: options.typeDonnee || 'array',
+                      valeur,
+                      origine_champs: 'formulaire'
+                    };
+                    console.log(`[attachMediaField] ✅ Utilisation URLs pour ${fieldName}:`, validUrls.length, 'URL(s)');
+                    return; // ✅ IMPORTANT : Sortir pour éviter le fallback base64
+                  }
                 }
               }
             }
 
-            // Fallback: utiliser les valeurs base64 compressées
+            // ✅ NOUVEAU : Vérifier si values contient déjà des URLs (pas base64)
+            // Cas : Médias déjà uploadés (modification de service existant)
+            if (values) {
+              const valuesArray = Array.isArray(values) ? values : [values];
+              const existingUrls = valuesArray.filter(v => 
+                typeof v === 'string' && 
+                v.length > 0 && 
+                (v.startsWith('http://') || v.startsWith('https://'))
+              );
+              
+              if (existingUrls.length > 0) {
+                // ✅ Utiliser les URLs existantes (déjà uploadées, pas besoin de ré-uploader)
+                const { takeFirst = false } = options;
+                const valeur = takeFirst ? existingUrls[0] : existingUrls;
+                finalServiceData[fieldName] = {
+                  type_donnee: options.typeDonnee || (takeFirst ? 'string' : 'array'),
+                  valeur,
+                  origine_champs: 'formulaire'
+                };
+                console.log(`[attachMediaField] ✅ Utilisation URLs existantes pour ${fieldName}:`, existingUrls.length, 'URL(s)');
+                return; // ✅ Sortir, pas besoin de base64
+              }
+            }
+
+            // ✅ CORRIGÉ : Si pas de valeurs, ignorer le champ (pas de médias)
             if (!values || (Array.isArray(values) && values.length === 0)) {
+              console.log(`[attachMediaField] ℹ️ Pas de valeurs pour ${fieldName}, champ ignoré (aucun média)`);
               return;
             }
 
+            // ⚠️ FALLBACK : Utiliser base64 compressé (seulement si upload a échoué ET médias base64 existent)
+            console.warn(`[attachMediaField] ⚠️ Fallback base64 pour ${fieldName} (upload échoué ou URLs vides)`);
             const cleaned = Array.isArray(values) ? values.filter(Boolean) : (values ? [values] : []);
             if (cleaned.length === 0) {
               return;
@@ -4113,14 +4150,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       console.log('[FormulaireYukpoIntelligentScreen] ℹ️ Aucun média à uploader (déjà URLs ou vide)');
                     }
                   } catch (uploadError: any) {
-                    console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Erreur upload préalable, fallback base64:', uploadError.message);
-                    // Fallback: continuer avec base64 si upload échoue (rétrocompatibilité)
+                    console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur upload préalable:', uploadError);
+                    // ✅ CORRIGÉ : Ne pas fallback automatiquement vers base64
+                    // L'utilisateur sera averti et pourra réessayer
+                    // Le fallback base64 se fera dans attachMediaField si nécessaire
+                    // Mais on log l'erreur pour déboguer
                   }
                 }
 
                 const attachMediaField = (fieldName: string, values: any[] | string | undefined, options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
-                  // Si on a des URLs uploadées, les utiliser en priorité
-                  if (uploadedMediaUrls) {
+                  // ✅ CORRIGÉ : Vérifier que uploadedMediaUrls existe ET contient des données
+                  if (uploadedMediaUrls && Object.keys(uploadedMediaUrls).length > 0) {
                     let urlValue: string | string[] | undefined;
 
                     switch (fieldName) {
@@ -4147,33 +4187,67 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         break;
                     }
 
-                    // Si on a une URL, l'utiliser
+                    // ✅ CORRIGÉ : Vérifier que urlValue existe ET n'est pas vide
                     if (urlValue !== undefined) {
-                      if (typeof urlValue === 'string' && urlValue.length > 0) {
+                      if (typeof urlValue === 'string' && urlValue.length > 0 && !urlValue.startsWith('data:')) {
+                        // ✅ URL valide (pas base64)
                         finalServiceData[fieldName] = {
                           type_donnee: options.typeDonnee || 'string',
                           valeur: urlValue,
                           origine_champs: 'formulaire'
                         };
-                        return;
+                        console.log(`[attachMediaField] ✅ Utilisation URL pour ${fieldName}:`, urlValue.substring(0, 100) + '...');
+                        return; // ✅ IMPORTANT : Sortir pour éviter le fallback base64
                       } else if (Array.isArray(urlValue) && urlValue.length > 0) {
-                        const { takeFirst = false } = options;
-                        const valeur = takeFirst ? urlValue[0] : urlValue;
-                        finalServiceData[fieldName] = {
-                          type_donnee: options.typeDonnee || 'array',
-                          valeur,
-                          origine_champs: 'formulaire'
-                        };
-                    return;
+                        // ✅ Vérifier que les URLs ne sont pas des base64
+                        const validUrls = urlValue.filter(url => typeof url === 'string' && url.length > 0 && !url.startsWith('data:'));
+                        if (validUrls.length > 0) {
+                          const { takeFirst = false } = options;
+                          const valeur = takeFirst ? validUrls[0] : validUrls;
+                          finalServiceData[fieldName] = {
+                            type_donnee: options.typeDonnee || 'array',
+                            valeur,
+                            origine_champs: 'formulaire'
+                          };
+                          console.log(`[attachMediaField] ✅ Utilisation URLs pour ${fieldName}:`, validUrls.length, 'URL(s)');
+                          return; // ✅ IMPORTANT : Sortir pour éviter le fallback base64
+                        }
                       }
                     }
                   }
 
-                  // Fallback: utiliser les valeurs base64 compressées
+                  // ✅ NOUVEAU : Vérifier si values contient déjà des URLs (pas base64)
+                  // Cas : Médias déjà uploadés (modification de service existant)
+                  if (values) {
+                    const valuesArray = Array.isArray(values) ? values : [values];
+                    const existingUrls = valuesArray.filter(v => 
+                      typeof v === 'string' && 
+                      v.length > 0 && 
+                      (v.startsWith('http://') || v.startsWith('https://'))
+                    );
+                    
+                    if (existingUrls.length > 0) {
+                      // ✅ Utiliser les URLs existantes (déjà uploadées, pas besoin de ré-uploader)
+                      const { takeFirst = false } = options;
+                      const valeur = takeFirst ? existingUrls[0] : existingUrls;
+                      finalServiceData[fieldName] = {
+                        type_donnee: options.typeDonnee || (takeFirst ? 'string' : 'array'),
+                        valeur,
+                        origine_champs: 'formulaire'
+                      };
+                      console.log(`[attachMediaField] ✅ Utilisation URLs existantes pour ${fieldName}:`, existingUrls.length, 'URL(s)');
+                      return; // ✅ Sortir, pas besoin de base64
+                    }
+                  }
+
+                  // ✅ CORRIGÉ : Si pas de valeurs, ignorer le champ (pas de médias)
                   if (!values || (Array.isArray(values) && values.length === 0)) {
+                    console.log(`[attachMediaField] ℹ️ Pas de valeurs pour ${fieldName}, champ ignoré (aucun média)`);
                     return;
                   }
 
+                  // ⚠️ FALLBACK : Utiliser base64 compressé (seulement si upload a échoué ET médias base64 existent)
+                  console.warn(`[attachMediaField] ⚠️ Fallback base64 pour ${fieldName} (upload échoué ou URLs vides)`);
                   const cleaned = Array.isArray(values) ? values.filter(Boolean) : (values ? [values] : []);
                   if (cleaned.length === 0) {
                     return;

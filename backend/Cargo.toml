@@ -40,6 +40,10 @@ name = "execute_migrations_direct"
 path = "src/bin/execute_migrations_direct.rs"
 
 [[bin]]
+name = "apply_migrations_20250101"
+path = "src/bin/apply_migrations_20250101.rs"
+
+[[bin]]
 name = "hash_password_helper"
 path = "src/bin/hash_password_helper.rs"
 

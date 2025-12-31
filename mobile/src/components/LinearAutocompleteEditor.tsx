@@ -277,42 +277,54 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         setCustomValue('');
     }, [customKey, customValue, sousCaracteristiques, separateur, addModality]);
 
-    // ✅ NOUVEAU: Callback pour valider le tableau
-    const handleTableValidate = useCallback((rows: SubCharacteristicRow[]) => {
-        // Convertir les lignes du tableau en modalité concaténée
-        const modality = rows.map(row => row.value).join(separateur);
-        
-        // Mettre à jour les modalités sélectionnées
-        const newModalities = [modality];
-        setSelectedModalities(newModalities);
-        
-        // Construire les sous-caractéristiques mises à jour
-        const updatedSousCaracs: Record<string, string[]> = {};
-        rows.forEach(row => {
-            if (!updatedSousCaracs[row.label]) {
-                updatedSousCaracs[row.label] = [];
-            }
-            if (!updatedSousCaracs[row.label].includes(row.value)) {
-                updatedSousCaracs[row.label].push(row.value);
-            }
-        });
-        
-        // Appeler onChange avec les deux paramètres
-        onChange(newModalities, updatedSousCaracs);
-        
-        // Masquer le tableau et afficher les chips
-        setShowTable(false);
-        
-        // Historiser
-        autocompleteHistoryService
-            .historizeField(
+    // ✅ NOUVEAU: Callback pour valider le tableau (maintenant async pour gérer les erreurs)
+    const handleTableValidate = useCallback(async (rows: SubCharacteristicRow[]) => {
+        try {
+            // Convertir les lignes du tableau en modalité concaténée
+            const modality = rows.map(row => row.value).join(separateur);
+            
+            // Mettre à jour les modalités sélectionnées
+            const newModalities = [modality];
+            setSelectedModalities(newModalities);
+            
+            // Construire les sous-caractéristiques mises à jour
+            const updatedSousCaracs: Record<string, string[]> = {};
+            rows.forEach(row => {
+                if (!updatedSousCaracs[row.label]) {
+                    updatedSousCaracs[row.label] = [];
+                }
+                if (!updatedSousCaracs[row.label].includes(row.value)) {
+                    updatedSousCaracs[row.label].push(row.value);
+                }
+            });
+            
+            // ✅ CRITIQUE : Appeler onChange AVANT la sauvegarde DB pour mettre à jour le formulaire
+            // Cela garantit que les modifications sont dans le formulaire même si la sauvegarde DB échoue
+            onChange(newModalities, updatedSousCaracs);
+            
+            // Masquer le tableau et afficher les chips
+            setShowTable(false);
+            
+            // ✅ NOUVEAU : Sauvegarder dans la DB avec gestion d'erreur
+            console.log('[LinearAutocompleteEditor] 💾 Sauvegarde sous-caractéristiques dans DB...');
+            const savedIds = await autocompleteHistoryService.historizeField(
                 identifiantBase,
                 newModalities,
                 separateur,
                 updatedSousCaracs,
                 'utilisateur'
-            )
-            .catch(console.error);
+            );
+            
+            if (savedIds.length > 0) {
+                console.log('[LinearAutocompleteEditor] ✅ Sous-caractéristiques sauvegardées dans DB:', savedIds.length, 'caractéristique(s)');
+            } else {
+                console.warn('[LinearAutocompleteEditor] ⚠️ Aucune caractéristique sauvegardée (peut être normal si déjà existante)');
+            }
+        } catch (error) {
+            console.error('[LinearAutocompleteEditor] ❌ Erreur sauvegarde sous-caractéristiques:', error);
+            // ✅ Les modifications sont déjà dans le formulaire via onChange, donc on continue
+            // La sauvegarde DB sera réessayée lors de la sauvegarde du produit/service
+        }
     }, [separateur, onChange, identifiantBase]);
 
     // Générer un texte d'aide dynamique
@@ -364,6 +376,30 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         separateur={separateur}
                         onValidate={handleTableValidate}
                         initialRows={tableRows.length > 0 ? tableRows : undefined}
+                        onRowsChange={(rows) => {
+                            // ✅ NOUVEAU : Sauvegarder automatiquement les modifications dans le formulaire (sans DB)
+                            // Cela garantit que les modifications sont sauvegardées même si l'utilisateur ne clique pas "validé"
+                            const validRows = rows.filter(row => 
+                                row.label.trim().length > 0 && row.value.trim().length > 0
+                            );
+                            
+                            if (validRows.length > 0) {
+                                const modality = validRows.map(row => row.value).join(separateur);
+                                const updatedSousCaracs: Record<string, string[]> = {};
+                                validRows.forEach(row => {
+                                    if (!updatedSousCaracs[row.label]) {
+                                        updatedSousCaracs[row.label] = [];
+                                    }
+                                    if (!updatedSousCaracs[row.label].includes(row.value)) {
+                                        updatedSousCaracs[row.label].push(row.value);
+                                    }
+                                });
+                                
+                                // ✅ Sauvegarder dans le formulaire (sans sauvegarde DB immédiate)
+                                onChange([modality], updatedSousCaracs);
+                                console.log('[LinearAutocompleteEditor] 💾 Modifications sauvegardées automatiquement dans le formulaire');
+                            }
+                        }}
                     />
                 </>
             )}

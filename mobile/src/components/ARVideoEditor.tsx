@@ -28,12 +28,14 @@ interface ARVideoEditorProps {
     productName?: string;
     serviceId?: number;
     productIndex?: number;
+    isUploading?: boolean; // ✅ NOUVEAU: État d'upload pour désactiver le bouton
 }
 
 export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
     onVideoCaptured,
     onClose,
     productName = 'Produit',
+    isUploading = false, // ✅ NOUVEAU: État d'upload
 }) => {
     const [isCapturing, setIsCapturing] = useState(false);
     const [capturedVideoUri, setCapturedVideoUri] = useState<string | null>(null);
@@ -100,15 +102,24 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
 
     // Utiliser la vidéo capturée
     const handleUseVideo = useCallback(() => {
+        if (isUploading) {
+            console.log('[ARVideoEditor] Upload en cours, ignore le clic');
+            return;
+        }
+        
         if (capturedVideoUri && onVideoCaptured) {
+            console.log('[ARVideoEditor] ✅ Appel onVideoCaptured avec:', capturedVideoUri.substring(0, 50) + '...');
             onVideoCaptured(capturedVideoUri);
         } else if (capturedVideoUri) {
             // Si pas de callback, fermer le modal
+            console.log('[ARVideoEditor] Pas de callback, fermeture du modal');
             if (onClose) {
                 onClose();
             }
+        } else {
+            console.warn('[ARVideoEditor] ⚠️ Aucune vidéo capturée');
         }
-    }, [capturedVideoUri, onVideoCaptured, onClose]);
+    }, [capturedVideoUri, onVideoCaptured, onClose, isUploading]);
 
     // Reprendre la capture
     const handleRetake = useCallback(() => {
@@ -126,6 +137,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
 
     // Si une vidéo a été capturée, afficher l'aperçu avec les boutons
     if (capturedVideoUri) {
+        console.log('[ARVideoEditor] Aperçu vidéo affiché, callback disponible:', !!onVideoCaptured);
         return (
             <View style={styles.container}>
                 <View style={styles.content}>
@@ -140,13 +152,14 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                         <TouchableOpacity
                             style={styles.closeButton}
                             onPress={onClose}
+                            disabled={isUploading}
                         >
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
                     </View>
 
                     {/* Aperçu vidéo */}
-                    <View style={styles.previewContainer}>
+                    <View style={styles.previewContainer} pointerEvents="box-none">
                         <Video
                             source={{ uri: capturedVideoUri }}
                             style={styles.videoPreview}
@@ -154,6 +167,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                             shouldPlay={true}
                             isLooping={true}
                             useNativeControls={true}
+                            pointerEvents="box-none"
                         />
                     </View>
 
@@ -164,16 +178,24 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                             variant="outline"
                             size="large"
                             onPress={handleRetake}
+                            disabled={isUploading}
                             style={styles.actionButton}
                         />
                         <NativeButton
-                            title="✅ Utiliser cette vidéo"
+                            title={isUploading ? "⏳ Upload en cours..." : "✅ Utiliser cette vidéo"}
                             variant="primary"
                             size="large"
                             onPress={handleUseVideo}
+                            disabled={isUploading || !capturedVideoUri}
                             style={styles.actionButton}
                         />
                     </View>
+                    {isUploading && (
+                        <View style={styles.uploadingContainer}>
+                            <ActivityIndicator size="small" color={modernColors.primary} />
+                            <Text style={styles.uploadingText}>Upload de la vidéo en cours...</Text>
+                        </View>
+                    )}
                 </View>
             </View>
         );
@@ -355,6 +377,17 @@ const styles = StyleSheet.create({
     },
     actionButton: {
         flex: 1,
+    },
+    uploadingContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 16,
+        gap: 8,
+    },
+    uploadingText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
     },
 });
 

@@ -947,17 +947,17 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     vehicleGridItem: {
-        width: '31%', // 3 colonnes avec espacement (31% × 3 = 93%, reste 7% pour les gaps)
+        width: '23%', // ✅ CORRIGÉ: 4 colonnes avec espacement (23% × 4 = 92%, reste 8% pour les gaps)
         aspectRatio: 1,
         borderRadius: 12,
         borderWidth: 2,
         borderColor: modernColors.border,
         backgroundColor: modernColors.surface,
-        padding: 12,
+        padding: 8, // ✅ RÉDUIT: De 12 à 8 pour accommoder 4 colonnes
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
-        minHeight: 100,
+        minHeight: 80, // ✅ RÉDUIT: De 100 à 80 pour accommoder 4 colonnes
         marginBottom: 12,
     },
     vehicleGridItemSelected: {
@@ -965,21 +965,21 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.primary,
     },
     vehicleGridIcon: {
-        fontSize: 32,
-        marginBottom: 8,
+        fontSize: 24, // ✅ RÉDUIT: De 32 à 24 pour que les 4 icônes soient tous visibles à l'écran
+        marginBottom: 6, // ✅ RÉDUIT: De 8 à 6 pour optimiser l'espace
     },
     vehicleGridLabel: {
-        fontSize: 13,
+        fontSize: 11, // ✅ RÉDUIT: De 13 à 11 pour accommoder 4 colonnes
         fontWeight: '600',
         color: modernColors.text,
         textAlign: 'center',
-        marginBottom: 4,
+        marginBottom: 2, // ✅ RÉDUIT: De 4 à 2 pour optimiser l'espace
     },
     vehicleGridLabelSelected: {
         color: modernColors.surface,
     },
     vehicleGridHint: {
-        fontSize: 10,
+        fontSize: 9, // ✅ RÉDUIT: De 10 à 9 pour accommoder 4 colonnes
         color: modernColors.textSecondary,
         textAlign: 'center',
         fontStyle: 'italic',

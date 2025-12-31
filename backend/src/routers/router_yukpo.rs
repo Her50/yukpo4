@@ -113,7 +113,10 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
             .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)))
         // Routes de cr?ation de service (gestion des tokens dans le contrôleur)
         .route("/api/services/draft", post(handle_brouillon_service))
-        .route("/api/services/create", post(handle_creer_service))
+        .route("/api/services/create", 
+            post(handle_creer_service)
+                .layer(axum::extract::DefaultBodyLimit::max(200_000_000)) // ✅ 200 MB - pour supporter médias base64 volumineux
+        )
         // Route pour r?cup?rer tous les services du prestataire connect?
         .route("/api/prestataire/services", get(get_services_for_prestataire))
         // Route pour activer/d?sactiver un service
@@ -207,11 +210,66 @@ async fn handle_direct_search(
         user.id, input.gps_mobile));
     
     // Extraire le texte de l'input
-    let user_text = input.texte.clone().unwrap_or_default();
+    let mut user_text = input.texte.clone().unwrap_or_default();
     let has_text = !user_text.trim().is_empty();
     let has_images = input.base64_image.as_ref().map(|imgs| !imgs.is_empty()).unwrap_or(false);
+    let has_audio = input.audio_base64.as_ref().map(|audios| !audios.is_empty()).unwrap_or(false);
     
-    log_info(&format!("[DIRECT_SEARCH] Contenu: texte={}, images={}", has_text, has_images));
+    log_info(&format!("[DIRECT_SEARCH] Contenu: texte={}, images={}, audio={}", has_text, has_images, has_audio));
+    
+    // ✅ NOUVEAU 2025-01-01: Si audio présent, transcrire et utiliser pour la recherche
+    if has_audio {
+        use crate::services::audio_transcription_service::AudioTranscriptionService;
+        use crate::utils::log::log_error;
+        
+        log_info("[DIRECT_SEARCH] 🎤 Audio détecté - Transcription activée");
+        
+        let audios = input.audio_base64.as_ref().unwrap();
+        let first_audio = &audios[0];
+        
+        // Transcrire l'audio avec cache
+        match AudioTranscriptionService::transcribe_audio_base64_with_cache(
+            &_state.pg,
+            first_audio
+        ).await {
+            Ok(transcription) => {
+                let transcribed_text = transcription.text.trim();
+                log_info(&format!(
+                    "[DIRECT_SEARCH] ✅ Audio transcrit: '{}' (langue: {:?}, confiance: {:?})",
+                    &transcribed_text.chars().take(100).collect::<String>(),
+                    transcription.language,
+                    transcription.confidence
+                ));
+                
+                // ✅ Utiliser le texte transcrit pour la recherche (combiner avec texte existant si présent)
+                if !transcribed_text.is_empty() && transcribed_text != "[Audio non transcrit - API non configurée]" {
+                    if has_text {
+                        // Combiner texte existant + transcription
+                        user_text = format!("{} {}", user_text, transcribed_text);
+                        log_info("[DIRECT_SEARCH] Texte combiné (texte original + transcription audio)");
+                    } else {
+                        // Utiliser uniquement la transcription
+                        user_text = transcribed_text.to_string();
+                        log_info("[DIRECT_SEARCH] Utilisation de la transcription audio comme texte de recherche");
+                    }
+                } else {
+                    log_error("[DIRECT_SEARCH] ⚠️ Transcription audio vide ou échouée, utilisation du texte original uniquement");
+                }
+            },
+            Err(e) => {
+                log_error(&format!("[DIRECT_SEARCH] ❌ Erreur transcription audio: {:?}", e));
+                // Continuer avec le texte original si disponible
+                if !has_text {
+                    let response = serde_json::json!({
+                        "status": "error",
+                        "message": format!("Erreur transcription audio: {}", e),
+                        "error": "audio_transcription_failed"
+                    });
+                    return Ok(Json(response));
+                }
+            }
+        }
+    }
     
     // ✅ NOUVELLE LOGIQUE: Si image présente (avec ou sans texte), utiliser analyse IA
     if has_images {

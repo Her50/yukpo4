@@ -218,8 +218,24 @@ export const studioService = {
         });
 
         if (!response.success) {
-            const errorMsg = response.error || 'Erreur lors de la génération de la prévisualisation';
-            console.error('[studioService] Preview error details:', response);
+            // ✅ CORRIGÉ: Extraire le message d'erreur du backend si disponible
+            const errorData = (response as any).data;
+            const backendError = errorData?.error || errorData?.message || response.error;
+            const errorMsg = backendError || 'Erreur lors de la génération de la prévisualisation';
+            
+            console.error('[studioService] Preview error details:', {
+                success: response.success,
+                error: response.error,
+                status: (response as any).status,
+                data: errorData,
+                backendError,
+            });
+            
+            // ✅ CORRIGÉ: Inclure le status dans le message si c'est une erreur 400
+            if ((response as any).status === 400) {
+                throw new Error(`Erreur 400: ${errorMsg}`);
+            }
+            
             throw new Error(errorMsg);
         }
 

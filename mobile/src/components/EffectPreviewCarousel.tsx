@@ -47,11 +47,20 @@ export const EffectPreviewCarousel: React.FC<EffectPreviewCarouselProps> = ({
 
                         setPreviews(prev => new Map(prev).set(effectName, preview));
                     } catch (error: any) {
+                        const errorStatus = error?.status || error?.response?.status;
+                        const errorMessage = error?.message || error?.response?.data?.error || 'Erreur inconnue';
+                        
                         console.error(`[EffectPreviewCarousel] Erreur preview ${effectName}:`, {
-                            message: error?.message,
+                            message: errorMessage,
+                            status: errorStatus,
                             response: error?.response?.data,
-                            status: error?.response?.status,
                         });
+                        
+                        // ✅ NOUVEAU: Logger spécifiquement les erreurs 413 pour diagnostic
+                        if (errorStatus === 413) {
+                            console.error(`[EffectPreviewCarousel] ❌ Erreur 413 (Payload Too Large) pour ${effectName}. Le fichier média est peut-être trop volumineux.`);
+                        }
+                        
                         // Ne pas bloquer l'interface, juste logger l'erreur
                     } finally {
                         setLoading(prev => {
@@ -132,6 +141,9 @@ export const EffectPreviewCarousel: React.FC<EffectPreviewCarouselProps> = ({
                                 <View style={styles.errorContainer}>
                                     <SafeIcon name="alert-circle" size={24} color={modernColors.error} />
                                     <Text style={styles.errorText}>Erreur</Text>
+                                    <Text style={styles.errorHint}>
+                                        Réessayez plus tard
+                                    </Text>
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -234,6 +246,12 @@ const styles = StyleSheet.create({
     errorText: {
         fontSize: 11,
         color: modernColors.error,
+        fontWeight: '600',
+    },
+    errorHint: {
+        fontSize: 9,
+        color: modernColors.textSecondary,
+        marginTop: 2,
     },
 });
 
