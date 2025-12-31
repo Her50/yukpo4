@@ -1,6 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 use std::time::Duration;
+use log;
 
 #[derive(Debug, Clone)]
 pub struct VideoRendererConfig {
@@ -12,6 +13,7 @@ pub struct VideoRendererConfig {
     pub chromium_executable: Option<String>,
     pub browser_download_dir: Option<PathBuf>,
     pub rpc_endpoint: Option<String>,
+    pub rpc_token: Option<String>,
     pub timeout: Duration,
     pub max_retries: u32,
     pub shared_volume_root: Option<PathBuf>,
@@ -21,11 +23,31 @@ pub struct VideoRendererConfig {
 
 impl VideoRendererConfig {
     pub fn from_env() -> Option<Self> {
+        // ✅ CORRIGÉ: Accepter aussi la variable mal orthographiée pour compatibilité
         let project_root = env::var("VIDEO_RENDERER_PROJECT_ROOT")
+            .or_else(|_| env::var("VIDEO_RENDER_PROJET_ROOT")) // Compatibilité avec faute de frappe
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from("video-renderer"));
 
-        if !project_root.exists() {
+        // ✅ AMÉLIORÉ: Vérifier si on a un RPC endpoint - si oui, PROJECT_ROOT n'est pas obligatoire
+        let rpc_endpoint = env::var("VIDEO_RENDERER_RPC_URL")
+            .ok()
+            .map(|s| s.trim().to_string()) // ✅ CORRIGÉ: Supprimer les espaces
+            .filter(|value| !value.is_empty());
+        
+        // ✅ NOUVEAU: Récupérer le token RPC si configuré
+        let rpc_token = env::var("VIDEO_RENDERER_RPC_TOKEN")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|value| !value.is_empty());
+
+        // Si on a un RPC endpoint, on n'a pas besoin que PROJECT_ROOT existe
+        // Sinon, on vérifie que PROJECT_ROOT existe
+        if rpc_endpoint.is_none() && !project_root.exists() {
+            log::warn!(
+                "[VideoRendererConfig] PROJECT_ROOT n'existe pas ({:?}) et aucun RPC_URL configuré",
+                project_root
+            );
             return None;
         }
 
@@ -58,9 +80,7 @@ impl VideoRendererConfig {
             .ok()
             .map(PathBuf::from);
 
-        let rpc_endpoint = env::var("VIDEO_RENDERER_RPC_URL")
-            .ok()
-            .filter(|value| !value.trim().is_empty());
+        // ✅ DÉJÀ CORRIGÉ: rpc_endpoint est défini plus haut avec trim
 
         let timeout = env::var("VIDEO_RENDERER_TIMEOUT_SECS")
             .ok()
@@ -93,6 +113,7 @@ impl VideoRendererConfig {
             chromium_executable,
             browser_download_dir,
             rpc_endpoint,
+            rpc_token,
             timeout,
             max_retries,
             shared_volume_root,

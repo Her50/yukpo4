@@ -49,6 +49,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
     const scrollViewRef = useRef<ScrollView>(null);
     const labelInputRef = useRef<TextInput>(null);
     const scaleAnim = useRef(new Animated.Value(1)).current;
+    const borderAnim = useRef(new Animated.Value(0)).current; // ✅ NOUVEAU: Animation pour la bordure verte
 
     // Initialiser le tableau avec les sous-caractéristiques préférées de l'IA
     useEffect(() => {
@@ -231,14 +232,26 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 await result;
             }
 
-            // ✅ FEEDBACK VISUEL: Afficher le succès
+            // ✅ FEEDBACK VISUEL: Afficher le succès avec animation
             setIsValidated(true);
             console.log('[SubCharacteristicsTable] ✅ Sous-caractéristiques validées et sauvegardées');
 
-            // Réinitialiser l'état de succès après 3 secondes (augmenté pour meilleure visibilité)
-            setTimeout(() => {
+            // ✅ NOUVEAU: Animation de la bordure verte pour feedback visuel clair
+            Animated.sequence([
+                Animated.timing(borderAnim, {
+                    toValue: 1,
+                    duration: 300,
+                    useNativeDriver: false,
+                }),
+                Animated.delay(2500), // Maintenir la bordure verte pendant 2.5s
+                Animated.timing(borderAnim, {
+                    toValue: 0,
+                    duration: 300,
+                    useNativeDriver: false,
+                }),
+            ]).start(() => {
                 setIsValidated(false);
-            }, 3000);
+            });
         } catch (error) {
             console.error('[SubCharacteristicsTable] ❌ Erreur validation:', error);
             // ✅ Afficher un message d'erreur (sera géré par le parent si nécessaire)
@@ -247,8 +260,14 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
         }
     };
 
+    // ✅ NOUVEAU: Couleur de bordure animée pour feedback visuel
+    const borderColor = borderAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [modernColors.border, '#10B981'], // Gris -> Vert
+    });
+
     return (
-        <View style={styles.container}>
+        <Animated.View style={[styles.container, { borderColor }]}>
             {/* En-tête du tableau */}
             <View style={styles.header}>
                 <Text style={styles.headerLabel}>Label</Text>
@@ -374,8 +393,8 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                             </>
                         ) : isValidated ? (
                             <>
-                                <SafeIcon name="check-circle" size={18} color="#FFFFFF" />
-                                <Text style={styles.validateButtonText}>Sauvegardé !</Text>
+                                <SafeIcon name="check-circle" size={20} color="#FFFFFF" />
+                                <Text style={[styles.validateButtonText, styles.validateButtonTextSuccess]}>✓ Sauvegardé !</Text>
                             </>
                         ) : (
                             <>
@@ -386,7 +405,15 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                     </TouchableOpacity>
                 </Animated.View>
             </View>
-        </View>
+            
+            {/* ✅ NOUVEAU: Badge de validation réussie (affiché de manière persistante) */}
+            {isValidated && (
+                <View style={styles.successBadge}>
+                    <SafeIcon name="check-circle" size={16} color="#10B981" />
+                    <Text style={styles.successBadgeText}>Validation réussie</Text>
+                </View>
+            )}
+        </Animated.View>
     );
 };
 
@@ -394,7 +421,7 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
-        borderWidth: 1,
+        borderWidth: 2, // ✅ AUGMENTÉ: Bordure plus épaisse pour meilleure visibilité
         borderColor: modernColors.border,
         overflow: 'hidden',
         marginVertical: 8,
@@ -519,6 +546,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 8,
         gap: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     validateButtonDisabled: {
         backgroundColor: '#9CA3AF',
@@ -526,11 +558,19 @@ const styles = StyleSheet.create({
     },
     validateButtonSuccess: {
         backgroundColor: '#10B981', // Vert plus foncé pour le succès
+        shadowColor: '#10B981',
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 5,
     },
     validateButtonText: {
         fontSize: 14,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    validateButtonTextSuccess: {
+        fontSize: 15, // ✅ Légèrement plus grand pour le succès
+        fontWeight: '700', // ✅ Plus gras pour le succès
     },
     emptyState: {
         alignItems: 'center',
@@ -547,6 +587,23 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.textSecondary,
         textAlign: 'center',
+    },
+    // ✅ NOUVEAU: Badge de validation réussie
+    successBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#D1FAE5', // Vert très clair
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#10B981',
+        gap: 6,
+    },
+    successBadgeText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#065F46', // Vert foncé pour contraste
     },
 });
 

@@ -19,8 +19,24 @@ interface UseServiceStatsReturn {
     error: string | null;
 }
 
-// Hook pour récupérer les statistiques réelles depuis l'API
-export const useServiceStats = (serviceId: number, createdAt: string): UseServiceStatsReturn => {
+/**
+ * Hook pour récupérer les statistiques d'un ou plusieurs services
+ * Utilise automatiquement l'endpoint batch si plusieurs serviceIds sont fournis
+ * 
+ * @param serviceId - ID du service OU liste d'IDs de services
+ * @param createdAt - Date de création du service OU Map des dates par serviceId
+ */
+export const useServiceStats = (
+    serviceId: number | number[],
+    createdAt: string | Map<number, string>
+): UseServiceStatsReturn => {
+    // ✅ NOUVEAU 2025-01-01: Détecter si on a une liste de services
+    const isBatch = Array.isArray(serviceId);
+    const serviceIds = isBatch ? serviceId : [serviceId];
+    const singleServiceId = isBatch ? serviceIds[0] : serviceId;
+    const singleCreatedAt = isBatch 
+        ? (createdAt instanceof Map ? createdAt.get(singleServiceId) : undefined) || ''
+        : (typeof createdAt === 'string' ? createdAt : '');
     const [stats, setStats] = useState<ServiceStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -29,12 +45,15 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
 
     useEffect(() => {
         // ✅ CORRIGÉ 2025-12-30: Ne pas re-fetch si les mêmes données sont déjà chargées
-        if (!serviceId || !createdAt) {
+        if (!singleServiceId || !singleCreatedAt) {
             return;
         }
 
         // Vérifier si on a déjà chargé ces données exactes
-        if (lastLoadedRef.current?.serviceId === serviceId && lastLoadedRef.current?.createdAt === createdAt && stats !== null) {
+        if (lastLoadedRef.current?.serviceId === singleServiceId && 
+            lastLoadedRef.current?.createdAt === singleCreatedAt && 
+            stats !== null && 
+            !isBatch) {
             return;
         }
 
@@ -46,8 +65,30 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
             try {
                 setLoading(true);
 
-                // ✅ CORRIGÉ: Utilise apiGet au lieu de fetch hardcodé
-                const response = await apiGet(API_ENDPOINTS.SERVICES.STATS(serviceId));
+                let response;
+                
+                // ✅ NOUVEAU 2025-01-01: Utiliser l'endpoint batch si plusieurs services
+                if (isBatch && serviceIds.length > 1) {
+                    const serviceIdsStr = serviceIds.join(',');
+                    const batchResponse = await apiGet(API_ENDPOINTS.SERVICES.BATCH_STATS, {
+                        service_ids: serviceIdsStr,
+                    });
+                    
+                    // Extraire les stats du premier service (compatibilité avec l'API actuelle)
+                    if (batchResponse.success && batchResponse.data) {
+                        const batchData = batchResponse.data as Record<string, any>;
+                        const firstServiceStats = batchData[singleServiceId] || {};
+                        response = {
+                            success: true,
+                            data: firstServiceStats,
+                        };
+                    } else {
+                        response = batchResponse;
+                    }
+                } else {
+                    // ✅ CORRIGÉ: Utilise apiGet au lieu de fetch hardcodé
+                    response = await apiGet(API_ENDPOINTS.SERVICES.STATS(singleServiceId));
+                }
 
                 if (cancelled) return;
 
@@ -56,7 +97,7 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
                     console.log(`📊 [useServiceStats] Statistiques réelles récupérées pour service ${serviceId}:`, data);
 
                     // Calculer l'âge du service
-                    const createdDate = new Date(createdAt);
+                    const createdDate = new Date(singleCreatedAt);
                     const now = new Date();
                     const diffTime = Math.abs(now.getTime() - createdDate.getTime());
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -72,14 +113,14 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
                             totalRatings: data.total_ratings || 0,
                             createdDaysAgo: diffDays
                         });
-                        lastLoadedRef.current = { serviceId, createdAt };
+                        lastLoadedRef.current = { serviceId: singleServiceId, createdAt: singleCreatedAt };
                     }
                 } else {
                     // Si l'API n'existe pas encore, utiliser des données basées sur l'activité réelle
-                    console.log(`📊 [useServiceStats] API stats non disponible, génération basée sur l'activité pour service ${serviceId}`);
+                    console.log(`📊 [useServiceStats] API stats non disponible, génération basée sur l'activité pour service ${singleServiceId}`);
 
                     // ✅ CORRIGÉ: Récupérer les données d'interaction avec apiGet
-                    const interactionsResponse = await apiGet(API_ENDPOINTS.SERVICES.INTERACTIONS(serviceId));
+                    const interactionsResponse = await apiGet(API_ENDPOINTS.SERVICES.INTERACTIONS(singleServiceId));
 
                     if (cancelled) return;
 
@@ -93,7 +134,7 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
                     }
 
                     // Calculer l'âge du service
-                    const createdDate = new Date(createdAt);
+                    const createdDate = new Date(singleCreatedAt);
                     const now = new Date();
                     const diffTime = Math.abs(now.getTime() - createdDate.getTime());
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -109,7 +150,7 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
                             totalRatings: Math.floor(realContacts * 0.3), // 30% des contacts laissent un avis
                             createdDaysAgo: diffDays
                         });
-                        lastLoadedRef.current = { serviceId, createdAt };
+                        lastLoadedRef.current = { serviceId: singleServiceId, createdAt: singleCreatedAt };
                     }
                 }
             } catch (error) {
@@ -118,7 +159,7 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
                 setError('Impossible de charger les statistiques');
 
                 // Fallback avec des données minimales
-                const createdDate = new Date(createdAt);
+                const createdDate = new Date(singleCreatedAt);
                 const now = new Date();
                 const diffTime = Math.abs(now.getTime() - createdDate.getTime());
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -134,7 +175,7 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
                         totalRatings: 0,
                         createdDaysAgo: diffDays
                     });
-                    lastLoadedRef.current = { serviceId, createdAt };
+                    lastLoadedRef.current = { serviceId: singleServiceId, createdAt: singleCreatedAt };
                 }
             } finally {
                 if (!cancelled) {
@@ -148,7 +189,7 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
         return () => {
             cancelled = true;
         };
-    }, [serviceId, createdAt]); // ✅ createdAt doit être stable - ne pas passer new Date().toISOString()
+    }, [singleServiceId, singleCreatedAt, isBatch, serviceIds.join(',')]); // ✅ Dépendre de singleServiceId et de la liste pour batch
 
     return { stats, loading, error };
 };

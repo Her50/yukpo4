@@ -340,7 +340,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
           Ajoutez des photos de votre produit ou service
         </Text>
 
-        {/* Grille d'images */}
+        {/* ✅ AMÉLIORÉ: Grille d'images avec défilement horizontal amélioré */}
         {images.length > 0 && (
           <ScrollView
             horizontal
@@ -349,10 +349,14 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
             contentContainerStyle={styles.mediaScrollContent}
             nestedScrollEnabled={true}
             scrollEnabled={true}
+            alwaysBounceHorizontal={false}
             bounces={false}
-            decelerationRate="fast"
+            decelerationRate="normal"
             snapToInterval={132}
             snapToAlignment="start"
+            pagingEnabled={false}
+            directionalLockEnabled={true} // ✅ NOUVEAU: Verrouiller la direction pour éviter les conflits avec scroll vertical
+            scrollEventThrottle={16}
             onScrollBeginDrag={() => onHorizontalScrollStart?.()}
             onMomentumScrollBegin={() => onHorizontalScrollStart?.()}
             onTouchStart={() => onHorizontalScrollStart?.()}
@@ -514,15 +518,25 @@ const styles = StyleSheet.create({
     marginHorizontal: -16,
     paddingHorizontal: 16,
     maxHeight: 140,
+    // ✅ AMÉLIORÉ: S'assurer que le scroll horizontal fonctionne
+    flexGrow: 0,
+    flexShrink: 1,
   },
   mediaScrollContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingRight: 16,
+    // ✅ NOUVEAU: S'assurer que le contenu peut dépasser la largeur de l'écran
+    minWidth: '100%',
+    flexGrow: 0,
   },
   imageContainer: {
     position: 'relative',
     marginRight: 12,
+    // ✅ AMÉLIORÉ: S'assurer que chaque image prend l'espace nécessaire
+    width: 120,
+    height: 120,
+    flexShrink: 0, // ✅ CRITIQUE: Empêcher la compression des images
   },
   imagePreview: {
     position: 'relative',
@@ -532,6 +546,8 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 8,
     backgroundColor: '#F3F4F6',
+    // ✅ AMÉLIORÉ: S'assurer que l'image ne se compresse pas
+    resizeMode: 'cover',
   },
   mainBadge: {
     position: 'absolute',

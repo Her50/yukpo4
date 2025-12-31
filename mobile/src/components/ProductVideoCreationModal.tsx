@@ -2315,10 +2315,19 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             // ✅ CORRIGÉ: Message d'erreur plus informatif selon le type d'erreur
             let errorMessage = error?.message || 'Impossible de générer la prévisualisation.';
             
-            if (errorMessage.includes('temporairement indisponible') || errorMessage.includes('indisponible')) {
+            // ✅ AMÉLIORÉ: Détecter les erreurs de configuration du renderer
+            if (errorMessage.includes('n\'est pas configuré') || 
+                errorMessage.includes('VIDEO_RENDERER') ||
+                errorMessage.includes('Configuration manquante')) {
+                errorMessage = 'Le service de prévisualisation vidéo n\'est pas configuré sur le serveur.\n\n' +
+                    'Contactez l\'administrateur pour activer le service de rendu vidéo.\n\n' +
+                    'En attendant, vous pouvez utiliser le "Preview Rapide" ci-dessus pour avoir un aperçu de votre vidéo.';
+            } else if (errorMessage.includes('temporairement indisponible') || 
+                       errorMessage.includes('indisponible')) {
                 errorMessage = 'Le service de prévisualisation vidéo est temporairement indisponible.\n\n' +
                     'Vous pouvez utiliser le "Preview Rapide" ci-dessus pour avoir un aperçu de votre vidéo.';
-            } else if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
+            } else if (errorMessage.includes('400') || errorMessage.includes('Bad Request') || 
+                       errorMessage.includes('Erreur de configuration')) {
                 // ✅ CORRIGÉ: Message plus détaillé pour l'erreur 400
                 // Vérifier si le message d'erreur contient des détails du backend
                 const backendError = (error as any)?.response?.data?.error || 
@@ -2333,6 +2342,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         '• Générez d\'abord un storyboard (étape 1)\n' +
                         '• Ajoutez des médias à votre timeline\n' +
                         '• Utilisez le "Preview Rapide" ci-dessus pour avoir un aperçu';
+                } else if (backendError.includes('Erreur temporaire') || 
+                           backendError.includes('réessayer')) {
+                    errorMessage = 'Erreur temporaire lors de la génération de la prévisualisation.\n\n' +
+                        'Veuillez réessayer dans quelques instants.\n\n' +
+                        'Si le problème persiste, utilisez le "Preview Rapide" ci-dessus.';
                 } else {
                     errorMessage = 'Erreur lors de la génération de la prévisualisation.\n\n' +
                         (backendError !== errorMessage ? backendError + '\n\n' : '') +

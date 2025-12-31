@@ -172,6 +172,9 @@ impl RemotionRendererService {
 
         if self.config.enable_gpu {
             command.env("REMOTION_ENABLE_GPU", "true");
+            log::info!("[RemotionRenderer] ✅ GPU activé pour le rendu vidéo (Remotion basculera automatiquement sur CPU si GPU indisponible)");
+        } else {
+            log::debug!("[RemotionRenderer] GPU désactivé (VIDEO_RENDERER_ENABLE_GPU=false ou non configuré)");
         }
 
         let output = command.output().await.map_err(|err| {
@@ -181,6 +184,19 @@ impl RemotionRendererService {
         if !output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
+            
+            // ✅ AMÉLIORÉ: Détecter les erreurs GPU et suggérer un fallback
+            let is_gpu_error = stderr.contains("GPU") || stderr.contains("gpu") || 
+                              stderr.contains("CUDA") || stderr.contains("cuda") ||
+                              stderr.contains("NVIDIA") || stderr.contains("nvidia");
+            
+            if is_gpu_error && self.config.enable_gpu {
+                warn!(
+                    "[RemotionRenderer] ⚠️ Erreur GPU détectée pour job={}. Remotion devrait basculer automatiquement sur CPU.",
+                    job_id
+                );
+            }
+            
             error!(
                 "[RemotionRenderer] Échec rendu Remotion job={}: status={:?}\nstdout={}\nstderr={}",
                 job_id,

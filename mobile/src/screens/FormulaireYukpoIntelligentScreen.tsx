@@ -11,6 +11,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -2390,34 +2391,66 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
       case 'textarea':
         const isProductDescField = field.name === 'description_produit';
-        const linesMinimum = isProductDescField ? 6 : 3;
+        // ✅ AMÉLIORÉ: Augmenter les lignes minimum pour description_produit (8 lignes au lieu de 6)
+        const linesMinimum = isProductDescField ? 8 : 3;
         return (
           <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
               {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
-            <NativeInput
-              placeholder={field.placeholder}
-              value={valeursFormulaire[field.name] || ''}
-              onChangeText={(text) => handleFieldChange(field.name, text)}
-              multiline
-              minLines={linesMinimum}
-              inputStyle={isProductDescField ? styles.productDescriptionText : undefined}
-              onContentSizeChange={(width, height) => {
-                const lineHeight = 24;
-                const computedLines = Math.max(linesMinimum, Math.ceil(height / lineHeight));
-                setDynamicTextareaHeights(prev => ({
-                  ...prev,
-                  [field.name]: computedLines * lineHeight + 32
-                }));
-              }}
-              style={[
-                styles.fieldInput,
-                styles.textareaInput,
-                isProductDescField && styles.productDescriptionInput,
-                dynamicTextareaHeights[field.name] ? { minHeight: dynamicTextareaHeights[field.name] } : null
-              ]}
-            />
+            {/* ✅ AMÉLIORÉ: Utiliser TextInput natif directement pour description_produit pour meilleur contrôle */}
+            {isProductDescField ? (
+              <TextInput
+                placeholder={field.placeholder || "Décrivez votre produit/prestation en détail...\n\nVous pouvez utiliser plusieurs lignes pour une description complète."}
+                placeholderTextColor={modernColors.textSecondary}
+                value={valeursFormulaire[field.name] || ''}
+                onChangeText={(text) => handleFieldChange(field.name, text)}
+                multiline
+                numberOfLines={linesMinimum}
+                textAlignVertical="top"
+                scrollEnabled={true} // ✅ NOUVEAU: Permettre le défilement pour voir tout le contenu
+                blurOnSubmit={false} // ✅ NOUVEAU: Ne pas fermer le clavier après retour à la ligne
+                returnKeyType="default" // ✅ NOUVEAU: Type de retour par défaut pour multiline
+                style={[
+                  styles.fieldInput,
+                  styles.textareaInput,
+                  styles.productDescriptionInput,
+                  styles.productDescriptionInputEnhanced
+                ]}
+                onContentSizeChange={(event) => {
+                  const { height } = event.nativeEvent.contentSize;
+                  const lineHeight = 24;
+                  const computedLines = Math.max(linesMinimum, Math.ceil(height / lineHeight));
+                  const minHeight = Math.max(280, computedLines * lineHeight + 32);
+                  setDynamicTextareaHeights(prev => ({
+                    ...prev,
+                    [field.name]: minHeight
+                  }));
+                }}
+              />
+            ) : (
+              <NativeInput
+                placeholder={field.placeholder}
+                value={valeursFormulaire[field.name] || ''}
+                onChangeText={(text) => handleFieldChange(field.name, text)}
+                multiline
+                minLines={linesMinimum}
+                inputStyle={isProductDescField ? styles.productDescriptionText : undefined}
+                onContentSizeChange={(width, height) => {
+                  const lineHeight = 24;
+                  const computedLines = Math.max(linesMinimum, Math.ceil(height / lineHeight));
+                  setDynamicTextareaHeights(prev => ({
+                    ...prev,
+                    [field.name]: computedLines * lineHeight + 32
+                  }));
+                }}
+                style={[
+                  styles.fieldInput,
+                  styles.textareaInput,
+                  dynamicTextareaHeights[field.name] ? { minHeight: dynamicTextareaHeights[field.name] } : null
+                ]}
+              />
+            )}
           </View>
         );
       case 'number':
@@ -4894,7 +4927,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   showsVerticalScrollIndicator={true}
                   keyboardShouldPersistTaps="handled"
                   keyboardDismissMode="on-drag"
-                  nestedScrollEnabled={false}
+                  nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll horizontal des images dans MediaUploadManager
                   bounces={Platform.OS === 'ios'}
                 >
                   {displayedBlocks
@@ -5345,8 +5378,21 @@ const styles = StyleSheet.create({
     minHeight: 240,
     lineHeight: 22,
   },
+  // ✅ NOUVEAU: Style amélioré pour description_produit avec hauteur augmentée
+  productDescriptionInputEnhanced: {
+    minHeight: 280, // ✅ AUGMENTÉ: 280px au lieu de 240px pour plus d'espace
+    maxHeight: 400, // ✅ NOUVEAU: Hauteur maximale pour éviter que le champ devienne trop grand
+    paddingTop: 14, // ✅ Aligné avec textareaInput
+    paddingBottom: 14, // ✅ NOUVEAU: Padding en bas pour meilleur espacement
+    paddingVertical: undefined, // ✅ Surcharger paddingVertical de fieldInput pour utiliser paddingTop/Bottom
+    // ✅ Note: paddingHorizontal hérité de fieldInput (16px)
+    textAlignVertical: 'top', // ✅ Assure que le texte commence en haut
+    lineHeight: 24, // ✅ AUGMENTÉ: Espacement entre les lignes pour meilleure lisibilité
+    fontSize: 15, // ✅ Légèrement plus grand pour meilleure lisibilité
+  },
   productDescriptionText: {
-    lineHeight: 22,
+    lineHeight: 24, // ✅ AUGMENTÉ: Aligné avec productDescriptionInputEnhanced
+    fontSize: 15,
   },
   navigationButtons: {
     flexDirection: 'row',

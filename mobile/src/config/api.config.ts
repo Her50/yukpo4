@@ -67,6 +67,9 @@ export const API_ENDPOINTS = {
         INTERACTIONS: (serviceId: number) => `/api/services/${serviceId}/interactions`,
         REVIEWS: (serviceId: number) => `/api/services/${serviceId}/reviews`,
         SUBMIT_REVIEW: (serviceId: number) => `/api/services/${serviceId}/reviews`,
+        // ✅ NOUVEAU 2025-01-01: Endpoints batch pour optimiser les performances
+        BATCH_REVIEWS: '/api/services/batch/reviews',
+        BATCH_STATS: '/api/services/batch/stats',
     },
 
     // Reviews

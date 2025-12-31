@@ -29,7 +29,17 @@ interface UseServiceReviewsReturn {
     markReviewHelpful: (reviewId: number) => Promise<boolean>;
 }
 
-export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn => {
+/**
+ * Hook pour récupérer les reviews d'un ou plusieurs services
+ * Utilise automatiquement l'endpoint batch si plusieurs serviceIds sont fournis
+ * 
+ * @param serviceId - ID du service OU liste d'IDs de services
+ */
+export const useServiceReviews = (serviceId: number | number[]): UseServiceReviewsReturn => {
+    // ✅ NOUVEAU 2025-01-01: Détecter si on a une liste de services
+    const isBatch = Array.isArray(serviceId);
+    const serviceIds = isBatch ? serviceId : [serviceId];
+    const singleServiceId = isBatch ? serviceIds[0] : serviceId;
     const [reviews, setReviews] = useState<Review[]>([]);
     const [stats, setStats] = useState<ServiceReviewsStats | null>(null);
     const [loading, setLoading] = useState(true);
@@ -39,12 +49,12 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
 
     useEffect(() => {
         // ✅ CORRIGÉ 2025-12-30: Ne pas re-fetch si déjà chargé pour ce serviceId
-        if (!serviceId) {
+        if (!singleServiceId || serviceIds.length === 0) {
             return;
         }
 
         // Vérifier si on a déjà chargé les reviews pour ce serviceId
-        if (lastLoadedServiceIdRef.current === serviceId && reviews.length > 0) {
+        if (lastLoadedServiceIdRef.current === singleServiceId && reviews.length > 0 && !isBatch) {
             return;
         }
 
@@ -56,8 +66,32 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
             try {
                 setLoading(true);
 
-                // ✅ CORRIGÉ: Utilise apiGet au lieu de fetch hardcodé
-                const reviewsResponse = await apiGet(API_ENDPOINTS.SERVICES.REVIEWS(serviceId));
+                let reviewsResponse;
+                
+                // ✅ NOUVEAU 2025-01-01: Utiliser l'endpoint batch si plusieurs services
+                if (isBatch && serviceIds.length > 1) {
+                    const serviceIdsStr = serviceIds.join(',');
+                    const batchResponse = await apiGet(API_ENDPOINTS.SERVICES.BATCH_REVIEWS, {
+                        service_ids: serviceIdsStr,
+                    });
+                    
+                    // Extraire les reviews du premier service (compatibilité avec l'API actuelle)
+                    if (batchResponse.success && batchResponse.data) {
+                        const batchData = batchResponse.data as Record<string, any>;
+                        const firstServiceReviews = batchData[singleServiceId] || [];
+                        reviewsResponse = {
+                            success: true,
+                            data: {
+                                reviews: Array.isArray(firstServiceReviews) ? firstServiceReviews : [],
+                            },
+                        };
+                    } else {
+                        reviewsResponse = batchResponse;
+                    }
+                } else {
+                    // ✅ CORRIGÉ: Utilise apiGet au lieu de fetch hardcodé
+                    reviewsResponse = await apiGet(API_ENDPOINTS.SERVICES.REVIEWS(singleServiceId));
+                }
 
                 if (cancelled) return;
 
@@ -86,11 +120,11 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
                                 response_time: 2.5 // 2.5h de temps de réponse moyen
                             });
                         }
-                        lastLoadedServiceIdRef.current = serviceId;
+                        lastLoadedServiceIdRef.current = singleServiceId;
                     }
                 } else {
                     if (!cancelled) {
-                        console.log(`📝 [useServiceReviews] API reviews non disponible pour service ${serviceId}`);
+                        console.log(`📝 [useServiceReviews] API reviews non disponible pour service ${singleServiceId}`);
                         setReviews([]);
                         setStats({
                             average_rating: 0,
@@ -99,7 +133,7 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
                             completion_rate: 0,
                             response_time: 0
                         });
-                        lastLoadedServiceIdRef.current = serviceId;
+                        lastLoadedServiceIdRef.current = singleServiceId;
                     }
                 }
             } catch (error) {
@@ -115,7 +149,7 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
                         completion_rate: 0,
                         response_time: 0
                     });
-                    lastLoadedServiceIdRef.current = serviceId;
+                    lastLoadedServiceIdRef.current = singleServiceId;
                 }
             } finally {
                 if (!cancelled) {
@@ -129,19 +163,19 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
         return () => {
             cancelled = true;
         };
-    }, [serviceId]); // ✅ Ne dépend que de serviceId - stable
+    }, [singleServiceId, isBatch, serviceIds.join(',')]); // ✅ Dépendre de singleServiceId et de la liste pour batch
 
     const submitReview = async (rating: number, comment: string): Promise<boolean> => {
         try {
             // ✅ CORRIGÉ: Utilise apiPost au lieu de fetch hardcodé
-            const response = await apiPost(API_ENDPOINTS.SERVICES.SUBMIT_REVIEW(serviceId), {
+            const response = await apiPost(API_ENDPOINTS.SERVICES.SUBMIT_REVIEW(singleServiceId), {
                 rating,
                 comment
             });
 
             if (response.success) {
                 // Recharger les avis après soumission
-                const reviewsResponse = await apiGet(API_ENDPOINTS.SERVICES.REVIEWS(serviceId));
+                const reviewsResponse = await apiGet(API_ENDPOINTS.SERVICES.REVIEWS(singleServiceId));
 
                 if (reviewsResponse.success && reviewsResponse.data) {
                     const reviewsData = reviewsResponse.data;

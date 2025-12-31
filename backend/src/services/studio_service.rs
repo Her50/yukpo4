@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Instant};
 
 use chrono::{DateTime, Utc};
-use log::{info, warn};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::{FromRow, PgPool, Postgres, Transaction};
@@ -175,6 +175,11 @@ pub struct StudioService {
 }
 
 impl StudioService {
+    /// ✅ NOUVEAU: Vérifier si le renderer vidéo est disponible
+    pub fn is_renderer_available(&self) -> bool {
+        self.video_renderer.is_some()
+    }
+
     pub fn new(
         pool: PgPool,
         media_storage: Arc<MediaStorageService>,
@@ -637,16 +642,17 @@ impl StudioService {
     ) -> AppResult<PreviewResponse> {
         let preview_start = Instant::now();
         
-        // ✅ CORRIGÉ: Gérer gracieusement l'absence du renderer
+        // ✅ CORRIGÉ: Gérer gracieusement l'absence du renderer avec message détaillé
         let renderer = match self.video_renderer.clone() {
             Some(r) => r,
             None => {
-                warn!(
-                    "[StudioService] Renderer vidéo indisponible pour session {} - Retour d'erreur gracieux",
+                error!(
+                    "[StudioService] ❌ Renderer vidéo indisponible pour session {} - Configuration manquante ou désactivée",
                     session_id
                 );
+                // ✅ AMÉLIORÉ: Message d'erreur plus détaillé pour aider au diagnostic
                 return Err(AppError::BadRequest(
-                    "Le service de prévisualisation vidéo est temporairement indisponible. Veuillez réessayer plus tard.".into()
+                    "Le service de prévisualisation vidéo n'est pas configuré. Vérifiez que VIDEO_RENDERER_PROJECT_ROOT existe et que VIDEO_RENDERER_ENABLED=true, ou configurez VIDEO_RENDERER_RPC_URL pour utiliser un renderer distant.".into()
                 ));
             }
         };
@@ -679,14 +685,22 @@ impl StudioService {
         };
 
         let result = renderer.render(&request).await.map_err(|err| {
-            warn!(
-                "[StudioService] Échec génération preview courte session {}: {}",
-                session_id, err.message
+            error!(
+                "[StudioService] ❌ Échec génération preview courte session {}: {} (mode={:?}, retryable={})",
+                session_id, err.message, err.mode, err.retryable
             );
-            AppError::Internal(format!(
-                "Impossible de générer l'aperçu court: {}",
-                err.message
-            ))
+            // ✅ AMÉLIORÉ: Message d'erreur plus informatif selon le type d'erreur
+            if err.retryable {
+                AppError::BadRequest(format!(
+                    "Erreur temporaire lors de la génération de l'aperçu: {}. Veuillez réessayer dans quelques instants.",
+                    err.message
+                ))
+            } else {
+                AppError::Internal(format!(
+                    "Impossible de générer l'aperçu court: {}. Le service de rendu vidéo a rencontré une erreur.",
+                    err.message
+                ))
+            }
         })?;
 
         let preview_url = result

@@ -1109,26 +1109,23 @@ const ResultatBesoinScreen: React.FC = () => {
         return String(field);
     };
 
-    // Composant ServiceResultCard amélioré
-    // Composant de rendu pour chaque produit
-    const ProductCardComponent = ({ product }: { product: any }) => {
+    // ✅ CORRIGÉ 2025-01-01: Mémoriser les listes filtrées pour éviter les recalculs
+    const filteredProducts = useMemo(() => filterProducts(products), [products, categoryFilters, priceFilter, sortBy]);
+    const filteredServices = useMemo(() => filterAndSortServices(services), [services, priceFilter, sortBy]);
+
+    // ✅ CORRIGÉ 2025-01-01: Mémoriser la liste combinée des résultats
+    const allResults = useMemo(() => [
+        ...filteredServices.map(service => ({ type: 'service' as const, data: service })),
+        ...filteredProducts.map(product => ({ type: 'product' as const, data: product }))
+    ], [filteredServices, filteredProducts]);
+
+    // ✅ CORRIGÉ 2025-01-01: Fonction pour rendre ProductCard avec les props mémorisées
+    const renderProductCard = useCallback((product: any) => {
         const service = product._service;
         // ✅ Priorité: prestataire dans le produit > prestataire dans la Map > null
         const prestataireFromProduct = product._prestataire;
         const prestataireFromMap = service?.user_id ? prestataires.get(service.user_id) : null;
         const prestataire = prestataireFromProduct || prestataireFromMap || null;
-
-        // Log de débogage pour vérifier les données
-        if (__DEV__) {
-            console.log('📦 [ProductCardComponent] Produit:', {
-                productName: product.nom || product.name,
-                hasPrestataireInProduct: !!prestataireFromProduct,
-                hasPrestataireInMap: !!prestataireFromMap,
-                prestataireName: prestataire ? ((prestataire as any).nom_complet || prestataire.name) : null,
-                distance: product.distance,
-                serviceUserId: service?.user_id
-            });
-        }
 
         return (
             <ProductCard
@@ -1159,7 +1156,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 }}
             />
         );
-    };
+    }, [prestataires]);
 
     // Composant de rendu pour chaque service
     const ServiceCardComponent = ({ service }: { service: Service }) => {
@@ -1355,8 +1352,6 @@ const ResultatBesoinScreen: React.FC = () => {
                                     </Text>
                                     <Text style={styles.modernHeaderSubtitle} numberOfLines={1}>
                                         {(() => {
-                                            const filteredProducts = filterProducts(products);
-                                            const filteredServices = filterAndSortServices(services);
                                             const total = filteredProducts.length + filteredServices.length;
                                             const originalTotal = products.length + services.length;
                                             return `${total} résultat${total > 1 ? 's' : ''}${total !== originalTotal ? ` sur ${originalTotal}` : ''}`;
@@ -1486,57 +1481,47 @@ const ResultatBesoinScreen: React.FC = () => {
 
                     {/* ✅ CORRECTION: Afficher TOUS les résultats (services ET produits) */}
                     <View style={styles.servicesContainer}>
-                        {(() => {
-                            // Combiner les services et les produits
-                            const filteredProducts = filterProducts(products);
-                            const filteredServices = filterAndSortServices(services);
-
-                            // ✅ Afficher d'abord les services complets, puis les produits individuels
-                            const allResults = [
-                                ...filteredServices.map(service => ({ type: 'service', data: service })),
-                                ...filteredProducts.map(product => ({ type: 'product', data: product }))
-                            ];
-
-                            return allResults.length > 0 ? (
-                                allResults.map((result, index) => {
-                                    if (result.type === 'service') {
-                                        // Afficher le service complet
-                                        const service = result.data as Service;
-                                        const prestataire = prestataires.get(service.user_id);
-                                        return (
-                                            <UltraModernServiceCard
-                                                key={`service-${index}-${service.id}`}
-                                                service={service}
-                                                prestataireInfo={prestataire}
-                                                user={user}
-                                                onPress={handleServicePress}
-                                                onContact={handleContact}
-                                                onShare={handleShare}
-                                                onFavorite={handleFavorite}
-                                                onGallery={handleGallery}
-                                                onReview={handleReview}
-                                            />
-                                        );
-                                    } else {
-                                        // Afficher le produit individuel
-                                        const product = result.data;
-                                        return (
-                                            <ProductCardComponent key={`product-${index}-${product.nom}`} product={product} />
-                                        );
-                                    }
-                                })
-                            ) : (
-                                <View style={styles.emptyState}>
-                                    <SafeIcon name="package" size={48} color="#D1D5DB" />
-                                    <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
-                                    <Text style={styles.emptyStateSubtext}>
-                                        {Object.keys(categoryFilters).length > 0
-                                            ? 'Essayez de modifier vos filtres'
-                                            : 'Essayez de modifier votre recherche'}
-                                    </Text>
-                                </View>
-                            );
-                        })()}
+                        {allResults.length > 0 ? (
+                            allResults.map((result, index) => {
+                                if (result.type === 'service') {
+                                    // Afficher le service complet
+                                    const service = result.data as Service;
+                                    const prestataire = prestataires.get(service.user_id);
+                                    return (
+                                        <UltraModernServiceCard
+                                            key={`service-${service.id}`}
+                                            service={service}
+                                            prestataireInfo={prestataire}
+                                            user={user}
+                                            onPress={handleServicePress}
+                                            onContact={handleContact}
+                                            onShare={handleShare}
+                                            onFavorite={handleFavorite}
+                                            onGallery={handleGallery}
+                                            onReview={handleReview}
+                                        />
+                                    );
+                                } else {
+                                    // Afficher le produit individuel
+                                    const product = result.data;
+                                    return (
+                                        <React.Fragment key={`product-${product._serviceId || product.service_id || index}-${product.nom || product.name || index}`}>
+                                            {renderProductCard(product)}
+                                        </React.Fragment>
+                                    );
+                                }
+                            })
+                        ) : (
+                            <View style={styles.emptyState}>
+                                <SafeIcon name="package" size={48} color="#D1D5DB" />
+                                <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
+                                <Text style={styles.emptyStateSubtext}>
+                                    {Object.keys(categoryFilters).length > 0
+                                        ? 'Essayez de modifier vos filtres'
+                                        : 'Essayez de modifier votre recherche'}
+                                </Text>
+                            </View>
+                        )}
                     </View>
 
                 </>

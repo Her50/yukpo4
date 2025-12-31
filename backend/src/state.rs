@@ -266,13 +266,21 @@ impl AppState {
         let storage_config = MediaStorageConfig::from_env();
         let media_storage = Arc::new(MediaStorageService::new(storage_config.clone()));
 
+        // ✅ AMÉLIORÉ: Logger pourquoi le renderer n'est pas disponible
+        if renderer_config.is_none() {
+            log::warn!("[AppState] ⚠️ VideoRendererConfig non disponible - Vérifiez VIDEO_RENDERER_PROJECT_ROOT et VIDEO_RENDERER_ENABLED");
+        }
+
         let remotion_renderer = renderer_config.as_ref().and_then(|cfg| {
             match crate::services::remotion_renderer_service::RemotionRendererService::new(
                 cfg.clone(),
             ) {
-                Ok(service) => Some(Arc::new(service)),
+                Ok(service) => {
+                    log::info!("[AppState] ✅ Remotion renderer local initialisé");
+                    Some(Arc::new(service))
+                },
                 Err(err) => {
-                    log::warn!("[AppState] Remotion renderer inactif: {err:?}");
+                    log::warn!("[AppState] ⚠️ Remotion renderer local inactif: {err:?}");
                     None
                 }
             }
@@ -282,6 +290,17 @@ impl AppState {
             VideoRenderDispatcher::from_state_config(cfg.clone(), remotion_renderer.clone())
                 .map(Arc::new)
         });
+
+        // ✅ AMÉLIORÉ: Logger l'état final du renderer
+        if video_renderer.is_some() {
+            log::info!("[AppState] ✅ VideoRenderDispatcher initialisé avec succès");
+        } else {
+            log::warn!("[AppState] ⚠️ VideoRenderDispatcher non disponible - Le service de prévisualisation vidéo sera indisponible");
+            if let Some(cfg) = renderer_config.as_ref() {
+                log::warn!("[AppState]   - RPC endpoint: {:?}", cfg.rpc_endpoint);
+                log::warn!("[AppState]   - Remotion local: {}", if remotion_renderer.is_some() { "disponible" } else { "indisponible" });
+            }
+        }
 
         let audio_mastering = match PremiumAudioConfig::from_env() {
             Some(cfg) => {

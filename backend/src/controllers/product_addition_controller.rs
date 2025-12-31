@@ -210,10 +210,10 @@ pub async fn add_product_to_service(
         .map_err(|e| AppError::Internal(format!("Erreur sérialisation produit: {}", e)))?;
     
     // ✅ AMÉLIORÉ 2025-12-30: Timeout explicite pour éviter les requêtes trop longues
-    // ✅ AUGMENTÉ 2025-12-30: 60s pour permettre le traitement des images (upload Wasabi peut prendre 20-40s)
-    // Le timeout de 60s permet d'éviter que la requête ne bloque indéfiniment tout en laissant le temps au traitement des images
+    // ✅ RÉDUIT 2025-12-31: 15s pour la fonction PostgreSQL uniquement (le traitement des images sera asynchrone)
+    // Le timeout de 15s est suffisant pour la fonction PostgreSQL, les images seront traitées en arrière-plan
     let update_result = tokio::time::timeout(
-        std::time::Duration::from_secs(60),
+        std::time::Duration::from_secs(15),
         crate::utils::db_retry::retry_query(
             &pool,
             || {
@@ -342,8 +342,8 @@ pub async fn add_product_to_service(
             }
         },
         Err(_) => {
-            // Timeout après 60s
-            log_error(&format!("[add_product_to_service] ⏱️ Timeout après 60s lors de l'ajout du produit"));
+            // Timeout après 15s
+            log_error(&format!("[add_product_to_service] ⏱️ Timeout après 15s lors de l'ajout du produit (fonction PostgreSQL trop lente)"));
             
             // ✅ ROLLBACK : Rembourser l'utilisateur en cas de timeout
             let pool = state.pg.clone();
@@ -367,98 +367,111 @@ pub async fn add_product_to_service(
             )
             .await;
             
-            return Err(AppError::Internal("Timeout lors de l'ajout du produit après 60s. Le traitement des images peut prendre du temps. Veuillez réessayer avec moins d'images.".to_string()));
+            return Err(AppError::Internal("Timeout lors de l'ajout du produit après 15s. La base de données est peut-être surchargée. Veuillez réessayer.".to_string()));
         }
     };
     
-    // ✅ CRITIQUE 2025-12-27: Traiter et sauvegarder les médias du produit
+    // ✅ CRITIQUE 2025-12-31: Traiter les médias du produit EN ARRIÈRE-PLAN (asynchrone)
+    // Le traitement des images peut prendre 20-40s (upload Wasabi), donc on le fait après avoir retourné la réponse
+    // Cela évite les timeouts de 60s+ et améliore l'expérience utilisateur
     if !images_to_process.is_empty() {
-                log_info(&format!("[add_product_to_service] 🖼️ Traitement de {} image(s) pour le produit (index: {})", images_to_process.len(), product_index));
-                
-                // Obtenir le storage_root et product_id
-                let storage_root = std::env::var("UPLOAD_STORAGE_PATH")
-                    .map(PathBuf::from)
-                    .unwrap_or_else(|_| PathBuf::from("uploads"));
-                
-                let product_id = product_data_cleaned
-                    .as_object()
-                    .and_then(|obj| obj.get("id"))
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| format!("prod_{}", product_index));
-                
-                // ✅ OPTIMISÉ 2025-12-30: Traiter les images EN PARALLÈLE au lieu de séquentiellement
-                // Cela réduit le temps total de 3×30s=90s à ~30s (le temps de la plus lente)
-                let image_processing_futures: Vec<_> = images_to_process.iter()
-                    .enumerate()
-                    .filter(|(_, image_data)| !image_data.is_empty())
-                    .map(|(image_index, image_data)| {
-                        let storage_root_clone = storage_root.clone();
-                        let product_id_clone = product_id.clone();
-                        let media_storage_clone = state.media_storage.clone();
+        let images_to_process_clone = images_to_process.clone();
+        let product_data_cleaned_clone = product_data_cleaned.clone();
+        let service_id_clone = service_id;
+        let product_index_clone = product_index;
+        let pool_clone = pool.clone();
+        let media_storage_clone = state.media_storage.clone();
+        let storage_root = std::env::var("UPLOAD_STORAGE_PATH")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("uploads"));
+        let storage_root_clone = storage_root.clone();
+        
+        // ✅ NOUVEAU: Traiter les images en arrière-plan (tokio::spawn)
+        tokio::spawn(async move {
+            log_info(&format!("[add_product_to_service] 🖼️ [ASYNC] Traitement de {} image(s) pour le produit (index: {})", images_to_process_clone.len(), product_index_clone));
+            
+            let product_id = product_data_cleaned_clone
+                .as_object()
+                .and_then(|obj| obj.get("id"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("prod_{}", product_index_clone));
+            
+            // ✅ OPTIMISÉ 2025-12-30: Traiter les images EN PARALLÈLE au lieu de séquentiellement
+            let image_processing_futures: Vec<_> = images_to_process_clone.iter()
+                .enumerate()
+                .filter(|(_, image_data)| !image_data.is_empty())
+                .map(|(image_index, image_data)| {
+                    let storage_root_clone = storage_root_clone.clone();
+                    let product_id_clone = product_id.clone();
+                    let media_storage_clone = media_storage_clone.clone();
+                    
+                    async move {
+                        let result = process_single_image_for_product(
+                            &storage_root_clone,
+                            service_id_clone,
+                            &product_id_clone,
+                            product_index_clone,
+                            image_index,
+                            image_data,
+                            media_storage_clone,
+                        ).await;
                         
-                        async move {
-                            let result = process_single_image_for_product(
-                                &storage_root_clone,
-                                service_id,
-                                &product_id_clone,
-                                product_index,
-                                image_index,
-                                image_data,
-                                media_storage_clone,
-                            ).await;
-                            
-                            (image_index, result)
-                        }
-                    })
-                    .collect();
-                
-                // Traiter toutes les images en parallèle
-                let processing_results = join_all(image_processing_futures).await;
-                
-                // Insérer les résultats dans la DB (on peut aussi paralléliser ça si nécessaire)
-                for (image_index, result) in processing_results {
-                    match result {
-                        Ok(Some(processed)) => {
-                            // Insérer dans la table media
-                            if let Err(e) = sqlx::query(
-                                r#"
-                                INSERT INTO media (
-                                    service_id, product_id, product_index, type, path,
-                                    is_main_image, display_order, uploaded_at,
-                                    image_signature, image_hash, image_metadata
-                                )
-                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                                "#
+                        (image_index, result)
+                    }
+                })
+                .collect();
+            
+            // Traiter toutes les images en parallèle
+            let processing_results = join_all(image_processing_futures).await;
+            
+            // Insérer les résultats dans la DB
+            for (image_index, result) in processing_results {
+                match result {
+                    Ok(Some(processed)) => {
+                        // Insérer dans la table media
+                        if let Err(e) = sqlx::query(
+                            r#"
+                            INSERT INTO media (
+                                service_id, product_id, product_index, type, path,
+                                is_main_image, display_order, uploaded_at,
+                                image_signature, image_hash, image_metadata
                             )
-                            .bind(service_id)
-                            .bind(&product_id)
-                            .bind(product_index as i32)
-                            .bind("image")
-                            .bind(&processed.file_path)
-                            .bind(image_index == 0)
-                            .bind(image_index as i32)
-                            .bind(Utc::now().naive_utc())
-                            .bind(&processed.image_signature)
-                            .bind(&processed.image_hash)
-                            .bind(&processed.image_metadata)
-                            .execute(&pool)
-                            .await {
-                                log_error(&format!("[add_product_to_service] ❌ Erreur insertion media produit {} (index {}): {}", product_id, product_index, e));
-                            } else {
-                                log_info(&format!("[add_product_to_service] ✅ Image {} sauvegardée pour produit {} (index: {})", image_index, product_id, product_index));
-                            }
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                            "#
+                        )
+                        .bind(service_id_clone)
+                        .bind(&product_id)
+                        .bind(product_index_clone as i32)
+                        .bind("image")
+                        .bind(&processed.file_path)
+                        .bind(image_index == 0)
+                        .bind(image_index as i32)
+                        .bind(Utc::now().naive_utc())
+                        .bind(&processed.image_signature)
+                        .bind(&processed.image_hash)
+                        .bind(&processed.image_metadata)
+                        .execute(&pool_clone)
+                        .await {
+                            log_error(&format!("[add_product_to_service] ❌ [ASYNC] Erreur insertion media produit {} (index {}): {}", product_id, product_index_clone, e));
+                        } else {
+                            log_info(&format!("[add_product_to_service] ✅ [ASYNC] Image {} sauvegardée pour produit {} (index: {})", image_index, product_id, product_index_clone));
                         }
-                        Ok(None) => {
-                            log_info(&format!("[add_product_to_service] ⚠️ Image {} ignorée pour produit {} (format non supporté)", image_index, product_id));
-                        }
-                        Err(e) => {
-                            log_error(&format!("[add_product_to_service] ❌ Erreur traitement image {} pour produit {}: {}", image_index, product_id, e));
-                            // Ne pas faire échouer la requête si une image échoue
-                        }
+                    }
+                    Ok(None) => {
+                        log_info(&format!("[add_product_to_service] ⚠️ [ASYNC] Image {} ignorée pour produit {} (format non supporté)", image_index, product_id));
+                    }
+                    Err(e) => {
+                        log_error(&format!("[add_product_to_service] ❌ [ASYNC] Erreur traitement image {} pour produit {}: {}", image_index, product_id, e));
                     }
                 }
             }
+            
+            log_info(&format!("[add_product_to_service] ✅ [ASYNC] Traitement des images terminé pour produit {} (index: {})", product_id, product_index_clone));
+        });
+        
+        log_info(&format!("[add_product_to_service] ✅ Traitement de {} image(s) lancé en arrière-plan pour le produit (index: {})", images_to_process.len(), product_index));
+    }
     
     // ✅ OPTIMISÉ 2025-12-31: Construire service_data minimal pour indexation
     // Les données nécessaires sont déjà retournées par la fonction PostgreSQL v2

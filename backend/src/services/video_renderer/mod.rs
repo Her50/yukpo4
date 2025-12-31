@@ -128,15 +128,24 @@ impl VideoRenderExecutor for LocalRenderExecutor {
 pub struct RpcRenderExecutor {
     client: reqwest::Client,
     endpoint: String,
+    token: Option<String>,
 }
 
 impl RpcRenderExecutor {
-    pub fn new(endpoint: String) -> Self {
+    pub fn new(endpoint: String, token: Option<String>) -> Self {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(120))
             .build()
             .expect("Impossible de construire le client HTTP pour le renderer RPC");
-        Self { client, endpoint }
+        
+        // ✅ LOG: Confirmer l'initialisation avec ou sans token
+        if token.is_some() {
+            info!("[RpcRenderExecutor] ✅ Initialisé avec authentification token pour {}", endpoint);
+        } else {
+            info!("[RpcRenderExecutor] ✅ Initialisé sans authentification pour {}", endpoint);
+        }
+        
+        Self { client, endpoint, token }
     }
 }
 
@@ -195,7 +204,14 @@ impl VideoRenderExecutor for RpcRenderExecutor {
         };
 
         let endpoint = format!("{}/render", self.endpoint.trim_end_matches('/'));
-        let send_future = self.client.post(endpoint).json(&payload).send();
+        let mut request = self.client.post(&endpoint).json(&payload);
+        
+        // ✅ NOUVEAU: Ajouter le token d'authentification si disponible
+        if let Some(token) = &self.token {
+            request = request.header("Authorization", format!("Bearer {}", token));
+        }
+        
+        let send_future = request.send();
 
         let response = match timeout(timeout_duration, send_future).await {
             Ok(result) => result,
@@ -320,7 +336,7 @@ impl VideoRenderDispatcher {
 
         if let Some(endpoint) = config.rpc_endpoint.clone() {
             let rpc_executor =
-                Arc::new(RpcRenderExecutor::new(endpoint)) as Arc<dyn VideoRenderExecutor>;
+                Arc::new(RpcRenderExecutor::new(endpoint, config.rpc_token.clone())) as Arc<dyn VideoRenderExecutor>;
             primary = Some(rpc_executor);
         }
 

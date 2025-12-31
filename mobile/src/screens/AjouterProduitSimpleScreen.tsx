@@ -1100,6 +1100,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                                     // Collecter tous les médias du produit à uploader (après compression)
                                     const filesToUpload: Array<{ uri: string; type: string; name?: string }> = [];
+                                    
+                                    // ✅ CORRIGÉ : Collecter aussi les URLs existantes pour les préserver
+                                    const existingImageUrls: string[] = [];
+                                    const existingVideoUrls: string[] = [];
 
                                     // Images produit (utiliser versions compressées si disponibles)
                                     const imagesToUpload = compressedMedia?.images || nouveauProduit.images || [];
@@ -1115,10 +1119,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                                     name: `prod_image_${idx}.jpg`
                                                 });
                                             }
-                                            // ✅ NOUVEAU : Si c'est déjà une URL (http/https), ne pas uploader mais l'utiliser directement
+                                            // ✅ CORRIGÉ : Si c'est déjà une URL (http/https), la préserver
                                             else if (img && (img.startsWith('http://') || img.startsWith('https://'))) {
-                                                // URL déjà uploadée, sera utilisée directement plus tard
-                                                console.log(`[AjouterProduitSimple] ℹ️ Image ${idx} est déjà une URL, pas besoin d'uploader:`, img.substring(0, 50) + '...');
+                                                existingImageUrls.push(img);
+                                                console.log(`[AjouterProduitSimple] ℹ️ Image ${idx} est déjà une URL, préservation:`, img.substring(0, 50) + '...');
                                             }
                                         });
                                     }
@@ -1137,10 +1141,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                                     name: `prod_video_${idx}.mp4`
                                                 });
                                             }
-                                            // ✅ NOUVEAU : Si c'est déjà une URL (http/https), ne pas uploader mais l'utiliser directement
+                                            // ✅ CORRIGÉ : Si c'est déjà une URL (http/https), la préserver
                                             else if (vid && (vid.startsWith('http://') || vid.startsWith('https://'))) {
-                                                // URL déjà uploadée, sera utilisée directement plus tard
-                                                console.log(`[AjouterProduitSimple] ℹ️ Vidéo ${idx} est déjà une URL, pas besoin d'uploader:`, vid.substring(0, 50) + '...');
+                                                existingVideoUrls.push(vid);
+                                                console.log(`[AjouterProduitSimple] ℹ️ Vidéo ${idx} est déjà une URL, préservation:`, vid.substring(0, 50) + '...');
                                             }
                                         });
                                     }
@@ -1151,21 +1155,28 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         const uploadedFiles = await uploadFiles(filesToUpload);
                                         console.log('[AjouterProduitSimple] ✅ Upload réussi pour produit:', uploadedFiles.length, 'fichier(s)');
 
-                                        // ✅ CORRIGÉ : Remplacer base64 par URLs dans nouveauProduit (supprimer base64)
+                                        // ✅ CORRIGÉ : Fusionner URLs uploadées avec URLs existantes
                                         // Images produit
-                                        const imageUrls = uploadedFiles
+                                        const uploadedImageUrls = uploadedFiles
                                             .filter(f => f.media_type === 'image')
                                             .map(f => f.url)
                                             .filter((url: string) => url && url.length > 0 && !url.startsWith('data:')); // ✅ Vérifier que ce sont bien des URLs
                                         
-                                        if (imageUrls.length > 0) {
+                                        // ✅ CORRIGÉ : Fusionner URLs uploadées + URLs existantes
+                                        const allImageUrls = [...existingImageUrls, ...uploadedImageUrls].filter((url, index, self) => self.indexOf(url) === index); // Dédupliquer
+                                        
+                                        if (allImageUrls.length > 0) {
                                             // ✅ CORRIGÉ : Utiliser base64_image avec URLs (format attendu par backend)
-                                            nouveauProduit.base64_image = imageUrls;
+                                            nouveauProduit.base64_image = allImageUrls;
                                             // ✅ CORRIGÉ : Supprimer images (base64) pour éviter duplication
                                             delete nouveauProduit.images;
                                             // Garder imageUrls pour compatibilité
-                                            nouveauProduit.imageUrls = imageUrls;
-                                            console.log('[AjouterProduitSimple] ✅ Images produit uploadées (URLs):', imageUrls.length);
+                                            nouveauProduit.imageUrls = allImageUrls;
+                                            console.log('[AjouterProduitSimple] ✅ Images produit finales (URLs existantes + uploadées):', {
+                                                existantes: existingImageUrls.length,
+                                                uploadées: uploadedImageUrls.length,
+                                                total: allImageUrls.length
+                                            });
                                         } else {
                                             // ⚠️ Aucune URL valide, supprimer quand même images pour éviter base64
                                             delete nouveauProduit.images;
@@ -1173,19 +1184,26 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                         }
 
                                         // Vidéos produit
-                                        const videoUrls = uploadedFiles
+                                        const uploadedVideoUrls = uploadedFiles
                                             .filter(f => f.media_type === 'video')
                                             .map(f => f.url)
                                             .filter((url: string) => url && url.length > 0 && !url.startsWith('data:')); // ✅ Vérifier que ce sont bien des URLs
                                         
-                                        if (videoUrls.length > 0) {
+                                        // ✅ CORRIGÉ : Fusionner URLs uploadées + URLs existantes
+                                        const allVideoUrls = [...existingVideoUrls, ...uploadedVideoUrls].filter((url, index, self) => self.indexOf(url) === index); // Dédupliquer
+                                        
+                                        if (allVideoUrls.length > 0) {
                                             // ✅ CORRIGÉ : Utiliser video_base64 avec URLs (format attendu par backend)
-                                            nouveauProduit.video_base64 = videoUrls;
+                                            nouveauProduit.video_base64 = allVideoUrls;
                                             // ✅ CORRIGÉ : Supprimer videos (base64) pour éviter duplication
                                             delete nouveauProduit.videos;
                                             // Garder videoUrls pour compatibilité
-                                            nouveauProduit.videoUrls = videoUrls;
-                                            console.log('[AjouterProduitSimple] ✅ Vidéos produit uploadées (URLs):', videoUrls.length);
+                                            nouveauProduit.videoUrls = allVideoUrls;
+                                            console.log('[AjouterProduitSimple] ✅ Vidéos produit finales (URLs existantes + uploadées):', {
+                                                existantes: existingVideoUrls.length,
+                                                uploadées: uploadedVideoUrls.length,
+                                                total: allVideoUrls.length
+                                            });
                                         } else {
                                             // ⚠️ Aucune URL valide, supprimer quand même videos pour éviter base64
                                             delete nouveauProduit.videos;
@@ -1194,19 +1212,15 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                     } else {
                                         console.log('[AjouterProduitSimple] ℹ️ Aucun média à uploader pour nouveau produit (déjà URLs ou vide)');
                                         
-                                        // ✅ NOUVEAU : Vérifier si les médias existants sont déjà des URLs
-                                        // Si oui, les utiliser directement sans upload
-                                        const existingImageUrls = (compressedMedia?.images || nouveauProduit.images || [])
-                                            .filter((img: string) => typeof img === 'string' && img.length > 0 && (img.startsWith('http://') || img.startsWith('https://')));
-                                        
-                                        const existingVideoUrls = (compressedMedia?.videos || nouveauProduit.videos || [])
-                                            .filter((vid: string) => typeof vid === 'string' && vid.length > 0 && (vid.startsWith('http://') || vid.startsWith('https://')));
-                                        
+                                        // ✅ CORRIGÉ : Utiliser les URLs existantes collectées
                                         if (existingImageUrls.length > 0) {
                                             nouveauProduit.base64_image = existingImageUrls;
                                             delete nouveauProduit.images;
                                             nouveauProduit.imageUrls = existingImageUrls;
                                             console.log('[AjouterProduitSimple] ✅ Utilisation URLs images existantes:', existingImageUrls.length);
+                                        } else if (!nouveauProduit.images || nouveauProduit.images.length === 0) {
+                                            delete nouveauProduit.images;
+                                            delete nouveauProduit.base64_image;
                                         }
                                         
                                         if (existingVideoUrls.length > 0) {
@@ -1214,15 +1228,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                             delete nouveauProduit.videos;
                                             nouveauProduit.videoUrls = existingVideoUrls;
                                             console.log('[AjouterProduitSimple] ✅ Utilisation URLs vidéos existantes:', existingVideoUrls.length);
-                                        }
-                                        
-                                        // Si pas d'URLs existantes et pas de médias base64, supprimer les champs vides
-                                        if (existingImageUrls.length === 0 && (!nouveauProduit.images || nouveauProduit.images.length === 0)) {
-                                            delete nouveauProduit.images;
-                                            delete nouveauProduit.base64_image;
-                                        }
-                                        
-                                        if (existingVideoUrls.length === 0 && (!nouveauProduit.videos || nouveauProduit.videos.length === 0)) {
+                                        } else if (!nouveauProduit.videos || nouveauProduit.videos.length === 0) {
                                             delete nouveauProduit.videos;
                                             delete nouveauProduit.video_base64;
                                         }
@@ -1462,6 +1468,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                     style={styles.scrollView}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
+                    nestedScrollEnabled={true} // ✅ CORRIGÉ: Permettre le scroll horizontal des images dans MediaUploadManager
                 >
                     {/* Carte principale */}
                     <NativeCard style={styles.mainCard}>

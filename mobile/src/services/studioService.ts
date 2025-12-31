@@ -231,9 +231,15 @@ export const studioService = {
                 backendError,
             });
             
-            // ✅ CORRIGÉ: Inclure le status dans le message si c'est une erreur 400
+            // ✅ AMÉLIORÉ: Message d'erreur plus informatif selon le type
             if ((response as any).status === 400) {
-                throw new Error(`Erreur 400: ${errorMsg}`);
+                // ✅ AMÉLIORÉ: Ne pas préfixer "Erreur 400:" si le message backend est déjà informatif
+                if (errorMsg.includes('n\'est pas configuré') || 
+                    errorMsg.includes('VIDEO_RENDERER') || 
+                    errorMsg.includes('temporairement indisponible')) {
+                    throw new Error(errorMsg);
+                }
+                throw new Error(`Erreur de configuration: ${errorMsg}`);
             }
             
             throw new Error(errorMsg);

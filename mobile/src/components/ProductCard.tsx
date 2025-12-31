@@ -5,7 +5,7 @@
 
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -146,7 +146,7 @@ const formatDate = (dateStr: string): string => {
   }
 };
 
-const ProductCard: React.FC<ProductCardProps> = ({
+const ProductCard: React.FC<ProductCardProps> = React.memo(({
   product,
   service,
   prestataire: prestataireFromProps,
@@ -309,51 +309,55 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   const devise = product.devise || variants[0]?.devise || 'XAF';
 
-  // ✅ CORRIGÉ: Calculer la distance si elle n'est pas fournie
-  const rawDistance = product.distance_km ?? product.distanceKm ?? product.distance ?? product.distance_client;
-  let distanceKm = typeof rawDistance === 'string'
-    ? parseFloat(rawDistance)
-    : typeof rawDistance === 'number'
-      ? rawDistance
-      : undefined;
-  
-  // ✅ NOUVEAU: Calculer la distance si elle n'est pas fournie et qu'on a les coordonnées GPS
-  if ((distanceKm === undefined || !Number.isFinite(distanceKm)) && effectiveUserLocation && locationCalculateDistance) {
-    // Extraire les coordonnées GPS du produit/service
-    const productGPS = product.gps || product.gps_coords || product.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
+  // ✅ CORRIGÉ 2025-01-01: Mémoriser le calcul de distance pour éviter les recalculs à chaque render
+  const distanceKm = useMemo(() => {
+    const rawDistance = product.distance_km ?? product.distanceKm ?? product.distance ?? product.distance_client;
+    let calculatedDistance = typeof rawDistance === 'string'
+      ? parseFloat(rawDistance)
+      : typeof rawDistance === 'number'
+        ? rawDistance
+        : undefined;
     
-    if (productGPS) {
-      let productLat: number | undefined;
-      let productLon: number | undefined;
+    // ✅ NOUVEAU: Calculer la distance si elle n'est pas fournie et qu'on a les coordonnées GPS
+    if ((calculatedDistance === undefined || !Number.isFinite(calculatedDistance)) && effectiveUserLocation && locationCalculateDistance) {
+      // Extraire les coordonnées GPS du produit/service
+      const productGPS = product.gps || product.gps_coords || product.gps_fixe || service?.data?.gps_fixe?.valeur || service?.data?.gps?.valeur;
       
-      // Parser le GPS (peut être string "lat,lng" ou object {lat, lng} ou {latitude, longitude})
-      if (typeof productGPS === 'string') {
-        const parts = productGPS.split(',').map(p => p.trim());
-        if (parts.length >= 2) {
-          productLat = parseFloat(parts[0]);
-          productLon = parseFloat(parts[1]);
+      if (productGPS) {
+        let productLat: number | undefined;
+        let productLon: number | undefined;
+        
+        // Parser le GPS (peut être string "lat,lng" ou object {lat, lng} ou {latitude, longitude})
+        if (typeof productGPS === 'string') {
+          const parts = productGPS.split(',').map(p => p.trim());
+          if (parts.length >= 2) {
+            productLat = parseFloat(parts[0]);
+            productLon = parseFloat(parts[1]);
+          }
+        } else if (typeof productGPS === 'object') {
+          productLat = productGPS.lat ?? productGPS.latitude;
+          productLon = productGPS.lng ?? productGPS.longitude;
         }
-      } else if (typeof productGPS === 'object') {
-        productLat = productGPS.lat ?? productGPS.latitude;
-        productLon = productGPS.lng ?? productGPS.longitude;
-      }
-      
-      // Calculer la distance si on a les deux coordonnées
-      if (productLat !== undefined && productLon !== undefined && 
-          Number.isFinite(productLat) && Number.isFinite(productLon)) {
-        try {
-          distanceKm = locationCalculateDistance(
-            effectiveUserLocation.latitude,
-            effectiveUserLocation.longitude,
-            productLat,
-            productLon
-          );
-        } catch (error) {
-          console.warn('[ProductCard] Erreur calcul distance:', error);
+        
+        // Calculer la distance si on a les deux coordonnées
+        if (productLat !== undefined && productLon !== undefined && 
+            Number.isFinite(productLat) && Number.isFinite(productLon)) {
+          try {
+            calculatedDistance = locationCalculateDistance(
+              effectiveUserLocation.latitude,
+              effectiveUserLocation.longitude,
+              productLat,
+              productLon
+            );
+          } catch (error) {
+            console.warn('[ProductCard] Erreur calcul distance:', error);
+          }
         }
       }
     }
-  }
+    
+    return calculatedDistance;
+  }, [product.distance_km, product.distanceKm, product.distance, product.distance_client, product.gps, product.gps_coords, product.gps_fixe, service?.data?.gps_fixe?.valeur, service?.data?.gps?.valeur, effectiveUserLocation, locationCalculateDistance]);
   
   const hasDistance = typeof distanceKm === 'number' && Number.isFinite(distanceKm) && distanceKm >= 0;
 
@@ -994,7 +998,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
       )}
     </>
   );
-};
+}, (prevProps, nextProps) => {
+  // ✅ CORRIGÉ 2025-01-01: Comparaison personnalisée pour éviter les re-renders inutiles
+  // Ne re-render que si les props importantes changent
+  return (
+    prevProps.product === nextProps.product &&
+    prevProps.service === nextProps.service &&
+    prevProps.prestataire === nextProps.prestataire &&
+    prevProps.userLocation === nextProps.userLocation &&
+    prevProps.onPress === nextProps.onPress &&
+    prevProps.onChatPress === nextProps.onChatPress
+  );
+});
 
 const styles = StyleSheet.create({
   cardContainer: {
